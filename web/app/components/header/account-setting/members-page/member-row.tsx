@@ -12,6 +12,7 @@ import RoleBadges from './role-badges'
 
 type MemberRowProps = {
   member: AccountWithRoleResponse
+  onRemove: (member: AccountWithRoleResponse, trigger: HTMLButtonElement | null) => void
   roles: Array<{
     id: string
     name: string
@@ -24,6 +25,7 @@ type MemberRowProps = {
 
 const MemberRow = ({
   member,
+  onRemove,
   roles,
   isCurrentUser,
   canManage,
@@ -98,6 +100,7 @@ const MemberRow = ({
         <td className="px-3 py-2">
           <MemberMenu
             member={member}
+            onRemove={onRemove}
             isCurrentUser={isCurrentUser}
             canTransferOwnership={canTransferOwnership}
             allowMultipleRoles={allowMultipleRoles}

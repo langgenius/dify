@@ -118,6 +118,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.useCheck.get': (input) => mockCheckIsUsedInApp(input),
+      'datasets.byDatasetId.delete': (input) => mockDeleteDataset(input),
       'rag.pipelines.byPipelineId.exports.get': (input) => mockExportPipeline(input),
     }),
   }
@@ -126,8 +128,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 vi.mock('@/service/datasets', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/datasets')>()),
   updateDatasetSetting: (...args: unknown[]) => mockUpdateDatasetSetting(...args),
-  checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),
-  deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -247,7 +247,7 @@ describe('Dropdown callback coverage', () => {
     expect(mockExportPipeline).not.toHaveBeenCalled()
   })
 
-  it('should surface the backend message when checking app usage fails', async () => {
+  it('keeps failed usage checks in the dialog with a retry action', async () => {
     const user = userEvent.setup()
     mockCheckIsUsedInApp.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), { message: 'check failed' }),
@@ -258,9 +258,8 @@ describe('Dropdown callback coverage', () => {
     await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.delete'))
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith('check failed')
-    })
-    expect(screen.queryByText('dataset.deleteDatasetConfirmTitle')).not.toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeEnabled()
+    expect(mockDeleteDataset).not.toHaveBeenCalled()
   })
 })

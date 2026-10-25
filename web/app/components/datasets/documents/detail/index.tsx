@@ -4,6 +4,17 @@ import type { DocumentDetailResponse } from '@dify/contracts/api/console/dataset
 import type { FC } from 'react'
 import type { FileItem } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
@@ -52,6 +63,12 @@ const NON_TERMINAL_DISPLAY_STATUSES = new Set<(typeof DisplayStatusList)[number]
 )
 
 const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
+  const [deleteDialog] = useState(() => createAlertDialogHandle<{ id: string }>())
+  const deletion = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.delete.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useTranslation(['common', 'datasetDocuments', 'navigation'])
@@ -358,6 +375,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               detail={operationsDetail}
               datasetId={datasetId}
               onUpdate={handleOperate}
+              onDelete={(id) => deleteDialog.openWithPayload({ id })}
               className="w-50!"
               canEdit={canEditDocument}
               canDownload={datasetACLCapabilities.canDocumentDownload}
@@ -444,6 +462,56 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           onConfirm={runBatch}
           docForm={documentDetail?.doc_form as ChunkingMode}
         />
+        <AlertDialog
+          handle={deleteDialog}
+          onOpenChange={(open, details) => {
+            if (!open && deletion.isPending && details.reason !== 'imperative-action')
+              details.cancel()
+          }}
+          onOpenChangeComplete={(open) => {
+            if (!open) deletion.reset()
+          }}
+        >
+          {({ payload }) => (
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t(($) => $['list.delete.content'], { ns: 'datasetDocuments' })}
+                </AlertDialogDescription>
+                {deletion.isError && (
+                  <p role="alert" className="text-text-destructive">
+                    {t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })}
+                  </p>
+                )}
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancelButton disabled={deletion.isPending}>
+                  {t(($) => $['operation.cancel'], { ns: 'common' })}
+                </AlertDialogCancelButton>
+                <AlertDialogConfirmButton
+                  loading={deletion.isPending}
+                  onClick={() => {
+                    if (!payload || deletion.isPending) return
+                    deletion.mutate(
+                      { params: { dataset_id: datasetId }, query: { document_id: [payload.id] } },
+                      {
+                        onSuccess: () => {
+                          deleteDialog.close()
+                          backToPrev()
+                        },
+                      },
+                    )
+                  }}
+                >
+                  {t(($) => $['operation.sure'], { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          )}
+        </AlertDialog>
       </div>
     </DocumentContext.Provider>
   )

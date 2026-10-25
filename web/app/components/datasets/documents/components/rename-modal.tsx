@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -19,15 +19,45 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { renameDocumentName } from '@/service/datasets'
 
-type Props = Readonly<{
+export type RenameDocumentPayload = { id: string; name: string }
+
+type Props = {
   datasetId: string
+  handle: DialogHandle<RenameDocumentPayload>
+  onSaved: () => void
+}
+
+const RenameModal = ({ datasetId, handle, onSaved }: Props) => (
+  <Dialog handle={handle}>
+    {({ payload }) => (
+      <DialogContent>
+        {payload && (
+          <RenameDocumentForm
+            datasetId={datasetId}
+            documentId={payload.id}
+            name={payload.name}
+            onSaved={onSaved}
+            onClose={() => handle.close()}
+          />
+        )}
+      </DialogContent>
+    )}
+  </Dialog>
+)
+
+function RenameDocumentForm({
+  documentId,
+  datasetId,
+  name,
+  onClose,
+  onSaved,
+}: {
   documentId: string
+  datasetId: string
   name: string
   onClose: () => void
   onSaved: () => void
-}>
-
-const RenameModal: FC<Props> = ({ documentId, datasetId, name, onClose, onSaved }) => {
+}) {
   const { t } = useTranslation(['common', 'datasetDocuments'])
 
   const [newName, setNewName] = useState(name)
@@ -54,41 +84,34 @@ const RenameModal: FC<Props> = ({ documentId, datasetId, name, onClose, onSaved 
   }
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose()
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}</DialogTitle>
-        </DialogHeader>
-        <Form className="contents" onFormSubmit={() => void handleSave()}>
-          <DialogBody>
-            <Field name="documentName">
-              <FieldLabel className="text-sm leading-5.25 font-medium text-text-primary">
-                {t(($) => $['list.table.name'], { ns: 'datasetDocuments' })}
-              </FieldLabel>
-              <Input
-                className="h-10"
-                value={newName}
-                placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
-                onValueChange={setNewName}
-              />
-            </Field>
-          </DialogBody>
-          <DialogFooter>
-            <Button type="button" className="shrink-0" onClick={onClose}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button type="submit" variant="primary" className="shrink-0" loading={saveLoading}>
-              {t(($) => $['operation.save'], { ns: 'common' })}
-            </Button>
-          </DialogFooter>
-        </Form>
-      </DialogContent>
-    </Dialog>
+    <>
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}</DialogTitle>
+      </DialogHeader>
+      <Form className="contents" onFormSubmit={() => void handleSave()}>
+        <DialogBody>
+          <Field name="documentName">
+            <FieldLabel className="text-sm leading-5.25 font-medium text-text-primary">
+              {t(($) => $['list.table.name'], { ns: 'datasetDocuments' })}
+            </FieldLabel>
+            <Input
+              className="h-10"
+              value={newName}
+              placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
+              onValueChange={setNewName}
+            />
+          </Field>
+        </DialogBody>
+        <DialogFooter>
+          <Button type="button" className="shrink-0" onClick={onClose}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          <Button type="submit" variant="primary" className="shrink-0" loading={saveLoading}>
+            {t(($) => $['operation.save'], { ns: 'common' })}
+          </Button>
+        </DialogFooter>
+      </Form>
+    </>
   )
 }
 export default React.memo(RenameModal)

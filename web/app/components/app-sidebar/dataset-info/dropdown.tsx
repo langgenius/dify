@@ -1,13 +1,8 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import {
   AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -30,10 +25,9 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import { downloadBlob } from '@/utils/download'
-import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
+import { DeleteDatasetConfirmation } from '../../datasets/delete-dataset-confirmation'
 import RenameDatasetModal from '../../datasets/rename-modal'
 
 type DropDownProps = {
@@ -44,9 +38,11 @@ type DropDownProps = {
 const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const { t } = useTranslation(['app', 'common', 'dataset', 'datasetPipeline', 'navigation'])
   const { push, replace } = useRouter()
-  const [showRenameModal, setShowRenameModal] = useState(false)
-  const [confirmMessage, setConfirmMessage] = useState<string>('')
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [deleteDialog] = useState(() => createAlertDialogHandle<{ id: string }>())
+  const deletion = useMutation(
+    consoleQuery.datasets.byDatasetId.delete.mutationOptions({ context: { silent: true } }),
+  )
 
   const dataset = useDatasetDetailContextWithSelector(
     (state) => state.dataset,
@@ -97,12 +93,6 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     invalidDatasetDetail()
   }, [invalidDatasetDetail, invalidDatasetList])
 
-  const openRenameModal = useCallback(() => {
-    queueMicrotask(() => {
-      setShowRenameModal(true)
-    })
-  }, [])
-
   const { mutateAsync: exportPipelineConfig } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions(),
   )
@@ -125,37 +115,9 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     [dataset, exportPipelineConfig, t],
   )
 
-  const detectIsUsedByApp = useCallback(async () => {
-    try {
-      const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
-      setConfirmMessage(
-        isUsedByApp
-          ? t(($) => $.datasetUsedByApp, { ns: 'dataset' })!
-          : t(($) => $.deleteDatasetConfirmContent, { ns: 'dataset' })!,
-      )
-      setShowConfirmDelete(true)
-    } catch (e: unknown) {
-      toast.error(getErrorMessage(e) ?? 'Unknown error')
-    }
-  }, [dataset.id, t])
-
   const openAccessConfig = useCallback(() => {
     push(`/datasets/${dataset.id}/access-config`)
   }, [dataset.id, push])
-
-  const onConfirmDelete = useCallback(async () => {
-    try {
-      await deleteDataset(dataset.id)
-      toast(
-        t(($) => $.datasetDeleted, { ns: 'dataset' }),
-        { type: 'success' },
-      )
-      invalidDatasetList()
-      replace('/datasets')
-    } finally {
-      setShowConfirmDelete(false)
-    }
-  }, [dataset.id, replace, invalidDatasetList, t])
 
   if (!canShowOperations) return null
 
@@ -178,7 +140,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
         className="w-50"
       >
         {datasetACLCapabilities.canEdit && (
-          <DropdownMenuItem onClick={openRenameModal}>
+          <DropdownMenuItem onClick={() => setRenameOpen(true)}>
             <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
             {t(($) => $['operation.edit'], { ns: 'common' })}
           </DropdownMenuItem>
@@ -198,41 +160,57 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
         {datasetACLCapabilities.canDelete && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={detectIsUsedByApp}>
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => deleteDialog.openWithPayload({ id: dataset.id })}
+            >
               <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>
-      {showRenameModal && (
-        <RenameDatasetModal
-          show={showRenameModal}
-          dataset={dataset!}
-          onClose={() => setShowRenameModal(false)}
-          onSuccess={refreshDataset}
-        />
-      )}
+      <RenameDatasetModal
+        open={renameOpen}
+        dataset={dataset}
+        onOpenChange={setRenameOpen}
+        onSuccess={refreshDataset}
+      />
       <AlertDialog
-        open={showConfirmDelete}
-        onOpenChange={(open) => !open && setShowConfirmDelete(false)}
+        handle={deleteDialog}
+        onOpenChange={(open, details) => {
+          if (!open && deletion.isPending && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) deletion.reset()
+        }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t(($) => $.deleteDatasetConfirmTitle, { ns: 'dataset' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>{confirmMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={onConfirmDelete}>
-              {t(($) => $['operation.confirm'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+        {({ payload }) => (
+          <AlertDialogContent>
+            {payload && (
+              <DeleteDatasetConfirmation
+                datasetId={payload.id}
+                isPending={deletion.isPending}
+                error={
+                  deletion.isError ? t(($) => $['api.actionFailed'], { ns: 'common' }) : undefined
+                }
+                onConfirm={() => {
+                  if (deletion.isPending) return
+                  deletion.mutate(
+                    { params: { dataset_id: payload.id } },
+                    {
+                      onSuccess: () => {
+                        deleteDialog.close()
+                        replace('/datasets')
+                      },
+                    },
+                  )
+                }}
+              />
+            )}
+          </AlertDialogContent>
+        )}
       </AlertDialog>
     </DropdownMenu>
   )

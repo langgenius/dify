@@ -20,11 +20,11 @@ import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tans
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DeleteAppForm } from '@/app/components/app/delete-app-form'
-import { getAdjacentCardFocusTargets } from '@/app/components/base/card-list-focus'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import { APP_LIST_GRID_CLASS_NAME } from './constants'
@@ -119,7 +119,9 @@ function AppListCatalogContent({
     (app, trigger) =>
       deleteDialog.openWithPayload({
         ...app,
-        adjacentFocusTargets: getAdjacentCardFocusTargets(trigger),
+        adjacentFocusTargets: getAdjacentFocusTargets(trigger?.closest('li'), (item) =>
+          item.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+        ),
         fallbackFocus: { current: null },
       }),
     [deleteDialog],

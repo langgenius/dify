@@ -4,7 +4,7 @@ import type { DatasetCardItem } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId, useMemo } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -16,19 +16,20 @@ import {
   hasOnlyDatasetPreviewPermission,
   hasPermission,
 } from '@/utils/permission'
+import RenameDatasetModal from '../../rename-modal'
 import CornerLabels from './components/corner-labels'
 import DatasetCardFooter from './components/dataset-card-footer'
 import DatasetCardHeader from './components/dataset-card-header'
-import DatasetCardModals from './components/dataset-card-modals'
 import Description from './components/description'
 import OperationsDropdown from './components/operations-dropdown'
-import { useDatasetCardState as useDatasetCardController } from './hooks/use-dataset-card-state'
+import { useDatasetCardActions } from './hooks/use-dataset-card-actions'
 
 const EXTERNAL_PROVIDER = 'external'
 
 type DatasetCardProps = {
   dataset: DatasetCardItem
   onSuccess?: () => void
+  onDelete: (dataset: DatasetCardItem, trigger: HTMLButtonElement | null) => void
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuHighlightPart?: string
   stepByStepTourActionMenuOpen?: boolean
@@ -38,6 +39,7 @@ type DatasetCardProps = {
 const DatasetCard = ({
   dataset,
   onSuccess,
+  onDelete,
   onOpenTagManagement = () => {},
   stepByStepTourActionMenuHighlightPart,
   stepByStepTourActionMenuOpen,
@@ -51,18 +53,8 @@ const DatasetCard = ({
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  const datasetCard = useDatasetCardController({ dataset, onSuccess })
-  const {
-    modalState,
-    openRenameModal,
-    closeRenameModal,
-    closeConfirmDelete,
-    openAccessConfig,
-    closeAccessConfig,
-    handleExportPipeline,
-    detectIsUsedByApp,
-    onConfirmDelete,
-  } = datasetCard
+  const [renameOpen, setRenameOpen] = useState(false)
+  const { openAccessConfig, handleExportPipeline } = useDatasetCardActions({ dataset })
 
   const isExternalProvider = dataset.provider === EXTERNAL_PROVIDER
   const isPipelineUnpublished = useMemo(() => {
@@ -148,21 +140,18 @@ const DatasetCard = ({
       {!isPreviewOnly && (
         <OperationsDropdown
           dataset={dataset}
-          openRenameModal={openRenameModal}
+          openRenameModal={() => setRenameOpen(true)}
           handleExportPipeline={handleExportPipeline}
-          detectIsUsedByApp={detectIsUsedByApp}
+          onDelete={(trigger) => onDelete(dataset, trigger)}
           openAccessConfig={openAccessConfig}
           stepByStepTourHighlightPart={stepByStepTourActionMenuHighlightPart}
           stepByStepTourOpen={stepByStepTourActionMenuOpen}
         />
       )}
-      <DatasetCardModals
+      <RenameDatasetModal
         dataset={dataset}
-        modalState={modalState}
-        onCloseRename={closeRenameModal}
-        onCloseConfirm={closeConfirmDelete}
-        onCloseAccessConfig={closeAccessConfig}
-        onConfirmDelete={onConfirmDelete}
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
         onSuccess={onSuccess}
       />
     </li>

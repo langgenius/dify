@@ -1,16 +1,6 @@
 'use client'
 
 import type { LogicalDocument } from './models'
-import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -31,7 +21,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValueRawSync } from 'jotai'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   documentCanDownload,
@@ -44,7 +34,6 @@ import {
   useDocumentRowActionBusy,
   useDownloadDocumentAction,
   useReindexDocumentAction,
-  useRemoveDocumentAction,
   useRenameDocumentAction,
   useRetryDocumentTaskAction,
   useToggleDocumentAvailabilityAction,
@@ -85,14 +74,12 @@ function RenameDocumentMenuItem({
   )
 }
 
-function RenameDocumentDialog({
+function RenameDocumentForm({
   document,
-  onOpenChange,
-  open,
+  onClose,
 }: {
   document: LogicalDocument
-  onOpenChange: (open: boolean) => void
-  open: boolean
+  onClose: () => void
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
@@ -102,52 +89,48 @@ function RenameDocumentDialog({
   const submit = async () => {
     const title = nextTitle.trim()
     if (!title || title === document.title || busy) return
-    if (await run(title)) onOpenChange(false)
+    if (await run(title)) onClose()
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <form
-          className="flex min-h-0 flex-col"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void submit()
-          }}
+    <form
+      className="flex min-h-0 flex-col"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void submit()
+      }}
+    >
+      <DialogHeader>
+        <DialogTitle>{tCommon(($) => $['operation.rename'])}</DialogTitle>
+        <DialogDescription>{document.title}</DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <label className="block system-sm-medium text-text-secondary" htmlFor={inputId}>
+          {t(($) => $.documentColumn)}
+        </label>
+        <Input
+          id={inputId}
+          autoComplete="off"
+          className="mt-2 w-full"
+          disabled={pending}
+          value={nextTitle}
+          onChange={(event) => setNextTitle(event.target.value)}
+        />
+      </DialogBody>
+      <DialogFooter>
+        <Button disabled={pending} onClick={onClose} type="button">
+          {tCommon(($) => $['operation.cancel'])}
+        </Button>
+        <Button
+          disabled={!nextTitle.trim() || nextTitle.trim() === document.title}
+          loading={pending}
+          type="submit"
+          variant="primary"
         >
-          <DialogHeader>
-            <DialogTitle>{tCommon(($) => $['operation.rename'])}</DialogTitle>
-            <DialogDescription>{document.title}</DialogDescription>
-          </DialogHeader>
-          <DialogBody>
-            <label className="block system-sm-medium text-text-secondary" htmlFor={inputId}>
-              {t(($) => $.documentColumn)}
-            </label>
-            <Input
-              id={inputId}
-              autoComplete="off"
-              className="mt-2 w-full"
-              disabled={pending}
-              value={nextTitle}
-              onChange={(event) => setNextTitle(event.target.value)}
-            />
-          </DialogBody>
-          <DialogFooter>
-            <Button disabled={pending} onClick={() => onOpenChange(false)} type="button">
-              {tCommon(($) => $['operation.cancel'])}
-            </Button>
-            <Button
-              disabled={!nextTitle.trim() || nextTitle.trim() === document.title}
-              loading={pending}
-              type="submit"
-              variant="primary"
-            >
-              {tCommon(($) => $['operation.save'])}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          {tCommon(($) => $['operation.save'])}
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }
 
@@ -275,58 +258,18 @@ function RemoveDocumentMenuItem({
   )
 }
 
-function RemoveDocumentDialog({
-  document,
-  onOpenChange,
-  open,
-}: {
-  document: LogicalDocument
-  onOpenChange: (open: boolean) => void
-  open: boolean
-}) {
-  const { t: tCommon } = useTranslation(['common'])
-  const { pending, run } = useRemoveDocumentAction(document)
-
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{tCommon(($) => $['operation.deleteConfirmTitle'])}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {tCommon(($) => $['operation.confirmAction'])}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancelButton disabled={pending}>
-            {tCommon(($) => $['operation.cancel'])}
-          </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            loading={pending}
-            tone="destructive"
-            onClick={() =>
-              void run().then((removed) => {
-                if (removed) onOpenChange(false)
-              })
-            }
-          >
-            {tCommon(($) => $['operation.delete'])}
-          </AlertDialogConfirmButton>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  )
-}
-
 export function DocumentActionsDropdown({
   className,
   document,
+  onRemove,
 }: {
   className?: string
+  onRemove: (document: LogicalDocument, trigger: HTMLButtonElement | null) => void
   document: LogicalDocument
 }) {
   const { t } = useTranslation(['dataset', 'knowledgeDocuments'])
   const busy = useDocumentRowActionBusy(document.id)
-  const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const unavailableReasonId = `new-document-${document.id}-actions-unavailable`
 
@@ -334,6 +277,7 @@ export function DocumentActionsDropdown({
     <>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger
+          ref={triggerRef}
           aria-label={t(($) => $.documentActions, {
             ns: 'knowledgeDocuments',
             name: document.title,
@@ -360,23 +304,20 @@ export function DocumentActionsDropdown({
           <DownloadDocumentMenuItem document={document} />
           <ToggleDocumentAvailabilityMenuItem document={document} />
           <DropdownMenuSeparator className="my-px" />
-          <RemoveDocumentMenuItem document={document} onOpen={() => setRemoveDialogOpen(true)} />
+          <RemoveDocumentMenuItem
+            document={document}
+            onOpen={() => onRemove(document, triggerRef.current)}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
       <span id={unavailableReasonId} className="sr-only">
         {t(($) => $.documentActionsUnavailable, { ns: 'knowledgeDocuments' })}
       </span>
-      <RenameDocumentDialog
-        key={renameDialogOpen ? 'open' : 'closed'}
-        document={document}
-        open={renameDialogOpen}
-        onOpenChange={setRenameDialogOpen}
-      />
-      <RemoveDocumentDialog
-        document={document}
-        open={removeDialogOpen}
-        onOpenChange={setRemoveDialogOpen}
-      />
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent>
+          <RenameDocumentForm document={document} onClose={() => setRenameDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

@@ -37,7 +37,6 @@ import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
-import { getAdjacentCardFocusTargets } from '@/app/components/base/card-list-focus'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { toast } from '@/app/notifications'
@@ -47,6 +46,7 @@ import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
 import { DuplicateAgentDialog } from './duplicate-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
@@ -539,7 +539,11 @@ export function AgentRosterList({
                       deleteDialog.openWithPayload({
                         id: target.id,
                         name: target.name,
-                        adjacentFocusTargets: getAdjacentCardFocusTargets(trigger),
+                        adjacentFocusTargets: getAdjacentFocusTargets(
+                          trigger?.closest('li'),
+                          (item) =>
+                            item.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+                        ),
                         fallbackFocus: { current: null },
                       })
                     }}

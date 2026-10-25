@@ -225,7 +225,7 @@ it.each([
   }
 })
 
-it('focuses the next card primary control when that card has no actions', async () => {
+it('focuses the next agent primary control when that agent has no actions', async () => {
   const target = agent('target', 'Editable Agent')
   const remaining = {
     ...agent('remaining', 'Preview Agent'),

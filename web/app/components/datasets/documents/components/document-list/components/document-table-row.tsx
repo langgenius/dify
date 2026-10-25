@@ -33,9 +33,8 @@ type DocumentTableRowProps = {
   isGeneralMode: boolean
   isQAMode: boolean
   embeddingAvailable: boolean
-  selectedIds: string[]
-  onSelectedIdChange: (ids: string[]) => void
   onShowRenameModal: (doc: LocalDoc) => void
+  onDelete: (id: string, trigger: HTMLButtonElement | null) => void
   onUpdate: () => void
 }
 
@@ -55,10 +54,9 @@ const DocumentTableRow = React.memo(
     isGeneralMode,
     isQAMode,
     embeddingAvailable,
-    selectedIds,
-    onSelectedIdChange,
     onShowRenameModal,
     onUpdate,
+    onDelete,
   }: DocumentTableRowProps) => {
     const { t } = useTranslation(['datasetDocuments', 'datasetHitTesting'])
     const { formatTime } = useTimestamp()
@@ -187,8 +185,6 @@ const DocumentTableRow = React.memo(
         </td>
         <td>
           <Operations
-            selectedIds={selectedIds}
-            onSelectedIdChange={onSelectedIdChange}
             embeddingAvailable={embeddingAvailable}
             datasetId={datasetId}
             detail={pick(doc, [
@@ -201,6 +197,7 @@ const DocumentTableRow = React.memo(
               'display_status',
             ])}
             onUpdate={onUpdate}
+            onDelete={onDelete}
             canEdit={datasetACLCapabilities.canEdit}
             canDownload={datasetACLCapabilities.canDocumentDownload}
             canDelete={datasetACLCapabilities.canDeleteFile}

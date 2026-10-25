@@ -1,12 +1,13 @@
 'use client'
 
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { RenameDocumentPayload } from './rename-modal'
 import type { SortType } from '@/service/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,6 +41,7 @@ type DocumentListProps = {
   onSelectedIdChange: (selectedIds: string[]) => void
   datasetId: string
   pagination: PaginationProps
+  onDelete: (id: string, trigger: HTMLButtonElement | null) => void
   onUpdate: () => void
   onManageMetadata: () => void
   remoteSortValue: string
@@ -57,6 +59,7 @@ const DocumentList = ({
   datasetId,
   pagination,
   onUpdate,
+  onDelete,
   onManageMetadata,
   remoteSortValue,
   onSortChange,
@@ -121,20 +124,9 @@ const DocumentList = ({
       onUpdate,
     })
 
-  // Rename modal
-  const [currDocument, setCurrDocument] = useState<LocalDoc | null>(null)
-  const [
-    isShowRenameModal,
-    { setTrue: setShowRenameModalTrue, setFalse: setShowRenameModalFalse },
-  ] = useBoolean(false)
-
-  const handleShowRenameModal = useCallback(
-    (doc: LocalDoc) => {
-      setCurrDocument(doc)
-      setShowRenameModalTrue()
-    },
-    [setShowRenameModalTrue],
-  )
+  const [renameDialog] = useState(() => createDialogHandle<RenameDocumentPayload>())
+  const handleShowRenameModal = (doc: LocalDoc) =>
+    renameDialog.openWithPayload({ id: doc.id, name: doc.name })
 
   const handleRenamed = useCallback(() => {
     onUpdate()
@@ -230,10 +222,9 @@ const DocumentList = ({
                 isGeneralMode={isGeneralMode}
                 isQAMode={isQAMode}
                 embeddingAvailable={embeddingAvailable}
-                selectedIds={selectedIds}
-                onSelectedIdChange={onSelectedIdChange}
                 onShowRenameModal={handleShowRenameModal}
                 onUpdate={onUpdate}
+                onDelete={onDelete}
               />
             ))}
           </tbody>
@@ -303,15 +294,7 @@ const DocumentList = ({
         />
       )}
 
-      {isShowRenameModal && currDocument && (
-        <RenameModal
-          datasetId={datasetId}
-          documentId={currDocument.id}
-          name={currDocument.name}
-          onClose={setShowRenameModalFalse}
-          onSaved={handleRenamed}
-        />
-      )}
+      <RenameModal datasetId={datasetId} handle={renameDialog} onSaved={handleRenamed} />
 
       {isShowEditModal && (
         <EditMetadataBatchModal

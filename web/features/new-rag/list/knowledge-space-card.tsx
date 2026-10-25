@@ -16,10 +16,15 @@ function getBuiltinIconName(iconRef: string | undefined) {
 
 export function KnowledgeSpaceCard({
   knowledgeSpace,
+  onDelete,
   onOpenTagManagement,
   highlighted = false,
 }: {
   knowledgeSpace: KnowledgeFsSpaceListItemResponse
+  onDelete: (
+    knowledgeSpace: KnowledgeFsSpaceListItemResponse,
+    trigger: HTMLButtonElement | null,
+  ) => void
   onOpenTagManagement: () => void
   highlighted?: boolean
 }) {
@@ -97,7 +102,7 @@ export function KnowledgeSpaceCard({
           onOpenTagManagement={onOpenTagManagement}
         />
       </div>
-      <KnowledgeSpaceActions knowledgeSpace={knowledgeSpace} />
+      <KnowledgeSpaceActions knowledgeSpace={knowledgeSpace} onDelete={onDelete} />
     </li>
   )
 }
