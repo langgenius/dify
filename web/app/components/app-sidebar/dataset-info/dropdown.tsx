@@ -1,9 +1,5 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  createAlertDialogHandle,
-} from '@langgenius/dify-ui/alert-dialog'
+import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -39,7 +35,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const { t } = useTranslation(['app', 'common', 'dataset', 'datasetPipeline', 'navigation'])
   const { push, replace } = useRouter()
   const [renameOpen, setRenameOpen] = useState(false)
-  const [deleteDialog] = useState(() => createAlertDialogHandle<{ id: string }>())
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const deletion = useMutation(
     consoleQuery.datasets.byDatasetId.delete.mutationOptions({ context: { silent: true } }),
   )
@@ -160,10 +156,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
         {datasetACLCapabilities.canDelete && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => deleteDialog.openWithPayload({ id: dataset.id })}
-            >
+            <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
               <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </DropdownMenuItem>
@@ -177,40 +170,37 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
         onSuccess={refreshDataset}
       />
       <AlertDialog
-        handle={deleteDialog}
+        open={deleteOpen}
         onOpenChange={(open, details) => {
-          if (!open && deletion.isPending && details.reason !== 'imperative-action')
+          if (!open && deletion.isPending) {
             details.cancel()
+            return
+          }
+          setDeleteOpen(open)
         }}
         onOpenChangeComplete={(open) => {
           if (!open) deletion.reset()
         }}
       >
-        {({ payload }) => (
-          <AlertDialogContent>
-            {payload && (
-              <DeleteDatasetConfirmation
-                datasetId={payload.id}
-                isPending={deletion.isPending}
-                error={
-                  deletion.isError ? t(($) => $['api.actionFailed'], { ns: 'common' }) : undefined
-                }
-                onConfirm={() => {
-                  if (deletion.isPending) return
-                  deletion.mutate(
-                    { params: { dataset_id: payload.id } },
-                    {
-                      onSuccess: () => {
-                        deleteDialog.close()
-                        replace('/datasets')
-                      },
-                    },
-                  )
-                }}
-              />
-            )}
-          </AlertDialogContent>
-        )}
+        <AlertDialogContent>
+          <DeleteDatasetConfirmation
+            datasetId={dataset.id}
+            isPending={deletion.isPending}
+            error={deletion.isError ? t(($) => $['api.actionFailed'], { ns: 'common' }) : undefined}
+            onConfirm={() => {
+              if (deletion.isPending) return
+              deletion.mutate(
+                { params: { dataset_id: dataset.id } },
+                {
+                  onSuccess: () => {
+                    setDeleteOpen(false)
+                    replace('/datasets')
+                  },
+                },
+              )
+            }}
+          />
+        </AlertDialogContent>
       </AlertDialog>
     </DropdownMenu>
   )

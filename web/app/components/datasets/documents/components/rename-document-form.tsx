@@ -1,20 +1,11 @@
 'use client'
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
+import { DialogBody, DialogFooter, DialogHeader, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useBoolean } from 'ahooks'
-import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -22,31 +13,7 @@ import { renameDocumentName } from '@/service/datasets'
 
 export type RenameDocumentPayload = Pick<DocumentWithSegmentsResponse, 'id' | 'name'>
 
-type Props = {
-  datasetId: string
-  handle: DialogHandle<RenameDocumentPayload>
-  onSaved: () => void
-}
-
-const RenameModal = ({ datasetId, handle, onSaved }: Props) => (
-  <Dialog handle={handle}>
-    {({ payload }) => (
-      <DialogContent>
-        {payload && (
-          <RenameDocumentForm
-            datasetId={datasetId}
-            documentId={payload.id}
-            name={payload.name}
-            onSaved={onSaved}
-            onClose={() => handle.close()}
-          />
-        )}
-      </DialogContent>
-    )}
-  </Dialog>
-)
-
-function RenameDocumentForm({
+export function RenameDocumentForm({
   documentId,
   datasetId,
   name,
@@ -115,4 +82,3 @@ function RenameDocumentForm({
     </>
   )
 }
-export default React.memo(RenameModal)

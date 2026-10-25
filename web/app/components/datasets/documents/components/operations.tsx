@@ -1,7 +1,6 @@
 import type { OperationName } from '../types'
-import type { RenameDocumentPayload } from './rename-modal'
 import { cn } from '@langgenius/dify-ui/cn'
-import { createDialogHandle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +24,7 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 import { downloadUrl } from '@/utils/download'
-import RenameModal from './rename-modal'
+import { RenameDocumentForm } from './rename-document-form'
 
 type OperationsProps = {
   embeddingAvailable: boolean
@@ -182,7 +181,7 @@ const Operations = ({
     },
     { wait: 500 },
   )
-  const [renameDialog] = useState(() => createDialogHandle<RenameDocumentPayload>())
+  const [renameOpen, setRenameOpen] = useState(false)
   const handleRenamed = useCallback(() => {
     onUpdate()
   }, [onUpdate])
@@ -205,7 +204,7 @@ const Operations = ({
     downloadUrl({ url: res.url, fileName: name ?? undefined })
   }, [canDownload, datasetId, downloadDocument, id, isDownloading, name, t])
   const handleShowRename = () => {
-    if (canEdit) renameDialog.openWithPayload({ id, name: name ?? '' })
+    if (canEdit) setRenameOpen(true)
   }
   const handleMenuOperation = useCallback(
     (operationName: Exclude<OperationName, 'delete'>) => {
@@ -462,7 +461,17 @@ const Operations = ({
         </>
       )}
 
-      <RenameModal datasetId={datasetId} handle={renameDialog} onSaved={handleRenamed} />
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent>
+          <RenameDocumentForm
+            datasetId={datasetId}
+            documentId={id}
+            name={name ?? ''}
+            onSaved={handleRenamed}
+            onClose={() => setRenameOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

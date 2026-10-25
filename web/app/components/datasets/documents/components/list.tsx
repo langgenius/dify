@@ -1,11 +1,11 @@
 'use client'
 
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { RenameDocumentPayload } from './rename-modal'
+import type { RenameDocumentPayload } from './rename-document-form'
 import type { SortType } from '@/service/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
-import { createDialogHandle } from '@langgenius/dify-ui/dialog'
+import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -21,7 +21,7 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
 import { DocumentTableRow, SortHeader } from './document-list/components'
 import { useDocumentActions, useDocumentSelection, useDocumentSort } from './document-list/hooks'
-import RenameModal from './rename-modal'
+import { RenameDocumentForm } from './rename-document-form'
 
 type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
 
@@ -294,7 +294,21 @@ const DocumentList = ({
         />
       )}
 
-      <RenameModal datasetId={datasetId} handle={renameDialog} onSaved={handleRenamed} />
+      <Dialog handle={renameDialog}>
+        {({ payload }) => (
+          <DialogContent>
+            {payload && (
+              <RenameDocumentForm
+                datasetId={datasetId}
+                documentId={payload.id}
+                name={payload.name}
+                onSaved={handleRenamed}
+                onClose={() => renameDialog.close()}
+              />
+            )}
+          </DialogContent>
+        )}
+      </Dialog>
 
       {isShowEditModal && (
         <EditMetadataBatchModal

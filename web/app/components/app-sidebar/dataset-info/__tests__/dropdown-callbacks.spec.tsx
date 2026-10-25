@@ -1,5 +1,5 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
@@ -7,6 +7,7 @@ import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -205,6 +206,26 @@ describe('Dropdown callback coverage', () => {
     await waitFor(() => {
       expect(screen.queryByText('dataset.deleteDatasetConfirmTitle')).not.toBeInTheDocument()
     })
+  })
+
+  it('keeps deletion open while pending, then closes and navigates on success', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<void>()
+    mockDeleteDataset.mockReturnValueOnce(pending.promise)
+    render(<Dropdown expand />)
+
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByText('common.operation.delete'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(mockDeleteDataset).toHaveBeenCalledOnce())
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+
+    await act(async () => pending.resolve())
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/datasets'))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   })
 
   it('should show the used-by-app confirmation copy when the dataset is referenced by apps', async () => {

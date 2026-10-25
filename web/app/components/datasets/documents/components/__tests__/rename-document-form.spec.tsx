@@ -1,9 +1,9 @@
-import type { RenameDocumentPayload } from '../rename-modal'
-import { createDialogHandle } from '@langgenius/dify-ui/dialog'
+import type { RenameDocumentPayload } from '../rename-document-form'
+import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createDeferred } from '@/test/deferred'
-import RenameModal from '../rename-modal'
+import { RenameDocumentForm } from '../rename-document-form'
 
 const { rename, toastError } = vi.hoisted(() => ({ rename: vi.fn(), toastError: vi.fn() }))
 vi.mock('@/service/datasets', () => ({ renameDocumentName: rename }))
@@ -18,7 +18,23 @@ const renamed = { id: 'doc-1', name: 'Updated document', data_source_detail_dict
 
 function renderRenameDialog() {
   const handle = createDialogHandle<RenameDocumentPayload>()
-  render(<RenameModal datasetId={props.datasetId} handle={handle} onSaved={props.onSaved} />)
+  render(
+    <Dialog handle={handle}>
+      {({ payload }) => (
+        <DialogContent>
+          {payload && (
+            <RenameDocumentForm
+              datasetId={props.datasetId}
+              documentId={payload.id}
+              name={payload.name}
+              onSaved={props.onSaved}
+              onClose={() => handle.close()}
+            />
+          )}
+        </DialogContent>
+      )}
+    </Dialog>,
+  )
   act(() => handle.openWithPayload({ id: props.documentId, name: props.name }))
   return handle
 }
