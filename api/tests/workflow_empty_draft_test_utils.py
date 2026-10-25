@@ -9,7 +9,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy import select
+from sqlalchemy import Connection, Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.app import workflow as workflow_module
@@ -110,6 +110,10 @@ def workflow_rows(factory: sessionmaker[Session]) -> list[tuple[object, ...]]:
 @dataclass
 class EmptyDraftDatabase:
     owner_session: Session
+
+    @property
+    def engine(self) -> Engine | Connection:
+        return self.owner_session.get_bind()
 
     def session(self) -> Session:
         return self.owner_session

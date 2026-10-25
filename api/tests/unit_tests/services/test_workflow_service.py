@@ -246,8 +246,9 @@ class TestWorkflowService:
     """
 
     @pytest.fixture
-    def workflow_service(self, sqlite_engine: Engine) -> WorkflowService:
+    def workflow_service(self, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> WorkflowService:
         """Create a WorkflowService whose repositories use the test SQLite engine."""
+        monkeypatch.setattr("services.workflow.draft_coordination_service.db", SimpleNamespace(engine=sqlite_engine))
         return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
 
     def test_get_tenant_app_maintainers_scopes_requested_apps(
@@ -479,12 +480,12 @@ class TestWorkflowService:
         features = {"file_upload": {"enabled": False}}
 
         with (
-            patch("services.workflow_service.app_draft_workflow_was_synced"),
+            patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"),
             patch(
                 "services.agent.workflow_publish_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
                 return_value={"retired-agent"},
             ),
-            patch("services.workflow_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
+            patch("services.agent.retirement_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
         ):
             result = workflow_service.sync_draft_workflow(
                 app_model=app,
@@ -525,7 +526,7 @@ class TestWorkflowService:
         sqlite_session.commit()
         unique_hash = workflow.unique_hash
 
-        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
             result = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=graph,
@@ -606,7 +607,7 @@ class TestWorkflowService:
         next_graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         next_graph["viewport"] = {"x": 10, "y": 20, "zoom": 1}
 
-        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
             result = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=next_graph,
@@ -644,7 +645,7 @@ class TestWorkflowService:
         sqlite_session.commit()
         replacement = StringVariable(id="env-new", name="new", value="new", selector=["env", "new"])
 
-        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
             result = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=TestWorkflowAssociatedDataFactory.create_valid_workflow_graph(),
@@ -686,7 +687,7 @@ class TestWorkflowService:
         updated_graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         updated_graph["nodes"][0]["data"]["title"] = "Updated graph"
 
-        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
             result = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=updated_graph,
@@ -734,7 +735,7 @@ class TestWorkflowService:
             )
         ]
 
-        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
             workflow = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=graph,
@@ -833,7 +834,7 @@ class TestWorkflowService:
         sqlite_session.commit()
 
         with (
-            patch("services.workflow_service.app_draft_workflow_was_synced"),
+            patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"),
             patch.object(
                 workflow_service,
                 "get_published_workflow_by_id",
@@ -843,7 +844,7 @@ class TestWorkflowService:
                 "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
                 return_value={"retired-agent"},
             ),
-            patch("services.workflow_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
+            patch("services.agent.retirement_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
         ):
             result = workflow_service.restore_published_workflow_to_draft(
                 app_model=app,
@@ -960,7 +961,7 @@ class TestWorkflowService:
         assert retained_agent is not None
         assert retained_agent.status is AgentStatus.ACTIVE
 
-        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with patch("services.workflow.draft_coordination_service.app_draft_workflow_was_synced"):
             restored_draft = workflow_service.restore_published_workflow_to_draft(
                 app_model=app,
                 workflow_id=historical.id,

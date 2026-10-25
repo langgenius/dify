@@ -316,6 +316,7 @@ __all__ = [
     "WorkflowComment",
     "WorkflowCommentMention",
     "WorkflowCommentReply",
+    "WorkflowDraftCoordination",
     "WorkflowKind",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",
@@ -342,3 +343,4 @@ from .dify_builder_native_tests import (  # noqa: F401
     NativeTestInvocation,
     NativeTestScope,
 )
+from .workflow_draft_coordination import WorkflowDraftCoordination

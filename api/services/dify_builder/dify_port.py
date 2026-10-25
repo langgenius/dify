@@ -142,6 +142,7 @@ from services.dify_builder.run_mapping import (
     stream_chunk_as_mapping,
 )
 from services.errors.app import WorkflowHashNotEqualError
+from services.workflow.draft_coordination_service import WorkflowDraftCoordinationService
 from services.workflow_draft_sync_service import notify_workflow_draft_changed
 from services.workflow_generation import graph_normalizers
 from services.workflow_service import WorkflowService
@@ -418,6 +419,7 @@ def _sync_graph_only(
     app_id: str,
     *,
     commit: bool = True,
+    coordination_id: str | None = None,
 ) -> Workflow:
     """Write ``graph`` back to the draft via the graph-only sync both
     ``apply_repair`` and ``restore_graph`` use (no server-side patch
@@ -437,6 +439,7 @@ def _sync_graph_only(
             graph_only=True,
             sync_agent_bindings=False,
             commit=commit,
+            coordination_id=coordination_id,
             preserve_environment_variables=True,
         )
     except WorkflowHashNotEqualError as exc:
@@ -1300,6 +1303,7 @@ class WorkflowServiceDifyPort:
                 authorization=authorization,
                 retained_binding_stamps=retained_stamps,
             )
+            coordination_id = str(uuid4())
             updated = _sync_graph_only(
                 app,
                 graph,
@@ -1308,25 +1312,26 @@ class WorkflowServiceDifyPort:
                 account,
                 session,
                 app_id,
-                **({"commit": False} if binding_service is not None else {}),
+                commit=binding_service is None,
+                coordination_id=coordination_id,
             )
             if binding_service is not None:
                 retirements = binding_service.sync_prepared_bindings(
                     actor=actor, workflow=updated, selections=selections
                 )
+                WorkflowDraftCoordinationService.stage(
+                    session,
+                    coordination_id=coordination_id,
+                    workflow=updated,
+                    account_id=actor.account_id,
+                    retirement_agent_ids=retirements,
+                    emit_draft_event=True,
+                )
                 session.commit()
             new_hash = execution_revision(updated)
 
         if binding_service is not None:
-            from events.app_event import app_draft_workflow_was_synced
-            from services.agent.retirement_service import WorkflowAgentRetirementService
-
-            WorkflowAgentRetirementService.retire_unowned(
-                tenant_id=actor.tenant_id,
-                agent_ids=retirements,
-                account_id=actor.account_id,
-            )
-            app_draft_workflow_was_synced.send(app, synced_draft_workflow=updated)
+            WorkflowDraftCoordinationService.kick(coordination_id)
         notify_workflow_draft_changed(updated, previous_graph=committed_previous_graph)
 
         if on_canvas is not None:

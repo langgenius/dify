@@ -19,7 +19,12 @@ def handle(sender, synced_draft_workflow: Workflow, **kwargs):
         # only handle workflow app, chatflow is not supported yet
         return
 
-    WebhookService.sync_webhook_relationships(app, synced_draft_workflow, remove_stale=False)
+    WebhookService.sync_webhook_relationships(
+        app,
+        synced_draft_workflow,
+        remove_stale=False,
+        **({"reconcile_current_draft": True} if kwargs.get("reconcile_current_draft") else {}),
+    )
 
 
 @app_published_workflow_was_updated.connect

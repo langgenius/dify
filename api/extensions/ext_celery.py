@@ -172,6 +172,7 @@ def init_app(app: DifyApp) -> Celery:
     imports = [
         "schedule.collect_agent_sandbox_usage",  # optional background provider accounting
         "tasks.async_workflow_tasks",  # trigger workers
+        "tasks.workflow_draft_coordination_task",
         "tasks.collect_agent_resources_task",  # retired Agent resource collection
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
@@ -203,6 +204,12 @@ def init_app(app: DifyApp) -> Celery:
                 "schedule": collection_schedule,
                 "options": {"expires": interval},
             }
+    if dify_config.ENABLE_WORKFLOW_DRAFT_COORDINATION_TASK:
+        beat_schedule["workflow_draft_coordination_sweeper"] = {
+            "task": "tasks.workflow_draft_coordination_task.sweep_workflow_draft_coordination",
+            "schedule": timedelta(seconds=dify_config.WORKFLOW_DRAFT_COORDINATION_INTERVAL),
+            "options": {"queue": "workflow"},
+        }
     if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
         imports.append("tasks.delete_conversation_task")
         beat_schedule["conversation_cleanup_sweeper"] = {

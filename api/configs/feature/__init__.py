@@ -1491,6 +1491,9 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_WORKFLOW_DRAFT_COORDINATION_TASK: bool = Field(default=True, description="Recover accepted draft handoffs")
+    WORKFLOW_DRAFT_COORDINATION_INTERVAL: PositiveInt = Field(default=60, description="Recovery interval in seconds")
+    WORKFLOW_DRAFT_COORDINATION_BATCH_SIZE: PositiveInt = Field(default=100, description="Maximum handoffs per sweep")
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,

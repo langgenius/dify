@@ -103,6 +103,7 @@ from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.errors.workflow_service import DuplicateDraftWorkflowError, EmptyWorkflowConfirmationRequiredError
+from services.workflow.webhook_policy import WorkflowWebhookLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
@@ -686,30 +687,32 @@ class DraftWorkflowApi(Resource):
                 variable_factory.build_conversation_variable_from_mapping(obj)
                 for obj in args_model.conversation_variables
             ]
-            workflow = workflow_service.sync_draft_workflow(
-                app_model=app_model,
-                graph=args_model.graph,
-                features=args_model.features,
-                unique_hash=args_model.hash,
-                account=current_user,
-                environment_variables=[],
-                conversation_variables=conversation_variables,
-                session=db.session(),
-                environment_variable_upserts=environment_variable_upserts,
-                deleted_environment_variable_ids=deleted_environment_variable_ids,
-                preserve_environment_variables=True,
-                # Both editor modes submit cached configuration alongside the graph.
-                # Only a new draft consumes those initial features/conversation values.
-                graph_only=True,
-                require_empty_graph_confirmation=not args_model.force,
-            )
+            # Keep this accepted snapshot while the post-commit handoff may wait.
+            with Session(db.engine, expire_on_commit=False) as write_session:
+                workflow = workflow_service.sync_draft_workflow(
+                    app_model=app_model,
+                    graph=args_model.graph,
+                    features=args_model.features,
+                    unique_hash=args_model.hash,
+                    account=current_user,
+                    environment_variables=[],
+                    conversation_variables=conversation_variables,
+                    session=write_session,
+                    environment_variable_upserts=environment_variable_upserts,
+                    deleted_environment_variable_ids=deleted_environment_variable_ids,
+                    preserve_environment_variables=True,
+                    # Both editor modes submit cached configuration alongside the graph.
+                    # Only a new draft consumes those initial features/conversation values.
+                    graph_only=True,
+                    require_empty_graph_confirmation=not args_model.force,
+                )
         except DuplicateDraftWorkflowError as exc:
             raise Conflict(str(exc)) from exc
         except WorkflowNotFoundError as exc:
             raise NotFound(str(exc)) from exc
         except WorkflowHashNotEqualError as caught_error:
             raise DraftWorkflowNotSync() from caught_error
-        except (VariableError, EmptyWorkflowConfirmationRequiredError) as e:
+        except (VariableError, EmptyWorkflowConfirmationRequiredError, WorkflowWebhookLimitError) as e:
             raise InvalidArgumentError(description=str(e)) from e
 
         return dump_response(
@@ -1583,12 +1586,14 @@ class DraftWorkflowRestoreApi(Resource):
         workflow_service = WorkflowService()
 
         try:
-            workflow = workflow_service.restore_published_workflow_to_draft(
-                app_model=app_model,
-                workflow_id=workflow_id,
-                account=current_user,
-                session=db.session(),
-            )
+            # Keep this accepted snapshot while the post-commit handoff may wait.
+            with Session(db.engine, expire_on_commit=False) as write_session:
+                workflow = workflow_service.restore_published_workflow_to_draft(
+                    app_model=app_model,
+                    workflow_id=workflow_id,
+                    account=current_user,
+                    session=write_session,
+                )
         except DuplicateDraftWorkflowError as exc:
             raise Conflict(str(exc)) from exc
         except IsDraftWorkflowError as exc:

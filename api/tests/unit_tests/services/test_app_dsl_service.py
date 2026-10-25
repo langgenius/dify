@@ -827,11 +827,10 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
         "services.app_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
         Mock(),
     )
-    retire_unowned = Mock()
-    monkeypatch.setattr(
-        "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned",
-        retire_unowned,
-    )
+    stage = Mock()
+    kick = Mock()
+    monkeypatch.setattr("services.app_dsl_service.WorkflowDraftCoordinationService.stage", stage)
+    monkeypatch.setattr("services.app_dsl_service.WorkflowDraftCoordinationService.kick", kick)
 
     service._create_or_update_app(
         app=cast(App, app),
@@ -843,11 +842,17 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
         account=Mock(id="account-1"),
     )
 
-    retire_unowned.assert_called_once_with(
-        tenant_id="tenant-1",
-        agent_ids={"retired-agent"},
+    operation = workflow_service.sync_draft_workflow.call_args.kwargs["coordination_id"]
+    stage.assert_called_once_with(
+        session,
+        coordination_id=operation,
+        workflow=workflow,
         account_id="account-1",
+        retirement_agent_ids={"retired-agent"},
+        emit_draft_event=False,
     )
+    kick.assert_called_once_with(operation)
+    cast(Mock, session.commit).assert_called_once()
 
 
 def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
