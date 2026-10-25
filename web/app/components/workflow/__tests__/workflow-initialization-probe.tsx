@@ -1,5 +1,7 @@
 import { useStore } from '../store'
 
+// The full editors have their own interaction suites. At the page boundary, read the
+// graph initialized by the real provider instead of capturing provider props in a mock.
 export function WorkflowInitializationProbe() {
   const graph = useStore((state) => state.workflowHistory)
   const draftHash = useStore((state) => state.syncWorkflowDraftHash)
