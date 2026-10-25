@@ -1,15 +1,6 @@
 import type { OperationName } from '../types'
-import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { useBoolean, useDebounceFn } from 'ahooks'
+import { useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -33,7 +24,7 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 import { downloadUrl } from '@/utils/download'
-import RenameModal from './rename-modal'
+import { RenameDocumentForm } from './rename-document-form'
 
 type OperationsProps = {
   embeddingAvailable: boolean
@@ -46,9 +37,8 @@ type OperationsProps = {
     doc_form?: string | null
     display_status?: string | null
   }
-  selectedIds?: string[]
-  onSelectedIdChange?: (ids: string[]) => void
   datasetId: string
+  onDelete: () => void
   onUpdate: (operationName?: string) => void
   scene?: 'list' | 'detail'
   className?: string
@@ -61,9 +51,8 @@ const Operations = ({
   embeddingAvailable,
   datasetId,
   detail,
-  selectedIds,
-  onSelectedIdChange,
   onUpdate,
+  onDelete,
   scene = 'list',
   className = '',
   canEdit,
@@ -79,15 +68,12 @@ const Operations = ({
   const { id, name, data_source_type, display_status } = detail
   const enabled = detail.enabled ?? false
   const archived = detail.archived ?? false
-  const [showModal, setShowModal] = useState(false)
-  const [deleting, setDeleting] = useState(false)
   const { t } = useTranslation(['common', 'datasetDocuments'])
   const router = useRouter()
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
     documents.status.byAction.batch.patch.mutationOptions(),
   )
-  const { mutateAsync: deleteDocuments } = useMutation(documents.delete.mutationOptions())
   const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
     documents.byDocumentId.download.get.mutationOptions(),
   )
@@ -130,17 +116,9 @@ const Operations = ({
     canShowPauseAction || canShowResumeAction || canShowArchiveAction || canShowUnarchiveAction
   const hasOperationsMenu =
     embeddingAvailable && (canShowPrimarySection || canShowStatusSection || canShowDeleteAction)
-  const canOperate = useCallback(
-    (operationName: OperationName) => {
-      if (operationName === DocumentActionType.delete) return canDelete
-
-      return canEdit
-    },
-    [canDelete, canEdit],
-  )
   const onOperate = useCallback(
-    async (operationName: OperationName) => {
-      if (!canOperate(operationName)) return
+    async (operationName: Exclude<OperationName, 'delete'>) => {
+      if (!canEdit) return
 
       const documentParams = { dataset_id: datasetId, document_id: id }
       const runOperation = (): Promise<unknown> => {
@@ -166,12 +144,6 @@ const Operations = ({
             return pauseDocument({ params: documentParams })
           case 'resume':
             return resumeDocument({ params: documentParams })
-          default:
-            setDeleting(true)
-            return deleteDocuments({
-              params: { dataset_id: datasetId },
-              query: { document_id: [id] },
-            })
         }
       }
       const [e] = await asyncRunSafe(runOperation())
@@ -179,35 +151,28 @@ const Operations = ({
         // The switch already shows the result of enable and disable.
         if (operationName !== 'enable' && operationName !== 'disable')
           toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-        // If it is a delete operation, need to update the selectedIds state
-        if (selectedIds && onSelectedIdChange && operationName === DocumentActionType.delete)
-          onSelectedIdChange(selectedIds.filter((selectedId) => selectedId !== id))
         onUpdate(operationName)
       } else {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       }
-      if (operationName === DocumentActionType.delete) setDeleting(false)
     },
     [
-      canOperate,
+      canEdit,
       changeDocumentStatus,
       data_source_type,
       datasetId,
-      deleteDocuments,
       generateSummary,
       id,
-      onSelectedIdChange,
       onUpdate,
       pauseDocument,
       resumeDocument,
-      selectedIds,
       syncNotionDocument,
       syncWebsiteDocument,
       t,
     ],
   )
   const { run: handleSwitch } = useDebounceFn(
-    (operationName: OperationName) => {
+    (operationName: Exclude<OperationName, 'delete'>) => {
       if (!canEdit) return
       if (operationName === DocumentActionType.enable && enabled) return
       if (operationName === DocumentActionType.disable && !enabled) return
@@ -215,23 +180,7 @@ const Operations = ({
     },
     { wait: 500 },
   )
-  const [currDocument, setCurrDocument] = useState<{
-    id: string
-    name: string
-  } | null>(null)
-  const [
-    isShowRenameModal,
-    { setTrue: setShowRenameModalTrue, setFalse: setShowRenameModalFalse },
-  ] = useBoolean(false)
-  const handleShowRenameModal = useCallback(
-    (doc: { id: string; name: string }) => {
-      if (!canEdit) return
-
-      setCurrDocument(doc)
-      setShowRenameModalTrue()
-    },
-    [canEdit, setShowRenameModalTrue],
-  )
+  const [renameOpen, setRenameOpen] = useState(false)
   const handleRenamed = useCallback(() => {
     onUpdate()
   }, [onUpdate])
@@ -253,14 +202,11 @@ const Operations = ({
     // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).
     downloadUrl({ url: res.url, fileName: name ?? undefined })
   }, [canDownload, datasetId, downloadDocument, id, isDownloading, name, t])
-  const handleShowRename = useCallback(() => {
-    handleShowRenameModal({
-      id: detail.id,
-      name: detail.name ?? '',
-    })
-  }, [detail.id, detail.name, handleShowRenameModal])
+  const handleShowRename = () => {
+    if (canEdit) setRenameOpen(true)
+  }
   const handleMenuOperation = useCallback(
-    (operationName: OperationName) => {
+    (operationName: Exclude<OperationName, 'delete'>) => {
       void onOperate(operationName)
     },
     [onOperate],
@@ -268,8 +214,8 @@ const Operations = ({
   const handleDeleteClick = useCallback(() => {
     if (!canDelete) return
 
-    setShowModal(true)
-  }, [canDelete])
+    onDelete()
+  }, [canDelete, onDelete])
   const handleDownloadClick = useCallback(
     (evt: React.MouseEvent<HTMLElement>) => {
       evt.preventDefault()
@@ -512,36 +458,18 @@ const Operations = ({
           </DropdownMenu>
         </>
       )}
-      <AlertDialog open={showModal} onOpenChange={(open) => !open && setShowModal(false)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t(($) => $['list.delete.content'], { ns: 'datasetDocuments' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancelButton>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={deleting} onClick={() => onOperate('delete')}>
-              {t(($) => $['operation.sure'], { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
-      {isShowRenameModal && currDocument && (
-        <RenameModal
-          datasetId={datasetId}
-          documentId={currDocument.id}
-          name={currDocument.name}
-          onClose={setShowRenameModalFalse}
-          onSaved={handleRenamed}
-        />
-      )}
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent>
+          <RenameDocumentForm
+            datasetId={datasetId}
+            documentId={id}
+            name={name ?? ''}
+            onSaved={handleRenamed}
+            onClose={() => setRenameOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

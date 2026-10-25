@@ -1847,9 +1847,6 @@ importers:
       '@types/sortablejs':
         specifier: 'catalog:'
         version: 1.15.9
-      '@typescript/native':
-        specifier: 'catalog:'
-        version: typescript@7.0.2
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.1.2(@voidzero-dev/vite-plus-core@1.4.0(@types/node@25.9.9)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))

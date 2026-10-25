@@ -69,7 +69,7 @@ it('keeps operations visible on keyboard focus without covering the unavailable 
     <QueryClientProvider client={queryClient}>
       <button type="button">Before dataset</button>
       <div className="mt-10 w-80">
-        <DatasetCard dataset={dataset} />
+        <DatasetCard onDelete={vi.fn()} dataset={dataset} />
       </div>
       <button type="button">After dataset</button>
     </QueryClientProvider>,
@@ -139,7 +139,7 @@ it.each([true, false])(
             dataset={dataset}
             openRenameModal={openRenameModal}
             handleExportPipeline={vi.fn()}
-            detectIsUsedByApp={vi.fn()}
+            onDelete={vi.fn()}
             openAccessConfig={vi.fn()}
           />
         </div>

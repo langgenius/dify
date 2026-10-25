@@ -1,5 +1,5 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
@@ -7,6 +7,7 @@ import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -118,6 +119,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.useCheck.get': (input) => mockCheckIsUsedInApp(input),
+      'datasets.byDatasetId.delete': (input) => mockDeleteDataset(input),
       'rag.pipelines.byPipelineId.exports.get': (input) => mockExportPipeline(input),
     }),
   }
@@ -126,8 +129,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 vi.mock('@/service/datasets', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/datasets')>()),
   updateDatasetSetting: (...args: unknown[]) => mockUpdateDatasetSetting(...args),
-  checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),
-  deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -207,6 +208,26 @@ describe('Dropdown callback coverage', () => {
     })
   })
 
+  it('keeps deletion open while pending, then closes and navigates on success', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<void>()
+    mockDeleteDataset.mockReturnValueOnce(pending.promise)
+    render(<Dropdown expand />)
+
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByText('common.operation.delete'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(mockDeleteDataset).toHaveBeenCalledOnce())
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+
+    await act(async () => pending.resolve())
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/datasets'))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  })
+
   it('should show the used-by-app confirmation copy when the dataset is referenced by apps', async () => {
     const user = userEvent.setup()
     mockCheckIsUsedInApp.mockResolvedValueOnce({ is_using: true })
@@ -247,7 +268,7 @@ describe('Dropdown callback coverage', () => {
     expect(mockExportPipeline).not.toHaveBeenCalled()
   })
 
-  it('should surface the backend message when checking app usage fails', async () => {
+  it('keeps failed usage checks in the dialog with a retry action', async () => {
     const user = userEvent.setup()
     mockCheckIsUsedInApp.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), { message: 'check failed' }),
@@ -258,9 +279,8 @@ describe('Dropdown callback coverage', () => {
     await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.delete'))
 
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith('check failed')
-    })
-    expect(screen.queryByText('dataset.deleteDatasetConfirmTitle')).not.toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeEnabled()
+    expect(mockDeleteDataset).not.toHaveBeenCalled()
   })
 })

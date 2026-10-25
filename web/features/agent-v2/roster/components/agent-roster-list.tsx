@@ -37,7 +37,6 @@ import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
-import { getAdjacentCardFocusTargets } from '@/app/components/base/card-list-focus'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { toast } from '@/app/notifications'
@@ -47,6 +46,7 @@ import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
 import { DuplicateAgentDialog } from './duplicate-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
@@ -233,12 +233,12 @@ function AgentRosterItem({
   onDelete,
 }: {
   agent: AgentAppPartial
-  onDelete: (agent: AgentAppPartial, trigger: HTMLButtonElement | null) => void
+  onDelete: (item: HTMLLIElement | null) => void
 }) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tApp } = useTranslation(['app'])
   const { formatTime } = useTimestamp()
-  const moreButtonRef = useRef<HTMLButtonElement>(null)
+  const itemRef = useRef<HTMLLIElement>(null)
   const nameId = useId()
   const descriptionId = useId()
   const draftStatusId = useId()
@@ -336,6 +336,7 @@ function AgentRosterItem({
 
   return (
     <li
+      ref={itemRef}
       aria-labelledby={nameId}
       aria-describedby={defaultSection ? undefined : accessibleDescriptionIds || undefined}
       className={cn(
@@ -380,9 +381,7 @@ function AgentRosterItem({
               onEdit={capabilities.canEdit ? handleEditOpen : undefined}
               onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
               onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-              onDelete={
-                capabilities.canDelete ? () => onDelete(agent, moreButtonRef.current) : undefined
-              }
+              onDelete={capabilities.canDelete ? () => onDelete(itemRef.current) : undefined}
             />
           </ContextMenuContent>
         )}
@@ -392,7 +391,6 @@ function AgentRosterItem({
           <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
-                ref={moreButtonRef}
                 render={
                   <IconButton
                     aria-label={t(($) => $['roster.moreActions'], {
@@ -413,11 +411,7 @@ function AgentRosterItem({
                   onEdit={capabilities.canEdit ? handleEditOpen : undefined}
                   onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
                   onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-                  onDelete={
-                    capabilities.canDelete
-                      ? () => onDelete(agent, moreButtonRef.current)
-                      : undefined
-                  }
+                  onDelete={capabilities.canDelete ? () => onDelete(itemRef.current) : undefined}
                 />
               </DropdownMenuContent>
             </DropdownMenu>
@@ -535,11 +529,13 @@ export function AgentRosterList({
                   <AgentRosterItem
                     key={agent.id}
                     agent={agent}
-                    onDelete={(target, trigger) => {
+                    onDelete={(item) => {
                       deleteDialog.openWithPayload({
-                        id: target.id,
-                        name: target.name,
-                        adjacentFocusTargets: getAdjacentCardFocusTargets(trigger),
+                        id: agent.id,
+                        name: agent.name,
+                        adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+                          sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+                        ),
                         fallbackFocus: { current: null },
                       })
                     }}

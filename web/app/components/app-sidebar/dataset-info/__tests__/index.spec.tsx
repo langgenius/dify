@@ -134,14 +134,14 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.useCheck.get': (input) => mockCheckIsUsedInApp(input),
+      'datasets.byDatasetId.delete': (input) => mockDeleteDataset(input),
       'rag.pipelines.byPipelineId.exports.get': (input) => mockExportPipeline(input),
     }),
   }
 })
 
 vi.mock('@/service/datasets', () => ({
-  checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),
-  deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
   updateDatasetSetting: (...args: unknown[]) => mockUpdateDataset(...args),
 }))
 
@@ -342,8 +342,9 @@ describe('Dropdown', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockDeleteDataset).toHaveBeenCalledWith('dataset-1')
+        expect(mockDeleteDataset).toHaveBeenCalledWith({ params: { dataset_id: 'dataset-1' } })
       })
+      expect(queryClient.getQueryData(datasetListKey)).toMatchObject({ data: [], total: 0 })
       expect(queryClient.getQueryState(datasetListKey)?.isInvalidated).toBe(true)
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
     })

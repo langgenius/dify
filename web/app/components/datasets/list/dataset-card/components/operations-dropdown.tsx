@@ -25,7 +25,7 @@ type OperationsDropdownProps = {
   dataset: DatasetCardItem
   openRenameModal: () => void
   handleExportPipeline: (include?: boolean) => void
-  detectIsUsedByApp: () => void
+  onDelete: () => void
   openAccessConfig: () => void
   stepByStepTourHighlightPart?: string
   stepByStepTourOpen?: boolean
@@ -35,7 +35,7 @@ const OperationsDropdown = ({
   dataset,
   openRenameModal,
   handleExportPipeline,
-  detectIsUsedByApp,
+  onDelete,
   openAccessConfig,
   stepByStepTourHighlightPart,
   stepByStepTourOpen,
@@ -150,7 +150,7 @@ const OperationsDropdown = ({
           {datasetACLCapabilities.canDelete && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2" variant="destructive" onClick={detectIsUsedByApp}>
+              <DropdownMenuItem className="gap-2" variant="destructive" onClick={onDelete}>
                 <span aria-hidden className="i-ri-delete-bin-line size-4" />
                 {t(($) => $['operation.delete'], { ns: 'common' })}
               </DropdownMenuItem>

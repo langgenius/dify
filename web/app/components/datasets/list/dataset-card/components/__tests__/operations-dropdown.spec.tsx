@@ -59,7 +59,7 @@ describe('OperationsDropdown', () => {
     dataset: createMockDataset(),
     openRenameModal: vi.fn(),
     handleExportPipeline: vi.fn(),
-    detectIsUsedByApp: vi.fn(),
+    onDelete: vi.fn(),
     openAccessConfig: vi.fn(),
   }
 
@@ -248,12 +248,12 @@ describe('OperationsDropdown', () => {
     })
 
     it('should keep tour-opened operations menu items from running actions', async () => {
-      const detectIsUsedByApp = vi.fn()
+      const onDelete = vi.fn()
 
       render(
         <OperationsDropdown
           {...defaultProps}
-          detectIsUsedByApp={detectIsUsedByApp}
+          onDelete={onDelete}
           stepByStepTourHighlightPart="knowledge-card-actions-menu"
           stepByStepTourOpen
         />,
@@ -263,7 +263,7 @@ describe('OperationsDropdown', () => {
         await screen.findByRole('menuitem', { name: 'common.operation.delete', hidden: true }),
       )
 
-      expect(detectIsUsedByApp).not.toHaveBeenCalled()
+      expect(onDelete).not.toHaveBeenCalled()
       expect(screen.getByRole('menu', { hidden: true })).toBeInTheDocument()
     })
   })
