@@ -79,7 +79,7 @@ from services.dify_builder.application.handlers_fix import (
     without_upload_values,
 )
 from services.dify_builder.application.runner import Env, Handler, StepResult
-from services.dify_builder.application.testdata import stamp_testdata_http_fixtures
+from services.dify_builder.application.testdata import mock_input_business_context, stamp_testdata_http_fixtures
 from services.dify_builder.application.verification import (
     SUCCESS_REPLY,
     has_output_blocker,
@@ -705,7 +705,9 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
                 # http-request node reads its URL from (ESQ1-302's placeholder
                 # grounding) -- stay empty too: a mocked endpoint is just another
                 # invented URL, so the form asks for those alone as well.
-                mocked = without_upload_values(schema, env.agent.generate_mock_inputs(schema, {}))
+                mocked = without_upload_values(
+                    schema, env.agent.generate_mock_inputs(schema, {}, business_context=mock_input_business_context(fc))
+                )
                 prefill = without_endpoint_values(graph, mocked)
             card, reply = testdata_form(
                 env,
@@ -747,7 +749,9 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         progress.activate("build-generate-test-inputs")
         # An endpoint is left out, never mocked: its missing required key fails
         # the launch as an input, which routes back to this gate.
-        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(schema, {}))
+        inputs = without_endpoint_values(
+            graph, env.agent.generate_mock_inputs(schema, {}, business_context=mock_input_business_context(fc))
+        )
         progress.finish()
     else:
         inputs = {}
@@ -808,7 +812,9 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         ti = env.repo.get_test_input(fc.test_input_ref)
         inputs = ti.inputs
     else:  # defensive: the gate normally prepares inputs first
-        inputs = without_endpoint_values(graph, env.agent.generate_mock_inputs(schema, {}))
+        inputs = without_endpoint_values(
+            graph, env.agent.generate_mock_inputs(schema, {}, business_context=mock_input_business_context(fc))
+        )
         ti = TestInput(session_id=s.id, source="mock", inputs=inputs, start_schema_hash=schema_hash(schema))
         env.repo.save_test_input(ti)
         fc.test_input_ref = ti.id
