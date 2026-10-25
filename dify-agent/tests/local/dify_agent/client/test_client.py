@@ -1254,42 +1254,6 @@ def test_stream_timeout_can_reconnect_until_terminal() -> None:
     assert [event.type for event in events] == ["run_succeeded"]
 
 
-def test_sync_home_snapshot_client_parses_null_snapshot_ref() -> None:
-    """A backend that cannot snapshot reports explicit null; the client must
-    preserve it instead of failing or fabricating a ref."""
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.method == "POST"
-        assert request.url.path == "/home-snapshots/from-binding"
-        return httpx.Response(201, json={"snapshot_ref": None})
-
-    http_client = httpx.Client(transport=httpx.MockTransport(handler))
-    client = Client(base_url="http://testserver", sync_http_client=http_client)
-
-    created = client.create_home_snapshot_from_binding_sync(_create_home_snapshot_from_binding_request())
-
-    assert created.snapshot_ref is None
-    http_client.close()
-
-
-def test_async_home_snapshot_client_parses_null_snapshot_ref() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.method == "POST"
-        assert request.url.path == "/home-snapshots/from-binding"
-        return httpx.Response(201, json={"snapshot_ref": None})
-
-    async def scenario() -> None:
-        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-        client = Client(base_url="http://testserver", async_http_client=http_client)
-
-        created = await client.create_home_snapshot_from_binding(_create_home_snapshot_from_binding_request())
-
-        assert created.snapshot_ref is None
-        await http_client.aclose()
-
-    asyncio.run(scenario())
-
-
 # Private checkpoint readback tests use real HTTPX streams; no backend ACK claim.
 def _private_checkpoint_request():
     from dify_agent.protocol.native_continuation import ReadNativeCheckpointRequest
@@ -1539,3 +1503,83 @@ def test_private_checkpoint_invalid_copied_request_refuses_without_serializer_wa
     assert "private-canary" not in str(caught.value)
     assert emitted == []
     assert attempts == []
+
+
+def test_sync_keep_alive_client_uses_typed_private_route_once() -> None:
+    from dify_agent import protocol
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.method == "POST"
+        assert request.url.path == "/execution-bindings/keep-alive"
+        assert json.loads(request.content) == {"binding_ref": "binding"}
+        return httpx.Response(200, json={"supported": True})
+
+    with Client(
+        base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler))
+    ) as client:
+        response = client.keep_alive_execution_binding_sync(
+            protocol.KeepAliveExecutionBindingRequest(binding_ref="binding")
+        )
+    assert response.supported is True
+    assert len(requests) == 1
+
+
+@pytest.mark.anyio
+async def test_async_keep_alive_client_uses_typed_private_route_once() -> None:
+    from dify_agent import protocol
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.method == "POST" and request.url.path == "/execution-bindings/keep-alive"
+        assert json.loads(request.content) == {"binding_ref": "binding"}
+        return httpx.Response(200, json={"supported": False})
+
+    async with Client(
+        base_url="http://testserver", async_http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    ) as client:
+        response = await client.keep_alive_execution_binding(
+            protocol.KeepAliveExecutionBindingRequest(binding_ref="binding")
+        )
+    assert response.supported is False
+    assert len(requests) == 1
+
+
+def test_sync_home_snapshot_client_parses_null_snapshot_ref() -> None:
+    """A backend that cannot snapshot reports explicit null; the client must
+    preserve it instead of failing or fabricating a ref."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/home-snapshots/from-binding"
+        return httpx.Response(201, json={"snapshot_ref": None})
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = Client(base_url="http://testserver", sync_http_client=http_client)
+
+    created = client.create_home_snapshot_from_binding_sync(_create_home_snapshot_from_binding_request())
+
+    assert created.snapshot_ref is None
+    http_client.close()
+
+
+def test_async_home_snapshot_client_parses_null_snapshot_ref() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/home-snapshots/from-binding"
+        return httpx.Response(201, json={"snapshot_ref": None})
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        created = await client.create_home_snapshot_from_binding(_create_home_snapshot_from_binding_request())
+
+        assert created.snapshot_ref is None
+        await http_client.aclose()
+
+    asyncio.run(scenario())

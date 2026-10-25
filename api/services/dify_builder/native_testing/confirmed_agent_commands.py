@@ -7,10 +7,14 @@ never admits another parent or child execution.
 
 import logging
 from collections.abc import Callable
+from datetime import UTC
 from typing import Literal, cast
 
+from celery.exceptions import SoftTimeLimitExceeded
+from dify_agent.protocol.execution_binding import KeepAliveExecutionBindingRequest, KeepAliveExecutionBindingResponse
 from dify_agent.protocol.native_continuation import RedisStreamID
 from dify_agent.protocol.native_testing import AgentNativeTestRef, ContinuationClaim, ContinueRunRequest
+from dify_agent.protocol.schemas import RunStatusResponse
 from flask import current_app
 from pydantic import Field, TypeAdapter
 from sqlalchemy import select
@@ -195,6 +199,173 @@ class ConfirmedAgentCommands:
         if len(matches) != 1:
             raise BuilderExecutionPolicyError("native_agent_checkpoint_mismatch")
         return self.api.store.load_agent_association(ref=ref, parent_node=parent_node, wait=matches[0])
+
+    def _waiting_binding_checkpoint(self, *, session, ref, request):
+        """Current approval wait only; completed historical effects remain valid."""
+        owned, scope = self.loader._load(session, ref=ref, lock=False)
+        state = invocation_state(session, ref, owned.tenant_id)
+        invocation = session.scalar(owner_query(NativeTestInvocation, ref, owned.tenant_id))
+        expires_at = scope.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        current = session.scalar(
+            select(DifyBuilderExecutionRequest.id)
+            .where(
+                DifyBuilderExecutionRequest.tenant_id == owned.tenant_id,
+                DifyBuilderExecutionRequest.actor_id == owned.actor_id,
+                DifyBuilderExecutionRequest.session_id == owned.session_id,
+                DifyBuilderExecutionRequest.test_input_id == owned.test_input_id,
+                DifyBuilderExecutionRequest.context["policy_version"].as_string() == ref.policy_version,
+            )
+            .order_by(DifyBuilderExecutionRequest.created_at.desc(), DifyBuilderExecutionRequest.id.desc())
+            .limit(1)
+        )
+        if (
+            current != request.id
+            or owned.state != "waiting"
+            or not scope.task_approved
+            or scope.cancelled
+            or expires_at <= utc_now()
+            or state.parent_invocation_id is not None
+            or state.state != "waiting"
+            or state.wait_reason not in {"approval", "configuration", "interaction"}
+            or not state.pending_ids
+            or state.cancellation_key is not None
+            or state.outcome is not None
+            or invocation is None
+            or not invocation.active
+            or "_agent_confirmed_workspace_v1" not in invocation.bindings
+        ):
+            raise BuilderExecutionPolicyError("native_state_conflict")
+        for model, condition in (
+            (NativeEffectOperation, NativeEffectOperation.state.in_(("claimed", "unknown"))),
+            (NativeEffectOutcome, NativeEffectOutcome.outcome == "unknown"),
+            (NativeDispatch, NativeDispatch.state.in_(("queued", "published", "claimed", "unknown"))),
+            (NativeInvocationState, NativeInvocationState.state == "unknown"),
+        ):
+            if (
+                session.scalar(
+                    select(model.id)
+                    .where(model.tenant_id == owned.tenant_id, model.request_id == ref.request_id, condition)
+                    .limit(1)
+                )
+                is not None
+            ):
+                raise BuilderExecutionPolicyError("native_state_conflict")
+        # A physical claim without a durable completed/failed outcome is in flight.
+        settled = (
+            select(NativeEffectOutcome.id)
+            .where(
+                NativeEffectOutcome.tenant_id == owned.tenant_id,
+                NativeEffectOutcome.request_id == ref.request_id,
+                NativeEffectOutcome.attempt_id == NativeEffectDispatchClaim.attempt_id,
+                NativeEffectOutcome.operation_id == NativeEffectDispatchClaim.operation_id,
+                NativeEffectOutcome.outcome.in_(("completed", "failed")),
+            )
+            .exists()
+        )
+        if (
+            session.scalar(
+                select(NativeEffectDispatchClaim.id)
+                .where(
+                    NativeEffectDispatchClaim.tenant_id == owned.tenant_id,
+                    NativeEffectDispatchClaim.request_id == ref.request_id,
+                    ~settled,
+                )
+                .limit(1)
+            )
+            is not None
+        ):
+            raise BuilderExecutionPolicyError("native_state_conflict")
+        continuation = session.scalar(
+            owner_query(NativeContinuation, ref, owned.tenant_id).where(
+                NativeContinuation.checkpoint_id == state.checkpoint_id,
+                NativeContinuation.generation == state.generation,
+            )
+        )
+        if continuation is None:
+            raise BuilderExecutionPolicyError("checkpoint_unavailable")
+        return CheckpointRef(
+            checkpoint_id=continuation.checkpoint_id, payload_digest=continuation.payload_digest
+        ), state.generation
+
+    def keep_alive_waiting_binding(self, *, actor, session_id, request_id) -> bool:
+        """Health-only retention; never renew authority, recover, or replace a binding.
+
+        SQL closes before storage/SDK I/O. The independent absolute backend
+        lifetime is unchanged. Uncertain or missing resources stop this pass.
+        """
+        try:
+            request = self._request(actor=actor, session_id=session_id, request_id=request_id)
+            ref = self._root_ref(actor=actor, request_id=request_id)
+            with self.loader.session_factory() as session:
+                checkpoint, generation = self._waiting_binding_checkpoint(session=session, ref=ref, request=request)
+            paused = self.continuation.read_parent_pause(ref=ref)
+            reasons = {
+                reason.message if isinstance(reason, SchedulingPause) else None
+                for reason in paused.runtime.graph_execution.pause_reasons
+            }
+            if reasons != {"agent_tool_approval"}:
+                return False
+            payload = self.api.store.read_checkpoint(ref=ref, checkpoint=checkpoint)
+            if payload.generation != generation or not 0 < len(payload.agent_associations) <= 100:
+                return False
+            retained = False
+            executions = {node.execution_id for node in paused.runtime.graph_execution.node_executions.values()}
+            for wait in payload.agent_associations:
+                parent = wait.parent_node
+                if parent.execution_id not in executions:
+                    return False
+                protected = self.api.store.load_agent_association(ref=ref, parent_node=parent, wait=wait)
+                if protected.terminal_result_ref is not None:
+                    continue
+                prepared = self.api.store._agent_prepare(
+                    ref=ref, parent_node=parent, writing=False, expected_generation=generation
+                )
+                if prepared.workspace != protected.association.workspace:
+                    return False
+                status = RunStatusResponse.model_validate(
+                    self.backend.client.get_run_sync(protected.association.agent_run_id).model_dump(mode="json")
+                )
+                if status.run_id != protected.association.agent_run_id or status.status != "waiting":
+                    return False
+                selected = self.continuation._selected(
+                    ref=ref,
+                    association=protected.association,
+                    generation=wait.agent_generation,
+                    event_id=wait.backend_wait_event_id,
+                )
+                if canonical_digest(selected.checkpoint.model_dump(mode="json")) != wait.checkpoint_digest:
+                    return False
+                self.api.store._agent_refresh_access(prepared)
+                with self.loader.session_factory() as session:
+                    current = self._waiting_binding_checkpoint(session=session, ref=ref, request=request)
+                    if current != (checkpoint, generation):
+                        return False
+                    owned, scope = self.loader._load(session, ref=ref, lock=False)
+                    self.api.store._agent_recheck(session, owned, scope, prepared, writing=False)
+                    run, pause = self.continuation._parent_rows(session, ref=ref)
+                    if (run.id, pause.id, pause.state_object_key) != (
+                        paused.native_run_id,
+                        paused.pause_id,
+                        paused.state_object_key,
+                    ):
+                        return False
+                response = self.backend.client.keep_alive_execution_binding_sync(
+                    KeepAliveExecutionBindingRequest(binding_ref=prepared.workspace.backend_binding_ref)
+                )
+                retained = (
+                    KeepAliveExecutionBindingResponse.model_validate(response.model_dump(mode="json")).supported
+                    or retained
+                )
+            return retained
+        except SoftTimeLimitExceeded:
+            raise
+        except BuilderExecutionPolicyError:
+            return False
+        except Exception:
+            logger.warning("Dify Builder waiting binding retention unavailable (request=%s)", request_id)
+            return False
 
     def peek(self, *, actor, session_id, request_id):
         """Read public facts without enqueue, ACK recovery, or settlement.
@@ -1346,6 +1517,12 @@ class ProfiledNativeTestCommands:
         if isinstance(service, ConfirmedAgentCommands):
             return reconciled + service.publish_pending(limit=limit, request_id=request_id)
         return reconciled + lifecycle.publish_pending(publish=publish, limit=limit, request_id=request_id)
+
+    def keep_alive_waiting_binding(self, *, actor, session_id, request_id) -> bool:
+        service = self._service(actor=actor, session_id=session_id, request_id=request_id)
+        if isinstance(service, ConfirmedAgentCommands):
+            return service.keep_alive_waiting_binding(actor=actor, session_id=session_id, request_id=request_id)
+        return False
 
     def recover_observation(self, *, actor, session_id, request_id):
         """Worker-only ACK observation, separate from outbox publication and GET."""
