@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import pytest
 
-from core.dify_builder.models import ApplyResult, ChangedNode, MutationIntent
+from core.dify_builder.models import ApplyResult, ChangedNode, Graph, MutationIntent
 from services.dify_builder.build_presentation import build_node_summary
 
 
@@ -14,7 +14,7 @@ def test_summary_uses_actual_titles_without_mutating_technical_evidence() -> Non
         nodes=[ChangedNode(node_id="node1", title="Extract invoices"), ChangedNode(node_id="node2", title="提取金额")],
         changes=["＋ node1", "＋ node1 → node2", "node2: prompt_template"],
     )
-    before = {"nodes": [{"id": "node1", "data": {"title": "Old title", "type": "code"}}], "edges": []}
+    before: Graph = {"nodes": [{"id": "node1", "data": {"title": "Old title", "type": "code"}}], "edges": []}
     intents = [MutationIntent(op="create_node", args={"node_id": "node2", "node_type": "llm"})]
     original = deepcopy((result, before, intents))
 
