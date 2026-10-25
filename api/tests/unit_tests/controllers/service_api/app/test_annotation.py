@@ -31,6 +31,7 @@ from controllers.service_api.app.annotation import (
     AnnotationReplyActionStatusApi,
     AnnotationUpdateDeleteApi,
 )
+from controllers.service_api.dataset.error import InvalidActionError
 from extensions.ext_redis import redis_client
 from models.model import App, AppMode, MessageAnnotation
 from services.annotation_service import AppAnnotationService
@@ -216,6 +217,27 @@ class TestAnnotationReplyActionApi:
         assert status == 200
         assert response == {"job_id": "job-1", "job_status": "waiting"}
         disable_mock.assert_called_once()
+
+    def test_invalid_action_is_rejected_without_changing_settings(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def fail_if_called(*_args: object, **_kwargs: object) -> None:
+            pytest.fail("invalid action must not change annotation-reply settings")
+
+        monkeypatch.setattr(AppAnnotationService, "enable_app_annotation", fail_if_called)
+        monkeypatch.setattr(AppAnnotationService, "disable_app_annotation", fail_if_called)
+        api = AnnotationReplyActionApi()
+        handler = unwrap(api.post)
+        payload = AnnotationReplyActionPayload(
+            score_threshold=0.5, embedding_provider_name="p", embedding_model_name="m"
+        )
+
+        with app.test_request_context("/apps/annotation-reply/Enable", method="POST"):
+            with pytest.raises(InvalidActionError) as error:
+                handler(api, payload, app_model=_app(), action="Enable")
+
+        assert error.value.code == 400
+        assert error.value.error_code == "invalid_action"
 
 
 class TestAnnotationReplyActionStatusApi:

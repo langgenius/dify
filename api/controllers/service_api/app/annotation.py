@@ -10,6 +10,7 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.common.session import with_session
 from controllers.console.wraps import edit_permission_required, model_validate
 from controllers.service_api import service_api_ns
+from controllers.service_api.dataset.error import InvalidActionError
 from controllers.service_api.wraps import validate_app_token
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
@@ -18,6 +19,7 @@ from fields.annotation_fields import (
     AnnotationJobStatusResponse,
     AnnotationList,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.pagination import clamp_pagination
 from models.model import App
@@ -76,6 +78,7 @@ register_response_schema_models(
 
 @service_api_ns.route("/apps/annotation-reply/<string:action>")
 class AnnotationReplyActionApi(Resource):
+    @error_responses(InvalidActionError)
     @service_api_ns.doc(
         summary="Configure Annotation Reply",
         description=(
@@ -86,6 +89,7 @@ class AnnotationReplyActionApi(Resource):
         tags=["Annotations"],
         responses={
             200: "Annotation reply settings task initiated.",
+            400: "Invalid action.",
         },
     )
     @service_api_ns.expect(service_api_ns.models[AnnotationReplyActionPayload.__name__])
@@ -95,6 +99,7 @@ class AnnotationReplyActionApi(Resource):
     @service_api_ns.doc(
         responses={
             200: "Action completed successfully",
+            400: "Invalid action",
             401: "Unauthorized - invalid API token",
         }
     )
@@ -107,6 +112,9 @@ class AnnotationReplyActionApi(Resource):
     @model_validate(AnnotationReplyActionPayload)
     def post(self, payload: AnnotationReplyActionPayload, app_model: App, action: Literal["enable", "disable"]):
         """Enable or disable annotation reply feature."""
+        if action not in ("enable", "disable"):
+            raise InvalidActionError()
+
         match action:
             case "enable":
                 enable_args: EnableAnnotationArgs = {
