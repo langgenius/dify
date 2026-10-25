@@ -6,6 +6,7 @@ import pytest
 from flask import Flask
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import NotFound
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console.app.error import DraftWorkflowNotSync
@@ -131,7 +132,8 @@ def test_postgres_empty_draft_confirmation_is_scoped_to_full_owner_chain(
         session.add(target)
         session.commit()
     before = workflow_rows(factory)
-    with pytest.raises(InvalidArgumentError) as exc:
+    expected_error = NotFound if scope == "tenant" else InvalidArgumentError
+    with pytest.raises(expected_error) as exc:
         post_empty_draft(
             flask_app_with_containers,
             monkeypatch,
@@ -142,7 +144,7 @@ def test_postgres_empty_draft_confirmation_is_scoped_to_full_owner_chain(
             confirmation={},
             app_model=target,
         )
-    assert exc.value.code == 400
+    assert exc.value.code == (404 if scope == "tenant" else 400)
     session.rollback()
     assert workflow_rows(factory) == before
 
