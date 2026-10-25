@@ -59,7 +59,6 @@ from models.workflow import Workflow
 from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
-from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
@@ -87,7 +86,9 @@ from services.icon_configuration import (
 )
 from services.knowledge_fs.knowledge_retrieval_v2.validation import missing_control_space_ids
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.workflow.draft_coordination_service import WorkflowDraftCoordinationService
 from services.workflow.graph_diff import draft_token
+from services.workflow.webhook_policy import validate_webhook_node_count
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
@@ -713,6 +714,14 @@ class AppDslService:
         if draft_hash is not None:
             locked_draft = self._lock_draft_matching(app=app, draft_hash=draft_hash)
 
+        # This pure policy must precede App metadata writes: later queries can autoflush
+        # and the import caller deliberately translates errors without rolling back.
+        if app_mode == AppMode.WORKFLOW:
+            candidate_graph = data["workflow"].get("graph", {})
+            if not isinstance(candidate_graph, dict):
+                raise ValueError("Workflow graph must be a mapping")
+            validate_webhook_node_count(candidate_graph)
+
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
         resolved_icon_type: IconType
@@ -838,6 +847,7 @@ class AppDslService:
                     preserve_agent_bindings and is_agent_v2_graph(graph)
                 )
                 graph_for_sync = AgentDslService.graph_without_package_bindings(graph) if raw_agent_packages else graph
+                coordination_id = str(uuid4())
                 draft_workflow = workflow_service.sync_draft_workflow(
                     app_model=app,
                     graph=graph_for_sync,
@@ -848,6 +858,7 @@ class AppDslService:
                     conversation_variables=conversation_variables,
                     session=self._session,
                     commit=not import_agent_bindings,
+                    coordination_id=coordination_id,
                     sync_agent_bindings=not import_agent_bindings,
                 )
                 if import_agent_bindings:
@@ -868,12 +879,16 @@ class AppDslService:
                         session=self._session,
                         draft_workflow=draft_workflow,
                     )
-                    self._session.commit()
-                    WorkflowAgentRetirementService.retire_unowned(
-                        tenant_id=app.tenant_id,
-                        agent_ids=retirement_candidates,
+                    WorkflowDraftCoordinationService.stage(
+                        self._session,
+                        coordination_id=coordination_id,
+                        workflow=draft_workflow,
                         account_id=account.id,
+                        retirement_agent_ids=retirement_candidates,
+                        emit_draft_event=False,
                     )
+                    self._session.commit()
+                    WorkflowDraftCoordinationService.kick(coordination_id)
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config
                 model_config = data.get("model_config")

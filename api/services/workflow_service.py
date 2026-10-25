@@ -54,7 +54,7 @@ from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add
 from domain.workflow.agent_node import is_dify_agent_node_data
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums import CloudPlan, DeploymentEdition
-from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
+from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
@@ -97,7 +97,6 @@ from models.workflow import (
     resolve_workflow_kind,
 )
 from repositories.factory import DifyAPIRepositoryFactory
-from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import AppRunAccessFilter
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -111,6 +110,14 @@ from services.errors.billing import BillingError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
+from services.tools.draft_tool_setup import (
+    DraftToolDeclarations,
+    admit_draft_tool_setup,
+    prepare_tool_declarations,
+    validate_tool_setup,
+)
+from services.workflow.draft_coordination_service import WorkflowDraftCoordinationService
+from services.workflow.webhook_policy import validate_webhook_node_count
 from services.workflow.workflow_converter import WorkflowConverter
 from services.workflow_node_variables import get_human_input_form_variable_mapping
 from services.workflow_ref_service import WorkflowRef
@@ -182,12 +189,6 @@ class _DebugHumanInputNode:
 
 
 HumanInputNode = _DebugHumanInputNode
-from services.tools.draft_tool_setup import (
-    DraftToolDeclarations,
-    admit_draft_tool_setup,
-    prepare_tool_declarations,
-    validate_tool_setup,
-)
 from .errors.workflow_service import (
     EmptyWorkflowConfirmationRequiredError,
 )
@@ -547,6 +548,7 @@ class WorkflowService:
         deleted_environment_variable_ids: Sequence[str] = (),
         preserve_environment_variables: bool = False,
         commit: bool = True,
+        coordination_id: str | None = None,
         sync_agent_bindings: bool = True,
         graph_only: bool = False,
         require_empty_graph_confirmation: bool = False,
@@ -556,7 +558,10 @@ class WorkflowService:
 
         DSL import disables the intermediate commit and Agent binding sync so
         portable package references can be materialized atomically after the
-        draft workflow has received its target-workspace id.
+        draft workflow has received its target-workspace id. Every save stages
+        durable coordination in this same transaction. A composing caller passes
+        coordination_id to merge its final candidates before committing, then
+        kicks that exact operation after commit.
 
         Existing drafts are row-locked and refreshed before the hash check.
         Missing drafts lock their exact App owner and recheck before creation.
@@ -594,6 +599,9 @@ class WorkflowService:
 
         # validate graph structure
         self.validate_graph_structure(graph=graph)
+
+        if app_model.mode == AppMode.WORKFLOW:
+            validate_webhook_node_count(graph)
 
         # create draft workflow if not found
         if not workflow:
@@ -650,18 +658,18 @@ class WorkflowService:
                 draft_workflow=workflow,
             )
 
-        # commit db session changes
+        coordination_id = coordination_id or str(uuid.uuid4())
+        WorkflowDraftCoordinationService.stage(
+            session,
+            coordination_id=coordination_id,
+            workflow=workflow,
+            account_id=account.id,
+            retirement_agent_ids=retirement_candidates,
+            emit_draft_event=commit,
+        )
         if commit:
             session.commit()
-            WorkflowAgentRetirementService.retire_unowned(
-                tenant_id=app_model.tenant_id,
-                agent_ids=retirement_candidates,
-                account_id=account.id,
-            )
-
-        # trigger app workflow events
-        if commit:
-            app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
+            WorkflowDraftCoordinationService.kick(coordination_id)
 
         # return draft workflow
         return workflow
@@ -792,6 +800,9 @@ class WorkflowService:
         self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
+        if app_model.mode == AppMode.WORKFLOW:
+            validate_webhook_node_count(source_workflow.graph_dict)
+
         draft_workflow = self.get_draft_workflow_for_creation(app_model=app_model, session=session)
         draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
             tenant_id=app_model.tenant_id,
@@ -815,13 +826,17 @@ class WorkflowService:
             account_id=account.id,
         )
 
-        session.commit()
-        WorkflowAgentRetirementService.retire_unowned(
-            tenant_id=app_model.tenant_id,
-            agent_ids=retirement_candidates,
+        coordination_id = str(uuid.uuid4())
+        WorkflowDraftCoordinationService.stage(
+            session,
+            coordination_id=coordination_id,
+            workflow=draft_workflow,
             account_id=account.id,
+            retirement_agent_ids=retirement_candidates,
+            emit_draft_event=True,
         )
-        app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=draft_workflow)
+        session.commit()
+        WorkflowDraftCoordinationService.kick(coordination_id)
 
         return draft_workflow
 

@@ -1563,6 +1563,9 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_WORKFLOW_DRAFT_COORDINATION_TASK: bool = Field(default=True, description="Recover accepted draft handoffs")
+    WORKFLOW_DRAFT_COORDINATION_INTERVAL: PositiveInt = Field(default=60, description="Recovery interval in seconds")
+    WORKFLOW_DRAFT_COORDINATION_BATCH_SIZE: PositiveInt = Field(default=100, description="Maximum handoffs per sweep")
     ENABLE_TRACE_PAYLOAD_SWEEP_TASK: bool = Field(
         description="Enable the daily cleanup of trace payloads that an interrupted delivery left in storage",
         default=True,
