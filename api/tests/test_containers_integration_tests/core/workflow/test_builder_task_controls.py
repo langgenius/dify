@@ -47,6 +47,7 @@ from models.dify_builder import (
 from models.model import App
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
+from models.workflow_draft_coordination import WorkflowDraftCoordination
 from services.dify_builder import dify_port
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.repository import SqlDifyBuilderRepository
@@ -99,6 +100,7 @@ def task_postgres_engine() -> Iterator[Engine]:
                         Account,
                         App,
                         Workflow,
+                        WorkflowDraftCoordination,
                         WorkflowAgentNodeBinding,
                         WorkflowWebhookTrigger,
                         DifyBuilderSession,
