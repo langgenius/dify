@@ -4040,6 +4040,7 @@ class TestDatasetRetrievalCases:
             ],
         )
         def test_process_metadata_filter_includes_missing_field_only_for_negative_conditions(
+            self,
             sqlite_session_factory: sessionmaker[Session],
             condition: str,
             metadata_name: str,
