@@ -78,6 +78,7 @@ from services.workflow_service import (
     _rebuild_single_file,
     _setup_variable_pool,
 )
+from tests.workflow_empty_draft_test_utils import EmptyDraftDatabase
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -3457,6 +3458,7 @@ class TestWorkflowServiceDraftExecution:
         self,
         service: WorkflowService,
         sqlite_engine: Engine,
+        sqlite_session: Session,
         config_overrides: Callable[..., None],
         repository_type: type[SQLAlchemyWorkflowNodeExecutionRepository]
         | type[CeleryWorkflowNodeExecutionRepository]
@@ -3573,7 +3575,7 @@ class TestWorkflowServiceDraftExecution:
                 yield NodeRunSucceededEvent(**event_kwargs)
 
         with (
-            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
+            patch("services.workflow_service.db", EmptyDraftDatabase(sqlite_session)),
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.DraftVarLoader"),
             patch(

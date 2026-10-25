@@ -6,7 +6,6 @@ import hashlib
 import io
 import zipfile
 from collections.abc import Callable, Generator
-from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
 
@@ -43,6 +42,7 @@ from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_service import WorkflowService
 from tests.unit_tests.audio_runtime_fixtures import record_calls
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
+from tests.workflow_empty_draft_test_utils import EmptyDraftDatabase
 
 
 class _MemoryStorage:
@@ -59,10 +59,11 @@ class _MemoryStorage:
 
 
 @pytest.fixture
-def storage(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _MemoryStorage:
+def storage(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> _MemoryStorage:
     backend = _MemoryStorage()
-    monkeypatch.setattr("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine))
-    monkeypatch.setattr("services.workflow.draft_coordination_service.db", SimpleNamespace(engine=sqlite_engine))
+    database = EmptyDraftDatabase(sqlite_session)
+    monkeypatch.setattr("services.workflow_service.db", database)
+    monkeypatch.setattr("services.workflow.draft_coordination_service.db", database)
     monkeypatch.setattr(
         "services.app_package_service.AgentPackageResourceExporter",
         lambda: AgentPackageResourceExporter(storage_backend=backend),

@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import cast
@@ -18,15 +18,20 @@ from models import Account, App, AppMode
 from models.enums import CustomizeTokenStrategy
 from models.model import AppModelConfig, AppModelConfigDict, IconType, Site
 from models.workflow import Workflow
+from models.workflow_draft_coordination import WorkflowDraftCoordination
 from services.agent.dsl_entities import AgentPackage
+from services.agent.dsl_service import AgentDslService
 from services.app_dsl_service import AppDslService, PendingData
-from services.entities.dsl_entities import ImportStatus
+from services.entities.dsl_entities import DslImportWarning, ImportStatus
 from services.entities.site_dsl import SiteDsl
 from services.errors.app import DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.workflow.graph_diff import draft_token
+from services.workflow_service import WorkflowService
+from tests.unit_tests.audio_runtime_fixtures import record_calls
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
+from tests.workflow_empty_draft_test_utils import POPULATED_GRAPH, DraftOwner, EmptyDraftDatabase, seed_owner
 
 _OVERWRITE_APP_ID = "11111111-1111-4111-8111-111111111111"
 _TENANT_ID = "22222222-2222-4222-8222-222222222222"
@@ -754,105 +759,113 @@ def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session)
     assert persisted.text_to_speech_dict == model_config["text_to_speech"]
 
 
-def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock(), scalar=Mock(return_value="app-1")))
-    service = AppDslService(session=session)
-    app = SimpleNamespace(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Workflow",
-        description="",
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
+@pytest.fixture
+def dsl_workflow_owner(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> DraftOwner:
+    from events.app_event import app_draft_workflow_was_synced
+
+    owner = seed_owner(sqlite_session, graph=POPULATED_GRAPH)
+    database = EmptyDraftDatabase(sqlite_session)
+    monkeypatch.setattr("services.workflow_service.db", database)
+    monkeypatch.setattr("services.workflow.draft_coordination_service.db", database)
+    # Receivers own external cache/Redis work outside this import transaction contract.
+    monkeypatch.setattr(app_draft_workflow_was_synced, "send", lambda *_args, **_kwargs: None)
+    return owner
+
+
+def test_create_or_update_app_removes_imported_workflow_viewport(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, dsl_workflow_owner: DraftOwner
+) -> None:
+    owner = dsl_workflow_owner
+    syncs: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        WorkflowService, "sync_draft_workflow", record_calls(WorkflowService.sync_draft_workflow, syncs)
     )
-    workflow_service = SimpleNamespace(
-        get_draft_workflow_for_creation=Mock(return_value=None),
-        get_draft_workflow=Mock(return_value=None),
-        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
-    )
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
     imported_graph: dict[str, object] = {
         "nodes": [],
         "edges": [],
         "viewport": {"x": 100, "y": 200, "zoom": 1.5},
     }
 
-    service._create_or_update_app(
-        app=cast(App, app),
-        data={
-            "app": {"mode": AppMode.WORKFLOW.value},
-            "workflow": {"graph": imported_graph},
-        },
-        account=Mock(id="account-1"),
+    AppDslService(sqlite_session)._create_or_update_app(
+        app=owner.app,
+        data={"app": {"mode": AppMode.WORKFLOW.value}, "workflow": {"graph": imported_graph}},
+        account=owner.account,
     )
 
-    assert workflow_service.sync_draft_workflow.call_args.kwargs["graph"] == {
-        "nodes": [],
-        "edges": [],
-    }
+    assert [sync["graph"] for sync in syncs] == [{"nodes": [], "edges": []}]
     assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
+    assert owner.draft is not None
+    sqlite_session.refresh(owner.draft)
+    assert owner.draft.graph_dict == {"nodes": [], "edges": []}
 
 
-def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = cast(
-        Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock(), scalar=Mock(return_value="app-1"))
-    )
-    service = AppDslService(session=session)
-    app = SimpleNamespace(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Workflow",
-        description="",
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-    )
-    workflow = SimpleNamespace(id="workflow-1")
-    workflow_service = SimpleNamespace(
-        get_draft_workflow_for_creation=Mock(return_value=None),
-        get_draft_workflow=Mock(return_value=None),
-        sync_draft_workflow=Mock(return_value=workflow),
-    )
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+def test_create_or_update_app_forwards_imported_agent_purge_ids(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    dsl_workflow_owner: DraftOwner,
+) -> None:
+    owner = dsl_workflow_owner
+    assert owner.draft is not None
+    syncs: list[dict[str, object]] = []
     monkeypatch.setattr(
-        "services.app_dsl_service.AgentDslService.graph_without_package_bindings",
-        Mock(return_value={"nodes": [], "edges": []}),
+        WorkflowService, "sync_draft_workflow", record_calls(WorkflowService.sync_draft_workflow, syncs)
     )
-    monkeypatch.setattr(
-        "services.app_dsl_service.AgentDslService.import_workflow_packages",
-        Mock(return_value=(workflow, [], {"retired-agent"})),
-    )
-    monkeypatch.setattr(
-        "services.app_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
-        Mock(),
-    )
-    stage = Mock()
-    kick = Mock()
-    monkeypatch.setattr("services.app_dsl_service.WorkflowDraftCoordinationService.stage", stage)
+    commits: list[bool] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: commits.append(True))
+
+    def import_packages(
+        _service: AgentDslService,
+        *,
+        workflow: Workflow,
+        portable_graph: Mapping[str, object],
+        raw_packages: Mapping[str, object],
+        account: Account,
+    ) -> tuple[dict[str, object], list[DslImportWarning], set[str]]:
+        # Package materialization is the collaborator seam; sync/stage/commit remain real.
+        assert workflow.id == owner.draft.id
+        assert portable_graph == {"nodes": [], "edges": []}
+        assert raw_packages == {"package-1": {}}
+        assert account is owner.account
+        return dict(portable_graph), [], {"retired-agent"}
+
+    monkeypatch.setattr("services.app_dsl_service.AgentDslService.import_workflow_packages", import_packages)
+    kicks: list[str] = []
+
+    def kick(operation: str) -> None:
+        assert commits == [True]
+        with sqlite_session_factory() as reader:
+            row = reader.get(WorkflowDraftCoordination, operation)
+            assert row is not None
+            assert (row.tenant_id, row.app_id, row.workflow_id, row.workflow_version, row.account_id) == (
+                owner.app.tenant_id,
+                owner.app.id,
+                owner.draft.id,
+                owner.draft.version,
+                owner.account.id,
+            )
+            assert row.retirement_agent_ids == ["retired-agent"]
+            assert row.emit_draft_event is False
+        kicks.append(operation)
+
     monkeypatch.setattr("services.app_dsl_service.WorkflowDraftCoordinationService.kick", kick)
 
-    service._create_or_update_app(
-        app=cast(App, app),
+    AppDslService(sqlite_session)._create_or_update_app(
+        app=owner.app,
         data={
             "app": {"mode": AppMode.WORKFLOW.value},
             "workflow": {"graph": {"nodes": [], "edges": []}},
             "agent_packages": {"package-1": {}},
         },
-        account=Mock(id="account-1"),
+        account=owner.account,
     )
 
-    operation = workflow_service.sync_draft_workflow.call_args.kwargs["coordination_id"]
-    stage.assert_called_once_with(
-        session,
-        coordination_id=operation,
-        workflow=workflow,
-        account_id="account-1",
-        retirement_agent_ids={"retired-agent"},
-        emit_draft_event=False,
-    )
-    kick.assert_called_once_with(operation)
-    cast(Mock, session.commit).assert_called_once()
+    assert len(syncs) == 1
+    assert syncs[0]["session"] is sqlite_session
+    assert syncs[0]["commit"] is False
+    assert syncs[0]["sync_agent_bindings"] is False
+    assert kicks == [syncs[0]["coordination_id"]]
+    assert commits == [True]
 
 
 def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
@@ -968,9 +981,11 @@ def test_append_workflow_export_data_reports_missing_selected_workflow(
     [AppMode.AGENT, AppMode.WORKFLOW, AppMode.ADVANCED_CHAT, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION],
 )
 def test_export_dsl_preserves_envelope_and_mode_specific_content(
-    mode: AppMode, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    mode: AppMode, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     app = _app(mode=mode)
+    sqlite_session.add(app)
+    sqlite_session.flush()
     package = AgentPackage.model_validate({"metadata": {"name": app.name}, "soul": {}})
     monkeypatch.setattr(
         "services.app_dsl_service.AgentDslService.export_agent_app",
@@ -990,8 +1005,7 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
 
     monkeypatch.setattr(AppDslService, "_append_workflow_export_data", Mock(side_effect=append_workflow))
     monkeypatch.setattr(AppDslService, "_append_model_config_export_data", Mock(side_effect=append_model))
-    monkeypatch.setattr(App, "site_with_session", Mock(return_value=None))
-    data = yaml.safe_load(AppDslService.export_dsl(app, session=unbound_session))
+    data = yaml.safe_load(AppDslService.export_dsl(app, session=sqlite_session))
     assert data["version"] == CURRENT_APP_DSL_VERSION
     assert data["kind"] == "app"
     assert data["app"] == {
@@ -1327,11 +1341,16 @@ def test_failed_import_does_not_report_creation(
 def test_pending_import_does_not_report_creation_or_cache_marker(
     unbound_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    cache = Mock()
+    cached: list[str] = []
+
+    def cache(_key: str, _ttl: int, value: str) -> None:
+        cached.append(value)
+
     monkeypatch.setattr("services.app_dsl_service.redis_client.setex", cache)
     result = AppDslService(unbound_session).import_app(
         account=_account(), import_mode="yaml-content", yaml_content=_PENDING_WORKFLOW_DSL
     )
     assert result.status == ImportStatus.PENDING
     assert not result.app_created
-    assert "app_created" not in cache.call_args.args[2]
+    assert len(cached) == 1
+    assert "app_created" not in cached[0]

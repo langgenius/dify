@@ -2,7 +2,6 @@
 
 import json
 from collections.abc import Callable, Generator, Iterator
-from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
 from uuid import uuid4
@@ -70,6 +69,7 @@ from services.workflow_service import WorkflowService
 from tests.unit_tests.audio_runtime_fixtures import record_calls
 from tests.unit_tests.model_factories import make_account, make_tenant, make_upload_file
 from tests.unit_tests.rbac_fakes import RBACDomain
+from tests.workflow_empty_draft_test_utils import EmptyDraftDatabase
 
 
 @pytest.mark.parametrize(("mode", "include_inline"), [(AppMode.WORKFLOW, False), (AppMode.ADVANCED_CHAT, True)])
@@ -782,7 +782,7 @@ def test_dsl_import_forwards_only_a_guarded_draft_hash(
 
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
 def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
-    sqlite_engine: Engine,
+    sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
     copy_source: tuple[RequestContext, str],
     monkeypatch: pytest.MonkeyPatch,
@@ -803,7 +803,7 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
     )
     monkeypatch.setattr(
         "services.workflow.draft_coordination_service.db",
-        SimpleNamespace(engine=sqlite_engine),
+        EmptyDraftDatabase(sqlite_session),
     )
 
     AppLifecycleGateway(session_factory=sqlite_session_factory).create_draft(context, app_id)

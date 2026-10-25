@@ -25,10 +25,12 @@ from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services import workflow_variable_reference_validator as variable_reference_validator
 from services.app.access import AppAccessFilter
+from tests.unit_tests.audio_runtime_fixtures import record_calls
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.controllers.error_body import raised_error
 from tests.workflow_empty_draft_test_utils import (
     POPULATED_GRAPH,
+    EmptyDraftDatabase,
     post_empty_draft,
     seed_owner,
     workflow_rows,
@@ -617,35 +619,42 @@ def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: 
     assert exc.value.description == "description too long"
 
 
-def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    workflow = _make_workflow(updated_at=None, created_at=datetime(2024, 1, 1))
-    restore_workflow = Mock(return_value=workflow)
-
+def test_restore_published_workflow_to_draft_success(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    owner = seed_owner(sqlite_session, graph=POPULATED_GRAPH)
+    source_id = owner.app.workflow_id
+    source = sqlite_session.get(Workflow, source_id)
+    assert source is not None
+    expected_hash = source.unique_hash
+    service = workflow_module.WorkflowService(sqlite_session_factory)
+    restores: list[dict[str, object]] = []
     monkeypatch.setattr(
-        workflow_module,
-        "WorkflowService",
-        lambda: SimpleNamespace(restore_published_workflow_to_draft=restore_workflow),
+        service,
+        "restore_published_workflow_to_draft",
+        record_calls(service.restore_published_workflow_to_draft, restores),
     )
+    monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
+    monkeypatch.setattr("services.workflow.draft_coordination_service.db", EmptyDraftDatabase(sqlite_session))
+    # Event receivers own external cache/Redis work outside the restore receipt contract.
+    monkeypatch.setattr("events.app_event.app_draft_workflow_was_synced.send", lambda *_args, **_kwargs: None)
 
     api = workflow_module.DraftWorkflowRestoreApi()
     handler = inspect.unwrap(api.post)
-
-    with app.test_request_context(
-        "/apps/app/workflows/published-workflow/restore",
-        method="POST",
-    ):
-        response = handler(
-            api,
-            _account(),
-            app_model=_app(tenant_id="tenant-1"),
-            workflow_id="published-workflow",
-        )
+    with app.test_request_context(f"/apps/{owner.app.id}/workflows/{source_id}/restore", method="POST"):
+        response = handler(api, owner.account, app_model=owner.app, workflow_id=source_id)
 
     assert response["result"] == "success"
-    assert response["hash"] == workflow.unique_hash
-    write_session = restore_workflow.call_args.kwargs["session"]
+    assert response["hash"] == expected_hash
+    assert len(restores) == 1
+    write_session = restores[0]["session"]
     assert isinstance(write_session, Session)
     assert write_session.expire_on_commit is False
+    assert write_session.get_bind() is sqlite_session.get_bind()
+    assert write_session is not sqlite_session
 
 
 def test_restore_published_workflow_to_draft_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
