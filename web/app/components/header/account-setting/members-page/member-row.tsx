@@ -1,6 +1,8 @@
 'use client'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { MouseEvent } from 'react'
+import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
+import type { MouseEvent, RefObject } from 'react'
+import type { RemoveMemberPayload } from './remove-member-content'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { memo, useCallback, useRef } from 'react'
@@ -11,6 +13,8 @@ import MemberMenu from './member-menu'
 import RoleBadges from './role-badges'
 
 type MemberRowProps = {
+  removeReturnFocusRef: RefObject<HTMLButtonElement | null>
+  removeDialogHandle: AlertDialogHandle<RemoveMemberPayload>
   member: AccountWithRoleResponse
   roles: Array<{
     id: string
@@ -24,6 +28,8 @@ type MemberRowProps = {
 
 const MemberRow = ({
   member,
+  removeDialogHandle,
+  removeReturnFocusRef,
   roles,
   isCurrentUser,
   canManage,
@@ -98,6 +104,8 @@ const MemberRow = ({
         <td className="px-3 py-2">
           <MemberMenu
             member={member}
+            removeDialogHandle={removeDialogHandle}
+            removeReturnFocusRef={removeReturnFocusRef}
             isCurrentUser={isCurrentUser}
             canTransferOwnership={canTransferOwnership}
             allowMultipleRoles={allowMultipleRoles}
