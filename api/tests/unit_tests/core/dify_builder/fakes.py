@@ -586,7 +586,12 @@ class StubAgent(DifyBuilderAgent):
 
     @override
     def discover_resources(
-        self, plan_items: list[str], *, goal_text: str, requirements: dict[str, object]
+        self,
+        plan_items: list[str],
+        *,
+        goal_text: str,
+        requirements: dict[str, object],
+        reply_language: str | None = None,
     ) -> list[ResourceOption]:
         return []
 
