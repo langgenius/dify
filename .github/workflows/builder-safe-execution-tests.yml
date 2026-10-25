@@ -428,6 +428,7 @@ jobs:
               "api/tests/unit_tests/services/dify_builder/test_new_agent_recovery.py",
               "api/tests/unit_tests/services/dify_builder/test_build_cognition.py",
               "api/tests/unit_tests/services/dify_builder/test_llm_agent.py",
+              "api/tests/unit_tests/services/dify_builder/test_mock_inputs.py",
               "api/tests/unit_tests/services/dify_builder/test_trace_diagnostics.py",
               "api/tests/unit_tests/services/dify_builder/test_build_nodes.py",
               "api/tests/unit_tests/services/dify_builder/test_build_plan_language.py",
@@ -914,6 +915,8 @@ jobs:
           # Exact collected Code failure-policy regression inventories (Local JUnit/AST checked).
           a4_expected['tests.unit_tests.services.dify_builder.test_trace_diagnostics'] = {'test_provider_failure_is_scoped_safe_and_recoverable': 1, 'test_resolution_failure_and_callback_failure_do_not_crash': 1, 'test_json_and_schema_have_distinct_codes': 1, 'test_env_bounds_resets_and_correlates_diagnostics': 1, 'test_generation_projection_retains_attempt_not_arbitrary_strings': 1, 'test_wrapped_plugin_connection_refusal_is_classified_without_echo': 1, 'test_cas_emission_and_reload_preserve_additive_safe_diagnostics': 1, 'test_catalogue_failure_differs_from_successful_empty': 1, 'test_context_scope_does_not_leak_between_nested_calls': 1, 'test_resolved_model_identifiers_are_bounded_without_extra_config': 1, 'test_previous_operation_callback_cannot_contaminate_new_operation': 1, 'test_edit_fix_and_mock_response_shapes_are_observed': 1, 'test_graph_generation_retry_evidence_survives_success': 1, 'test_stream_iterator_failure_retains_scope': 1, 'test_http_history_serializer_retains_safe_diagnostics': 1, 'test_http_session_snapshot_retains_safe_diagnostics': 1, 'test_language_detection_failure_is_scoped_and_keeps_existing_fallback': 1, 'test_snapshot_history_preserves_identity_and_previous_failure_after_success': 1, 'test_existing_sse_dto_keeps_diagnostic_payload': 1}
           a4_expected['tests.unit_tests.core.workflow.generator.test_runner'] = {
+              "test_llm_builder_prompt_documents_new_node_reasoning_default": 1,
+              "test_llm_reasoning_default_applies_only_to_new_nodes": 9,
               "test_a_dotted_reference_to_a_scalar_start_variable_is_repaired_to_its_root": 1,
               "test_a_dotted_reference_to_the_start_node_is_never_injected_as_an_input": 1,
               "test_a_dotted_root_that_names_nothing_is_still_reported": 1,
@@ -1689,6 +1692,15 @@ jobs:
                                                                               'test_native_stream_does_not_miss_creation_after_initial_snapshot_or_delayed_result': 1,
                                                                               'test_notification_failure_does_not_fail_or_replay_committed_execution': 1,
                                                                               'test_read_only_snapshot_keeps_physically_clean_paused_parent_unresolved': 1}})
+          # Business-context mock inputs: full module inventory, including typed fallbacks.
+          a4_expected["tests.unit_tests.services.dify_builder.test_mock_inputs"] = {
+              "test_generate_uses_llm_values_keyed_by_variable": 1,
+              "test_generate_degrades_to_typed_defaults_on_boom": 1,
+              "test_generate_degrades_on_none_model": 1,
+              "test_generate_empty_schema_is_empty_inputs": 1,
+              "test_all_mock_input_paths_ground_prompt_in_current_business_context": 6,
+              "test_business_context_preserves_existing_type_fallbacks": 5,
+          }
           # ENG-1255: persisted reply language across Builder generation and diagnosis.
           a4_expected["tests.unit_tests.core.workflow.generator.test_runner"].update({
               "test_inserted_retrieval_template_uses_existing_localized_titles": 2,
