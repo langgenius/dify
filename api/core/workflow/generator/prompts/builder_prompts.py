@@ -194,10 +194,8 @@ _NODE_SNIPPETS: dict[str, str] = {
     node, preserve its reasoning_format, including omission, unless requested.
 
     Prompt-writing rules for the user-message text:
-      * ``{{#node.var#}}`` placeholders are interpolated by Dify BEFORE the
-        LLM sees them — at run time the model only sees the resolved value.
-        So an instruction like "Translate this: {{#node1.text#}}" is read
-        by the LLM as "Translate this: <the actual text>".
+      * Dify resolves ``{{#node.var#}}`` BEFORE the LLM sees the prompt;
+        the model sees only the source value.
       * NEVER include placeholder syntax inside an "example output" block
         in your prompt — the LLM will treat the example as the literal
         answer template and echo placeholders back as output. Wrong:
