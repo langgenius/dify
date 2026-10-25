@@ -1,7 +1,6 @@
 'use client'
-import type { AgentAppCopyPayload } from '@dify/contracts/api/console/agent/types.gen'
 import type { Ref } from 'react'
-import type { AgentFormSource, AgentFormValues, AgentIconSelection } from './agent-form'
+import type { AgentFormSource, AgentFormValues } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -17,7 +16,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { createAgentIconSelection } from './agent-form'
+import { createAgentFormPayload, createAgentIconSelection } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
 type DuplicateAgentDialogProps = {
@@ -31,7 +30,7 @@ type DuplicateAgentFormSessionProps = {
   nameInputRef: Ref<HTMLInputElement>
   pending: boolean
   onCancel: () => void
-  onSubmit: (formValues: AgentFormValues, agentIcon: AgentIconSelection) => void
+  onSubmit: (formValues: AgentFormValues) => void
 }
 
 const getDefaultCopyName = (name: string) => {
@@ -53,11 +52,10 @@ function DuplicateAgentFormSession({
       description: agent.description ?? '',
       name: getDefaultCopyName(agent.name),
       role: agent.role ?? '',
+      icon: createAgentIconSelection(agent),
     } satisfies AgentFormValues,
-    icon: createAgentIconSelection(agent),
     sourceName: agent.name,
   }))
-  const [agentIcon, setAgentIcon] = useState(initialValues.icon)
 
   return (
     <>
@@ -76,19 +74,14 @@ function DuplicateAgentFormSession({
           disabled={pending}
         />
       </DialogHeader>
-      <Form<AgentFormValues>
-        className="contents"
-        onFormSubmit={(formValues) => onSubmit(formValues, agentIcon)}
-      >
+      <Form<AgentFormValues> className="contents" onFormSubmit={onSubmit}>
         <AgentFormFields
           ref={nameInputRef}
           defaultValues={initialValues.fields}
-          icon={agentIcon}
           iconAriaLabel={t(($) => $['roster.duplicateForm.changeIcon'], {
             ns: 'agentRoster',
             name: initialValues.sourceName,
           })}
-          onIconChange={setAgentIcon}
         />
         <DialogFooter>
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
@@ -124,17 +117,10 @@ export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAge
     onOpenChange(nextOpen)
   }
 
-  const handleSubmit = (formValues: AgentFormValues, agentIcon: AgentIconSelection) => {
+  const handleSubmit = (formValues: AgentFormValues) => {
     if (duplicateAgentMutation.isPending) return
 
-    const body: AgentAppCopyPayload = {
-      name: formValues.name.trim(),
-      description: formValues.description.trim(),
-      role: formValues.role.trim(),
-      icon_type: agentIcon.type,
-      icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
-      icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
-    }
+    const body = createAgentFormPayload(formValues)
 
     duplicateAgentMutation.mutate(
       {

@@ -13,6 +13,14 @@
       "types": "./src/use-merged-refs.ts",
       "import": "./src/use-merged-refs.ts"
     },
+    "./use-controlled": {
+      "types": "./src/use-controlled.ts",
+      "import": "./src/use-controlled.ts"
+    },
+    "./use-stable-callback": {
+      "types": "./src/use-stable-callback.ts",
+      "import": "./src/use-stable-callback.ts"
+    },
     "./use-ref-with-init": {
       "types": "./src/use-ref-with-init.ts",
       "import": "./src/use-ref-with-init.ts"
@@ -208,6 +216,10 @@
     "./direction-provider": {
       "types": "./src/direction-provider/index.tsx",
       "import": "./src/direction-provider/index.tsx"
+    },
+    "./visually-hidden": {
+      "types": "./src/visually-hidden.ts",
+      "import": "./src/visually-hidden.ts"
     }
   },
   "scripts": {

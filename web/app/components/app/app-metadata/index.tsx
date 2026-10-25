@@ -93,7 +93,7 @@ export function AppMetadataForm({
     !!quota &&
     quota.limit > 0 &&
     quota.size >= quota.limit
-  const icon: IconPickerInputValue | undefined =
+  const icon: IconPickerInputValue | null =
     selectedIcon ??
     (source.icon_type === 'image' && source.icon
       ? { type: 'image', fileId: source.icon, url: source.icon_url ?? '' }
@@ -101,7 +101,7 @@ export function AppMetadataForm({
         ? { type: 'emoji', icon: source.icon, background: source.icon_background }
         : source.icon_type === 'link' && source.icon
           ? { type: 'link', url: source.icon }
-          : undefined)
+          : null)
   return (
     <Form
       className="contents"

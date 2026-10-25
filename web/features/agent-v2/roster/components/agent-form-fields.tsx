@@ -1,5 +1,5 @@
 import type { Ref } from 'react'
-import type { AgentFormValues, AgentIconSelection } from './agent-form'
+import type { AgentFormValues } from './agent-form'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import { DialogBody } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -15,15 +15,13 @@ import {
 
 type AgentFormFieldsProps = {
   defaultValues: AgentFormValues
-  icon: AgentIconSelection
   iconAriaLabel: string
-  onIconChange: (value: IconPickerValue) => void
+  onIconChange?: (value: IconPickerValue) => void
   ref: Ref<HTMLInputElement>
 }
 
 export function AgentFormFields({
   defaultValues,
-  icon,
   iconAriaLabel,
   onIconChange,
   ref,
@@ -34,12 +32,14 @@ export function AgentFormFields({
   return (
     <DialogBody className="space-y-5">
       <div className="flex items-start gap-4">
-        <IconPicker value={icon} onValueChange={onIconChange}>
-          <IconPickerTrigger aria-label={iconAriaLabel} className="shrink-0 rounded-full">
-            <IconPickerIcon size="xxl" shape="circle" className="size-16 cursor-pointer" />
-          </IconPickerTrigger>
-          <IconPickerContent />
-        </IconPicker>
+        <Field name="icon" className="shrink-0">
+          <IconPicker defaultValue={defaultValues.icon} onValueChange={onIconChange} required>
+            <IconPickerTrigger aria-label={iconAriaLabel} className="rounded-full">
+              <IconPickerIcon size="xxl" shape="circle" className="size-16 cursor-pointer" />
+            </IconPickerTrigger>
+            <IconPickerContent />
+          </IconPicker>
+        </Field>
         <div className="flex min-w-0 flex-1 flex-col items-start gap-3 pb-1 sm:flex-row">
           <Field
             name="name"

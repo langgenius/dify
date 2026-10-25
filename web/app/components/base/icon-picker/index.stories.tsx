@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import type { IconPickerValue } from '.'
+import type { IconPickerInputValue, IconPickerValue } from '.'
+import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { useState } from 'react'
 import { IconPicker, IconPickerContent, IconPickerIcon, IconPickerTrigger } from '.'
 
@@ -29,7 +32,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 const IconPickerDemo = () => {
-  const [selection, setSelection] = useState<IconPickerValue>()
+  const [selection, setSelection] = useState<IconPickerValue | null>(null)
 
   return (
     <div className="flex min-h-80 flex-col items-start gap-4 px-6 py-8 md:px-12">
@@ -61,7 +64,7 @@ export const Playground: Story = {
       source: {
         language: 'tsx',
         code: `
-const [selection, setSelection] = useState<IconPickerValue>()
+const [selection, setSelection] = useState<IconPickerValue | null>(null)
 
 return (
   <IconPicker value={selection} onValueChange={setSelection}>
@@ -72,6 +75,50 @@ return (
   </IconPicker>
 )
         `.trim(),
+      },
+    },
+  },
+}
+
+function IconPickerFormDemo() {
+  const [submitted, setSubmitted] = useState<IconPickerInputValue | null>(null)
+  return (
+    <Form<{ icon: IconPickerInputValue }>
+      className="flex min-h-80 flex-col items-start gap-4 p-8"
+      onFormSubmit={({ icon }) => setSubmitted(icon)}
+    >
+      <Field name="icon">
+        <FieldLabel nativeLabel={false} render={<span />}>
+          Profile icon
+        </FieldLabel>
+        <IconPicker required>
+          <IconPickerTrigger className="w-fit rounded-[10px]">
+            <IconPickerIcon size="large" />
+          </IconPickerTrigger>
+          <IconPickerContent />
+        </IconPicker>
+        <FieldDescription>Choose an emoji or upload an image.</FieldDescription>
+        <FieldError match="valueMissing">Choose an icon before saving.</FieldError>
+      </Field>
+      <div className="flex gap-2">
+        <Button type="submit">Save</Button>
+        <Button type="reset">Reset</Button>
+      </div>
+      <output className="font-mono text-sm whitespace-pre-wrap">
+        {submitted ? JSON.stringify(submitted, null, 2) : 'No icon submitted yet.'}
+      </output>
+    </Form>
+  )
+}
+
+export const FieldAndForm: Story = {
+  args: { children: null },
+  render: () => <IconPickerFormDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Field wraps the IconPicker root. The picker isolates its draft editor from the committed field’s label, validation, and form registration. The picker owns its value; Form receives the confirmed icon object. Reset restores the initial empty value.',
       },
     },
   },

@@ -2,7 +2,7 @@ import type { IconPickerInputValue, IconPickerValue } from '..'
 import { IconPicker, IconPickerContent, IconPickerIcon, IconPickerTrigger } from '..'
 
 type IconPickerDialogProps = {
-  value?: IconPickerInputValue
+  value?: IconPickerInputValue | null
   onConfirm: (value: IconPickerValue) => void
   enableImageUpload?: boolean
   'aria-label'?: string
@@ -10,7 +10,7 @@ type IconPickerDialogProps = {
 
 /** The picker composed as one element, for specs that exercise its session rather than its anatomy. */
 export function IconPickerDialog({
-  value,
+  value = null,
   onConfirm,
   enableImageUpload,
   'aria-label': label = 'app.iconPicker.title',

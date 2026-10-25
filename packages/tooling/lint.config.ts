@@ -93,7 +93,7 @@ const webRestrictedImports = [
         message: 'Import Next APIs from the corresponding @/next/* module instead of next/*.',
       },
       {
-        group: ['@base-ui/react', '@base-ui/react/*'],
+        group: ['@base-ui/react', '@base-ui/react/**'],
         message:
           'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
       },
@@ -152,7 +152,7 @@ const serviceRestrictedImports = [
         message: 'Import Next APIs from the corresponding @/next/* module instead of next/*.',
       },
       {
-        group: ['@base-ui/react', '@base-ui/react/*'],
+        group: ['@base-ui/react', '@base-ui/react/**'],
         message:
           'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
       },
@@ -1767,6 +1767,38 @@ export const lintConfig = {
           {
             ...serviceRestrictedImports[1],
             patterns: [...serviceRestrictedImports[1].patterns, rawHttpImports],
+          },
+        ],
+      },
+    },
+    {
+      // IconPicker owns an application-specific object control; keep its Base UI adapter local.
+      files: [
+        'web/app/components/base/icon-picker/icon-picker-field.tsx',
+        'web/app/components/base/icon-picker/icon-picker-editor-scope.tsx',
+      ],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            ...webRestrictedImports[1],
+            patterns: [...webRestrictedImports[1].patterns, rawHttpImports].map((restriction) =>
+              restriction.group.includes('@base-ui/react')
+                ? {
+                    ...restriction,
+                    group: [
+                      ...restriction.group,
+                      '!@base-ui/react/internals',
+                      '!@base-ui/react/internals/field-constants',
+                      '!@base-ui/react/internals/field-register-control',
+                      '!@base-ui/react/internals/field-root-context',
+                      '!@base-ui/react/internals/form-context',
+                      '!@base-ui/react/internals/labelable-provider',
+                      '!@base-ui/react/internals/useValueChanged',
+                    ],
+                  }
+                : restriction,
+            ),
           },
         ],
       },

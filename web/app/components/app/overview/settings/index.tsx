@@ -6,7 +6,7 @@ import type {
   AppSiteUpdatePayload,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
-import type { IconPickerValue } from '@/app/components/base/icon-picker'
+import type { IconPickerInputValue } from '@/app/components/base/icon-picker'
 import type { Language } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -88,15 +88,6 @@ type SettingsSiteInfo = Pick<
   | 'use_icon_as_answer_icon'
 >
 
-type SettingsAppIconSelection =
-  | IconPickerValue
-  | null
-  | {
-      type: 'link'
-      icon: string
-      url: string
-    }
-
 export type SettingsAppInfo = {
   id: string
   mode: AppDetailWithSite['mode']
@@ -147,15 +138,14 @@ const createInputInfo = (appInfo: SettingsAppInfo) => {
   }
 }
 
-const createAppIcon = (appInfo: SettingsAppInfo): SettingsAppIconSelection => {
+const createAppIcon = (appInfo: SettingsAppInfo): IconPickerInputValue | null => {
   const { icon_type, icon, icon_background, icon_url } = appInfo.site
 
   if (icon_type === 'image' && icon) return { type: 'image', url: icon_url ?? '', fileId: icon }
 
-  if (icon_type === 'link' && icon) return { type: 'link', icon, url: icon }
+  if (icon_type === 'link' && icon) return { type: 'link', url: icon }
 
-  if (icon_type === 'emoji' && icon && icon_background)
-    return { type: 'emoji', icon, background: icon_background }
+  if (icon_type === 'emoji' && icon) return { type: 'emoji', icon, background: icon_background }
 
   return null
 }
@@ -212,7 +202,7 @@ function SettingsForm({
   const [inputInfo, setInputInfo] = useState(() => createInputInfo(appInfo))
   const [language, setLanguage] = useState(appInfo.site.default_language)
   const { t } = useTranslation(['app', 'appOverview', 'common'])
-  const [appIcon, setAppIcon] = useState<SettingsAppIconSelection>(() => createAppIcon(appInfo))
+  const [appIcon, setAppIcon] = useState(() => createAppIcon(appInfo))
   const settingsResetKey = getSettingsResetKey(appInfo)
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
 
@@ -280,7 +270,9 @@ function SettingsForm({
       icon: appIcon
         ? appIcon.type === 'image'
           ? appIcon.fileId
-          : appIcon.icon
+          : appIcon.type === 'link'
+            ? appIcon.url
+            : appIcon.icon
         : appInfo.site.icon,
       icon_background: appIcon
         ? appIcon.type === 'emoji'
@@ -338,19 +330,7 @@ function SettingsForm({
               {t(($) => $['newApp.nameNotEmpty'], { ns: 'app' })}
             </FieldError>
           </Field>
-          <IconPicker
-            value={
-              appIcon ??
-              (appInfo.site.icon_type === 'emoji' && appInfo.site.icon
-                ? {
-                    type: 'emoji',
-                    icon: appInfo.site.icon,
-                    background: appInfo.site.icon_background,
-                  }
-                : undefined)
-            }
-            onValueChange={setAppIcon}
-          >
+          <IconPicker value={appIcon} onValueChange={setAppIcon}>
             <IconPickerTrigger
               disabled={pending}
               aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}

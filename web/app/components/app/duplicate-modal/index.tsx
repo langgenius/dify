@@ -56,7 +56,7 @@ const DuplicateAppModal = ({
   const [name, setName] = React.useState(appName)
 
   const [selectedIcon, setSelectedIcon] = useState<IconPickerValue | null>(null)
-  const pickerValue: IconPickerInputValue | undefined =
+  const pickerValue: IconPickerInputValue | null =
     selectedIcon ??
     (icon_type === 'image' && icon
       ? { type: 'image', url: icon_url ?? '', fileId: icon }
@@ -64,7 +64,7 @@ const DuplicateAppModal = ({
         ? { type: 'emoji', icon, background: icon_background }
         : icon_type === 'link' && icon
           ? { type: 'link', url: icon }
-          : undefined)
+          : null)
   const currentIcon = selectedIcon
     ? {
         icon_type: selectedIcon.type,

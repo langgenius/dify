@@ -70,6 +70,8 @@ overrides:
   ws@>=8.0.0 <8.20.1: ^8.22.0
   yaml@>=2.0.0 <2.8.3: 2.9.1
   yauzl@<3.2.1: 3.2.1
+patchedDependencies:
+  '@base-ui/react@1.9.0': patches/@base-ui__react@1.9.0.patch
 catalog:
   '@amplitude/analytics-browser': 2.48.0
   '@amplitude/plugin-session-replay-browser': 1.36.3

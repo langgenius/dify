@@ -206,6 +206,43 @@ describe('EditAgentDialog', () => {
     })
   })
 
+  it('keeps save disabled for canceled icon drafts and restored values', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
+    const saveButton = within(dialog).getByRole('button', { name: 'common.operation.save' })
+    const iconTrigger = within(dialog).getByRole('button', {
+      name: 'agentRoster.roster.createForm.changeIcon',
+    })
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: 'agentRoster.roster.createForm.nameLabel',
+    })
+    await user.type(nameInput, ' ')
+    expect(saveButton).toBeDisabled()
+
+    await user.click(iconTrigger)
+    let picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+    await user.click(within(picker).getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    expect(saveButton).toBeDisabled()
+
+    await user.click(iconTrigger)
+    picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+    await user.click(within(picker).getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await user.click(within(picker).getByRole('button', { name: 'app.iconPicker.ok' }))
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    expect(saveButton).not.toBeDisabled()
+
+    await user.click(iconTrigger)
+    picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+    await user.click(within(picker).getByRole('radio', { name: 'app.iconPicker.color.violet' }))
+    await user.click(within(picker).getByRole('button', { name: 'app.iconPicker.ok' }))
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    expect(saveButton).toBeDisabled()
+    expect(mutateRequest).not.toHaveBeenCalled()
+  })
+
   it('creates a fresh form session from the latest agent after closing', async () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
