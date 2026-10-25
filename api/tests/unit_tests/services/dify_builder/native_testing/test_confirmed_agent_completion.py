@@ -2792,12 +2792,13 @@ def test_waiting_binding_retention_is_health_only_and_fails_closed(
     declining: CompletedOwner, mocker: pytest_mock.MockerFixture, fault: str | None, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Real SQL exclusion fences; protected storage/SDK are explicit bounded ports."""
-    from types import SimpleNamespace
-
     from celery.exceptions import SoftTimeLimitExceeded
+    from dify_agent.protocol.native_continuation import AgentCheckpoint, SelectedNativeCheckpoint
     from sqlalchemy import event
 
     from models.dify_builder_native_tests import NativeEffectDispatchClaim, NativeEffectOutcome, NativeTestInvocation
+    from services.dify_builder.native_testing import confirmed_agent_commands as commands_module
+    from services.dify_builder.native_testing.state_store import _AgentPreparation
 
     owner = declining
     commands = owner.commands
@@ -2880,10 +2881,15 @@ def test_waiting_binding_retention_is_health_only_and_fails_closed(
         elif fault == "terminal":
             request.state = "sealed"
     commands._request = ConfirmedAgentCommands._request.__get__(commands)
-    prepared = SimpleNamespace(
+    prepared = _AgentPreparation(
+        parent=wait.parent_node,
+        context=_context(owner),
+        authority=commands_module.validate_private_read(commands.loader, owner.ref),
         workspace=protected.association.workspace.model_copy(update={"pinned_snapshot_id": "stale"})
         if fault == "stale-pin"
-        else protected.association.workspace
+        else protected.association.workspace,
+        resource_digest="d" * 64,
+        objects=[],
     )
     mocker.patch.object(commands.api.store, "_agent_prepare", return_value=prepared)
     recheck = mocker.patch.object(commands.api.store, "_agent_recheck")
@@ -2892,9 +2898,51 @@ def test_waiting_binding_retention_is_health_only_and_fails_closed(
         "_agent_refresh_access",
         side_effect=BuilderExecutionPolicyError("agent_access_denied") if fault == "access-revoked" else None,
     )
-    selected_checkpoint = SimpleNamespace(model_dump=lambda **_: {"checkpoint": True})
-    selected = SimpleNamespace(checkpoint=selected_checkpoint)
-    expected_digest = canonical_digest({"checkpoint": True})
+    selected_checkpoint = AgentCheckpoint.model_validate(
+        {
+            "native_test_profile": "confirmed",
+            "run_id": protected.association.agent_run_id,
+            "generation": wait.agent_generation,
+            "ref": owner.ref.model_dump(mode="json"),
+            "config_ref": protected.association.config_ref,
+            "config_digest": protected.association.config_digest,
+            "stage": "tool",
+            "pending_calls": [
+                {
+                    "call_id": "call",
+                    "tool_name": "tool",
+                    "stage": "tool",
+                    "pending_operation_id": "pending",
+                    "wait_reason": "approval",
+                    "intent": {
+                        "key": {
+                            "invocation_id": owner.ref.invocation_id,
+                            "occurrence_path": [wait.parent_node.execution_id],
+                            "cursor": 0,
+                        },
+                        "kind": "tool",
+                        "resource_ref": "tool",
+                        "implementation_revision": "v1",
+                        "account_ref": None,
+                        "target": {},
+                        "parameters": {},
+                        "input_digest": "b" * 64,
+                        "capability_digest": "c" * 64,
+                    },
+                }
+            ],
+            "history": [],
+            "operation_cursor": 0,
+            "result_refs": {},
+            "job_refs": [],
+            "session_snapshot": {"layers": {}},
+        }
+    )
+    selected = SelectedNativeCheckpoint(
+        checkpoint=selected_checkpoint,
+        waiting_event=selected_checkpoint.waiting_event().model_copy(update={"id": wait.backend_wait_event_id}),
+    )
+    expected_digest = canonical_digest(selected_checkpoint.model_dump(mode="json"))
     wait = wait.model_copy(update={"checkpoint_digest": expected_digest if fault != "checkpoint" else "f" * 64})
     payload = commands.api.store.read_checkpoint(
         ref=owner.ref, checkpoint=CheckpointRef(checkpoint_id="checkpoint", payload_digest="d" * 64)
@@ -2907,7 +2955,7 @@ def test_waiting_binding_retention_is_health_only_and_fails_closed(
     owner.child_status = "running" if fault == "sdk-running" else "waiting"
     if fault == "race":
 
-        def select_then_cancel(**_: object) -> SimpleNamespace:
+        def select_then_cancel(**_: object) -> SelectedNativeCheckpoint:
             with owner.factory.begin() as sql:
                 scope = sql.get(NativeTestScope, owner.request_id)
                 assert scope is not None
@@ -3011,20 +3059,18 @@ def test_waiting_binding_task_selects_bounded_owned_wait_without_recovery(
     mocker.patch.object(task, "_session_factory", return_value=owner.factory)
     mocker.patch.object(ext_redis.redis_client, "get", return_value=None)
     mocker.patch.object(ext_redis.redis_client, "set", return_value=True)
-    service = mocker.Mock(spec=["keep_alive_waiting_binding"])
-    service.keep_alive_waiting_binding.return_value = True
+    service = owner.commands
+    health = mocker.patch.object(service, "keep_alive_waiting_binding", return_value=True)
     mocker.patch.object(wiring, "build_native_test_api_service", return_value=service)
     assert task.retain_waiting_agent_bindings(limit=1) == 1
-    service.keep_alive_waiting_binding.assert_called_once_with(
-        actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id
-    )
+    health.assert_called_once_with(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
     with owner.factory.begin() as sql:
         root = sql.scalar(select(NativeInvocationState))
         assert root is not None
         root.state = "unknown"
-    service.keep_alive_waiting_binding.reset_mock()
+    health.reset_mock()
     assert task.retain_waiting_agent_bindings(limit=1) == 0
-    service.keep_alive_waiting_binding.assert_not_called()
+    health.assert_not_called()
 
 
 @pytest.mark.parametrize("profile", ["builder-agent-confirmed-v1", "builder-native-v1"])
@@ -3137,8 +3183,8 @@ def test_waiting_binding_cursor_reaches_101st_owner_after_a_blocked_prefix(
     mocker.patch.object(task, "_session_factory", return_value=owner.factory)
     mocker.patch.object(ext_redis.redis_client, "get", side_effect=cursor.get)
     mocker.patch.object(ext_redis.redis_client, "set", side_effect=store_cursor)
-    service = mocker.Mock(spec=["keep_alive_waiting_binding"])
-    service.keep_alive_waiting_binding.side_effect = retain
+    service = owner.commands
+    mocker.patch.object(service, "keep_alive_waiting_binding", side_effect=retain)
     mocker.patch.object(wiring, "build_native_test_api_service", return_value=service)
     assert task.retain_waiting_agent_bindings(limit=100) == 0
     assert len(seen) == 100
