@@ -5734,11 +5734,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/trigger-schedule/__tests__/panel.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/trigger-schedule/components/next-execution-times.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
