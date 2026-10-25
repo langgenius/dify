@@ -3,6 +3,7 @@ import type { ReactElement } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -128,6 +129,7 @@ vi.mock('@/app/components/workflow-app/components/workflow-main', () => ({
     workflowStore = useWorkflowStore()
     return (
       <section aria-label="Workflow canvas">
+        <WorkflowInitializationProbe />
         <output aria-label="Saved viewport">{JSON.stringify(viewport)}</output>
       </section>
     )
@@ -196,9 +198,9 @@ describe('WorkflowApp', () => {
       }),
     )
     expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
-    expect(workflowStore.getState().workflowHistory.nodes).toEqual([
-      expect.objectContaining({ id: 'loaded-start' }),
-    ])
+    expect(await screen.findByRole('status', { name: 'Initialized nodes' })).toHaveTextContent(
+      'loaded-start:Node loaded-start',
+    )
     expect(screen.queryByLabelText('common.loading')).not.toBeInTheDocument()
   })
 
@@ -219,18 +221,15 @@ describe('WorkflowApp', () => {
     )
 
     await screen.findByRole('region', { name: 'Workflow canvas' })
-    expect(workflowStore.getState().syncWorkflowDraftHash).toBe('loaded-draft')
-    expect(workflowStore.getState().workflowHistory.nodes).toMatchObject([
-      { id: 'raw-node', data: { type: BlockEnum.Start, _connectedSourceHandleIds: ['source'] } },
-      { id: 'end-node', data: { type: BlockEnum.End, _connectedTargetHandleIds: ['target'] } },
-    ])
-    expect(workflowStore.getState().workflowHistory.edges).toMatchObject([
-      {
-        source: 'raw-node',
-        target: 'end-node',
-        data: { sourceType: BlockEnum.Start, targetType: BlockEnum.End },
-      },
-    ])
+    expect(await screen.findByRole('status', { name: 'Draft hash' })).toHaveTextContent(
+      'loaded-draft',
+    )
+    expect(await screen.findByRole('status', { name: 'Initialized nodes' })).toHaveTextContent(
+      'raw-node:Node raw-node,end-node:Node end-node',
+    )
+    expect(await screen.findByRole('status', { name: 'Initialized edges' })).toHaveTextContent(
+      'raw-node->end-node',
+    )
     expect(screen.getByLabelText('Saved viewport')).toHaveTextContent(
       JSON.stringify({ x: 1, y: 2, zoom: 1.5 }),
     )
