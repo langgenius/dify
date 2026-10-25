@@ -233,8 +233,12 @@ class SnippetService:
         )
 
         if keyword:
+            from libs.helper import escape_like_pattern
+
+            escaped_keyword = escape_like_pattern(keyword.strip())
+            like = f"%{escaped_keyword}%"
             stmt = stmt.where(
-                CustomizedSnippet.name.ilike(f"%{keyword}%") | CustomizedSnippet.description.ilike(f"%{keyword}%")
+                CustomizedSnippet.name.ilike(like, escape="\\") | CustomizedSnippet.description.ilike(like, escape="\\")
             )
 
         if is_published is not None:

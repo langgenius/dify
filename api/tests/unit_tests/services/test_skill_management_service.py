@@ -365,6 +365,52 @@ def test_list_skills_keyword_matches_display_name() -> None:
     assert [item["name"] for item in result["data"]] == ["employee-onboarding"]
 
 
+def test_list_skills_keyword_escapes_like_wildcards() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(
+            name="growth-rate-percent",
+            display_name="Growth Rate (100%)",
+            description="Report 100% growth.",
+        ),
+    )
+    service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(
+            name="growth-rate-general",
+            display_name="Growth Rate 100 days",
+            description="Report 100 days growth.",
+        ),
+    )
+    service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(
+            name="snake-case-skill",
+            display_name="my_skill",
+            description="Handles my_skill operations.",
+        ),
+    )
+    service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(
+            name="space-skill",
+            display_name="my skill",
+            description="Handles my skill operations.",
+        ),
+    )
+
+    percent_result = service.list_skills(tenant_id=TENANT, keyword="100%")
+    assert [item["name"] for item in percent_result["data"]] == ["growth-rate-percent"]
+
+    underscore_result = service.list_skills(tenant_id=TENANT, keyword="my_skill")
+    assert [item["name"] for item in underscore_result["data"]] == ["snake-case-skill"]
+
+
 def test_list_skills_returns_pagination_metadata() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     for name in ["alpha-skill", "beta-skill", "gamma-skill"]:

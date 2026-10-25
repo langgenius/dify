@@ -738,9 +738,14 @@ class SkillManagementService:
         with self._session_scope() as session:
             stmt = select(Skill).where(Skill.tenant_id == tenant_id).order_by(Skill.updated_at.desc())
             if keyword:
-                like = f"%{keyword.strip()}%"
+                from libs.helper import escape_like_pattern
+
+                escaped_keyword = escape_like_pattern(keyword.strip())
+                like = f"%{escaped_keyword}%"
                 stmt = stmt.where(
-                    (Skill.name.ilike(like)) | (Skill.display_name.ilike(like)) | (Skill.description.ilike(like))
+                    (Skill.name.ilike(like, escape="\\"))
+                    | (Skill.display_name.ilike(like, escape="\\"))
+                    | (Skill.description.ilike(like, escape="\\"))
                 )
             requested_tags = self._normalize_tags(tags or [])
             if requested_tags:

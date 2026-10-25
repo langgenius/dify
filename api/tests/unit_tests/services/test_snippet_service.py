@@ -180,6 +180,72 @@ def test_get_snippets_applies_filters_and_paginates(
     get_target_ids.assert_called_once_with(tag_type="snippet", tenant_id="tenant-1", tag_ids=["tag-1"], match_all=True)
 
 
+def test_get_snippets_escapes_like_wildcards(sqlite_session: Session) -> None:
+    from services.tag_service import TagService
+
+    application_tags = TagService()
+    account = _account()
+    sqlite_session.add(account)
+    s1 = CustomizedSnippet(
+        id="s1",
+        tenant_id="tenant-1",
+        name="discount 100%",
+        description="100% off deal",
+        type=SnippetType.NODE,
+        created_by="account-1",
+        is_published=True,
+    )
+    s2 = CustomizedSnippet(
+        id="s2",
+        tenant_id="tenant-1",
+        name="100 days",
+        description="100 days trial",
+        type=SnippetType.NODE,
+        created_by="account-1",
+        is_published=True,
+    )
+    s3 = CustomizedSnippet(
+        id="s3",
+        tenant_id="tenant-1",
+        name="search_term",
+        description="search_term snippet",
+        type=SnippetType.NODE,
+        created_by="account-1",
+        is_published=True,
+    )
+    s4 = CustomizedSnippet(
+        id="s4",
+        tenant_id="tenant-1",
+        name="searchXterm",
+        description="searchXterm snippet",
+        type=SnippetType.NODE,
+        created_by="account-1",
+        is_published=True,
+    )
+    sqlite_session.add_all([s1, s2, s3, s4])
+    sqlite_session.flush()
+
+    service = SnippetService.__new__(SnippetService)
+
+    result, total, _ = service.get_snippets(
+        tenant_id="tenant-1",
+        session=sqlite_session,
+        keyword="100%",
+        tags=application_tags,
+    )
+    assert total == 1
+    assert [s.id for s in result] == ["s1"]
+
+    result, total, _ = service.get_snippets(
+        tenant_id="tenant-1",
+        session=sqlite_session,
+        keyword="search_",
+        tags=application_tags,
+    )
+    assert total == 1
+    assert [s.id for s in result] == ["s3"]
+
+
 def test_update_snippet_allows_duplicate_names(sqlite_session: Session) -> None:
     snippet = _snippet()
     other = CustomizedSnippet(
