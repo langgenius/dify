@@ -37,6 +37,7 @@ import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
+import { getAdjacentCardFocusTargets } from '@/app/components/base/card-list-focus'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { toast } from '@/app/notifications'
@@ -71,7 +72,8 @@ type AgentRosterListProps = {
 } & Pick<ScrollAreaViewportProps, 'aria-labelledby'>
 
 type DeleteAgentDialogPayload = Pick<AgentAppPartial, 'id' | 'name'> & {
-  finalFocus: RefObject<HTMLElement | null>
+  fallbackFocus: RefObject<HTMLElement | null>
+  adjacentFocusTargets: HTMLElement[]
 }
 
 const skeletonCardIds = Array.from(
@@ -231,11 +233,12 @@ function AgentRosterItem({
   onDelete,
 }: {
   agent: AgentAppPartial
-  onDelete: (agent: AgentAppPartial) => void
+  onDelete: (agent: AgentAppPartial, trigger: HTMLButtonElement | null) => void
 }) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tApp } = useTranslation(['app'])
   const { formatTime } = useTimestamp()
+  const moreButtonRef = useRef<HTMLButtonElement>(null)
   const nameId = useId()
   const descriptionId = useId()
   const draftStatusId = useId()
@@ -377,7 +380,9 @@ function AgentRosterItem({
               onEdit={capabilities.canEdit ? handleEditOpen : undefined}
               onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
               onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-              onDelete={capabilities.canDelete ? () => onDelete(agent) : undefined}
+              onDelete={
+                capabilities.canDelete ? () => onDelete(agent, moreButtonRef.current) : undefined
+              }
             />
           </ContextMenuContent>
         )}
@@ -387,6 +392,7 @@ function AgentRosterItem({
           <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
+                ref={moreButtonRef}
                 render={
                   <IconButton
                     aria-label={t(($) => $['roster.moreActions'], {
@@ -407,7 +413,11 @@ function AgentRosterItem({
                   onEdit={capabilities.canEdit ? handleEditOpen : undefined}
                   onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
                   onExport={capabilities.canImportExportDSL ? handleExport : undefined}
-                  onDelete={capabilities.canDelete ? () => onDelete(agent) : undefined}
+                  onDelete={
+                    capabilities.canDelete
+                      ? () => onDelete(agent, moreButtonRef.current)
+                      : undefined
+                  }
                 />
               </DropdownMenuContent>
             </DropdownMenu>
@@ -525,11 +535,12 @@ export function AgentRosterList({
                   <AgentRosterItem
                     key={agent.id}
                     agent={agent}
-                    onDelete={(target) => {
+                    onDelete={(target, trigger) => {
                       deleteDialog.openWithPayload({
                         id: target.id,
                         name: target.name,
-                        finalFocus: { current: null },
+                        adjacentFocusTargets: getAdjacentCardFocusTargets(trigger),
+                        fallbackFocus: { current: null },
                       })
                     }}
                   />
@@ -573,9 +584,10 @@ export function AgentRosterList({
         {({ payload }) => (
           <AlertDialogContent
             finalFocus={() => {
-              const target = payload?.finalFocus.current
-              if (!target) return true
-              // Base UI can otherwise select a card link that is about to unmount.
+              const fallback = payload?.fallbackFocus.current
+              if (!fallback) return true
+              const target =
+                payload.adjacentFocusTargets.find((element) => element.isConnected) ?? fallback
               target.focus({ preventScroll: true })
               return false
             }}
@@ -591,7 +603,7 @@ export function AgentRosterList({
                     { params: { agent_id: payload.id } },
                     {
                       onSuccess: () => {
-                        payload.finalFocus.current = scrollViewportRef.current
+                        payload.fallbackFocus.current = scrollViewportRef.current
                         deleteDialog.close()
                       },
                     },

@@ -8,7 +8,7 @@ import { SnippetDetailTop } from '@/app/components/snippets/components/snippet-d
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { StudioListLink, StudioListNavigation } from '../navigation'
+import { StudioListLink, StudioListNavigation } from '../list-navigation'
 
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }))
 vi.mock('@/next/navigation', () => ({ useRouter: () => router }))

@@ -14,7 +14,6 @@ import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -24,6 +23,7 @@ import {
   hasPermission,
 } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
+import { StudioListLink } from '../list-navigation'
 import { AppCardInteractions } from './interactions'
 
 const EMPTY_ONLINE_USERS: WorkflowOnlineUser[] = []

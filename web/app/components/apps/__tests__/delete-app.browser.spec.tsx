@@ -145,7 +145,9 @@ it('keeps the delete dialog pending after its starred source unmounts until both
     refresh.resolve(appPage([next]))
     await expect.poll(() => dialog.isConnected).toBe(false)
     await expect.poll(() => catalogLink.isConnected).toBe(false)
-    await expect.element(screen.getByRole('region', { name: 'Studio', exact: true })).toHaveFocus()
+    await expect
+      .element(screen.getByRole('list', { name: 'Starred' }).getByRole('link', { name: next.name }))
+      .toHaveFocus()
     expect(api.delete).toHaveBeenCalledExactlyOnceWith({ params: { app_id: target.id } })
     await openDelete('Starred', next.name)
     const nextDialog = screen.getByRole('alertdialog').element()
@@ -222,7 +224,7 @@ it('hands focus from the card context menu to deletion and restores the card lin
   }
 })
 
-it('returns focus to the scrollable catalog after deletion without moving its scroll position', async () => {
+it('focuses the next card after deletion without moving the catalog scroll position', async () => {
   const apps = Array.from({ length: 30 }, (_, index) => app(`app-${index}`, `App ${index}`))
   const target = apps[15]!
   const { screen, queryClient, openDelete } = await setup(apps)
@@ -241,7 +243,9 @@ it('returns focus to the scrollable catalog after deletion without moving its sc
     await expect
       .element(screen.getByRole('link', { name: target.name, exact: true }))
       .not.toBeInTheDocument()
-    await expect.element(viewport).toHaveFocus()
+    await expect
+      .element(screen.getByRole('link', { name: apps[16]!.name, exact: true }))
+      .toHaveFocus()
     expect(element.scrollTop).toBe(scrollTopBefore)
     expect(element.scrollTop).toBeGreaterThan(0)
   } finally {
@@ -267,6 +271,69 @@ it('returns focus to the empty catalog when its last app is deleted without an e
     await expect.element(screen.getByRole('region', { name: 'Studio', exact: true })).toHaveFocus()
   } finally {
     noMotionStyle.remove()
+    queryClient.clear()
+  }
+})
+
+it.each([
+  { deleted: 1, focused: 2 },
+  { deleted: 2, focused: 1 },
+])('focuses card $focused after deleting card $deleted', async ({ deleted, focused }) => {
+  const apps = [app('a', 'First App'), app('b', 'Middle App'), app('c', 'Last App')]
+  const { screen, queryClient, openDelete } = await setup(apps)
+  try {
+    await openDelete('All Apps', apps[deleted]!.name)
+    await screen.getByRole('button', { name: 'Autofill' }).click()
+    await screen.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('link', { name: apps[deleted]!.name }))
+      .not.toBeInTheDocument()
+    const target = screen.getByRole('link', { name: apps[focused]!.name })
+    await expect.element(target).toHaveFocus()
+    await expect.element(target).toBeVisible()
+    await userEvent.keyboard('{Tab}')
+    await expect
+      .element(screen.getByRole('button', { name: `Star app: ${apps[focused]!.name}` }))
+      .toHaveFocus()
+  } finally {
+    queryClient.clear()
+  }
+})
+
+it('falls back to the viewport when the source starred section disappears', async () => {
+  const target = app('target', 'Only Starred App')
+  const remaining = app('remaining', 'Unstarred App')
+  const { screen, queryClient, openDelete } = await setup([target, remaining], [target])
+  try {
+    await openDelete('Starred', target.name)
+    await screen.getByRole('button', { name: 'Autofill' }).click()
+    await screen.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+    await expect.element(screen.getByRole('list', { name: 'Starred' })).not.toBeInTheDocument()
+    await expect.element(screen.getByRole('link', { name: remaining.name })).toBeVisible()
+    await expect.element(screen.getByRole('region', { name: 'Studio', exact: true })).toHaveFocus()
+  } finally {
+    queryClient.clear()
+  }
+})
+
+it('focuses the next card primary control when that card has no actions', async () => {
+  const target = app('target', 'Editable App')
+  const remaining = {
+    ...app('remaining', 'Preview App'),
+    permission_keys: [AppACLPermission.Preview],
+  }
+  const { screen, queryClient, openDelete } = await setup([target, remaining])
+  try {
+    await openDelete('All Apps', target.name)
+    await screen.getByRole('button', { name: 'Autofill' }).click()
+    await screen.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('button', { name: remaining.name, exact: true }))
+      .toHaveFocus()
+  } finally {
     queryClient.clear()
   }
 })

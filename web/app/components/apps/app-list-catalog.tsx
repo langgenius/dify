@@ -20,6 +20,7 @@ import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tans
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DeleteAppForm } from '@/app/components/app/delete-app-form'
+import { getAdjacentCardFocusTargets } from '@/app/components/base/card-list-focus'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -43,7 +44,8 @@ const getPreloadDistance = (scrollContainer: Element) =>
 type AppListQuery = NonNullable<GetAppsData['query']>
 
 type DeleteAppDialogPayload = Pick<AppPartial, 'id' | 'name'> & {
-  finalFocus: RefObject<HTMLElement | null>
+  fallbackFocus: RefObject<HTMLElement | null>
+  adjacentFocusTargets: HTMLElement[]
 }
 
 type AppListCatalogProps = Readonly<{
@@ -114,7 +116,12 @@ function AppListCatalogContent({
     consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
   )
   const openDeleteDialog = useCallback<AppCardInteractionsProps['onDelete']>(
-    (app) => deleteDialog.openWithPayload({ ...app, finalFocus: { current: null } }),
+    (app, trigger) =>
+      deleteDialog.openWithPayload({
+        ...app,
+        adjacentFocusTargets: getAdjacentCardFocusTargets(trigger),
+        fallbackFocus: { current: null },
+      }),
     [deleteDialog],
   )
 
@@ -310,9 +317,10 @@ function AppListCatalogContent({
         {({ payload }) => (
           <AlertDialogContent
             finalFocus={() => {
-              const target = payload?.finalFocus.current
-              if (!target) return true
-              // Focus the viewport itself before Base UI can choose a card link awaiting removal.
+              const fallback = payload?.fallbackFocus.current
+              if (!fallback) return true
+              const target =
+                payload.adjacentFocusTargets.find((element) => element.isConnected) ?? fallback
               target.focus({ preventScroll: true })
               return false
             }}
@@ -332,7 +340,7 @@ function AppListCatalogContent({
                     { params: { app_id: payload.id } },
                     {
                       onSuccess: () => {
-                        payload.finalFocus.current = scrollViewportRef.current
+                        payload.fallbackFocus.current = scrollViewportRef.current
                         deleteDialog.close()
                       },
                     },

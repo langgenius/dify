@@ -12,12 +12,12 @@ import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { hasOnlyAppPreviewPermission } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
 import { AppCardInteractions } from './app-card/interactions'
+import { StudioListLink } from './list-navigation'
 
 type StarredAppCardProps = {
   app: AppPartial

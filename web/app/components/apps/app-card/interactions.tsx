@@ -240,7 +240,7 @@ function AppCardOperationsMenuItems({
 export type AppCardInteractionsProps = {
   app: AppPartial
   children: ReactElement
-  onDelete: (app: Pick<AppPartial, 'id' | 'name'>) => void
+  onDelete: (app: Pick<AppPartial, 'id' | 'name'>, trigger: HTMLButtonElement | null) => void
   stepByStepTourActionMenuOpen?: boolean
   stepByStepTourActionMenuHighlightPart?: string
 }
@@ -269,6 +269,7 @@ export function AppCardInteractions({
     consoleQuery.apps.byAppId.star.delete.mutationOptions(),
   )
 
+  const moreButtonRef = useRef<HTMLButtonElement>(null)
   const editActionsRef = useRef<DialogActions>(null)
   const edit = useMutation(
     consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
@@ -424,7 +425,7 @@ export function AppCardInteractions({
     onDuplicate: () => setActiveDialog('duplicate'),
     onExport: exportCheck,
     onSwitch: () => setActiveDialog('switch'),
-    onDelete: () => onDelete({ id: app.id, name: app.name }),
+    onDelete: () => onDelete({ id: app.id, name: app.name }, moreButtonRef.current),
     onAccessConfig: () => push(`/app/${app.id}/access-config`),
   }
 
@@ -487,6 +488,7 @@ export function AppCardInteractions({
               onOpenChange={operationsMenu.onOpenChange}
             >
               <DropdownMenuTrigger
+                ref={moreButtonRef}
                 render={
                   <IconButton
                     size="lg"

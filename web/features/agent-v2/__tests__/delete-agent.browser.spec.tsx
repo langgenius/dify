@@ -110,7 +110,7 @@ async function setup(initialAgents: AgentAppPartial[]) {
   return { screen, queryClient, openDelete, actions }
 }
 
-it('focuses the roster after deletion and keeps the next canceled action keyboard-operable', async () => {
+it('focuses the next agent after deletion and keeps the next canceled action keyboard-operable', async () => {
   const target = agent('target', 'Research Agent')
   const remaining = agent('remaining', 'Writing Agent')
   const { screen, queryClient, openDelete, actions } = await setup([target, remaining])
@@ -133,7 +133,9 @@ it('focuses the roster after deletion and keeps the next canceled action keyboar
     pending.resolve()
     await expect.poll(() => deletedCard.isConnected).toBe(false)
     await expect.poll(() => dialog.isConnected).toBe(false)
-    await expect.element(screen.getByRole('region', { name: 'Agents', exact: true })).toHaveFocus()
+    await expect
+      .element(screen.getByRole('link', { name: remaining.name, exact: true }))
+      .toHaveFocus()
 
     await openDelete(remaining.name)
     const canceledDialog = screen.getByRole('alertdialog').element()
@@ -173,7 +175,7 @@ it('focuses the empty roster when its last agent is deleted without an exit tran
   }
 })
 
-it('returns focus to a scrollable roster without moving its scroll position', async () => {
+it('focuses the next card without moving the roster scroll position', async () => {
   const agents = Array.from({ length: 30 }, (_, index) => agent(`agent-${index}`, `Agent ${index}`))
   const targetName = 'Agent 15'
   const { screen, queryClient, openDelete } = await setup(agents)
@@ -190,8 +192,54 @@ it('returns focus to a scrollable roster without moving its scroll position', as
     await screen.getByRole('button', { name: 'Confirm', exact: true }).click()
     await expect.poll(() => deletedCard.isConnected).toBe(false)
     await expect.poll(() => dialog.isConnected).toBe(false)
-    await expect.element(viewport).toHaveFocus()
+    await expect.element(screen.getByRole('link', { name: 'Agent 16', exact: true })).toHaveFocus()
     expect(viewport.scrollTop).toBe(scrollTop)
+  } finally {
+    queryClient.clear()
+  }
+})
+
+it.each([
+  { deleted: 1, focused: 2 },
+  { deleted: 2, focused: 1 },
+])('focuses agent $focused after deleting agent $deleted', async ({ deleted, focused }) => {
+  const agents = [agent('a', 'First Agent'), agent('b', 'Middle Agent'), agent('c', 'Last Agent')]
+  const { screen, queryClient, openDelete } = await setup(agents)
+  try {
+    await openDelete(agents[deleted]!.name)
+    await screen.getByRole('button', { name: 'Autofill' }).click()
+    await screen.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('link', { name: agents[deleted]!.name }))
+      .not.toBeInTheDocument()
+    const target = screen.getByRole('link', { name: agents[focused]!.name })
+    await expect.element(target).toHaveFocus()
+    await expect.element(target).toBeVisible()
+    await userEvent.keyboard('{Tab}')
+    await expect
+      .element(screen.getByRole('button', { name: `More actions for ${agents[focused]!.name}` }))
+      .toHaveFocus()
+  } finally {
+    queryClient.clear()
+  }
+})
+
+it('focuses the next card primary control when that card has no actions', async () => {
+  const target = agent('target', 'Editable Agent')
+  const remaining = {
+    ...agent('remaining', 'Preview Agent'),
+    permission_keys: [AgentPermission.Preview],
+  }
+  const { screen, queryClient, openDelete } = await setup([target, remaining])
+  try {
+    await openDelete(target.name)
+    await screen.getByRole('button', { name: 'Autofill' }).click()
+    await screen.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('button', { name: remaining.name, exact: true }))
+      .toHaveFocus()
   } finally {
     queryClient.clear()
   }

@@ -21,6 +21,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { StudioListLink } from '@/app/components/apps/list-navigation'
 import { CreateSnippetDialog } from '@/app/components/snippets/create-snippet-dialog'
 import {
   canCreateAndModifySnippets,
@@ -28,7 +29,6 @@ import {
 } from '@/app/components/snippets/utils/permission'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { StudioListLink } from '@/features/studio-list-navigation/navigation'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 import { consoleQuery } from '@/service/console'
 import {
