@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import stat
 import tempfile
+import unicodedata
 import zipfile
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
@@ -14,17 +15,23 @@ _SPOOL_MAX_MEMORY = 16 * 1024 * 1024
 _FIXED_DATE_TIME = (1980, 1, 1, 0, 0, 0)
 _FILE_MODE = stat.S_IFREG | 0o644
 _EXTERNAL_ATTR_SHIFT = 16
+_PATH_SEPARATOR = "/"
+_BACKSLASH = "\\"
+_FIRST_PRINTABLE_ORDINAL = 0x20
+_UNSAFE_SEGMENTS = frozenset({"", ".", ".."})
 
 
 class ArchiveCompression(StrEnum):
-    STORED = "stored"
-    DEFLATED = "deflated"
+    zip_method: int
 
-    @property
-    def zip_method(self) -> int:
-        if self is ArchiveCompression.DEFLATED:
-            return zipfile.ZIP_DEFLATED
-        return zipfile.ZIP_STORED
+    STORED = ("stored", zipfile.ZIP_STORED)
+    DEFLATED = ("deflated", zipfile.ZIP_DEFLATED)
+
+    def __new__(cls, value: str, zip_method: int) -> ArchiveCompression:
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.zip_method = zip_method
+        return member
 
 
 class ArchiveLimitKind(StrEnum):
@@ -36,8 +43,38 @@ class ArchiveLimitKind(StrEnum):
         return self.value
 
 
+class ArchivePathReason(StrEnum):
+    message: str
+
+    EMPTY = ("empty", "path is empty")
+    ABSOLUTE = ("absolute", "path must be relative")
+    UNSAFE_CHARACTER = ("unsafe_character", "path contains a backslash or control character")
+    UNSAFE_SEGMENT = ("unsafe_segment", "path has an empty, '.' or '..' segment")
+    CASE_CLASH = ("case_clash", "path differs from another only by case or Unicode form")
+
+    def __new__(cls, value: str, message: str) -> ArchivePathReason:
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member.message = message
+        return member
+
+
 class ArchiveError(Exception):
     pass
+
+
+class ArchivePathError(ArchiveError):
+    def __init__(self, path: str, reason: ArchivePathReason, *, other: str | None = None) -> None:
+        self.path = path
+        self.reason = reason
+        self.other = other
+        super().__init__(str(self))
+
+    def __str__(self) -> str:
+        text = f"{self.path}: {self.reason.message}"
+        if self.other is not None:
+            text += f" (clashes with {self.other})"
+        return text
 
 
 class ArchiveEmptyError(ArchiveError):
@@ -63,6 +100,38 @@ class ArchiveEntry:
 
 class PathPolicy(Protocol):
     def admit(self, entries: Sequence[ArchiveEntry]) -> Sequence[ArchiveEntry]: ...
+
+
+class StrictPathPolicy:
+    def admit(self, entries: Sequence[ArchiveEntry]) -> Sequence[ArchiveEntry]:
+        seen: dict[str, str] = {}
+        admitted: list[ArchiveEntry] = []
+        for entry in entries:
+            path = unicodedata.normalize("NFC", entry.path)
+            reason = self._violation(path)
+            if reason is not None:
+                raise ArchivePathError(entry.path, reason)
+            key = path.casefold()
+            if key in seen:
+                raise ArchivePathError(entry.path, ArchivePathReason.CASE_CLASH, other=seen[key])
+            seen[key] = entry.path
+            admitted.append(ArchiveEntry(path, entry.open))
+        return admitted
+
+    @staticmethod
+    def _violation(path: str) -> ArchivePathReason | None:
+        if not path:
+            return ArchivePathReason.EMPTY
+        if path.startswith(_PATH_SEPARATOR):
+            return ArchivePathReason.ABSOLUTE
+        for char in path:
+            if char == _BACKSLASH:
+                return ArchivePathReason.UNSAFE_CHARACTER
+            if ord(char) < _FIRST_PRINTABLE_ORDINAL:
+                return ArchivePathReason.UNSAFE_CHARACTER
+        if not _UNSAFE_SEGMENTS.isdisjoint(path.split(_PATH_SEPARATOR)):
+            return ArchivePathReason.UNSAFE_SEGMENT
+        return None
 
 
 @dataclass(frozen=True)
