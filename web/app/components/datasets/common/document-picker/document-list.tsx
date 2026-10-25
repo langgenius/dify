@@ -1,10 +1,6 @@
 'use client'
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import {
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuList,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { MenuItem, MenuLinkItem, MenuList } from '@langgenius/dify-ui/menu'
 import { SpinnerIcon } from '@langgenius/dify-ui/spinner'
 import { useQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
@@ -64,9 +60,9 @@ export default function DocumentList({
         {isSearching && <SpinnerIcon aria-hidden="true" />}
         {statusText}
       </div>
-      <DropdownMenuList aria-busy={isSearching}>
+      <MenuList aria-busy={isSearching}>
         {documents.map((document) => (
-          <DropdownMenuLinkItem
+          <MenuLinkItem
             key={document.id}
             render={<Link href={`/datasets/${datasetId}/documents/${document.id}`} />}
             aria-current={document.id === currentDocumentId ? 'page' : undefined}
@@ -76,14 +72,14 @@ export default function DocumentList({
             <span className="min-w-0 truncate system-sm-regular text-text-secondary">
               {document.name}
             </span>
-          </DropdownMenuLinkItem>
+          </MenuLinkItem>
         ))}
         {isError && (
-          <DropdownMenuItem closeOnClick={false} onClick={() => documentsQuery.refetch()}>
+          <MenuItem closeOnClick={false} onClick={() => documentsQuery.refetch()}>
             {t(($) => $['operation.retry'], { ns: 'common' })}
-          </DropdownMenuItem>
+          </MenuItem>
         )}
-      </DropdownMenuList>
+      </MenuList>
     </>
   )
 }

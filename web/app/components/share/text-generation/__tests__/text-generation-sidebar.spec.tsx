@@ -39,7 +39,7 @@ vi.mock('@/app/components/app/text-generate/saved-items', () => ({
   },
 }))
 
-vi.mock('@/app/components/share/text-generation/menu-dropdown', () => ({
+vi.mock('@/app/components/share/text-generation/text-generation-menu', () => ({
   default: () => <div data-testid="menu-dropdown-mock" />,
 }))
 

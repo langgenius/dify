@@ -21,7 +21,7 @@ import CornerLabels from './components/corner-labels'
 import DatasetCardFooter from './components/dataset-card-footer'
 import DatasetCardHeader from './components/dataset-card-header'
 import Description from './components/description'
-import OperationsDropdown from './components/operations-dropdown'
+import OperationsMenu from './components/operations-menu'
 import { useDatasetCardActions } from './hooks/use-dataset-card-actions'
 
 const EXTERNAL_PROVIDER = 'external'
@@ -140,7 +140,7 @@ const DatasetCard = ({
       />
       <DatasetCardFooter dataset={dataset} />
       {!isPreviewOnly && (
-        <OperationsDropdown
+        <OperationsMenu
           dataset={dataset}
           openRenameModal={() => setRenameOpen(true)}
           handleExportPipeline={handleExportPipeline}

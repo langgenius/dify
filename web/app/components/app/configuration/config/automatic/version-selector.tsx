@@ -1,12 +1,12 @@
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroupLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroupLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,8 +28,8 @@ function VersionSelector({ versionLen, value, onChange }: VersionSelectorProps) 
   const isLatest = value === versionLen - 1
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         disabled={!moreThanOneVersion}
         className="flex cursor-pointer items-center border-none bg-transparent p-0 system-xs-medium text-text-tertiary data-disabled:cursor-default data-popup-open:text-text-secondary"
       >
@@ -38,19 +38,19 @@ function VersionSelector({ versionLen, value, onChange }: VersionSelectorProps) 
           {isLatest && ` · ${t(($) => $['generate.latest'], { ns: 'appGeneration' })}`}
         </div>
         {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" alignOffset={-12} className="w-52 p-1">
-        <DropdownMenuRadioGroup
+      </MenuTrigger>
+      <MenuContent align="start" alignOffset={-12} className="w-52">
+        <MenuRadioGroup
           value={value}
           onValueChange={(nextValue) => {
             onChange(nextValue)
           }}
         >
-          <DropdownMenuGroupLabel className="flex h-5.5 items-center py-0">
+          <MenuGroupLabel className="flex h-5.5 items-center py-0">
             {t(($) => $['generate.versions'], { ns: 'appGeneration' })}
-          </DropdownMenuGroupLabel>
+          </MenuGroupLabel>
           {versions.map((option) => (
-            <DropdownMenuRadioItem
+            <MenuRadioItem
               key={option.value}
               value={option.value}
               closeOnClick
@@ -58,12 +58,12 @@ function VersionSelector({ versionLen, value, onChange }: VersionSelectorProps) 
               title={option.label}
             >
               <div className="mr-1 grow truncate px-1">{option.label}</div>
-              <DropdownMenuRadioItemIndicator />
-            </DropdownMenuRadioItem>
+              <MenuRadioItemIndicator />
+            </MenuRadioItem>
           ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

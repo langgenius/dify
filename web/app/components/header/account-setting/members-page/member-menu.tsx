@@ -2,14 +2,8 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -84,8 +78,8 @@ const MemberMenu = ({
 
   return (
     <div>
-      <DropdownMenu>
-        <DropdownMenuTrigger
+      <Menu>
+        <MenuTrigger
           render={
             <IconButton
               size="lg"
@@ -96,32 +90,32 @@ const MemberMenu = ({
             </IconButton>
           }
         />
-        <DropdownMenuContent className="min-w-45 rounded-xl">
+        <MenuContent align="end" className="min-w-45 rounded-xl">
           {canAssignRoles && (
-            <DropdownMenuItem
+            <MenuItem
               className="system-sm-medium text-text-secondary"
               disabled={isSavingRoles}
               onClick={handleOpenAssignRoles}
             >
               {assignRolesLabel}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {showTransferOwnership && (
-            <DropdownMenuItem
+            <MenuItem
               className="system-sm-medium text-text-secondary"
               onClick={() => setTransferOpen(true)}
             >
               {t(($) => $['members.transferOwnership'], { ns: 'workspaceMembers' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-          {(canAssignRoles || showTransferOwnership) && canRemove && <DropdownMenuSeparator />}
+          {(canAssignRoles || showTransferOwnership) && canRemove && <MenuSeparator />}
           {canRemove && (
-            <DropdownMenuItem variant="destructive" className="system-sm-medium" onClick={onRemove}>
+            <MenuItem variant="destructive" className="system-sm-medium" onClick={onRemove}>
               {t(($) => $['members.removeFromTeam'], { ns: 'workspaceMembers' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       {roleSaveFailed && !assignModalOpen && (
         <p role="alert" className="mt-1 system-xs-regular text-text-destructive">
           {t(($) => $['api.actionFailed'], { ns: 'common' })}
