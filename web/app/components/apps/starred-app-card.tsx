@@ -1,6 +1,7 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppCardInteractionsProps } from './app-card/interactions'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -20,12 +21,18 @@ import { AppCardInteractions } from './app-card/interactions'
 
 type StarredAppCardProps = {
   app: AppPartial
+  onDelete: AppCardInteractionsProps['onDelete']
   stepByStepTourCardTarget?: string
   stepByStepTourCardHighlightPart?: string
 }
 
 export const StarredAppCard = memo(
-  ({ app, stepByStepTourCardTarget, stepByStepTourCardHighlightPart }: StarredAppCardProps) => {
+  ({
+    app,
+    onDelete,
+    stepByStepTourCardTarget,
+    stepByStepTourCardHighlightPart,
+  }: StarredAppCardProps) => {
     const { t } = useTranslation(['app', 'common', 'time'])
     const { data: currentUserId } = useSuspenseQuery({
       ...userProfileQueryOptions(),
@@ -103,7 +110,7 @@ export const StarredAppCard = memo(
             {cardContent}
           </button>
         ) : (
-          <AppCardInteractions app={app}>
+          <AppCardInteractions app={app} onDelete={onDelete}>
             <StudioListLink
               href={href}
               aria-labelledby={appNameId}

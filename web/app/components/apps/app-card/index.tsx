@@ -1,6 +1,7 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppCardInteractionsProps } from './interactions'
 import type { WorkflowOnlineUser } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -29,6 +30,7 @@ const EMPTY_ONLINE_USERS: WorkflowOnlineUser[] = []
 
 type AppCardProps = {
   app: AppPartial
+  onDelete: AppCardInteractionsProps['onDelete']
   onlineUsers?: WorkflowOnlineUser[]
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuOpen?: boolean
@@ -40,6 +42,7 @@ type AppCardProps = {
 export const AppCard = memo(
   ({
     app,
+    onDelete,
     onlineUsers = EMPTY_ONLINE_USERS,
     onOpenTagManagement,
     stepByStepTourActionMenuOpen = false,
@@ -198,6 +201,7 @@ export const AppCard = memo(
         ) : (
           <AppCardInteractions
             app={app}
+            onDelete={onDelete}
             stepByStepTourActionMenuOpen={stepByStepTourActionMenuOpen}
             stepByStepTourActionMenuHighlightPart={stepByStepTourActionMenuHighlightPart}
           >
