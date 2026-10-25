@@ -29,7 +29,8 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-from libs.flask_restx_compat import finalize_openapi_payload
+# Import after script path setup.
+from libs.flask_restx_compat import finalize_openapi_payload  # noqa: E402
 
 
 @dataclass(frozen=True)

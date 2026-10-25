@@ -3,12 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import ChatVariableButton from '../chat-variable-button'
 
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({
-    theme: 'light',
-  }),
-}))
-
 describe('ChatVariableButton', () => {
   it('opens the chat variable panel and closes the other workflow panels', async () => {
     const user = userEvent.setup()

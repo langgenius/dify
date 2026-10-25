@@ -6,10 +6,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -100,7 +100,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
               ? t(($) => $['apiBasedExtension.modal.editTitle'], { ns: 'common' })
               : t(($) => $['apiBasedExtension.modal.title'], { ns: 'common' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <Form<ApiBasedExtensionPayload> className="contents" onFormSubmit={handleSubmit}>
           <DialogBody className="grid gap-4">
@@ -137,7 +137,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
                   className="inline-flex w-fit items-center text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 >
                   <span
-                    className="mr-1 i-custom-vender-line-education-book-open-01 size-3"
+                    className="me-1 i-custom-vender-line-education-book-open-01 size-3"
                     aria-hidden="true"
                   />
                   {t(($) => $['apiBasedExtension.link'], { ns: 'common' })}

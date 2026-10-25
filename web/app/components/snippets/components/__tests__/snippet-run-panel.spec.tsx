@@ -7,15 +7,19 @@ import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import SnippetRunPanel from '../snippet-run-panel'
 
+const workflowHookMocks = vi.hoisted(() => ({
+  handleRun: vi.fn(),
+}))
+
 const renderWorkflowComponent = (
   ui: Parameters<typeof renderWithWorkflowStore>[0],
   options?: Parameters<typeof renderWithWorkflowStore>[1],
-) => renderWithWorkflowStore(<ReactFlowProvider>{ui}</ReactFlowProvider>, options)
-
-const workflowHookMocks = vi.hoisted(() => ({
-  handleCancelDebugAndPreviewPanel: vi.fn(),
-  handleRun: vi.fn(),
-}))
+) =>
+  renderWithWorkflowStore(<ReactFlowProvider>{ui}</ReactFlowProvider>, {
+    ...options,
+    // The snippet run stream comes from the snippet hooks through the hooks store.
+    hooksStoreProps: { handleRun: workflowHookMocks.handleRun },
+  })
 
 const toastMocks = vi.hoisted(() => ({
   success: vi.fn(),
@@ -31,18 +35,6 @@ vi.mock('copy-to-clipboard', () => ({
 
 vi.mock('@/app/notifications', () => ({
   toast: toastMocks,
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
-  useWorkflowInteractions: () => ({
-    handleCancelDebugAndPreviewPanel: workflowHookMocks.handleCancelDebugAndPreviewPanel,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({
-    handleRun: workflowHookMocks.handleRun,
-  }),
 }))
 
 vi.mock('@/app/components/workflow/run/result-text', () => ({
@@ -94,14 +86,14 @@ describe('SnippetRunPanel', () => {
 
   it('closes the panel from its close action', async () => {
     const user = userEvent.setup()
-    renderWorkflowComponent(<SnippetRunPanel fields={[]} />, {
-      initialStoreState: { previewPanelWidth: 480 },
+    const { store } = renderWorkflowComponent(<SnippetRunPanel fields={[]} />, {
+      initialStoreState: { previewPanelWidth: 480, showDebugAndPreviewPanel: true },
     })
 
     const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     await user.click(closeButton)
 
-    expect(workflowHookMocks.handleCancelDebugAndPreviewPanel).toHaveBeenCalledOnce()
+    expect(store.getState().showDebugAndPreviewPanel).toBe(false)
   })
 
   it('disables result tabs until a workflow run is available', async () => {

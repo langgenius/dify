@@ -1,252 +1,196 @@
-import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ReactFlowInstance } from 'reactflow'
 import type { LLMNodeType } from '../types'
-import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
-import type { PanelProps } from '@/types/workflow'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { act, screen, waitFor } from '@testing-library/react'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useNodes, useReactFlow } from 'reactflow'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
-import { BlockEnum } from '../../../types'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createDeferred } from '@/test/deferred'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import Panel from '../panel'
 
-const providerSummaryFixture = {
-  provider: 'openai',
-  plugin_id: 'langgenius/openai',
-  label: { en_US: 'OpenAI' },
-  configurate_methods: ['predefined-model'],
-  supported_model_types: ['llm'],
-  preferred_provider_type: 'custom',
-  is_configured: true,
-  system_configuration: { enabled: false },
-  custom_configuration: {
-    status: 'active',
-    available_credentials: [],
-    current_credential_usable: true,
-    has_custom_models: false,
-  },
-} satisfies ModelProviderSummaryResponse
+const getParameterRules = vi.fn()
+const rules = {
+  data: [
+    {
+      name: 'temperature',
+      label: { en_US: 'Temperature' },
+      type: 'float',
+      default: 0.7,
+      min: 0,
+      max: 2,
+    },
+  ],
+}
 
-const mockUseConfig = vi.fn()
-const mockFetchAndMergeValidCompletionParams = vi.mocked(fetchAndMergeValidCompletionParams)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.modelProviders.byProvider.models.parameterRules.get': (input) =>
+        getParameterRules(input),
+    }),
+  }
+})
+vi.mock('@/app/notifications', () => ({ toast: { warning: vi.fn(), error: vi.fn() } }))
 
-vi.mock('../use-config', () => ({
-  default: (...args: unknown[]) => mockUseConfig(...args),
-}))
-
-vi.mock('@/utils/completion-params', () => ({
-  fetchAndMergeValidCompletionParams: vi.fn().mockResolvedValue({
-    params: {},
-    removedDetails: {},
-  }),
-}))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: ({ modelSelectorReadonly, readonly, setModel }: ModelParameterModalProps) => (
-      <div>
-        <div
-          data-testid="model-parameter-modal"
-          data-model-selector-readonly={modelSelectorReadonly}
-          data-readonly={readonly}
-        />
-        <button
-          type="button"
-          disabled={modelSelectorReadonly || readonly}
-          onClick={() => setModel({ provider: 'anthropic', modelId: 'claude-3-5-sonnet' })}
-        >
-          Select direct model
-        </button>
-      </div>
-    ),
-  }),
-)
-
-vi.mock('../../_base/components/variable/var-reference-picker', () => ({
-  default: () => null,
-}))
-
-vi.mock('../components/config-prompt', () => ({
-  default: () => null,
-}))
-
-vi.mock('../components/panel-memory-section', () => ({
-  default: () => null,
-}))
-
-vi.mock('../components/panel-output-section', () => ({
-  default: () => null,
-}))
-
-vi.mock('../components/reasoning-format-config', () => ({
-  default: () => null,
-}))
-
-type MockUseConfigReturn = ReturnType<typeof mockUseConfig>
-
-const baseNodeData: LLMNodeType = {
+const createData = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   type: BlockEnum.LLM,
   title: 'LLM',
   desc: '',
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: 'chat' as const,
-    completion_params: {},
+    mode: 'chat',
+    completion_params: { temperature: 0.7 },
   },
   prompt_template: [],
-  context: {
-    enabled: false,
-    variable_selector: [],
-  },
-  vision: {
-    enabled: false,
-  },
-}
-
-const panelProps = {} as PanelProps
-
-const buildUseConfigResult = (overrides?: Partial<MockUseConfigReturn>) => ({
-  readOnly: false,
-  inputs: baseNodeData,
-  model: baseNodeData.model,
-  environmentVariables: [],
-  isEnvironmentModelSource: false,
-  isChatModel: true,
-  isChatflow: true,
-  isCompletionModel: false,
-  shouldShowContextTip: false,
-  isVisionModel: false,
-  handleModelChanged: vi.fn(),
-  handleModelSourceChange: vi.fn(),
-  handleModelSelectorChange: vi.fn(),
-  hasSetBlockStatus: false,
-  handleCompletionParamsChange: vi.fn(),
-  handleContextVarChange: vi.fn(),
-  filterInputVar: vi.fn(),
-  filterVar: vi.fn(),
-  availableVars: [],
-  availableNodesWithParent: [],
-  isShowVars: false,
-  handlePromptChange: vi.fn(),
-  handleAddEmptyVariable: vi.fn(),
-  handleAddVariable: vi.fn(),
-  handleVarListChange: vi.fn(),
-  handleVarNameChange: vi.fn(),
-  handleSyeQueryChange: vi.fn(),
-  handleMemoryChange: vi.fn(),
-  handleVisionResolutionEnabledChange: vi.fn(),
-  handleVisionResolutionChange: vi.fn(),
-  isModelSupportStructuredOutput: false,
-  structuredOutputCollapsed: false,
-  setStructuredOutputCollapsed: vi.fn(),
-  handleStructureOutputEnableChange: vi.fn(),
-  handleStructureOutputChange: vi.fn(),
-  filterJinja2InputVar: vi.fn(),
-  handleReasoningFormatChange: vi.fn(),
+  context: { enabled: false, variable_selector: [] },
+  vision: { enabled: false },
   ...overrides,
 })
-
-let panelQueryClient = createConsoleQueryWrapper().queryClient
-
-const renderPanelElement = (data?: Partial<LLMNodeType>) => (
-  <QueryClientProvider client={panelQueryClient}>
-    <Panel id="llm-node" data={{ ...baseNodeData, ...data }} panelProps={panelProps} />
-  </QueryClientProvider>
-)
-
-const renderPanel = (data?: Partial<LLMNodeType>, resourceKind?: EditorResource['kind']) => {
-  panelQueryClient = createConsoleQueryWrapper().queryClient
-  panelQueryClient.setQueryData(
-    consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
-    {
-      data: [
-        {
-          ...providerSummaryFixture,
-          ...{ provider: 'openai' },
-        } satisfies ModelProviderSummaryResponse,
-      ],
-      plugins: {},
-    },
-  )
-  return renderWorkflowFlowComponent(renderPanelElement(data), {
-    resource:
-      resourceKind === 'snippet'
-        ? { kind: 'snippet', snippetId: 'test-snippet' }
-        : resourceKind === 'knowledge-pipeline'
-          ? { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline' }
-          : { kind: 'app', appId: 'test-app', mode: 'workflow' },
-  })
+const sharedModel: EnvironmentVariable = {
+  id: 'env-llm',
+  name: 'for_summarize',
+  value_type: 'llm',
+  description: '',
+  value: { provider: 'anthropic', name: 'claude-3-5-sonnet', mode: 'chat' },
 }
 
-describe('LLM Panel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseConfig.mockReturnValue(buildUseConfigResult())
-  })
-
-  afterEach(() => panelQueryClient.clear())
-
-  describe('Model Warning Dot', () => {
-    it('should not show the model warning dot when the node only has a connection checklist issue', () => {
-      renderPanel()
-
-      const modelField = screen.getByText('workflowModels.nodes.llm.model').parentElement
-      expect(modelField?.querySelector('.bg-text-warning-secondary')).not.toBeInTheDocument()
-    })
-
-    it('should show the model warning dot when the model is not configured', () => {
-      mockUseConfig.mockReturnValue(
-        buildUseConfigResult({
-          model: {
-            ...baseNodeData.model,
-            provider: '',
-            name: '',
-          },
-          inputs: {
-            ...baseNodeData,
-            model: {
-              ...baseNodeData.model,
-              provider: '',
-              name: '',
-            },
-          },
+const renderPanel = ({
+  data = createData(),
+  resource = { kind: 'app', appId: 'test-app', mode: 'workflow' },
+  environmentVariables = [sharedModel],
+}: {
+  data?: LLMNodeType
+  resource?: EditorResource
+  environmentVariables?: EnvironmentVariable[]
+} = {}) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'gpt-4o',
+          label: { en_US: 'GPT-4o' },
+          model_properties: { mode: 'chat' },
         }),
-      )
-
-      renderPanel({
-        model: {
-          ...baseNodeData.model,
-          provider: '',
-          name: '',
-        },
-      })
-
-      const modelField = screen.getByText('workflowModels.nodes.llm.model').parentElement
-      expect(modelField?.querySelector('.bg-text-warning-secondary')).toBeInTheDocument()
-    })
+      ],
+    }),
+    createModelCatalogFixture({
+      provider: 'anthropic',
+      label: { en_US: 'Anthropic' },
+      models: [
+        createCatalogModelFixture({
+          model: 'claude-3-5-sonnet',
+          label: { en_US: 'Claude 3.5 Sonnet' },
+          model_properties: { mode: 'chat' },
+        }),
+      ],
+    }),
+  ])
+  queryClient.setQueryDefaults(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
+    { initialData: rules },
+  )
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
   })
-
-  it('switches from direct model input to an environment reference source', async () => {
-    const user = userEvent.setup()
-    const handleModelSourceChange = vi.fn()
-    mockUseConfig.mockReturnValue(buildUseConfigResult({ handleModelSourceChange }))
-
-    renderPanel()
-
-    await user.click(
-      screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.variable' }),
+  let flow: ReactFlowInstance<LLMNodeType>
+  function NodePanel() {
+    flow = useReactFlow<LLMNodeType>()
+    const node = useNodes<LLMNodeType>().find((node) => node.id === 'llm-node')
+    if (!node) return null
+    return (
+      <Panel
+        id={node.id}
+        data={node.data}
+        panelProps={{
+          getInputVars: () => [],
+          toVarInputs: () => [],
+          runInputData: {},
+          runInputDataRef: { current: {} },
+          setRunInputData: () => {},
+          runResult: null,
+        }}
+      />
     )
-    expect(handleModelSourceChange).toHaveBeenCalledWith(true)
+  }
+  const render = createNuqsTestRenderer((ui) =>
+    renderWorkflowFlowComponent(<EventEmitterContextProvider>{ui}</EventEmitterContextProvider>, {
+      queryClient,
+      resource,
+      nodes: [createNode({ id: 'llm-node', data })],
+      initialStoreState: { environmentVariables },
+    }),
+  )
+  return { ...render(<NodePanel />), getNodeData: () => flow.getNode('llm-node')!.data }
+}
+
+const chooseDirectModel = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: /^GPT-4o/ }))
+  const picker = within(
+    await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+  )
+  await user.click(picker.getByRole('button', { name: /^Claude 3.5 Sonnet/ }))
+  await waitFor(() => expect(getParameterRules).toHaveBeenCalledOnce())
+}
+const chooseEnvironmentModel = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('combobox', { name: 'workflowModels.nodes.llm.model' }))
+  await user.click(await screen.findByRole('option', { name: 'for_summarize' }))
+  await waitFor(() => expect(getParameterRules).toHaveBeenCalledOnce())
+}
+
+beforeEach(() => {
+  getParameterRules.mockReset().mockResolvedValue(rules)
+})
+
+describe('LLM Panel', () => {
+  it('offers model selection and disables parameter settings for an unconfigured model', async () => {
+    renderPanel({
+      data: createData({ model: { provider: '', name: '', mode: 'chat', completion_params: {} } }),
+    })
+    expect(
+      await screen.findByRole('button', { name: 'plugin.detailPanel.configureModel' }),
+    ).toBeEnabled()
+    expect(screen.getByRole('button', { name: /modelProvider.modelSettings/ })).toBeDisabled()
   })
 
-  it('does not offer an environment model source in snippet flows', () => {
-    renderPanel(undefined, 'snippet')
+  it('switches from direct input to an environment model reference', async () => {
+    const user = userEvent.setup()
+    const { getNodeData } = renderPanel()
+    await user.click(
+      await screen.findByRole('radio', { name: 'workflow.nodes.common.typeSwitch.variable' }),
+    )
+    expect(
+      screen.getByRole('combobox', { name: 'workflowModels.nodes.llm.model' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })).toBeDisabled()
+    expect(getNodeData().model_selector).toEqual([])
+  })
 
+  it('does not offer an environment model source in snippet flows', async () => {
+    renderPanel({ resource: { kind: 'snippet', snippetId: 'test-snippet' } })
+    expect(await screen.findByRole('button', { name: /^GPT-4o/ })).toBeEnabled()
     expect(
       screen.queryByRole('radio', { name: 'workflow.nodes.common.typeSwitch.variable' }),
     ).not.toBeInTheDocument()
@@ -255,218 +199,114 @@ describe('LLM Panel', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('allows a pasted environment-bound snippet node to recover to a direct model', async () => {
+  it('recovers a pasted environment-bound snippet node to a direct model', async () => {
     const user = userEvent.setup()
-    const handleModelSourceChange = vi.fn()
-    mockUseConfig.mockReturnValue(
-      buildUseConfigResult({
-        inputs: { ...baseNodeData, model_selector: ['env', 'shared_model'] },
-        isEnvironmentModelSource: true,
-        handleModelSourceChange,
-      }),
+    const { getNodeData } = renderPanel({
+      data: createData({ model_selector: ['env', 'missing_model'] }),
+      resource: { kind: 'snippet', snippetId: 'test-snippet' },
+      environmentVariables: [],
+    })
+    await user.click(
+      await screen.findByRole('radio', { name: 'workflow.nodes.common.typeSwitch.input' }),
     )
-
-    renderPanel({ model_selector: ['env', 'shared_model'] }, 'snippet')
-    await user.click(screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.input' }))
-
-    expect(handleModelSourceChange).toHaveBeenCalledWith(false)
+    expect(screen.getByRole('button', { name: /^GPT-4o/ })).toBeEnabled()
+    expect(getNodeData().model_selector).toBeUndefined()
   })
 
   it('lists only LLM environment variables and binds the selected reference', async () => {
     const user = userEvent.setup()
-    const handleModelSelectorChange = vi.fn()
-    mockUseConfig.mockReturnValue(
-      buildUseConfigResult({
-        inputs: {
-          ...baseNodeData,
-          model_selector: [],
+    const { getNodeData } = renderPanel({
+      data: createData({ model_selector: [] }),
+      environmentVariables: [
+        sharedModel,
+        {
+          id: 'env-string',
+          name: 'API_KEY',
+          value_type: 'string',
+          value: 'secret',
+          description: '',
         },
-        isEnvironmentModelSource: true,
-        environmentVariables: [
-          {
-            id: 'env-llm',
-            name: 'for_summarize',
-            value_type: 'llm',
-            value: {
-              provider: 'openai',
-              name: 'gpt-4o',
-              mode: 'chat' as const,
-            },
-            description: '',
-          },
-          {
-            id: 'env-string',
-            name: 'API_KEY',
-            value_type: 'string',
-            value: 'secret',
-            description: '',
-          },
-        ],
-        handleModelSelectorChange,
-      }),
-    )
-
-    renderPanel({ model_selector: [] })
-
-    expect(screen.getByRole('button', { name: 'Select direct model' })).toBeDisabled()
-    await user.click(screen.getByText('workflow.nodes.common.typeSwitch.variable'))
-    expect(screen.getByText('for_summarize')).toBeInTheDocument()
-    expect(screen.queryByText('API_KEY')).not.toBeInTheDocument()
-
-    await user.click(screen.getByText('for_summarize'))
-    await waitFor(() => {
-      expect(handleModelSelectorChange).toHaveBeenCalledWith(['env', 'for_summarize'], {})
+      ],
     })
+    await user.click(
+      await screen.findByRole('combobox', { name: 'workflowModels.nodes.llm.model' }),
+    )
+    expect(screen.queryByRole('option', { name: 'API_KEY' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: 'for_summarize' }))
+    expect(await screen.findByRole('button', { name: /^Claude 3.5 Sonnet/ })).toBeDisabled()
+    expect(getNodeData().model_selector).toEqual(['env', 'for_summarize'])
+    expect(getNodeData().model.completion_params).toEqual({ temperature: 0.7 })
   })
 
-  it('does not apply stale model parameters after switching back to direct input', async () => {
+  it('ignores a pending environment model selection after returning to direct input', async () => {
     const user = userEvent.setup()
-    let resolveParameters!: (value: {
-      params: Record<string, never>
-      removedDetails: Record<string, never>
-    }) => void
-    mockFetchAndMergeValidCompletionParams.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveParameters = resolve
-      }),
-    )
-    const handleModelSelectorChange = vi.fn()
-    const handleModelSourceChange = vi.fn()
-    const handleCompletionParamsChange = vi.fn()
-    mockUseConfig.mockReturnValue(
-      buildUseConfigResult({
-        inputs: { ...baseNodeData, model_selector: [] },
-        isEnvironmentModelSource: true,
-        environmentVariables: [
-          {
-            id: 'env-llm',
-            name: 'for_summarize',
-            value_type: 'llm',
-            value: { provider: 'openai', name: 'gpt-4o', mode: 'chat' as const },
-            description: '',
-          },
-        ],
-        handleModelSelectorChange,
-        handleModelSourceChange,
-        handleCompletionParamsChange,
-      }),
-    )
-
-    renderPanel({ model_selector: [] })
-    await user.click(screen.getByText('workflow.nodes.common.typeSwitch.variable'))
-    await user.click(screen.getByText('for_summarize'))
-    expect(handleModelSelectorChange).not.toHaveBeenCalled()
-
+    const pending = createDeferred<typeof rules>()
+    getParameterRules.mockReturnValueOnce(pending.promise)
+    const { getNodeData } = renderPanel({ data: createData({ model_selector: [] }) })
+    await chooseEnvironmentModel(user)
     await user.click(screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.input' }))
-    await act(async () => resolveParameters({ params: {}, removedDetails: {} }))
-
-    await waitFor(() => {
-      expect(handleModelSourceChange).toHaveBeenCalledWith(false)
+    await act(async () => {
+      pending.resolve(rules)
+      await pending.promise
     })
-    expect(handleCompletionParamsChange).not.toHaveBeenCalled()
-    expect(handleModelSelectorChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /^GPT-4o/ })).toBeEnabled()
+    expect(getNodeData().model_selector).toBeUndefined()
+    expect(getNodeData().model).toEqual(createData().model)
   })
 
-  it('does not overwrite parameters edited while a model rules request is in flight', async () => {
+  it('preserves parameter edits made while another model rules request is pending', async () => {
     const user = userEvent.setup()
-    let resolveParameters!: (value: {
-      params: Record<string, number>
-      removedDetails: Record<string, never>
-    }) => void
-    mockFetchAndMergeValidCompletionParams.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveParameters = resolve
-      }),
-    )
-    const handleModelChanged = vi.fn()
-    const handleCompletionParamsChange = vi.fn()
-    mockUseConfig.mockReturnValue(
-      buildUseConfigResult({
-        inputs: {
-          ...baseNodeData,
-          model: { ...baseNodeData.model, completion_params: { temperature: 0.7 } },
-        },
-        handleModelChanged,
-        handleCompletionParamsChange,
-      }),
-    )
-    const rendered = renderPanel()
-
-    await user.click(screen.getByRole('button', { name: 'Select direct model' }))
-    mockUseConfig.mockReturnValue(
-      buildUseConfigResult({
-        inputs: {
-          ...baseNodeData,
-          model: {
-            ...baseNodeData.model,
-            completion_params: { temperature: 0.9 },
-          },
-        },
-        model: {
-          ...baseNodeData.model,
-          completion_params: { temperature: 0.9 },
-        },
-        handleModelChanged,
-        handleCompletionParamsChange,
-      }),
-    )
-    rendered.rerender(renderPanelElement())
-    await act(async () => resolveParameters({ params: { temperature: 0.7 }, removedDetails: {} }))
-
-    await waitFor(() => expect(mockFetchAndMergeValidCompletionParams).toHaveBeenCalledTimes(1))
-    expect(handleModelChanged).not.toHaveBeenCalled()
-    expect(handleCompletionParamsChange).not.toHaveBeenCalled()
+    const pending = createDeferred<typeof rules>()
+    getParameterRules.mockReturnValueOnce(pending.promise)
+    const { getNodeData } = renderPanel()
+    await chooseDirectModel(user)
+    await user.click(screen.getByRole('button', { name: /modelProvider.modelSettings/ }))
+    const temperature = screen.getByRole('spinbutton', { name: 'Temperature' })
+    await user.clear(temperature)
+    await user.type(temperature, '0.9')
+    await user.tab()
+    await user.keyboard('{Escape}')
+    await act(async () => {
+      pending.resolve(rules)
+      await pending.promise
+    })
+    expect(screen.getByRole('button', { name: /^GPT-4o/ })).toBeEnabled()
+    expect(getNodeData().model).toEqual({
+      ...createData().model,
+      completion_params: { temperature: 0.9 },
+    })
   })
 
-  it('commits a direct model and its filtered parameters together', async () => {
+  it('commits the direct model and its supported parameters together', async () => {
     const user = userEvent.setup()
-    let resolveParameters!: (value: {
-      params: Record<string, number>
-      removedDetails: Record<string, never>
-    }) => void
-    mockFetchAndMergeValidCompletionParams.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveParameters = resolve
-      }),
-    )
-    const handleModelChanged = vi.fn()
-    const handleCompletionParamsChange = vi.fn()
-    mockUseConfig.mockReturnValue(
-      buildUseConfigResult({ handleModelChanged, handleCompletionParamsChange }),
-    )
-    const rendered = renderPanel()
-
-    await user.click(screen.getByRole('button', { name: 'Select direct model' }))
-    expect(handleModelChanged).not.toHaveBeenCalled()
-
-    rendered.rerender(renderPanelElement())
-    await act(async () => resolveParameters({ params: { temperature: 0.7 }, removedDetails: {} }))
-
-    await waitFor(() => {
-      expect(handleModelChanged).toHaveBeenCalledWith(
-        { provider: 'anthropic', modelId: 'claude-3-5-sonnet' },
-        { temperature: 0.7 },
-      )
+    const pending = createDeferred<typeof rules>()
+    getParameterRules.mockReturnValueOnce(pending.promise)
+    const data = createData()
+    data.model.completion_params.top_p = 0.9
+    const { getNodeData } = renderPanel({ data })
+    await chooseDirectModel(user)
+    expect(getNodeData().model).toEqual(data.model)
+    await act(async () => {
+      pending.resolve(rules)
+      await pending.promise
     })
-    expect(handleCompletionParamsChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /^Claude 3.5 Sonnet/ })).toBeEnabled()
+    expect(getNodeData().model).toEqual({
+      provider: 'anthropic',
+      name: 'claude-3-5-sonnet',
+      mode: 'chat',
+      completion_params: { temperature: 0.7 },
+    })
+    expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('top_p'))
   })
 
-  it('preserves completion parameters when model rules cannot be fetched', async () => {
+  it('preserves the current model and parameters when the rules request fails', async () => {
     const user = userEvent.setup()
-    const handleModelChanged = vi.fn()
-    const handleCompletionParamsChange = vi.fn()
-    mockFetchAndMergeValidCompletionParams.mockRejectedValueOnce(new Error('network error'))
-    mockUseConfig.mockReturnValue(
-      buildUseConfigResult({ handleCompletionParamsChange, handleModelChanged }),
-    )
-    renderPanel()
-
-    await user.click(screen.getByRole('button', { name: 'Select direct model' }))
-
-    await waitFor(() => {
-      expect(mockFetchAndMergeValidCompletionParams).toHaveBeenCalledTimes(1)
-    })
-    expect(handleModelChanged).not.toHaveBeenCalled()
-    expect(handleCompletionParamsChange).not.toHaveBeenCalled()
+    getParameterRules.mockRejectedValueOnce(new Error('network error'))
+    const { getNodeData } = renderPanel()
+    await chooseDirectModel(user)
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('common.error'))
+    expect(screen.getByRole('button', { name: /^GPT-4o/ })).toBeEnabled()
+    expect(getNodeData().model).toEqual(createData().model)
   })
 })

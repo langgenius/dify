@@ -120,6 +120,7 @@ describe('human-input/delivery-method/method-item', () => {
   })
 
   it('should toggle and delete a webapp delivery method', async () => {
+    const user = userEvent.setup()
     const handleChange = vi.fn()
     const handleDelete = vi.fn()
 
@@ -136,7 +137,7 @@ describe('human-input/delivery-method/method-item', () => {
       />,
     )
 
-    await userEvent.setup().click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch'))
     expect(handleChange).toHaveBeenCalledWith({
       id: 'webapp-1',
       type: DeliveryMethodType.WebApp,
@@ -145,11 +146,12 @@ describe('human-input/delivery-method/method-item', () => {
 
     const deleteButton = screen.getByRole('button', { name: 'common.operation.remove' })
 
-    await userEvent.setup().click(deleteButton)
+    await user.click(deleteButton)
     expect(handleDelete).toHaveBeenCalledWith(DeliveryMethodType.WebApp)
   })
 
   it('should open configure and test flows for an email method with config', async () => {
+    const user = userEvent.setup()
     const handleChange = vi.fn()
     const handleDelete = vi.fn()
 
@@ -175,24 +177,24 @@ describe('human-input/delivery-method/method-item', () => {
 
     const testButton = screen.getByRole('button', { name: /emailSender.testSendTipInDebugMode/ })
 
-    await userEvent.setup().click(testButton)
+    await user.click(testButton)
     expect(screen.getByTestId('test-email-sender'))!.toBeInTheDocument()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'close-test-sender' }))
+    await user.click(screen.getByRole('button', { name: 'close-test-sender' }))
     expect(screen.queryByTestId('test-email-sender')).not.toBeInTheDocument()
 
-    await userEvent.setup().click(testButton)
-    await userEvent.setup().click(screen.getByRole('button', { name: 'jump-to-config' }))
+    await user.click(testButton)
+    await user.click(screen.getByRole('button', { name: 'jump-to-config' }))
     expect(screen.queryByTestId('test-email-sender')).not.toBeInTheDocument()
     expect(screen.getByTestId('email-configure-modal'))!.toBeInTheDocument()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'close-email-config' }))
+    await user.click(screen.getByRole('button', { name: 'close-email-config' }))
     expect(screen.queryByTestId('email-configure-modal')).not.toBeInTheDocument()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'workflow.common.configure' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.configure' }))
     expect(screen.getByTestId('email-configure-modal'))!.toBeInTheDocument()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'confirm-email-config' }))
+    await user.click(screen.getByRole('button', { name: 'confirm-email-config' }))
     expect(handleChange).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'email-1',
@@ -203,11 +205,12 @@ describe('human-input/delivery-method/method-item', () => {
       }),
     )
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.remove' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     expect(handleDelete).toHaveBeenCalledWith(DeliveryMethodType.Email)
   })
 
   it('should open email config from the unconfigured button and from the test sender jump action', async () => {
+    const user = userEvent.setup()
     render(
       <DeliveryMethodItem
         nodeId="node-1"
@@ -225,18 +228,19 @@ describe('human-input/delivery-method/method-item', () => {
       />,
     )
 
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: /workflowHumanInput.nodes.humanInput.deliveryMethod.notConfigured/i,
       }),
     )
     expect(screen.getByTestId('email-configure-modal'))!.toBeInTheDocument()
 
-    await userEvent.setup().click(screen.getByRole('button', { name: 'close-email-config' }))
+    await user.click(screen.getByRole('button', { name: 'close-email-config' }))
     expect(screen.queryByTestId('email-configure-modal')).not.toBeInTheDocument()
   })
 
   it('should keep actions disabled in readonly mode', async () => {
+    const user = userEvent.setup()
     const handleChange = vi.fn()
 
     render(
@@ -254,7 +258,7 @@ describe('human-input/delivery-method/method-item', () => {
       />,
     )
 
-    await userEvent.setup().click(screen.getByRole('switch'))
+    await user.click(screen.getByRole('switch'))
     expect(handleChange).not.toHaveBeenCalled()
     expect(
       screen.queryByRole('button', { name: 'common.operation.remove' }),

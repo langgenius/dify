@@ -4,7 +4,6 @@ import { ProcessMode } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RuleDetail from '../rule-detail'
 
-vi.mock('@/utils', () => ({ getTextWidthWithCanvas: (text: string) => text.length * 8 }))
 const rule: ProcessRuleResponse = {
   limits: { indexing_max_segmentation_tokens_length: 4000 },
   mode: ProcessMode.general,

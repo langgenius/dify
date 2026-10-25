@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import AudioPlayer from '../AudioPlayer'
 
-vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
 const decode = vi.fn()
 const close = vi.fn()
 const drawBar = vi.fn()

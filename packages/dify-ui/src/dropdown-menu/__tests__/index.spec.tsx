@@ -161,7 +161,7 @@ describe('dropdown-menu wrapper', () => {
       const screen = await renderWithSafeViewport(
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
-          <DropdownMenuContent placement="top-start" sideOffset={12} alignOffset={-3}>
+          <DropdownMenuContent side="top" align="start" sideOffset={12} alignOffset={-3}>
             <DropdownMenuItem>Custom content</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>,
@@ -197,7 +197,7 @@ describe('dropdown-menu wrapper', () => {
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
           <DropdownMenuPortal>
-            <DropdownMenuPositioner data-testid="custom-positioner" placement="top-start">
+            <DropdownMenuPositioner data-testid="custom-positioner" side="top" align="start">
               <DropdownMenuPopup>
                 <DropdownMenuItem>Anatomy action</DropdownMenuItem>
               </DropdownMenuPopup>
@@ -216,7 +216,7 @@ describe('dropdown-menu wrapper', () => {
   })
 
   describe('DropdownMenuSubContent', () => {
-    it('should place sub-content inline-end-start when placement is omitted', async () => {
+    it('should place sub-content inline-end-start when side and align are omitted', async () => {
       const screen = await renderWithSafeViewport(
         <DropdownMenu open>
           <DropdownMenuTrigger aria-label="menu trigger">Open</DropdownMenuTrigger>
@@ -257,7 +257,8 @@ describe('dropdown-menu wrapper', () => {
             <DropdownMenuSub open>
               <DropdownMenuSubTrigger>More actions</DropdownMenuSubTrigger>
               <DropdownMenuSubContent
-                placement="right-end"
+                side="right"
+                align="end"
                 sideOffset={6}
                 alignOffset={2}
                 id="dropdown-sub-popup"

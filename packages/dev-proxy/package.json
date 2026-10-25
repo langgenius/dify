@@ -21,7 +21,7 @@
     "build": "vp pack",
     "prepare": "pnpm run build",
     "test": "vp test",
-    "type-check": "tsc",
+    "type-check": "tsrs --noEmit",
     "prepublish": "pnpm run build"
   },
   "dependencies": {
@@ -34,17 +34,18 @@
     "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
+    "tsrs": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "24.21.0",
+      "version": "24.22.1",
       "onFail": "download"
     }
   },
   "engines": {
-    "node": "^24.20.0"
+    "node": "^24.22.1"
   }
 }

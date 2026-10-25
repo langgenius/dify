@@ -11,6 +11,7 @@ from machinery.context import RequestContext
 from models.model import AppMode
 from services.agent.errors import InvalidRosterAgentPackageError
 from services.agent.roster_package_entities import RosterAgentPackageExport
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppChange,
     AppCreationSettings,
@@ -21,7 +22,6 @@ from services.entities.app_entities import (
     AppPage,
     AppRecord,
     AppReference,
-    AppTraceSettings,
     CopyAppParams,
     CreateAppParams,
     ImportedAppPackage,
@@ -121,8 +121,6 @@ class ConsoleApps(Protocol):
 
     def get_trace(self, context: RequestContext, app_id: str) -> AppTraceSettings: ...
 
-    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None: ...
-
 
 class AppTransfers(Protocol):
     def download_import(self, url: str) -> AbstractContextManager[BinaryIO]: ...
@@ -171,10 +169,8 @@ class CreatorsPlatform(Protocol):
     def redirect_url(self, claim_code: str, oauth_code: str | None) -> str: ...
 
 
-class AppTraceProvider(Protocol):
-    def validate_provider(self, tracing_provider: str) -> None: ...
-
-    def require_provider_available(self, tracing_provider: str) -> None: ...
+class AppTracingSettings(Protocol):
+    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None: ...
 
 
 class AppLifecycle(Protocol):
@@ -203,7 +199,7 @@ class ConsoleAppService:
         access: ConsoleAppAccess,
         transfers: AppTransfers,
         creators: CreatorsPlatform,
-        tracing: AppTraceProvider,
+        tracing: AppTracingSettings,
         lifecycle: AppLifecycle,
     ) -> None:
         self._apps = apps
@@ -287,22 +283,34 @@ class ConsoleAppService:
         self._access.require_import(context, "dsl")
         result = self._transfers.import_dsl(context, params, package=package)
         self._set_import_permissions(context, result, created=result.app_created)
-        if result.app_id:
-            self._access.initialize_import_access(result.app_id)
+        self._initialize_import_access(result, created=result.app_created)
         return result
 
     def confirm_import(self, context: RequestContext, import_id: str) -> Import:
         result, created = self._transfers.confirm_import(context, import_id)
         self._set_import_permissions(context, result, created=created)
+        self._initialize_import_access(result, created=created)
         return result
 
     def _set_import_permissions(self, context: RequestContext, result: Import, *, created: bool) -> None:
+        if app_id := self._created_app_id(result, created=created):
+            result.permission_keys = self._access.imported_permissions(context, app_id)
+
+    def _initialize_import_access(self, result: Import, *, created: bool) -> None:
+        # Only newly created apps get the default access mode; overwrites keep the target app's setting.
+        if app_id := self._created_app_id(result, created=created):
+            self._access.initialize_import_access(app_id)
+
+    @staticmethod
+    def _created_app_id(result: Import, *, created: bool) -> str | None:
+        """The app id when the import completed by creating a new app; None for overwrites and unfinished imports."""
         if (
             created
             and result.app_id
             and result.status in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}
         ):
-            result.permission_keys = self._access.imported_permissions(context, result.app_id)
+            return result.app_id
+        return None
 
     def get_reference(self, context: RequestContext, app_id: str) -> AppReference:
         """Admit an existing console app without retaining its database session."""
@@ -457,9 +465,4 @@ class ConsoleAppService:
 
     def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
         self._apps.get_reference(context, app_id)
-        if settings.tracing_provider is not None:
-            if settings.enabled:
-                self._tracing.require_provider_available(settings.tracing_provider)
-            else:
-                self._tracing.validate_provider(settings.tracing_provider)
-        self._apps.set_trace(context, app_id, settings)
+        self._tracing.set_trace(context, app_id, settings)

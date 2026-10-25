@@ -1,38 +1,33 @@
+import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store'
 import type { Node } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
 import { useReactFlow } from 'reactflow'
 import { createIterationNode, createNode } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import {
+  renderWorkflowFlowHook,
+  renderWorkflowHook,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ITERATION_PADDING } from '@/app/components/workflow/constants'
+import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useNodeIterationInteractions } from '../use-interactions'
 
-vi.mock('../../../hooks/use-nodes-meta-data', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-nodes-meta-data')>()
-
-  return {
-    ...actual,
-    useNodesMetaData: () => ({
-      nodesMap: {
-        [BlockEnum.Code]: {
-          defaultValue: {
-            title: 'Code',
-            desc: '',
-          },
-        },
-      },
-    }),
-  }
-})
-
-const renderInteractions = (nodes: Node[]) =>
-  renderWorkflowFlowHook(
+const renderInteractions = (nodes: Node[]) => {
+  const { result: catalog } = renderWorkflowHook(useWorkflowNodeCatalog)
+  return renderWorkflowFlowHook(
     () => ({
       ...useNodeIterationInteractions(),
       flow: useReactFlow(),
     }),
-    { nodes },
+    {
+      nodes,
+      // The catalog contains heterogeneous node validators, as it does in WorkflowMain.
+      hooksStoreProps: {
+        availableNodesMetaData: catalog.current as unknown as AvailableNodesMetaData,
+      },
+    },
   )
+}
 
 describe('useNodeIterationInteractions', () => {
   it('should restrict dragging to the iteration container padding', () => {

@@ -1,5 +1,5 @@
 import type { AppDetailSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type {
   EmbeddedWebAppRoute,
   WorkflowHiddenStartVariable,
@@ -9,18 +9,24 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import {
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  ScrollArea,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import { Suspense, use, useMemo, useRef, useState } from 'react'
+import { Suspense, use, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -103,7 +109,7 @@ const AsyncEmbeddedOptionContent = ({
 }: {
   option: Option
   iframeUrlPromise: Promise<string>
-  latestResolvedIframeUrlRef: MutableRefObject<string>
+  latestResolvedIframeUrlRef: RefObject<string>
 }) => {
   const iframeUrl = use(iframeUrlPromise)
   latestResolvedIframeUrlRef.current = iframeUrl
@@ -130,6 +136,7 @@ const EmbeddedContent = ({
     () => createWorkflowLaunchInitialValues(supportedHiddenInputs),
     [supportedHiddenInputs],
   )
+  const previewLabelId = useId()
   const [option, setOption] = useState<Option>('iframe')
   const [copiedOption, setCopiedOption] = useState<Option | null>(null)
   const [hiddenInputValues, setHiddenInputValues] = useState<
@@ -303,13 +310,17 @@ const EmbeddedContent = ({
                 )}
               >
                 <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
-                  <div className="shrink-0 grow system-sm-medium text-text-secondary">
+                  <div
+                    id={`${previewLabelId}-${v}`}
+                    className="min-w-0 flex-1 system-sm-medium wrap-break-word text-text-secondary"
+                  >
                     {t(($) => $[`${prefixEmbedded}.${v}`], { ns: 'appOverview' })}
                   </div>
                   <Tooltip>
                     <TooltipTrigger
                       render={
                         <IconButton
+                          className="shrink-0"
                           aria-label={
                             (copiedOption === v
                               ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
@@ -332,23 +343,36 @@ const EmbeddedContent = ({
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <div className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] w-full items-start justify-start gap-2 overflow-auto p-3">
-                  <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
-                    <pre className="select-text">
-                      {v === 'scripts' ? (
-                        scriptsContent
-                      ) : (
-                        <Suspense fallback={previewFallback}>
-                          <AsyncEmbeddedOptionContent
-                            option={v}
-                            iframeUrlPromise={previewIframeUrlPromise}
-                            latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
-                          />
-                        </Suspense>
-                      )}
-                    </pre>
-                  </div>
-                </div>
+                <ScrollArea className="relative w-full rounded-b-lg">
+                  <ScrollAreaViewport
+                    role="region"
+                    aria-labelledby={`${previewLabelId}-${v}`}
+                    tabIndex={0}
+                    className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] items-start justify-start gap-2 p-3"
+                  >
+                    <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
+                      <pre className="select-text">
+                        {v === 'scripts' ? (
+                          scriptsContent
+                        ) : (
+                          <Suspense fallback={previewFallback}>
+                            <AsyncEmbeddedOptionContent
+                              option={v}
+                              iframeUrlPromise={previewIframeUrlPromise}
+                              latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
+                            />
+                          </Suspense>
+                        )}
+                      </pre>
+                    </div>
+                  </ScrollAreaViewport>
+                  <ScrollAreaScrollbar orientation="vertical" className="right-0">
+                    <ScrollAreaThumb />
+                  </ScrollAreaScrollbar>
+                  <ScrollAreaScrollbar orientation="horizontal" className="bottom-0">
+                    <ScrollAreaThumb />
+                  </ScrollAreaScrollbar>
+                </ScrollArea>
               </div>
             </TabsPanel>
           )
@@ -374,7 +398,7 @@ export function EmbeddedDialogContent({
         <DialogDescription>
           {t(($) => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
         </DialogDescription>
-        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
       </DialogHeader>
       <DialogBody>
         <Suspense

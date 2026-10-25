@@ -7,11 +7,6 @@ const mocks = vi.hoisted(() => ({
   webAppCard: vi.fn(),
 }))
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock()
-})
-
 vi.mock('../deployed-environment-access-points/environment-service-api-card', () => ({
   EnvironmentServiceApiCard: (props: Record<string, unknown>) => {
     mocks.serviceApiCard(props)

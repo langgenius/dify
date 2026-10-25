@@ -66,6 +66,11 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
   `DialogBody` scrolls between the other two. A wrapper between the surface and its parts, such as
   a form, keeps the flex chain with `contents`. `DialogPopup` is the bare dialog element for a
   surface that places and dresses itself.
+  `DialogContent` and `AlertDialogContent` allow `transition-none`, including state variants,
+  without requiring custom popup composition.
+  `DialogHeaderCloseButton` is the optional standard close icon inside `DialogHeader`; the header
+  reserves inline-end space when it contains the button. Without it, the header keeps its normal
+  gutters. Use the unstyled `DialogClose` with `render` for footer actions and custom close controls.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
   It blocks outside-press dismissal but still closes on Escape; cancel that close in
   `onOpenChange` when the answer must be explicit. `AlertDialogHeader` holds the title and
@@ -84,8 +89,7 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
   touch or with assistive technology.
 
 Use a real `<button type="button">` for button-like triggers. If a Base UI trigger intentionally
-renders a non-button element, set `nativeButton={false}`. Let the primitive own placement and
-spacing unless its API documents a measured exception.
+renders a non-button element, set `nativeButton={false}`.
 
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
 [Infotip contract]: ../src/infotip/README.md

@@ -3,9 +3,9 @@ import type { PipelineTemplate } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DialogBody,
-  DialogCloseButton,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -102,7 +102,7 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
     >
       <DialogHeader>
         <DialogTitle>{t(($) => $.editPipelineInfo, { ns: 'datasetPipeline' })}</DialogTitle>
-        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
       </DialogHeader>
       <DialogBody className="flex flex-col gap-y-5">
         <div className="flex items-end gap-x-3 self-stretch">

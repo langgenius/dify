@@ -94,16 +94,18 @@ function renderVariables(props: Props[], hasContainer = true) {
 
 describe('WorkflowVariableBlockComponent', () => {
   it('requests a canvas jump to the referenced node while preserving zoom', async () => {
+    const user = userEvent.setup()
     renderVariables([
       { variables: ['node-1', 'output'], workflowNodesMap: nodeMap, availableVariables },
     ])
-    await userEvent.setup().click(await screen.findByText('output'))
+    await user.click(await screen.findByText('output'))
     await waitFor(() =>
       expect(setViewport).toHaveBeenCalledExactlyOnceWith({ x: 0, y: 140, zoom: 2 }),
     )
   })
 
   it('updates every rendered variable after a workflow node-map broadcast', async () => {
+    const user = userEvent.setup()
     const { editor } = renderVariables([
       { variables: ['node-1', 'output'], workflowNodesMap: nodeMap, availableVariables },
       {
@@ -133,23 +135,23 @@ describe('WorkflowVariableBlockComponent', () => {
     expect(screen.getByText('Renamed B')).toBeInTheDocument()
     expect(screen.queryByText('Node A')).not.toBeInTheDocument()
     expect(screen.queryByText('Node B')).not.toBeInTheDocument()
-    await userEvent
-      .setup()
-      .hover(screen.getByText('output').closest('[data-base-ui-tooltip-trigger]')!)
+    await user.hover(screen.getByText('output').closest('[data-base-ui-tooltip-trigger]')!)
     expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeInTheDocument()
   })
 
   it('shows an invalid variable warning when the referenced output is unavailable', async () => {
+    const user = userEvent.setup()
     renderVariables([
       { variables: ['node-1', 'missing'], workflowNodesMap: nodeMap, availableVariables },
     ])
-    await userEvent
-      .setup()
-      .hover((await screen.findByText('missing')).closest('[data-base-ui-tooltip-trigger]')!)
+    await user.hover(
+      (await screen.findByText('missing')).closest('[data-base-ui-tooltip-trigger]')!,
+    )
     expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeInTheDocument()
   })
 
   it('shows the nested path and computed type in the real preview', async () => {
+    const user = userEvent.setup()
     const getVarType = vi.fn(() => Type.number)
     renderVariables([
       {
@@ -159,7 +161,7 @@ describe('WorkflowVariableBlockComponent', () => {
         getVarType,
       },
     ])
-    await userEvent.setup().hover(await screen.findByText('field'))
+    await user.hover(await screen.findByText('field'))
     await waitFor(() =>
       expect(getVarType).toHaveBeenCalledWith({
         nodeId: 'node-1',
@@ -173,25 +175,28 @@ describe('WorkflowVariableBlockComponent', () => {
   it.each(['env', 'conversation', 'sys', 'rag'])(
     'renders a %s variable without a source node and does not jump to the canvas',
     async (namespace) => {
+      const user = userEvent.setup()
       const variables = namespace === 'rag' ? ['rag', 'shared', 'answer'] : [namespace, 'answer']
       renderVariables([{ variables, workflowNodesMap: {} }])
       const label = await screen.findByText(namespace === 'sys' ? 'sys.answer' : 'answer')
-      await userEvent.setup().click(label)
+      await user.click(label)
       expect(setViewport).not.toHaveBeenCalled()
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
     },
   )
 
   it('does not jump when the canvas container is absent', async () => {
+    const user = userEvent.setup()
     renderVariables(
       [{ variables: ['node-1', 'output'], workflowNodesMap: nodeMap, availableVariables }],
       false,
     )
-    await userEvent.setup().click(await screen.findByText('output'))
+    await user.click(await screen.findByText('output'))
     expect(setViewport).not.toHaveBeenCalled()
   })
 
   it('keeps the viewport finite when a source node has not been measured', async () => {
+    const user = userEvent.setup()
     renderVariables([
       {
         variables: ['node-1', 'output'],
@@ -201,7 +206,7 @@ describe('WorkflowVariableBlockComponent', () => {
         availableVariables,
       },
     ])
-    await userEvent.setup().click(await screen.findByText('output'))
+    await user.click(await screen.findByText('output'))
     await waitFor(() =>
       expect(setViewport).toHaveBeenCalledExactlyOnceWith({ x: 200, y: 240, zoom: 2 }),
     )

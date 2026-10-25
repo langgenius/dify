@@ -153,7 +153,7 @@ export type AgentTool = {
   credential_id?: string
 }
 
-export type ToolItem =
+type ToolItem =
   | {
       dataset: {
         enabled: boolean
@@ -275,6 +275,7 @@ export type ModelConfig = {
   model: Model
   dataset_configs: DatasetConfigs
   file_upload?: {
+    enabled?: boolean
     image: VisionSettings
   } & UploadFileSetting
   files?: VisionFile[]

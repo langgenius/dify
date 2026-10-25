@@ -93,8 +93,8 @@ class CreateRagPipelineDatasetApi(Resource):
                     db.session(),
                 )
             db.session.commit()
-        except services.errors.dataset.DatasetNameDuplicateError:
-            raise DatasetNameDuplicateError()
+        except services.errors.dataset.DatasetNameDuplicateError as caught_error:
+            raise DatasetNameDuplicateError() from caught_error
 
         if dify_config.RBAC_ENABLED and dataset_id is not None:
             enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(

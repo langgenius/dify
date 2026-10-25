@@ -32,7 +32,6 @@ import {
   usePluginAutoUpgradeSettings,
   usePluginTaskList,
   useRemoveFilteredInstalledPluginPageOnUnmount,
-  useVersionListOfPlugin,
 } from '../use-plugins'
 
 const { mockGet, mockGetMarketplace, mockPost, mockRequest } = vi.hoisted(() => ({
@@ -669,37 +668,6 @@ describe('use-plugins mutations', () => {
       expect(queryClient.getQueryData(queryKey)).toEqual(previousPermission)
     })
     await mutation
-  })
-})
-
-describe('useVersionListOfPlugin', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('does not fetch versions while disabled', () => {
-    const queryClient = createQueryClient()
-
-    renderHook(() => useVersionListOfPlugin('plugin-1', false), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    expect(mockGetMarketplace).not.toHaveBeenCalled()
-  })
-
-  it('fetches versions when enabled', async () => {
-    const queryClient = createQueryClient()
-    mockGetMarketplace.mockResolvedValue({ data: { versions: [] } })
-
-    renderHook(() => useVersionListOfPlugin('plugin-1'), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    await waitFor(() => {
-      expect(mockGetMarketplace).toHaveBeenCalledWith('/plugins/plugin-1/versions', {
-        params: { page: 1, page_size: 100 },
-      })
-    })
   })
 })
 

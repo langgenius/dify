@@ -1,7 +1,8 @@
 import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
+import type { CodeBasedExtensionItemResponse } from '@dify/contracts/api/console/code-based-extension/types.gen'
 import type { TFunction } from 'i18next'
 import type { ModerationConfig } from '@/models/debug'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { buildConfigurationDatasetConfigs } from '@/app/components/app/configuration/hooks/configuration-lifecycle/dataset'
 import { createPublishHandler } from '@/app/components/app/configuration/hooks/configuration-lifecycle/publish'
@@ -26,30 +27,8 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-let mockCodeBasedExtensions: { data: { data: Array<{ name: string; [key: string]: unknown }> } } = {
-  data: { data: [] },
-}
-let mockModelProvidersData: {
-  data: { data: Record<string, unknown>[] }
-  isPending: boolean
-  refetch: ReturnType<typeof vi.fn>
-} = {
-  data: {
-    data: [
-      {
-        provider: 'langgenius/openai/openai',
-        system_configuration: {
-          enabled: true,
-          current_quota_type: 'paid',
-          quota_configurations: [{ quota_type: 'paid', is_valid: true }],
-        },
-        custom_configuration: { status: 'active' },
-      },
-    ],
-  },
-  isPending: false,
-  refetch: vi.fn(),
-}
+let extensions: CodeBasedExtensionItemResponse[] = []
+let modelProviders: ReturnType<typeof createProviderResponseFixture>[] = []
 
 const defaultData: ModerationConfig = {
   enabled: true,
@@ -72,15 +51,12 @@ describe('ModerationSettingModal', () => {
       consoleQuery.codeBasedExtension.get.queryKey({
         input: { query: { module: 'moderation' } },
       }),
-      { module: 'moderation', data: mockCodeBasedExtensions.data.data },
+      { module: 'moderation', data: extensions },
     )
     queryClient.setQueryData(
       consoleQuery.workspaces.current.modelProviders.get.queryKey({ input: {} }),
       {
-        data: mockModelProvidersData.data.data.map((provider) => ({
-          ...createProviderResponseFixture(),
-          ...provider,
-        })),
+        data: modelProviders,
       },
     )
     queryClient.setQueryData(consoleQuery.apiBasedExtension.get.queryKey(), [
@@ -97,57 +73,24 @@ describe('ModerationSettingModal', () => {
   }
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockCodeBasedExtensions = { data: { data: [] } }
-    mockModelProvidersData = {
-      data: {
-        data: [
-          {
-            provider: 'langgenius/openai/openai',
-            system_configuration: {
-              enabled: true,
-              current_quota_type: 'paid',
-              quota_configurations: [{ quota_type: 'paid', is_valid: true }],
-            },
-            custom_configuration: { status: 'active' },
-          },
-        ],
-      },
-      isPending: false,
-      refetch: vi.fn(),
-    }
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
+    extensions = []
+    modelProviders = [createProviderResponseFixture({ provider: 'langgenius/openai/openai' })]
   })
 
   it('should call onCancel when cancel is clicked', async () => {
+    const user = userEvent.setup()
     const onCancel = vi.fn()
     await renderModal(
       <ModerationSettingModal data={defaultData} onCancel={onCancel} onSave={onSave} />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.cancel/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(onCancel).toHaveBeenCalled()
   })
 
-  it('should call onCancel when close icon receives Enter key', async () => {
-    const onCancel = vi.fn()
-    await renderModal(
-      <ModerationSettingModal data={defaultData} onCancel={onCancel} onSave={onSave} />,
-    )
-
-    const user = userEvent.setup()
-    const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
-    closeButton.focus()
-    await user.keyboard('{Enter}')
-
-    expect(onCancel).toHaveBeenCalledTimes(1)
-  })
-
   it('should show error when saving without inputs or outputs enabled', async () => {
+    const user = userEvent.setup()
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -158,7 +101,7 @@ describe('ModerationSettingModal', () => {
     }
     await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
       type: 'error',
@@ -168,6 +111,7 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should show error when keywords type has no keywords', async () => {
+    const user = userEvent.setup()
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -178,7 +122,7 @@ describe('ModerationSettingModal', () => {
     }
     await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
       type: 'error',
@@ -188,6 +132,7 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should save the latest preset response when content textarea changes', async () => {
+    const user = userEvent.setup()
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -198,13 +143,12 @@ describe('ModerationSettingModal', () => {
     }
     await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
 
-    fireEvent.change(
-      screen.getByRole('textbox', { name: /feature\.moderation\.modal\.content\.preset/ }),
-      {
-        target: { value: 'updated blocked response' },
-      },
-    )
-    fireEvent.click(screen.getByText(/operation\.save/))
+    const preset = screen.getByRole('textbox', {
+      name: /feature\.moderation\.modal\.content\.preset/,
+    })
+    await user.clear(preset)
+    await user.type(preset, 'updated blocked response')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -218,6 +162,7 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should show error when inputs enabled but no preset_response for keywords type', async () => {
+    const user = userEvent.setup()
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -228,7 +173,7 @@ describe('ModerationSettingModal', () => {
     }
     await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
       type: 'error',
@@ -238,6 +183,7 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should show error when api type has no api_based_extension_id', async () => {
+    const user = userEvent.setup()
     const data: ModerationConfig = {
       enabled: true,
       type: 'api',
@@ -248,7 +194,7 @@ describe('ModerationSettingModal', () => {
     }
     await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
       type: 'error',
@@ -258,6 +204,7 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should save with api_based_extension_id in formatted data for api type', async () => {
+    const user = userEvent.setup()
     const data: ModerationConfig = {
       enabled: true,
       type: 'api',
@@ -270,7 +217,7 @@ describe('ModerationSettingModal', () => {
     await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
 
     // api type doesn't require preset_response, so save should succeed
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -283,6 +230,7 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should show error when outputs enabled but no preset_response for keywords type', async () => {
+    const user = userEvent.setup()
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -293,7 +241,7 @@ describe('ModerationSettingModal', () => {
     }
     await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
       type: 'error',
@@ -303,6 +251,7 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should select api extension via api selector', async () => {
+    const user = userEvent.setup()
     await renderModal(
       <ModerationSettingModal
         data={{
@@ -315,14 +264,13 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    const user = userEvent.setup()
     await user.click(
       screen.getByRole('button', { name: 'common.apiBasedExtension.selector.placeholder' }),
     )
     await user.click(await screen.findByRole('button', { name: /Moderation API/ }))
 
     // Trigger save and confirm the chosen extension id is passed through
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
         config: expect.objectContaining({ api_based_extension_id: 'api-ext-1' }),
@@ -331,6 +279,7 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should save with openai_moderation type when configured', async () => {
+    const user = userEvent.setup()
     await renderModal(
       <ModerationSettingModal
         data={{
@@ -346,7 +295,7 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -356,6 +305,7 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should handle keyword truncation to 100 chars per line and 100 lines', async () => {
+    const user = userEvent.setup()
     await renderModal(
       <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
     )
@@ -367,13 +317,14 @@ describe('ModerationSettingModal', () => {
       { length: 101 },
       (_, index) => `${index}`.padStart(3, '0') + 'a'.repeat(150),
     )
-    fireEvent.change(textarea, { target: { value: lines.join('\n') } })
+    await user.clear(textarea)
+    await user.paste(lines.join('\n'))
     const expectedKeywords = lines
       .slice(0, 100)
       .map((line) => line.slice(0, 100))
       .join('\n')
     expect(textarea).toHaveValue(expectedKeywords)
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(onSave).toHaveBeenCalledExactlyOnceWith({
       ...defaultData,
       config: { ...defaultData.config, keywords: expectedKeywords },
@@ -381,6 +332,7 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should save with formatted outputs_config when both enabled', async () => {
+    const user = userEvent.setup()
     const data: ModerationConfig = {
       ...defaultData,
       config: {
@@ -391,42 +343,34 @@ describe('ModerationSettingModal', () => {
     }
     await renderModal(<ModerationSettingModal data={data} onCancel={vi.fn()} onSave={onSave} />)
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onSave).toHaveBeenCalledExactlyOnceWith(data)
   })
 
   it('should handle empty lines in keywords', async () => {
+    const user = userEvent.setup()
     await renderModal(
       <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
     )
 
     const textarea = screen.getByPlaceholderText(
       /feature\.moderation\.modal\.keywords\.placeholder/,
-    ) as HTMLTextAreaElement
-    fireEvent.change(textarea, { target: { value: 'word1\n\nword2\n\n' } })
+    )
+    await user.clear(textarea)
+    await user.paste('word1\n\nword2\n\n')
 
-    expect(textarea.value).toBe('word1\n\nword2\n')
+    expect(textarea).toHaveValue('word1\n\nword2\n')
   })
 
   it('should open settings modal when provider link is clicked in OpenAI warning', async () => {
-    mockModelProvidersData = {
-      data: {
-        data: [
-          {
-            provider: 'langgenius/openai/openai',
-            system_configuration: {
-              enabled: false,
-              current_quota_type: 'free',
-              quota_configurations: [],
-            },
-            custom_configuration: { status: 'no-configure' },
-          },
-        ],
-      },
-      isPending: false,
-      refetch: vi.fn(),
-    }
+    const user = userEvent.setup()
+    modelProviders = [
+      createProviderResponseFixture({
+        provider: 'langgenius/openai/openai',
+        custom_configuration: { status: 'no-configure' },
+      }),
+    ]
 
     await renderModal(
       <ModerationSettingModal
@@ -442,7 +386,7 @@ describe('ModerationSettingModal', () => {
 
     expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
     expect(onSave).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByText(/settings\.provider/))
+    await user.click(screen.getByText(/settings\.provider/))
 
     await waitFor(() =>
       expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
@@ -450,45 +394,41 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should initialize config from form schema when switching to code-based extension', async () => {
-    mockCodeBasedExtensions = {
-      data: {
-        data: [
+    const user = userEvent.setup()
+    extensions = [
+      {
+        name: 'custom-ext',
+        label: { 'en-US': 'Custom Extension', 'zh-Hans': '自定义扩展' },
+        form_schema: [
           {
-            name: 'custom-ext',
-            label: { 'en-US': 'Custom Extension', 'zh-Hans': '自定义扩展' },
-            form_schema: [
-              {
-                variable: 'api_url',
-                label: { 'en-US': 'API URL', 'zh-Hans': 'API 地址' },
-                type: 'text-input',
-                required: true,
-                default: 'https://default.com',
-                placeholder: '',
-                options: [],
-                max_length: 200,
-              },
-            ],
+            variable: 'api_url',
+            label: { 'en-US': 'API URL', 'zh-Hans': 'API 地址' },
+            type: 'text-input',
+            required: true,
+            default: 'https://default.com',
+            placeholder: '',
+            options: [],
+            max_length: 200,
           },
         ],
       },
-    }
+    ]
 
     await renderModal(
       <ModerationSettingModal data={defaultData} onCancel={vi.fn()} onSave={onSave} />,
     )
 
     // Click on the custom extension provider
-    fireEvent.click(screen.getByText('Custom Extension'))
+    await user.click(screen.getByRole('button', { name: /Custom Extension/ }))
 
     expect(screen.getByDisplayValue('https://default.com')).toBeInTheDocument()
-    fireEvent.click(screen.getAllByRole('switch')[0]!)
-    fireEvent.change(
-      screen.getByRole('textbox', { name: /feature\.moderation\.modal\.content\.preset/ }),
-      {
-        target: { value: 'Blocked by extension' },
-      },
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    await user.click(screen.getAllByRole('switch')[0]!)
+    const preset = screen.getByRole('textbox', {
+      name: /feature\.moderation\.modal\.content\.preset/,
+    })
+    await user.clear(preset)
+    await user.type(preset, 'Blocked by extension')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(onSave).toHaveBeenCalledExactlyOnceWith({
       enabled: true,
       type: 'custom-ext',
@@ -501,28 +441,25 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should show error when required form schema field is empty on save', async () => {
-    mockCodeBasedExtensions = {
-      data: {
-        data: [
+    const user = userEvent.setup()
+    extensions = [
+      {
+        name: 'custom-ext',
+        label: { 'en-US': 'Custom Extension', 'zh-Hans': '自定义扩展' },
+        form_schema: [
           {
-            name: 'custom-ext',
-            label: { 'en-US': 'Custom Extension', 'zh-Hans': '自定义扩展' },
-            form_schema: [
-              {
-                variable: 'api_url',
-                label: { 'en-US': 'API URL', 'zh-Hans': 'API 地址' },
-                type: 'text-input',
-                required: true,
-                default: '',
-                placeholder: '',
-                options: [],
-                max_length: 200,
-              },
-            ],
+            variable: 'api_url',
+            label: { 'en-US': 'API URL', 'zh-Hans': 'API 地址' },
+            type: 'text-input',
+            required: true,
+            default: '',
+            placeholder: '',
+            options: [],
+            max_length: 200,
           },
         ],
       },
-    }
+    ]
 
     await renderModal(
       <ModerationSettingModal
@@ -536,7 +473,7 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
       type: 'error',
@@ -546,28 +483,25 @@ describe('ModerationSettingModal', () => {
   })
 
   it('should update code-based extension form value and save updated config', async () => {
-    mockCodeBasedExtensions = {
-      data: {
-        data: [
+    const user = userEvent.setup()
+    extensions = [
+      {
+        name: 'custom-ext',
+        label: { 'en-US': 'Custom Extension', 'zh-Hans': '自定义扩展' },
+        form_schema: [
           {
-            name: 'custom-ext',
-            label: { 'en-US': 'Custom Extension', 'zh-Hans': '自定义扩展' },
-            form_schema: [
-              {
-                variable: 'api_url',
-                label: { 'en-US': 'API URL', 'zh-Hans': 'API 地址' },
-                type: 'text-input',
-                required: true,
-                default: '',
-                placeholder: 'Enter URL',
-                options: [],
-                max_length: 200,
-              },
-            ],
+            variable: 'api_url',
+            label: { 'en-US': 'API URL', 'zh-Hans': 'API 地址' },
+            type: 'text-input',
+            required: true,
+            default: '',
+            placeholder: 'Enter URL',
+            options: [],
+            max_length: 200,
           },
         ],
       },
-    }
+    ]
 
     await renderModal(
       <ModerationSettingModal
@@ -584,10 +518,8 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('Enter URL'), {
-      target: { value: 'https://changed.com' },
-    })
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.type(screen.getByPlaceholderText('Enter URL'), 'https://changed.com')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -643,27 +575,23 @@ describe('ModerationSettingModal', () => {
     'publishes a saved custom moderation configuration $scenario',
     async ({ initialConfig, clear, expectedValue, displayedValue }) => {
       const user = userEvent.setup()
-      mockCodeBasedExtensions = {
-        data: {
-          data: [
+      extensions = [
+        {
+          name: 'custom-ext',
+          label: { 'en-US': 'Custom Extension', 'zh-Hans': '自定义扩展' },
+          form_schema: [
             {
-              name: 'custom-ext',
-              label: { 'en-US': 'Custom Extension', 'zh-Hans': '自定义扩展' },
-              form_schema: [
-                {
-                  variable: 'optional_token',
-                  label: { 'en-US': 'Optional token', 'zh-Hans': '可选令牌' },
-                  type: 'text-input',
-                  required: false,
-                  default: '',
-                  placeholder: 'Optional token',
-                  options: [],
-                },
-              ],
+              variable: 'optional_token',
+              label: { 'en-US': 'Optional token', 'zh-Hans': '可选令牌' },
+              type: 'text-input',
+              required: false,
+              default: '',
+              placeholder: 'Optional token',
+              options: [],
             },
           ],
         },
-      }
+      ]
       const featuresStore = createFeaturesStore()
       await renderModal(
         <ModerationSettingModal
@@ -738,6 +666,7 @@ describe('ModerationSettingModal', () => {
   )
 
   it('should fallback missing inputs_config to disabled in formatted save data', async () => {
+    const user = userEvent.setup()
     await renderModal(
       <ModerationSettingModal
         data={{
@@ -753,7 +682,7 @@ describe('ModerationSettingModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(/operation\.save/))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({

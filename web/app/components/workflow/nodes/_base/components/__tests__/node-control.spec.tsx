@@ -60,8 +60,9 @@ describe('NodeControl', () => {
   ])(
     'selects the node and requests $action using real workflow permissions',
     async ({ status, label, action }) => {
+      const user = userEvent.setup()
       const { store } = renderControl({ data: { _singleRunningStatus: status } })
-      await userEvent.setup().click(screen.getByRole('button', { name: label }))
+      await user.click(screen.getByRole('button', { name: label }))
       expect(store.getState().initShowLastRunTab).toBe(true)
       expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action })
       expect(screen.getByRole('status', { name: 'Selected node' })).toHaveTextContent('node-1')
@@ -81,8 +82,9 @@ describe('NodeControl', () => {
   })
 
   it('allows opening node actions while plugin installation is locked', async () => {
+    const user = userEvent.setup()
     renderControl({ pluginInstallLocked: true, data: { selected: true } })
-    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     expect(await screen.findByRole('menu')).toBeVisible()
   })
 })

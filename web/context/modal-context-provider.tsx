@@ -51,9 +51,12 @@ const OpeningSettingModal = dynamic(
     ssr: false,
   },
 )
-const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugin'), {
-  ssr: false,
-})
+const InstallFromGitHub = dynamic(
+  () => import('@/app/components/plugins/install-plugin/install-from-github'),
+  {
+    ssr: false,
+  },
+)
 
 const TriggerEventsLimitModal = dynamic(
   () => import('@/app/components/billing/trigger-events-limit-modal'),
@@ -257,13 +260,13 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
         )}
 
         {!!showUpdatePluginModal && (
-          <UpdatePlugin
-            {...showUpdatePluginModal.payload}
-            onCancel={() => {
+          <InstallFromGitHub
+            updatePayload={showUpdatePluginModal.payload.github}
+            onClose={() => {
               setShowUpdatePluginModal(null)
               showUpdatePluginModal.onCancelCallback?.()
             }}
-            onSave={() => {
+            onSuccess={() => {
               if (showUpdatePluginModal.payload.category !== PluginCategoryEnum.model) {
                 setShowUpdatePluginModal(null)
                 showUpdatePluginModal.onSaveCallback?.()

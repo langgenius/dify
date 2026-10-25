@@ -1,28 +1,27 @@
-import { renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useFloatingRight } from '../hooks'
 
-const mockGetNodes = vi.fn()
-vi.mock('reactflow', () => ({
-  useStore: (
-    selector: (s: { getNodes: () => { id: string; data: { selected: boolean } }[] }) => unknown,
-  ) => {
-    return selector({ getNodes: mockGetNodes })
-  },
-}))
-
-const mockNodePanelWidth = 400
-let mockWorkflowCanvasWidth: number | undefined = 1200
-let mockOtherPanelWidth = 0
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    return selector({
-      nodePanelWidth: mockNodePanelWidth,
-      workflowCanvasWidth: mockWorkflowCanvasWidth,
-      otherPanelWidth: mockOtherPanelWidth,
-    })
-  },
-}))
+const renderFloatingRight = ({
+  target,
+  selected,
+  canvas,
+  other,
+}: {
+  target: number
+  selected: boolean
+  canvas: number | undefined
+  other: number
+}) =>
+  renderWorkflowCanvasHook(() => useFloatingRight(target), {
+    nodes: [createNode({ id: 'node-1', data: { selected } })],
+    initialStoreState: {
+      nodePanelWidth: 400,
+      workflowCanvasWidth: canvas,
+      otherPanelWidth: other,
+    },
+  })
 
 it.each([
   { selected: false, canvas: 1008, other: 0, target: 600, floating: false, width: 600 },
@@ -33,22 +32,37 @@ it.each([
   { selected: false, canvas: undefined, other: 0, target: 400, floating: false, width: 400 },
 ])(
   'positions the input panel for canvas=$canvas selected=$selected other=$other',
-  ({ selected, canvas, other, target, floating, width }) => {
-    mockGetNodes.mockReturnValue([{ id: 'node-1', data: { selected } }])
-    mockWorkflowCanvasWidth = canvas
-    mockOtherPanelWidth = other
-    const { result } = renderHook(() => useFloatingRight(target))
+  ({ floating, width, ...scenario }) => {
+    const { result } = renderFloatingRight(scenario)
+
     expect(result.current).toEqual({ floatingRight: floating, floatingRightWidth: width })
   },
 )
 
 it('stops floating when resizing leaves enough room beside the selected node', () => {
-  mockGetNodes.mockReturnValue([{ id: 'node-1', data: { selected: true } }])
-  mockWorkflowCanvasWidth = 1200
-  mockOtherPanelWidth = 0
-  const { result, rerender } = renderHook(() => useFloatingRight(600))
+  const { result, store } = renderFloatingRight({
+    target: 600,
+    selected: true,
+    canvas: 1200,
+    other: 0,
+  })
   expect(result.current).toEqual({ floatingRight: true, floatingRightWidth: 400 })
-  mockWorkflowCanvasWidth = 1600
-  rerender()
+
+  act(() => store.setState({ workflowCanvasWidth: 1600 }))
+
+  expect(result.current).toEqual({ floatingRight: false, floatingRightWidth: 600 })
+})
+
+it('reclaims the node panel space when the node is deselected', () => {
+  const { result, setCanvas } = renderFloatingRight({
+    target: 600,
+    selected: true,
+    canvas: 1200,
+    other: 0,
+  })
+  expect(result.current.floatingRight).toBe(true)
+
+  act(() => setCanvas({ nodes: [createNode({ id: 'node-1', data: { selected: false } })] }))
+
   expect(result.current).toEqual({ floatingRight: false, floatingRightWidth: 600 })
 })

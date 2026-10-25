@@ -1,7 +1,14 @@
 import type { Features } from '../../types'
 import { screen } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../context'
 import NewFeaturePanel from '../index'
 
@@ -19,25 +26,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/app/test-app-id/configuration',
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useDefaultModel: (type: string) => {
-    if (type === 'speech2text' || type === 'tts')
-      return { data: { provider: 'openai', model: 'whisper-1' } }
-    return { data: null }
-  },
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    modelList: [
-      { provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] },
-    ],
-    defaultModel: { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' },
-    currentModel: true,
-  }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
 }))
 
 const defaultFeatures: Features = {
@@ -65,6 +53,23 @@ const renderPanel = (
   }> = {},
   searchParams = '',
 ) => {
+  const queryClient = createConsoleQueryClient()
+  const models = [
+    createCatalogModelFixture({ model: 'text-embedding-ada-002', model_type: 'text-embedding' }),
+    createCatalogModelFixture({ model: 'whisper-1', model_type: 'speech2text' }),
+    createCatalogModelFixture({ model: 'tts-1', model_type: 'tts' }),
+  ]
+  seedModelProviderQueries(queryClient, [createModelCatalogFixture({ models })])
+  for (const model of models) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.defaultModel.get.queryKey({
+        input: { query: { model_type: model.model_type } },
+      }),
+      {
+        data: createDefaultModelFixture({ model: model.model, model_type: model.model_type }),
+      },
+    )
+  }
   return renderWithConsoleQuery(
     <NuqsTestingAdapter searchParams={searchParams}>
       <FeaturesProvider features={defaultFeatures}>
@@ -80,6 +85,7 @@ const renderPanel = (
         />
       </FeaturesProvider>
     </NuqsTestingAdapter>,
+    { queryClient },
   )
 }
 

@@ -149,7 +149,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
       },
     }
-  }, [store, featuresStore, workflowStore, isCollaborationEnabled, appMode])
+  }, [store, featuresStore, workflowStore, isCollaborationEnabled, appMode, appId])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
@@ -249,6 +249,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       getPostParams,
       handleRefreshWorkflowDraft,
       isCollaborationEnabled,
+      appId,
     ],
   )
 
@@ -349,6 +350,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       isCollaborationEnabled,
       t,
       workflowStore,
+      appId,
     ],
   )
 

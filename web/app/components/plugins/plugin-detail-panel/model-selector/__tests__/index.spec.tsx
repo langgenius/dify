@@ -2,9 +2,7 @@ import type {
   ProviderModelWithStatusEntity,
   ProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ComponentProps } from 'react'
-import type { SplitModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
@@ -12,7 +10,16 @@ import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createModelCreditsFixture,
+  createProviderSummaryFixture,
+} from '@/test/console/model-provider'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderConsole,
+} from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import ModelParameterModal from '../index'
 
 const requests = vi.hoisted(() => ({
@@ -48,41 +55,11 @@ vi.mock('@/app/notifications', async (importOriginal) => {
   }
 })
 
-// The shared selector owns provider search, marketplace installation and status display.
-// Keep that independently tested feature outside this plugin's parameter-editing contract.
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  SplitModelSelector: ({
-    models,
-    value,
-    disabled,
-    onValueChange,
-  }: ComponentProps<typeof SplitModelSelector>) => (
-    <select
-      aria-label="Model"
-      disabled={disabled}
-      value={value ? JSON.stringify(value) : ''}
-      onChange={(event) => onValueChange?.(JSON.parse(event.target.value))}
-    >
-      <option value="">Choose model</option>
-      {models.map((provider) =>
-        provider.models.map((model) => (
-          <option
-            key={`${provider.provider}/${model.model}`}
-            value={JSON.stringify({ provider: provider.provider, model: model.model })}
-          >
-            {model.model}
-          </option>
-        )),
-      )}
-    </select>
-  ),
-}))
-
 const createModelItem = (
   overrides: Partial<ProviderModelWithStatusEntity> = {},
 ): ProviderModelWithStatusEntity => ({
   model: 'test-model',
-  label: { en_US: 'Test Model', zh_Hans: 'Test Model' },
+  label: { en_US: overrides.model ?? 'Test Model' },
   model_type: ModelTypeEnum.textGeneration,
   features: [],
   fetch_from: ConfigurationMethodEnum.predefinedModel,
@@ -120,6 +97,32 @@ const selected = { provider: 'openai', model: 'gpt-4', model_type: 'llm', mode: 
 const settings = () =>
   screen.getByRole('button', { name: 'modelProvider.modelProvider.modelSettings' })
 const defaults = { isAdvancedMode: false, setModel: vi.fn() }
+
+const renderWithConsoleQuery = createNuqsTestRenderer((ui) => {
+  const queryClient = createConsoleQueryClient()
+  const providers = [
+    ...new Map(
+      Object.values(modelLists)
+        .flat()
+        .map((provider) => [provider.provider, provider]),
+    ).values(),
+  ]
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    data: providers.map((provider) =>
+      createProviderSummaryFixture({ provider: provider.provider, label: provider.label }),
+    ),
+    plugins: {},
+  })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
+    createModelCreditsFixture(),
+  )
+  return renderConsole(ui, { queryClient, systemFeatures: { enable_marketplace: false } })
+})
+const modelTrigger = () =>
+  screen.getByRole('button', {
+    name: /plugin\.detailPanel\.configureModel|gpt-4|removed-model|tts-1/,
+  })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -159,28 +162,33 @@ describe('Plugin model configuration', () => {
         ],
       ]),
     )
+    const user = userEvent.setup()
     const { queryClient } = renderWithConsoleQuery(
       <ModelParameterModal {...defaults} scope={scope} />,
     )
     await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
-      'Choose model',
-      ...(scope === 'all'
-        ? ['llm', 'text-embedding', 'rerank', 'speech2text', 'tts', 'moderation']
-        : [scope]
-      ).map((type) => `${type}-model`),
-    ])
+    await user.click(modelTrigger())
+    const popup = within(
+      await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+    )
+    for (const type of types) {
+      const option = popup.queryByRole('button', { name: new RegExp(`${type}-model`) })
+      if (scope === 'all' || scope === type) expect(option).toBeInTheDocument()
+      else expect(option).not.toBeInTheDocument()
+    }
   })
 
   it('updates available models when the scope changes', async () => {
     modelLists[ModelTypeEnum.tts] = [
       createModel({ models: [createModelItem({ model: 'tts-1', model_type: ModelTypeEnum.tts })] }),
     ]
+    const user = userEvent.setup()
     const { rerender } = renderWithConsoleQuery(<ModelParameterModal {...defaults} />)
-    await screen.findByRole('option', { name: 'gpt-4' })
+    await user.click(modelTrigger())
+    await screen.findByRole('button', { name: /gpt-4/ })
     rerender(<ModelParameterModal {...defaults} scope="tts" />)
-    await screen.findByRole('option', { name: 'tts-1' })
-    expect(screen.queryByRole('option', { name: 'gpt-4' })).not.toBeInTheDocument()
+    await screen.findByRole('button', { name: /tts-1/ })
+    expect(screen.queryByRole('button', { name: /gpt-4/ })).not.toBeInTheDocument()
   })
 
   it.each([
@@ -203,9 +211,7 @@ describe('Plugin model configuration', () => {
       )
       await waitFor(() => expect(queryClient.isFetching()).toBe(0))
       expect(settings()).toBeDisabled()
-      expect(screen.getByRole('combobox', { name: 'Model' }).hasAttribute('disabled')).toBe(
-        readonly,
-      )
+      expect(modelTrigger().hasAttribute('disabled')).toBe(readonly)
     },
   )
 
@@ -222,11 +228,8 @@ describe('Plugin model configuration', () => {
           setModel={setModel}
         />,
       )
-      await screen.findByRole('option', { name: 'gpt-4' })
-      await user.selectOptions(
-        screen.getByRole('combobox', { name: 'Model' }),
-        JSON.stringify({ provider: 'openai', model: 'gpt-4' }),
-      )
+      await user.click(modelTrigger())
+      await user.click(await screen.findByRole('button', { name: /gpt-4/ }))
       await waitFor(() =>
         expect(setModel).toHaveBeenCalledExactlyOnceWith({
           ...selected,
@@ -251,11 +254,8 @@ describe('Plugin model configuration', () => {
     const setModel = vi.fn()
     requests.rules.mockRejectedValue(new Error('Rules unavailable'))
     renderWithConsoleQuery(<ModelParameterModal {...defaults} setModel={setModel} />)
-    await screen.findByRole('option', { name: 'gpt-4' })
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Model' }),
-      JSON.stringify({ provider: 'openai', model: 'gpt-4' }),
-    )
+    await user.click(modelTrigger())
+    await user.click(await screen.findByRole('button', { name: /gpt-4/ }))
     await waitFor(() =>
       expect(setModel).toHaveBeenCalledWith({ ...selected, completion_params: {} }),
     )
@@ -269,11 +269,8 @@ describe('Plugin model configuration', () => {
       createModel({ models: [createModelItem({ model: 'tts-1', model_type: ModelTypeEnum.tts })] }),
     ]
     renderWithConsoleQuery(<ModelParameterModal {...defaults} scope="tts" setModel={setModel} />)
-    await screen.findByRole('option', { name: 'tts-1' })
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Model' }),
-      JSON.stringify({ provider: 'openai', model: 'tts-1' }),
-    )
+    await user.click(modelTrigger())
+    await user.click(await screen.findByRole('button', { name: /tts-1/ }))
     expect(setModel).toHaveBeenCalledExactlyOnceWith({
       provider: 'openai',
       model: 'tts-1',

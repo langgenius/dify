@@ -4,14 +4,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum, SupportedCreationMethods } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
 import { BlockEnum } from '../../types'
 import FeaturedTriggers from '../featured-triggers'
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
 
 vi.mock('@/app/components/workflow/block-selector/marketplace-plugin/action', () => ({
   default: () => <button type="button" aria-label="common.operation.more" />,
@@ -35,8 +29,6 @@ vi.mock('@/utils/var', async (importOriginal) => {
     getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
   }
 })
-
-const mockUseTheme = vi.mocked(useTheme)
 
 const createPlugin = (overrides: Partial<Plugin> = {}): Plugin => ({
   type: 'trigger',
@@ -104,7 +96,6 @@ describe('FeaturedTriggers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.removeItem('workflow_triggers_featured_collapsed')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
   })
 
   afterEach(() => localStorage.removeItem('workflow_triggers_featured_collapsed'))

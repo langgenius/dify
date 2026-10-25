@@ -226,10 +226,7 @@ def current_timestamp() -> int:
 def email(email):
     # Define a regex pattern for email addresses
     pattern = r"^[\w\.!#$%&'*+\-/=?^_`{|}~]+@([\w-]+\.)+[\w-]{2,}$"
-    # Use re.fullmatch instead of re.match to reject trailing newlines.
-    # In Python, '$' matches at end-of-string OR just before a trailing newline,
-    # so re.match accepts "user@example.com\n". re.fullmatch requires the entire
-    # string to match, closing the mail header-injection vector. (#39234)
+    # Reject trailing newlines as well as other unconsumed input.
     if re.fullmatch(pattern, email) is not None:
         return email
 
@@ -250,9 +247,9 @@ def uuid_value(value: str | UUID) -> str:
     try:
         uuid_obj = uuid.UUID(value)
         return str(uuid_obj)
-    except ValueError:
+    except ValueError as caught_error:
         error = f"{value} is not a valid uuid."
-        raise ValueError(error)
+        raise ValueError(error) from caught_error
 
 
 def normalize_uuid(value: str | UUID) -> str:
@@ -314,9 +311,9 @@ def timestamp_value(timestamp):
         if int_timestamp < 0:
             raise ValueError
         return int_timestamp
-    except ValueError:
+    except ValueError as caught_error:
         error = f"{timestamp} is not a valid timestamp."
-        raise ValueError(error)
+        raise ValueError(error) from caught_error
 
 
 class StrLen:
@@ -343,9 +340,9 @@ class DatetimeString:
     def __call__(self, value):
         try:
             datetime.strptime(value, self.format)
-        except ValueError:
+        except ValueError as caught_error:
             error = f"Invalid {self.argument}: {value}. {self.argument} must be conform to the format {self.format}"
-            raise ValueError(error)
+            raise ValueError(error) from caught_error
 
         return value
 

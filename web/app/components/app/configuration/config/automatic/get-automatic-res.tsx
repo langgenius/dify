@@ -284,6 +284,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             </div>
             <div>
               <ModelParameterModal
+                triggerContainerClassName="min-w-0"
                 popupClassName="w-130! max-w-[calc(100vw-2rem)]"
                 isAdvancedMode={true}
                 provider={model.provider}

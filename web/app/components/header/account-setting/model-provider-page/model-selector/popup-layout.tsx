@@ -81,7 +81,7 @@ export function ShowIncompatibleModelsButton({
     <Button
       variant="ghost"
       size="medium"
-      className="h-10 w-full justify-start rounded-none px-4 text-left system-xs-regular text-text-tertiary"
+      className="h-10 w-full justify-start rounded-none px-4 text-start system-xs-regular text-text-tertiary"
       onClick={onClick}
     >
       <span className="min-w-0 truncate">

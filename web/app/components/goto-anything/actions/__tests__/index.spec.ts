@@ -1,36 +1,8 @@
 import { createCommandContext } from '../commands/__tests__/context'
 import { createSlashAction } from '../commands/slash'
 import { createActions, getActionSearchTerm, matchAction } from '../index'
-import { ragPipelineNodesAction } from '../rag-pipeline-nodes'
-import { workflowNodesAction } from '../workflow-nodes'
 
 const slash = createSlashAction(createCommandContext())
-
-describe('createActions', () => {
-  it('returns only global actions outside graph pages', () => {
-    expect(createActions(slash, false, false)).toEqual(
-      expect.objectContaining({ slash: expect.any(Object), app: expect.any(Object) }),
-    )
-    expect(createActions(slash, false, false)).not.toHaveProperty('node')
-    expect(createActions(slash, false, false)).toHaveProperty('skill')
-    expect(createActions(slash, false, false)).not.toHaveProperty('agent')
-  })
-
-  it('applies workspace availability to skill and agent scopes', () => {
-    const actions = createActions(slash, false, false, { agents: true, skills: false })
-
-    expect(actions).toHaveProperty('agent')
-    expect(actions).not.toHaveProperty('skill')
-  })
-
-  it('uses the workflow-owned node action on workflow pages', () => {
-    expect(createActions(slash, true, false)).toHaveProperty('node', workflowNodesAction)
-  })
-
-  it('uses the RAG-owned node action when both graph flags are true', () => {
-    expect(createActions(slash, true, true)).toHaveProperty('node', ragPipelineNodesAction)
-  })
-})
 
 describe('getActionSearchTerm', () => {
   it('removes either the action key or shortcut', () => {

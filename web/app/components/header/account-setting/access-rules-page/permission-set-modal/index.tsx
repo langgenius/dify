@@ -4,11 +4,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
@@ -99,14 +99,14 @@ const PermissionSetModalBody = ({
               ns: 'permission',
             })}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
 
         <DialogBody className="flex flex-col gap-5">
           <div className="flex shrink-0 flex-col gap-1">
             <label htmlFor="permission-set-name" className="system-sm-medium text-text-secondary">
               {t(($) => $['permissionSet.nameLabel'], { ns: 'permission' })}
-              <span aria-hidden className="ml-0.5 text-text-destructive">
+              <span aria-hidden className="ms-0.5 text-text-destructive">
                 *
               </span>
             </label>

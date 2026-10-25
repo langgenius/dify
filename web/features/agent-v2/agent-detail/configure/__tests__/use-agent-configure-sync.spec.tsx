@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react'
 import type { AgentConfigurePublishResult } from '../use-agent-configure-sync'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import { zToolProviderListResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -171,16 +172,6 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({ data: toolProviderState.builtInTools }),
-    'workspaces.current.tools.api.get': () => ({ data: toolProviderState.customTools }),
-    'workspaces.current.tools.mcp.get': () => ({ data: toolProviderState.mcpTools }),
-    'workspaces.current.tools.workflow.get': () => ({ data: toolProviderState.workflowTools }),
-  })
-})
-
 vi.mock('@/service/console', async () => {
   const { consoleOperationStub } = await import('@/test/console/operation-hooks')
   return {
@@ -196,31 +187,14 @@ vi.mock('@/service/console', async () => {
         },
       },
       agent: {
-        get: {
-          key: () => ['agents'],
-        },
+        get: consoleOperationStub('agent.get'),
         byAgentId: {
-          get: {
-            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-              'agent-detail',
-              input.params.agent_id,
-            ],
-          },
+          get: consoleOperationStub('agent.byAgentId.get'),
           apiAccess: {
-            get: {
-              queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-                'agent-api-access',
-                input.params.agent_id,
-              ],
-            },
+            get: consoleOperationStub('agent.byAgentId.apiAccess.get'),
           },
           composer: {
-            get: {
-              queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-                'agent-composer',
-                input.params.agent_id,
-              ],
-            },
+            get: consoleOperationStub('agent.byAgentId.composer.get'),
             put: {
               mutationOptions: composerPutMutationOptions,
             },
@@ -231,9 +205,7 @@ vi.mock('@/service/console', async () => {
             },
           },
           versions: {
-            get: {
-              key: () => ['agent-versions'],
-            },
+            get: consoleOperationStub('agent.byAgentId.versions.get'),
           },
         },
       },
@@ -266,6 +238,16 @@ function renderUseAgentConfigureSync({
     consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
     createAgentFixture(),
   )
+  const tools = consoleQuery.workspaces.current.tools
+  for (const [operation, data] of [
+    [tools.builtin.get, toolProviderState.builtInTools],
+    [tools.api.get, toolProviderState.customTools],
+    [tools.mcp.get, toolProviderState.mcpTools],
+    [tools.workflow.get, toolProviderState.workflowTools],
+  ] as const) {
+    queryClient.setQueryDefaults(operation.key(), { staleTime: Infinity })
+    if (data) queryClient.setQueryData(operation.queryKey(), zToolProviderListResponse.parse(data))
+  }
   const store = createStore()
   const initialDraft = currentModel
     ? { ...defaultAgentSoulConfigFormState, model: currentModel }
@@ -369,11 +351,10 @@ describe('useAgentConfigureSync', () => {
 
   it('should automatically save configure page changes to draft', async () => {
     const { queryClient, store } = renderUseAgentConfigureSync()
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -382,11 +363,13 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      ),
+    ).toEqual(
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
     expect(composerPutMutationFn).not.toHaveBeenCalled()
 
     await act(async () => {
@@ -409,11 +392,13 @@ describe('useAgentConfigureSync', () => {
         }),
       }),
     )
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      ),
+    ).toEqual(
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
   })
 
   it('should autosave only the latest committed Agent configuration', async () => {
@@ -506,11 +491,10 @@ describe('useAgentConfigureSync', () => {
 
   it('should cancel pending autosave when the draft returns to the saved baseline', async () => {
     const { queryClient, store } = renderUseAgentConfigureSync()
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -527,11 +511,13 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(composerPutMutationFn).not.toHaveBeenCalled()
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      ),
+    ).toEqual(
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
   })
 
   it('should save dirty draft once when the page is closing', async () => {
@@ -1026,22 +1012,23 @@ describe('useAgentConfigureSync', () => {
 
   it('should not save the draft immediately when the composer draft is unchanged', async () => {
     const { queryClient, result } = renderUseAgentConfigureSync()
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
 
     await act(async () => {
       await result.current.saveDraft()
     })
 
     expect(composerPutMutationFn).not.toHaveBeenCalled()
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: true,
-      name: 'Agent',
-      permission_keys: Object.values(AgentPermission),
-    })
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      ),
+    ).toEqual(
+      createAgentFixture({ name: 'Agent', permission_keys: Object.values(AgentPermission) }),
+    )
   })
 
   it('saves a newly selected model from the draft without waiting for a render', async () => {
@@ -1416,7 +1403,7 @@ describe('useAgentConfigureSync', () => {
     )
   })
 
-  it('should toast metadata filtering model error when publishing with automatic metadata filtering and no model', async () => {
+  it('validates Classic retrieval settings before publishing', async () => {
     const { result, store } = renderUseAgentConfigureSync({
       currentModel: configuredModel,
     })
@@ -1444,6 +1431,39 @@ describe('useAgentConfigureSync', () => {
     expect(toastMock.error).toHaveBeenCalledWith(
       'agentV2.agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired',
     )
+  })
+
+  it('publishes a valid Classic Knowledge Base binding', async () => {
+    const { result, store } = renderUseAgentConfigureSync({ currentModel: configuredModel })
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...store.get(agentComposerDraftAtom),
+        knowledgeRetrievals: [
+          {
+            id: 'classic',
+            name: 'Classic Docs',
+            datasetRefs: [{ id: 'dataset-1', name: 'Docs' }],
+          },
+        ],
+      })
+    })
+
+    await act(async () => {
+      await expect(result.current.publishDraft()).resolves.toMatchObject({ kind: 'update' })
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          agent_soul: expect.objectContaining({
+            knowledge: expect.objectContaining({
+              sets: [expect.objectContaining({ id: 'classic' })],
+            }),
+          }),
+        }),
+      }),
+    )
+    expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
   })
 
   it('should pause autosave during publish and resume it for edits made in flight', async () => {
@@ -1631,9 +1651,10 @@ describe('useAgentConfigureSync', () => {
       enabled: false,
       currentModel: configuredModel,
     })
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      permission_keys: [AgentPermission.TestAndRun],
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ permission_keys: [AgentPermission.TestAndRun] }),
+    )
     act(() => {
       store.set(agentComposerPromptAtom, 'Unsaved local changes')
     })
@@ -1653,9 +1674,10 @@ describe('useAgentConfigureSync', () => {
       publishEnabled: true,
       currentModel: configuredModel,
     })
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      permission_keys: [AgentPermission.ReleaseAndVersion],
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ permission_keys: [AgentPermission.ReleaseAndVersion] }),
+    )
     await act(async () => {
       await expect(result.current.publishDraft()).resolves.toMatchObject({ kind: 'update' })
     })
@@ -1668,7 +1690,10 @@ describe('useAgentConfigureSync', () => {
     const { queryClient, store, unmount } = renderUseAgentConfigureSync()
     act(() => {
       store.set(agentComposerPromptAtom, 'Dirty before revocation')
-      queryClient.setQueryData(['agent-detail', 'agent-1'], { permission_keys: [] })
+      queryClient.setQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+        createAgentFixture({ permission_keys: [] }),
+      )
       unmount()
     })
     await act(async () => {
@@ -1688,9 +1713,10 @@ describe('useAgentConfigureSync', () => {
     await act(async () => {
       await Promise.resolve()
     })
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      permission_keys: [AgentPermission.Edit],
-    })
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+      createAgentFixture({ permission_keys: [AgentPermission.Edit] }),
+    )
     await act(async () => {
       saving.resolve({ agent_soul: {} })
       await publishing

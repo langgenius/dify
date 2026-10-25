@@ -198,13 +198,14 @@ describe('variable-modal', () => {
   })
 
   it('should stop invalid variable names before they are stored in local state', async () => {
+    const user = userEvent.setup()
     const { onSave } = renderVariableModal()
     const input = screen.getByPlaceholderText(
       'workflow.chatVariable.modal.namePlaceholder',
     ) as HTMLInputElement
 
     fireEvent.change(input, { target: { value: '1bad' } })
-    await userEvent.click(screen.getByText('common.operation.save'))
+    await user.click(screen.getByText('common.operation.save'))
 
     expect(input).toHaveValue('')
     expect(mockToastError).toHaveBeenCalled()

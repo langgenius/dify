@@ -6,10 +6,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useInfiniteQuery } from '@tanstack/react-query'
@@ -122,7 +122,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
           <DialogTitle>
             {t(($) => $['feature.dataSet.selectTitle'], { ns: 'appDebug' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           {isLoading && datasets.length === 0 && (

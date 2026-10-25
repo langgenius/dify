@@ -36,6 +36,7 @@ function GraphState() {
 }
 
 it('replaces the placeholder, deselects its neighbor and waits for draft persistence before generating URLs', async () => {
+  const user = userEvent.setup()
   const placeholder = createNode({
     id: 'placeholder-1',
     data: { type: BlockEnum.StartPlaceholder, selected: true },
@@ -76,7 +77,7 @@ it('replaces the placeholder, deselects its neighbor and waits for draft persist
       },
     },
   )
-  await userEvent.setup().click(screen.getByRole('button', { name: 'Select User Input' }))
+  await user.click(screen.getByRole('button', { name: 'Select User Input' }))
   const nodes = JSON.parse(screen.getByLabelText('Graph').textContent!)
   expect(nodes[0]).toMatchObject({
     id: 'placeholder-1',

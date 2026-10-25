@@ -66,12 +66,13 @@ describe('MarketplaceOperationDropdown', () => {
   })
 
   it('downloads the requested plugin version with its archive filename', async () => {
+    const user = userEvent.setup()
     const archive = new Blob(['plugin zip'], { type: 'application/zip' })
     mockDownloadPlugin.mockResolvedValue(archive)
     const onOpenChange = vi.fn()
     renderComponent({ open: true, onOpenChange })
 
-    await userEvent.setup().click(screen.getByText('common.operation.download'))
+    await user.click(screen.getByText('common.operation.download'))
 
     expect(onOpenChange).toHaveBeenCalledWith(false)
     await waitFor(() => {
