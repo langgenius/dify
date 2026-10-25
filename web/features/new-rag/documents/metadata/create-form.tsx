@@ -72,7 +72,7 @@ export function DocumentMetadataCreateForm({
         void create()
       }}
     >
-      <Button variant="ghost-accent" size="small" className="mb-1 -ml-2" onClick={close}>
+      <Button variant="ghost-accent" size="small" className="-ms-2 mb-1" onClick={close}>
         <span aria-hidden className="i-ri-arrow-left-line size-4" />
         <span className="system-xs-semibold-uppercase">
           {t(($) => $['metadata.createMetadata.back'], { ns: 'dataset' })}
@@ -125,11 +125,13 @@ export function DocumentMetadataCreateForm({
             })}
             value={name}
           />
-          {nameTouched && nameError && <FieldError match>{nameError}</FieldError>}
+          <div className="min-h-5">
+            {nameTouched && nameError && <FieldError match>{nameError}</FieldError>}
+          </div>
         </Field>
       </div>
       <div className="mt-4 flex justify-end">
-        <Button className="mr-2" disabled={pending} onClick={close}>
+        <Button className="me-2" disabled={pending} onClick={close}>
           {tCommon(($) => $['operation.cancel'])}
         </Button>
         <Button loading={pending} type="submit" variant="primary">

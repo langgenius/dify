@@ -1,43 +1,48 @@
 import importlib
 import json
 import sys
-import types
-from types import SimpleNamespace
+from dataclasses import dataclass
+from types import ModuleType, SimpleNamespace
+from typing import TYPE_CHECKING, Any, Self
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
+if TYPE_CHECKING:
+    from dify_vdb_tencent.tencent_vector import TencentConfig
 
-def _build_fake_tencent_modules():
-    tcvdb_text = types.ModuleType("tcvdb_text")
-    tcvdb_text_encoder = types.ModuleType("tcvdb_text.encoder")
-    tcvectordb = types.ModuleType("tcvectordb")
-    tcvectordb_model = types.ModuleType("tcvectordb.model")
-    tcvectordb_document = types.ModuleType("tcvectordb.model.document")
-    tcvectordb_index = types.ModuleType("tcvectordb.model.index")
-    tcvectordb_enum = types.ModuleType("tcvectordb.model.enum")
+
+def _build_fake_tencent_modules() -> dict[str, FakeModule]:
+    tcvdb_text = FakeModule("tcvdb_text")
+    tcvdb_text_encoder = FakeModule("tcvdb_text.encoder")
+    tcvectordb = FakeModule("tcvectordb")
+    tcvectordb_model = FakeModule("tcvectordb.model")
+    tcvectordb_document = FakeModule("tcvectordb.model.document")
+    tcvectordb_index = FakeModule("tcvectordb.model.index")
+    tcvectordb_enum = FakeModule("tcvectordb.model.enum")
 
     class _BM25Encoder:
-        def encode_texts(self, text):
+        def encode_texts(self, text: str) -> dict[str, str]:
             return {"encoded_text": text}
 
-        def encode_queries(self, query):
+        def encode_queries(self, query: str) -> dict[str, str]:
             return {"encoded_query": query}
 
         @classmethod
-        def default(cls, _lang):
+        def default(cls, _lang: str) -> Self:
             return cls()
 
     class VectorDBError(Exception):
-        def __init__(self, message):
+        def __init__(self, message: str) -> None:
             super().__init__(message)
             self.message = message
 
     class RPCVectorDBClient:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
             self.create_database_if_not_exists = MagicMock()
             self.exists_collection = MagicMock(return_value=False)
@@ -51,81 +56,80 @@ def _build_fake_tencent_modules():
             self.drop_collection = MagicMock()
 
     class _Document:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.__dict__.update(kwargs)
 
+    @dataclass(eq=False, repr=False)
     class _HNSWSearchParams:
-        def __init__(self, ef):
-            self.ef = ef
+        ef: int
 
     class _AnnSearch:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
 
     class _KeywordSearch:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
 
     class _WeightedRerank:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
 
     class _Filter:
         @staticmethod
-        def in_(field, values):
+        def in_(field: str, values: list[str]) -> tuple[str, str, list[str]]:
             return ("in", field, values)
 
-        def __init__(self, condition):
+        def __init__(self, condition: tuple[str, str, list[str]]) -> None:
             self.condition = condition
 
     _Filter.In = staticmethod(_Filter.in_)
 
     class _HNSWParams:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
 
     class _FilterIndex:
-        def __init__(self, *args):
+        def __init__(self, *args: object) -> None:
             self.args = args
 
     class _VectorIndex:
-        def __init__(self, *args):
+        def __init__(self, *args: object) -> None:
             self.args = args
 
     class _SparseIndex:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: Any) -> None:
             self.kwargs = kwargs
 
-    # ModuleType does not declare these attributes, so set them through the module namespace.
-    vars(tcvectordb_enum)["IndexType"] = SimpleNamespace(
+    tcvectordb_enum.IndexType = SimpleNamespace(
         __members__={"HNSW": "HNSW", "PRIMARY_KEY": "PRIMARY_KEY", "FILTER": "FILTER", "SPARSE_INVERTED": "SPARSE"},
         PRIMARY_KEY="PRIMARY_KEY",
         FILTER="FILTER",
         SPARSE_INVERTED="SPARSE",
     )
-    vars(tcvectordb_enum)["MetricType"] = SimpleNamespace(__members__={"IP": "IP"}, IP="IP")
-    vars(tcvectordb_enum)["FieldType"] = SimpleNamespace(String="String", Json="Json", SparseVector="SparseVector")
+    tcvectordb_enum.MetricType = SimpleNamespace(__members__={"IP": "IP"}, IP="IP")
+    tcvectordb_enum.FieldType = SimpleNamespace(String="String", Json="Json", SparseVector="SparseVector")
 
-    vars(tcvectordb_document)["Document"] = _Document
-    vars(tcvectordb_document)["HNSWSearchParams"] = _HNSWSearchParams
-    vars(tcvectordb_document)["AnnSearch"] = _AnnSearch
-    vars(tcvectordb_document)["Filter"] = _Filter
-    vars(tcvectordb_document)["KeywordSearch"] = _KeywordSearch
-    vars(tcvectordb_document)["WeightedRerank"] = _WeightedRerank
+    tcvectordb_document.Document = _Document
+    tcvectordb_document.HNSWSearchParams = _HNSWSearchParams
+    tcvectordb_document.AnnSearch = _AnnSearch
+    tcvectordb_document.Filter = _Filter
+    tcvectordb_document.KeywordSearch = _KeywordSearch
+    tcvectordb_document.WeightedRerank = _WeightedRerank
 
-    vars(tcvectordb_index)["HNSWParams"] = _HNSWParams
-    vars(tcvectordb_index)["FilterIndex"] = _FilterIndex
-    vars(tcvectordb_index)["VectorIndex"] = _VectorIndex
-    vars(tcvectordb_index)["SparseIndex"] = _SparseIndex
+    tcvectordb_index.HNSWParams = _HNSWParams
+    tcvectordb_index.FilterIndex = _FilterIndex
+    tcvectordb_index.VectorIndex = _VectorIndex
+    tcvectordb_index.SparseIndex = _SparseIndex
 
-    vars(tcvdb_text_encoder)["BM25Encoder"] = _BM25Encoder
+    tcvdb_text_encoder.BM25Encoder = _BM25Encoder
 
-    vars(tcvectordb_model)["document"] = tcvectordb_document
-    vars(tcvectordb_model)["enum"] = tcvectordb_enum
-    vars(tcvectordb_model)["index"] = tcvectordb_index
+    tcvectordb_model.document = tcvectordb_document
+    tcvectordb_model.enum = tcvectordb_enum
+    tcvectordb_model.index = tcvectordb_index
 
-    vars(tcvectordb)["RPCVectorDBClient"] = RPCVectorDBClient
-    vars(tcvectordb)["VectorDBException"] = VectorDBError
+    tcvectordb.RPCVectorDBClient = RPCVectorDBClient
+    tcvectordb.VectorDBException = VectorDBError
 
     return {
         "tcvdb_text": tcvdb_text,
@@ -139,7 +143,7 @@ def _build_fake_tencent_modules():
 
 
 @pytest.fixture
-def tencent_module(monkeypatch: pytest.MonkeyPatch):
+def tencent_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     for name, module in _build_fake_tencent_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -148,7 +152,7 @@ def tencent_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module)
 
 
-def _config(module, **overrides):
+def _config(module: ModuleType, **overrides: Any) -> "TencentConfig":
     values = {
         "url": "http://vdb.local",
         "api_key": "api-key",
@@ -166,7 +170,7 @@ def _config(module, **overrides):
     return module.TencentConfig.model_validate(values)
 
 
-def test_config_and_init_paths(tencent_module):
+def test_config_and_init_paths(tencent_module: ModuleType) -> None:
     config = _config(tencent_module)
     assert config.to_tencent_params()["url"] == "http://vdb.local"
 
@@ -192,12 +196,12 @@ def test_config_and_init_paths(tencent_module):
 
 
 @pytest.mark.parametrize("database", [None, ""])
-def test_config_requires_a_database(tencent_module, database):
+def test_config_requires_a_database(tencent_module: ModuleType, database: str | None) -> None:
     with pytest.raises(ValueError, match="config TENCENT_VECTOR_DB_DATABASE is required"):
         _config(tencent_module, database=database)
 
 
-def test_create_collection_branches(tencent_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_branches(tencent_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     vector = tencent_module.TencentVector("collection_1", _config(tencent_module))
 
     lock = MagicMock()
@@ -237,7 +241,7 @@ def test_create_collection_branches(tencent_module, monkeypatch: pytest.MonkeyPa
     vector._client.create_collection.side_effect = None
 
 
-def test_create_add_delete_and_search_behaviour(tencent_module):
+def test_create_add_delete_and_search_behaviour(tencent_module: ModuleType) -> None:
     vector = tencent_module.TencentVector("collection_1", _config(tencent_module, enable_hybrid_search=True))
     vector._create_collection = MagicMock()
     docs = [
@@ -257,7 +261,7 @@ def test_create_add_delete_and_search_behaviour(tencent_module):
 
     vector._client.query.return_value = [{"id": "a"}]
     assert vector.text_exists("a") is True
-    vector._client.query.return_value = []
+    vector._client.query.return_value = list[dict[str, object]]()
     assert vector.text_exists("a") is False
 
     vector.delete_by_ids([])
@@ -289,7 +293,7 @@ def test_create_add_delete_and_search_behaviour(tencent_module):
     vector._client.drop_collection.assert_called_once()
 
 
-def test_add_texts_converts_only_true_summary_marker(tencent_module):
+def test_add_texts_converts_only_true_summary_marker(tencent_module: ModuleType) -> None:
     vector = tencent_module.TencentVector("collection_1", _config(tencent_module))
     summary_metadata = {"doc_id": "summary", "is_summary": True, "published": False}
     regular_metadata = {"doc_id": "regular", "published": False}
@@ -306,7 +310,9 @@ def test_add_texts_converts_only_true_summary_marker(tencent_module):
     assert summary_metadata["is_summary"] is True
 
 
-def test_tencent_factory_existing_and_generated_collection(tencent_module, monkeypatch: pytest.MonkeyPatch):
+def test_tencent_factory_existing_and_generated_collection(
+    tencent_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory = tencent_module.TencentVectorFactory()
     dataset_with_index = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
