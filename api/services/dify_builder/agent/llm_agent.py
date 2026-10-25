@@ -153,12 +153,13 @@ class LlmBuilderAgent:
         )
 
     @diagnostics.cognition
-    def generate_mock_inputs(self, schema, prior_failed):
+    def generate_mock_inputs(self, schema, prior_failed, *, business_context: str = ""):
         return mock_inputs.generate(
             self.model_or_none(),
             schema,
             prior_failed,
             self._reasoning_for("generate-mock-inputs"),
+            business_context=business_context,
         )
 
     # -- Build cognition (real) --

@@ -81,7 +81,9 @@ class DifyBuilderAgent(Protocol):
         self, diagnosis: Diagnosis, graph: Graph, *, reply_language: str | None = None
     ) -> tuple[list[MutationIntent], Risk]: ...
 
-    def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> Inputs: ...
+    def generate_mock_inputs(
+        self, schema: StartSchema, prior_failed: Inputs, *, business_context: str = ""
+    ) -> Inputs: ...
 
     # -- Build cognition --
 

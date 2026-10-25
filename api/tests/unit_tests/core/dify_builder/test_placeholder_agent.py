@@ -76,6 +76,7 @@ def test_diagnose_checklist_empty_errors_returns_generic_cause() -> None:
 def test_generate_mock_inputs_returns_canned_query() -> None:
     a = PlaceholderAgent()
     assert a.generate_mock_inputs({}, {}) == {"query": "mock"}
+    assert a.generate_mock_inputs({}, {}, business_context="Daily order report") == {"query": "mock"}
 
 
 def test_analyze_goal_returns_full_requirements_shape() -> None:
