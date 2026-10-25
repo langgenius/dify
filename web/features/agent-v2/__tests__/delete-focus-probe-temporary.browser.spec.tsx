@@ -1,4 +1,9 @@
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
@@ -61,53 +66,79 @@ function Roster() {
   )
 }
 
-
-it.each(['fresh', 'first-card-pointer', 'first-card-keyboard'] as const)('focus probe: %s', async (mode) => {
-  const i18n = createInstance()
-  await i18n.init({ lng: 'en-US', resources: { 'en-US': { agentRoster, common } }, keySeparator: false, interpolation: { escapeValue: false } })
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  queryClient.setQueryData(listOptions.queryKey, { data: [{ ...agent, id: 'agent-0', name: 'First Agent' }, agent], publication_counts: { drafts: 2, published: 0 }, total: 2, has_more: false, page: 1, limit: 30 })
-  const pending = createDeferred<void>()
-  deleteAgent.mockReturnValueOnce(pending.promise)
-  try {
-    const screen = await render(
-      <I18nextProvider i18n={i18n}>
-        <QueryClientProvider client={queryClient}>
-          <button type="button">Stable button</button>
-          <DropdownMenu>
-            <DropdownMenuTrigger>Stable menu</DropdownMenuTrigger>
-            <DropdownMenuContent><DropdownMenuItem>Stable option</DropdownMenuItem></DropdownMenuContent>
-          </DropdownMenu>
-          <Roster />
-        </QueryClientProvider>
-      </I18nextProvider>,
-    )
-    if (mode !== 'fresh') {
-      const firstTrigger = screen.getByRole('button', { name: 'More actions for First Agent' })
-      await screen.getByRole('link', { name: 'First Agent' }).hover()
-      if (mode === 'first-card-keyboard') {
-        firstTrigger.element().focus()
-        await userEvent.keyboard('{Enter}')
-      } else await firstTrigger.click()
-      await expect.element(screen.getByRole('menuitem', { name: 'Delete' })).toBeVisible()
-      await userEvent.keyboard('{Escape}')
-      await expect.element(firstTrigger).toHaveFocus()
+it.each(['fresh', 'first-card-pointer', 'first-card-keyboard'] as const)(
+  'focus probe: %s',
+  async (mode) => {
+    const i18n = createInstance()
+    await i18n.init({
+      lng: 'en-US',
+      resources: { 'en-US': { agentRoster, common } },
+      keySeparator: false,
+      interpolation: { escapeValue: false },
+    })
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    queryClient.setQueryData(listOptions.queryKey, {
+      data: [{ ...agent, id: 'agent-0', name: 'First Agent' }, agent],
+      publication_counts: { drafts: 2, published: 0 },
+      total: 2,
+      has_more: false,
+      page: 1,
+      limit: 30,
+    })
+    const pending = createDeferred<void>()
+    deleteAgent.mockReturnValueOnce(pending.promise)
+    try {
+      const screen = await render(
+        <I18nextProvider i18n={i18n}>
+          <QueryClientProvider client={queryClient}>
+            <button type="button">Stable button</button>
+            <DropdownMenu>
+              <DropdownMenuTrigger>Stable menu</DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem>Stable option</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Roster />
+          </QueryClientProvider>
+        </I18nextProvider>,
+      )
+      if (mode !== 'fresh') {
+        const firstTrigger = screen.getByRole('button', { name: 'More actions for First Agent' })
+        await screen.getByRole('link', { name: 'First Agent' }).hover()
+        if (mode === 'first-card-keyboard') {
+          firstTrigger.element().focus()
+          await userEvent.keyboard('{Enter}')
+        } else await firstTrigger.click()
+        await expect.element(screen.getByRole('menuitem', { name: 'Delete' })).toBeVisible()
+        await userEvent.keyboard('{Escape}')
+        await expect.element(firstTrigger).toHaveFocus()
+      }
+      const trigger = screen.getByRole('button', { name: 'More actions for Research Agent' })
+      const link = screen.getByRole('link', { name: 'Research Agent' })
+      await link.hover()
+      await trigger.click()
+      await screen.getByRole('menuitem', { name: 'Delete' }).click()
+      const input = screen.getByRole('textbox', { name: 'Type Research Agent to confirm' })
+      await expect.element(input).toHaveFocus()
+      await screen.getByRole('button', { name: 'Autofill' }).click()
+      await input.click()
+      await userEvent.keyboard('{Enter}')
+      await expect.poll(() => deleteAgent.mock.calls.length).toBe(1)
+      pending.resolve()
+      await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+      await expect.element(link).not.toBeInTheDocument()
+      console.warn(
+        'FOCUS_PROBE',
+        mode,
+        JSON.stringify({
+          tag: document.activeElement?.tagName,
+          text: document.activeElement?.textContent?.slice(0, 90),
+          ariaLabel: document.activeElement?.getAttribute('aria-label'),
+        }),
+      )
+      expect(document.activeElement).not.toBeNull()
+    } finally {
+      queryClient.clear()
     }
-    const trigger = screen.getByRole('button', { name: 'More actions for Research Agent' })
-    const link = screen.getByRole('link', { name: 'Research Agent' })
-    await link.hover()
-    await trigger.click()
-    await screen.getByRole('menuitem', { name: 'Delete' }).click()
-    const input = screen.getByRole('textbox', { name: 'Type Research Agent to confirm' })
-    await expect.element(input).toHaveFocus()
-    await screen.getByRole('button', { name: 'Autofill' }).click()
-    await input.click()
-    await userEvent.keyboard('{Enter}')
-    await expect.poll(() => deleteAgent.mock.calls.length).toBe(1)
-    pending.resolve()
-    await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
-    await expect.element(link).not.toBeInTheDocument()
-    console.log('FOCUS_PROBE', mode, JSON.stringify({ tag: document.activeElement?.tagName, text: document.activeElement?.textContent?.slice(0, 90), ariaLabel: document.activeElement?.getAttribute('aria-label') }))
-    expect(document.activeElement).not.toBeNull()
-  } finally { queryClient.clear() }
-})
+  },
+)
