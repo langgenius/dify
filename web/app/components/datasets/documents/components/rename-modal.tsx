@@ -1,4 +1,5 @@
 'use client'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -19,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { renameDocumentName } from '@/service/datasets'
 
-export type RenameDocumentPayload = { id: string; name: string }
+export type RenameDocumentPayload = Pick<DocumentWithSegmentsResponse, 'id' | 'name'>
 
 type Props = {
   datasetId: string
