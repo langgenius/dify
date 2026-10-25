@@ -249,7 +249,10 @@ function ExplicitAnatomyDemo() {
         </ContextMenuTrigger>
         <ContextMenuPortal container={containerRef}>
           <ContextMenuPositioner anchor={anchorRef} side="bottom" align="start" sideOffset={8}>
-            <ContextMenuPopup aria-label="Anchored actions" className="min-w-40">
+            <ContextMenuPopup
+              aria-label="Anchored actions"
+              className="min-w-40 scroll-py-1 rounded-lg border border-divider-subtle bg-background-default py-1 shadow-md"
+            >
               <ContextMenuSubmenu>
                 <ContextMenuSubmenuTrigger>Share</ContextMenuSubmenuTrigger>
                 <ContextMenuSubmenuContent>

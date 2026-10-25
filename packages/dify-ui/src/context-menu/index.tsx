@@ -71,7 +71,6 @@ function ContextMenuPopup({ className, ...props }: ContextMenuPopupProps) {
       className={(state) =>
         cn(
           menuPopupBaseClassName,
-          menuPopupSurfaceClassName,
           floatingPopupAnimationClassName,
           resolveClassName(className, state),
         )
@@ -103,7 +102,10 @@ function ContextMenuContent({
         sideOffset={sideOffset}
         alignOffset={alignOffset}
       >
-        <ContextMenuPopup className={className} {...props}>
+        <ContextMenuPopup
+          className={(state) => cn(menuPopupSurfaceClassName, resolveClassName(className, state))}
+          {...props}
+        >
           {children}
         </ContextMenuPopup>
       </ContextMenuPositioner>
@@ -259,7 +261,10 @@ function ContextMenuSubmenuContent({
         sideOffset={sideOffset}
         alignOffset={alignOffset}
       >
-        <ContextMenuPopup className={className} {...props}>
+        <ContextMenuPopup
+          className={(state) => cn(menuPopupSurfaceClassName, resolveClassName(className, state))}
+          {...props}
+        >
           {children}
         </ContextMenuPopup>
       </ContextMenuPositioner>
