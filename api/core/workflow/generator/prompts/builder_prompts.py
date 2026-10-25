@@ -188,6 +188,11 @@ _NODE_SNIPPETS: dict[str, str] = {
      "context": {"enabled": false, "variable_selector": []},
      "vision": {"enabled": false}}
 
+    For a new LLM node, default "reasoning_format" to "separated" so
+    "text" contains the final answer and reasoning stays in "reasoning_content".
+    Honor an explicit "tagged" or "separated" choice. When updating an existing
+    node, preserve its reasoning_format, including omission, unless requested.
+
     Prompt-writing rules for the user-message text:
       * ``{{#node.var#}}`` placeholders are interpolated by Dify BEFORE the
         LLM sees them — at run time the model only sees the resolved value.
