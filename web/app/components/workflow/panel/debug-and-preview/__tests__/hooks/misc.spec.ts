@@ -1,6 +1,8 @@
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
 import { act } from '@testing-library/react'
-import { renderWorkflowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useChat } from '../../hooks'
 
 const mockHandleRun = vi.fn()
@@ -9,7 +11,6 @@ const mockFetchInspectVars = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
-const mockGetNodes = vi.fn((): { id: string; type: string; data: Record<string, unknown> }[] => [])
 
 vi.mock('@/service/base', () => ({
   sseGet: (...args: unknown[]) => mockSseGet(...args),
@@ -32,21 +33,13 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-    }),
-  }),
-}))
-
-vi.mock('../../../../hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({ handleRun: mockHandleRun }),
-}))
-
-vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
-  useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
-}))
+// Run transport and inspector loading are supplied by the owning application through
+// the real hooks store; useChat and its facade hooks stay mounted.
+const renderHook: typeof renderWorkflowCanvasHook = (hook, options) =>
+  renderWorkflowCanvasHook(hook, {
+    ...options,
+    hooksStoreProps: { handleRun: mockHandleRun, fetchInspectVars: mockFetchInspectVars },
+  })
 
 const resetMocksAndWorkflowState = () => {
   vi.clearAllMocks()
@@ -235,27 +228,25 @@ describe('useChat – handleSubmitHumanInputForm', () => {
 describe('useChat – getHumanInputNodeData', () => {
   beforeEach(() => {
     resetMocksAndWorkflowState()
-    mockGetNodes.mockReturnValue([])
   })
 
   it('should return the custom node matching the given nodeID', () => {
-    const mockNode = { id: 'node-1', type: 'custom', data: { title: 'Human Input' } }
-    mockGetNodes.mockReturnValue([
-      mockNode,
-      { id: 'node-2', type: 'custom', data: { title: 'Other' } },
-    ])
+    const mockNode = createNode({
+      id: 'node-1',
+      data: { type: BlockEnum.HumanInput, title: 'Human Input' },
+    })
 
     const { result } = renderHook(() => useChat({}), {
+      nodes: [mockNode, createNode({ id: 'node-2', data: { title: 'Other' } })],
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
     const node = result.current.getHumanInputNodeData('node-1')
-    expect(node).toEqual(mockNode)
+    expect(node).toMatchObject(mockNode)
   })
 
   it('should return undefined when no matching node', () => {
-    mockGetNodes.mockReturnValue([{ id: 'node-2', type: 'custom', data: {} }])
-
     const { result } = renderHook(() => useChat({}), {
+      nodes: [createNode({ id: 'node-2' })],
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
     const node = result.current.getHumanInputNodeData('nonexistent')
@@ -263,16 +254,16 @@ describe('useChat – getHumanInputNodeData', () => {
   })
 
   it('should filter out non-custom nodes', () => {
-    mockGetNodes.mockReturnValue([
-      { id: 'node-1', type: 'default', data: {} },
-      { id: 'node-1', type: 'custom', data: { found: true } },
-    ])
-
+    const customNode = createNode({
+      id: 'custom-node',
+      data: { type: BlockEnum.HumanInput, title: 'Human Input' },
+    })
     const { result } = renderHook(() => useChat({}), {
+      nodes: [createNode({ id: 'default-node', type: 'default' }), customNode],
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
-    const node = result.current.getHumanInputNodeData('node-1')
-    expect(node).toEqual({ id: 'node-1', type: 'custom', data: { found: true } })
+    expect(result.current.getHumanInputNodeData('default-node')).toBeUndefined()
+    expect(result.current.getHumanInputNodeData('custom-node')).toMatchObject(customNode)
   })
 })
 
