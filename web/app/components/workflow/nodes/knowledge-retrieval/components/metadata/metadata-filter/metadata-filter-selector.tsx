@@ -65,7 +65,7 @@ const MetadataFilterSelector = ({
         {selectedOption.value}
         <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
       </MenuTrigger>
-      <MenuContent className="w-70 p-1">
+      <MenuContent className="w-70">
         <MenuRadioGroup value={value} onValueChange={onSelect}>
           {visibleOptions.map((option) => (
             <MenuRadioItem

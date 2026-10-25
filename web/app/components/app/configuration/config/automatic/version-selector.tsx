@@ -39,7 +39,7 @@ function VersionSelector({ versionLen, value, onChange }: VersionSelectorProps) 
         </div>
         {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
       </MenuTrigger>
-      <MenuContent align="start" alignOffset={-12} className="w-52 p-1">
+      <MenuContent align="start" alignOffset={-12} className="w-52">
         <MenuRadioGroup
           value={value}
           onValueChange={(nextValue) => {

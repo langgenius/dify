@@ -27,7 +27,7 @@ const ActionsMenu = ({ startIndex, breadcrumbs, onBreadcrumbClick }: ActionsMenu
               </IconButton>
             }
           />
-          <MenuContent align="start" className="w-34 px-1">
+          <MenuContent align="start" className="w-34">
             {breadcrumbs.map((breadcrumb, index) => (
               <MenuItem
                 key={breadcrumbs.slice(0, index + 1).join('/')}

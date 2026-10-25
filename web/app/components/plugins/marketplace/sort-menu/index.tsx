@@ -48,7 +48,7 @@ const SortMenu = () => {
         <span className="system-sm-medium text-text-primary">{selectedOption.text}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-tertiary" />
       </MenuTrigger>
-      <MenuContent align="start" className="px-1">
+      <MenuContent align="start">
         <MenuRadioGroup
           value={`${selectedOption.value}-${selectedOption.order}`}
           onValueChange={(nextValue) => {

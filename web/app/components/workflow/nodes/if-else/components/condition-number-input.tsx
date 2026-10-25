@@ -63,7 +63,7 @@ const ConditionNumberInput = ({
         <MenuContent
           align="start"
           sideOffset={2}
-          className="w-28 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+          className="w-28 rounded-xl border-[0.5px] bg-components-panel-bg-blur"
         >
           <MenuRadioGroup value={numberVarType} onValueChange={onNumberVarTypeChange}>
             {options.map((option) => (

@@ -61,14 +61,14 @@ export function Sort<const Field extends string | number>({
             <MenuRadioGroup<Field>
               value={value.field}
               onValueChange={(field) => onValueChange({ field, order: value.order })}
-              className="max-h-72 overflow-auto p-1"
+              className="max-h-72 scroll-py-1 overflow-auto py-1"
             >
               {items.map((item) => (
                 <MenuRadioItem
                   key={item.value}
                   value={item.value}
                   closeOnClick
-                  className="mx-0 h-auto min-h-8 gap-2 py-1.5"
+                  className="h-auto min-h-8 gap-2 py-1.5"
                 >
                   <div className="min-w-0 grow system-sm-medium wrap-anywhere text-text-secondary">
                     {item.name}

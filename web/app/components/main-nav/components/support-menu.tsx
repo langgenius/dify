@@ -60,7 +60,7 @@ export default function SupportMenu() {
     <>
       {shouldShowUpgradeContact && (
         <MenuItem
-          className="mx-0 h-8 gap-1 px-3 py-1"
+          className="h-8 gap-1 px-3 py-1"
           onClick={() => {
             setPricing('open')
           }}
@@ -82,7 +82,7 @@ export default function SupportMenu() {
       )}
       {!shouldShowUpgradeContact && hasDedicatedChannel && hasZendeskWidget && (
         <MenuItem
-          className="mx-0 h-8 gap-1 px-3 py-1"
+          className="h-8 gap-1 px-3 py-1"
           onClick={() => {
             void zendeskRuntime.open(deploymentEdition).catch(() => {
               toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
@@ -97,7 +97,7 @@ export default function SupportMenu() {
       )}
       {!shouldShowUpgradeContact && hasDedicatedChannel && !hasZendeskWidget && supportMailLink && (
         <MenuLinkItem
-          className="mx-0 h-8 gap-1 px-3 py-1"
+          className="h-8 gap-1 px-3 py-1"
           href={supportMailLink}
           rel="noopener noreferrer"
           target="_blank"
@@ -110,7 +110,7 @@ export default function SupportMenu() {
         </MenuLinkItem>
       )}
       <MenuLinkItem
-        className="mx-0 h-8 gap-1 px-3 py-1"
+        className="h-8 gap-1 px-3 py-1"
         href="https://discord.gg/5AEfbxcd9k"
         rel="noopener noreferrer"
         target="_blank"

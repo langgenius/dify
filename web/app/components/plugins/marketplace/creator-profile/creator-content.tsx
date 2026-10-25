@@ -172,7 +172,7 @@ export default function CreatorContent({
               <span className="system-sm-medium text-text-secondary">{selectedSort.label}</span>
               <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4 text-text-tertiary" />
             </MenuTrigger>
-            <MenuContent className="min-w-[176px] p-1">
+            <MenuContent className="min-w-[176px]">
               <MenuRadioGroup<CreatorSortField>
                 value={sortField}
                 onValueChange={(nextField) => {

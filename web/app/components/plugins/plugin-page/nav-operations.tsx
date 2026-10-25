@@ -110,7 +110,7 @@ export function SubmitRequestMenuView({ dividerAfterFirst, docLink }: SubmitRequ
           {guideLabel}
         </TooltipContent>
       </Tooltip>
-      <MenuContent className="min-w-50 p-1">
+      <MenuContent className="min-w-50">
         {options.map((option, index) => (
           <Fragment key={option.href}>
             {dividerAfterFirst && index === 1 && <MenuSeparator className="my-1" />}

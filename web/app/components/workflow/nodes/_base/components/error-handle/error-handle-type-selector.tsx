@@ -59,7 +59,7 @@ const ErrorHandleTypeSelector = ({
         {selectedOption?.label}
         <RiArrowDownSLine className="size-3.5" />
       </MenuTrigger>
-      <MenuContent className="w-70 p-1">
+      <MenuContent className="w-70">
         <MenuRadioGroup value={value} onValueChange={onSelected}>
           {availableOptions.map((option) => (
             <MenuRadioItem

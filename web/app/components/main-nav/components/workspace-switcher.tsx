@@ -85,13 +85,13 @@ function WorkspaceSwitchControls({
               </IconButton>
             }
           />
-          <MenuContent className="w-40 bg-components-panel-bg-blur! p-1! backdrop-blur-[5px]">
+          <MenuContent className="w-40 bg-components-panel-bg-blur! backdrop-blur-[5px]">
             <MenuRadioGroup<WorkspaceSort> value={sort} onValueChange={onSortChange}>
               {sortOptions.map((option) => (
                 <MenuRadioItem<WorkspaceSort>
                   key={option.value}
                   value={option.value}
-                  className="mx-0 h-8 gap-1 px-2 py-1"
+                  className="h-8 gap-1 px-2 py-1"
                 >
                   <span className="flex size-4 shrink-0 items-center justify-center">
                     <MenuRadioItemIndicator className="ms-0" />

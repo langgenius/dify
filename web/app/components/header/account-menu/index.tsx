@@ -77,30 +77,30 @@ function AppearanceSubmenu() {
 
   return (
     <MenuSubmenu>
-      <MenuSubmenuTrigger className="mx-0 px-3 py-1">
+      <MenuSubmenuTrigger className="px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-sun-line"
           label={t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
         />
       </MenuSubmenuTrigger>
-      <MenuContent sideOffset={6} className="max-h-90 w-34.75 px-1">
+      <MenuContent className="max-h-90 w-34.75">
         <MenuRadioGroup<Theme>
           value={currentTheme}
           onValueChange={(nextTheme) => setTheme(nextTheme)}
         >
-          <MenuRadioItem<Theme> value="light" className="mx-0 py-1">
+          <MenuRadioItem<Theme> value="light" className="py-1">
             <MainNavRadioItemContent
               iconClassName="i-ri-sun-line"
               label={t(($) => $['account.appearanceLight'], { ns: 'accountSettings' })}
             />
           </MenuRadioItem>
-          <MenuRadioItem<Theme> value="dark" className="mx-0 py-1">
+          <MenuRadioItem<Theme> value="dark" className="py-1">
             <MainNavRadioItemContent
               iconClassName="i-ri-moon-line"
               label={t(($) => $['account.appearanceDark'], { ns: 'accountSettings' })}
             />
           </MenuRadioItem>
-          <MenuRadioItem<Theme> value="system" className="mx-0 py-1">
+          <MenuRadioItem<Theme> value="system" className="py-1">
             <MainNavRadioItemContent
               iconClassName="i-ri-computer-line"
               label={t(($) => $['account.appearanceSystem'], { ns: 'accountSettings' })}
@@ -137,8 +137,8 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
 
   return (
     <>
-      <MenuGroup className="p-1">
-        <div className="flex items-center gap-3 rounded-xl bg-linear-to-b from-background-section-burn to-background-section p-3">
+      <MenuGroup className="py-1">
+        <div className="mx-1 flex items-center gap-3 rounded-xl bg-linear-to-b from-background-section-burn to-background-section p-3">
           <div className="flex min-w-0 grow flex-col gap-1">
             <div className="flex min-w-0 items-center gap-1">
               <div
@@ -167,15 +167,15 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
           </Avatar>
         </div>
       </MenuGroup>
-      <MenuGroup className="p-1">
-        <MenuLinkItem className="mx-0 justify-between px-3 py-1" render={<Link href="/account" />}>
+      <MenuGroup className="py-1">
+        <MenuLinkItem className="justify-between px-3 py-1" render={<Link href="/account" />}>
           <MenuItemContent
             iconClassName="i-ri-account-circle-line"
             label={t(($) => $['account.account'], { ns: 'accountSettings' })}
             trailing={<ExternalLinkIndicator />}
           />
         </MenuLinkItem>
-        <MenuItem className="mx-0 px-3 py-1" onClick={() => setSettingsDestination('preferences')}>
+        <MenuItem className="px-3 py-1" onClick={() => setSettingsDestination('preferences')}>
           <MenuItemContent
             iconClassName="i-ri-equalizer-2-line"
             label={t(($) => $['settings.preferences'], { ns: 'navigation' })}
@@ -184,9 +184,9 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
         <AppearanceSubmenu />
       </MenuGroup>
       <MenuSeparator className="my-0" />
-      <MenuGroup className="p-1">
+      <MenuGroup className="py-1">
         <MenuItem
-          className="mx-0 px-3 py-1"
+          className="px-3 py-1"
           onClick={() => {
             onLogout()
           }}
@@ -270,7 +270,7 @@ export default function AccountMenu({ trigger }: AccountMenuProps) {
           }}
           side="top"
           align="start"
-          sideOffset={6}
+
           alignOffset={4}
           className={mainNavMenuPopupClassName}
         >

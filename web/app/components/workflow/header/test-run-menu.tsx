@@ -194,7 +194,7 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
           align="start"
           sideOffset={8}
           alignOffset={-4}
-          className="w-71 px-1"
+          className="w-71"
         >
           <MenuGroup className="flex flex-col gap-1">
             <MenuGroupLabel className="pt-2 text-sm font-medium text-text-primary">

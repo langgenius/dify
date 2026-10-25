@@ -57,20 +57,20 @@ export function EnvironmentDeployMenu({
           </Button>
         }
       />
-      <MenuContent aria-busy={isLoading || isRetrying} className="w-42 p-1">
+      <MenuContent aria-busy={isLoading || isRetrying} className="w-42">
         <MenuGroup>
-          <MenuGroupLabel className="px-2 py-1">{t(($) => $['card.notDeployed'])}</MenuGroupLabel>
+          <MenuGroupLabel className="py-1">{t(($) => $['card.notDeployed'])}</MenuGroupLabel>
           {isLoading ? (
-            <LoadingPlaceholder className="h-7" />
+            <LoadingPlaceholder className="mx-1 h-7" />
           ) : isError ? (
             <div className="flex flex-col items-center">
-              <p role="alert" className="px-2 py-1.5 system-xs-regular text-text-destructive">
+              <p role="alert" className="px-3 py-1.5 system-xs-regular text-text-destructive">
                 {t(($) => $['common.loadFailed'])}
               </p>
               <MenuItem
                 closeOnClick={false}
                 disabled={isRetrying}
-                className="mx-0 h-6 w-fit justify-center rounded-md text-xs font-medium text-components-button-ghost-text"
+                className="h-6 w-fit justify-center rounded-md text-xs font-medium text-components-button-ghost-text"
                 onClick={() => void refetchEnvironments()}
               >
                 <span aria-hidden className="i-ri-reset-left-line size-3" />
@@ -84,7 +84,7 @@ export function EnvironmentDeployMenu({
               </MenuItem>
             </div>
           ) : undeployedEnvironments.length === 0 ? (
-            <p role="status" className="px-2 py-1.5 system-xs-regular text-text-tertiary">
+            <p role="status" className="px-3 py-1.5 system-xs-regular text-text-tertiary">
               {t(($) => $['deployDrawer.noNewEnvironmentAvailable'])}
             </p>
           ) : null}
@@ -93,7 +93,7 @@ export function EnvironmentDeployMenu({
             undeployedEnvironments.map((environment) => (
               <MenuItem
                 key={environment.id}
-                className="mx-0 gap-2 py-1.5"
+                className="gap-2 py-1.5"
                 onClick={() => {
                   onOpenDeployment(
                     {

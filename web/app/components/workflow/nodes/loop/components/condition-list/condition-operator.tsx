@@ -64,7 +64,7 @@ const ConditionOperator = ({
           : t(($) => $[`${i18nPrefix}.select`], { ns: 'workflowLogic' })}
         <RiArrowDownSLine className="size-3.5" />
       </MenuTrigger>
-      <MenuContent className="rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1">
+      <MenuContent className="rounded-xl border-[0.5px] bg-components-panel-bg-blur">
         <MenuRadioGroup value={selectedOption?.value} onValueChange={onSelect}>
           {options.map((option) => (
             <MenuRadioItem

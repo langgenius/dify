@@ -186,12 +186,12 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
           className="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
           <>
-            <MenuGroup className="p-1">
+            <MenuGroup className="py-1">
               <MenuLinkItem
                 href={docLink('/use-dify/getting-started/introduction')}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mx-0 h-8 gap-1 px-3 py-1"
+                className="h-8 gap-1 px-3 py-1"
               >
                 <MenuItemContent
                   iconClassName="i-ri-book-open-line"
@@ -203,7 +203,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
                 href="https://roadmap.dify.ai"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mx-0 h-8 gap-1 px-3 py-1"
+                className="h-8 gap-1 px-3 py-1"
               >
                 <MenuItemContent
                   iconClassName="i-ri-map-2-line"
@@ -215,7 +215,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
                 <MenuCheckboxItem
                   checked={!learnDifyHidden}
                   closeOnClick={false}
-                  className="mx-0 h-8 gap-1 py-1 ps-3 pe-2"
+                  className="h-8 gap-1 py-1 ps-3 pe-2"
                   onCheckedChange={(checked) => setLearnDifyHidden(!checked)}
                 >
                   <span
@@ -232,7 +232,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
                 <MenuCheckboxItem
                   checked={stepByStepTourEnabled}
                   closeOnClick={!stepByStepTourEnabled}
-                  className="mx-0 h-8 gap-1 py-1 ps-3 pe-2"
+                  className="h-8 gap-1 py-1 ps-3 pe-2"
                   disabled={!canToggleStepByStepTour}
                   onCheckedChange={handleStepByStepTourCheckedChange}
                 >
@@ -251,16 +251,16 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
               )}
             </MenuGroup>
             <MenuSeparator className="my-0!" />
-            <MenuGroup className="p-1">
+            <MenuGroup className="py-1">
               <SupportMenu />
             </MenuGroup>
             <MenuSeparator className="my-0!" />
-            <MenuGroup className="p-1">
+            <MenuGroup className="py-1">
               <MenuLinkItem
                 href={creatorCenterUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mx-0 h-8 gap-1 px-3 py-1.5"
+                className="h-8 gap-1 px-3 py-1.5"
               >
                 <MenuItemContent
                   iconClassName="i-ri-user-star-line"
@@ -272,7 +272,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
                 href="https://github.com/langgenius/dify"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mx-0 h-8 gap-1 px-3 py-1.5"
+                className="h-8 gap-1 px-3 py-1.5"
               >
                 <MenuItemContent
                   iconClassName="i-ri-github-line"
@@ -289,7 +289,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
                 />
               </MenuLinkItem>
               {env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
-                <MenuItem className="mx-0 h-8 gap-1 px-3 py-1.5" onClick={() => setAboutOpen(true)}>
+                <MenuItem className="h-8 gap-1 px-3 py-1.5" onClick={() => setAboutOpen(true)}>
                   <MenuItemContent
                     iconClassName="i-ri-information-2-line"
                     label={t(($) => $['userProfile.about'], { ns: 'common' })}

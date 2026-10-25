@@ -33,7 +33,7 @@ function EnvironmentMenuItem({
   onClick: () => void
 }) {
   return (
-    <MenuItem className="mx-0 gap-2 py-1.5" onClick={onClick}>
+    <MenuItem className="gap-2 py-1.5" onClick={onClick}>
       <span aria-hidden className="i-ri-instance-line size-4 shrink-0 text-text-tertiary" />
       <span className="grow truncate system-md-regular text-text-secondary">
         {environment.name}
@@ -169,7 +169,7 @@ export function PublisherEnvironmentTabs({
           />
           <MenuContent className="w-42 p-0">
             {overflowEnvironments.length > 0 && (
-              <MenuGroup className="p-1">
+              <MenuGroup className="py-1">
                 {overflowEnvironments.map((environment) => (
                   <EnvironmentMenuItem
                     key={environment.id}
@@ -183,8 +183,8 @@ export function PublisherEnvironmentTabs({
               <MenuSeparator className="my-0" />
             )}
             {undeployedEnvironments.length > 0 && (
-              <MenuGroup className="p-1">
-                <MenuGroupLabel className="px-2 py-1">
+              <MenuGroup className="py-1">
+                <MenuGroupLabel className="py-1">
                   {t(($) => $['card.notDeployed'], { ns: 'deployments' })}
                 </MenuGroupLabel>
                 {undeployedEnvironments.map((environment) => (

@@ -24,7 +24,7 @@ const AgentLogNavMore = ({ options, onShowAgentOrToolLog }: AgentLogNavMoreProps
           </IconButton>
         }
       />
-      <MenuContent align="start" sideOffset={2} alignOffset={-54} className="w-34 p-1">
+      <MenuContent align="start" sideOffset={2} alignOffset={-54} className="w-34">
         {options.map((option) => (
           <MenuItem
             key={option.message_id}

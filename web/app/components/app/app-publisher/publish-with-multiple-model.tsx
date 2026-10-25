@@ -71,7 +71,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
           <RiArrowDownSLine className="size-3" />
         </>
       </MenuTrigger>
-      <MenuContent className="w-[288px] p-1">
+      <MenuContent className="w-[288px]">
         <div className="flex h-5.5 items-center px-3 text-xs font-medium text-text-tertiary">
           {t(($) => $.publishAs, { ns: 'appDebug' })}
         </div>

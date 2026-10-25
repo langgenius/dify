@@ -48,7 +48,7 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
         variant: 'ghost',
         size: 'medium',
         className:
-          'mx-0 w-full justify-start px-2 data-highlighted:bg-components-button-ghost-bg-hover',
+          'w-[calc(100%-8px)] justify-start px-2 data-highlighted:bg-components-button-ghost-bg-hover',
       })}
     >
       {t(($) => $['panel.change'], { ns: 'workflow' })}
@@ -100,10 +100,9 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
         <MenuPositioner sideOffset={4} align="end" alignOffset={-4}>
           <MenuPopup>
             <div className="min-w-30 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
-              <div className="p-1">
+              <div className="py-1">
                 <ChangeItem data={data} nodeId={nodeId} sourceHandle={sourceHandle} />
                 <MenuItem
-                  className="mx-0"
                   onClick={() => {
                     onOpenChange(false)
                     handleNodeDisconnect(nodeId)
@@ -112,9 +111,8 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
                   {t(($) => $['common.disconnect'], { ns: 'workflow' })}
                 </MenuItem>
               </div>
-              <div className="p-1">
+              <div className="py-1">
                 <MenuItem
-                  className="mx-0"
                   onClick={() => {
                     onOpenChange(false)
                     handleNodeDelete(nodeId)

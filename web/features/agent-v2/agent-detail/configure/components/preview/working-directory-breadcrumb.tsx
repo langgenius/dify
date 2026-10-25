@@ -156,7 +156,7 @@ export function AgentWorkingDirectoryBreadcrumb({
                             </IconButton>
                           }
                         />
-                        <MenuContent align="start" className="w-34 p-1">
+                        <MenuContent align="start" className="w-34">
                           {hiddenItems.map((hiddenItem) => (
                             <MenuItem
                               key={hiddenItem.path}

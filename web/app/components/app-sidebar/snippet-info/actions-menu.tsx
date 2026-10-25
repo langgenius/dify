@@ -128,14 +128,14 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
             </IconButton>
           }
         />
-        <MenuContent className="w-45 p-1">
+        <MenuContent className="w-45">
           {canCreateAndModifySnippet && (
             <>
-              <MenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
+              <MenuItem className="gap-2" onClick={handleOpenEditDialog}>
                 <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
                 <span className="grow">{t(($) => $['menu.editInfo'])}</span>
               </MenuItem>
-              <MenuItem className="mx-0 gap-2" onClick={handleExportSnippet}>
+              <MenuItem className="gap-2" onClick={handleExportSnippet}>
                 <span
                   aria-hidden
                   className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
@@ -148,7 +148,7 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
             <>
               {canCreateAndModifySnippet && <MenuSeparator className="my-1! bg-divider-subtle" />}
               <MenuItem
-                className="mx-0 gap-2"
+                className="gap-2"
                 variant="destructive"
                 onClick={() => setIsDeleteDialogOpen(true)}
               >

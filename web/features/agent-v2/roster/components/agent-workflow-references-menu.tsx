@@ -39,9 +39,9 @@ export function AgentWorkflowReferencesMenu({
         </span>
         <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
       </MenuTrigger>
-      <MenuContent align="start" className="w-66 p-1">
+      <MenuContent align="start" className="w-66">
         <MenuGroup>
-          <MenuGroupLabel className="flex w-full min-w-0 truncate pt-2 pr-3 pb-1.5 pl-2 system-xs-medium normal-case">
+          <MenuGroupLabel className="flex w-full min-w-0 truncate ps-3 pe-4 pt-2 pb-1.5 system-xs-medium normal-case">
             {t(($) => $['roster.references.label'], { ns: 'agentRoster', name: agentName })}
           </MenuGroupLabel>
           {publishedReferences.map((reference) => {
@@ -55,7 +55,7 @@ export function AgentWorkflowReferencesMenu({
                     rel="noopener noreferrer"
                   />
                 }
-                className="group mx-0 gap-2 py-1 pr-2.5 system-md-regular text-text-secondary"
+                className="group gap-2 py-1 pr-2.5 system-md-regular text-text-secondary"
               >
                 <span aria-hidden className="shrink-0">
                   <AppIcon

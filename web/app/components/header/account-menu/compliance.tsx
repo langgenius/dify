@@ -194,7 +194,7 @@ export default function Compliance() {
 
   return (
     <MenuSubmenu>
-      <MenuSubmenuTrigger className="mx-0 h-8 gap-1 px-3 py-1">
+      <MenuSubmenuTrigger className="h-8 gap-1 px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-verified-badge-line"
           label={t(($) => $['userProfile.compliance'], { ns: 'common' })}
