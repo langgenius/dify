@@ -1,12 +1,6 @@
 import type { Menu as BaseMenu } from '@base-ui/react/menu'
-import type {
-  MenuActions,
-  MenuContentProps,
-  MenuHandle,
-  MenuProps,
-  MenuSubmenuContentProps,
-} from '@langgenius/dify-ui/menu'
-import { createMenuHandle, Menu, MenuSubmenuContent, MenuTrigger } from '@langgenius/dify-ui/menu'
+import type { MenuActions, MenuContentProps, MenuHandle, MenuProps } from '@langgenius/dify-ui/menu'
+import { createMenuHandle, Menu, MenuContent, MenuTrigger } from '@langgenius/dify-ui/menu'
 import * as React from 'react'
 import { expectTypeOf } from 'vite-plus/test'
 
@@ -48,16 +42,13 @@ export function menuPositioningTypeContracts() {
   expectTypeOf<Pick<MenuContentProps, Positioning>>().toEqualTypeOf<
     Pick<BaseMenu.Positioner.Props, Positioning>
   >()
-  expectTypeOf<Pick<MenuSubmenuContentProps, Positioning>>().toEqualTypeOf<
-    Pick<BaseMenu.Positioner.Props, Positioning>
-  >()
-  const inherited = <MenuSubmenuContent>Actions</MenuSubmenuContent>
-  const independent = <MenuSubmenuContent align="end">Actions</MenuSubmenuContent>
+  const inherited = <MenuContent>Actions</MenuContent>
+  const independent = <MenuContent align="end">Actions</MenuContent>
   const invalidSide = (
     // @ts-expect-error Combined placement strings are not valid sides.
-    <MenuSubmenuContent side="inline-end-start">Actions</MenuSubmenuContent>
+    <MenuContent side="inline-end-start">Actions</MenuContent>
   )
   // @ts-expect-error Logical sides are not alignments.
-  const invalidAlign = <MenuSubmenuContent align="inline-end">Actions</MenuSubmenuContent>
+  const invalidAlign = <MenuContent align="inline-end">Actions</MenuContent>
   return { inherited, independent, invalidSide, invalidAlign }
 }

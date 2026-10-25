@@ -97,7 +97,7 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
         }
       />
       <MenuPortal>
-        <MenuPositioner align="end" alignOffset={-4}>
+        <MenuPositioner sideOffset={4} align="end" alignOffset={-4}>
           <MenuPopup>
             <div className="min-w-30 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
               <div className="p-1">

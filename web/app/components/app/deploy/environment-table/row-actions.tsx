@@ -153,7 +153,7 @@ export function EnvironmentRowActions({
             </IconButton>
           }
         />
-        <MenuContent className="w-50">
+        <MenuContent align="end" className="w-50">
           {moreActions.map((action, index) => (
             <Fragment key={action.kind}>
               {action.kind === 'undeploy' && index > 0 && <MenuSeparator />}

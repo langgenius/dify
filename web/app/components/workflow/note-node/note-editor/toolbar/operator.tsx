@@ -75,7 +75,7 @@ const Operator = ({
         <span aria-hidden className="i-ri-more-fill size-4" />
       </MenuTrigger>
       <MenuPortal>
-        <MenuPositioner align="end">
+        <MenuPositioner sideOffset={4} align="end">
           <MenuPopup
             finalFocus={() => (deletingRef.current ? (flowStore.getState().domNode ?? true) : true)}
             onKeyDown={(event) =>

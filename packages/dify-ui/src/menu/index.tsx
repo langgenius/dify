@@ -234,10 +234,9 @@ function MenuGroupLabel({ className, ...props }: MenuGroupLabelProps) {
 
 type MenuPositionerProps = BaseMenu.Positioner.Props
 
-function MenuPositioner({ className, sideOffset = 4, ...props }: MenuPositionerProps) {
+function MenuPositioner({ className, ...props }: MenuPositionerProps) {
   return (
     <BaseMenu.Positioner
-      sideOffset={sideOffset}
       className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
@@ -272,8 +271,8 @@ type MenuContentProps = Omit<MenuPopupProps, 'children'> &
 function MenuContent({
   children,
   side,
-  align = 'end',
-  sideOffset,
+  align,
+  sideOffset = 4,
   alignOffset,
   className,
   ...props
@@ -316,31 +315,6 @@ function MenuSubmenuTrigger({
         className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary [&:dir(rtl)]:-scale-x-100"
       />
     </BaseMenu.SubmenuTrigger>
-  )
-}
-
-type MenuSubmenuContentProps = MenuContentProps
-
-function MenuSubmenuContent({
-  children,
-  side,
-  align,
-  sideOffset,
-  alignOffset,
-  className,
-  ...props
-}: MenuSubmenuContentProps) {
-  return (
-    <MenuPortal>
-      <MenuPositioner side={side} align={align} sideOffset={sideOffset} alignOffset={alignOffset}>
-        <MenuPopup
-          className={(state) => cn(menuPopupSurfaceClassName, resolveClassName(className, state))}
-          {...props}
-        >
-          {children}
-        </MenuPopup>
-      </MenuPositioner>
-    </MenuPortal>
   )
 }
 
@@ -417,7 +391,6 @@ export {
   MenuRadioItemIndicator,
   MenuSeparator,
   MenuSubmenu,
-  MenuSubmenuContent,
   MenuSubmenuTrigger,
   MenuTrigger,
   useMenuFilter,
@@ -459,7 +432,6 @@ export type {
   MenuSeparatorProps,
   MenuSubmenuChangeEventDetails,
   MenuSubmenuChangeEventReason,
-  MenuSubmenuContentProps,
   MenuSubmenuProps,
   MenuSubmenuTriggerProps,
   MenuTriggerProps,

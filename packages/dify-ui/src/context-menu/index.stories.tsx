@@ -18,7 +18,6 @@ import {
   ContextMenuRadioItemIndicator,
   ContextMenuSeparator,
   ContextMenuSubmenu,
-  ContextMenuSubmenuContent,
   ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
 } from '.'
@@ -75,11 +74,11 @@ export const WithSubmenu: Story = {
         <ContextMenuSeparator />
         <ContextMenuSubmenu>
           <ContextMenuSubmenuTrigger>Share</ContextMenuSubmenuTrigger>
-          <ContextMenuSubmenuContent className="w-36">
+          <ContextMenuContent className="w-36">
             <ContextMenuItem>Email</ContextMenuItem>
             <ContextMenuItem>Slack</ContextMenuItem>
             <ContextMenuItem>Copy link</ContextMenuItem>
-          </ContextMenuSubmenuContent>
+          </ContextMenuContent>
         </ContextMenuSubmenu>
       </ContextMenuContent>
     </ContextMenu>
@@ -216,11 +215,11 @@ export const Complex: Story = {
             <span aria-hidden className="i-ri-share-line size-4 shrink-0 text-text-tertiary" />
             Share
           </ContextMenuSubmenuTrigger>
-          <ContextMenuSubmenuContent className="w-36">
+          <ContextMenuContent className="w-36">
             <ContextMenuItem>Email</ContextMenuItem>
             <ContextMenuItem>Slack</ContextMenuItem>
             <ContextMenuItem>Copy Link</ContextMenuItem>
-          </ContextMenuSubmenuContent>
+          </ContextMenuContent>
         </ContextMenuSubmenu>
         <ContextMenuSeparator />
         <ContextMenuItem variant="destructive">
@@ -255,11 +254,11 @@ function ExplicitAnatomyDemo() {
             >
               <ContextMenuSubmenu>
                 <ContextMenuSubmenuTrigger>Share</ContextMenuSubmenuTrigger>
-                <ContextMenuSubmenuContent>
+                <ContextMenuContent>
                   <ContextMenuItem onClick={() => setAction('Link copied')}>
                     Copy link
                   </ContextMenuItem>
-                </ContextMenuSubmenuContent>
+                </ContextMenuContent>
               </ContextMenuSubmenu>
             </ContextMenuPopup>
           </ContextMenuPositioner>

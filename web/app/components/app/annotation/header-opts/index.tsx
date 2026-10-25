@@ -9,7 +9,6 @@ import {
   MenuContent,
   MenuItem,
   MenuSubmenu,
-  MenuSubmenuContent,
   MenuSubmenuTrigger,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
@@ -95,7 +94,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
           />
           {t(($) => $['table.header.bulkExport'], { ns: 'appAnnotation' })}
         </MenuSubmenuTrigger>
-        <MenuSubmenuContent side="left" className="min-w-25">
+        <MenuContent side="left" className="min-w-25">
           <MenuItem
             disabled={annotationUnavailable}
             onClick={() => {
@@ -112,7 +111,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
           >
             JSONL
           </MenuItem>
-        </MenuSubmenuContent>
+        </MenuContent>
       </MenuSubmenu>
       <MenuItem
         variant="destructive"

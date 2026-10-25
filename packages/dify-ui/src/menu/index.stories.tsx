@@ -22,7 +22,6 @@ import {
   MenuRadioItemIndicator,
   MenuSeparator,
   MenuSubmenu,
-  MenuSubmenuContent,
   MenuSubmenuTrigger,
   MenuTrigger,
 } from '.'
@@ -136,11 +135,11 @@ export const WithSubmenu: Story = {
         <MenuSeparator />
         <MenuSubmenu>
           <MenuSubmenuTrigger>Share</MenuSubmenuTrigger>
-          <MenuSubmenuContent>
+          <MenuContent>
             <MenuItem>Email</MenuItem>
             <MenuItem>Slack</MenuItem>
             <MenuItem>Copy Link</MenuItem>
-          </MenuSubmenuContent>
+          </MenuContent>
         </MenuSubmenu>
         <MenuSeparator />
         <MenuItem>Download</MenuItem>
@@ -173,10 +172,10 @@ export const RTL: Story = {
               <MenuSubmenuTrigger>
                 <span>مشاركة</span>
               </MenuSubmenuTrigger>
-              <MenuSubmenuContent lang="ar" dir="rtl">
+              <MenuContent lang="ar" dir="rtl">
                 <MenuItem>البريد الإلكتروني</MenuItem>
                 <MenuItem>نسخ الرابط</MenuItem>
-              </MenuSubmenuContent>
+              </MenuContent>
             </MenuSubmenu>
             <MenuItem>تنزيل</MenuItem>
           </MenuContent>
@@ -373,7 +372,7 @@ function ComplexDemo() {
             <span aria-hidden className="i-ri-share-line size-4 shrink-0 text-text-tertiary" />
             Share
           </MenuSubmenuTrigger>
-          <MenuSubmenuContent>
+          <MenuContent>
             <MenuItem>
               <span aria-hidden className="i-ri-mail-line size-4 shrink-0 text-text-tertiary" />
               Email
@@ -386,7 +385,7 @@ function ComplexDemo() {
               <span aria-hidden className="i-ri-link size-4 shrink-0 text-text-tertiary" />
               Copy Link
             </MenuItem>
-          </MenuSubmenuContent>
+          </MenuContent>
         </MenuSubmenu>
         <MenuSeparator />
         <MenuGroup>
@@ -527,7 +526,7 @@ function FilterableDemo() {
                       {/* A submenu without its own provider stays unfiltered. */}
                       <MenuSubmenu>
                         <MenuSubmenuTrigger>Move to</MenuSubmenuTrigger>
-                        <MenuSubmenuContent>
+                        <MenuContent>
                           <MenuList>
                             {moveTargets.map((target) => (
                               <MenuItem
@@ -538,13 +537,13 @@ function FilterableDemo() {
                               </MenuItem>
                             ))}
                           </MenuList>
-                        </MenuSubmenuContent>
+                        </MenuContent>
                       </MenuSubmenu>
                       {/* A submenu wrapped in its own provider filters with its own input. */}
                       <MenuFilterProvider>
                         <MenuSubmenu>
                           <MenuSubmenuTrigger>Share with</MenuSubmenuTrigger>
-                          <MenuSubmenuContent>
+                          <MenuContent>
                             <MenuInputGroup>
                               <span
                                 aria-hidden
@@ -564,7 +563,7 @@ function FilterableDemo() {
                                 </MenuItem>
                               ))}
                             </MenuList>
-                          </MenuSubmenuContent>
+                          </MenuContent>
                         </MenuSubmenu>
                       </MenuFilterProvider>
                     </React.Fragment>

@@ -112,7 +112,7 @@ const ZoomInOut: FC = () => {
             {Number.parseFloat(`${zoom * 100}`).toFixed(0)}%
           </MenuTrigger>
           <MenuPortal>
-            <MenuPositioner side="top" align="start" alignOffset={-2}>
+            <MenuPositioner sideOffset={4} side="top" align="start" alignOffset={-2}>
               <MenuPopup>
                 <div className="w-36.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
                   {zoomOptions.map((options, groupIndex) => (

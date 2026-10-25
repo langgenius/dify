@@ -105,6 +105,7 @@ const OperationsMenu = ({
           <span aria-hidden className="i-ri-more-fill size-5 text-text-tertiary" />
         </MenuTrigger>
         <MenuContent
+          align="end"
           {...getStepByStepTourMenuContentProps({
             highlightPart: stepByStepTourHighlightPart,
             interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',

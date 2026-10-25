@@ -2,10 +2,10 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactNode } from 'react'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import {
+  MenuContent,
   MenuGroup,
   MenuItem,
   MenuSubmenu,
-  MenuSubmenuContent,
   MenuSubmenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -200,7 +200,7 @@ export default function Compliance() {
           label={t(($) => $['userProfile.compliance'], { ns: 'common' })}
         />
       </MenuSubmenuTrigger>
-      <MenuSubmenuContent className="w-84.25 divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs">
+      <MenuContent className="w-84.25 divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs">
         <MenuGroup className="py-1">
           <ComplianceDocRowItem
             icon={<span aria-hidden className="i-custom-public-common-soc2 size-7 shrink-0" />}
@@ -223,7 +223,7 @@ export default function Compliance() {
             docName={DocName.GDPR}
           />
         </MenuGroup>
-      </MenuSubmenuContent>
+      </MenuContent>
     </MenuSubmenu>
   )
 }

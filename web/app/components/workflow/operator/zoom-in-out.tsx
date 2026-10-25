@@ -192,7 +192,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
             {Number.parseFloat(`${zoom * 100}`).toFixed(0)}%
           </MenuTrigger>
           <MenuPortal>
-            <MenuPositioner side="top" align="start" alignOffset={-2}>
+            <MenuPositioner sideOffset={4} side="top" align="start" alignOffset={-2}>
               <MenuPopup
                 onKeyDown={(event) => {
                   if (workflowReadOnly) return

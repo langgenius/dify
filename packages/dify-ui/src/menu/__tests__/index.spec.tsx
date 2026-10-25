@@ -17,7 +17,6 @@ import {
   MenuPositioner,
   MenuSeparator,
   MenuSubmenu,
-  MenuSubmenuContent,
   MenuSubmenuTrigger,
   MenuTrigger,
 } from '../index'
@@ -140,7 +139,7 @@ describe('menu wrapper', () => {
   })
 
   describe('MenuContent', () => {
-    it('should position content at bottom-end with default placement when props are omitted', async () => {
+    it('should inherit bottom-center positioning when props are omitted', async () => {
       const screen = await renderWithSafeViewport(
         <Menu open>
           <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
@@ -151,7 +150,7 @@ describe('menu wrapper', () => {
       )
 
       await expect.element(screen.getByRole('menu')).toHaveAttribute('data-side', 'bottom')
-      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'end')
+      await expect.element(screen.getByRole('menu')).toHaveAttribute('data-align', 'center')
       await expect
         .element(screen.getByRole('menuitem', { name: 'Content action' }))
         .toBeInTheDocument()
@@ -215,17 +214,18 @@ describe('menu wrapper', () => {
     })
   })
 
-  describe('MenuSubmenuContent', () => {
+  describe('MenuContent inside a submenu', () => {
     it('should place sub-content inline-end-start when side and align are omitted', async () => {
+      await page.viewport(1024, 768)
       const screen = await renderWithSafeViewport(
         <Menu open>
           <MenuTrigger aria-label="menu trigger">Open</MenuTrigger>
           <MenuContent>
             <MenuSubmenu open>
               <MenuSubmenuTrigger>More actions</MenuSubmenuTrigger>
-              <MenuSubmenuContent>
+              <MenuContent>
                 <MenuItem>Sub action</MenuItem>
-              </MenuSubmenuContent>
+              </MenuContent>
             </MenuSubmenu>
           </MenuContent>
         </Menu>,
@@ -256,7 +256,7 @@ describe('menu wrapper', () => {
           <MenuContent>
             <MenuSubmenu open>
               <MenuSubmenuTrigger>More actions</MenuSubmenuTrigger>
-              <MenuSubmenuContent
+              <MenuContent
                 side="right"
                 align="end"
                 sideOffset={6}
@@ -265,7 +265,7 @@ describe('menu wrapper', () => {
                 onClick={handlePopupClick}
               >
                 <MenuItem>Custom sub action</MenuItem>
-              </MenuSubmenuContent>
+              </MenuContent>
             </MenuSubmenu>
           </MenuContent>
         </Menu>,
@@ -500,9 +500,9 @@ it('resolves submenu popup classes with the popup state', async () => {
       <MenuContent>
         <MenuSubmenu open>
           <MenuSubmenuTrigger>More audit actions</MenuSubmenuTrigger>
-          <MenuSubmenuContent className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}>
+          <MenuContent className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}>
             <MenuItem>Audit action</MenuItem>
-          </MenuSubmenuContent>
+          </MenuContent>
         </MenuSubmenu>
       </MenuContent>
     </Menu>,

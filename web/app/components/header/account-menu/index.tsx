@@ -15,7 +15,6 @@ import {
   MenuRadioItemIndicator,
   MenuSeparator,
   MenuSubmenu,
-  MenuSubmenuContent,
   MenuSubmenuTrigger,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
@@ -84,7 +83,7 @@ function AppearanceSubmenu() {
           label={t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
         />
       </MenuSubmenuTrigger>
-      <MenuSubmenuContent sideOffset={6} className="max-h-90 w-34.75 px-1">
+      <MenuContent sideOffset={6} className="max-h-90 w-34.75 px-1">
         <MenuRadioGroup<Theme>
           value={currentTheme}
           onValueChange={(nextTheme) => setTheme(nextTheme)}
@@ -108,7 +107,7 @@ function AppearanceSubmenu() {
             />
           </MenuRadioItem>
         </MenuRadioGroup>
-      </MenuSubmenuContent>
+      </MenuContent>
     </MenuSubmenu>
   )
 }

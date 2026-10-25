@@ -498,6 +498,7 @@ export function AppCardInteractions({
                 }
               />
               <MenuContent
+                align="end"
                 {...getStepByStepTourMenuContentProps({
                   highlightPart: stepByStepTourActionMenuHighlightPart,
                   interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',

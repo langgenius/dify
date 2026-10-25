@@ -8,7 +8,6 @@ import {
   ContextMenuLinkItem,
   ContextMenuSeparator,
   ContextMenuSubmenu,
-  ContextMenuSubmenuContent,
   ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
 } from '../index'
@@ -47,7 +46,7 @@ describe('context-menu wrapper', () => {
         .toBeCloseTo(triggerRect.left + 8, 0)
       await expect
         .poll(() => screen.getByRole('menu').element().getBoundingClientRect().top)
-        .toBeCloseTo(triggerRect.top + 8, 0)
+        .toBeCloseTo(triggerRect.top + 8 + 4, 0)
 
       await expect
         .element(screen.getByRole('menuitem', { name: 'Content action' }))
@@ -93,7 +92,7 @@ describe('context-menu wrapper', () => {
     })
   })
 
-  describe('ContextMenuSubmenuContent', () => {
+  describe('ContextMenuContent inside a submenu', () => {
     it('should place sub-content inline-end-start when side and align are omitted', async () => {
       const screen = await renderWithRoomAround(
         <ContextMenu>
@@ -101,9 +100,9 @@ describe('context-menu wrapper', () => {
           <ContextMenuContent>
             <ContextMenuSubmenu open>
               <ContextMenuSubmenuTrigger>More actions</ContextMenuSubmenuTrigger>
-              <ContextMenuSubmenuContent>
+              <ContextMenuContent>
                 <ContextMenuItem>Sub action</ContextMenuItem>
-              </ContextMenuSubmenuContent>
+              </ContextMenuContent>
             </ContextMenuSubmenu>
           </ContextMenuContent>
         </ContextMenu>,
@@ -306,11 +305,9 @@ it('resolves submenu popup classes with the popup state', async () => {
       <ContextMenuContent>
         <ContextMenuSubmenu open>
           <ContextMenuSubmenuTrigger>More audit actions</ContextMenuSubmenuTrigger>
-          <ContextMenuSubmenuContent
-            className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}
-          >
+          <ContextMenuContent className={(state) => (state.open ? 'opacity-50' : 'opacity-100')}>
             <ContextMenuItem>Audit action</ContextMenuItem>
-          </ContextMenuSubmenuContent>
+          </ContextMenuContent>
         </ContextMenuSubmenu>
       </ContextMenuContent>
     </ContextMenu>,

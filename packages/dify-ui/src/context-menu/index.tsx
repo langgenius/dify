@@ -89,7 +89,7 @@ function ContextMenuContent({
   children,
   side,
   align,
-  sideOffset = 0,
+  sideOffset = 4,
   alignOffset = 0,
   className,
   ...props
@@ -242,36 +242,6 @@ function ContextMenuSubmenuTrigger({
   )
 }
 
-type ContextMenuSubmenuContentProps = ContextMenuContentProps
-
-function ContextMenuSubmenuContent({
-  children,
-  side,
-  align,
-  sideOffset = 4,
-  alignOffset,
-  className,
-  ...props
-}: ContextMenuSubmenuContentProps) {
-  return (
-    <ContextMenuPortal>
-      <ContextMenuPositioner
-        side={side}
-        align={align}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-      >
-        <ContextMenuPopup
-          className={(state) => cn(menuPopupSurfaceClassName, resolveClassName(className, state))}
-          {...props}
-        >
-          {children}
-        </ContextMenuPopup>
-      </ContextMenuPositioner>
-    </ContextMenuPortal>
-  )
-}
-
 type ContextMenuGroupLabelProps = BaseContextMenu.GroupLabel.Props
 
 function ContextMenuGroupLabel({ className, ...props }: ContextMenuGroupLabelProps) {
@@ -313,7 +283,6 @@ export {
   ContextMenuRadioItemIndicator,
   ContextMenuSeparator,
   ContextMenuSubmenu,
-  ContextMenuSubmenuContent,
   ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
 }
@@ -343,7 +312,6 @@ export type {
   ContextMenuSeparatorProps,
   ContextMenuSubmenuChangeEventDetails,
   ContextMenuSubmenuChangeEventReason,
-  ContextMenuSubmenuContentProps,
   ContextMenuSubmenuProps,
   ContextMenuSubmenuTriggerProps,
   ContextMenuTriggerProps,
