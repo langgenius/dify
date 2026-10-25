@@ -422,6 +422,7 @@ jobs:
               "api/tests/unit_tests/services/test_app_generate_service.py",
               "api/tests/unit_tests/core/app/workflow/test_node_factory.py",
               "api/tests/unit_tests/core/workflow/generator/test_runner.py",
+              "api/tests/unit_tests/core/workflow/generator/test_template_generation.py",
               "api/tests/unit_tests/core/workflow/generator/test_native_agent_output_contract.py",
               "api/tests/unit_tests/core/workflow/nodes/agent_v2/test_agent_node.py",
               "api/tests/unit_tests/core/workflow/test_node_factory.py",
@@ -2283,6 +2284,12 @@ jobs:
               a4_expected.setdefault(module, a3_expected.get(module, {}).copy()).update(functions)
           # Promote the previously unguarded reconciler module with its full inventory.
           a4_expected["tests.unit_tests.services.dify_builder.test_reconcile"] = {'test_reconcile_flags_stale_working_session_with_no_live_lock': 1, 'test_reconcile_empty_sweep_when_nothing_stale': 1, 'test_reconcile_settles_stranded_confirmed_launch_without_redispatch': 1, 'test_reconcile_skips_confirmed_launch_while_its_lease_is_live': 1, 'test_stranded_observation_and_settlement_close_sql_before_redis': 1, 'test_waiting_binding_retention_has_own_one_minute_schedule': 2, 'test_waiting_binding_task_has_a_finite_wall_time_budget': 1}
+          a4_expected["tests.unit_tests.core.workflow.generator.test_template_generation"] = {
+              "test_generated_template_correction_reaches_native_aliases": 2,
+              "test_invalid_template_exhausts_shared_correction_budget_without_graph": 4,
+              "test_valid_native_jinja_is_preserved_without_rendering_or_alias_guessing": 9,
+              "test_kept_historical_template_bypasses_generated_syntax_validation": 1,
+          }
           for module, expected in {**a3_expected, **a4_expected}.items():
               actual = {}
               for classname, name in identities:
