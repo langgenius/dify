@@ -10,7 +10,7 @@ import {
 import {
   ExternalLinkIndicator,
   MenuItemContent,
-} from '@/app/components/header/account-dropdown/menu-item-content'
+} from '@/app/components/header/account-menu/menu-item-content'
 import { generateMailToLink, mailToSupport } from '@/app/components/header/utils/util'
 import { toast } from '@/app/notifications'
 import { SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'

@@ -4,7 +4,7 @@ import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppListUrlQuery } from './query-params'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { CreateAppDropdown } from '@/app/components/app/create-app-dropdown'
+import { CreateAppMenu } from '@/app/components/app/create-app-menu'
 import { SearchInput } from '@/app/components/base/search-input'
 import {
   activeStepByStepTourGuideGroupAtom,
@@ -116,7 +116,7 @@ export function AppListHeader({
             {t(($) => $['studio.viewSnippets'], { ns: 'app' })}
           </StudioListLink>
           {showCreateButton && (
-            <CreateAppDropdown
+            <CreateAppMenu
               onCreateBlank={onCreateBlank}
               onCreateTemplate={onCreateTemplate}
               onImportDSL={onImportDSL}

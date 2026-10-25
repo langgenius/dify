@@ -30,7 +30,7 @@ import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availabili
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { newKnowledgeDocumentDetailPath } from '../routes'
-import { DocumentActionsDropdown } from './actions-dropdown'
+import { DocumentActionsMenu } from './actions-menu'
 import { DocumentBulkActionsToolbar } from './bulk/toolbar'
 import { DocumentPermissionRecoveryBulkRegion } from './permission-recovery/recovery-boundary'
 import {
@@ -337,7 +337,7 @@ const DocumentRow = memo(
         <DocumentStatusCell documentId={document.id} />
         <DocumentUpdatedCell updatedAt={document.updatedAt} />
         <td className="w-10 align-middle">
-          <DocumentActionsDropdown document={document} onRemove={() => onRemove(rowRef.current)} />
+          <DocumentActionsMenu document={document} onRemove={() => onRemove(rowRef.current)} />
         </td>
       </tr>
     )

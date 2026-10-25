@@ -22,7 +22,7 @@ import {
   useDetailHeaderState,
   usePluginOperations,
 } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
-import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import { PluginSource } from '@/app/components/plugins/types'
@@ -218,7 +218,7 @@ const DataSourcePluginActions = ({ detail, onUpdate }: Props) => {
           </TooltipContent>
         </Tooltip>
       )}
-      <OperationDropdown
+      <OperationMenu
         triggerAriaLabel={t(($) => $['operation.moreActionsFor'], {
           ns: 'common',
           name: pluginLabel,

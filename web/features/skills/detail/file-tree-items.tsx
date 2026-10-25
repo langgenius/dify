@@ -130,7 +130,7 @@ function FileActionMenuItems({
   onRename,
   onUploadFiles,
 }: {
-  kind: 'context' | 'dropdown'
+  kind: 'context' | 'menu'
   node: FileTreeNode
   onCopy: (path: string) => void
   onCreateFile: () => void
@@ -288,7 +288,7 @@ function FileActions({
           className={skillFileMenuPopupClassName}
         >
           <FileActionMenuItems
-            kind="dropdown"
+            kind="menu"
             node={node}
             onCopy={onCopy}
             onCreateFile={onCreateFile}
@@ -320,7 +320,7 @@ export function RootFileActionMenuItems({
   onCreateFolder,
   onUploadFiles,
 }: {
-  kind: 'context' | 'dropdown'
+  kind: 'context' | 'menu'
   onCreateFile: () => void
   onCreateFolder: () => void
   onUploadFiles: () => void

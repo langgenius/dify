@@ -30,9 +30,9 @@ import { AppMetadataForm } from '@/app/components/app/app-metadata'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import {
-  getStepByStepTourDropdownMenuContentProps,
-  useStepByStepTourControlledDropdown,
-} from '@/app/components/step-by-step-tour/dropdown-menu'
+  getStepByStepTourMenuContentProps,
+  useStepByStepTourControlledMenu,
+} from '@/app/components/step-by-step-tour/menu'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -68,7 +68,7 @@ function requiresPublishedWorkflowInExplore(app: AppPartial) {
 
 type AppCardOperationsMenuItemsProps = {
   app: AppPartial
-  kind: 'context' | 'dropdown'
+  kind: 'context' | 'menu'
   shouldShowEditOption: boolean
   shouldShowDuplicateOption: boolean
   shouldShowExportOption: boolean
@@ -272,7 +272,7 @@ export function AppCardInteractions({
   )
   const editNameRef = useRef<HTMLInputElement>(null)
   const [activeDialog, setActiveDialog] = useState<'duplicate' | 'edit' | 'switch' | null>(null)
-  const operationsMenu = useStepByStepTourControlledDropdown({
+  const operationsMenu = useStepByStepTourControlledMenu({
     allowTriggerCloseWhileControlled: false,
     controlledOpen: stepByStepTourActionMenuOpen,
   })
@@ -498,13 +498,13 @@ export function AppCardInteractions({
                 }
               />
               <MenuContent
-                {...getStepByStepTourDropdownMenuContentProps({
+                {...getStepByStepTourMenuContentProps({
                   highlightPart: stepByStepTourActionMenuHighlightPart,
                   interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
                   className: OPERATIONS_MENU_POPUP_CLASS_NAME,
                 })}
               >
-                <AppCardOperationsMenuItems kind="dropdown" {...operationsMenuItemsProps} />
+                <AppCardOperationsMenuItems kind="menu" {...operationsMenuItemsProps} />
               </MenuContent>
             </Menu>
           )}

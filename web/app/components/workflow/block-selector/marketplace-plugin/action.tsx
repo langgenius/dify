@@ -17,7 +17,7 @@ type Props = Readonly<{
   version: string
 }>
 
-function OperationDropdown({ open, onOpenChange, author, name, version }: Props) {
+function OperationMenu({ open, onOpenChange, author, name, version }: Props) {
   const { t } = useTranslation(['common'])
   const { theme } = useTheme()
 
@@ -76,4 +76,4 @@ function OperationDropdown({ open, onOpenChange, author, name, version }: Props)
   )
 }
 
-export default memo(OperationDropdown)
+export default memo(OperationMenu)

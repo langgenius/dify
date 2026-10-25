@@ -397,7 +397,7 @@ function CommentThreadComponent({
   const previousReplyCountRef = useRef<number | undefined>(undefined)
   const previousCommentIdRef = useRef<string | undefined>(undefined)
 
-  // Close dropdown when scrolling
+  // Close menu when scrolling
   useEffect(() => {
     const container = messageListRef.current
     if (!container || !activeReplyMenuId) return

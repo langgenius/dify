@@ -16,13 +16,13 @@ import { useTranslation } from 'react-i18next'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { useDocLink } from '@/context/i18n'
 
-type DropdownItemProps = {
+type GuideMenuItemProps = {
   href: string
   icon: ReactNode
   text: string
 }
 
-function DropdownItem({ href, icon, text }: DropdownItemProps) {
+function GuideMenuItem({ href, icon, text }: GuideMenuItemProps) {
   return (
     <MenuLinkItem
       href={href}
@@ -72,20 +72,17 @@ function getOptions(docLink: (path: DocPathWithoutLang) => string): {
   ]
 }
 
-type SubmitRequestDropdownProps = {
+type SubmitRequestMenuProps = {
   dividerAfterFirst?: boolean
 }
 
-type SubmitRequestDropdownMenuProps = SubmitRequestDropdownProps & {
+type SubmitRequestMenuViewProps = SubmitRequestMenuProps & {
   docLink: (path: DocPathWithoutLang) => string
 }
 
-// Presentational dropdown. Callers that cannot use useDocLink() -- standalone
+// Presentational menu. Callers that cannot use useDocLink() -- standalone
 // Marketplace SSR -- pass a locale-composed docLink instead.
-export function SubmitRequestDropdownMenu({
-  dividerAfterFirst,
-  docLink,
-}: SubmitRequestDropdownMenuProps) {
+export function SubmitRequestMenuView({ dividerAfterFirst, docLink }: SubmitRequestMenuViewProps) {
   const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const options = getOptions(docLink)
@@ -117,7 +114,7 @@ export function SubmitRequestDropdownMenu({
         {options.map((option, index) => (
           <Fragment key={option.href}>
             {dividerAfterFirst && index === 1 && <MenuSeparator className="my-1" />}
-            <DropdownItem
+            <GuideMenuItem
               href={option.href}
               icon={option.icon}
               text={t(($) => $[option.labelKey], { ns: 'plugin' })}
@@ -129,7 +126,7 @@ export function SubmitRequestDropdownMenu({
   )
 }
 
-export function SubmitRequestDropdown({ dividerAfterFirst }: SubmitRequestDropdownProps) {
+export function SubmitRequestMenu({ dividerAfterFirst }: SubmitRequestMenuProps) {
   const docLink = useDocLink()
-  return <SubmitRequestDropdownMenu dividerAfterFirst={dividerAfterFirst} docLink={docLink} />
+  return <SubmitRequestMenuView dividerAfterFirst={dividerAfterFirst} docLink={docLink} />
 }

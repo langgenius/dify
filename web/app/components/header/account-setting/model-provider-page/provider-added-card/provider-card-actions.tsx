@@ -27,7 +27,7 @@ import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
-import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import PluginInfoContent from '@/app/components/plugins/plugin-page/plugin-info'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
@@ -332,7 +332,7 @@ function ProviderCardActions(props: Props) {
           </TooltipContent>
         </Tooltip>
       )}
-      <OperationDropdown
+      <OperationMenu
         source={source}
         onInfo={handleInfo}
         onCheckVersion={handleUpdate}

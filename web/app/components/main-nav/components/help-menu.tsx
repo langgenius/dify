@@ -23,11 +23,11 @@ import {
   useLearnDifyHiddenValue,
   useSetLearnDifyHidden,
 } from '@/app/components/explore/learn-dify/storage'
-import Compliance from '@/app/components/header/account-dropdown/compliance'
+import Compliance from '@/app/components/header/account-menu/compliance'
 import {
   ExternalLinkIndicator,
   MenuItemContent,
-} from '@/app/components/header/account-dropdown/menu-item-content'
+} from '@/app/components/header/account-menu/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
 import { useCreatorCenterUrl } from '@/app/components/plugins/marketplace/creator-center-url'
 import { trackStepByStepTourEvent } from '@/app/components/step-by-step-tour/analytics'

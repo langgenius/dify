@@ -41,7 +41,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
-import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
+import { AgentWorkflowReferencesMenu } from './agent-workflow-references-menu'
 import { DuplicateAgentDialog } from './duplicate-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
 
@@ -169,7 +169,7 @@ function AgentRosterPlaceholderState({
 }
 
 type AgentCardActionMenuItemsProps = {
-  kind: 'context' | 'dropdown'
+  kind: 'context' | 'menu'
   isExporting: boolean
   onDelete?: () => void
   onDuplicate?: () => void
@@ -400,7 +400,7 @@ function AgentRosterItem({
               />
               <MenuContent className="w-max min-w-40">
                 <AgentCardActionMenuItems
-                  kind="dropdown"
+                  kind="menu"
                   isExporting={isExporting}
                   onEdit={capabilities.canEdit ? handleEditOpen : undefined}
                   onDuplicate={canDuplicate ? handleDuplicateOpen : undefined}
@@ -415,7 +415,7 @@ function AgentRosterItem({
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex min-w-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           {hasPublishedReferences ? (
-            <AgentWorkflowReferencesDropdown
+            <AgentWorkflowReferencesMenu
               agentName={agent.name}
               publishedReferences={publishedReferences}
               referenceCount={referenceCount}

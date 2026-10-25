@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
-import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import { selectToolCollections } from '@/app/components/tools/utils/query-select'
@@ -380,7 +380,7 @@ const DetailHeader = ({
         {/* Action Buttons */}
         {!isReadmeView && (
           <div className="flex gap-1">
-            <OperationDropdown
+            <OperationMenu
               source={source}
               onInfo={modalStates.showPluginInfo}
               onCheckVersion={handleUpdate}

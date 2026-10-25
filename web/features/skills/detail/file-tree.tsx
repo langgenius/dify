@@ -1363,7 +1363,7 @@ export function FileTree({
                   className={skillFileMenuPopupClassName}
                 >
                   <RootFileActionMenuItems
-                    kind="dropdown"
+                    kind="menu"
                     onCreateFile={() =>
                       setInlineAction({
                         kind: 'create',

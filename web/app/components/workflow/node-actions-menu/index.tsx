@@ -1,4 +1,4 @@
-import type { NodeActionsMenuProps } from './types'
+import type { NodeActionsMenuProps as NodeActionsContentProps } from './types'
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -33,7 +33,7 @@ import {
 } from './shared'
 import { useNodeActionsMenuModel } from './use-node-actions-menu-model'
 
-type NodeActionsDropdownProps = {
+type NodeActionsMenuProps = {
   id: string
   data: Node['data']
   triggerClassName?: string
@@ -41,13 +41,13 @@ type NodeActionsDropdownProps = {
   showHelpLink?: boolean
 }
 
-export function NodeActionsDropdown({
+export function NodeActionsMenu({
   id,
   data,
   triggerClassName,
   onOpenChange,
   showHelpLink = true,
-}: NodeActionsDropdownProps) {
+}: NodeActionsMenuProps) {
   const { t } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
 
@@ -78,7 +78,7 @@ export function NodeActionsDropdown({
         }
       />
       <MenuPortal>
-        <NodeActionsDropdownContent
+        <NodeActionsMenuContent
           id={id}
           data={data}
           onClose={closeMenu}
@@ -89,7 +89,7 @@ export function NodeActionsDropdown({
   )
 }
 
-function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
+function NodeActionsMenuContent(props: NodeActionsContentProps) {
   const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const model = useNodeActionsMenuModel(props)
   const flowStore = useStoreApi()

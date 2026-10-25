@@ -8,9 +8,9 @@ import { SearchInput } from '@/app/components/base/search-input'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { CreatorFilter } from '@/app/components/datasets/creator-filter'
 import {
-  getStepByStepTourDropdownMenuContentProps,
-  useStepByStepTourControlledDropdown,
-} from '@/app/components/step-by-step-tour/dropdown-menu'
+  getStepByStepTourMenuContentProps,
+  useStepByStepTourControlledMenu,
+} from '@/app/components/step-by-step-tour/menu'
 import { KnowledgeViewSwitcher } from '@/features/new-rag/list/knowledge-view-switcher'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { ServiceApi } from '../extra-info/service-api'
@@ -64,7 +64,7 @@ const DatasetListHeader = ({
 }: Props) => {
   const { t } = useTranslation(['common', 'dataset'])
   const showCreateMenu = canCreateDataset || canConnectExternalDataset
-  const createMenu = useStepByStepTourControlledDropdown({
+  const createMenu = useStepByStepTourControlledMenu({
     controlledOpen: stepByStepTourCreateMenuOpen,
   })
 
@@ -145,7 +145,7 @@ const DatasetListHeader = ({
                 }
               />
               <MenuContent
-                {...getStepByStepTourDropdownMenuContentProps({
+                {...getStepByStepTourMenuContentProps({
                   disableMotion: createMenu.controlled,
                   highlightPart: createMenu.controlled
                     ? stepByStepTourCreateMenuHighlightPart
