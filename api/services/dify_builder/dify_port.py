@@ -2503,6 +2503,15 @@ class WorkflowServiceDifyPort:
             lock_execution(session, app_id=app_id)
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
+            # Publication writes the App pointer after locking the draft. Keep
+            # metadata writers App-first while graph-only callers stay row-first.
+            owner_id = session.scalar(
+                select(App.id).where(App.id == app_id, App.tenant_id == actor.tenant_id).with_for_update()
+            )
+            if owner_id is None:
+                from core.dify_builder.errors import NotFoundError
+
+                raise NotFoundError(f"app not found: {app_id}")
 
             draft = _load_draft_workflow_or_raise(app, session=session)
             session.refresh(draft, with_for_update=True)

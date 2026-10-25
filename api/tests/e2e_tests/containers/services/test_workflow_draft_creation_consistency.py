@@ -678,3 +678,182 @@ def test_existing_draft_save_does_not_wait_for_app_owner_lock(
         assert draft is not None
         assert draft.graph_dict == _graph("existing")
         assert draft.unique_hash == accepted_hash
+
+
+@pytest.mark.parametrize("metadata_writer", ["dsl", "builder-publish"])
+def test_stale_missing_draft_read_does_not_deadlock_metadata_writer(
+    flask_app_with_containers: Flask,
+    db_session_with_containers: Session,
+    metadata_writer: str,
+) -> None:
+    """Reproduce App→draft versus actual DSL draft→App metadata autoflush.
+
+    A sees absence; B initializes; C locks B's draft through real DSL, then A
+    reaches a PostgreSQL-observed wait on C. Releasing C creates the old cycle.
+    An App-first metadata writer instead makes A wait on App and then progress.
+    """
+    from contextvars import ContextVar
+    from queue import Queue
+    from threading import Event
+    from time import monotonic
+
+    from sqlalchemy.exc import DBAPIError
+
+    from core.dify_builder.models import Actor
+    from services.app_dsl_service import AppDslService
+    from services.dify_builder.dify_port import WorkflowServiceDifyPort
+    from services.dify_builder.revision import execution_revision
+
+    owner = seed_owner(db_session_with_containers, graph=None)
+    app_id, account_id = owner.app.id, owner.account.id
+    factory = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+    missing_read, release_absence, dsl_locked, release_dsl = Event(), Event(), Event(), Event()
+    stale_pid: Queue[int] = Queue()
+    dsl_pid: Queue[int] = Queue()
+    owner_locked = Event()
+    current_role: ContextVar[str] = ContextVar("eng1204_metadata_writer", default="")
+    expected_revision = ""
+    expected_graph_revision = ""
+    original_name = owner.app.name
+
+    def boundary(connection: Connection, _cursor: object, statement: str, *_args: object) -> None:
+        role = current_role.get()
+        if role == "stale" and "FROM apps" in statement and "FOR UPDATE" in statement:
+            owner_locked.set()
+        if "FROM workflows" not in statement or "FOR UPDATE" not in statement:
+            return
+        if role == "stale" and not missing_read.is_set():
+            missing_read.set()
+            assert release_absence.wait(timeout=12)
+        elif role == "dsl" and not dsl_locked.is_set():
+            pid = connection.scalar(text("SELECT pg_backend_pid()"))
+            assert isinstance(pid, int)
+            dsl_pid.put(pid)
+            dsl_locked.set()
+            assert release_dsl.wait(timeout=12)
+
+    def write(role: str) -> dict[str, object]:
+        with flask_app_with_containers.app_context(), factory() as session:
+            token = current_role.set(role)
+            session.execute(text("SET LOCAL lock_timeout = '10s'"))
+            session.execute(text("SET LOCAL statement_timeout = '15s'"))
+            session.execute(text("SET LOCAL deadlock_timeout = '100ms'"))
+            pid = session.scalar(text("SELECT pg_backend_pid()"))
+            assert isinstance(pid, int)
+            if role == "stale":
+                stale_pid.put(pid)
+            app = session.get(App, app_id)
+            account = session.get(Account, account_id)
+            assert app is not None
+            assert account is not None
+            try:
+                if role == "stale":
+                    WorkflowService(factory).sync_draft_workflow(
+                        app_model=app,
+                        graph=_graph("stale"),
+                        features={},
+                        unique_hash=None,
+                        account=account,
+                        environment_variables=[],
+                        conversation_variables=[],
+                        session=session,
+                    )
+                elif metadata_writer == "dsl":
+                    AppDslService(session)._create_or_update_app(
+                        app=app,
+                        account=account,
+                        data={
+                            "app": {"mode": "workflow", "name": "Imported metadata"},
+                            "workflow": {"graph": _graph("dsl-metadata"), "features": {}},
+                        },
+                    )
+                else:
+                    WorkflowServiceDifyPort().publish(
+                        app_id,
+                        Actor(account_id=account.id, tenant_id=app.tenant_id),
+                        expected_revision=expected_revision,
+                        expected_graph_revision=expected_graph_revision,
+                    )
+                return {"result": "success", "pid": pid}
+            except WorkflowHashNotEqualError as error:
+                session.rollback()
+                return {"result": type(error).__name__, "pid": pid}
+            except DBAPIError as error:
+                session.rollback()
+                return {"result": type(error).__name__, "sqlstate": getattr(error.orig, "pgcode", None), "pid": pid}
+            finally:
+                current_role.reset(token)
+
+    engine = db_session_with_containers.get_bind()
+    event.listen(engine, "after_cursor_execute", boundary)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            stale = executor.submit(write, "stale")
+            first_pid = stale_pid.get(timeout=10)
+            assert missing_read.wait(timeout=10)
+            with factory() as initializer:
+                app = initializer.get(App, app_id)
+                account = initializer.get(Account, account_id)
+                assert app is not None
+                assert account is not None
+                initial = WorkflowService(factory).sync_draft_workflow(
+                    app_model=app,
+                    graph=_graph("initialized"),
+                    features={},
+                    unique_hash=None,
+                    account=account,
+                    environment_variables=[],
+                    conversation_variables=[],
+                    session=initializer,
+                )
+                initial_id = initial.id
+                expected_revision = execution_revision(initial)
+                expected_graph_revision = WorkflowServiceDifyPort().graph_revision(dict(initial.graph_dict))
+            importer = executor.submit(write, "dsl")
+            second_pid = dsl_pid.get(timeout=10)
+            try:
+                assert dsl_locked.wait(timeout=10)
+                release_absence.set()
+                with factory() as observer:
+                    deadline = monotonic() + 8
+                    blockers: list[int] = []
+                    while monotonic() < deadline:
+                        blockers = observer.scalar(text("SELECT pg_blocking_pids(:pid)"), {"pid": first_pid})
+                        if second_pid in blockers:
+                            break
+                    assert second_pid in blockers, blockers
+                held_app_before_wait = owner_locked.is_set()
+                release_dsl.set()
+                results = [stale.result(timeout=20), importer.result(timeout=20)]
+            finally:
+                release_absence.set()
+                release_dsl.set()
+    finally:
+        event.remove(engine, "after_cursor_execute", boundary)
+    with factory() as reader:
+        drafts = list(
+            reader.scalars(
+                select(Workflow).where(Workflow.app_id == app_id, Workflow.version == Workflow.VERSION_DRAFT)
+            )
+        )
+        app = reader.get(App, app_id)
+        assert app is not None
+        evidence = {
+            "results": results,
+            "held_app_before_wait": held_app_before_wait,
+            "drafts": [{"id": draft.id, "hash": draft.unique_hash, "graph": draft.graph_dict} for draft in drafts],
+            "app_name": app.name,
+        }
+        logging.getLogger(__name__).warning("ENG1204_DEADLOCK_EVIDENCE %s", json.dumps(evidence, sort_keys=True))
+        assert results[0]["result"] == "WorkflowHashNotEqualError", evidence
+        assert results[1]["result"] == "success", evidence
+        assert held_app_before_wait is False, evidence
+        assert len(drafts) == 1
+        assert drafts[0].id == initial_id
+        assert drafts[0].graph_dict == _graph("dsl-metadata" if metadata_writer == "dsl" else "initialized")
+        assert app.name == ("Imported metadata" if metadata_writer == "dsl" else original_name)
+        if metadata_writer == "builder-publish":
+            published = reader.get(Workflow, app.workflow_id)
+            assert published is not None
+            assert published.version != Workflow.VERSION_DRAFT
+            assert published.graph_dict == drafts[0].graph_dict
