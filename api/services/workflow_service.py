@@ -110,6 +110,7 @@ from services.workflow_version_number_service import allocate_version_number
 
 from .errors.workflow_service import (
     DraftWorkflowDeletionError,
+    DuplicateDraftWorkflowError,
     EmptyWorkflowConfirmationRequiredError,
     WorkflowInUseError,
 )
@@ -283,7 +284,7 @@ class WorkflowService:
         edit. Refresh it under the lock before checking its hash or merging an
         environment patch. Normal query autoflush preserves pending local writes.
         """
-        return session.scalar(
+        drafts = session.scalars(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -291,9 +292,31 @@ class WorkflowService:
                 Workflow.version == Workflow.VERSION_DRAFT,
             )
             .execution_options(populate_existing=True)
-            .limit(1)
+            .order_by(Workflow.id)
+            .limit(2)
             .with_for_update()
+        ).all()
+        if len(drafts) > 1:
+            raise DuplicateDraftWorkflowError()
+        return drafts[0] if drafts else None
+
+    def get_draft_workflow_for_creation(self, app_model: App, *, session: Session) -> Workflow | None:
+        """Lock an existing draft, or serialize its absence using the exact App owner.
+
+        Existing drafts keep their row-first ordering: Builder callers can already
+        hold that row. Only an absent draft acquires the parent lock. Recheck after
+        waiting so READ COMMITTED sees a competing committed initialization. Both
+        locks remain in the caller's transaction, including commit=False saves.
+        """
+        draft = self.get_draft_workflow_for_update(app_model, session=session)
+        if draft is not None:
+            return draft
+        owner_id = session.scalar(
+            select(App.id).where(App.id == app_model.id, App.tenant_id == app_model.tenant_id).with_for_update()
         )
+        if owner_id is None:
+            raise WorkflowNotFoundError("App not found for draft initialization.")
+        return self.get_draft_workflow_for_update(app_model, session=session)
 
     @staticmethod
     def get_published_workflow_by_id(
@@ -447,6 +470,7 @@ class WorkflowService:
         draft workflow has received its target-workspace id.
 
         Existing drafts are row-locked and refreshed before the hash check.
+        Missing drafts lock their exact App owner and recheck before creation.
         Public graph-only saves preserve independently persisted draft fields,
         while an explicit per-ID environment patch is merged with the graph.
         Trusted internal callers retain full replacement by default; a new draft
@@ -464,7 +488,7 @@ class WorkflowService:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
 
         # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
+        workflow = self.get_draft_workflow_for_creation(app_model=app_model, session=session)
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
@@ -679,7 +703,7 @@ class WorkflowService:
         self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
-        draft_workflow = self.get_draft_workflow(app_model=app_model, session=session)
+        draft_workflow = self.get_draft_workflow_for_creation(app_model=app_model, session=session)
         draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,

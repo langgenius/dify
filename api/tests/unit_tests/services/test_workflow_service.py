@@ -472,6 +472,8 @@ class TestWorkflowService:
         The draft is validated before creation to ensure graph and features are valid.
         """
         app = TestWorkflowAssociatedDataFactory.create_app()
+        sqlite_session.add(app)
+        sqlite_session.flush()
         account = TestWorkflowAssociatedDataFactory.create_account()
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         features = {"file_upload": {"enabled": False}}
@@ -717,6 +719,8 @@ class TestWorkflowService:
         self, workflow_service: WorkflowService, sqlite_session: Session
     ):
         app = TestWorkflowAssociatedDataFactory.create_app()
+        sqlite_session.add(app)
+        sqlite_session.flush()
         account = TestWorkflowAssociatedDataFactory.create_account()
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         features = {"file_upload": {"enabled": True}}

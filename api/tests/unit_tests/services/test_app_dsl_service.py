@@ -767,6 +767,7 @@ def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: py
         icon_background="#FFFFFF",
     )
     workflow_service = SimpleNamespace(
+        get_draft_workflow_for_creation=Mock(return_value=None),
         get_draft_workflow=Mock(return_value=None),
         sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
     )
@@ -807,6 +808,7 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
     )
     workflow = SimpleNamespace(id="workflow-1")
     workflow_service = SimpleNamespace(
+        get_draft_workflow_for_creation=Mock(return_value=None),
         get_draft_workflow=Mock(return_value=None),
         sync_draft_workflow=Mock(return_value=workflow),
     )

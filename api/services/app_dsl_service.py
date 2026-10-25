@@ -665,6 +665,15 @@ class AppDslService:
         if target_tenant_id is None:
             raise ValueError("Current tenant is not set")
 
+        if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
+            workflow_data = data.get("workflow")
+            if not workflow_data or not isinstance(workflow_data, dict):
+                raise ValueError("Missing workflow data for workflow/advanced chat app")
+            if draft_hash is None and app is not None:
+                # Detect legacy ambiguity before app metadata writes, and retain
+                # the absence lock through trusted initialization/package import.
+                locked_draft = WorkflowService().get_draft_workflow_for_creation(app, session=self._session)
+
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
         resolved_icon_type: IconType
@@ -732,10 +741,7 @@ class AppDslService:
         # Initialize app based on mode
         match app_mode:
             case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
-                workflow_data = data.get("workflow")
-                if not workflow_data or not isinstance(workflow_data, dict):
-                    raise ValueError("Missing workflow data for workflow/advanced chat app")
-
+                workflow_data = data["workflow"]
                 environment_variables_list = workflow_data.get("environment_variables", [])
                 environment_variables = [
                     variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
