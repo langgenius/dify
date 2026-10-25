@@ -1,5 +1,5 @@
 import type { EmojiIcon, IconPickerValue } from '..'
-import { expectTypeOf } from 'vitest'
+import { expectTypeOf } from 'vite-plus/test'
 import { IconPicker } from '..'
 
 export function iconPickerTypeContract() {
