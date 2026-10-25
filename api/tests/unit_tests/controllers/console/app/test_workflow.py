@@ -29,17 +29,10 @@ from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.controllers.error_body import raised_error
 from tests.workflow_empty_draft_test_utils import (
     POPULATED_GRAPH,
-    EmptyDraftDatabase,
     post_empty_draft,
     seed_owner,
     workflow_rows,
 )
-
-
-@pytest.fixture(autouse=True)
-def _workflow_write_database(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    """Keep the controller's explicit receipt Session on the test database."""
-    monkeypatch.setattr(workflow_module, "db", EmptyDraftDatabase(sqlite_session))
 
 
 @pytest.fixture(autouse=True)

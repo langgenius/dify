@@ -688,7 +688,7 @@ class DraftWorkflowApi(Resource):
                 for obj in args_model.conversation_variables
             ]
             # Keep this accepted snapshot while the post-commit handoff may wait.
-            with Session(db.engine, expire_on_commit=False) as write_session:
+            with session_factory.create_session() as write_session:
                 workflow = workflow_service.sync_draft_workflow(
                     app_model=app_model,
                     graph=args_model.graph,
@@ -1587,7 +1587,7 @@ class DraftWorkflowRestoreApi(Resource):
 
         try:
             # Keep this accepted snapshot while the post-commit handoff may wait.
-            with Session(db.engine, expire_on_commit=False) as write_session:
+            with session_factory.create_session() as write_session:
                 workflow = workflow_service.restore_published_workflow_to_draft(
                     app_model=app_model,
                     workflow_id=workflow_id,
