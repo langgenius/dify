@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import type { IconPickerInputValue } from '@/app/components/base/icon-picker'
 import type { ExternalDataTool } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -57,6 +58,9 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const docLink = useDocLink()
   const locale = useLocale()
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
+  const icon: IconPickerInputValue | null = localeData.icon
+    ? { type: 'emoji', icon: localeData.icon, background: localeData.icon_background }
+    : null
   const { data: codeBasedExtensionList } = useQuery(
     codeBasedExtensionsQueryOptions('external_data_tool'),
   )
@@ -173,15 +177,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
                 }
               />
               <IconPicker
-                value={
-                  localeData.icon
-                    ? {
-                        type: 'emoji',
-                        icon: localeData.icon,
-                        background: localeData.icon_background,
-                      }
-                    : undefined
-                }
+                value={icon}
                 onValueChange={(value) => {
                   if (value.type !== 'emoji') return
                   const { icon, background: icon_background } = value

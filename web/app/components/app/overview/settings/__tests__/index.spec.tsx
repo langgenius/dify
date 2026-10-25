@@ -546,6 +546,36 @@ describe('SettingsDialog', () => {
     })
   })
 
+  it.each([
+    {
+      source: { icon_type: 'emoji', icon: '😀', icon_background: null },
+      expected: { icon_type: 'emoji', icon: '😀', icon_background: null },
+    },
+    {
+      source: { icon_type: 'link', icon: 'https://example.com/linked.png', icon_background: null },
+      expected: {
+        icon_type: 'link',
+        icon: 'https://example.com/linked.png',
+        icon_background: undefined,
+      },
+    },
+  ] satisfies {
+    source: Pick<SettingsAppInfo['site'], 'icon_type' | 'icon' | 'icon_background'>
+    expected: Pick<AppSiteUpdatePayload, 'icon_type' | 'icon' | 'icon_background'>
+  }[])(
+    'preserves a $source.icon_type icon without a background when saving',
+    async ({ source, expected }) => {
+      const user = userEvent.setup()
+      await renderSettingsDialog(user, { ...mockAppInfo, site: { ...mockAppInfo.site, ...source } })
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() =>
+        expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining(expected)),
+      )
+    },
+  )
+
   it('should preserve image icons and apply textarea or switch changes when saving image-based settings', async () => {
     const user = userEvent.setup()
     mockOnSave.mockResolvedValueOnce(true)

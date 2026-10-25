@@ -1,0 +1,192 @@
+diff --git a/internals/field-root-context/index.d.mts b/internals/field-root-context/index.d.mts
+index 945a554c98b041fde922ff06c2c7369e5fcd81fb..cdbacbf62d24a540f14a2e432a655459903a7ee3 100644
+--- a/internals/field-root-context/index.d.mts
++++ b/internals/field-root-context/index.d.mts
+@@ -1,2 +1,2 @@
+-export { FieldRootContext, useFieldRootContext } from "./FieldRootContext.mjs";
++export { DEFAULT_FIELD_ROOT_CONTEXT, FieldRootContext, useFieldRootContext } from "./FieldRootContext.mjs";
+ export type { FieldRootContext as FieldRootContextType } from "./FieldRootContext.mjs";
+\ No newline at end of file
+diff --git a/internals/field-root-context/index.d.ts b/internals/field-root-context/index.d.ts
+index 44ade816a8ca22345917cf0a27a7fbb2a348c5c4..f1f6f7e484f9f2d3c49568fb8b6b994c31ea779a 100644
+--- a/internals/field-root-context/index.d.ts
++++ b/internals/field-root-context/index.d.ts
+@@ -1,2 +1,2 @@
+-export { FieldRootContext, useFieldRootContext } from "./FieldRootContext.js";
++export { DEFAULT_FIELD_ROOT_CONTEXT, FieldRootContext, useFieldRootContext } from "./FieldRootContext.js";
+ export type { FieldRootContext as FieldRootContextType } from "./FieldRootContext.js";
+\ No newline at end of file
+diff --git a/internals/field-root-context/index.js b/internals/field-root-context/index.js
+index 851f21d02807880bd39b36d4ffef894b6a1b1977..1d51faca315659876d01e1ac591e9fb87703e09b 100644
+--- a/internals/field-root-context/index.js
++++ b/internals/field-root-context/index.js
+@@ -3,6 +3,12 @@
+ Object.defineProperty(exports, "__esModule", {
+   value: true
+ });
++Object.defineProperty(exports, "DEFAULT_FIELD_ROOT_CONTEXT", {
++  enumerable: true,
++  get: function () {
++    return _FieldRootContext.DEFAULT_FIELD_ROOT_CONTEXT;
++  }
++});
+ Object.defineProperty(exports, "FieldRootContext", {
+   enumerable: true,
+   get: function () {
+diff --git a/internals/field-root-context/index.mjs b/internals/field-root-context/index.mjs
+index fa70fa135bec8550804dbdd9ae96e444c4efe7ea..7acb76236845b93dfe592ed3c48c30dd862dc857 100644
+--- a/internals/field-root-context/index.mjs
++++ b/internals/field-root-context/index.mjs
+@@ -1 +1 @@
+-export { FieldRootContext, useFieldRootContext } from "./FieldRootContext.mjs";
+\ No newline at end of file
++export { DEFAULT_FIELD_ROOT_CONTEXT, FieldRootContext, useFieldRootContext } from "./FieldRootContext.mjs";
+\ No newline at end of file
+diff --git a/internals/labelable-provider/LabelableContext.d.mts b/internals/labelable-provider/LabelableContext.d.mts
+index 4dfba8f13d433d07cce7321d6246bb909387f076..3746f56ffc92d6dddd6fc331df651ce8a66d37ec 100644
+--- a/internals/labelable-provider/LabelableContext.d.mts
++++ b/internals/labelable-provider/LabelableContext.d.mts
+@@ -25,5 +25,6 @@ export interface LabelableContext {
+  * A context for providing [labelable elements](https://html.spec.whatwg.org/multipage/forms.html#category-label)\
+  * with an accessible name (label) and description.
+  */
++export declare const DEFAULT_LABELABLE_CONTEXT: LabelableContext;
+ export declare const LabelableContext: React.Context<LabelableContext>;
+ export declare function useLabelableContext(): LabelableContext;
+\ No newline at end of file
+diff --git a/internals/labelable-provider/LabelableContext.d.ts b/internals/labelable-provider/LabelableContext.d.ts
+index 0a8e9ba1bc75c9a417648232892375ea5d5735b5..d3e9249fe44b5a880978399f21ec34b21fba2891 100644
+--- a/internals/labelable-provider/LabelableContext.d.ts
++++ b/internals/labelable-provider/LabelableContext.d.ts
+@@ -25,5 +25,6 @@ export interface LabelableContext {
+  * A context for providing [labelable elements](https://html.spec.whatwg.org/multipage/forms.html#category-label)\
+  * with an accessible name (label) and description.
+  */
++export declare const DEFAULT_LABELABLE_CONTEXT: LabelableContext;
+ export declare const LabelableContext: React.Context<LabelableContext>;
+ export declare function useLabelableContext(): LabelableContext;
+\ No newline at end of file
+diff --git a/internals/labelable-provider/LabelableContext.js b/internals/labelable-provider/LabelableContext.js
+index 75187279093a1d6c65020896514d0a4e19f81825..4b78768b499c5a9b5df171b8cc1b5ea8e47bc788 100644
+--- a/internals/labelable-provider/LabelableContext.js
++++ b/internals/labelable-provider/LabelableContext.js
+@@ -5,7 +5,7 @@ var _interopRequireWildcard = require("@babel/runtime/helpers/interopRequireWild
+ Object.defineProperty(exports, "__esModule", {
+   value: true
+ });
+-exports.LabelableContext = void 0;
++exports.LabelableContext = exports.DEFAULT_LABELABLE_CONTEXT = void 0;
+ exports.useLabelableContext = useLabelableContext;
+ var React = _interopRequireWildcard(require("react"));
+ var _noop = require("../noop");
+@@ -13,7 +13,7 @@ var _noop = require("../noop");
+  * A context for providing [labelable elements](https://html.spec.whatwg.org/multipage/forms.html#category-label)\
+  * with an accessible name (label) and description.
+  */
+-const LabelableContext = exports.LabelableContext = /*#__PURE__*/React.createContext({
++const DEFAULT_LABELABLE_CONTEXT = exports.DEFAULT_LABELABLE_CONTEXT = {
+   controlId: undefined,
+   registerControlId: _noop.NOOP,
+   resetControlId: _noop.NOOP,
+@@ -22,7 +22,8 @@ const LabelableContext = exports.LabelableContext = /*#__PURE__*/React.createCon
+   messageIds: [],
+   setMessageIds: _noop.NOOP,
+   getDescriptionProps: externalProps => externalProps
+-});
++};
++const LabelableContext = exports.LabelableContext = /*#__PURE__*/React.createContext(DEFAULT_LABELABLE_CONTEXT);
+ if (process.env.NODE_ENV !== "production") LabelableContext.displayName = "LabelableContext";
+ function useLabelableContext() {
+   return React.useContext(LabelableContext);
+diff --git a/internals/labelable-provider/LabelableContext.mjs b/internals/labelable-provider/LabelableContext.mjs
+index 639bf9df34f92209a804c2b55111863e3effecde..56d68c86aa18b9bd6fc9bebdd8623926f36fc9c8 100644
+--- a/internals/labelable-provider/LabelableContext.mjs
++++ b/internals/labelable-provider/LabelableContext.mjs
+@@ -6,7 +6,7 @@ import { NOOP } from "../noop.mjs";
+  * A context for providing [labelable elements](https://html.spec.whatwg.org/multipage/forms.html#category-label)\
+  * with an accessible name (label) and description.
+  */
+-export const LabelableContext = /*#__PURE__*/React.createContext({
++export const DEFAULT_LABELABLE_CONTEXT = {
+   controlId: undefined,
+   registerControlId: NOOP,
+   resetControlId: NOOP,
+@@ -15,7 +15,8 @@ export const LabelableContext = /*#__PURE__*/React.createContext({
+   messageIds: [],
+   setMessageIds: NOOP,
+   getDescriptionProps: externalProps => externalProps
+-});
++};
++export const LabelableContext = /*#__PURE__*/React.createContext(DEFAULT_LABELABLE_CONTEXT);
+ if (process.env.NODE_ENV !== "production") LabelableContext.displayName = "LabelableContext";
+ export function useLabelableContext() {
+   return React.useContext(LabelableContext);
+diff --git a/internals/labelable-provider/index.d.mts b/internals/labelable-provider/index.d.mts
+index b4fb254f1d1ef3b4b8d7e8e9af8eb5cfba688b67..5f9b5aff29d70e2487547afaeae425c603ac57cd 100644
+--- a/internals/labelable-provider/index.d.mts
++++ b/internals/labelable-provider/index.d.mts
+@@ -1,6 +1,6 @@
+ export * from "./LabelableProvider.mjs";
+ export { useAriaLabelledBy } from "./useAriaLabelledBy.mjs";
+-export { useLabelableContext } from "./LabelableContext.mjs";
++export { DEFAULT_LABELABLE_CONTEXT, LabelableContext, useLabelableContext } from "./LabelableContext.mjs";
+ export { useLabelableId } from "./useLabelableId.mjs";
+ export { useLabel } from "./useLabel.mjs";
+ export type { UseLabelParameters, UseLabelReturnValue } from "./useLabel.mjs";
+\ No newline at end of file
+diff --git a/internals/labelable-provider/index.d.ts b/internals/labelable-provider/index.d.ts
+index 29174fa727682623c6360436355da5456abe291c..e6afcf2411829e99ab2339f087c847e27419708f 100644
+--- a/internals/labelable-provider/index.d.ts
++++ b/internals/labelable-provider/index.d.ts
+@@ -1,6 +1,6 @@
+ export * from "./LabelableProvider.js";
+ export { useAriaLabelledBy } from "./useAriaLabelledBy.js";
+-export { useLabelableContext } from "./LabelableContext.js";
++export { DEFAULT_LABELABLE_CONTEXT, LabelableContext, useLabelableContext } from "./LabelableContext.js";
+ export { useLabelableId } from "./useLabelableId.js";
+ export { useLabel } from "./useLabel.js";
+ export type { UseLabelParameters, UseLabelReturnValue } from "./useLabel.js";
+\ No newline at end of file
+diff --git a/internals/labelable-provider/index.js b/internals/labelable-provider/index.js
+index e04d1099d824d0a13c68eab876e5bffa2754ae3c..5593c6d67dba56ff686bad24e86aea5c9310c2fb 100644
+--- a/internals/labelable-provider/index.js
++++ b/internals/labelable-provider/index.js
+@@ -4,6 +4,8 @@ Object.defineProperty(exports, "__esModule", {
+   value: true
+ });
+ var _exportNames = {
++  DEFAULT_LABELABLE_CONTEXT: true,
++  LabelableContext: true,
+   useAriaLabelledBy: true,
+   useLabelableContext: true,
+   useLabelableId: true,
+@@ -21,6 +23,18 @@ Object.defineProperty(exports, "useLabel", {
+     return _useLabel.useLabel;
+   }
+ });
++Object.defineProperty(exports, "DEFAULT_LABELABLE_CONTEXT", {
++  enumerable: true,
++  get: function () {
++    return _LabelableContext.DEFAULT_LABELABLE_CONTEXT;
++  }
++});
++Object.defineProperty(exports, "LabelableContext", {
++  enumerable: true,
++  get: function () {
++    return _LabelableContext.LabelableContext;
++  }
++});
+ Object.defineProperty(exports, "useLabelableContext", {
+   enumerable: true,
+   get: function () {
+diff --git a/internals/labelable-provider/index.mjs b/internals/labelable-provider/index.mjs
+index 24a7c1a964e0c71ace0fe11e675e717c9868fd69..e21d335c18dd67a820ed578cba9ecbb22189538d 100644
+--- a/internals/labelable-provider/index.mjs
++++ b/internals/labelable-provider/index.mjs
+@@ -1,5 +1,5 @@
+ export * from "./LabelableProvider.mjs";
+ export { useAriaLabelledBy } from "./useAriaLabelledBy.mjs";
+-export { useLabelableContext } from "./LabelableContext.mjs";
++export { DEFAULT_LABELABLE_CONTEXT, LabelableContext, useLabelableContext } from "./LabelableContext.mjs";
+ export { useLabelableId } from "./useLabelableId.mjs";
+ export { useLabel } from "./useLabel.mjs";

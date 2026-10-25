@@ -1,7 +1,6 @@
 'use client'
-import type { AgentAppCreatePayload } from '@dify/contracts/api/console/agent/types.gen'
 import type { Ref } from 'react'
-import type { AgentFormValues, AgentIconSelection } from './agent-form'
+import type { AgentFormValues } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -22,7 +21,7 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getAgentDetailPath } from '../../agent-detail/routes'
-import { defaultAgentIcon } from './agent-form'
+import { createAgentFormPayload, defaultAgentIcon } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
 type CreateAgentDialogProps = {
@@ -34,13 +33,14 @@ type CreateAgentFormSessionProps = {
   nameInputRef: Ref<HTMLInputElement>
   pending: boolean
   onCancel: () => void
-  onSubmit: (formValues: AgentFormValues, agentIcon: AgentIconSelection) => void
+  onSubmit: (formValues: AgentFormValues) => void
 }
 
 const createAgentDefaultValues = {
   description: '',
   name: '',
   role: '',
+  icon: defaultAgentIcon,
 } satisfies AgentFormValues
 
 function CreateAgentFormSession({
@@ -51,7 +51,6 @@ function CreateAgentFormSession({
 }: CreateAgentFormSessionProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
-  const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(defaultAgentIcon)
 
   return (
     <>
@@ -65,16 +64,11 @@ function CreateAgentFormSession({
           disabled={pending}
         />
       </DialogHeader>
-      <Form<AgentFormValues>
-        className="contents"
-        onFormSubmit={(formValues) => onSubmit(formValues, agentIcon)}
-      >
+      <Form<AgentFormValues> className="contents" onFormSubmit={onSubmit}>
         <AgentFormFields
           ref={nameInputRef}
           defaultValues={createAgentDefaultValues}
-          icon={agentIcon}
           iconAriaLabel={t(($) => $['roster.createForm.changeIcon'], { ns: 'agentRoster' })}
-          onIconChange={setAgentIcon}
         />
         <DialogFooter>
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
@@ -106,17 +100,10 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
     setDialogOpen(nextOpen)
   }
 
-  const handleSubmit = (formValues: AgentFormValues, agentIcon: AgentIconSelection) => {
+  const handleSubmit = (formValues: AgentFormValues) => {
     if (createAgentMutation.isPending) return
 
-    const body = {
-      name: formValues.name.trim(),
-      description: formValues.description.trim(),
-      role: formValues.role.trim(),
-      icon_type: agentIcon.type,
-      icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
-      icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
-    } satisfies AgentAppCreatePayload
+    const body = createAgentFormPayload(formValues)
 
     createAgentMutation.mutate(
       {

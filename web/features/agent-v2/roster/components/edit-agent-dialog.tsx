@@ -1,7 +1,6 @@
 'use client'
-import type { AgentAppUpdatePayload } from '@dify/contracts/api/console/agent/types.gen'
 import type { ChangeEventHandler, Ref } from 'react'
-import type { AgentFormSource, AgentFormValues, AgentIconSelection } from './agent-form'
+import type { AgentFormSource, AgentFormValues } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -17,7 +16,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { createAgentIconSelection, getAgentIconKey } from './agent-form'
+import { createAgentFormPayload, createAgentIconSelection, getAgentIconKey } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
 type EditAgentDialogProps = {
@@ -31,20 +30,7 @@ type EditAgentFormSessionProps = {
   nameInputRef: Ref<HTMLInputElement>
   pending: boolean
   onCancel: () => void
-  onSubmit: (formValues: AgentFormValues, agentIcon: AgentIconSelection) => void
-}
-
-const applyIconPayload = (body: AgentAppUpdatePayload, icon: AgentIconSelection) => {
-  if (icon.type === 'emoji') {
-    body.icon_type = icon.type
-    body.icon = icon.icon
-    body.icon_background = icon.background
-    return
-  }
-
-  body.icon_type = icon.type
-  body.icon = icon.type === 'image' ? icon.fileId : icon.icon
-  body.icon_background = undefined
+  onSubmit: (formValues: AgentFormValues) => void
 }
 
 function EditAgentFormSession({
@@ -56,26 +42,25 @@ function EditAgentFormSession({
 }: EditAgentFormSessionProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
-  const [initialValues] = useState(() => ({
-    fields: {
-      description: agent.description ?? '',
-      name: agent.name,
-      role: agent.role ?? '',
-    } satisfies AgentFormValues,
-    icon: createAgentIconSelection(agent),
-  }))
-  const [agentIcon, setAgentIcon] = useState(initialValues.icon)
+  const [initialValues] = useState(
+    () =>
+      ({
+        description: agent.description ?? '',
+        name: agent.name,
+        role: agent.role ?? '',
+        icon: createAgentIconSelection(agent),
+      }) satisfies AgentFormValues,
+  )
   const [hasTextChanges, setHasTextChanges] = useState(false)
-  const hasIconChanges = getAgentIconKey(agentIcon) !== getAgentIconKey(initialValues.icon)
+  const [hasIconChanges, setHasIconChanges] = useState(false)
   const hasChanges = hasTextChanges || hasIconChanges
 
   const handleFormChange: ChangeEventHandler<HTMLFormElement> = (event) => {
     const formValues = new FormData(event.currentTarget)
     setHasTextChanges(
-      String(formValues.get('name') ?? '').trim() !== initialValues.fields.name.trim() ||
-        String(formValues.get('description') ?? '').trim() !==
-          initialValues.fields.description.trim() ||
-        String(formValues.get('role') ?? '').trim() !== initialValues.fields.role.trim(),
+      String(formValues.get('name') ?? '').trim() !== initialValues.name.trim() ||
+        String(formValues.get('description') ?? '').trim() !== initialValues.description.trim() ||
+        String(formValues.get('role') ?? '').trim() !== initialValues.role.trim(),
     )
   }
 
@@ -95,15 +80,16 @@ function EditAgentFormSession({
         className="contents"
         onChange={handleFormChange}
         onFormSubmit={(formValues) => {
-          if (hasChanges) onSubmit(formValues, agentIcon)
+          if (hasChanges) onSubmit(formValues)
         }}
       >
         <AgentFormFields
           ref={nameInputRef}
-          defaultValues={initialValues.fields}
-          icon={agentIcon}
+          defaultValues={initialValues}
           iconAriaLabel={t(($) => $['roster.createForm.changeIcon'], { ns: 'agentRoster' })}
-          onIconChange={setAgentIcon}
+          onIconChange={(icon) =>
+            setHasIconChanges(getAgentIconKey(icon) !== getAgentIconKey(initialValues.icon))
+          }
         />
         <DialogFooter>
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
@@ -133,18 +119,10 @@ export function EditAgentDialog({ agent, open, onOpenChange }: EditAgentDialogPr
     onOpenChange(nextOpen)
   }
 
-  const handleSubmit = (formValues: AgentFormValues, agentIcon: AgentIconSelection) => {
+  const handleSubmit = (formValues: AgentFormValues) => {
     if (updateAgentMutation.isPending) return
 
-    const body: AgentAppUpdatePayload = {
-      name: formValues.name.trim(),
-      description: formValues.description.trim(),
-      // Keep sending the trimmed role even when empty: omitting the field
-      // preserves the current backing-agent role, while "" intentionally clears it.
-      role: formValues.role.trim(),
-    }
-
-    applyIconPayload(body, agentIcon)
+    const body = createAgentFormPayload(formValues)
 
     updateAgentMutation.mutate(
       {

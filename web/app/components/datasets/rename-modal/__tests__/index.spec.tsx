@@ -124,6 +124,16 @@ describe('RenameDatasetModal', () => {
   })
 
   describe('User Interactions', () => {
+    it('focuses the dataset name without opening the icon picker when its label is clicked', async () => {
+      const user = userEvent.setup()
+      render(<RenameDatasetModal {...defaultProps} />)
+
+      await user.click(screen.getByText('datasetSettings.form.name', { selector: 'label' }))
+
+      expect(screen.getByRole('textbox', { name: 'datasetSettings.form.name' })).toHaveFocus()
+      expect(screen.queryByRole('dialog', { name: 'app.iconPicker.title' })).not.toBeInTheDocument()
+    })
+
     it('should call onClose when cancel button is clicked', async () => {
       const user = userEvent.setup()
       const handleClose = vi.fn()

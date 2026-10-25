@@ -81,6 +81,18 @@ describe('WorkflowToolDrawer', () => {
     expect(onCreate.mock.calls[0]![0]).not.toHaveProperty('outputParameters')
   })
 
+  it('focuses the tool label without opening the icon picker when its label is clicked', async () => {
+    const user = userEvent.setup()
+    render(
+      <WorkflowToolDrawer isAdd payload={createPayload()} onHide={vi.fn()} onCreate={vi.fn()} />,
+    )
+
+    await user.click(screen.getByText('tools.createTool.name', { selector: 'label' }))
+
+    expect(screen.getByRole('textbox', { name: 'tools.createTool.name' })).toHaveFocus()
+    expect(screen.queryByRole('dialog', { name: 'app.iconPicker.title' })).not.toBeInTheDocument()
+  })
+
   it('saves the confirmed icon without submitting the tool from the picker', async () => {
     const user = userEvent.setup()
     const client = new QueryClient()

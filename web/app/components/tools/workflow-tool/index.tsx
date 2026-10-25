@@ -341,41 +341,41 @@ export function WorkflowToolDrawer({
         >
           <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
             {/* name & icon */}
-            <IconPicker
-              value={{
-                type: 'emoji',
-                icon: emoji.content,
-                background: emoji.background,
-              }}
-              onValueChange={(payload) => {
-                if (payload.type === 'emoji')
-                  setEmoji({ content: payload.icon, background: payload.background })
-              }}
-            >
-              <Field name="label" className="gap-0">
-                <FieldLabel className="py-2 text-text-primary">
+            <div className="grid grid-cols-[auto_1fr] items-center gap-x-3">
+              <IconPicker
+                value={{
+                  type: 'emoji',
+                  icon: emoji.content,
+                  background: emoji.background,
+                }}
+                onValueChange={(payload) => {
+                  if (payload.type === 'emoji')
+                    setEmoji({ content: payload.icon, background: payload.background })
+                }}
+              >
+                <IconPickerTrigger
+                  aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
+                  className="row-start-2 shrink-0 cursor-pointer rounded-[10px]"
+                >
+                  <IconPickerIcon size="large" />
+                </IconPickerTrigger>
+                <IconPickerContent enableImageUpload={false} />
+              </IconPicker>
+              <Field name="label" className="contents">
+                <FieldLabel className="col-span-2 row-start-1 py-2 text-text-primary">
                   {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
                   <span aria-hidden className="ml-1 text-text-destructive">
                     *
                   </span>
                 </FieldLabel>
-                <div className="flex items-center justify-between gap-3">
-                  <IconPickerTrigger
-                    aria-label={t(($) => $['createTool.changeIcon'], { ns: 'tools' })}
-                    className="shrink-0 cursor-pointer rounded-[10px]"
-                  >
-                    <IconPickerIcon size="large" />
-                  </IconPickerTrigger>
-                  <Input
-                    className="h-10 min-w-0 flex-1"
-                    placeholder={t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}
-                    value={label}
-                    onValueChange={(value) => setLabel(value)}
-                  />
-                </div>
+                <Input
+                  className="col-start-2 row-start-2 h-10 min-w-0"
+                  placeholder={t(($) => $['createTool.toolNamePlaceHolder'], { ns: 'tools' })!}
+                  value={label}
+                  onValueChange={(value) => setLabel(value)}
+                />
               </Field>
-              <IconPickerContent enableImageUpload={false} />
-            </IconPicker>
+            </div>
             {/* name for tool call */}
             <Field name="name" className="gap-0" invalid={!isWorkflowToolNameValid(name)}>
               <div className="flex items-center py-2 system-sm-medium text-text-primary">

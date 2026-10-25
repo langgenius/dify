@@ -1,11 +1,17 @@
 'use client'
 
-import type { ComponentProps, ReactNode, RefCallback } from 'react'
+import type { DialogTriggerProps } from '@langgenius/dify-ui/dialog'
+import type { ReactNode, RefCallback, RefObject } from 'react'
+import type { IconPickerFieldProps } from './icon-picker-field'
 import type { ImageIconInputValue } from './image-input'
+import type { AppIconProps } from '@/app/components/base/app-icon'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { mergeProps } from '@langgenius/dify-ui/merge-props'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { useControlled } from '@langgenius/dify-ui/use-controlled'
+import { useMergedRefs } from '@langgenius/dify-ui/use-merged-refs'
 import { useMutation } from '@tanstack/react-query'
 import { createContext, use, useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,6 +21,8 @@ import { consoleQuery } from '@/service/console'
 import { resolveEmoji } from '@/utils/emoji'
 import { EmojiIconEditor } from './emoji-icon-editor'
 import { defaultEmojiBackground, getRandomEmoji, getRandomEmojiBackground } from './emoji-styles'
+import { IconPickerEditorScope } from './icon-picker-editor-scope'
+import { useIconPickerField, useIconPickerTriggerId } from './icon-picker-field'
 import getCroppedImg from './image-crop'
 import { ImageIconInput } from './image-input'
 import { addRecentEmoji, useRecentEmojis } from './recent-emojis'
@@ -39,15 +47,22 @@ export type IconPickerInputValue =
   | ImageIcon
   | { type: 'link'; url: string }
 
-type IconPickerProps = {
-  /** Committed icon; changes while open do not replace the popup draft. */
-  value?: IconPickerInputValue
+export type IconPickerProps = IconPickerFieldProps & {
+  /** Committed icon; null is controlled empty. Changes while open do not replace the draft. */
+  value?: IconPickerInputValue | null
+  /** Initial committed icon. Native form reset restores this value when uncontrolled. */
+  defaultValue?: IconPickerInputValue | null
   /** Receives the confirmed value after any image upload; does not await consumer persistence. */
-  onValueChange: (value: IconPickerValue) => void
+  onValueChange?: (value: IconPickerValue) => void
   children: ReactNode
 }
 
-type IconPickerContextValue = Omit<IconPickerProps, 'children'> & {
+type IconPickerContextValue = {
+  value: IconPickerInputValue | null
+  onValueChange: (value: IconPickerValue) => void
+  field: ReturnType<typeof useIconPickerField>
+  triggerRef: RefObject<HTMLButtonElement | null>
+  popupRef: RefObject<HTMLDivElement | null>
   open: boolean
   setOpen: (open: boolean) => void
 }
@@ -61,21 +76,84 @@ function useIconPicker(part: string) {
 }
 
 /** Owns the committed icon and the open state for `IconPickerTrigger`, `IconPickerIcon` and `IconPickerContent`. */
-export function IconPicker({ value, onValueChange, children }: IconPickerProps) {
+export function IconPicker({
+  value: valueProp,
+  defaultValue,
+  onValueChange,
+  children,
+  ...fieldProps
+}: IconPickerProps) {
+  const [value, setValue] = useControlled({
+    controlled: valueProp,
+    default: defaultValue ?? null,
+    name: 'IconPicker',
+  })
+  const initialValueRef = useRef(defaultValue ?? null)
   const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const field = useIconPickerField({
+    ...fieldProps,
+    value,
+    triggerRef,
+    popupRef,
+    onReset: () => {
+      setValue(initialValueRef.current)
+      setOpen(false)
+    },
+  })
+  const commit = (nextValue: IconPickerValue) => {
+    if (!field.canEdit()) return
+    setValue(nextValue)
+    onValueChange?.(nextValue)
+  }
   return (
-    <IconPickerContext value={{ value, onValueChange, open, setOpen }}>
-      <Dialog open={open} onOpenChange={setOpen}>
+    <IconPickerContext
+      value={{
+        value,
+        onValueChange: commit,
+        open,
+        setOpen,
+        field,
+        triggerRef,
+        popupRef,
+      }}
+    >
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen, details) => {
+          if (nextOpen && !field.canEdit()) {
+            details.cancel()
+            return
+          }
+          setOpen(nextOpen)
+        }}
+      >
+        {field.input}
         {children}
       </Dialog>
     </IconPickerContext>
   )
 }
 
-/** Opens the picker. The caller owns its appearance. */
-export const IconPickerTrigger = DialogTrigger
+/** The single visible field control. Place Field outside the IconPicker root. */
+export type IconPickerTriggerProps = Omit<DialogTriggerProps, 'handle' | 'payload' | 'nativeButton'>
 
-type IconPickerIconProps = Pick<ComponentProps<typeof AppIcon>, 'size' | 'shape' | 'className'>
+export function IconPickerTrigger({ ref, id, disabled, ...props }: IconPickerTriggerProps) {
+  const { field, triggerRef } = useIconPicker('IconPickerTrigger')
+  useIconPickerTriggerId(id)
+  const mergedRef = useMergedRefs(triggerRef, ref)
+  return (
+    <DialogTrigger
+      {...mergeProps(field.triggerProps, props)}
+      id={id ?? field.triggerId}
+      ref={mergedRef}
+      disabled={field.disabled || disabled}
+    />
+  )
+}
+
+type IconPickerIconProps = Pick<AppIconProps, 'size' | 'shape' | 'className'>
 
 /** Shows the committed icon, usually inside `IconPickerTrigger`. */
 export function IconPickerIcon(props: IconPickerIconProps) {
@@ -98,33 +176,37 @@ type IconPickerContentProps = {
 
 export function IconPickerContent({ enableImageUpload }: IconPickerContentProps) {
   const { t } = useTranslation(['app'])
-  const { value, onValueChange, open, setOpen } = useIconPicker('IconPickerContent')
-  const popupRef = useRef<HTMLDivElement>(null)
+  const { value, onValueChange, open, setOpen, popupRef, field } =
+    useIconPicker('IconPickerContent')
   const focusTargetRef = useRef<HTMLElement | null>(null)
   const setFocusTarget = useCallback((element: HTMLElement | null) => {
     focusTargetRef.current = element
   }, [])
   return (
-    <DialogContent
-      ref={popupRef}
-      backdropProps={{ forceRender: true }}
-      initialFocus={(interaction) =>
-        interaction === 'touch' ? popupRef.current : (focusTargetRef.current ?? true)
-      }
-      className="w-80.5 overflow-hidden"
-    >
-      <DialogTitle className="sr-only">
-        {t(($) => $['iconPicker.title'], { ns: 'app' })}
-      </DialogTitle>
-      <IconPickerSession
-        defaultValue={value?.type === 'link' ? undefined : value}
-        onConfirm={onValueChange}
-        enableImageUpload={enableImageUpload}
-        open={open}
-        onOpenChange={setOpen}
-        initialFocusRef={setFocusTarget}
-      />
-    </DialogContent>
+    <IconPickerEditorScope>
+      <DialogContent
+        ref={popupRef}
+        onFocus={field.focus}
+        onBlur={field.blur}
+        backdropProps={{ forceRender: true }}
+        initialFocus={(interaction) =>
+          interaction === 'touch' ? popupRef.current : (focusTargetRef.current ?? true)
+        }
+        className="w-80.5 overflow-hidden"
+      >
+        <DialogTitle className="sr-only">
+          {t(($) => $['iconPicker.title'], { ns: 'app' })}
+        </DialogTitle>
+        <IconPickerSession
+          defaultValue={value?.type === 'link' ? undefined : (value ?? undefined)}
+          onConfirm={onValueChange}
+          enableImageUpload={enableImageUpload}
+          open={open}
+          onOpenChange={setOpen}
+          initialFocusRef={setFocusTarget}
+        />
+      </DialogContent>
+    </IconPickerEditorScope>
   )
 }
 

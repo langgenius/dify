@@ -133,36 +133,34 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
             />
           </DialogHeader>
           <DialogBody>
-            <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
-              <Field name="name" className="gap-0 py-4">
-                <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
+            <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 py-4">
+              <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
+                <IconPickerTrigger
+                  aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
+                  className="group/edit-icon relative row-start-2 shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
+                >
+                  <IconPickerIcon size="medium" />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+                  >
+                    <span className="i-ri-edit-line size-5.5 text-text-primary-on-surface" />
+                  </span>
+                </IconPickerTrigger>
+                <IconPickerContent />
+              </IconPicker>
+              <Field name="name" className="contents">
+                <FieldLabel className="col-span-2 row-start-1 w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
                   {t(($) => $['form.name'], { ns: 'datasetSettings' })}
                 </FieldLabel>
-                <div className="flex items-center gap-x-2">
-                  <IconPickerTrigger
-                    aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
-                    className="group/edit-icon relative shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
-                  >
-                    <IconPickerIcon size="medium" />
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
-                    >
-                      <span className="i-ri-edit-line size-5.5 text-text-primary-on-surface" />
-                    </span>
-                  </IconPickerTrigger>
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-9 grow"
-                    placeholder={
-                      t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''
-                    }
-                  />
-                </div>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="col-start-2 row-start-2 h-9"
+                  placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
+                />
               </Field>
-              <IconPickerContent />
-            </IconPicker>
+            </div>
             <Field name="description" className="gap-0 py-4">
               <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
                 {t(($) => $['form.desc'], { ns: 'datasetSettings' })}

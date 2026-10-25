@@ -1,10 +1,12 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentScope } from '@/features/agent-v2/analytics'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import { CreateAgentDialog } from '../create-agent-dialog'
 
 const mutateRequest = vi.hoisted(() => vi.fn())
+
+mockEmojiData()
 
 const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
@@ -91,6 +93,29 @@ describe('CreateAgentDialog', () => {
     })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(toastMock.success).not.toHaveBeenCalled()
+  })
+
+  it('submits the confirmed icon as part of the form values', async () => {
+    const user = userEvent.setup()
+    render(<CreateAgentDialog />)
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.createAgent/ }))
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.createDialog.title' })
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
+      'Research Agent',
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'agentRoster.roster.createForm.changeIcon' }),
+    )
+    const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+    await user.click(within(picker).getByRole('radio', { name: 'app.iconPicker.color.green' }))
+    await user.click(within(picker).getByRole('button', { name: 'app.iconPicker.ok' }))
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
+
+    expect(mutateRequest).toHaveBeenCalledWith({
+      body: expect.objectContaining({ icon_type: 'emoji', icon: '🧸', icon_background: '#F3FEE7' }),
+    })
   })
 
   it('shows a field error when creating with an empty name', async () => {
