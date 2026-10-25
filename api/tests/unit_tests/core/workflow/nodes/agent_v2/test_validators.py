@@ -787,3 +787,38 @@ def test_publishing_routes_rejects_node_level_default_values(sqlite_session: Ses
     graph["nodes"][2]["data"]["error_strategy"] = "default-value"
     with pytest.raises(WorkflowAgentNodeValidationError, match="default-value"):
         WorkflowAgentNodeValidator.validate_published_workflow(session=sqlite_session, workflow=_workflow(graph))
+
+
+@pytest.mark.parametrize("container_type", ["iteration", "loop"])
+@pytest.mark.parametrize(
+    ("source_node_id", "output"), [("container", "item"), ("previous-node", "text"), ("start", "input")]
+)
+def test_publish_validation_accepts_enclosing_scope_refs(
+    sqlite_session: Session, container_type: str, source_node_id: str, output: str
+) -> None:
+    if container_type == "loop" and source_node_id == "container":
+        output = "counter"
+    node_job = WorkflowNodeJobConfig.model_validate(
+        {"previous_node_output_refs": [{"node_id": source_node_id, "output": output}]}
+    )
+    _persist_validation_scope(sqlite_session, node_job=node_job)
+    graph = _graph(
+        [
+            {"source": "start", "target": "previous-node"},
+            {"source": "previous-node", "target": "container"},
+            {"source": "container", "target": "later-node"},
+            {"source": "container-start", "target": "agent-node"},
+        ]
+    )
+    graph["nodes"].extend(
+        [
+            {"id": "container", "data": {"type": container_type}},
+            {"id": "container-start", "parentId": "container", "data": {"type": f"{container_type}-start"}},
+        ]
+    )
+    if container_type == "loop":
+        graph["nodes"][-2]["data"]["loop_variables"] = [
+            {"id": "counter", "label": "counter", "var_type": "number", "value_type": "constant", "value": 0}
+        ]
+    graph["nodes"][2]["parentId"] = "container"
+    WorkflowAgentNodeValidator.validate_published_workflow(session=sqlite_session, workflow=_workflow(graph))

@@ -1,9 +1,8 @@
-"""Draft-workflow graph topology helper, shared by Agent v2 publish validation
-and the agent-composer candidates endpoint (ENG-615).
+"""Topology for serialized directed graphs with optional ``parentId`` containment.
 
-Extracted from ``core/workflow/nodes/agent_v2/validators.py`` so both call sites
-parse the same ``Workflow.graph`` JSON shape (``nodes`` with string ids,
-``edges`` with ``source``/``target``).
+A child can reference its containing node and that node's predecessors, in
+addition to predecessors in its own subgraph. Containment does not make child
+outputs visible to the parent or to unconnected siblings.
 """
 
 from __future__ import annotations
@@ -13,13 +12,13 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 
-class WorkflowGraphTopology:
+class GraphTopology:
     def __init__(self, *, node_ids: set[str], incoming: Mapping[str, Sequence[str]]) -> None:
         self._node_ids = node_ids
         self._incoming = incoming
 
     @classmethod
-    def from_graph(cls, graph: Mapping[str, Any]) -> WorkflowGraphTopology:
+    def from_graph(cls, graph: Mapping[str, Any]) -> GraphTopology:
         node_ids = cls._node_ids_from_graph(graph)
         incoming: dict[str, list[str]] = defaultdict(list)
         edges = graph.get("edges")
@@ -31,6 +30,20 @@ class WorkflowGraphTopology:
                 target = edge.get("target")
                 if isinstance(source, str) and isinstance(target, str):
                     incoming[target].append(source)
+        nodes = graph.get("nodes")
+        if isinstance(nodes, list):
+            for node in nodes:
+                if not isinstance(node, Mapping):
+                    continue
+                node_id = node.get("id")
+                parent_id = node.get("parentId")
+                if (
+                    isinstance(node_id, str)
+                    and isinstance(parent_id, str)
+                    and parent_id in node_ids
+                    and parent_id != node_id
+                ):
+                    incoming[node_id].append(parent_id)
         return cls(node_ids=node_ids, incoming=incoming)
 
     def has_node(self, node_id: str) -> bool:
@@ -83,4 +96,4 @@ class WorkflowGraphTopology:
         return node_ids
 
 
-__all__ = ["WorkflowGraphTopology"]
+__all__ = ["GraphTopology"]

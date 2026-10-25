@@ -49,9 +49,9 @@ def previous_node_output_candidates(
     system_variables_loader: SystemVariablesLoader,
 ) -> tuple[list[dict[str, Any]], bool]:
     """Enumerate upstream node outputs for ``node_id`` as writable ref candidates."""
-    from core.workflow.graph_topology import WorkflowGraphTopology
+    from libs.graph_topology import GraphTopology
 
-    topology = WorkflowGraphTopology.from_graph(graph)
+    topology = GraphTopology.from_graph(graph)
     upstream = topology.upstream_node_ids(node_id)
 
     entries: list[dict[str, Any]] = []
