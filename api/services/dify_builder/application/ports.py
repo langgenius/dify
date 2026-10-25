@@ -98,7 +98,12 @@ class DifyBuilderAgent(Protocol):
     ) -> WorkflowPlan | None: ...
 
     def discover_resources(
-        self, plan_items: list[str], *, goal_text: str, requirements: dict[str, Any]
+        self,
+        plan_items: list[str],
+        *,
+        goal_text: str,
+        requirements: dict[str, Any],
+        reply_language: str | None = None,
     ) -> list[ResourceOption]: ...
 
     # One plain sentence naming a plan step nothing installed can perform, or

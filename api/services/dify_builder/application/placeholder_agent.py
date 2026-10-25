@@ -131,7 +131,12 @@ class PlaceholderAgent:
         )
 
     def discover_resources(
-        self, plan_items: list[str], *, goal_text: str, requirements: dict[str, Any]
+        self,
+        plan_items: list[str],
+        *,
+        goal_text: str,
+        requirements: dict[str, Any],
+        reply_language: str | None = None,
     ) -> list[ResourceOption]:
         return [
             ResourceOption(

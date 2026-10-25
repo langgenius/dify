@@ -198,7 +198,9 @@ class LlmBuilderAgent:
         )
 
     @diagnostics.cognition
-    def discover_resources(self, plan_items, *, goal_text: str, requirements: dict[str, Any]):
+    def discover_resources(
+        self, plan_items, *, goal_text: str, requirements: dict[str, Any], reply_language: str | None = None
+    ):
         return build.discover_resources(
             self.model_or_none(),
             self._tenant_id,
@@ -207,6 +209,8 @@ class LlmBuilderAgent:
             goal_text=goal_text,
             requirements=requirements,
             account_id=self._account_id,
+            mode=self._app_mode,
+            reply_language=reply_language,
         )
 
     @diagnostics.cognition

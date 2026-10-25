@@ -33,6 +33,7 @@ class RecordingAgent(StubAgent):
             else None
         )
         self.calls = []
+        self.resource_reply_languages: list[str | None] = []
 
     @override
     def propose_plan_v1(
@@ -43,9 +44,15 @@ class RecordingAgent(StubAgent):
 
     @override
     def discover_resources(
-        self, plan_items: list[str], *, goal_text: str, requirements: dict[str, object]
+        self,
+        plan_items: list[str],
+        *,
+        goal_text: str,
+        requirements: dict[str, object],
+        reply_language: str | None = None,
     ) -> list[ResourceOption]:
         self.calls.append(("resources", goal_text, copy.deepcopy(requirements)))
+        self.resource_reply_languages.append(reply_language)
         return []
 
     @override
@@ -57,7 +64,7 @@ class RecordingAgent(StubAgent):
 
 
 def _advance(
-    state: PcState, plan: list[str]
+    state: PcState, plan: list[str], *, reply_language: str = ""
 ) -> tuple[
     Session,
     DifyBuilderContext,
@@ -83,6 +90,7 @@ def _advance(
         app_id="app", tenant_id="tenant", owner_account_id="account", entry_mode=EntryMode.BUILD, current_state=state
     )
     context = DifyBuilderContext(
+        reply_language=reply_language,
         goal_text=GOAL,
         requirements={**REQUIREMENTS, "currency": "USD"},
         form_fields=[{"key": "currency", "label": "Currency", "type": "text"}],
@@ -126,6 +134,19 @@ def _advance(
     )
     _, stored = repo.get_session(session.id)
     return out, stored, before, agent, repo, canvas, progress
+
+
+@pytest.mark.parametrize("reply_language", ["zh-Hans", "en-US"])
+@pytest.mark.parametrize(
+    "state",
+    [PcState.BUILD_GOAL_ANALYSIS, PcState.BUILD_REVIEW, PcState.BUILD_REVERTED, PcState.BUILD_INITIAL_PLAN],
+)
+def test_resource_discovery_uses_persisted_session_language(state: PcState, reply_language: str) -> None:
+    out, stored, _, agent, _, _, _ = _advance(state, ["Build the requested report"], reply_language=reply_language)
+
+    assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    assert stored.reply_language == reply_language
+    assert agent.resource_reply_languages == [reply_language]
 
 
 @pytest.mark.parametrize(

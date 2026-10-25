@@ -96,8 +96,10 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
         goal_text: str,
         requirements: Inputs,
         account_id: str | None = None,  # noqa: ARG001
+        mode: str,
+        reply_language: str | None = None,
     ) -> list[object]:
-        seen["discover_resources"] = (model, tenant_id, plan_items, goal_text, requirements)
+        seen["discover_resources"] = (model, tenant_id, plan_items, goal_text, requirements, mode, reply_language)
         return []
 
     def mock_assess_capability_gap(
@@ -177,8 +179,8 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch: pytes
     assert seen["propose_plan_v1"] == ("MODEL", requirements, [catalogue_tool], [catalogue_agent], None, goal)
     assert seen["propose_plan_v1"][1] is requirements
 
-    agent.discover_resources(["step"], goal_text=goal, requirements=requirements)
-    assert seen["discover_resources"] == ("MODEL", "t1", ["step"], goal, requirements)
+    agent.discover_resources(["step"], goal_text=goal, requirements=requirements, reply_language="zh-Hans")
+    assert seen["discover_resources"] == ("MODEL", "t1", ["step"], goal, requirements, "workflow", "zh-Hans")
     assert seen["discover_resources"][4] is requirements
 
     agent.assess_capability_gap(["step"], [], goal_text=goal, requirements=requirements)
@@ -483,17 +485,20 @@ def test_planner_tool_catalogue_is_ranked_against_the_goal_and_requirements(monk
 
 def test_every_tool_owner_receives_the_acting_account(monkeypatch: pytest.MonkeyPatch) -> None:
     seen = _capture_tool_owners(monkeypatch)
-    agent = LlmBuilderAgent("t1", {}, account_id="acct-a")
+    agent = LlmBuilderAgent("t1", {}, account_id="acct-a", app_mode="advanced-chat")
     monkeypatch.setattr(agent, "_model", lambda: "MODEL")
 
     agent.propose_plan_v1({}, goal_text="goal")
-    agent.discover_resources(["step"], goal_text="goal", requirements={})
+    agent.discover_resources(["step"], goal_text="goal", requirements={}, reply_language="en")
     agent.bind_resources(["step"], ["rid"])
     agent.build_nodes(["step"])
 
     for owner in ("planning_catalogue", "discover_resources", "bind_resources", "build_nodes"):
         assert seen[owner][0] == "t1"
         assert seen[owner][1].get("account_id") == "acct-a", owner
+
+    assert seen["discover_resources"][1].get("mode") == "advanced-chat"
+    assert seen["discover_resources"][1].get("reply_language") == "en"
 
 
 def test_an_agent_without_an_actor_passes_none_rather_than_inventing_one(monkeypatch: pytest.MonkeyPatch) -> None:
