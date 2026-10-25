@@ -3,6 +3,7 @@
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.errors import InvalidArgumentError
@@ -19,8 +20,11 @@ from tests.workflow_empty_draft_test_utils import (
 
 
 @pytest.fixture(autouse=True)
-def _isolate_post_commit_events(monkeypatch: pytest.MonkeyPatch) -> None:
+def _isolate_post_commit_events(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
     # Event listeners own separate Redis/global-engine transactions, outside this SQLite save contract.
+    from types import SimpleNamespace
+
+    monkeypatch.setattr("services.workflow.draft_coordination_service.db", SimpleNamespace(engine=sqlite_engine))
     monkeypatch.setattr(app_draft_workflow_was_synced, "send", lambda *_args, **_kwargs: None)
 
 
