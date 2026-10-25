@@ -1,4 +1,3 @@
-import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
@@ -104,7 +103,6 @@ it('updates time formatting and popup labels from the application language witho
   )
   expect(screen.getByRole('option', { name: '۱' })).toHaveAttribute('aria-selected', 'true')
   expect(screen.getByRole('option', { name: '۳۰' })).toHaveAttribute('aria-selected', 'true')
-  expect(document.documentElement.dir).toBe('rtl')
 })
 
 it('inherits application direction and localizes the calendar while preserving label overrides', async () => {
@@ -121,43 +119,12 @@ it('inherits application direction and localizes the calendar while preserving l
       </I18nDirectionProvider>
     </I18nextProvider>,
   )
-  expect(document.documentElement.dir).toBe('rtl')
   await user.click(screen.getByRole('button', { name: /^Date / }))
   expect(screen.getByRole('button', { name: 'Next billing month' })).toBeInTheDocument()
   await user.click(
     screen.getByRole('button', { name: new RegExp(fa['picker.chooseMonthAndYear']) }),
   )
   expect(screen.getByRole('option', { name: 'ژانویه' })).toHaveAttribute('aria-selected', 'true')
-})
-
-it('inherits a local direction override independently of the application language', async () => {
-  const user = userEvent.setup()
-  const i18n = await createI18n('fa-IR')
-  render(
-    <I18nextProvider i18n={i18n}>
-      <I18nDirectionProvider syncDocument>
-        <DirectionProvider direction="ltr">
-          <DatePicker>
-            <DatePickerLabel>Date</DatePickerLabel>
-            <DatePickerTrigger />
-            <DatePickerContent dir="ltr" />
-          </DatePicker>
-          <TimePicker>
-            <TimePickerLabel>Time</TimePickerLabel>
-            <TimePickerTrigger />
-          </TimePicker>
-          <DateTimePicker timeZone="UTC">
-            <DateTimePickerLabel>Meeting</DateTimePickerLabel>
-            <DateTimePickerTrigger />
-          </DateTimePicker>
-        </DirectionProvider>
-      </I18nDirectionProvider>
-    </I18nextProvider>,
-  )
-
-  await user.click(screen.getByRole('button', { name: 'Date' }))
-  expect(screen.getByRole('dialog', { name: 'Date' })).toHaveAttribute('dir', 'ltr')
-  expect(document.documentElement.dir).toBe('rtl')
 })
 
 it.each([

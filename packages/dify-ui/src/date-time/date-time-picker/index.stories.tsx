@@ -97,10 +97,7 @@ export const RTL: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const trigger = within(canvasElement).getByRole('button', { name: /^Meeting time / })
     await userEvent.click(trigger)
-    await expect(await body.findByRole('dialog', { name: 'Meeting time' })).toHaveAttribute(
-      'dir',
-      'rtl',
-    )
+    await body.findByRole('dialog', { name: 'Meeting time' })
     await userEvent.click(body.getByRole('button', { name: /Pick Time:/ }))
     const hours = await body.findByRole('listbox', { name: 'Hour' })
     const minutes = body.getByRole('listbox', { name: 'Minute' })

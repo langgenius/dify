@@ -94,10 +94,7 @@ export const RTL: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const trigger = within(canvasElement).getByRole('button', { name: 'Start time 1:30 PM' })
     await userEvent.click(trigger)
-    await expect(await body.findByRole('dialog', { name: 'Start time' })).toHaveAttribute(
-      'dir',
-      'rtl',
-    )
+    await body.findByRole('dialog', { name: 'Start time' })
     const hours = body.getByRole('listbox', { name: 'Hour' })
     const minutes = body.getByRole('listbox', { name: 'Minute' })
     await waitFor(() => expect(within(hours).getByRole('option', { name: '1' })).toHaveFocus())

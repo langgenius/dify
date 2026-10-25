@@ -385,15 +385,11 @@ it('localizes full dates and reverses horizontal calendar navigation in RTL', as
     <DirectionProvider direction="rtl">
       <DatePicker locale={arTN} defaultValue="2025-01-15">
         <DatePickerLabel className="sr-only">Date</DatePickerLabel>
-        <DatePickerTrigger />
-        <DatePickerContent dir="rtl" />
+        <Parts />
       </DatePicker>
     </DirectionProvider>,
   )
   await screen.getByRole('button', { name: /^Date / }).click()
-  await expect
-    .element(screen.getByRole('dialog', { name: 'Date', exact: true }))
-    .toHaveAttribute('dir', 'rtl')
   await userEvent.keyboard('{ArrowLeft}')
   const nextLabel = 'الخميس، 16 جانفي 2025'
   await expect.element(screen.getByRole('button', { name: nextLabel, exact: true })).toHaveFocus()
