@@ -17,7 +17,7 @@ from pydantic import (
 )
 from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound, ServiceUnavailable
+from werkzeug.exceptions import BadRequest, Conflict, Forbidden, InternalServerError, NotFound, ServiceUnavailable
 
 import services
 from configs import dify_config
@@ -101,7 +101,7 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.errors.llm import InvokeRateLimitError
 from services.trigger.debug_service import TriggerDebugEvent
-from services.errors.workflow_service import EmptyWorkflowConfirmationRequiredError
+from services.errors.workflow_service import DuplicateDraftWorkflowError, EmptyWorkflowConfirmationRequiredError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
@@ -654,6 +654,8 @@ class DraftWorkflowApi(Resource):
         console_ns.models[SyncDraftWorkflowResponse.__name__],
     )
     @console_ns.response(400, "Invalid workflow configuration")
+    @console_ns.response(404, "App owner not found for draft initialization")
+    @console_ns.response(409, "Draft hash changed or multiple draft workflows require repair")
     @console_ns.response(403, "Permission denied")
     @with_current_user
     @edit_permission_required
@@ -719,6 +721,10 @@ class DraftWorkflowApi(Resource):
                 graph_only=True,
                 require_empty_graph_confirmation=not args_model.force,
             )
+        except DuplicateDraftWorkflowError as exc:
+            raise Conflict(str(exc)) from exc
+        except WorkflowNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
         except WorkflowHashNotEqualError as caught_error:
             raise DraftWorkflowNotSync() from caught_error
         except (VariableError, EmptyWorkflowConfirmationRequiredError) as e:
@@ -1672,6 +1678,7 @@ class PublishedAllWorkflowApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>/restore")
 class DraftWorkflowRestoreApi(Resource):
     @console_ns.doc("restore_workflow_to_draft")
+    @console_ns.response(409, "Multiple draft workflows require repair")
     @console_ns.doc(description="Restore a published workflow version into the draft workflow")
     @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Published workflow ID"})
     @console_ns.response(200, "Workflow restored successfully", console_ns.models[WorkflowRestoreResponse.__name__])
@@ -1694,6 +1701,8 @@ class DraftWorkflowRestoreApi(Resource):
                 account=current_user,
                 session=db.session(),
             )
+        except DuplicateDraftWorkflowError as exc:
+            raise Conflict(str(exc)) from exc
         except IsDraftWorkflowError as exc:
             raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
         except WorkflowNotFoundError as exc:
