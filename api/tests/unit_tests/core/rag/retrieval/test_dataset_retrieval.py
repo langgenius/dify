@@ -4027,7 +4027,6 @@ class TestDatasetRetrievalCases:
             assert result is filters
             assert len(filters) == 1
 
-        @staticmethod
         @pytest.mark.parametrize(
             ("condition", "metadata_name", "value", "expected"),
             [
