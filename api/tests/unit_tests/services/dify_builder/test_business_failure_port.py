@@ -131,10 +131,23 @@ def case(sqlite_session_factory: sessionmaker[SqlSession], monkeypatch: pytest.M
     monkeypatch.setattr(dify_port, "WorkflowService", lambda: WorkflowService(sqlite_session_factory))
 
     def sync(
-        _app: object, new_graph: Graph, workflow: Workflow, _hash: str, _account: object, sql: SqlSession, _app_id: str
+        _app: object,
+        new_graph: Graph,
+        workflow: Workflow,
+        _hash: str,
+        _account: object,
+        sql: SqlSession,
+        _app_id: str,
+        *,
+        commit: bool = True,
+        coordination_id: str | None = None,
     ) -> Workflow:
+        # This graph has no prepared bindings; sync owns its transaction boundary.
+        assert commit is True
+        assert coordination_id is not None
         workflow.graph = json.dumps(new_graph)
-        sql.commit()
+        if commit:
+            sql.commit()
         return workflow
 
     monkeypatch.setattr(dify_port, "_sync_graph_only", sync)

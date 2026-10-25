@@ -322,7 +322,16 @@ def native_adapter(
         workflow_service.return_value.get_draft_workflow.side_effect = lambda _app, *, session: session.get(
             Workflow, workflow.id
         )
-        sync.side_effect = lambda _app, graph, *_args: _workflow(graph_dict=graph)
+
+        def sync_graph(
+            _app: object, graph: Graph, *_args: object, commit: bool = True, coordination_id: str | None = None
+        ) -> Workflow:
+            # These repairs have no prepared bindings, so graph sync owns the commit.
+            assert commit is True
+            assert coordination_id is not None
+            return _workflow(graph_dict=graph)
+
+        sync.side_effect = sync_graph
         yield NativeEvidenceCase(
             port=WorkflowServiceDifyPort(),
             graph=graph,
