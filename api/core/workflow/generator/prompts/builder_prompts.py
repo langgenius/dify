@@ -242,6 +242,8 @@ _NODE_SNIPPETS: dict[str, str] = {
 - template-transform:
     {"template": "Hello {{ name }}",
      "variables": [{"variable": "name", "value_selector": ["<src>", "<var>"]}]}
+    Template source is native Jinja: reference declared variable aliases as
+    {{ name }}, NEVER Dify {{#node.var#}} placeholders. Bind sources in variables.
     ``variables`` is REQUIRED (no default) — a template that references no
     variables must still set ``"variables": []``, never omit the field.""",
     "http-request": """\
