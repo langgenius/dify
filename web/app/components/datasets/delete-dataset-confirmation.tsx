@@ -1,4 +1,5 @@
 import {
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogDescription,
@@ -43,17 +44,19 @@ export function DeleteDatasetConfirmation({
             ns: 'dataset',
           })}
         </AlertDialogDescription>
-        {(error || usage.isError) && (
+      </AlertDialogHeader>
+      {(error || usage.isError) && (
+        <AlertDialogBody className="flex flex-col items-start gap-2">
           <p role="alert" className="text-text-destructive">
             {error ?? t(($) => $['api.actionFailed'], { ns: 'common' })}
           </p>
-        )}
-        {usage.isError && (
-          <Button size="small" loading={usage.isFetching} onClick={() => void usage.refetch()}>
-            {t(($) => $['operation.retry'], { ns: 'common' })}
-          </Button>
-        )}
-      </AlertDialogHeader>
+          {usage.isError && (
+            <Button size="small" loading={usage.isFetching} onClick={() => void usage.refetch()}>
+              {t(($) => $['operation.retry'], { ns: 'common' })}
+            </Button>
+          )}
+        </AlertDialogBody>
+      )}
       <AlertDialogFooter>
         <AlertDialogCancelButton disabled={isPending}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
