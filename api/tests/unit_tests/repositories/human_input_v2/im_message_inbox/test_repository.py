@@ -190,3 +190,20 @@ def test_transaction_commit_failure_rolls_back_callback(sqlite_engine: Engine) -
     assert "must-not-escape" not in str(error.value)
     with session_maker() as session:
         assert session.scalar(sa.select(sa.func.count(IMMessageInbox.id))) == 0
+
+
+def test_request_ip_belongs_to_each_insert(sqlite_engine: Engine) -> None:
+    storage, _ = _repository(sqlite_engine)
+    first = storage.insert_or_resolve(
+        IntegrationId("integration-1"), _event("event-1"), now=_NOW, request_ip_address="192.0.2.20"
+    )
+    without_ip = storage.insert_or_resolve(IntegrationId("integration-1"), _event("event-2"), now=_NOW)
+    third = storage.insert_or_resolve(
+        IntegrationId("integration-1"), _event("event-3"), now=_NOW, request_ip_address="192.0.2.21"
+    )
+    storage.mark_processed(first.record_id, processed_at=_NOW)
+
+    for accepted, expected_ip in ((first, "192.0.2.20"), (without_ip, None), (third, "192.0.2.21")):
+        record = storage.get(accepted.record_id)
+        assert record is not None
+        assert record.request_ip_address == expected_ip

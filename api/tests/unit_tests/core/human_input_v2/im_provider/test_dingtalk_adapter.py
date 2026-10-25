@@ -156,7 +156,8 @@ class _FakeDirectoryHTTPClient:
 
 
 class _Consumer:
-    def accept(self, event: object) -> EventAcceptance:
+    def accept(self, event: object, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         del event
         return EventAcceptance.ACCEPTED
 

@@ -33,6 +33,8 @@ from models.enums import EndUserType, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm as LegacyHumanInputForm
 from models.human_input_v2 import (
     ContactSubjectType,
+    FormViewEvent,
+    HumanInputAuditEvent,
     HumanInputContactIdentity,
     HumanInputDelivery,
     HumanInputDeliveryAttempt,
@@ -45,6 +47,7 @@ from models.human_input_v2 import (
     HumanInputIMIdentity,
     HumanInputPlatformContactWorkspaceEntry,
     HumanInputRecipient,
+    OtpVerificationEvent,
     ResendEmailProviderEncryptedCredentials,
 )
 from models.model import EndUser
@@ -215,6 +218,7 @@ def context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Context
         import_module("migrations.versions.2026_09_09_1200-a7c9e1f3b5d8_add_human_input_v2_forms").upgrade()
         import_module("migrations.versions.2026_09_10_1200-b8d0f2a4c6e9_add_human_input_v2_recipients").upgrade()
         import_module("migrations.versions.2026_09_21_1200-f3c5e7a9b1d2_add_human_input_v2_delivery_runtime").upgrade()
+        import_module("migrations.versions.2026_09_23_1200-a8d2f4b6c0e3_add_human_input_v2_audit_events").upgrade()
         import_module("migrations.versions.2026_10_09_1200-6a8c0e2f4b7d_add_human_input_v2_deadline_indexes").upgrade()
     sessions = sessionmaker(engine, expire_on_commit=False)
     monkeypatch.setattr("core.db.session_factory.session_factory.get_session_maker", lambda: sessions)
@@ -3030,10 +3034,19 @@ def web_app_approval(context: Context, monkeypatch):
     return app.test_client(), created.form.id, token, headers, end_user_id
 
 
-def test_web_app_approval_reads_frozen_form(web_app_approval):
-    client, _, token, headers, _ = web_app_approval
-    response = client.get(f"/form/human-input/v2/{token}", headers=headers)
+@pytest.mark.parametrize(("remote_address", "expected_ip"), [("192.0.2.13", "192.0.2.13"), (None, None), ("", None)])
+def test_web_app_approval_reads_frozen_form(
+    context: Context,
+    web_app_approval: tuple[FlaskClient, str, str, dict[str, str], str],
+    remote_address: str | None,
+    expected_ip: str | None,
+) -> None:
+    client, form_id, token, headers, _ = web_app_approval
+    response = client.get(
+        f"/form/human-input/v2/{token}", headers=headers, environ_overrides={"REMOTE_ADDR": remote_address}
+    )
     assert response.status_code == 200, response.json
+    assert response.json is not None
     assert response.json["resolved_form"]["legacy_form_content"] == "Review: {{#$output.note#}}"
     assert response.json["resolved_form"]["parts"][1] == {
         "type": "paragraph_input",
@@ -3042,6 +3055,13 @@ def test_web_app_approval_reads_frozen_form(web_app_approval):
     }
     assert response.json["resolved_form"]["actions"][0]["id"] == "approve"
     assert isinstance(response.json["expiration_time"], int)
+    with context.sessions() as session:
+        audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+        assert audit.tenant_id == _TENANT
+        assert audit.form_id == form_id
+        assert audit.created_at is not None
+        assert isinstance(audit.payload, FormViewEvent)
+        assert audit.payload.viewer_ip_address == expected_ip
 
 
 def test_web_app_approval_commits_before_resuming_and_preserves_first_submission(
@@ -3409,7 +3429,11 @@ def test_public_form_submission_commits_form_and_audit_before_resuming(
             form = session.get(HumanInputForm, approval.form_id)
             assert form.status == HumanInputFormStatus.SUBMITTED
             assert json.loads(form.raw_submission_inputs) == {"note": " First "}
-            audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+            (audit,) = [
+                event
+                for event in session.scalars(sa.select(HumanInputAuditEvent))
+                if isinstance(event.payload, OtpVerificationEvent)
+            ]
             assert isinstance(audit.payload, OtpVerificationEvent)
             assert audit.payload.succeeded
             assert audit.payload.recipient_id == form.submitted_by_recipient_id
@@ -3494,7 +3518,10 @@ def test_public_form_invalid_input_keeps_proof_for_retry(
     assert rejected.status_code == 400
     with context.sessions() as session:
         assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
-        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+        assert not any(
+            isinstance(event.payload, OtpVerificationEvent)
+            for event in session.scalars(sa.select(HumanInputAuditEvent))
+        )
     approval.redis.delete.assert_not_called()
     enqueue.assert_not_called()
     assert approval.submit().status_code == 200
@@ -3562,7 +3589,10 @@ def test_public_form_audit_failure_rolls_back_and_keeps_proof(context: Context, 
         sa.event.remove(engine, "before_cursor_execute", fail_audit)
     with context.sessions() as session:
         assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
-        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+        assert not any(
+            isinstance(event.payload, OtpVerificationEvent)
+            for event in session.scalars(sa.select(HumanInputAuditEvent))
+        )
     approval.redis.delete.assert_not_called()
     enqueue.assert_not_called()
     assert approval.submit().status_code == 200
@@ -3608,6 +3638,82 @@ def test_public_form_submission_rechecks_current_authorization(
     assert response.status_code == (400 if scenario == "contact_email" else 404)
     with context.sessions() as session:
         assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
-        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+        assert not any(
+            isinstance(event.payload, OtpVerificationEvent)
+            for event in session.scalars(sa.select(HumanInputAuditEvent))
+        )
     approval.redis.delete.assert_not_called()
     enqueue.assert_not_called()
+
+
+@pytest.mark.parametrize("denial", [None, "recipient", "expired", "token"])
+@pytest.mark.parametrize(("remote_address", "expected_ip"), [("192.0.2.14", "192.0.2.14"), (None, None), ("", None)])
+def test_console_form_read_audits_only_successful_views(
+    context: Context,
+    console_approval: tuple[str, str],
+    denial: str | None,
+    remote_address: str | None,
+    expected_ip: str | None,
+) -> None:
+    from functools import partial
+    from inspect import unwrap
+
+    from flask import Flask
+
+    from controllers.console.human_input_v2.form import ConsoleHumanInputV2FormApi
+
+    form_id, token = console_approval
+    with context.sessions.begin() as session:
+        account = session.get_one(Account, _ACCOUNT)
+        if denial == "recipient":
+            session.execute(sa.delete(TenantAccountJoin))
+        elif denial == "expired":
+            session.get_one(HumanInputForm, form_id).expiration_time = naive_utc_now() - timedelta(seconds=1)
+        elif denial == "token":
+            token = "unknown"
+    app = Flask(__name__)
+    app.add_url_rule(
+        "/form/<form_token>",
+        endpoint="view",
+        view_func=partial(unwrap(ConsoleHumanInputV2FormApi.get), ConsoleHumanInputV2FormApi(), current_user=account),
+    )
+    response = app.test_client().get(f"/form/{token}", environ_overrides={"REMOTE_ADDR": remote_address})
+    assert response.status_code == (200 if denial is None else 410 if denial == "expired" else 404)
+    with context.sessions() as session:
+        audits = list(session.scalars(sa.select(HumanInputAuditEvent)))
+        if denial is not None:
+            assert audits == []
+            return
+        assert len(audits) == 1
+        audit = audits[0]
+        assert audit.tenant_id == _TENANT
+        assert audit.form_id == form_id
+        assert audit.created_at is not None
+        assert isinstance(audit.payload, FormViewEvent)
+        assert audit.payload.viewer_ip_address == expected_ip
+
+
+@pytest.mark.parametrize(("remote_address", "expected_ip"), [("192.0.2.16", "192.0.2.16"), (None, None), ("", None)])
+def test_otp_access_request_audits_the_http_request_ip(
+    context: Context, public_form_approval: PublicFormApproval, remote_address: str | None, expected_ip: str | None
+) -> None:
+    from models.human_input_v2 import OtpSendEvent
+
+    approval = public_form_approval
+    response = approval.client.post(
+        f"/api/form/human-input/v2/public/{approval.token}/access-request",
+        environ_overrides={"REMOTE_ADDR": remote_address},
+    )
+    assert response.status_code == 200
+    with context.sessions() as session:
+        sends = [
+            event
+            for event in session.scalars(sa.select(HumanInputAuditEvent))
+            if isinstance(event.payload, OtpSendEvent)
+        ]
+        assert len(sends) == 2
+        assert all(event.tenant_id == _TENANT and event.form_id == approval.form_id for event in sends)
+        assert {event.payload.sender_ip_address for event in sends if isinstance(event.payload, OtpSendEvent)} == {
+            None,
+            expected_ip,
+        }

@@ -119,7 +119,8 @@ class _EventConsumer:
     def __init__(self) -> None:
         self.event: AuthenticatedIMEvent | None = None
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         self.event = event
         return EventAcceptance.ACCEPTED
 

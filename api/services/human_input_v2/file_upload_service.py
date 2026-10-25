@@ -51,7 +51,7 @@ class HumanInputV2FileUploadService:
 
     def issue_public_upload_token(self, form_token: str) -> HumanInputUploadToken:
         grant = _PublicGrant(form_token=form_token)
-        form = self._forms.get_public_form(form_token=form_token)
+        form = self._forms.authorize_public_form(form_token=form_token)
         self._resolve_owner(form)
         expires_at = min(form.expiration_time, form.global_timeout_deadline)
         claims = {**grant.model_dump(), "aud": _UPLOAD_AUDIENCE, "exp": to_utc_timestamp(expires_at)}
@@ -72,7 +72,7 @@ class HumanInputV2FileUploadService:
             grant = _PublicGrant.model_validate(claims)
         except (jwt.PyJWTError, ValidationError) as exc:
             raise InvalidUploadTokenError() from exc
-        form = self._forms.get_public_form(form_token=grant.form_token)
+        form = self._forms.authorize_public_form(form_token=grant.form_token)
         return HumanInputV2UploadContext(form=form, owner=self._resolve_owner(form))
 
     def upload_local_file(

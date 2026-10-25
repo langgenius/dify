@@ -72,7 +72,8 @@ def _credentials() -> MSTeamsCredentials:
 
 
 class _Consumer:
-    def accept(self, event) -> EventAcceptance:
+    def accept(self, event, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         del event
         return EventAcceptance.ACCEPTED
 
@@ -82,7 +83,8 @@ class _RecordingConsumer:
         self.acceptance = acceptance
         self.events = []
 
-    def accept(self, event) -> EventAcceptance:
+    def accept(self, event, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         self.events.append(event)
         return self.acceptance
 
@@ -92,14 +94,16 @@ class _ThreadSafeRecordingConsumer:
         self._lock = threading.Lock()
         self.events = []
 
-    def accept(self, event) -> EventAcceptance:
+    def accept(self, event, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         with self._lock:
             self.events.append(event)
         return EventAcceptance.ACCEPTED
 
 
 class _FailingConsumer:
-    def accept(self, event) -> EventAcceptance:
+    def accept(self, event, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         del event
         raise RuntimeError("sensitive consumer details")
 

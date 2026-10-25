@@ -153,6 +153,7 @@ class IMCardSubmissionConsumer:
                 form_token=card.correlation_token,
                 action=card.action_id,
                 inputs=card.inputs,
+                ip_address=record.request_ip_address,
             )
         except HumanInputFormError as error:
             if error.code is HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE:

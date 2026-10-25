@@ -21,6 +21,7 @@ def event_record(
     integration_id: IntegrationId,
     event: AuthenticatedIMEvent,
     now: datetime,
+    request_ip_address: str | None = None,
 ) -> IMMessageInbox:
     """Create one detached record containing immutable callback facts."""
 
@@ -34,6 +35,7 @@ def event_record(
         provider_event_type=event.event_type,
         ingress_kind=event.ingress_kind,
         payload=event.payload,
+        request_ip_address=request_ip_address,
     )
     record.id = str(record_id)
     record.created_at = _naive_utc(now)
@@ -63,4 +65,5 @@ def inbox_record_from_model(record: IMMessageInbox) -> IMInboxRecord:
         integration_id=IntegrationId(record.integration_id),
         event=event_from_record(record),
         processed_at=record.processed_at,
+        request_ip_address=record.request_ip_address,
     )

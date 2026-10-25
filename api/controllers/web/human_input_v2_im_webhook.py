@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, ValidationError
 from configs import dify_config
 from core.human_input_v2.im_integration.adapters.entities import WebhookRequest
 from libs.datetime_utils import naive_utc_now
+from libs.helper import extract_remote_ip
 from repositories.human_input_v2.im_channel_repository import WebhookId
 from services.human_input_v2.im_webhook_runtime import build_im_webhook_ingress_service
 
@@ -38,6 +39,7 @@ def handle_im_provider_webhook(webhook_id: str) -> Response:
             headers=tuple(request.headers.items()),
             body=body,
             received_at=received_at,
+            request_ip_address=extract_remote_ip(request) or None,
         ),
     )
     return Response(provider_response.body, status=provider_response.status_code, headers=provider_response.headers)

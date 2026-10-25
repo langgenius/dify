@@ -79,9 +79,9 @@ class _DelegatingConsumer:
         self._sink = sink
         self.events = []
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
         self.events.append(event)
-        return self._sink.accept(event)
+        return self._sink.accept(event, request_ip_address=request_ip_address)
 
 
 def _credentials() -> SlackCredentials:

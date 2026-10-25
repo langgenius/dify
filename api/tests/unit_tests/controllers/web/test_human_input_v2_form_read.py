@@ -30,6 +30,7 @@ from graphon.file.enums import FileTransferMethod, FileType
 from graphon.variables.segments import StringSegment
 from libs.external_api import ExternalApi
 from models.human_input_v2 import (
+    FormViewEvent,
     HumanInputAuditEvent,
     HumanInputContactIdentity,
     HumanInputDelivery,
@@ -212,7 +213,11 @@ def test_reads_complete_frozen_definition_without_otp_or_session(public_form: Pu
         assert form.status == HumanInputFormStatus.WAITING
         assert form.updated_at == public_form.form.updated_at
         assert form.submitted_at is None
-        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+        audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+        assert audit.tenant_id == public_form.form.tenant_id
+        assert audit.form_id == public_form.form.id
+        assert audit.created_at is not None
+        assert audit.payload == FormViewEvent(viewer_ip_address="127.0.0.1")
 
 
 def test_unknown_token_is_not_found(public_form: PublicForm) -> None:
@@ -358,3 +363,55 @@ def test_submitted_form_is_reported_as_complete(public_form: PublicForm) -> None
     assert response.status_code == 412
     assert response.json is not None
     assert response.json["code"] == "human_input_form_submitted"
+
+
+@pytest.mark.parametrize("denial", ["unknown_token", "expired", "wrong_auth", "removed_recipient"])
+def test_denied_read_does_not_record_a_view(public_form: PublicForm, denial: str) -> None:
+    path = _PATH
+    with public_form.sessions.begin() as session:
+        match denial:
+            case "unknown_token":
+                path = "/api/form/human-input/v2/public/unknown"
+            case "expired":
+                session.execute(sa.update(HumanInputForm).values(expiration_time=_NOW))
+            case "wrong_auth":
+                session.execute(sa.update(HumanInputDelivery).values(auth_type=SubmissionAuthType.CONSOLE))
+            case "removed_recipient":
+                session.execute(sa.delete(HumanInputRecipient))
+    assert public_form.client.get(path).status_code in (404, 412)
+    with public_form.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+
+
+def test_each_page_read_records_the_request_ip(public_form: PublicForm) -> None:
+    for ip_address in ("192.0.2.10", "192.0.2.11"):
+        assert public_form.client.get(_PATH, headers={"X-Forwarded-For": ip_address}).status_code == 200
+    with public_form.sessions() as session:
+        audits = list(session.scalars(sa.select(HumanInputAuditEvent)))
+        assert len(audits) == 2
+        assert {audit.payload.viewer_ip_address for audit in audits if isinstance(audit.payload, FormViewEvent)} == {
+            "192.0.2.10",
+            "192.0.2.11",
+        }
+
+
+@pytest.mark.parametrize("remote_address", [None, ""])
+def test_missing_viewer_ip_is_persisted_as_null(public_form: PublicForm, remote_address: str | None) -> None:
+    response = public_form.client.get(_PATH, environ_overrides={"REMOTE_ADDR": remote_address})
+    assert response.status_code == 200
+    with public_form.sessions() as session:
+        audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+        assert isinstance(audit.payload, FormViewEvent)
+        assert audit.payload.viewer_ip_address is None
+        assert audit.payload.model_dump(mode="json")["viewer_ip_address"] is None
+
+
+def test_form_read_without_ip_context_is_audited_as_null(public_form: PublicForm) -> None:
+    from services.human_input_v2.submission_service import HumanInputSubmissionService
+
+    form = HumanInputSubmissionService(session_factory=public_form.sessions).get_public_form(form_token=_TOKEN)
+    assert form.id == public_form.form.id
+    with public_form.sessions() as session:
+        audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+        assert isinstance(audit.payload, FormViewEvent)
+        assert audit.payload.viewer_ip_address is None

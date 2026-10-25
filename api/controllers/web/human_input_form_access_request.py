@@ -95,7 +95,7 @@ class HumanInputV2FormApi(Resource):
     def get(self, form_token: str):
         service = HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
         try:
-            form = service.get_public_form(form_token=form_token)
+            form = service.get_public_form(form_token=form_token, ip_address=extract_remote_ip(request) or None)
         except HumanInputFormError as error:
             return _public_form_error_response(error)
         presentation = build_form_presentation(form.resolved_form)
@@ -135,7 +135,7 @@ class HumanInputV2FormApi(Resource):
                 inputs=payload.inputs,
                 challenge_token=payload.challenge_token,
                 otp_code=payload.otp_code,
-                ip_address=extract_remote_ip(request),
+                ip_address=extract_remote_ip(request) or None,
             )
         except EmailOtpError as error:
             raise _EmailOtpHTTPError(error) from None
@@ -167,7 +167,9 @@ class FormAccessRequestApi(Resource):
     @web_ns.response(200, "Success", web_ns.models[FormAccessRequestResponse.__name__])
     def post(self, form_token: str):
         try:
-            challenge = build_email_otp_service().request_access(form_token)
+            challenge = build_email_otp_service().request_access(
+                form_token, ip_address=extract_remote_ip(request) or None
+            )
         except EmailOtpError as error:
             raise _EmailOtpHTTPError(error) from None
         return FormAccessRequestResponse(

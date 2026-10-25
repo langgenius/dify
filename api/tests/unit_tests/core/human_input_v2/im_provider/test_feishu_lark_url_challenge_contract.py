@@ -49,7 +49,8 @@ class _CountingConsumer:
     def __init__(self) -> None:
         self.events: list[AuthenticatedIMEvent] = []
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         self.events.append(event)
         return EventAcceptance.ACCEPTED
 

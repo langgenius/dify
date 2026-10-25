@@ -24,6 +24,7 @@ from libs.datetime_utils import naive_utc_now
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.human_input_v2.contact import ContactType
 from repositories.human_input_v2.delivery_repository import (
+    Delivery,
     EmailTargetSnapshot,
     IMUserTargetSnapshot,
     InitiatorSnapshot,
@@ -114,14 +115,32 @@ class IMFormActor:
     provider_user_id: str
 
 
+@dataclass(frozen=True, slots=True)
+class _IMFormContext:
+    form: Form
+    delivery: Delivery
+    target: IMUserTargetSnapshot
+
+
+@dataclass(frozen=True, slots=True)
+class _IMCallbackRejection:
+    """Expected rejection with safe diagnostic text and the transport error code."""
+
+    code: HumanInputFormErrorCode
+    reason: str
+
+
 class HumanInputSubmissionService:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
-    def get_service_api_form(self, *, actor: ServiceAPIFormActor, form_token: str) -> Form:
+    def get_service_api_form(
+        self, *, actor: ServiceAPIFormActor, form_token: str, ip_address: str | None = None
+    ) -> Form:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
         with self._session_factory() as session:
             form, _ = self._authorize_service_api(session, actor=actor, token_hash=token_hash)
+        self._record_form_view(form, ip_address=ip_address)
         return form
 
     def submit_service_api_form(
@@ -162,12 +181,13 @@ class HumanInputSubmissionService:
                 form.workflow_run_id,
             )
 
-    def get_console_form(self, *, account_id: AccountId, form_token: str) -> Form:
+    def get_console_form(self, *, account_id: AccountId, form_token: str, ip_address: str | None = None) -> Form:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
         with self._session_factory() as session:
             form, _ = self._authorize_console(session, account_id=account_id, token_hash=token_hash)
         if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
             raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
+        self._record_form_view(form, ip_address=ip_address)
         return form
 
     def submit_console_form(
@@ -181,16 +201,27 @@ class HumanInputSubmissionService:
         form = self._submit_form(authorize=authorize, action=action, inputs=inputs)
         self._enqueue_resume(form)
 
-    def get_web_app_form(self, *, actor: WebAppFormActor, form_token: str) -> Form:
+    def get_web_app_form(self, *, actor: WebAppFormActor, form_token: str, ip_address: str | None = None) -> Form:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
         with self._session_factory() as session:
             form, _ = self._authorize_web_app(session, actor=actor, token_hash=token_hash)
         if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
             raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
+        self._record_form_view(form, ip_address=ip_address)
         return form
 
-    def get_public_form(self, *, form_token: str) -> Form:
+    def get_public_form(self, *, form_token: str, ip_address: str | None = None) -> Form:
         """Read an active email-proof form before any OTP is requested or verified."""
+        form = self.authorize_public_form(form_token=form_token)
+        self._record_form_view(form, ip_address=ip_address)
+        return form
+
+    def _record_form_view(self, form: Form, *, ip_address: str | None) -> None:
+        with self._session_factory() as session, session.begin():
+            SQLAlchemyAuditRepository(session, form.tenant_id, form.id).record_form_view(viewer_ip_address=ip_address)
+
+    def authorize_public_form(self, *, form_token: str) -> Form:
+        """Authorize public access, including file uploads, without recording a page view."""
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
         with self._session_factory() as session:
             delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(token_hash)
@@ -271,12 +302,21 @@ class HumanInputSubmissionService:
         self._enqueue_resume(form)
 
     def submit_im_form(
-        self, *, actor: IMFormActor, form_token: str, action: str, inputs: Mapping[str, JsonValue]
+        self,
+        *,
+        actor: IMFormActor,
+        form_token: str,
+        action: str,
+        inputs: Mapping[str, JsonValue],
+        ip_address: str | None = None,
     ) -> None:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
+        verification = self._verify_im_callback(actor=actor, token_hash=token_hash, ip_address=ip_address)
+        if isinstance(verification, _IMCallbackRejection):
+            raise HumanInputFormError(verification.code)
 
         def authorize(session: Session) -> tuple[Form, Recipient]:
-            form, recipient = self._load_im_form(session, actor=actor, token_hash=token_hash)
+            form, recipient = self._authorize_im_form(session, actor=actor, token_hash=token_hash)
             _ensure_form_waiting(form)
             return form, recipient
 
@@ -491,49 +531,173 @@ class HumanInputSubmissionService:
         _ensure_form_waiting(form)
         return form, recipient
 
+    def _verify_im_callback(
+        self, *, actor: IMFormActor, token_hash: str, ip_address: str | None
+    ) -> Recipient | _IMCallbackRejection:
+        with self._session_factory() as session, session.begin():
+            # No audit attribution until the authenticated route and stored
+            # delivery resolve a form in the same Provider tenant/workspace.
+            context = self._resolve_im_form_context(session, actor=actor, token_hash=token_hash)
+            if isinstance(context, _IMCallbackRejection):
+                self._log_im_callback_rejection(actor=actor, rejection=context, context=None)
+                return context
+            verification = self._check_im_recipient(session, actor=actor, context=context)
+            if isinstance(verification, _IMCallbackRejection):
+                succeeded = False
+                reason = verification.reason
+            else:
+                succeeded = True
+                reason = "verified"
+            SQLAlchemyAuditRepository(session, context.form.tenant_id, context.form.id).record_im_callback_verification(
+                succeeded=succeeded,
+                request_ip_address=ip_address,
+                reason=reason,
+            )
+        # Verification audits commit before the caller translates a rejection
+        # or attempts form submission.
+        if isinstance(verification, _IMCallbackRejection):
+            self._log_im_callback_rejection(actor=actor, rejection=verification, context=context)
+        return verification
+
     @staticmethod
-    def _load_im_form(session: Session, *, actor: IMFormActor, token_hash: str) -> tuple[Form, Recipient]:
+    def _log_im_callback_rejection(
+        *, actor: IMFormActor, rejection: _IMCallbackRejection, context: _IMFormContext | None
+    ) -> None:
+        tenant_id = context.form.tenant_id if context is not None else None
+        form_id = context.form.id if context is not None else None
+        logger.warning(
+            "Rejected IM callback channel_id=%s tenant_id=%s form_id=%s code=%s reason=%s",
+            actor.channel_id,
+            tenant_id,
+            form_id,
+            rejection.code.value,
+            rejection.reason,
+            extra={
+                "channel_id": actor.channel_id,
+                "tenant_id": tenant_id,
+                "form_id": form_id,
+                "delivery_id": context.delivery.id if context is not None else None,
+                "recipient_id": context.delivery.recipient_id if context is not None else None,
+                "im_provider": actor.provider.value,
+                "provider_tenant_id": actor.provider_tenant_id,
+                "callback_provider_user_id": actor.provider_user_id,
+                "target_provider_user_id": context.target.im_provider_user_id if context is not None else None,
+                "error_code": rejection.code.value,
+                "rejection_reason": rejection.reason,
+            },
+        )
+
+    @classmethod
+    def _authorize_im_form(cls, session: Session, *, actor: IMFormActor, token_hash: str) -> tuple[Form, Recipient]:
+        """Require current IM recipient authorization for submission and resume repair.
+
+        Rejections raise here; callback verification retains them to commit its audit.
+        """
+        context = cls._resolve_im_form_context(session, actor=actor, token_hash=token_hash)
+        if isinstance(context, _IMCallbackRejection):
+            cls._log_im_callback_rejection(actor=actor, rejection=context, context=None)
+            raise HumanInputFormError(context.code)
+        recipient = cls._check_im_recipient(session, actor=actor, context=context)
+        if isinstance(recipient, _IMCallbackRejection):
+            cls._log_im_callback_rejection(actor=actor, rejection=recipient, context=context)
+            raise HumanInputFormError(recipient.code)
+        return context.form, recipient
+
+    @staticmethod
+    def _resolve_im_form_context(
+        session: Session, *, actor: IMFormActor, token_hash: str
+    ) -> _IMFormContext | _IMCallbackRejection:
+        """Resolve trusted form ownership without granting the callback user access.
+
+        This context lets recipient verification failures be audited against the form.
+        """
         route = SQLAlchemyIMWebhookChannelRepository(session).find_by_channel_id(actor.channel_id)
-        if (
-            route is None
-            or route.channel.provider is not actor.provider
-            or route.channel.provider_tenant_id != actor.provider_tenant_id
-        ):
-            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        if route is None:
+            return _IMCallbackRejection(HumanInputFormErrorCode.NOT_FOUND, "Callback channel was not found.")
+        if route.channel.provider is not actor.provider:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Callback provider does not match the channel provider."
+            )
+        if route.channel.provider_tenant_id != actor.provider_tenant_id:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Callback provider tenant does not match the channel tenant."
+            )
         delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(token_hash)
-        if delivery is None or delivery.auth_type is not SubmissionAuthType.IM:
-            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        if delivery is None:
+            return _IMCallbackRejection(HumanInputFormErrorCode.NOT_FOUND, "Callback delivery was not found.")
+        if delivery.auth_type is not SubmissionAuthType.IM:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Callback delivery does not use IM authentication."
+            )
         if isinstance(route.scope, WorkspaceScope) and route.scope.id != delivery.tenant_id:
-            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Channel and delivery belong to different workspaces."
+            )
         target = delivery.target_snapshot
-        if (
-            not isinstance(target, IMUserTargetSnapshot)
-            or target.im_provider is not actor.provider
-            or target.im_tenant_id != actor.provider_tenant_id
-            or target.im_provider_user_id != actor.provider_user_id
-        ):
-            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        if not isinstance(target, IMUserTargetSnapshot):
+            return _IMCallbackRejection(HumanInputFormErrorCode.NOT_FOUND, "Delivery target is not an IM user.")
+        if target.im_provider is not actor.provider:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Callback provider does not match the delivery target provider."
+            )
+        if target.im_tenant_id != actor.provider_tenant_id:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Callback provider tenant does not match the delivery target tenant."
+            )
         app_id = SQLAlchemyFormRepository.find_app_id(session, tenant_id=delivery.tenant_id, form_id=delivery.form_id)
         if app_id is None:
-            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Form ownership could not be resolved for the delivery."
+            )
         form = SQLAlchemyFormRepository(session, delivery.tenant_id, app_id).get_form_by_id(delivery.form_id)
         if form is None:
-            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+            return _IMCallbackRejection(HumanInputFormErrorCode.NOT_FOUND, "Callback form was not found.")
+        return _IMFormContext(form=form, delivery=delivery, target=target)
+
+    @staticmethod
+    def _check_im_recipient(
+        session: Session, *, actor: IMFormActor, context: _IMFormContext
+    ) -> Recipient | _IMCallbackRejection:
+        form, delivery, target = context.form, context.delivery, context.target
+        if target.im_provider_user_id != actor.provider_user_id:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Callback user does not match the delivery target user."
+            )
         recipient = SQLAlchemyRecipientRepository(session, form.tenant_id, form.id).get_recipient(delivery.recipient_id)
-        if recipient is None or not isinstance(recipient.subject, ContactRecipientSubject):
-            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        if recipient is None:
+            return _IMCallbackRejection(HumanInputFormErrorCode.NOT_FOUND, "Callback recipient was not found.")
+        if not isinstance(recipient.subject, ContactRecipientSubject):
+            return _IMCallbackRejection(HumanInputFormErrorCode.NOT_FOUND, "Callback recipient is not a contact.")
         # Matching a Provider user must not revive a card after rebinding.
         # The delivered Binding must still be effective for this Contact.
         contact = SQLAlchemyContactRepository(session).get_contacts_by_id(form.tenant_id, recipient.subject.contact_id)
-        if contact is None or contact.type is ContactType.EXTERNAL:
-            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
-        binding = SQLAlchemyIMBindingRepository(session, route.channel.id).get_effective(form.tenant_id, contact.id)
-        if binding is None or binding.id != target.im_binding_id:
-            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
-        identity = SQLAlchemyIMIdentityRepository(session, route.channel.id).get(binding.identity_id)
-        if identity is None or identity.provider_user_id != actor.provider_user_id:
-            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
-        return form, recipient
+        if contact is None:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Callback contact is no longer available in the workspace."
+            )
+        if contact.type is ContactType.EXTERNAL:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "External contacts cannot authenticate IM callbacks."
+            )
+        binding = SQLAlchemyIMBindingRepository(session, actor.channel_id).get_effective(form.tenant_id, contact.id)
+        if binding is None:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Callback contact has no effective IM binding for the channel."
+            )
+        if binding.id != target.im_binding_id:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Callback contact binding has changed since delivery."
+            )
+        identity = SQLAlchemyIMIdentityRepository(session, actor.channel_id).get(binding.identity_id)
+        if identity is None:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Callback binding identity was not found in the channel."
+            )
+        if identity.provider_user_id != actor.provider_user_id:
+            return _IMCallbackRejection(
+                HumanInputFormErrorCode.NOT_FOUND, "Callback user does not match the bound identity user."
+            )
+        return recipient
 
     def _resume_submitted_im_form(
         self, *, actor: IMFormActor, token_hash: str, action: str, inputs: Mapping[str, JsonValue]
@@ -541,7 +705,7 @@ class HumanInputSubmissionService:
         # Approval commit and broker publication are separate. A redelivery can
         # repair a failed resume publication without changing the saved approval.
         with self._session_factory() as session, session.begin():
-            form, recipient = self._load_im_form(session, actor=actor, token_hash=token_hash)
+            form, recipient = self._authorize_im_form(session, actor=actor, token_hash=token_hash)
             submission = form.submission
             if (
                 submission is None

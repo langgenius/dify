@@ -177,7 +177,8 @@ class _RecordingConsumer:
         self.acceptance = acceptance
         self.events: list[AuthenticatedIMEvent] = []
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         self.events.append(event)
         return self.acceptance
 
@@ -1060,7 +1061,8 @@ def test_webhook_only_acknowledges_consumer_acceptance(
     rejected_consumer = _RecordingConsumer(EventAcceptance.NOT_ACCEPTED)
 
     class _FailingConsumer:
-        def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+        def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+            del request_ip_address
             del event
             raise RuntimeError("sanitized consumer details")
 

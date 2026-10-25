@@ -286,3 +286,15 @@ def test_sink_returns_not_accepted_when_database_commit_fails(
     assert "must-not-log" not in caplog.text
     with session_maker() as session:
         assert session.scalar(sa.select(sa.func.count(IMMessageInbox.id))) == 0
+
+
+def test_request_ip_is_forwarded_for_each_accepted_event(sqlite_engine: Engine) -> None:
+    sink, sessions, _ = _sink(sqlite_engine)
+    assert sink.accept(_event(event_id="event-1"), request_ip_address="192.0.2.22") is EventAcceptance.ACCEPTED
+    assert sink.accept(_event(event_id="event-2")) is EventAcceptance.ACCEPTED
+    with sessions() as session:
+        records = session.scalars(sa.select(IMMessageInbox)).all()
+        assert {record.provider_event_id: record.request_ip_address for record in records} == {
+            "event-1": "192.0.2.22",
+            "event-2": None,
+        }

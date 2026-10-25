@@ -70,7 +70,8 @@ class _RecordingConsumer:
         self._acceptance = acceptance
         self.events: list[AuthenticatedIMEvent] = []
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         self._trace.append("consumer")
         self.events.append(event)
         return self._acceptance
@@ -83,7 +84,8 @@ class _BlockingConsumer:
         self.release = threading.Event()
         self.events: list[AuthenticatedIMEvent] = []
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         self._trace.append("consumer-start")
         self.events.append(event)
         self.entered.set()
@@ -96,7 +98,8 @@ class _FailingConsumer:
     def __init__(self) -> None:
         self.attempts = 0
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         del event
         self.attempts += 1
         raise RuntimeError("sensitive consumer details")

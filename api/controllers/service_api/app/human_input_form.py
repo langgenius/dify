@@ -10,7 +10,7 @@ import logging
 from collections.abc import Sequence
 from typing import Annotated, NoReturn
 
-from flask import Response
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import ConfigDict, WithJsonSchema
 from sqlalchemy.orm import sessionmaker
@@ -28,7 +28,7 @@ from core.workflow.nodes.human_input.entities import FormInputConfig, UserAction
 from extensions.ext_database import db
 from factories.human_input_v2_form_presentation import build_form_presentation
 from fields.base import ResponseModel
-from libs.helper import to_timestamp
+from libs.helper import extract_remote_ip, to_timestamp
 from models.model import App, EndUser
 from repositories.human_input_v2.form_repository import Form as V2Form
 from services.human_input_service import (
@@ -172,6 +172,7 @@ class WorkflowHumanInputFormApi(Resource):
                 v2_form = v2_service.get_service_api_form(
                     actor=ServiceAPIFormActor(tenant_id=TenantId(app_model.tenant_id), app_id=app_model.id),
                     form_token=form_token,
+                    ip_address=extract_remote_ip(request) or None,
                 )
             except HumanInputFormError as error:
                 _raise_form_error(error)

@@ -115,7 +115,8 @@ class RecordingConsumer:
         self.acceptance = acceptance
         self.events = []
 
-    def accept(self, event):
+    def accept(self, event, *, request_ip_address: str | None = None):
+        del request_ip_address
         self.events.append(event)
         return self.acceptance
 
@@ -1051,7 +1052,8 @@ def test_webhook_not_accepted_is_not_successfully_acknowledged(mocker) -> None:
 
 def test_webhook_consumer_exception_returns_safe_failure(mocker, caplog) -> None:
     class FailingConsumer:
-        def accept(self, event):
+        def accept(self, event, *, request_ip_address: str | None = None):
+            del request_ip_address
             del event
             raise RuntimeError("sensitive consumer details")
 
@@ -1142,7 +1144,8 @@ def test_stream_consumer_exception_is_one_event_failure(mocker, caplog) -> None:
         def __init__(self) -> None:
             self.calls = 0
 
-        def accept(self, event):
+        def accept(self, event, *, request_ip_address: str | None = None):
+            del request_ip_address
             del event
             self.calls += 1
             if self.calls == 1:
@@ -1329,7 +1332,8 @@ def test_stream_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mock
         def __init__(self) -> None:
             self.calls = 0
 
-        def accept(self, event):
+        def accept(self, event, *, request_ip_address: str | None = None):
+            del request_ip_address
             del event
             self.calls += 1
             consumer_started.set()

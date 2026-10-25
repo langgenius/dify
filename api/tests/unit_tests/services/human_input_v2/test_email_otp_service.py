@@ -34,6 +34,7 @@ from models.human_input_v2 import (
     HumanInputForm,
     HumanInputPlatformContactWorkspaceEntry,
     HumanInputRecipient,
+    OtpSendEvent,
     OtpVerificationEvent,
 )
 from models.model import App, AppMode
@@ -601,3 +602,58 @@ def test_missing_or_exhausted_counter_rejects_correct_otp(context: Context, coun
         context.service.verify(context.token, challenge_token="proof", otp_code="123456", ip_address=None)
     assert error.value.reason == OtpFailure.CHALLENGE_EXPIRED
     context.redis.incr_if_exists.assert_not_called()
+
+
+@pytest.mark.parametrize("ip_address", ["192.0.2.12", None])
+def test_successful_send_persists_otp_send_audit(context: Context, ip_address: str | None) -> None:
+    response = context.service.request_access(context.token, ip_address=ip_address)
+    with context.sessions() as session:
+        audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+        assert audit.tenant_id == context.form.tenant_id
+        assert audit.form_id == context.form.id
+        assert audit.created_at is not None
+        assert audit.payload == OtpSendEvent(
+            recipient_id=context.delivery.recipient_id,
+            recipient_email="approver@example.com",
+            sender_ip_address=ip_address,
+        )
+        stored = audit.payload.model_dump_json()
+        assert context.token not in stored
+        assert response.challenge_token not in stored
+        assert context.send.call_args is not None
+        assert context.send.call_args.args[1] not in stored
+
+
+@pytest.mark.parametrize("failure", ["rate_limit", "unavailable", "storage", "send"])
+def test_unsent_otp_does_not_record_a_send(context: Context, failure: str) -> None:
+    from redis.exceptions import RedisError
+
+    service = context.service
+    match failure:
+        case "rate_limit":
+            context.limiter.acquire.return_value = 30
+        case "unavailable":
+            service = EmailOtpService(
+                session_factory=context.sessions,
+                redis=context.redis,
+                limiter=context.limiter,
+                mail=OtpMail(available=lambda: False, send=context.send),
+            )
+        case "storage":
+            context.redis.pipeline.return_value.execute.side_effect = RedisError()
+        case "send":
+            context.send.side_effect = EmailOtpError(OtpFailure.DELIVERY)
+    with pytest.raises(EmailOtpError):
+        service.request_access(context.token)
+    with context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+
+
+def test_sent_otp_is_audited_even_when_challenge_expires_during_send(context: Context) -> None:
+    context.redis.ttl.return_value = 0
+    with pytest.raises(EmailOtpError) as error:
+        context.service.request_access(context.token)
+    assert error.value.reason == OtpFailure.CHALLENGE_EXPIRED
+    with context.sessions() as session:
+        audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+        assert isinstance(audit.payload, OtpSendEvent)
