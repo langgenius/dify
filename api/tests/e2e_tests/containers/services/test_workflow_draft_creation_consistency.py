@@ -697,6 +697,7 @@ def test_stale_missing_draft_read_does_not_deadlock_metadata_writer(
     from threading import Event
     from time import monotonic
 
+    from psycopg2 import Error as PsycopgError
     from sqlalchemy.exc import DBAPIError
 
     from core.dify_builder.models import Actor
@@ -780,7 +781,9 @@ def test_stale_missing_draft_read_does_not_deadlock_metadata_writer(
                 return {"result": type(error).__name__, "pid": pid}
             except DBAPIError as error:
                 session.rollback()
-                return {"result": type(error).__name__, "sqlstate": getattr(error.orig, "pgcode", None), "pid": pid}
+                if not isinstance(error.orig, PsycopgError):
+                    raise
+                return {"result": type(error).__name__, "sqlstate": error.orig.pgcode, "pid": pid}
             finally:
                 current_role.reset(token)
 

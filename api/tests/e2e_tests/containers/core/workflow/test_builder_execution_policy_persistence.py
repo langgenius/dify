@@ -237,7 +237,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
-    current_head = "d41e6b8c2a75"
+    current_head = "e832a94f210b"
+    builder_merge_head = "d41e6b8c2a75"
     code_head = "7d2b9c4e61a8"
     task_head = "c6f4a90d8b31"
     dispatch_head = "e59b7d32a6c1"
@@ -251,7 +252,10 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     config.set_main_option("script_location", str(Path(__file__).parents[4] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    merged_head = scripts.get_revision(current_head)
+    coordination_revision = scripts.get_revision(current_head)
+    assert coordination_revision is not None
+    assert coordination_revision.down_revision == builder_merge_head
+    merged_head = scripts.get_revision(builder_merge_head)
     assert merged_head is not None
     assert isinstance(merged_head.down_revision, tuple)
     assert set(merged_head.down_revision) == {code_head, task_head}
@@ -412,11 +416,14 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             include_dispatch_claims: bool = False,
             include_code_physical: bool = False,
             include_workflow_tasks: bool = False,
+            include_draft_coordination: bool = False,
         ) -> dict[str, _TableWitness]:
             inspector = inspect(connection)
             expected_tables = {*tables, "alembic_version"}
             if include_workflow_tasks:
                 expected_tables.add("workflow_runs")
+            if include_draft_coordination:
+                expected_tables.add("workflow_draft_coordination")
             if include_archive:
                 expected_tables.add("workflow_run_archive_bundles")
             if include_native:
@@ -593,6 +600,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
                 include_dispatch_claims=True,
                 include_code_physical=True,
                 include_workflow_tasks=True,
+                include_draft_coordination=True,
             )
             == before_continuation
         )
