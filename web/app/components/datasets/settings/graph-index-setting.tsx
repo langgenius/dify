@@ -95,7 +95,7 @@ const GraphIndexSetting = ({
         <div className="py-1.5">
           <div className="flex items-center system-sm-semibold text-text-secondary">
             <Switch
-              className="mr-2"
+              className="me-2"
               aria-label={titleLabel}
               checked={graphIndexSetting?.enabled ?? false}
               onCheckedChange={handleEnabledChange}
@@ -145,7 +145,7 @@ const GraphIndexSetting = ({
             <div className="grow">
               <div className="flex items-center gap-x-1">
                 <Slider
-                  className="mr-3 w-51.5 shrink-0"
+                  className="me-3 w-51.5 shrink-0"
                   value={maxDepth}
                   min={MIN_MAX_DEPTH}
                   max={MAX_MAX_DEPTH}

@@ -24,14 +24,21 @@ _KNOWLEDGE_FS_CHAIN = [
     "a8c2e6f4b901",
     "b9d3f7a5c102",
 ]
+# Regular revisions that reached main after the KnowledgeFS chain. They follow it
+# linearly, so a database that already applied the chain still runs them.
+_AFTER_KNOWLEDGE_FS_CHAIN = [
+    "c7a41f0b9d52",
+    "10725df28612",
+]
+_PENDING_AFTER_MAIN_HEAD = [*_KNOWLEDGE_FS_CHAIN, *_AFTER_KNOWLEDGE_FS_CHAIN]
 
 
 def _scripts() -> ScriptDirectory:
     return ScriptDirectory(str(_VERSIONS.parent))
 
 
-def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
-    assert _scripts().get_heads() == [_KNOWLEDGE_FS_CHAIN[-1]]
+def test_migrations_after_the_knowledge_fs_chain_end_in_the_single_head() -> None:
+    assert _scripts().get_heads() == [_PENDING_AFTER_MAIN_HEAD[-1]]
 
 
 def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
@@ -43,8 +50,8 @@ def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
         if revision.revision not in applied_on_main
     ]
 
-    assert pending == _KNOWLEDGE_FS_CHAIN
-    for parent, revision in zip([_MAIN_HEAD, *_KNOWLEDGE_FS_CHAIN[:-1]], _KNOWLEDGE_FS_CHAIN, strict=True):
+    assert pending == _PENDING_AFTER_MAIN_HEAD
+    for parent, revision in zip([_MAIN_HEAD, *_PENDING_AFTER_MAIN_HEAD[:-1]], _PENDING_AFTER_MAIN_HEAD, strict=True):
         script = scripts.get_revision(revision)
         assert script is not None
         assert script.down_revision == parent

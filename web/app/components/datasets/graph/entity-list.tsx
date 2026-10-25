@@ -35,7 +35,7 @@ const EntityList = ({ entities, focusedEntityId, onEntityClick }: EntityListProp
               type="button"
               onClick={() => onEntityClick?.(entity)}
               className={cn(
-                'flex w-full flex-col items-start gap-y-0.5 rounded-lg px-2 py-1.5 text-left',
+                'flex w-full flex-col items-start gap-y-0.5 rounded-lg px-2 py-1.5 text-start',
                 'hover:bg-state-base-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-components-input-border-active',
                 entity.id === focusedEntityId && 'bg-state-accent-active',
               )}
