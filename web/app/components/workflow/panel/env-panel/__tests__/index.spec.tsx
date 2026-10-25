@@ -2,25 +2,87 @@ import type { ReactElement } from 'react'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
+import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Shape } from '@/app/components/workflow/store/workflow'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import type { consoleClient } from '@/service/console'
+import { zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useLayoutEffect } from 'react'
+import { useStoreApi } from 'reactflow'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { WorkflowContext } from '@/app/components/workflow/context'
-import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
-import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import EnvPanel from '../index'
 
-type MockWorkflowNode = {
-  id: string
-  data?: Record<string, unknown>
+let initialNodes: Node[] = []
+let graph: ReturnType<typeof useStoreApi> | undefined
+
+function GraphProbe() {
+  const store = useStoreApi()
+  useLayoutEffect(() => {
+    graph = store
+  }, [store])
+  return null
 }
+
+const getNodes = () => graph!.getState().getNodes()
+const setNodes = (nodes: Node[]) => {
+  if (graph) act(() => graph!.getState().setNodes(nodes))
+  else initialNodes = nodes
+}
+
+const createLLMNode = ({
+  id = 'llm-node',
+  data,
+}: {
+  id?: string
+  data: Partial<LLMNodeType>
+}): Node<LLMNodeType> => ({
+  id,
+  type: 'custom',
+  position: { x: 0, y: 0 },
+  data: {
+    type: BlockEnum.LLM,
+    title: 'LLM',
+    desc: '',
+    model: { provider: 'old-provider', name: 'old-model', mode: 'chat', completion_params: {} },
+    context: { enabled: false, variable_selector: [] },
+    prompt_template: [],
+    vision: { enabled: false },
+    ...data,
+  },
+})
+const createCodeNode = (
+  id: string,
+  variables: CodeNodeType['variables'] = [],
+): Node<CodeNodeType> => ({
+  id,
+  type: 'custom',
+  position: { x: 0, y: 0 },
+  data: {
+    type: BlockEnum.Code,
+    title: id,
+    desc: '',
+    code: '',
+    code_language: CodeLanguage.python3,
+    outputs: {},
+    variables,
+  },
+})
 
 const {
   mockDoSyncWorkflowDraft,
-  mockGetNodes,
-  mockSetNodes,
   mockVariableTriggerState,
   mockUpdateEnvironmentVariables,
   mockFetchWorkflowDraft,
@@ -41,8 +103,6 @@ const {
   >(async (_notRefresh, callback) => {
     callback?.onSuccess?.()
   }),
-  mockGetNodes: vi.fn<() => MockWorkflowNode[]>(() => []),
-  mockSetNodes: vi.fn<(nodes: MockWorkflowNode[]) => void>(),
   mockVariableTriggerState: {
     savePayload: undefined as EnvironmentVariable | undefined,
   },
@@ -64,48 +124,27 @@ const {
   >(() => Promise.resolve([])),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useTextGenerationCurrentProviderAndModelAndModelList: () => ({
-    activeTextGenerationModelList: [
-      {
-        provider: 'new-provider',
-        models: [
-          {
-            model: 'new-model',
-            features: [],
-          },
-        ],
-      },
-    ],
-  }),
-}))
-
-vi.mock('@/utils/completion-params', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/utils/completion-params')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const readDraft = async () => createWorkflowResponseFixture(await mockFetchWorkflowDraft())
   return {
     ...actual,
-    fetchModelParameterRulesForModel: mockFetchModelParameterRulesForModel,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.get': readDraft,
+      'rag.pipelines.byPipelineId.workflows.draft.get': readDraft,
+      'workspaces.current.modelProviders.byProvider.models.parameterRules.get': async ({
+        params,
+        query,
+      }: Parameters<
+        typeof consoleClient.workspaces.current.modelProviders.byProvider.models.parameterRules.get
+      >[0]) =>
+        zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse.parse({
+          data: await mockFetchModelParameterRulesForModel(params.provider, query.model),
+        }),
+    }),
   }
 })
-
-vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
-  }),
-}))
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-      setNodes: mockSetNodes,
-    }),
-  }),
-}))
-
-vi.mock('../requests', () => ({
-  fetchEnvironmentVariables: async () => (await mockFetchWorkflowDraft()).environment_variables,
-}))
 
 vi.mock('@/service/workflow', () => ({
   updateEnvironmentVariables: (payload: {
@@ -179,15 +218,30 @@ const renderWithProviders = (
   storeState: Partial<Shape> = {},
   resource: EditorResource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
 ) => {
-  const store = createWorkflowStore({})
-  store.setState(storeState)
-
-  return {
-    store,
-    ...render(<WorkflowContext value={store}>{ui}</WorkflowContext>, {
-      resource,
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { enable_collaboration_mode: false },
+  })
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      provider: 'new-provider',
+      models: [createCatalogModelFixture({ model: 'new-model', features: [] })],
     }),
-  }
+  ])
+  return renderWorkflowFlowComponent(
+    <>
+      <GraphProbe />
+      {ui}
+    </>,
+    {
+      resource,
+      queryClient,
+      nodes: initialNodes,
+      initialStoreState: storeState,
+      hooksStoreProps: { doSyncWorkflowDraft: mockDoSyncWorkflowDraft },
+      // Node rendering is outside this panel's contract; the React Flow graph stays real.
+      reactFlowProps: { nodeTypes: { custom: () => null } },
+    },
+  )
 }
 
 describe('EnvPanel container', () => {
@@ -200,10 +254,8 @@ describe('EnvPanel container', () => {
     mockDoSyncWorkflowDraft.mockImplementation(async (_notRefresh, callback) => {
       callback?.onSuccess?.()
     })
-    mockGetNodes.mockReturnValue([])
-    mockSetNodes.mockImplementation((nodes) => {
-      mockGetNodes.mockReturnValue(nodes)
-    })
+    initialNodes = []
+    graph = undefined
     mockVariableTriggerState.savePayload = undefined
     mockUpdateEnvironmentVariables.mockResolvedValue({})
     mockFetchWorkflowDraft.mockRejectedValue(new Error('draft refresh unavailable'))
@@ -512,12 +564,9 @@ describe('EnvPanel container', () => {
       value: '[__HIDDEN__]',
       value_type: 'secret',
     })
-    mockGetNodes.mockReturnValue([
-      {
-        id: 'node-1',
-        data: { type: 'code', variables: [{ variable: 'key', value_selector: ['env', env.name] }] },
-      },
-      { id: 'node-2', data: { untouched: true } },
+    setNodes([
+      createCodeNode('node-1', [{ variable: 'key', value_selector: ['env', env.name] }]),
+      createCodeNode('node-2'),
     ])
 
     const { store } = renderWithProviders(<EnvPanel />, {
@@ -543,7 +592,7 @@ describe('EnvPanel container', () => {
     expect(store.getState().envSecrets).toEqual({
       [env.id]: '[__HIDDEN__]',
     })
-    expect(mockSetNodes).toHaveBeenCalledWith([
+    expect(getNodes()).toEqual([
       expect.objectContaining({
         id: 'node-1',
         data: expect.objectContaining({
@@ -601,10 +650,8 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
         model: {
           provider: 'old-provider',
           name: 'old-model',
@@ -617,8 +664,8 @@ describe('EnvPanel container', () => {
           configs: { detail: 'low', variable_selector: ['sys', 'files'] },
         },
       },
-    }
-    mockGetNodes.mockReturnValue([llmNode])
+    })
+    setNodes([llmNode])
     mockFetchModelParameterRulesForModel.mockResolvedValue([
       {
         name: 'temperature',
@@ -639,7 +686,7 @@ describe('EnvPanel container', () => {
     await saveVariable(user)
 
     await waitFor(() => {
-      expect(mockSetNodes).toHaveBeenCalledWith([
+      expect(getNodes()).toEqual([
         expect.objectContaining({
           id: 'llm-node',
           data: expect.objectContaining({
@@ -710,7 +757,7 @@ describe('EnvPanel container', () => {
       environmentVariables: [nextEnv],
       deletedEnvironmentVariableIds: [],
     })
-    expect(mockSetNodes).not.toHaveBeenCalled()
+    expect(getNodes()).toMatchObject(initialNodes)
   })
 
   it('should persist follower graph edits before asking the leader to sync', async () => {
@@ -730,22 +777,13 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
-        model: {
-          provider: 'old-provider',
-          name: 'old-model',
-          mode: 'chat',
-          completion_params: {},
-        },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     mockVariableTriggerState.savePayload = nextEnv
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
 
     const { store } = renderWithProviders(<EnvPanel />, {
       environmentVariables: [env],
@@ -782,10 +820,8 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    const staleNode = {
-      id: 'llm-node',
+    const staleNode = createLLMNode({
       data: {
-        type: 'llm',
         model: {
           provider: 'old-provider',
           name: 'old-model',
@@ -793,10 +829,9 @@ describe('EnvPanel container', () => {
           completion_params: { temperature: 0.2 },
         },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
-    const latestNode = {
+    })
+    const latestNode = createLLMNode({
       ...staleNode,
       data: {
         ...staleNode.data,
@@ -805,14 +840,14 @@ describe('EnvPanel container', () => {
           completion_params: { temperature: 0.9, obsolete: true },
         },
       },
-    }
+    })
     let resolveRules!: (rules: ModelParameterRule[]) => void
     mockFetchModelParameterRulesForModel.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveRules = resolve
       }),
     )
-    mockGetNodes.mockReturnValue([staleNode])
+    setNodes([staleNode])
 
     const { store } = renderWithProviders(<EnvPanel />, {
       environmentVariables: [env],
@@ -826,7 +861,7 @@ describe('EnvPanel container', () => {
     expect(store.getState().environmentVariables).toEqual([env])
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
 
-    mockGetNodes.mockReturnValue([latestNode])
+    setNodes([latestNode])
     resolveRules([
       {
         name: 'temperature',
@@ -839,7 +874,7 @@ describe('EnvPanel container', () => {
     ])
 
     await waitFor(() => {
-      expect(mockSetNodes).toHaveBeenCalledWith([
+      expect(getNodes()).toEqual([
         expect.objectContaining({
           data: expect.objectContaining({
             model: expect.objectContaining({ completion_params: { temperature: 0.9 } }),
@@ -856,10 +891,8 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'old-provider', name: 'old-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
         model: {
           provider: 'old-provider',
           name: 'old-model',
@@ -867,16 +900,15 @@ describe('EnvPanel container', () => {
           completion_params: { temperature: 0.7 },
         },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
     mockFetchModelParameterRulesForModel.mockRejectedValueOnce(new Error('network error'))
 
     const { store } = renderWithProviders(<EnvPanel />, {
@@ -892,7 +924,7 @@ describe('EnvPanel container', () => {
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([env])
     })
-    expect(mockSetNodes).not.toHaveBeenCalled()
+    expect(getNodes()).toMatchObject(initialNodes)
     expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
   })
@@ -926,7 +958,7 @@ describe('EnvPanel container', () => {
       expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().environmentVariables).toEqual([env])
     })
-    expect(mockSetNodes).not.toHaveBeenCalled()
+    expect(getNodes()).toMatchObject(initialNodes)
   })
 
   it('should preserve a newer remote value when a local alias save fails', async () => {
@@ -1040,46 +1072,39 @@ describe('EnvPanel container', () => {
 
   it('should roll back model reconciliation when the atomic draft sync fails', async () => {
     const user = userEvent.setup()
+    let modelAtSync: unknown
     const env = createEnv({
       name: 'shared_model',
       value_type: 'llm',
       value: { provider: 'old-provider', name: 'old-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
-        model: {
-          provider: 'old-provider',
-          name: 'old-model',
-          mode: 'chat',
-          completion_params: {},
-        },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
     mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
-      mockGetNodes.mockReturnValue([
-        {
-          ...llmNode,
+      modelAtSync = getNodes()[0]?.data.model
+      setNodes([
+        createLLMNode({
+          id: llmNode.id,
           data: {
             ...llmNode.data,
-            label: 'concurrent edit',
+            title: 'Concurrent edit',
             model: {
               ...llmNode.data.model,
               provider: 'new-provider',
               name: 'new-model',
             },
           },
-        },
+        }),
       ])
       callback?.onError?.()
     })
@@ -1092,13 +1117,17 @@ describe('EnvPanel container', () => {
     await saveVariable(user)
 
     await waitFor(() => {
-      expect(mockSetNodes).toHaveBeenCalledTimes(2)
+      expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+      expect(getNodes()[0]?.data.model).toMatchObject({
+        provider: 'old-provider',
+        name: 'old-model',
+      })
       expect(store.getState().environmentVariables).toEqual([env])
     })
-    expect(mockSetNodes).toHaveBeenLastCalledWith([
+    expect(getNodes()).toEqual([
       expect.objectContaining({
         data: expect.objectContaining({
-          label: 'concurrent edit',
+          title: 'Concurrent edit',
           model: expect.objectContaining({
             provider: 'old-provider',
             name: 'old-model',
@@ -1106,38 +1135,32 @@ describe('EnvPanel container', () => {
         }),
       }),
     ])
+    expect(modelAtSync).toMatchObject({ provider: 'new-provider', name: 'new-model' })
     expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
   })
 
   it('should roll back a graph edit when draft sync settles without succeeding', async () => {
     const user = userEvent.setup()
+    let modelAtSync: unknown
     const env = createEnv({
       name: 'shared_model',
       value_type: 'llm',
       value: { provider: 'old-provider', name: 'old-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
-        model: {
-          provider: 'old-provider',
-          name: 'old-model',
-          mode: 'chat',
-          completion_params: {},
-        },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
     mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
+      modelAtSync = getNodes()[0]?.data.model
       callback?.onSettled?.()
     })
 
@@ -1149,9 +1172,14 @@ describe('EnvPanel container', () => {
     await saveVariable(user)
 
     await waitFor(() => {
-      expect(mockSetNodes).toHaveBeenCalledTimes(2)
+      expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+      expect(getNodes()[0]?.data.model).toMatchObject({
+        provider: 'old-provider',
+        name: 'old-model',
+      })
       expect(store.getState().environmentVariables).toEqual([env])
     })
+    expect(modelAtSync).toMatchObject({ provider: 'new-provider', name: 'new-model' })
     expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
   })
 
@@ -1162,27 +1190,18 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'old-provider', name: 'old-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
-        model: {
-          provider: 'old-provider',
-          name: 'old-model',
-          mode: 'chat',
-          completion_params: {},
-        },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     let resolveFirstRules!: (rules: ModelParameterRule[]) => void
     mockFetchModelParameterRulesForModel.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveFirstRules = resolve
       }),
     )
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
@@ -1221,7 +1240,7 @@ describe('EnvPanel container', () => {
         ],
       }),
     )
-    expect(mockSetNodes).toHaveBeenCalledTimes(1)
+    expect(getNodes()[0]?.data.model).toMatchObject({ provider: 'new-provider', name: 'new-model' })
     expect(store.getState().environmentVariables).toEqual([
       expect.objectContaining({
         description: 'updated description',
@@ -1410,22 +1429,13 @@ describe('EnvPanel container', () => {
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
     const serverEnv = { ...localEnv, description: 'remote description' }
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
-        model: {
-          provider: 'old-provider',
-          name: 'old-model',
-          mode: 'chat',
-          completion_params: {},
-        },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     mockVariableTriggerState.savePayload = localEnv
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
     mockFetchWorkflowDraft.mockResolvedValueOnce({ environment_variables: [serverEnv] })
 
     const { store } = renderWithProviders(<EnvPanel />, {
@@ -1438,8 +1448,8 @@ describe('EnvPanel container', () => {
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([serverEnv])
     })
-    expect(mockSetNodes).toHaveBeenCalledTimes(1)
-    expect(mockGetNodes()[0]?.data?.model).toEqual(
+    expect(getNodes()[0]?.data.model).toMatchObject({ provider: 'new-provider', name: 'new-model' })
+    expect(getNodes()[0]?.data?.model).toEqual(
       expect.objectContaining({ provider: 'new-provider', name: 'new-model' }),
     )
   })
@@ -1575,12 +1585,9 @@ describe('EnvPanel container', () => {
   it('should require confirmation before deleting affected secret variables', async () => {
     const user = userEvent.setup()
     const env = createEnv()
-    mockGetNodes.mockReturnValue([
-      {
-        id: 'node-1',
-        data: { type: 'code', variables: [{ variable: 'key', value_selector: ['env', env.name] }] },
-      },
-      { id: 'node-2', data: { untouched: true } },
+    setNodes([
+      createCodeNode('node-1', [{ variable: 'key', value_selector: ['env', env.name] }]),
+      createCodeNode('node-2'),
     ])
 
     const { store } = renderWithProviders(<EnvPanel />, {
@@ -1606,7 +1613,7 @@ describe('EnvPanel container', () => {
       expect(store.getState().environmentVariables).toEqual([])
     })
     expect(store.getState().envSecrets).toEqual({})
-    expect(mockSetNodes).toHaveBeenLastCalledWith([
+    expect(getNodes()).toEqual([
       expect.objectContaining({
         id: 'node-1',
         data: expect.objectContaining({ variables: [{ variable: 'key', value_selector: [] }] }),

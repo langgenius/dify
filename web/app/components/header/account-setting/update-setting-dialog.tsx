@@ -6,9 +6,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -85,7 +85,7 @@ export function UpdateSettingDialog({ category }: Props) {
           <DialogTitle>
             {t(($) => $['autoUpdate.autoUpdateSettings'], { ns: 'plugin' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         {isSettingsLoading && (
           <DialogBody>

@@ -62,7 +62,7 @@ from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -118,7 +118,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             user=user,
             system_variables=self._workflow_system_variables,
         )
-        self._graph_runtime_state: GraphRuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
+        self._graph_runtime_state: RuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
 
     def process(
         self,
@@ -340,6 +340,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             workflow_run_id=run_id,
             workflow_id=self._workflow.id,
             reason=event.reason,
+            node_execution_snapshots=event.node_execution_snapshots,
         )
         yield start_resp
 

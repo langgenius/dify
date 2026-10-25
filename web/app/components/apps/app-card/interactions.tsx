@@ -4,21 +4,11 @@ import type {
   AppPartial,
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { FormEventHandler, MouseEvent, ReactElement } from 'react'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import type { MouseEvent, ReactElement } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
-import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
-import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
+import { AlertDialog, AlertDialogContent } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   ContextMenu,
@@ -27,6 +17,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,16 +25,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
-import { useCallback, useMemo, useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { AppMetadataForm } from '@/app/components/app/app-metadata'
+import { DeleteAppForm } from '@/app/components/app/delete-app-form'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import {
@@ -63,9 +54,6 @@ import { getRedirection } from '@/utils/app-redirection'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 
-const EditAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
-  ssr: false,
-})
 const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
   ssr: false,
 })
@@ -274,9 +262,8 @@ export function AppCardInteractions({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { push } = useRouter()
   const { mutate: copyApp } = useMutation(consoleQuery.apps.byAppId.copy.post.mutationOptions())
-  const { mutateAsync: updateApp } = useMutation(consoleQuery.apps.byAppId.put.mutationOptions())
-  const { mutate: deleteApp, isPending: isDeleting } = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions(),
+  const deletion = useMutation(
+    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
   )
   const { mutate: starApp, isPending: isStarring } = useMutation(
     consoleQuery.apps.byAppId.star.post.mutationOptions(),
@@ -285,10 +272,14 @@ export function AppCardInteractions({
     consoleQuery.apps.byAppId.star.delete.mutationOptions(),
   )
 
+  const editActionsRef = useRef<DialogActions>(null)
+  const edit = useMutation(
+    consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
+  )
+  const editNameRef = useRef<HTMLInputElement>(null)
   const [activeDialog, setActiveDialog] = useState<
     'delete' | 'duplicate' | 'edit' | 'switch' | null
   >(null)
-  const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const operationsMenu = useStepByStepTourControlledDropdown({
     allowTriggerCloseWhileControlled: false,
     controlledOpen: stepByStepTourActionMenuOpen,
@@ -322,52 +313,6 @@ export function AppCardInteractions({
   )
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
-  const onConfirmDelete = useCallback(() => {
-    try {
-      deleteApp(
-        { params: { app_id: app.id } },
-        {
-          onSuccess: () => {
-            setActiveDialog(null)
-            setConfirmDeleteInput('')
-          },
-          onError: (error) => {
-            const message = error instanceof Error ? error.message : ''
-            toast.error(
-              `${t(($) => $.appDeleteFailed, { ns: 'app' })}${message ? `: ${message}` : ''}`,
-            )
-          },
-        },
-      )
-    } catch (error) {
-      const message = error instanceof Error ? error.message : ''
-      toast.error(`${t(($) => $.appDeleteFailed, { ns: 'app' })}${message ? `: ${message}` : ''}`)
-    }
-  }, [app.id, deleteApp, t])
-
-  const onDeleteDialogOpenChange = useCallback(
-    (open: boolean) => {
-      if (isDeleting) return
-
-      setActiveDialog(open ? 'delete' : null)
-      if (!open) setConfirmDeleteInput('')
-    },
-    [isDeleting],
-  )
-
-  const deleteNameMismatch = confirmDeleteInput !== app.name
-  const isDeleteConfirmDisabled = isDeleting || deleteNameMismatch
-
-  const onDeleteDialogSubmit: FormEventHandler<HTMLFormElement> = useCallback(
-    (e) => {
-      e.preventDefault()
-      if (isDeleteConfirmDisabled) return
-
-      void onConfirmDelete()
-    },
-    [isDeleteConfirmDisabled, onConfirmDelete],
-  )
-
   const handleShowEditModal = useCallback(() => {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
@@ -400,37 +345,6 @@ export function AppCardInteractions({
     setIsOperationsMenuOpen(false)
     push(`/app/${app.id}/access-config`)
   }, [app.id, push, setIsOperationsMenuOpen])
-
-  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(
-    async ({
-      name,
-      icon_type,
-      icon,
-      icon_background,
-      description,
-      use_icon_as_answer_icon,
-      max_active_requests,
-    }) => {
-      try {
-        await updateApp({
-          params: { app_id: app.id },
-          body: {
-            name,
-            icon_type,
-            icon,
-            icon_background,
-            description,
-            use_icon_as_answer_icon,
-            max_active_requests,
-          },
-        })
-        setActiveDialog(null)
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : t(($) => $.editFailed, { ns: 'app' }))
-      }
-    },
-    [app.id, t, updateApp],
-  )
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = ({
     name,
@@ -568,7 +482,7 @@ export function AppCardInteractions({
       )}
       <div
         className={cn(
-          'pointer-events-none absolute top-[-0.5px] right-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0',
+          'pointer-events-none absolute inset-e-[-0.5px] top-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 rtl:bg-[linear-gradient(293deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)]',
           isOperationsMenuOpen || isExporting
             ? 'opacity-100'
             : 'group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100',
@@ -627,8 +541,6 @@ export function AppCardInteractions({
                 }
               />
               <DropdownMenuContent
-                placement="bottom-end"
-                sideOffset={4}
                 {...getStepByStepTourDropdownMenuContentProps({
                   highlightPart: stepByStepTourActionMenuHighlightPart,
                   interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
@@ -641,23 +553,39 @@ export function AppCardInteractions({
           )}
         </div>
       </div>
-      {activeDialog === 'edit' && (
-        <EditAppModal
-          isEditModal
-          appName={app.name}
-          appIconType={appIconType}
-          appIcon={app.icon ?? ''}
-          appIconBackground={app.icon_background}
-          appIconUrl={app.icon_url}
-          appDescription={app.description ?? ''}
-          appMode={app.mode}
-          appUseIconAsAnswerIcon={app.use_icon_as_answer_icon ?? false}
-          max_active_requests={app.max_active_requests ?? null}
-          show
-          onConfirm={onEdit}
-          onHide={() => setActiveDialog(null)}
-        />
-      )}
+      <Dialog
+        actionsRef={editActionsRef}
+        open={activeDialog === 'edit'}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && edit.isPending && details.reason !== 'imperative-action') details.cancel()
+          else if (!open) setActiveDialog(null)
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            edit.reset()
+          }
+        }}
+      >
+        <DialogContent initialFocus={editNameRef}>
+          <AppMetadataForm
+            appDetail={app}
+            nameInputRef={editNameRef}
+            operation="edit"
+            isPending={edit.isPending}
+            error={edit.error?.message}
+            onSubmit={(body) => {
+              if (edit.isPending) return
+              edit.mutate(
+                { params: { app_id: app.id }, body },
+                {
+                  onSuccess: () => editActionsRef.current?.close(),
+                },
+              )
+            }}
+          />
+        </DialogContent>
+      </Dialog>
       {activeDialog === 'duplicate' && (
         <DuplicateAppModal
           appName={app.name}
@@ -679,63 +607,35 @@ export function AppCardInteractions({
           }}
         />
       )}
-      <AlertDialog open={activeDialog === 'delete'} onOpenChange={onDeleteDialogOpenChange}>
+      <AlertDialog
+        open={activeDialog === 'delete'}
+        onOpenChange={(open, details) => {
+          if (!open && deletion.isPending) details.cancel()
+          else if (!open) setActiveDialog(null)
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) deletion.reset()
+        }}
+      >
         <AlertDialogContent>
-          <form onSubmit={onDeleteDialogSubmit}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
-              </AlertDialogDescription>
-              <Field name="confirm-app-name">
-                <FieldLabel>
-                  <Trans
-                    i18nKey={($) => $.deleteAppConfirmInputLabel}
-                    ns="app"
-                    values={{ appName: app.name }}
-                    components={{
-                      appName: (
-                        <span className="system-sm-semibold text-text-primary" translate="no" />
-                      ),
-                    }}
-                  />
-                </FieldLabel>
-                <InputGroup>
-                  <InputGroupInput
-                    type="text"
-                    autoComplete="off"
-                    spellCheck={false}
-                    placeholder={t(($) => $.deleteAppConfirmInputPlaceholder, { ns: 'app' })}
-                    value={confirmDeleteInput}
-                    onValueChange={setConfirmDeleteInput}
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <Button
-                      variant="tertiary"
-                      size="small"
-                      onClick={() => setConfirmDeleteInput(app.name)}
-                    >
-                      {t(($) => $['operation.fill'], { ns: 'common' })}
-                    </Button>
-                  </InputGroupAddon>
-                </InputGroup>
-              </Field>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancelButton type="button" disabled={isDeleting}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                type="submit"
-                loading={isDeleting}
-                disabled={deleteNameMismatch}
-              >
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogFooter>
-          </form>
+          <DeleteAppForm
+            appName={app.name}
+            isPending={deletion.isPending}
+            error={
+              deletion.isError
+                ? `${t(($) => $.appDeleteFailed, { ns: 'app' })}: ${deletion.error.message}`
+                : undefined
+            }
+            onSubmit={() => {
+              if (deletion.isPending) return
+              deletion.mutate(
+                { params: { app_id: app.id } },
+                {
+                  onSuccess: () => setActiveDialog(null),
+                },
+              )
+            }}
+          />
         </AlertDialogContent>
       </AlertDialog>
       {secretEnvList.length > 0 && (

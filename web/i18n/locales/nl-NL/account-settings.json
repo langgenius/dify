@@ -63,7 +63,6 @@
   "account.workspaceNamePlaceholder": "Enter workspace name",
   "resourceAccessToken.accessibleResources": "Toegankelijke bronnen",
   "resourceAccessToken.actions": "Acties",
-  "resourceAccessToken.app": "App",
   "resourceAccessToken.appCount": "{{count}} App",
   "resourceAccessToken.appsCount": "{{count}} Apps",
   "resourceAccessToken.appsSection": "Apps",
@@ -80,7 +79,6 @@
   "resourceAccessToken.editTitle": "Toegangstoken bewerken",
   "resourceAccessToken.empty": "Nog geen toegangstokens",
   "resourceAccessToken.emptyDescription": "Maak een toegangstoken zodat geautomatiseerde taken en externe systemen geselecteerde bronnen via Difyctl kunnen vinden en gebruiken.",
-  "resourceAccessToken.knowledge": "Kennisbank",
   "resourceAccessToken.knowledgeBasesSection": "Kennisbanken",
   "resourceAccessToken.knowledgeCount": "{{count}} Kennisbank",
   "resourceAccessToken.knowledgesCount": "{{count}} Kennisbanken",
@@ -100,6 +98,5 @@
   "resourceAccessToken.tabApps": "Apps",
   "resourceAccessToken.tabKnowledgeBases": "Kennisbanken",
   "resourceAccessToken.token": "Token",
-  "resourceAccessToken.total": "{{total}} in totaal",
-  "resourceAccessToken.trackingId": "Tracking-ID"
+  "resourceAccessToken.total": "{{total}} in totaal"
 }

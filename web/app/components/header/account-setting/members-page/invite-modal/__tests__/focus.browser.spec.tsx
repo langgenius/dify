@@ -7,24 +7,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import MembersPage from '../../index'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.rbac.roles.get': () => ({
-      data: {
-        pages: [{ data: [{ id: 'admin', name: 'Admin', description: 'Manage members' }] }],
-      },
-      isLoading: false,
-      error: null,
-      hasNextPage: false,
-      isFetchingNextPage: false,
-      fetchNextPage: vi.fn(),
-    }),
-  })
-})
-
 const { inviteMember } = vi.hoisted(() => ({ inviteMember: vi.fn() }))
-vi.mock('#i18n', () => ({ useLocale: () => 'en-US' }))
 
 let queryClient: QueryClient
 
@@ -49,6 +32,11 @@ beforeEach(() => {
       if (pathname.endsWith('/workspaces/current/members/invite-email'))
         return Response.json(await inviteMember())
       // A successful invitation refreshes seats and members in the background.
+      if (pathname.endsWith('/workspaces/current/rbac/roles'))
+        return Response.json({
+          data: [{ id: 'admin', name: 'Admin', description: 'Manage members' }],
+          pagination: { total_count: 1, per_page: 20, current_page: 1, total_pages: 1 },
+        })
       if (pathname.endsWith('/features'))
         return Response.json(queryClient.getQueryData(consoleQuery.features.get.queryKey()))
       if (pathname.endsWith('/workspaces/current/members')) return Response.json({ accounts: [] })

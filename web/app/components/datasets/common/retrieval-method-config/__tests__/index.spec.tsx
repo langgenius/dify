@@ -4,25 +4,19 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalMethodConfig from '../index'
 
 let validDefault = true
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    defaultModel: validDefault
-      ? { provider: { provider: 'provider' }, model: 'reranker' }
-      : undefined,
-    currentModel: validDefault ? { model: 'reranker' } : undefined,
-  }),
-  useModelListAndDefaultModel: () => ({ modelList: [] }),
-  useCurrentProviderAndModel: () => ({ currentModel: undefined }),
-}))
-// Model selection has its own suite; keep retrieval controls and mode transitions real.
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: () => null,
-}))
+
 const config = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,
   reranking_enable: false,
@@ -43,13 +37,38 @@ const weights = {
   },
   keyword_setting: { keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword },
 }
-function render(ui: React.ReactElement, supported: string[] = methods) {
+const render = createNuqsTestRenderer((ui: React.ReactElement, supported: string[] = methods) => {
   const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(
+    queryClient,
+    validDefault
+      ? [
+          createModelCatalogFixture({
+            provider: 'provider',
+            models: [createCatalogModelFixture({ model: 'reranker', model_type: 'rerank' })],
+          }),
+        ]
+      : [],
+  )
+  if (validDefault) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.defaultModel.get.queryKey({
+        input: { query: { model_type: 'rerank' } },
+      }),
+      {
+        data: createDefaultModelFixture({
+          provider: { provider: 'provider' },
+          model: 'reranker',
+          model_type: 'rerank',
+        }),
+      },
+    )
+  }
   queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
     retrieval_method: supported,
   })
   return renderWithConsoleQuery(ui, { queryClient })
-}
+})
 beforeEach(() => {
   validDefault = true
 })

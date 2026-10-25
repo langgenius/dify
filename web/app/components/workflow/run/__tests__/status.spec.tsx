@@ -147,13 +147,14 @@ describe('Status', () => {
   })
 
   it('opens the tracing tab when clicking the TRACING link', async () => {
+    const user = userEvent.setup()
     const onOpenTracingTab = vi.fn()
 
     render(
       <Status status="partial-succeeded" exceptionCounts={3} onOpenTracingTab={onOpenTracingTab} />,
     )
 
-    await userEvent.setup().click(screen.getByRole('link', { name: 'TRACING' }))
+    await user.click(screen.getByRole('link', { name: 'TRACING' }))
 
     expect(onOpenTracingTab).toHaveBeenCalledTimes(1)
   })

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore, DocumentSegment
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from models.dataset import ChildChunk, Dataset, SegmentAttachmentBinding
-from tests.unit_tests.model_factories import make_dataset
+from tests.helpers.unit.model_factories import make_dataset
 
 TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DATASET_ID = "00000000-0000-0000-0000-000000000002"
@@ -324,7 +324,7 @@ class TestDatasetDocumentStoreAddDocuments(_UsesSQLiteSession):
         )
         store = DatasetDocumentStore(dataset=_dataset(), user_id=USER_ID, document_id=DOCUMENT_ID)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="zip\\(\\) argument 2 is shorter than argument 1"):
             store.add_documents(session=sqlite_session, docs=[document], token_counts=[])
 
         assert sqlite_session.scalar(select(func.count()).select_from(DocumentSegment)) == 0

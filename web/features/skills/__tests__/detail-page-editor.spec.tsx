@@ -16,6 +16,7 @@ describe('SkillDetailPage editor', () => {
   afterEach(() => vi.restoreAllMocks())
 
   it('does not render the markdown editor before external file content loads', async () => {
+    const user = userEvent.setup()
     mocks.fetchSkillFileBlob.mockImplementation(() => new Promise<Blob>(() => undefined))
     mocks.skillDetail = createSkillDetail({
       files: [
@@ -36,7 +37,7 @@ describe('SkillDetailPage editor', () => {
     const { container } = renderSkillDetailPage()
 
     await screen.findByText('skill.skillManagement.detail.builder.title')
-    await userEvent.setup().click(getFileTreeButton('references/guide.md'))
+    await user.click(getFileTreeButton('references/guide.md'))
 
     await waitFor(() => {
       expect(mocks.fetchSkillFileBlob).toHaveBeenCalledOnce()
@@ -92,6 +93,7 @@ describe('SkillDetailPage editor', () => {
   })
 
   it('does not render the code editor when external file content fails to load', async () => {
+    const user = userEvent.setup()
     mocks.fetchSkillFileBlob.mockRejectedValue(new Error('content unavailable'))
     mocks.skillDetail = createSkillDetail({
       files: [
@@ -112,7 +114,7 @@ describe('SkillDetailPage editor', () => {
     renderSkillDetailPage()
 
     await screen.findByText('skill.skillManagement.detail.builder.title')
-    await userEvent.setup().click(getFileTreeButton('scripts/action.ts'))
+    await user.click(getFileTreeButton('scripts/action.ts'))
 
     expect(await screen.findByText('skill.skillManagement.detail.loadFailed')).toBeInTheDocument()
     expect(screen.queryByLabelText('code-editor')).not.toBeInTheDocument()

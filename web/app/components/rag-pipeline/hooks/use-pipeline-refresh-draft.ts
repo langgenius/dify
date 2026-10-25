@@ -52,7 +52,7 @@ export const usePipelineRefreshDraft = () => {
         setRagPipelineVariables?.(response.rag_pipeline_variables || [])
       })
       .finally(() => setIsSyncingWorkflowDraft(false))
-  }, [handleUpdateWorkflowCanvas, workflowStore])
+  }, [handleUpdateWorkflowCanvas, workflowStore, pipelineId])
 
   return {
     handleRefreshWorkflowDraft,

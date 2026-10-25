@@ -1,201 +1,173 @@
-import type { ReactNode } from 'react'
-import type { Plugin } from '@/app/components/plugins/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { MarketplaceCollection } from '@dify/contracts/marketplace'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { createElement } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
-import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { useMarketplace } from '../hooks'
 
-// ==================== Mock Setup ====================
-
-const mockQueryMarketplaceCollectionsAndPlugins = vi.fn()
-const mockQueryPlugins = vi.fn()
-const mockResetQueryParams = vi.fn()
-const mockFetchNextPage = vi.fn()
-
-const mockUseMarketplaceCollectionsAndPlugins = vi.fn()
-const mockUseMarketplacePlugins = vi.fn()
-const mockFetchInstalledIds = vi.fn()
-vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
-  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) =>
-    mockUseMarketplaceCollectionsAndPlugins(...args),
-  useMarketplacePlugins: (...args: unknown[]) => mockUseMarketplacePlugins(...args),
+const requests = vi.hoisted(() => ({
+  installed: vi.fn(),
+  search: vi.fn(),
+  collections: vi.fn(),
+  collectionPlugins: vi.fn(),
 }))
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.installedIds.get': (...args: unknown[]) =>
-        mockFetchInstalledIds(...args),
+      'workspaces.current.plugin.installedIds.get': requests.installed,
     }),
   }
 })
-
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: vi.fn(() => 'https://marketplace.test/market'),
-}))
-
-// ==================== Test Utilities ====================
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return createElement(QueryClientProvider, { client: queryClient }, children)
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  return {
+    ...actual,
+    marketplaceClient: {
+      ...actual.marketplaceClient,
+      collections: requests.collections,
+      collectionPlugins: requests.collectionPlugins,
+    },
   }
+})
+// The legacy search owner uses this transport; its query state and formatting stay real.
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal()),
+  postMarketplace: requests.search,
+}))
+const plugin = createMarketplacePluginFixture()
+const collection: MarketplaceCollection = {
+  rule: '',
+  created_at: '',
+  updated_at: '',
+  name: 'featured',
+  label: { en_US: 'Featured' },
+  description: { en_US: 'Featured tools' },
+  searchable: false,
+  search_params: {},
 }
-
-const setupHookMocks = (overrides?: {
-  isLoading?: boolean
-  isPluginsLoading?: boolean
-  pluginsPage?: number
-  hasNextPage?: boolean
-  plugins?: Plugin[] | undefined
-}) => {
-  mockUseMarketplaceCollectionsAndPlugins.mockReturnValue({
-    isLoading: overrides?.isLoading ?? false,
-    marketplaceCollections: [],
-    marketplaceCollectionPluginsMap: {},
-    queryMarketplaceCollectionsAndPlugins: mockQueryMarketplaceCollectionsAndPlugins,
-  })
-  mockUseMarketplacePlugins.mockReturnValue({
-    plugins: overrides?.plugins,
-    resetQueryParams: mockResetQueryParams,
-    queryPlugins: mockQueryPlugins,
-    isLoading: overrides?.isPluginsLoading ?? false,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: overrides?.hasNextPage ?? false,
-    page: overrides?.pluginsPage,
+const response = (plugins = [plugin], total = plugins.length) => ({ data: { plugins, total } })
+function renderMarketplace(initial = { search: '', tags: [] as string[], enabled: true }) {
+  const { wrapper } = createConsoleQueryWrapper()
+  return renderHook(({ search, tags, enabled }) => useMarketplace(search, tags, enabled), {
+    wrapper,
+    initialProps: initial,
   })
 }
-
-// ==================== Tests ====================
-
-describe('useMarketplace', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockFetchInstalledIds.mockResolvedValue({ plugin_ids: [] })
-    setupHookMocks()
+const scrollToEnd = (handleScroll: (event: Event) => void) => {
+  const container = document.createElement('div')
+  Object.defineProperties(container, {
+    scrollTop: { value: 200 },
+    scrollHeight: { value: 500 },
+    clientHeight: { value: 300 },
   })
+  container.addEventListener('scroll', handleScroll)
+  act(() => container.dispatchEvent(new Event('scroll')))
+  container.removeEventListener('scroll', handleScroll)
+}
+beforeEach(() => {
+  requests.installed.mockReset().mockResolvedValue({ plugin_ids: ['installed-tool'] })
+  requests.search.mockReset().mockResolvedValue(response())
+  requests.collections.mockReset().mockResolvedValue({ data: { collections: [collection] } })
+  requests.collectionPlugins.mockReset().mockResolvedValue(response())
+})
 
-  describe('Queries', () => {
-    it('defers installed IDs and marketplace data until activation', async () => {
-      const { rerender } = renderHook(({ enabled }) => useMarketplace('', [], enabled), {
-        initialProps: { enabled: false },
-        wrapper: createWrapper(),
-      })
-      expect(mockFetchInstalledIds).not.toHaveBeenCalled()
-      expect(mockQueryMarketplaceCollectionsAndPlugins).not.toHaveBeenCalled()
-      expect(mockQueryPlugins).not.toHaveBeenCalled()
-      rerender({ enabled: true })
-      await waitFor(() => expect(mockQueryMarketplaceCollectionsAndPlugins).toHaveBeenCalled())
-      expect(mockFetchInstalledIds).toHaveBeenCalledOnce()
-    })
-
-    it('should query plugins when the debounced page filter provides search text', async () => {
-      mockFetchInstalledIds.mockResolvedValue({ plugin_ids: ['plugin-a'] })
-
-      renderHook(() => useMarketplace('alpha', []), { wrapper: createWrapper() })
-
-      await waitFor(() => {
-        expect(mockQueryPlugins).toHaveBeenCalledWith({
-          category: PluginCategoryEnum.tool,
-          query: 'alpha',
-          tags: [],
-          exclude: ['plugin-a'],
-          type: 'plugin',
-        })
-      })
-      expect(mockQueryMarketplaceCollectionsAndPlugins).not.toHaveBeenCalled()
-      expect(mockResetQueryParams).not.toHaveBeenCalled()
-    })
-
-    it('should query plugins immediately when only tags are provided', async () => {
-      mockFetchInstalledIds.mockResolvedValue({ plugin_ids: ['plugin-b'] })
-
-      renderHook(() => useMarketplace('', ['tag-1']), { wrapper: createWrapper() })
-
-      await waitFor(() => {
-        expect(mockQueryPlugins).toHaveBeenCalledWith({
-          category: PluginCategoryEnum.tool,
-          query: '',
-          tags: ['tag-1'],
-          exclude: ['plugin-b'],
-          type: 'plugin',
-        })
-      })
-    })
-
-    it('should query collections and reset plugins when no filters are provided', async () => {
-      mockFetchInstalledIds.mockResolvedValue({ plugin_ids: ['plugin-c'] })
-
-      renderHook(() => useMarketplace('', []), { wrapper: createWrapper() })
-
-      await waitFor(() => {
-        expect(mockQueryMarketplaceCollectionsAndPlugins).toHaveBeenCalledWith({
-          category: PluginCategoryEnum.tool,
-          condition: getMarketplaceListCondition(PluginCategoryEnum.tool),
-          exclude: ['plugin-c'],
-          type: 'plugin',
-        })
-      })
-      expect(mockResetQueryParams).toHaveBeenCalledTimes(1)
-    })
+it('defers catalog requests until activation and then supplies the collection results', async () => {
+  const { result, rerender } = renderMarketplace({ search: '', tags: [], enabled: false })
+  expect(requests.installed).not.toHaveBeenCalled()
+  expect(requests.collections).not.toHaveBeenCalled()
+  expect(requests.search).not.toHaveBeenCalled()
+  rerender({ search: '', tags: [], enabled: true })
+  await waitFor(() =>
+    expect(result.current.marketplaceCollectionPluginsMap?.featured).toMatchObject([
+      { plugin_id: plugin.plugin_id },
+    ]),
+  )
+  expect(result.current.marketplaceCollections).toEqual([collection])
+  expect(result.current.isLoading).toBe(false)
+})
+it.each([
+  { search: 'alpha', tags: [] },
+  { search: '', tags: ['search'] },
+])('loads matching tools for search=$search and tags=$tags', async ({ search, tags }) => {
+  const { result } = renderMarketplace({ search, tags, enabled: true })
+  await waitFor(() =>
+    expect(result.current.plugins).toMatchObject([{ plugin_id: plugin.plugin_id }]),
+  )
+  expect(requests.search).toHaveBeenCalledWith('/plugins/search/advanced', {
+    body: {
+      category: 'tool',
+      query: search,
+      tags,
+      exclude: ['installed-tool'],
+      type: 'plugin',
+      page: 1,
+      page_size: 40,
+      sort_by: undefined,
+      sort_order: undefined,
+    },
+    signal: expect.any(AbortSignal),
   })
-
-  describe('State', () => {
-    it('should expose combined loading state and fallback page value', () => {
-      setupHookMocks({ isLoading: true, isPluginsLoading: false, pluginsPage: undefined })
-
-      const { result } = renderHook(() => useMarketplace('', []), { wrapper: createWrapper() })
-
-      expect(result.current.isLoading).toBe(true)
-      expect(result.current.page).toBe(1)
-    })
-  })
-
-  describe('Scroll', () => {
-    it('should fetch next page when scrolling near bottom with filters', () => {
-      setupHookMocks({ hasNextPage: true })
-      const { result } = renderHook(() => useMarketplace('search', []), {
-        wrapper: createWrapper(),
-      })
-      const event = {
-        target: {
-          scrollTop: 100,
-          scrollHeight: 200,
-          clientHeight: 100 + SCROLL_BOTTOM_THRESHOLD,
-        },
-      } as unknown as Event
-
-      act(() => {
-        result.current.handleScroll(event)
-      })
-
-      expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
-    })
-
-    it('should not fetch next page when no filters are applied', () => {
-      setupHookMocks({ hasNextPage: true })
-      const { result } = renderHook(() => useMarketplace('', []), { wrapper: createWrapper() })
-      const event = {
-        target: {
-          scrollTop: 100,
-          scrollHeight: 200,
-          clientHeight: 100 + SCROLL_BOTTOM_THRESHOLD,
-        },
-      } as unknown as Event
-
-      act(() => {
-        result.current.handleScroll(event)
-      })
-
-      expect(mockFetchNextPage).not.toHaveBeenCalled()
-    })
-  })
+  expect(requests.collections).not.toHaveBeenCalled()
+})
+it('clears search results and restores collections when filters are removed', async () => {
+  const { result, rerender } = renderMarketplace({ search: 'alpha', tags: [], enabled: true })
+  await waitFor(() => expect(result.current.plugins).toHaveLength(1))
+  rerender({ search: '', tags: [], enabled: true })
+  await waitFor(() =>
+    expect(result.current.marketplaceCollectionPluginsMap?.featured).toHaveLength(1),
+  )
+  expect(result.current.plugins).toBeUndefined()
+  expect(requests.collections).toHaveBeenCalledWith(
+    {
+      query: expect.objectContaining({
+        category: 'tool',
+        exclude: ['installed-tool'],
+        type: 'plugin',
+      }),
+    },
+    { signal: expect.any(AbortSignal) },
+  )
+  expect(result.current.page).toBe(1)
+})
+it('reports loading until the requested first page arrives', async () => {
+  const pending = createDeferred<ReturnType<typeof response>>()
+  requests.search.mockReturnValue(pending.promise)
+  const { result } = renderMarketplace({ search: 'alpha', tags: [], enabled: true })
+  await waitFor(() => expect(result.current.isLoading).toBe(true))
+  expect(result.current.plugins).toBeUndefined()
+  expect(result.current.page).toBe(1)
+  await act(async () => pending.resolve(response()))
+  await waitFor(() => expect(result.current.plugins).toHaveLength(1))
+  expect(result.current.isLoading).toBe(false)
+})
+it('appends the next search page on scroll and stops paging after filters are cleared', async () => {
+  const second = createMarketplacePluginFixture({ plugin_id: 'second-tool', name: 'second-tool' })
+  const firstPage = Array.from({ length: 40 }, (_, index) =>
+    createMarketplacePluginFixture({ plugin_id: `tool-${index}`, name: `tool-${index}` }),
+  )
+  requests.search
+    .mockResolvedValueOnce(response(firstPage, 41))
+    .mockResolvedValue(response([second], 41))
+  const { result, rerender } = renderMarketplace({ search: 'alpha', tags: [], enabled: true })
+  await waitFor(() => expect(result.current.plugins).toHaveLength(40))
+  scrollToEnd(result.current.handleScroll)
+  await waitFor(() =>
+    expect(result.current.plugins?.map((item) => item.plugin_id)).toEqual([
+      ...firstPage.map((item) => item.plugin_id),
+      'second-tool',
+    ]),
+  )
+  expect(result.current.page).toBe(2)
+  expect(requests.search).toHaveBeenLastCalledWith(
+    '/plugins/search/advanced',
+    expect.objectContaining({ body: expect.objectContaining({ page: 2, query: 'alpha' }) }),
+  )
+  rerender({ search: '', tags: [], enabled: true })
+  await waitFor(() => expect(result.current.marketplaceCollections).toEqual([collection]))
+  scrollToEnd(result.current.handleScroll)
+  expect(requests.search).toHaveBeenCalledTimes(2)
+  expect(result.current.plugins).toBeUndefined()
 })

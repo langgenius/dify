@@ -168,7 +168,7 @@ class Toolset(FunctionToolset[Deps]):
             services = ctx.deps.services
             if services.dify_api_http_client.is_closed:
                 raise RuntimeError("Plugin tools require an open shared Dify API HTTP client.")
-            tool_clients: dict[str, DifyPluginDaemonToolClient] = {}
+            tool_clients: dict[tuple[str, str | None], DifyPluginDaemonToolClient] = {}
             file_context = _PluginToolFileContext(
                 file_client=_DifyPluginToolFileClient(
                     base_url=services.inner_api_url,
@@ -182,15 +182,17 @@ class Toolset(FunctionToolset[Deps]):
                 shell=config.shell,
             )
             for tool_config in config.tools:
-                client = tool_clients.get(tool_config.plugin_id)
+                plugin_identity = (tool_config.plugin_id, tool_config.plugin_unique_identifier)
+                client = tool_clients.get(plugin_identity)
                 if client is None:
                     client = ExecutionContextCapability.create_tool_client(
                         ctx.deps,
                         config.execution_context,
                         plugin_id=tool_config.plugin_id,
+                        plugin_unique_identifier=tool_config.plugin_unique_identifier,
                         http_client=services.plugin_daemon_http_client,
                     )
-                    tool_clients[tool_config.plugin_id] = client
+                    tool_clients[plugin_identity] = client
                 effective_parameters = [parameter.model_copy(deep=True) for parameter in tool_config.parameters]
                 _validate_required_hidden_parameters(tool_config, effective_parameters)
                 self.add_tool(

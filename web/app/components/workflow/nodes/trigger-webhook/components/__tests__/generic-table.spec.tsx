@@ -79,6 +79,7 @@ describe('GenericTable', () => {
   })
 
   it('should skip intermediate empty rows and blur the current input on Enter', async () => {
+    const user = userEvent.setup()
     render(
       <GenericTable
         title="Headers"
@@ -98,7 +99,7 @@ describe('GenericTable', () => {
     expect(screen.getAllByRole('button', { name: 'Delete row' })).toHaveLength(2)
 
     inputs[0]!.focus()
-    await userEvent.keyboard('{Enter}')
+    await user.keyboard('{Enter}')
     expect(inputs[0]).not.toHaveFocus()
   })
 

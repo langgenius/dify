@@ -209,10 +209,16 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
             )
         else:
             phoenix_endpoint = f"{base_endpoint}{path}/v1/traces"
-            phoenix_headers = {
-                "api_key": arize_phoenix_config.api_key or "",
-                "authorization": f"Bearer {arize_phoenix_config.api_key or ''}",
-            }
+            # Keep headers nonempty so the SDK does not fall back to ambient
+            # OTEL exporter credentials for an anonymous Phoenix destination.
+            phoenix_headers = {"Content-Type": "application/x-protobuf"}
+            if arize_phoenix_config.api_key:
+                phoenix_headers.update(
+                    {
+                        "api_key": arize_phoenix_config.api_key,
+                        "authorization": f"Bearer {arize_phoenix_config.api_key}",
+                    }
+                )
             exporter = HttpOTLPSpanExporter(
                 endpoint=phoenix_endpoint,
                 headers=phoenix_headers,
@@ -1484,30 +1490,37 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         return self.carrier
 
     def api_check(self):
+        if isinstance(self.arize_phoenix_config, ArizeConfig):
+            from dify_trace_arize_phoenix.arize_configuration import verify_configuration
+
+            verify_configuration(self.arize_phoenix_config)
+            return True
         try:
             with self.tracer.start_span("api_check") as span:
                 span.set_attribute("test", "true")
             return True
         except Exception as e:
             logger.info("[Arize/Phoenix] API check failed: %s", str(e), exc_info=True)
-            raise ValueError(f"[Arize/Phoenix] API check failed: {str(e)}")
+            raise ValueError(f"[Arize/Phoenix] API check failed: {str(e)}") from e
 
     def get_project_url(self):
-        """Build a redirect URL that forwards the user to the correct project for Arize/Phoenix."""
+        """Get a Phoenix redirect; Arize Cloud requires verified destination metadata."""
         try:
             project_name = self.arize_phoenix_config.project
             endpoint = self.arize_phoenix_config.endpoint.rstrip("/")
 
-            # Arize
+            # Arize Cloud links require verified organization/space/project IDs.
+            # Only explicit config writes resolve and cache them; this legacy
+            # instance has none of that metadata and cannot promise a project.
             if isinstance(self.arize_phoenix_config, ArizeConfig):
-                return f"https://app.arize.com/?redirect_project_name={project_name}"
+                return None
 
             # Phoenix
             return f"{endpoint}/projects/?redirect_project_name={project_name}"
 
         except Exception as e:
             logger.info("[Arize/Phoenix] Failed to construct project URL: %s", str(e), exc_info=True)
-            raise ValueError(f"[Arize/Phoenix] Failed to construct project URL: {str(e)}")
+            raise ValueError(f"[Arize/Phoenix] Failed to construct project URL: {str(e)}") from e
 
     def _construct_llm_attributes(self, prompts: dict[str, Any] | list[Any] | str | None) -> dict[str, str]:
         """Construct LLM attributes with passed prompts for Arize/Phoenix."""

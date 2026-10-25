@@ -129,10 +129,10 @@ class MessageListApi(Resource):
             return MessageInfiniteScrollPagination(
                 limit=pagination.limit, has_more=pagination.has_more, data=items
             ).model_dump(mode="json")
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except FirstMessageNotExistsError as caught_error:
+            raise NotFound("First Message Not Exists.") from caught_error
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
@@ -179,8 +179,8 @@ class MessageFeedbackApi(Resource):
                 content=payload.content,
                 session=db.session(),
             )
-        except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+        except MessageNotExistsError as caught_error:
+            raise NotFound("Message Not Exists.") from caught_error
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -278,12 +278,12 @@ class MessageSuggestedApi(Resource):
                 invoke_from=InvokeFrom.SERVICE_API,
                 session=db.session(),
             )
-        except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
-        except SuggestedQuestionsAfterAnswerDisabledError:
-            raise BadRequest("Suggested Questions Is Disabled.")
-        except Exception:
+        except MessageNotExistsError as caught_error:
+            raise NotFound("Message Not Exists.") from caught_error
+        except SuggestedQuestionsAfterAnswerDisabledError as caught_error:
+            raise BadRequest("Suggested Questions Is Disabled.") from caught_error
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
         return SimpleResultStringListResponse(result="success", data=questions).model_dump(mode="json")

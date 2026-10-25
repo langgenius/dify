@@ -1,12 +1,16 @@
-import { render, screen, within } from '@testing-library/react'
+import type { consoleClient } from '@/service/console'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { createPluginEntity } from '@/test/fixtures/plugin'
+import { MARKETPLACE_API_PREFIX } from '@/config'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createInstalledPluginFixture } from '@/test/fixtures/plugin'
 import PluginsPicker from '../plugins-picker'
 import { AUTO_UPDATE_MODE } from '../types'
 
 const plugin = (id: string, label: string, category: PluginCategoryEnum) => {
-  const entity = createPluginEntity()
+  const entity = createInstalledPluginFixture({ id, plugin_id: id })
   return {
     ...entity,
     plugin_id: id,
@@ -20,21 +24,59 @@ const plugins = [
   plugin('dify/datasource-plugin', 'Datasource plugin', PluginCategoryEnum.datasource),
 ]
 
-vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({ data: { plugins }, isLoading: false }),
-}))
+const installedPlugins = vi.hoisted(() =>
+  vi.fn<typeof consoleClient.workspaces.current.plugin.list.get>(),
+)
 
-it('opens the picker from the empty state and selects an installed plugin', async () => {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.get': installedPlugins,
+    }),
+  }
+})
+
+beforeEach(() => {
+  installedPlugins.mockReset().mockResolvedValue({ plugins, total: plugins.length })
+})
+
+it('opens the installed catalog and updates the selection when a plugin is checked and unchecked', async () => {
   const user = userEvent.setup()
   const onChange = vi.fn()
-  render(<PluginsPicker updateMode={AUTO_UPDATE_MODE.partial} value={[]} onChange={onChange} />)
+  function Picker() {
+    const [value, setValue] = useState<string[]>([])
+    return (
+      <PluginsPicker
+        updateMode={AUTO_UPDATE_MODE.partial}
+        value={value}
+        onChange={(next) => {
+          setValue(next)
+          onChange(next)
+        }}
+      />
+    )
+  }
+  render(<Picker />)
 
   expect(screen.getByText('plugin.autoUpdate.upgradeModePlaceholder.partial')).toBeInTheDocument()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.select' }))
   const dialog = await screen.findByRole('dialog')
-  await user.click(within(dialog).getByRole('checkbox', { name: 'Tool plugin' }))
+  const checkbox = await within(dialog).findByRole('checkbox', { name: 'Tool plugin' })
+  expect(
+    within(dialog)
+      .getAllByRole('presentation')
+      .map((image) => image.getAttribute('src')),
+  ).toContain(`${MARKETPLACE_API_PREFIX}/plugins/dify/tool-plugin/icon`)
+  await user.click(checkbox)
+  expect(checkbox).toBeChecked()
   expect(onChange).toHaveBeenCalledExactlyOnceWith(['dify/tool-plugin'])
+  await user.click(checkbox)
+  expect(checkbox).not.toBeChecked()
+  expect(onChange).toHaveBeenLastCalledWith([])
 })
 
 it('summarizes excluded plugins and clears all selections without a category scope', async () => {
@@ -68,7 +110,7 @@ it('edits only the current category and preserves hidden selections', async () =
   )
 
   expect(
-    screen.getByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}'),
+    await screen.findByText('plugin.autoUpdate.excludeUpdate:{"count":1,"num":1}'),
   ).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.select' }))
   const dialog = within(await screen.findByRole('dialog'))

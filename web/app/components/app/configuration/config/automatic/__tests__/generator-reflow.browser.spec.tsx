@@ -1,6 +1,14 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import GetAutomaticRes from '../get-automatic-res'
 
 vi.mock('react-i18next', async () => {
@@ -10,27 +18,6 @@ vi.mock('react-i18next', async () => {
   const { default: common } = await import('@/i18n/locales/en-US/common.json')
   return createReactI18nextMock({ ...appDebug, ...appGeneration, ...common })
 })
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/hooks',
-  async (importOriginal) => ({
-    ...(await importOriginal<
-      typeof import('@/app/components/header/account-setting/model-provider-page/hooks')
-    >()),
-    useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-      defaultModel: { model: 'gpt-4.1-mini', provider: { provider: 'openai' } },
-    }),
-  }),
-)
-
-// The independent model picker is outside this regression; the real generator,
-// Lexical editors, result actions, and overlay remain the layout owners under test.
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: () => <button type="button">gpt-4.1-mini</button>,
-  }),
-)
 
 vi.mock('@/service/debug', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/debug')>()),
@@ -56,28 +43,47 @@ describe('Prompt generator reflow', () => {
     sessionStorage.clear()
   })
 
-  afterEach(async () => {
-    await page.viewport(1280, 720)
-  })
-
   it.each([320])(
     'keeps inputs and generated result actions within a %i CSS pixel viewport',
     async (width) => {
       // Unit tests cannot detect the original fixed 1140px popup being clipped.
       // Rendering the production dialog and Result proves both panels remain usable.
       await page.viewport(width, 900)
-      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper()
+      seedModelProviderQueries(queryClient, [
+        createModelCatalogFixture({
+          models: [
+            createCatalogModelFixture({
+              model: 'gpt-4.1-mini',
+              label: { en_US: 'GPT-4.1 mini' },
+              model_properties: { mode: 'chat' },
+            }),
+          ],
+        }),
+      ])
+      queryClient.setQueryData(
+        consoleQuery.workspaces.current.defaultModel.get.queryKey({
+          input: { query: { model_type: 'llm' } },
+        }),
+        { data: createDefaultModelFixture({ model: 'gpt-4.1-mini' }) },
+      )
+      queryClient.setQueryDefaults(
+        consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
+        { initialData: { data: [] } },
+      )
       const screen = await render(
-        <QueryClientProvider client={queryClient}>
-          <GetAutomaticRes
-            modelMode="chat"
-            isShow
-            onClose={vi.fn()}
-            onFinished={vi.fn()}
-            flowId={`reflow-${width}`}
-            isBasicMode
-          />
-        </QueryClientProvider>,
+        <NuqsTestingAdapter>
+          <QueryProvider>
+            <GetAutomaticRes
+              modelMode="chat"
+              isShow
+              onClose={vi.fn()}
+              onFinished={vi.fn()}
+              flowId={`reflow-${width}`}
+              isBasicMode
+            />
+          </QueryProvider>
+        </NuqsTestingAdapter>,
       )
 
       const dialog = screen.getByRole('dialog', { name: 'Prompt Generator' })
@@ -101,7 +107,19 @@ describe('Prompt generator reflow', () => {
       expect(bounds.left).toBeGreaterThanOrEqual(0)
       expect(bounds.right).toBeLessThanOrEqual(width)
       expect(dialogElement.scrollWidth).toBeLessThanOrEqual(dialogElement.clientWidth + 1)
-      for (const element of [instructions, generate, apply, copy, result])
+      const modelSelector = screen.getByRole('button', { name: /^GPT-4.1 mini/ })
+      const modelSettings = screen.getByRole('button', { name: /modelProvider.modelSettings/ })
+      await expect.element(modelSelector).toBeVisible()
+      await expect.element(modelSettings).toBeVisible()
+      for (const element of [
+        instructions,
+        generate,
+        apply,
+        copy,
+        result,
+        modelSelector,
+        modelSettings,
+      ])
         expectWithin(element.element(), dialogElement)
 
       const instructionsRect = instructions.element().getBoundingClientRect()

@@ -309,6 +309,7 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should allow publish request when knowledge retrieval validation fails', async () => {
+    const user = userEvent.setup()
     const { onPublish } = renderPublishBar({
       setupStore: (store) => {
         store.set(agentComposerDraftAtom, {
@@ -335,7 +336,7 @@ describe('AgentConfigurePublishBar', () => {
       ),
     ).not.toBeInTheDocument()
 
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -504,6 +505,7 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should render published state from the active snapshot and disable publish logic', async () => {
+    const user = userEvent.setup()
     const { onPublish } = renderPublishBar({
       activeConfigIsPublished: true,
       activeConfigSnapshot,
@@ -520,11 +522,9 @@ describe('AgentConfigurePublishBar', () => {
     ).toBeDisabled()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000000 * 1000)
 
-    await userEvent
-      .setup()
-      .click(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }),
-      )
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }),
+    )
 
     expect(onPublish).not.toHaveBeenCalled()
   })
@@ -574,6 +574,7 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should initialize unpublished state when active config is not published', async () => {
+    const user = userEvent.setup()
     const { onPublish } = renderPublishBar({
       activeConfigIsPublished: false,
       activeConfigSnapshot,
@@ -589,7 +590,7 @@ describe('AgentConfigurePublishBar', () => {
       }),
     ).toBeInTheDocument()
 
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -606,6 +607,7 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should publish the current draft payload from the unpublished changes state', async () => {
+    const user = userEvent.setup()
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
@@ -615,7 +617,7 @@ describe('AgentConfigurePublishBar', () => {
       screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges'),
     ).toBeInTheDocument()
 
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -627,6 +629,7 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should fail closed and show feedback when workflow references cannot be loaded', async () => {
+    const user = userEvent.setup()
     workflowReferences.shouldFail = true
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
@@ -636,7 +639,7 @@ describe('AgentConfigurePublishBar', () => {
     await waitFor(() => {
       expect(workflowReferences.fetchCount).toBe(1)
     })
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -649,6 +652,7 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should refresh cached workflow references before publishing', async () => {
+    const user = userEvent.setup()
     const { onPublish, queryClient } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
@@ -666,7 +670,7 @@ describe('AgentConfigurePublishBar', () => {
     queryClient.setQueryData(referencesQueryKey, { data: [] })
     workflowReferences.data = publishedReferences
 
-    await userEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -752,6 +756,7 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should expand affected workflow details above the publish toolbar when clicking a publishable agent in use', async () => {
+    const user = userEvent.setup()
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
@@ -770,7 +775,7 @@ describe('AgentConfigurePublishBar', () => {
     const publishButton = screen.getByRole('button', {
       name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
     })
-    await userEvent.setup().click(publishButton)
+    await user.click(publishButton)
 
     expect(onPublish).not.toHaveBeenCalled()
     const impactDetails = await screen.findByRole('region', {
@@ -809,6 +814,7 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should publish from the fixed toolbar action after affected workflow details expand', async () => {
+    const user = userEvent.setup()
     const publishDeferred = createDeferredPromise()
     const onPublish = vi.fn<PublishHandler>()
     const { store, rerender, rerenderPublishBar } = renderPublishBar({
@@ -823,7 +829,7 @@ describe('AgentConfigurePublishBar', () => {
       return { kind: 'update', draft }
     })
 
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -833,7 +839,7 @@ describe('AgentConfigurePublishBar', () => {
         name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
       }),
     ).toBeInTheDocument()
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -867,6 +873,7 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should keep impact confirmation open without leaking a rejected publish command', async () => {
+    const user = userEvent.setup()
     const onPublish = vi.fn<PublishHandler>(() => Promise.reject(new Error('publish failed')))
     renderPublishBar({
       activeConfigSnapshot,
@@ -875,7 +882,7 @@ describe('AgentConfigurePublishBar', () => {
       usedByAppReferences: publishedReferences,
     })
 
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -886,7 +893,7 @@ describe('AgentConfigurePublishBar', () => {
       }),
     ).toBeInTheDocument()
 
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -903,13 +910,14 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should collapse affected workflow details from the expanded footer cancel action', async () => {
+    const user = userEvent.setup()
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
     })
 
-    await userEvent.setup().click(
+    await user.click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -920,11 +928,9 @@ describe('AgentConfigurePublishBar', () => {
       }),
     ).toBeInTheDocument()
 
-    await userEvent
-      .setup()
-      .click(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishImpact.cancel' }),
-      )
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishImpact.cancel' }),
+    )
 
     await waitFor(() => {
       expect(

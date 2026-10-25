@@ -147,7 +147,7 @@ const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, o
         )}
       </div>
       <div className="flex justify-end p-4 pt-2">
-        <Button className="mr-2 shrink-0" onClick={onHide}>
+        <Button className="me-2 shrink-0" onClick={onHide}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button type="submit" variant="primary" className="shrink-0">

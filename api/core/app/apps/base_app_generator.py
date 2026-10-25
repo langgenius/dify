@@ -250,8 +250,10 @@ class BaseAppGenerator:
                             return float(value)
                         else:
                             return int(value)
-                    except ValueError:
-                        raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
+                    except ValueError as caught_error:
+                        raise ValueError(
+                            f"{variable_entity.variable} in input form must be a valid number"
+                        ) from caught_error
                 case _:
                     raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
 

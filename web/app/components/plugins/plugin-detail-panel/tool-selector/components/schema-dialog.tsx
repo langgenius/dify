@@ -4,9 +4,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -69,7 +69,7 @@ export function SchemaDialog({ schema, rootName, compact = false }: SchemaDialog
           <DialogTitle>
             {t(($) => $['nodes.agent.parameterSchema'], { ns: 'workflowAgent' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           <MittProvider>

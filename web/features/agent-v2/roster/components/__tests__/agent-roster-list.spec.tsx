@@ -483,6 +483,7 @@ describe('AgentRosterList', () => {
   })
 
   it('links viewers to access points and hides mutation menus including the context menu', async () => {
+    const user = userEvent.setup()
     workspacePermissions.canCreate = false
     renderList([
       createAgent({ permission_keys: [AgentPermission.Preview, AgentPermission.AccessPointView] }),
@@ -490,15 +491,16 @@ describe('AgentRosterList', () => {
     const link = screen.getByRole('link', { name: 'Research Agent' })
     expect(link).toHaveAttribute('href', '/agents/agent-1/access')
     expect(screen.queryByRole('button', { name: /roster.moreActions/ })).not.toBeInTheDocument()
-    await userEvent.pointer({ target: link, keys: '[MouseRight]' })
+    await user.pointer({ target: link, keys: '[MouseRight]' })
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('allows duplication with workspace create permission without granting resource edits', async () => {
+    const user = userEvent.setup()
     renderList([
       createAgent({ permission_keys: [AgentPermission.Preview, AgentPermission.AccessPointView] }),
     ])
-    await userEvent.click(screen.getByRole('button', { name: /roster.moreActions/ }))
+    await user.click(screen.getByRole('button', { name: /roster.moreActions/ }))
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'common.operation.duplicate',
     ])

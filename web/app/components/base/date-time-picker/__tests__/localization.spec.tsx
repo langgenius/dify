@@ -1,3 +1,4 @@
+import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
@@ -19,6 +20,7 @@ import {
   TimePickerLabel,
   TimePickerTrigger,
 } from '@/app/components/base/date-time-picker/time-picker'
+import { I18nDirectionProvider } from '@/app/components/provider/i18n-direction'
 import en from '@/i18n/locales/en-US/time.json'
 import fa from '@/i18n/locales/fa-IR/time.json'
 import lo from '@/i18n/locales/lo-LA/time.json'
@@ -80,11 +82,13 @@ it('updates time formatting and popup labels from the application language witho
   const i18n = await createI18n()
   render(
     <I18nextProvider i18n={i18n}>
-      <TimePicker defaultValue="13:30">
-        <TimePickerLabel className="sr-only">Time</TimePickerLabel>
-        <TimePickerTrigger />
-        <TimePickerContent />
-      </TimePicker>
+      <I18nDirectionProvider syncDocument>
+        <TimePicker defaultValue="13:30">
+          <TimePickerLabel className="sr-only">Time</TimePickerLabel>
+          <TimePickerTrigger />
+          <TimePickerContent />
+        </TimePicker>
+      </I18nDirectionProvider>
     </I18nextProvider>,
   )
   expect(screen.getByRole('button', { name: 'Time 1:30 PM' })).toBeInTheDocument()
@@ -103,16 +107,18 @@ it('updates time formatting and popup labels from the application language witho
   expect(screen.getByRole('dialog')).toHaveAttribute('dir', 'rtl')
 })
 
-it('owns the application calendar locale and RTL while preserving caller label overrides', async () => {
+it('inherits application direction and localizes the calendar while preserving label overrides', async () => {
   const user = userEvent.setup()
   const i18n = await createI18n('fa-IR')
   render(
     <I18nextProvider i18n={i18n}>
-      <DatePicker defaultValue="2025-01-15" labels={{ nextMonth: 'Next billing month' }}>
-        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
-        <DatePickerTrigger />
-        <DatePickerContent />
-      </DatePicker>
+      <I18nDirectionProvider syncDocument>
+        <DatePicker defaultValue="2025-01-15" labels={{ nextMonth: 'Next billing month' }}>
+          <DatePickerLabel className="sr-only">Date</DatePickerLabel>
+          <DatePickerTrigger />
+          <DatePickerContent />
+        </DatePicker>
+      </I18nDirectionProvider>
     </I18nextProvider>,
   )
   const trigger = screen.getByRole('button', { name: /^Date / })
@@ -124,6 +130,43 @@ it('owns the application calendar locale and RTL while preserving caller label o
     screen.getByRole('button', { name: new RegExp(fa['picker.chooseMonthAndYear']) }),
   )
   expect(screen.getByRole('option', { name: 'ژانویه' })).toHaveAttribute('aria-selected', 'true')
+})
+
+it('inherits a local direction override independently of the application language', async () => {
+  const user = userEvent.setup()
+  const i18n = await createI18n('fa-IR')
+  render(
+    <I18nextProvider i18n={i18n}>
+      <I18nDirectionProvider syncDocument>
+        <DirectionProvider direction="ltr">
+          <DatePicker>
+            <DatePickerLabel>Date</DatePickerLabel>
+            <DatePickerTrigger />
+            <DatePickerContent />
+          </DatePicker>
+          <TimePicker>
+            <TimePickerLabel>Time</TimePickerLabel>
+            <TimePickerTrigger />
+          </TimePicker>
+          <DateTimePicker timeZone="UTC">
+            <DateTimePickerLabel>Meeting</DateTimePickerLabel>
+            <DateTimePickerTrigger />
+          </DateTimePicker>
+          <DatePicker direction="rtl">
+            <DatePickerLabel>Explicit RTL</DatePickerLabel>
+            <DatePickerTrigger />
+          </DatePicker>
+        </DirectionProvider>
+      </I18nDirectionProvider>
+    </I18nextProvider>,
+  )
+
+  for (const name of ['Date', 'Time', 'Meeting'])
+    expect(screen.getByRole('button', { name })).toHaveAttribute('dir', 'ltr')
+  expect(screen.getByRole('button', { name: 'Explicit RTL' })).toHaveAttribute('dir', 'rtl')
+  await user.click(screen.getByRole('button', { name: 'Date' }))
+  expect(screen.getByRole('dialog', { name: 'Date' })).toHaveAttribute('dir', 'ltr')
+  expect(document.documentElement.dir).toBe('rtl')
 })
 
 it.each([

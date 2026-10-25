@@ -4,11 +4,11 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useAtomValue } from 'jotai'
@@ -239,7 +239,9 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             <DialogDescription>
               {t(($) => $['educationPricingConfirm.description'], { ns: 'education' })}
             </DialogDescription>
-            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+            <DialogHeaderCloseButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            />
           </DialogHeader>
           <DialogFooter>
             <Button

@@ -6,10 +6,10 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -147,7 +147,7 @@ const EditMetadataBatchModal: FC<Props> = ({
           <div className="system-xs-medium text-text-accent">
             {t(($) => $[`${i18nPrefix}.editDocumentsNum`], { ns: 'dataset', num: documentNum })}
           </div>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           <div className="space-y-2">
@@ -161,9 +161,9 @@ const EditMetadataBatchModal: FC<Props> = ({
               />
             ))}
           </div>
-          <div className="mt-4 pl-4.5">
+          <div className="mt-4 ps-4.5">
             <div className="flex items-center">
-              <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">
+              <div className="me-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['metadata.createMetadata.title'], { ns: 'dataset' })}
               </div>
               <Separator decorative className="my-2 h-[0.5px]" variant="gradient" />
@@ -181,7 +181,7 @@ const EditMetadataBatchModal: FC<Props> = ({
             <div className="mt-3">
               <DatasetMetadataPicker
                 datasetId={datasetId}
-                placement="top-start"
+                side="top"
                 sideOffset={4}
                 alignOffset={0}
                 onCreateMetadata={handleAddMetaData}
@@ -203,7 +203,7 @@ const EditMetadataBatchModal: FC<Props> = ({
               />
               <span
                 id={applyToAllLabelId}
-                className="mr-1 ml-2 system-xs-medium text-text-secondary"
+                className="ms-2 me-1 system-xs-medium text-text-secondary"
               >
                 {t(($) => $[`${i18nPrefix}.applyToAllSelectDocument`], { ns: 'dataset' })}
               </span>

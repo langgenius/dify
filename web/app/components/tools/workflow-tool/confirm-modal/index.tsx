@@ -3,11 +3,11 @@
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
@@ -41,7 +41,7 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
           <DialogDescription>
             {t(($) => $['createTool.confirmTip'], { ns: 'tools' })}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogFooter>
           <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>

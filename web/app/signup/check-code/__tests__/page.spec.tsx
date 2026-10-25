@@ -25,10 +25,6 @@ vi.mock('#i18n', async (importOriginal) => ({
   useLocale: vi.fn(),
 }))
 
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),

@@ -26,7 +26,7 @@ const ToolBrowser = dynamic(() => import('./tool-browser'), {
 })
 
 type Props = Readonly<
-  Pick<PopoverContentProps, 'placement' | 'sideOffset'> & {
+  Pick<PopoverContentProps, 'side' | 'align' | 'sideOffset'> & {
     disabled: boolean
     trigger: ReactElement
     isShow: boolean
@@ -223,7 +223,8 @@ export function ToolPickerContent({
 function ToolPicker({
   disabled,
   trigger,
-  placement = 'right-start',
+  side = 'right',
+  align = 'start',
   sideOffset = 0,
   isShow,
   onShowChange,
@@ -239,7 +240,8 @@ function ToolPicker({
       <PopoverTrigger disabled={disabled} render={trigger} />
 
       <PopoverContent
-        placement={placement}
+        side={side}
+        align={align}
         sideOffset={sideOffset}
         className="border-none bg-transparent shadow-none"
       >

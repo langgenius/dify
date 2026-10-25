@@ -1,18 +1,7 @@
 import { renderWorkflowFlowHook as renderHook } from '../../../../__tests__/workflow-test-env'
 import { useChat } from '../../hooks'
 
-vi.mock('../../../../hooks/use-workflow-run', () => ({
-  useWorkflowRun: () => ({ handleRun: vi.fn() }),
-}))
-vi.mock('../../../../hooks/use-set-workflow-vars-with-value', () => ({
-  useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: vi.fn() }),
-}))
-
 describe('workflow debug useChat – opening statement stability', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should return empty chatList when config has no opening_statement', () => {
     const { result } = renderHook(() => useChat({}), {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },

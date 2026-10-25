@@ -1,9 +1,17 @@
 import type { currentVarType } from '../panel'
 import type { VarInInspect } from '@/types/workflow'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
 import { VarInInspectType } from '@/types/workflow'
+import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
+import { HooksStoreContextProvider } from '../../hooks-store/provider'
+import useCurrentVars from '../../hooks/use-inspect-vars-crud'
+import { useInspectVarsCrudCommon } from '../../hooks/use-inspect-vars-crud-common'
+import { useStore } from '../../store'
 import { BlockEnum, VarType } from '../../types'
 import Right from '../right'
 const createVariable = (overrides: Partial<VarInInspect> = {}): VarInInspect => ({
@@ -24,28 +32,58 @@ const createVariable = (overrides: Partial<VarInInspect> = {}): VarInInspect => 
   ...overrides,
 })
 
-const { mockResetConversationVar, mockResetToLastRunVar } = vi.hoisted(() => ({
-  mockResetConversationVar: vi.fn(),
-  mockResetToLastRunVar: vi.fn(),
-}))
+const requests = vi.hoisted(() => ({ reset: vi.fn(), conversation: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.triggers.get': async () => [],
+      'apps.byAppId.workflows.draft.variables.byVariableId.reset.put': requests.reset,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.draft.conversationVariables.get': requests.conversation,
+      'apps.byAppId.workflows.draft.systemVariables.get': async () => ({ items: [] }),
+      'workspaces.current.tools.builtin.get': async () => [],
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => [],
+    }),
+  }
+})
 
-vi.mock('../../hooks/use-inspect-vars-crud', () => ({
-  default: () => ({
-    editInspectVarValue: vi.fn(),
-    resetConversationVar: mockResetConversationVar,
-    resetToLastRunVar: mockResetToLastRunVar,
-  }),
-}))
+function LiveRight({
+  initial,
+  handleOpenMenu,
+}: {
+  initial: currentVarType
+  handleOpenMenu: () => void
+}) {
+  const nodeVars = useStore((s) => s.nodesWithInspectVars)
+  const { conversationVars } = useCurrentVars()
+  const variable =
+    initial.var.type === VarInInspectType.conversation
+      ? conversationVars.find((v) => v.id === initial.var.id)
+      : nodeVars.find((n) => n.nodeId === initial.nodeId)?.vars.find((v) => v.id === initial.var.id)
+  return (
+    <Right
+      nodeId={initial.nodeId}
+      currentNodeVar={variable ? { ...initial, var: variable } : undefined}
+      handleOpenMenu={handleOpenMenu}
+    />
+  )
+}
 
-vi.mock('../../hooks/use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({
-    handleNodeSelect: vi.fn(),
-  }),
-}))
-
-vi.mock('../../hooks/use-tool-icon', () => ({
-  useToolIcon: () => '',
-}))
+function InspectOwner(props: { initial: currentVarType; handleOpenMenu: () => void }) {
+  const owner = useInspectVarsCrudCommon()
+  return (
+    <HooksStoreContextProvider {...owner}>
+      <LiveRight {...props} />
+    </HooksStoreContextProvider>
+  )
+}
 
 const createCurrentNodeVar = (overrides: Partial<VarInInspect> = {}): currentVarType => ({
   nodeId: 'node-1',
@@ -64,13 +102,40 @@ const renderRight = (
   options: { bottomPanelWidth?: number; handleOpenMenu?: () => void } = {},
 ) => {
   const handleOpenMenu = options.handleOpenMenu ?? vi.fn()
-  const result = renderWorkflowFlowComponent(
-    <Right nodeId="node-1" currentNodeVar={currentNodeVar} handleOpenMenu={handleOpenMenu} />,
+  const { queryClient } = createConsoleQueryWrapper()
+  seedModelProviderQueries(queryClient)
+  seedAppDslVersion(queryClient)
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.workflows.draft.conversationVariables.get.queryKey({
+      input: { params: { app_id: 'app-1' } },
+    }),
     {
-      nodes: [],
+      items:
+        currentNodeVar.var.type === VarInInspectType.conversation
+          ? [{ ...currentNodeVar.var, value: currentNodeVar.var.value ?? null, full_content: null }]
+          : [],
+    },
+  )
+  const result = renderWorkflowFlowComponent(
+    <InspectOwner initial={currentNodeVar} handleOpenMenu={handleOpenMenu} />,
+    {
+      queryClient,
+      nodes: [createNode({ id: 'node-1', data: { type: BlockEnum.Code, title: 'Code' } })],
       edges: [],
       initialStoreState: {
         bottomPanelWidth: options.bottomPanelWidth ?? 560,
+        nodesWithInspectVars:
+          currentNodeVar.var.type === VarInInspectType.conversation
+            ? []
+            : [
+                {
+                  nodeId: currentNodeVar.nodeId,
+                  nodeType: BlockEnum.Code,
+                  title: 'Code',
+                  nodePayload: currentNodeVar.nodeData,
+                  vars: [currentNodeVar.var],
+                },
+              ],
       },
     },
   )
@@ -80,7 +145,11 @@ const renderRight = (
 
 describe('VariableInspect Right', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    requests.conversation.mockResolvedValue({ items: [] })
+    requests.reset.mockResolvedValue({
+      ...createVariable({ value: 'last run value' }),
+      full_content: null,
+    })
   })
 
   it('opens the variable menu from the named narrow-panel command', async () => {
@@ -113,24 +182,49 @@ describe('VariableInspect Right', () => {
   it('resets an edited node variable from its named command', async () => {
     const user = userEvent.setup()
 
-    renderRight(createCurrentNodeVar({ edited: true }))
+    const { store } = renderRight(createCurrentNodeVar({ edited: true }))
+    expect(screen.getByRole('textbox')).toHaveValue('value')
 
     await user.click(
       screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.reset' }),
     )
 
-    expect(mockResetToLastRunVar).toHaveBeenCalledWith('node-1', 'var-1')
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue('last run value'))
+    expect(
+      screen.queryByRole('button', { name: 'workflowDebug.debug.variableInspect.reset' }),
+    ).not.toBeInTheDocument()
+    expect(store.getState().nodesWithInspectVars[0]?.vars[0]).toMatchObject({
+      id: 'var-1',
+      value: 'last run value',
+      edited: false,
+    })
+    expect(requests.reset).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', variable_id: 'var-1' },
+    })
   })
 
   it('resets an edited conversation variable from its named command', async () => {
     const user = userEvent.setup()
 
-    renderRight(
-      createCurrentNodeVar({
-        type: VarInInspectType.conversation,
-        edited: true,
-      }),
-    )
+    const variable = createVariable({
+      type: VarInInspectType.conversation,
+      selector: ['conversation', 'result'],
+      edited: true,
+    })
+    requests.conversation.mockResolvedValue({ items: [variable] })
+    requests.reset.mockImplementation(async () => {
+      requests.conversation.mockResolvedValue({
+        items: [{ ...variable, value: 'conversation default', edited: false, full_content: null }],
+      })
+      return { ...variable, value: 'conversation default', edited: false, full_content: null }
+    })
+    renderRight({
+      ...createCurrentNodeVar(),
+      nodeId: 'conversation',
+      nodeType: VarInInspectType.conversation,
+      var: variable,
+    })
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue('value'))
 
     await user.click(
       screen.getByRole('button', {
@@ -138,6 +232,14 @@ describe('VariableInspect Right', () => {
       }),
     )
 
-    expect(mockResetConversationVar).toHaveBeenCalledWith('var-1')
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue('conversation default'))
+    expect(
+      screen.queryByRole('button', {
+        name: 'workflowDebug.debug.variableInspect.resetConversationVar',
+      }),
+    ).not.toBeInTheDocument()
+    expect(requests.reset).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', variable_id: 'var-1' },
+    })
   })
 })

@@ -10,41 +10,17 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { ChunkingMode, DataSourceType, RerankingModeEnum } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { withSelectorKey } from '@/test/i18n-mock'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from '../retrieval-section'
 
-const mockModelListQueryAndDefaultModel = vi.fn()
-const mockModelListQueryAndDefaultModelAndCurrentProviderAndModel = vi.fn()
-const mockUseCurrentProviderAndModel = vi.fn()
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
-    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel(...args),
-  useModelListAndDefaultModel: (...args: unknown[]) => mockModelListQueryAndDefaultModel(...args),
-
-  useCurrentProviderAndModel: (...args: unknown[]) => mockUseCurrentProviderAndModel(...args),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  ModelSelector: ({ value }: { value?: { provider: string; model: string } }) => (
-    <div data-testid="model-selector">
-      {value ? `${value.provider}/${value.model}` : 'no-model'}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/datasets/create/step-two', () => ({
-  IndexingType: {
-    QUALIFIED: 'high_quality',
-    ECONOMICAL: 'economy',
-  },
-}))
-
-const render = (ui: ReactElement) => {
+const render = createNuqsTestRenderer((ui: ReactElement) => {
   const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
   queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
     retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],
   })
@@ -55,7 +31,7 @@ const render = (ui: ReactElement) => {
     { data: [] },
   )
   return renderWithConsoleQuery(ui, { queryClient })
-}
+})
 
 const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,
@@ -170,12 +146,6 @@ describe('RetrievalSection', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockModelListQueryAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
-    mockModelListQueryAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
-      defaultModel: null,
-      currentModel: null,
-    })
-    mockUseCurrentProviderAndModel.mockReturnValue({ currentProvider: null, currentModel: null })
   })
 
   it('renders external retrieval details and propagates changes', async () => {

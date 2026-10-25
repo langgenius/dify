@@ -10,7 +10,6 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleClient } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
 import { downloadBlob } from '@/utils/download'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
@@ -62,10 +61,11 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const exportCheck = useCallback(async () => {
     if (!pipelineId) return
     try {
-      const workflowDraft = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(
-        (env) => env.value_type === 'secret',
+      const workflowDraft = await consoleClient.rag.pipelines.byPipelineId.workflows.draft.get(
+        { params: { pipeline_id: pipelineId } },
+        { context: { silent: true } },
       )
+      const list = workflowDraft.environment_variables.filter((env) => env.value_type === 'secret')
       if (list.length === 0) {
         await handleExportDSL()
         return
@@ -79,7 +79,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     } catch {
       toast.error(t(($) => $.exportFailed, { ns: 'app' }))
     }
-  }, [eventEmitter, handleExportDSL, t, workflowStore])
+  }, [eventEmitter, handleExportDSL, t, pipelineId])
   return {
     exportCheck,
     handleExportDSL,

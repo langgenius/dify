@@ -102,8 +102,9 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const { config } = useChatContext()
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
+    if (!childMessageId) return
     await updateFeedback(
-      { url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } },
+      { messageId: childMessageId, body: { rating: childFeedback.rating } },
       appSourceType,
       installedAppId,
     )

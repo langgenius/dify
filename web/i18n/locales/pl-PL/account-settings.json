@@ -63,7 +63,6 @@
   "account.workspaceNamePlaceholder": "Wprowadź nazwę przestrzeni roboczej",
   "resourceAccessToken.accessibleResources": "Dostępne zasoby",
   "resourceAccessToken.actions": "Działania",
-  "resourceAccessToken.app": "Aplikacja",
   "resourceAccessToken.appCount": "{{count}} Aplikacja",
   "resourceAccessToken.appsCount": "{{count}} Aplikacje",
   "resourceAccessToken.appsSection": "Aplikacje",
@@ -80,7 +79,6 @@
   "resourceAccessToken.editTitle": "Edytuj token dostępu",
   "resourceAccessToken.empty": "Nie ma jeszcze tokenów dostępu",
   "resourceAccessToken.emptyDescription": "Utwórz token dostępu, aby zautomatyzowane zadania i systemy zewnętrzne mogły wyszukiwać wybrane zasoby i korzystać z nich za pomocą Difyctl.",
-  "resourceAccessToken.knowledge": "Baza wiedzy",
   "resourceAccessToken.knowledgeBasesSection": "Bazy wiedzy",
   "resourceAccessToken.knowledgeCount": "{{count}} Baza wiedzy",
   "resourceAccessToken.knowledgesCount": "{{count}} Bazy wiedzy",
@@ -100,6 +98,5 @@
   "resourceAccessToken.tabApps": "Aplikacje",
   "resourceAccessToken.tabKnowledgeBases": "Bazy wiedzy",
   "resourceAccessToken.token": "Token",
-  "resourceAccessToken.total": "Łącznie: {{total}}",
-  "resourceAccessToken.trackingId": "Identyfikator śledzenia"
+  "resourceAccessToken.total": "Łącznie: {{total}}"
 }

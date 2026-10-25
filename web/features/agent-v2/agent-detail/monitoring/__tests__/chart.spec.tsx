@@ -8,11 +8,6 @@ vi.mock('echarts-for-react/esm/core', () => ({
   ),
 }))
 
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
-}))
-
 describe('AgentMonitoringChart', () => {
   it('provides chart dates and values as accessible data and toggles its disclosure', async () => {
     const user = userEvent.setup()

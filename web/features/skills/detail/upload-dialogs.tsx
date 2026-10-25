@@ -8,11 +8,11 @@ import {
   Dialog,
   DialogBody,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
@@ -176,7 +176,7 @@ export function SkillUploadReviewDialog({
         <DialogHeader>
           <DialogTitle>{t(($) => $['skillManagement.detail.uploadReviewTitle'])}</DialogTitle>
           <DialogDescription>{summary}</DialogDescription>
-          <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+          <DialogHeaderCloseButton aria-label={tCommon(($) => $['operation.close'])} />
         </DialogHeader>
         <DialogBody className="flex flex-col gap-4">
           {candidateItems.length > 0 && (
@@ -247,7 +247,7 @@ export function SkillUploadFailuresDialog({
               total: items.length,
             })}
           </DialogDescription>
-          <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+          <DialogHeaderCloseButton aria-label={tCommon(($) => $['operation.close'])} />
         </DialogHeader>
         <DialogBody className="flex flex-col gap-1">
           {failedItems.map((item) => (

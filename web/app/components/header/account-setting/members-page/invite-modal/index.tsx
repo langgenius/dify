@@ -7,11 +7,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -220,7 +220,7 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
           <DialogDescription>
             {t(($) => $['members.inviteTeamMemberTip'], { ns: 'workspaceMembers' })}
           </DialogDescription>
-          <DialogCloseButton
+          <DialogHeaderCloseButton
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             disabled={isPending}
           />

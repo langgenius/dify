@@ -1,33 +1,26 @@
-import type { ComponentProps } from 'react'
 import type {
   DeliveryMethod,
   HumanInputNodeType,
 } from '@/app/components/workflow/nodes/human-input/types'
 import type { Node } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
-import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import {
+  DeliveryMethodType,
+  UserActionButtonType,
+} from '@/app/components/workflow/nodes/human-input/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import HumanInputFormList from '../human-input-form-list'
 
-type ContentProps = ComponentProps<
-  typeof import('../human-input-content/unsubmitted').UnsubmittedHumanInputContent
->
-const mockContent = vi.fn<(props: ContentProps) => void>()
-// Form filling has its own tests; this list owns visibility and delivery-mode flags.
-vi.mock('../human-input-content/unsubmitted', () => ({
-  UnsubmittedHumanInputContent: (props: ContentProps) => {
-    mockContent(props)
-    return null
-  },
-}))
 const createForm = (overrides: Partial<HumanInputFormData> = {}): HumanInputFormData => ({
   form_id: 'form1',
   node_id: 'node1',
   node_title: 'Visible form',
   form_content: '',
   inputs: [],
-  actions: [],
+  actions: [{ id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary }],
   form_token: 'token',
   resolved_default_values: {},
   display_in_ui: true,
@@ -50,9 +43,10 @@ const createNode = (deliveryMethods: DeliveryMethod[]): Node<HumanInputNodeType>
   },
 })
 
-it('renders only visible forms and forwards the selected form and submit boundary', () => {
+it('submits only the visible form using its token and action', async () => {
+  const user = userEvent.setup()
   const form = createForm()
-  const onSubmit = vi.fn()
+  const onSubmit = vi.fn().mockResolvedValue(undefined)
   render(
     <HumanInputFormList
       humanInputFormDataList={[
@@ -69,8 +63,9 @@ it('renders only visible forms and forwards the selected form and submit boundar
   )
   expect(screen.getByText('Visible form')).toBeInTheDocument()
   expect(screen.queryByText('Hidden form')).not.toBeInTheDocument()
-  expect(mockContent).toHaveBeenCalledOnce()
-  expect(mockContent).toHaveBeenCalledWith(expect.objectContaining({ formData: form, onSubmit }))
+  expect(screen.getAllByRole('button', { name: 'Approve' })).toHaveLength(1)
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  expect(onSubmit).toHaveBeenCalledExactlyOnceWith('token', { inputs: {}, action: 'approve' })
 })
 
 it.each([
@@ -119,11 +114,13 @@ it.each([
       getHumanInputNodeData={() => node}
     />,
   )
-  expect(mockContent).toHaveBeenCalledWith(
-    expect.objectContaining({
-      showEmailTip: email,
-      isEmailDebugMode: emailDebug,
-      showDebugModeTip: debug,
-    }),
-  )
+  const emailTip = screen.queryByText('workflow.common.humanInputEmailTip')
+  const emailDebugTip = screen.queryByText(/workflow.common.humanInputEmailTipInDebugMode/)
+  const webappTip = screen.queryByText('workflow.common.humanInputWebappTip')
+  if (email && !emailDebug) expect(emailTip).toBeInTheDocument()
+  else expect(emailTip).not.toBeInTheDocument()
+  if (email && emailDebug) expect(emailDebugTip).toBeInTheDocument()
+  else expect(emailDebugTip).not.toBeInTheDocument()
+  if (debug) expect(webappTip).toBeInTheDocument()
+  else expect(webappTip).not.toBeInTheDocument()
 })

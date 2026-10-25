@@ -115,6 +115,7 @@ describe('SupportMenu', () => {
   }
 
   it('renders contact us before Discord when Zendesk is configured', async () => {
+    const user = userEvent.setup()
     renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
@@ -127,25 +128,23 @@ describe('SupportMenu', () => {
         .compareDocumentPosition(screen.getByText('common.userProfile.discord')),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
     expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
   })
 
   it('reports a Zendesk load failure so the user can retry', async () => {
+    const user = userEvent.setup()
     mockOpenZendeskWindow.mockRejectedValueOnce(new Error('load failed'))
     renderSupportMenu()
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
     await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('common.api.actionFailed'))
   })
 
   it('renders contact us with upgrade badge for Cloud sandbox plan without dedicated support', async () => {
+    const user = userEvent.setup()
     plan = 'sandbox'
 
     renderSupportMenu()
@@ -158,7 +157,7 @@ describe('SupportMenu', () => {
     const upgradeItem = screen.getByRole('menuitem', {
       name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
     })
-    await userEvent.setup().click(upgradeItem)
+    await user.click(upgradeItem)
 
     await waitFor(() =>
       expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
@@ -167,6 +166,7 @@ describe('SupportMenu', () => {
   })
 
   it('keeps Zendesk contact us for Cloud sandbox plan with support email and Zendesk configured', async () => {
+    const user = userEvent.setup()
     mockConfig.supportEmailAddress = 'support@example.com'
     plan = 'sandbox'
 
@@ -174,9 +174,7 @@ describe('SupportMenu', () => {
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
-    await userEvent
-      .setup()
-      .click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.userProfile.contactUs' }))
 
     expect(zendeskRuntime.open).toHaveBeenCalledWith('CLOUD')
     expect(onPricingUrlUpdate).not.toHaveBeenCalled()

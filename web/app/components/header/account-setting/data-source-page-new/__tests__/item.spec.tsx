@@ -10,11 +10,11 @@ import Item from '../item'
  */
 
 // Helper to trigger rename via the real Operator component's dropdown
-const triggerRename = async () => {
+const triggerRename = async (user: ReturnType<typeof userEvent.setup>) => {
   const dropdownTrigger = screen.getByRole('button')
-  await userEvent.click(dropdownTrigger)
+  await user.click(dropdownTrigger)
   const renameOption = await screen.findByText('common.operation.rename')
-  await userEvent.click(renameOption)
+  await user.click(renameOption)
   await waitFor(() => {
     expect(screen.getByPlaceholderText('common.placeholder.input')).toBeInTheDocument()
   })
@@ -92,17 +92,18 @@ describe('Item Component', () => {
     )
 
     it('should call onAction with "rename" and correct payload when Save is clicked', async () => {
+      const user = userEvent.setup()
       // Arrange
       render(
         <Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />,
       )
-      await triggerRename()
+      await triggerRename(user)
       const input = screen.getByPlaceholderText('common.placeholder.input')
-      await userEvent.clear(input)
-      await userEvent.type(input, 'New Name')
+      await user.clear(input)
+      await user.type(input, 'New Name')
 
       // Act
-      await userEvent.click(screen.getByText('common.operation.save'))
+      await user.click(screen.getByText('common.operation.save'))
 
       // Assert
       expect(mockOnAction).toHaveBeenCalledWith('rename', mockCredentialItem, {
@@ -115,24 +116,25 @@ describe('Item Component', () => {
     })
 
     it('should exit rename mode without calling onAction when Cancel is clicked', async () => {
+      const user = userEvent.setup()
       // Arrange
       render(
         <Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />,
       )
-      await triggerRename()
+      await triggerRename(user)
       const input = screen.getByPlaceholderText('common.placeholder.input')
-      await userEvent.clear(input)
-      await userEvent.type(input, 'Cancelled Name')
+      await user.clear(input)
+      await user.type(input, 'Cancelled Name')
 
       // Act
-      await userEvent.click(screen.getByText('common.operation.cancel'))
+      await user.click(screen.getByText('common.operation.cancel'))
 
       // Assert
       expect(mockOnAction).not.toHaveBeenCalled()
       // Should switch back to view mode
       expect(screen.queryByPlaceholderText('common.placeholder.input')).not.toBeInTheDocument()
       expect(screen.getByText('Test Credential')).toBeInTheDocument()
-      await triggerRename()
+      await triggerRename(user)
       expect(
         screen.getByRole('textbox', { name: 'common.operation.rename Test Credential' }),
       ).toHaveValue('Test Credential')
@@ -141,6 +143,7 @@ describe('Item Component', () => {
 
   describe('Event Bubbling', () => {
     it('should stop event propagation when interacting with rename mode elements', async () => {
+      const user = userEvent.setup()
       // Arrange
       const parentClick = vi.fn()
       render(
@@ -151,20 +154,20 @@ describe('Item Component', () => {
       )
       // Act & Assert
       // We need to enter rename mode first
-      await triggerRename()
+      await triggerRename(user)
       parentClick.mockClear()
 
-      await userEvent.click(screen.getByPlaceholderText('common.placeholder.input'))
+      await user.click(screen.getByPlaceholderText('common.placeholder.input'))
       expect(parentClick).not.toHaveBeenCalled()
 
-      await userEvent.click(screen.getByText('common.operation.save'))
+      await user.click(screen.getByText('common.operation.save'))
       expect(parentClick).not.toHaveBeenCalled()
 
       // Re-enter rename mode for cancel test
-      await triggerRename()
+      await triggerRename(user)
       parentClick.mockClear()
 
-      await userEvent.click(screen.getByText('common.operation.cancel'))
+      await user.click(screen.getByText('common.operation.cancel'))
       expect(parentClick).not.toHaveBeenCalled()
     })
   })

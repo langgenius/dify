@@ -3,12 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VersionHistoryButton } from '../version-history-button'
 
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({
-    theme: 'light',
-  }),
-}))
-
 describe('VersionHistoryButton', () => {
   it('opens history once per press from the page and respects editable and handled keys', async () => {
     const user = userEvent.setup()

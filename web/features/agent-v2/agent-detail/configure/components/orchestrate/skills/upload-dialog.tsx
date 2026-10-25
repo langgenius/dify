@@ -10,11 +10,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -275,7 +276,6 @@ export function AgentSkillUploadDialog({
       ) => {
         toast.success(t(($) => $['agentDetail.configure.skills.upload.success']))
         onUploaded?.(toUploadedSkill(response, file))
-        setFile(undefined)
         onOpenChange(false)
       },
     }
@@ -317,24 +317,28 @@ export function AgentSkillUploadDialog({
     )
   }
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      uploadAgentSkillMutation.reset()
-      uploadWorkflowSkillMutation.reset()
-      setFile(undefined)
-    }
-    onOpenChange(nextOpen)
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && uploadSkillMutation.isPending) details.cancel()
+        else onOpenChange(nextOpen)
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) {
+          uploadSkillMutation.reset()
+          setFile(undefined)
+        }
+      }}
+      disablePointerDismissal
+    >
       <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
         <DialogHeader>
           <DialogTitle>{t(($) => $['agentDetail.configure.skills.upload.title'])}</DialogTitle>
           <DialogDescription>
             {t(($) => $['agentDetail.configure.skills.upload.description'])}
           </DialogDescription>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
         </DialogHeader>
         <DialogBody>
           <AgentSkillPackageUploader
@@ -344,13 +348,9 @@ export function AgentSkillUploadDialog({
           />
         </DialogBody>
         <DialogFooter>
-          <Button
-            type="button"
-            onClick={() => handleOpenChange(false)}
-            disabled={uploadSkillMutation.isPending}
-          >
+          <DialogClose render={<Button disabled={uploadSkillMutation.isPending} />}>
             {tCommon(($) => $['operation.cancel'])}
-          </Button>
+          </DialogClose>
           <Button
             type="button"
             variant="primary"

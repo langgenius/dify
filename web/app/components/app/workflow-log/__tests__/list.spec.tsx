@@ -46,12 +46,6 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div data-testid="block-icon">BlockIcon</div>,
 }))
 
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => {
-    return { theme: 'light' }
-  },
-}))
-
 const createMockApp = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWithSite =>
   createAppDetailFixture({
     id: 'test-app-id',

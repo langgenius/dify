@@ -544,12 +544,13 @@ describe('EmbeddingProcess', () => {
 
   describe('User Interactions', () => {
     it('should link to the document list and invalidate its cache on activation', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       const props = createDefaultProps({ datasetId: 'my-dataset-123' })
 
       render(<EmbeddingProcess {...props} />)
       const link = screen.getByRole('link', { name: 'datasetCreation.stepThree.navTo' })
       expect(link).toHaveAttribute('href', '/datasets/my-dataset-123/documents')
-      await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(link)
+      await user.click(link)
 
       expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
         queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),

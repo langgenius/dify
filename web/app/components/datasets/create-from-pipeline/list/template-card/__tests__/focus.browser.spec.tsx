@@ -51,7 +51,13 @@ describe('Template card focus', () => {
     // Browser mode is required: display:none prevents native focus restoration,
     // and CSS hover/focus-within decides whether the returned button is visible.
     const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+      defaultOptions: {
+        queries: {
+          retry: false,
+          refetchOnMount: false,
+          refetchOnWindowFocus: false,
+        },
+      },
     })
     queryClient.setQueryData(
       consoleQuery.rag.pipeline.templates.byTemplateId.get.queryKey({

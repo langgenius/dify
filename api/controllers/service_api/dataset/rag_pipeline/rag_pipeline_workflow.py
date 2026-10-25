@@ -330,7 +330,7 @@ class PipelineRunApi(DatasetApiResource):
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except Exception as ex:
-            raise PipelineRunError(description=str(ex))
+            raise PipelineRunError(description=str(ex)) from ex
 
 
 @service_api_ns.route("/datasets/pipeline/file-upload")
@@ -403,8 +403,8 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
-            raise FileTooLargeError(file_too_large_error.description)
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
+            raise FileTooLargeError(file_too_large_error.description) from file_too_large_error
+        except services.errors.file.UnsupportedFileTypeError as caught_error:
+            raise UnsupportedFileTypeError() from caught_error
 
         return dump_response(PipelineUploadFileResponse, upload_file), 201

@@ -5,7 +5,7 @@ const testFilePattern = /\.(?:spec|test)\.[cm]?[jt]sx?$/
 const interactivePrimitiveMockPattern =
   /vi\.mock\(\s*['"]@langgenius\/dify-ui\/(?:alert-dialog|avatar|button|dialog|dropdown-menu|pagination|popover|select|slider|switch|textarea|tooltip)['"]/
 const interactiveWrapperMockPattern =
-  /vi\.mock\(\s*['"][^'"]*(?:block-selector|plugin-version-picker|time-picker)['"]/
+  /vi\.mock\(\s*['"][^'"]*(?:block-selector|plugin-version-picker|time-picker|prompt-editor)(?:\/index)?['"]/
 
 const collectTestFiles = (directory: string): string[] => {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
