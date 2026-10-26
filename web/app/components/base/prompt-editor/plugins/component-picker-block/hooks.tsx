@@ -177,9 +177,9 @@ export const useVariableOptions = (
     })
     if (!queryString) return baseOptions
 
-    const regex = new RegExp(queryString, 'i')
-
-    return baseOptions.filter((option) => regex.test(option.key))
+    return baseOptions.filter((option) =>
+      option.key.toLowerCase().includes(queryString.toLowerCase()),
+    )
   }, [editor, queryString, variableBlock])
 
   const addOption = useMemo(() => {
@@ -238,7 +238,7 @@ export const useExternalToolOptions = (
                   background={item.icon_background}
                 />
               }
-              extraElement={<div className="text-xs text-text-tertiary">{item.variableName}</div>}
+              extraElement={<span className="text-xs text-text-tertiary">{item.variableName}</span>}
               queryString={queryString}
               isSelected={isSelected}
               onClick={onSelect}
@@ -253,9 +253,9 @@ export const useExternalToolOptions = (
     })
     if (!queryString) return baseToolOptions
 
-    const regex = new RegExp(queryString, 'i')
-
-    return baseToolOptions.filter((option) => regex.test(option.key))
+    return baseToolOptions.filter((option) =>
+      option.key.toLowerCase().includes(queryString.toLowerCase()),
+    )
   }, [editor, queryString, externalToolBlockType])
 
   const addOption = useMemo(() => {

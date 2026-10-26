@@ -1674,14 +1674,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/prompt-editor/plugins/component-picker-block/variable-option.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/context-block/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
@@ -5007,11 +4999,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 6
-    }
-  },
-  "web/app/components/workflow/update-dsl-modal.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/workflow/utils/__tests__/node-navigation.spec.ts": {
