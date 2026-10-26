@@ -8,7 +8,7 @@ from core.tools.utils.uuid_utils import is_valid_uuid
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
-        (str(uuid.uuid4()), True),
+        ("00000000-0000-4000-8000-000000000001", True),
         ("not-a-uuid", False),
         ("", False),
         (None, False),
@@ -16,3 +16,7 @@ from core.tools.utils.uuid_utils import is_valid_uuid
 )
 def test_is_valid_uuid(value: str | None, expected: bool) -> None:
     assert is_valid_uuid(value) is expected
+
+
+def test_is_valid_uuid_accepts_runtime_generated_uuid4() -> None:
+    assert is_valid_uuid(str(uuid.uuid4())) is True
