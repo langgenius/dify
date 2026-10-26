@@ -33,10 +33,8 @@ layers =
 unmatched_ignore_imports_alerting = error
 ignore_imports =
     core.app.app_config.easy_ui_based_app.dataset.manager -> services.knowledge.dataset_service
-    core.app.apps.advanced_chat.app_generator -> controllers.console.app.workflow
-    core.app.apps.advanced_chat.app_generator -> services.conversation_service
-    core.app.apps.advanced_chat.app_generator -> services.errors.conversation
-    core.app.apps.advanced_chat.app_generator -> services.workflow_draft_variable_service
+    # Thin legacy generator modules re-export canonical service adapters during path migration.
+    core.app.apps.advanced_chat.app_generator -> services.workflow.execution.adapters.chatflow.app_generator
     core.app.apps.advanced_chat.app_runner -> services.workflow.execution.adapters.chatflow.app_runner
     core.app.apps.agent_app.app_generator -> services.agent.composer_service
     core.app.apps.agent_app.app_generator -> services.agent.workspace_service
@@ -54,16 +52,10 @@ ignore_imports =
     core.app.apps.chat.app_generator -> services.conversation_service
     core.app.apps.common.workflow_response_converter -> services.variable_truncator
     core.app.apps.common.workflow_response_converter -> services.workflow.execution.adapters.workflow_entry
-    core.app.apps.completion.app_generator -> services.errors.app
-    core.app.apps.completion.app_generator -> services.errors.message
     core.app.apps.message_based_app_generator -> services.errors.app_model_config
     core.app.apps.message_based_app_generator -> services.errors.conversation
     core.app.apps.message_based_app_generator -> services.errors.message
-    core.app.apps.pipeline.pipeline_generator -> services.rag_pipeline.rag_pipeline_task_proxy
-    core.app.apps.pipeline.pipeline_generator -> services.knowledge.dataset_service
-    core.app.apps.pipeline.pipeline_generator -> services.data_source.provider_service
-    core.app.apps.pipeline.pipeline_generator -> services.feature_service
-    core.app.apps.pipeline.pipeline_generator -> services.workflow_draft_variable_service
+    core.app.apps.pipeline.pipeline_generator -> services.workflow.execution.adapters.pipeline.pipeline_generator
     core.app.apps.pipeline.pipeline_runner -> services.workflow.execution.adapters.pipeline.pipeline_runner
     core.app.apps.workflow.app_generator -> services.workflow.execution.adapters.workflow.app_generator
     core.app.apps.workflow.app_runner -> services.workflow.execution.adapters.workflow.app_runner
@@ -75,6 +67,8 @@ ignore_imports =
     core.helper.credential_utils -> services.enterprise.plugin_manager_service
     core.helper.credential_utils -> services.system_feature_service
     core.mcp.auth_client -> services.tools.mcp_tools_manage_service
+    # Type-only tracing port reference until CoreOps contracts migrate; no runtime service import.
+    core.ops.base_trace_instance -> services.workflow.execution.adapters.agent_v2.runtime_request_builder
     core.provider_manager -> services.credit_pool_service
     core.provider_manager -> services.feature_service
     core.rag.datasource.retrieval_service -> services.knowledge.external.service
