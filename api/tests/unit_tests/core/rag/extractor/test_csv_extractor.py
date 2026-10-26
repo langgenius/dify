@@ -2,7 +2,7 @@ import csv
 import io
 from pathlib import Path
 from types import SimpleNamespace, TracebackType
-from typing import override
+from typing import Self, override
 
 import pandas as pd
 import pytest
@@ -13,7 +13,7 @@ from core.rag.extractor.csv_extractor import CSVExtractor
 
 class _ManagedStringIO(io.StringIO):
     @override
-    def __enter__(self) -> "_ManagedStringIO":
+    def __enter__(self) -> Self:
         return self
 
     @override
