@@ -77,7 +77,7 @@
     "tag": "beta"
   },
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "build": "vp pack",
     "prepare": "pnpm run build",
     "type-check": "tsc -p tsconfig.json --noEmit && tsc --runExternalCode --noEmit -p examples/petstore/tsconfig.json",
     "test": "node --test --test-concurrency=1 test/*.test.mjs",
@@ -103,7 +103,8 @@
     "@tanstack/query-core": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:ts71",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "vite": "catalog:public-vite"

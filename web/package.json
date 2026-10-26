@@ -29,6 +29,8 @@
     "lint:tss": "tsslint --project tsconfig.json",
     "migrate:type-assertions": "TSSLINT_TYPE_ASSERTION_MIGRATION=true tsslint --project tsconfig.json --force --fix",
     "preinstall": "npx only-allow pnpm",
+    "prebuild": "pnpm --filter @dify/openapi-content-mapper build",
+    "prebuild:vinext": "pnpm --filter @dify/openapi-content-mapper build",
     "start": "node ./scripts/copy-and-start.mjs",
     "start:vinext": "vinext start",
     "storybook": "storybook dev -p 6006",

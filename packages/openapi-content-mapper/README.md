@@ -438,6 +438,11 @@ No running API, database or private source checkout is needed. CI installs the
 Python environment before the standalone Console checks. `compose:console` now
 prints the composed OpenAPI JSON to stdout instead of creating a file.
 
+The package uses `vp pack` and builds through `prepare` during workspace installation,
+like `@langgenius/dev-proxy`. Web's `prebuild` and `prebuild:vinext` hooks also build
+the SDK so production builds work after an installation with `--ignore-scripts`,
+including the unchanged Docker build flow.
+
 The Console audit checks every generated procedure against a reviewed per-operation
 type-difference baseline. Standalone fixtures verify bundle pruning, error maps and
 workspace editor support without importing a production mapper client. The broader
