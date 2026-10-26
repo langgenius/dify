@@ -64,7 +64,8 @@ it('reveals the entire upload drop zone on expansion without moving the panel or
     await expect.element(upload).toBeChecked()
     await expect.element(upload).toHaveFocus()
     const input = screen.getByLabelText('knowledgeSpace.uploadFiles').element() as HTMLInputElement
-    const dropzone = input.labels![0]
+    const dropzone = input.labels?.[0]
+    if (!dropzone) throw new Error('Upload input must have an associated drop zone label')
     await expect
       .poll(() => {
         const box = dropzone.getBoundingClientRect()
