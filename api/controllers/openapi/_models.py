@@ -164,6 +164,24 @@ class DeviceTokenResponse(BaseModel):
     subject_issuer: str | None = None
 
 
+class OAuthTokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    expires_in: int
+    refresh_token: str | None = None
+    subject_type: SubjectType
+    account: AccountPayload | None = None
+    workspaces: list[WorkspacePayload] = []
+    default_workspace_id: str | None = None
+    token_id: str
+    subject_email: str | None = None
+    subject_issuer: str | None = None
+
+
+class OAuthTokenErrorResponse(BaseModel):
+    error: str
+
+
 class AccountResponse(BaseModel):
     subject_type: SubjectType
     subject_email: str | None = None

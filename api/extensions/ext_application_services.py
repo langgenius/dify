@@ -192,6 +192,8 @@ from services.oauth_device_application_service import (
 )
 from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
+from services.oauth_token_grants import build_grant_handlers
+from services.oauth_token_service import OAuthTokenService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
@@ -346,6 +348,7 @@ class ApplicationServices:
     oauth_server: OAuthServerService
     oauth_device: OAuthDeviceApplicationService
     oauth_clients: OAuthClientRegistry
+    oauth_token: OAuthTokenService
     init_validation: InitValidationService
     installed_apps: InstalledAppServices
     notifications: NotificationService
@@ -787,6 +790,7 @@ def build_application_services(
             workspaces=workspace_repository,
         ),
         oauth_clients=OAuthClientRegistry(sources=[SQLAlchemyOAuthClientRepository(session_factory=database_client)]),
+        oauth_token=OAuthTokenService(handlers=build_grant_handlers()),
         init_validation=InitValidationService(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),

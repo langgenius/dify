@@ -1040,6 +1040,24 @@ export type NodeTypeRow = {
   version: string
 }
 
+export type OAuthTokenErrorResponse = {
+  error: string
+}
+
+export type OAuthTokenResponse = {
+  access_token: string
+  account?: AccountPayload | null
+  default_workspace_id?: string | null
+  expires_in: number
+  refresh_token?: string | null
+  subject_email?: string | null
+  subject_issuer?: string | null
+  subject_type: SubjectType
+  token_id: string
+  token_type: string
+  workspaces?: Array<WorkspacePayload>
+}
+
 export type OpenApiErrorCode =
   | 'agent_not_published'
   | 'app_mode_mismatch'
@@ -3488,6 +3506,27 @@ export type PostOauthDeviceTokenResponses = {
 
 export type PostOauthDeviceTokenResponse =
   PostOauthDeviceTokenResponses[keyof PostOauthDeviceTokenResponses]
+
+export type PostOauthTokenData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/oauth/token'
+}
+
+export type PostOauthTokenErrors = {
+  400: OAuthTokenErrorResponse | ErrorBody
+  401: OAuthTokenErrorResponse | ErrorBody
+  default: ErrorBody
+}
+
+export type PostOauthTokenError = PostOauthTokenErrors[keyof PostOauthTokenErrors]
+
+export type PostOauthTokenResponses = {
+  200: OAuthTokenResponse
+}
+
+export type PostOauthTokenResponse = PostOauthTokenResponses[keyof PostOauthTokenResponses]
 
 export type GetPermittedExternalAppsData = {
   body?: never

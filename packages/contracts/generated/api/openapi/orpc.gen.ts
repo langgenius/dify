@@ -240,6 +240,7 @@ import {
   zPostOauthDeviceDenyResponse,
   zPostOauthDeviceTokenBody,
   zPostOauthDeviceTokenResponse,
+  zPostOauthTokenResponse,
   zPostWorkspacesByWorkspaceIdAppsAdvancedChatBody,
   zPostWorkspacesByWorkspaceIdAppsAdvancedChatPath,
   zPostWorkspacesByWorkspaceIdAppsAdvancedChatResponse,
@@ -1619,8 +1620,23 @@ export const device = {
   token,
 }
 
+export const post20 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postOauthToken',
+    path: '/oauth/token',
+    tags: ['openapi'],
+  })
+  .output(zPostOauthTokenResponse)
+
+export const token2 = {
+  post: post20,
+}
+
 export const oauth = {
   device,
+  token: token2,
 }
 
 export const get37 = oc
