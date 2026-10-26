@@ -225,11 +225,13 @@ function PickerRoot({
     if (
       contains(triggerRef.current, nextTarget) ||
       contains(clearRef.current, nextTarget) ||
-      contains(popupRef.current, nextTarget)
+      contains(popupRef.current, nextTarget) ||
+      (nextTarget?.hasAttribute('data-base-ui-focus-guard') &&
+        nextTarget.parentElement === popupRef.current?.parentElement)
     )
       return
     if (field.focusOwnerRef.current !== triggerRef) return
-    // Focus guards and closing popovers can briefly move focus outside before restoring it.
+    // Closing popovers can briefly restore trigger focus before the outside target receives it.
     blurTimeout.start(0, () => {
       const target = activeElement(ownerDocument(inputRef.current))
       if (

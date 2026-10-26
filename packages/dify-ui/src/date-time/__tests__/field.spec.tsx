@@ -478,7 +478,24 @@ it('validates on leaving the complete picker, not when focus enters its portalle
     .getByRole('listbox', { name: 'Hour' })
     .getByRole('option', { name: '2', exact: true })
     .click()
-  await userEvent.tab({ shift: true })
+  let restoreFocus: FrameRequestCallback | undefined
+  const animationFrame = vi
+    .spyOn(window, 'requestAnimationFrame')
+    .mockImplementationOnce((callback) => {
+      restoreFocus = callback
+      return 0
+    })
+  try {
+    await userEvent.tab({ shift: true })
+    // Let blur timers run while the browser is waiting to render the focus-restoration frame.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(restoreFocus).toBeDefined()
+    expect(validate).not.toHaveBeenCalled()
+    expect(stateOf(screen)).toMatchObject({ touched: false, focused: true })
+  } finally {
+    animationFrame.mockRestore()
+    restoreFocus?.(performance.now())
+  }
   await expect.element(screen.getByRole('button', { name: 'OK', exact: true })).toHaveFocus()
   await userEvent.tab()
   await expect

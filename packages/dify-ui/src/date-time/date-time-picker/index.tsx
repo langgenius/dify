@@ -54,8 +54,9 @@ type DateTimePickerProps = PickerFieldProps &
   }
 type ContextValue = Omit<
   DateTimePickerProps,
-  'value' | 'defaultValue' | 'onValueChange' | 'children'
+  'value' | 'defaultValue' | 'onValueChange' | 'children' | 'labels'
 > & {
+  labels: DateTimePickerLabels
   value: Exclude<DateTimePickerProps['value'], undefined>
   commit: (value: Date | null, details: DateTimePickerChangeEventDetails) => boolean
 }
@@ -114,16 +115,14 @@ function DateTimePicker({
       props.isTimeUnavailable?.(wall)),
   )
 
+  const labels = { ...defaultLabels, ...props.labels }
+
   return (
-    <Context.Provider value={{ ...props, value, commit }}>
+    <Context.Provider value={{ ...props, value, commit, labels }}>
       <PickerRoot
         {...props}
         invalid={props.invalid || unavailable}
-        validationMessage={
-          unavailable
-            ? (props.labels?.unavailable ?? defaultLabels.unavailable)
-            : props.validationMessage
-        }
+        validationMessage={unavailable ? labels.unavailable : props.validationMessage}
         placeholder={props.placeholder ?? 'Select date and time'}
         displayValue={
           value
@@ -161,7 +160,7 @@ const DateTimePickerValue = PickerValue
 function DateTimePickerContent(props: DateTimePickerContentProps) {
   const { value, timeZone, labels } = useContext()
   return (
-    <PickerContent {...props} closeLabel={labels?.close ?? defaultLabels.close}>
+    <PickerContent {...props} closeLabel={labels.close}>
       <Session key={`${value?.getTime() ?? ''}-${timeZone}`} />
     </PickerContent>
   )
@@ -186,7 +185,6 @@ function Session() {
   )
   const [view, setView] = React.useState<'date' | 'time'>('date')
   const ref = React.useRef<HTMLDivElement>(null)
-  const text = { ...defaultLabels, ...labels }
   function availableInstant(candidate: typeof draft) {
     const instant = resolveZonedWallTime(candidate, timeZone, value)
     if (
@@ -250,7 +248,7 @@ function Session() {
           close()
       }}
     >
-      {text.apply}
+      {labels.apply}
     </Button>
   )
   return (
@@ -266,14 +264,14 @@ function Session() {
           minDate={minDate}
           maxDate={maxDate}
           isDateUnavailable={isDateUnavailable}
-          labels={text}
+          labels={labels}
           footer={
             <React.Fragment>
               <Button
                 size="small"
                 variant="secondary-accent"
                 className="gap-1 px-1.5"
-                aria-label={`${text.pickTime}: ${timeText}`}
+                aria-label={`${labels.pickTime}: ${timeText}`}
                 onClick={() => changeView('time')}
               >
                 <span
@@ -284,7 +282,7 @@ function Session() {
               </Button>
               <div className="flex gap-1">
                 <Button size="small" variant="ghost-accent" onClick={setNow}>
-                  {text.now}
+                  {labels.now}
                 </Button>
                 {apply}
               </div>
@@ -293,7 +291,7 @@ function Session() {
         />
       ) : (
         <PickerPanel
-          header={<PickerPanelHeader>{text.pickTime}</PickerPanelHeader>}
+          header={<PickerPanelHeader>{labels.pickTime}</PickerPanelHeader>}
           footer={
             <React.Fragment>
               <Button
@@ -306,11 +304,11 @@ function Session() {
                   aria-hidden="true"
                   className="i-ri-calendar-line size-3 forced-colors:text-[ButtonText] forced-colors:forced-color-adjust-none"
                 />
-                {text.backToDate}
+                {labels.backToDate}
               </Button>
               <div className="flex gap-1">
                 <Button size="small" variant="ghost-accent" onClick={setNow}>
-                  {text.now}
+                  {labels.now}
                 </Button>
                 {apply}
               </div>
@@ -323,7 +321,7 @@ function Session() {
             onValueChange={(update) =>
               setDraft((previous) => ({ ...previous, time: update(previous.time) }))
             }
-            labels={text}
+            labels={labels}
             locale={locale.code}
             hourCycle={hourCycle}
           />
@@ -335,7 +333,7 @@ function Session() {
           role="status"
           className="shrink-0 px-2 system-xs-regular text-text-destructive"
         >
-          {text.unavailable}
+          {labels.unavailable}
         </p>
       )}
     </div>

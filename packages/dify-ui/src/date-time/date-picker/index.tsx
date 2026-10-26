@@ -45,8 +45,9 @@ type DatePickerProps = PickerFieldProps &
   }
 type ContextValue = Omit<
   DatePickerProps,
-  'value' | 'defaultValue' | 'onValueChange' | 'children'
+  'value' | 'defaultValue' | 'onValueChange' | 'children' | 'labels'
 > & {
+  labels: DatePickerLabels
   value: Exclude<DatePickerProps['value'], undefined>
   commit: (value: string | null, details: DatePickerChangeEventDetails) => boolean
 }
@@ -95,16 +96,14 @@ function DatePicker({
       props.isDateUnavailable?.(value)),
   )
 
+  const labels = { ...defaultLabels, ...props.labels }
+
   return (
-    <Context.Provider value={{ ...props, value, commit }}>
+    <Context.Provider value={{ ...props, value, commit, labels }}>
       <PickerRoot
         {...props}
         invalid={props.invalid || unavailable}
-        validationMessage={
-          unavailable
-            ? (props.labels?.unavailable ?? defaultLabels.unavailable)
-            : props.validationMessage
-        }
+        validationMessage={unavailable ? labels.unavailable : props.validationMessage}
         placeholder={props.placeholder ?? 'Select date'}
         displayValue={
           parsedValue
@@ -139,7 +138,7 @@ const DatePickerValue = PickerValue
 function DatePickerContent(props: DatePickerContentProps) {
   const { value, labels } = useContext()
   return (
-    <PickerContent {...props} closeLabel={labels?.close ?? defaultLabels.close}>
+    <PickerContent {...props} closeLabel={labels.close}>
       <Session key={value ?? ''} />
     </PickerContent>
   )
@@ -169,7 +168,7 @@ function Session() {
       minDate={minDate}
       maxDate={maxDate}
       isDateUnavailable={isDateUnavailable}
-      labels={{ ...defaultLabels, ...labels }}
+      labels={labels}
     />
   )
 }
