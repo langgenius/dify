@@ -29,6 +29,8 @@ import {
 } from '../internal/picker-parts'
 import { usePickerValue } from '../internal/use-picker-value'
 
+type DatePickerLabels = CalendarPanelLabels & { close: string }
+
 type DatePickerChangeEventReason = PickerChangeEventReason
 type DatePickerChangeEventDetails = PickerChangeEventDetails
 
@@ -39,7 +41,7 @@ type DatePickerProps = PickerFieldProps &
     defaultValue?: string | null
     /** Called on day confirmation, clearing or form reset. */
     onValueChange?: (value: string | null, details: DatePickerChangeEventDetails) => void
-    labels?: Partial<CalendarPanelLabels>
+    labels?: Partial<DatePickerLabels>
   }
 type ContextValue = Omit<
   DatePickerProps,
@@ -54,7 +56,7 @@ function useContext() {
   if (!context) throw new Error('DatePicker parts require DatePicker.')
   return context
 }
-const defaultLabels: CalendarPanelLabels = {
+const defaultLabels: DatePickerLabels = {
   previousMonth: 'Previous month',
   nextMonth: 'Next month',
   chooseMonthAndYear: 'Choose month and year',
@@ -135,9 +137,9 @@ const DatePickerClear = PickerClear
 const DatePickerLabel = PickerLabel
 const DatePickerValue = PickerValue
 function DatePickerContent(props: DatePickerContentProps) {
-  const { value } = useContext()
+  const { value, labels } = useContext()
   return (
-    <PickerContent {...props}>
+    <PickerContent {...props} closeLabel={labels?.close ?? defaultLabels.close}>
       <Session key={value ?? ''} />
     </PickerContent>
   )

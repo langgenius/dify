@@ -177,7 +177,7 @@ it('localizes the picker close action and dismisses without changing its value',
     </I18nextProvider>,
   )
   await user.click(screen.getByRole('button', { name: /^Time / }))
-  await user.click(screen.getByRole('button', { name: zhCommon['operation.close'] }))
+  act(() => screen.getByRole('button', { name: zhCommon['operation.close'] }).click())
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(changed).not.toHaveBeenCalled()
 })

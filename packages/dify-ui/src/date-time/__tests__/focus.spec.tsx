@@ -58,10 +58,11 @@ it.each(['date', 'time', 'date-time'] as const)(
         ? screen.getByRole('listbox', { name: 'Hour' }).getByRole('option', { name: '1' })
         : screen.getByRole('button', { name: /Wednesday, January 15th, 2025/ })
     await expect.element(selected).toHaveFocus()
-    const first = screen.getByRole('button', {
-      name: kind === 'time' ? 'Close' : 'Choose month and year: January 2025',
-    })
-    for (let index = 0; index < (kind === 'time' ? 1 : 4); index++) {
+    const first =
+      kind === 'time'
+        ? selected
+        : screen.getByRole('button', { name: 'Choose month and year: January 2025' })
+    for (let index = 0; index < (kind === 'time' ? 0 : 3); index++) {
       await userEvent.tab({ shift: true })
     }
     await expect.element(first).toHaveFocus()
@@ -74,7 +75,13 @@ it.each(['date', 'time', 'date-time'] as const)(
       .element(screen.getByRole('dialog', { name: 'Selection', exact: true }))
       .toBeVisible()
     expect(changed).not.toHaveBeenCalled()
-    await screen.getByRole('button', { name: 'Close', exact: true }).click()
+    const close = screen.getByRole('button', { name: 'Close', exact: true })
+    await expect.element(close).toHaveAttribute('tabindex', '-1')
+    expect(close.element().getBoundingClientRect().width).toBeLessThanOrEqual(1)
+    expect(close.element().getBoundingClientRect().height).toBeLessThanOrEqual(1)
+    // Assistive technologies activate this visually hidden control without pointer hit testing.
+    const closeButton = close.element() as HTMLButtonElement
+    closeButton.click()
     await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
     await expect.element(trigger).toHaveFocus()
     await userEvent.tab()
@@ -99,7 +106,10 @@ it.each(['time', 'date-time'] as const)(
       await userEvent.keyboard('{ArrowDown}')
       await expect.element(hours.getByRole('option', { name: '2' })).toHaveFocus()
       if (dismissal === 'close') {
-        await screen.getByRole('button', { name: 'Close', exact: true }).click()
+        const closeButton = screen
+          .getByRole('button', { name: 'Close', exact: true })
+          .element() as HTMLButtonElement
+        closeButton.click()
         await expect.element(trigger).toHaveFocus()
       } else {
         await screen.getByText('After picker', { exact: true }).click()
@@ -134,14 +144,15 @@ it.each(['date', 'date-time'] as const)(
       .element(screen.getByRole('option', { name: 'February', exact: true }))
       .toHaveFocus()
     await userEvent.tab({ shift: true })
-    await expect.element(screen.getByRole('button', { name: 'Close', exact: true })).toHaveFocus()
-    await userEvent.tab({ shift: true })
     await expect.element(monthTrigger).toHaveFocus()
     await userEvent.tab({ shift: true })
     await expect.element(screen.getByRole('button', { name: 'OK', exact: true })).toHaveFocus()
     await userEvent.tab()
     await expect.element(monthTrigger).toHaveFocus()
-    await screen.getByRole('button', { name: 'Close', exact: true }).click()
+    const closeButton = screen
+      .getByRole('button', { name: 'Close', exact: true })
+      .element() as HTMLButtonElement
+    closeButton.click()
     await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
     await expect.element(trigger).toHaveFocus()
     expect(changed).not.toHaveBeenCalled()

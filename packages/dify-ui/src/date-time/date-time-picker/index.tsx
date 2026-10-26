@@ -36,7 +36,7 @@ import { usePickerValue } from '../internal/use-picker-value'
 import { getZonedWallTime, resolveZonedWallTime } from './zoned-value'
 
 type DateTimePickerLabels = CalendarPanelLabels &
-  TimePanelLabels & { pickTime: string; backToDate: string; now: string }
+  TimePanelLabels & { close: string; pickTime: string; backToDate: string; now: string }
 type DateTimePickerChangeEventReason = PickerChangeEventReason
 type DateTimePickerChangeEventDetails = PickerChangeEventDetails
 
@@ -159,9 +159,9 @@ const DateTimePickerClear = PickerClear
 const DateTimePickerLabel = PickerLabel
 const DateTimePickerValue = PickerValue
 function DateTimePickerContent(props: DateTimePickerContentProps) {
-  const { value, timeZone } = useContext()
+  const { value, timeZone, labels } = useContext()
   return (
-    <PickerContent {...props}>
+    <PickerContent {...props} closeLabel={labels?.close ?? defaultLabels.close}>
       <Session key={`${value?.getTime() ?? ''}-${timeZone}`} />
     </PickerContent>
   )
@@ -293,7 +293,7 @@ function Session() {
         />
       ) : (
         <PickerPanel
-          header={<PickerPanelHeader closeLabel={text.close}>{text.pickTime}</PickerPanelHeader>}
+          header={<PickerPanelHeader>{text.pickTime}</PickerPanelHeader>}
           footer={
             <React.Fragment>
               <Button

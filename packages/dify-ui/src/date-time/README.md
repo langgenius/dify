@@ -112,9 +112,10 @@ Selection follows focus within the draft, not the committed field value:
   at the ends; no `loopFocus` API is exposed.
 - Numeric locating accepts ASCII and localized digits. Month names also support typeahead.
 - Tab moves between columns and actions, not every option. Tab and Shift+Tab wrap within the
-  popup, keeping the selection session active until confirmation or dismissal. Each view has a
-  Close button that dismisses the entire picker. Escape leaves month/year selection first; Escape
-  from the main picker dismisses. Keyboard dismissal restores trigger focus; outside press keeps
+  popup, keeping the selection session active until confirmation or dismissal. A visually hidden Close
+  button lets screen-reader users dismiss the entire picker without adding a Tab stop. Cancel and
+  Escape in month/year selection discard those edits and return to the calendar; Escape from the
+  main picker dismisses. Keyboard dismissal restores trigger focus; outside press keeps
   focus on the clicked focusable control. The popup does not lock page scrolling.
 - Hover does not select. Keyboard changes scroll immediately; pointer selection may scroll
   smoothly, respecting reduced motion. Wheel/touch scrolling updates the draft and aligns the

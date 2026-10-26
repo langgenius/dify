@@ -156,9 +156,9 @@ const TimePickerClear = PickerClear
 const TimePickerLabel = PickerLabel
 const TimePickerValue = PickerValue
 function TimePickerContent(props: TimePickerContentProps) {
-  const { value, timeZone } = useContext()
+  const { value, timeZone, labels } = useContext()
   return (
-    <PickerContent {...props}>
+    <PickerContent {...props} closeLabel={labels?.close ?? defaultLabels.close}>
       <Session key={`${value ?? ''}-${timeZone ?? ''}`} />
     </PickerContent>
   )
@@ -191,7 +191,7 @@ function Session() {
   const errorId = React.useId()
   return (
     <PickerPanel
-      header={<PickerPanelHeader closeLabel={text.close}>{text.title}</PickerPanelHeader>}
+      header={<PickerPanelHeader>{text.title}</PickerPanelHeader>}
       message={
         unavailable && (
           <p id={errorId} role="status" className="px-2 system-xs-regular text-text-destructive">

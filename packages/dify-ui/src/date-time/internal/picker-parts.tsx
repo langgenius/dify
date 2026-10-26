@@ -38,7 +38,7 @@ import { IconButton } from '../../icon-button'
 import { formLabelClassName } from '../../internal/form-control'
 import { resolveClassName } from '../../internal/resolve-class-name'
 import { mergeProps } from '../../merge-props'
-import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '../../popover'
 import { useMergedRefs } from '../../use-merged-refs'
 import { arePickerValuesEqual } from './use-picker-value'
 
@@ -620,12 +620,13 @@ function PickerClear({ onClick, disabled, ref, ...props }: PickerClearProps) {
 type PickerContentProps = Omit<PopoverContentProps, 'children' | 'initialFocus' | 'render'>
 function PickerContent({
   children,
+  closeLabel,
   ref,
   className,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
   ...props
-}: PickerContentProps & { children: React.ReactNode }) {
+}: PickerContentProps & { children: React.ReactNode; closeLabel: string }) {
   const { labelId, popupRef, focus, blur } = usePickerContext()
   const focusRef = usePickerFocusRef(popupRef)
   const mergedRef = useMergedRefs(popupRef, ref, focusRef)
@@ -657,7 +658,18 @@ function PickerContent({
         popupRef.current?.querySelector<HTMLElement>('button:not(:disabled)') ??
         true
       }
-      render={(popupProps, state) => <div {...popupProps}>{state.open ? children : null}</div>}
+      render={(popupProps, state) => (
+        <div {...popupProps}>
+          {state.open && (
+            <React.Fragment>
+              {children}
+              <PopoverClose style={visuallyHidden} tabIndex={-1}>
+                {closeLabel}
+              </PopoverClose>
+            </React.Fragment>
+          )}
+        </div>
+      )}
     >
       {children}
     </PopoverContent>

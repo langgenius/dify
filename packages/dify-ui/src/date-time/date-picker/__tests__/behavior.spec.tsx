@@ -140,8 +140,6 @@ describe('DatePicker keyboard and form contract', () => {
       )
       .toHaveFocus()
     await userEvent.tab({ shift: true })
-    await expect.element(screen.getByRole('button', { name: 'Close', exact: true })).toHaveFocus()
-    await userEvent.tab({ shift: true })
     await expect.element(title).toHaveFocus()
     await userEvent.keyboard(' ')
     await expect.element(title).toHaveAttribute('aria-expanded', 'false')

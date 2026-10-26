@@ -225,7 +225,9 @@ it('traps focus in a nested picker and discards its draft without closing the pa
   await userEvent.tab()
   await expect.element(screen.getByRole('button', { name: 'OK', exact: true })).toHaveFocus()
   await userEvent.tab()
-  await expect.element(screen.getByRole('button', { name: 'Close', exact: true })).toHaveFocus()
+  await expect
+    .element(screen.getByRole('listbox', { name: 'Hour' }).getByRole('option', { name: '2' }))
+    .toHaveFocus()
   await userEvent.tab({ shift: true })
   await expect.element(screen.getByRole('button', { name: 'OK', exact: true })).toHaveFocus()
   await userEvent.keyboard('{Escape}')
@@ -241,7 +243,10 @@ it('traps focus in a nested picker and discards its draft without closing the pa
   await expect
     .element(screen.getByRole('listbox', { name: 'Hour' }).getByRole('option', { name: '1' }))
     .toHaveFocus()
-  await screen.getByRole('button', { name: 'Close', exact: true }).click()
+  const closeButton = screen
+    .getByRole('button', { name: 'Close', exact: true })
+    .element() as HTMLButtonElement
+  closeButton.click()
   await expect.element(screen.getByRole('button', { name: 'Time 1:30 PM' })).toHaveFocus()
   await expect.element(screen.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible()
 })
