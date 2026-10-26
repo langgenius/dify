@@ -151279,6 +151279,50 @@
     "/workspaces/current/rbac/workspace/agents/access-policy": {
       "get": {
         "operationId": "get_rbac_workspace_agent_matrix_api",
+        "parameters": [
+          {
+            "description": "Localized policy label language",
+            "in": "query",
+            "name": "language",
+            "required": false,
+            "schema": {
+              "description": "Localized policy label language",
+              "enum": [
+                "en",
+                "ja",
+                "zh"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 99999,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reverse",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -151442,6 +151486,50 @@
     "/workspaces/current/rbac/workspace/apps/access-policy": {
       "get": {
         "operationId": "get_rbac_workspace_app_matrix_api",
+        "parameters": [
+          {
+            "description": "Localized policy label language",
+            "in": "query",
+            "name": "language",
+            "required": false,
+            "schema": {
+              "description": "Localized policy label language",
+              "enum": [
+                "en",
+                "ja",
+                "zh"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 99999,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reverse",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -151605,6 +151693,50 @@
     "/workspaces/current/rbac/workspace/datasets/access-policy": {
       "get": {
         "operationId": "get_rbac_workspace_dataset_matrix_api",
+        "parameters": [
+          {
+            "description": "Localized policy label language",
+            "in": "query",
+            "name": "language",
+            "required": false,
+            "schema": {
+              "description": "Localized policy label language",
+              "enum": [
+                "en",
+                "ja",
+                "zh"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 99999,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reverse",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {

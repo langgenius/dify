@@ -342,7 +342,7 @@
     "parsed-vs-wire-output"
   ],
   "console GET /workspaces/current/rbac/workspace/agents/access-policy": [
-    "no-input-schema",
+    "compatible",
     "parsed-vs-wire-output"
   ],
   "console GET /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/member-bindings": [
@@ -354,7 +354,7 @@
     "parsed-vs-wire-output"
   ],
   "console GET /workspaces/current/rbac/workspace/apps/access-policy": [
-    "no-input-schema",
+    "compatible",
     "parsed-vs-wire-output"
   ],
   "console GET /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/member-bindings": [
@@ -366,7 +366,7 @@
     "parsed-vs-wire-output"
   ],
   "console GET /workspaces/current/rbac/workspace/datasets/access-policy": [
-    "no-input-schema",
+    "compatible",
     "parsed-vs-wire-output"
   ],
   "console GET /workspaces/current/skills": ["compatible", "parsed-vs-wire-output"],
