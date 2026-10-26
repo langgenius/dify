@@ -269,6 +269,7 @@ def test_submitted_form_is_reported_only_to_its_recipient(console_form: ConsoleF
         SQLAlchemyFormRepository(session, console_form.form.tenant_id, console_form.form.app_id).submit_form(
             console_form.form.id,
             submitted_by_recipient_id=console_form.recipient.id,
+            submitted_by_delivery_id=session.scalars(sa.select(HumanInputDelivery)).one().id,
             selected_action_id="approve",
             raw_submission_inputs={"note": "Approved"},
             normalized_submission_data={"note": StringSegment(value="Approved")},

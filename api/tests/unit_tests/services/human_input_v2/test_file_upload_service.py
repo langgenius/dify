@@ -218,6 +218,7 @@ def test_rechecks_form_and_delivery_before_using_a_grant(approval: Approval, cha
             SQLAlchemyFormRepository(session, approval.tenant_id, approval.app_id).submit_form(
                 form.id,
                 submitted_by_recipient_id=delivery.recipient_id,
+                submitted_by_delivery_id=delivery.id,
                 selected_action_id="approve",
                 raw_submission_inputs={},
                 normalized_submission_data={},

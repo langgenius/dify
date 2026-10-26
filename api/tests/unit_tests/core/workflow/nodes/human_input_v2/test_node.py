@@ -124,6 +124,7 @@ def submit(form: Form) -> Form:
         submission=FormSubmission(
             submitted_at=datetime(2025, 1, 1, 1),
             submitted_by_recipient_id=RecipientId("recipient-1"),
+            submitted_by_delivery_id="delivery-1",
             selected_action_id="approve",
             raw_submission_inputs={"answer": "yes", "files": []},
             normalized_submission_data={"answer": StringSegment(value="yes"), "files": ArrayFileSegment(value=[])},

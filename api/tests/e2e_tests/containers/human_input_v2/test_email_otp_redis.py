@@ -318,6 +318,7 @@ def test_verified_challenges_accept_one_form_on_postgres(otp_case: OtpCase) -> N
             result = SQLAlchemyFormRepository(session, tenant_id, app_id).submit_form(
                 form.id,
                 submitted_by_recipient_id=recipient_id,
+                submitted_by_delivery_id=proof.delivery.id,
                 selected_action_id="approve",
                 raw_submission_inputs={},
                 normalized_submission_data={},

@@ -116,6 +116,15 @@ class IMFormActor:
 
 
 @dataclass(frozen=True, slots=True)
+class _AuthorizedForm:
+    """The exact delivery and recipient authenticated for one form."""
+
+    form: Form
+    recipient: Recipient
+    delivery: Delivery
+
+
+@dataclass(frozen=True, slots=True)
 class _IMFormContext:
     form: Form
     delivery: Delivery
@@ -139,7 +148,7 @@ class HumanInputSubmissionService:
     ) -> Form:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
         with self._session_factory() as session:
-            form, _ = self._authorize_service_api(session, actor=actor, token_hash=token_hash)
+            form = self._authorize_service_api(session, actor=actor, token_hash=token_hash).form
         self._record_form_view(form, ip_address=ip_address)
         return form
 
@@ -154,7 +163,7 @@ class HumanInputSubmissionService:
     ) -> None:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
 
-        def authorize(session: Session) -> tuple[Form, Recipient]:
+        def authorize(session: Session) -> _AuthorizedForm:
             return self._authorize_service_api(session, actor=actor, token_hash=token_hash)
 
         def audit_submission(session: Session, form: Form, recipient: Recipient) -> None:
@@ -184,7 +193,7 @@ class HumanInputSubmissionService:
     def get_console_form(self, *, account_id: AccountId, form_token: str, ip_address: str | None = None) -> Form:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
         with self._session_factory() as session:
-            form, _ = self._authorize_console(session, account_id=account_id, token_hash=token_hash)
+            form = self._authorize_console(session, account_id=account_id, token_hash=token_hash).form
         if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
             raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
         self._record_form_view(form, ip_address=ip_address)
@@ -195,7 +204,7 @@ class HumanInputSubmissionService:
     ) -> None:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
 
-        def authorize(session: Session) -> tuple[Form, Recipient]:
+        def authorize(session: Session) -> _AuthorizedForm:
             return self._authorize_console(session, account_id=account_id, token_hash=token_hash)
 
         form = self._submit_form(authorize=authorize, action=action, inputs=inputs)
@@ -204,7 +213,7 @@ class HumanInputSubmissionService:
     def get_web_app_form(self, *, actor: WebAppFormActor, form_token: str, ip_address: str | None = None) -> Form:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
         with self._session_factory() as session:
-            form, _ = self._authorize_web_app(session, actor=actor, token_hash=token_hash)
+            form = self._authorize_web_app(session, actor=actor, token_hash=token_hash).form
         if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
             raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
         self._record_form_view(form, ip_address=ip_address)
@@ -268,7 +277,7 @@ class HumanInputSubmissionService:
     ) -> None:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
 
-        def authorize(session: Session) -> tuple[Form, Recipient]:
+        def authorize(session: Session) -> _AuthorizedForm:
             return self._authorize_web_app(session, actor=actor, token_hash=token_hash)
 
         form = self._submit_form(authorize=authorize, action=action, inputs=inputs)
@@ -291,7 +300,7 @@ class HumanInputSubmissionService:
             form_token, challenge_token=challenge_token, otp_code=otp_code, ip_address=ip_address
         )
 
-        def authorize(session: Session) -> tuple[Form, Recipient]:
+        def authorize(session: Session) -> _AuthorizedForm:
             return self._authorize_public(session, verified=verified)
 
         def audit_submission(session: Session, _form: Form, _recipient: Recipient) -> None:
@@ -315,10 +324,10 @@ class HumanInputSubmissionService:
         if isinstance(verification, _IMCallbackRejection):
             raise HumanInputFormError(verification.code)
 
-        def authorize(session: Session) -> tuple[Form, Recipient]:
-            form, recipient = self._authorize_im_form(session, actor=actor, token_hash=token_hash)
-            _ensure_form_waiting(form)
-            return form, recipient
+        def authorize(session: Session) -> _AuthorizedForm:
+            authorized = self._authorize_im_form(session, actor=actor, token_hash=token_hash)
+            _ensure_form_waiting(authorized.form)
+            return authorized
 
         try:
             form = self._submit_form(authorize=authorize, action=action, inputs=inputs)
@@ -331,14 +340,14 @@ class HumanInputSubmissionService:
     def _submit_form(
         self,
         *,
-        authorize: Callable[[Session], tuple[Form, Recipient]],
+        authorize: Callable[[Session], _AuthorizedForm],
         action: str,
         inputs: Mapping[str, JsonValue],
         after_submission: Callable[[Session, Form, Recipient], None] | None = None,
         input_validation_mode: _InputValidationMode = _InputValidationMode.STRICT,
     ) -> Form:
         with self._session_factory() as session:
-            form, _ = authorize(session)
+            form = authorize(session).form
         # File reconstruction can access storage or remote URLs. Keep it outside
         # the write transaction, then recheck authorization and terminal state.
         try:
@@ -347,7 +356,8 @@ class HumanInputSubmissionService:
             raise HumanInputFormError(HumanInputFormErrorCode.INVALID_INPUT, form_id=form.id) from exc
 
         with self._session_factory() as session, session.begin():
-            form, recipient = authorize(session)
+            authorized = authorize(session)
+            form = authorized.form
             if form.workflow_run_id is not None:
                 # Keep the run-before-form lock order shared with expiration.
                 workflow_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
@@ -374,10 +384,12 @@ class HumanInputSubmissionService:
                     raise HumanInputFormError(HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE)
                 # The run lock may have waited for another transaction. Recheck
                 # current recipient authorization before accepting the form.
-                form, recipient = authorize(session)
+                authorized = authorize(session)
+            form, recipient = authorized.form, authorized.recipient
             result = SQLAlchemyFormRepository(session, form.tenant_id, form.app_id).submit_form(
                 form.id,
                 submitted_by_recipient_id=recipient.id,
+                submitted_by_delivery_id=authorized.delivery.id,
                 selected_action_id=action,
                 raw_submission_inputs=inputs,
                 normalized_submission_data=normalized,
@@ -423,7 +435,7 @@ class HumanInputSubmissionService:
         *,
         actor: ServiceAPIFormActor,
         token_hash: str,
-    ) -> tuple[Form, Recipient]:
+    ) -> _AuthorizedForm:
         delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(token_hash)
         if (
             delivery is None
@@ -452,10 +464,10 @@ class HumanInputSubmissionService:
         _ensure_form_waiting(form)
         if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
             raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
-        return form, recipient
+        return _AuthorizedForm(form, recipient, delivery)
 
     @staticmethod
-    def _authorize_console(session: Session, *, account_id: AccountId, token_hash: str) -> tuple[Form, Recipient]:
+    def _authorize_console(session: Session, *, account_id: AccountId, token_hash: str) -> _AuthorizedForm:
         delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(token_hash)
         if delivery is None or delivery.auth_type != SubmissionAuthType.CONSOLE:
             raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
@@ -473,10 +485,10 @@ class HumanInputSubmissionService:
         if contact is None or contact.id != recipient.subject.contact_id:
             raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
         _ensure_form_waiting(form)
-        return form, recipient
+        return _AuthorizedForm(form, recipient, delivery)
 
     @staticmethod
-    def _authorize_web_app(session: Session, *, actor: WebAppFormActor, token_hash: str) -> tuple[Form, Recipient]:
+    def _authorize_web_app(session: Session, *, actor: WebAppFormActor, token_hash: str) -> _AuthorizedForm:
         delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(token_hash)
         if (
             delivery is None
@@ -495,10 +507,10 @@ class HumanInputSubmissionService:
         if recipient.subject.end_user_id != actor.end_user_id:
             raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
         _ensure_form_waiting(form)
-        return form, recipient
+        return _AuthorizedForm(form, recipient, delivery)
 
     @staticmethod
-    def _authorize_public(session: Session, *, verified: VerifiedEmail) -> tuple[Form, Recipient]:
+    def _authorize_public(session: Session, *, verified: VerifiedEmail) -> _AuthorizedForm:
         delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(verified.delivery.token_hash)
         if delivery is None or delivery.auth_type != SubmissionAuthType.EMAIL_OTP:
             raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
@@ -529,7 +541,7 @@ class HumanInputSubmissionService:
                 if contact.email != verified.subject.email:
                     raise EmailOtpError(OtpFailure.STALE)
         _ensure_form_waiting(form)
-        return form, recipient
+        return _AuthorizedForm(form, recipient, delivery)
 
     def _verify_im_callback(
         self, *, actor: IMFormActor, token_hash: str, ip_address: str | None
@@ -588,7 +600,7 @@ class HumanInputSubmissionService:
         )
 
     @classmethod
-    def _authorize_im_form(cls, session: Session, *, actor: IMFormActor, token_hash: str) -> tuple[Form, Recipient]:
+    def _authorize_im_form(cls, session: Session, *, actor: IMFormActor, token_hash: str) -> _AuthorizedForm:
         """Require current IM recipient authorization for submission and resume repair.
 
         Rejections raise here; callback verification retains them to commit its audit.
@@ -601,7 +613,7 @@ class HumanInputSubmissionService:
         if isinstance(recipient, _IMCallbackRejection):
             cls._log_im_callback_rejection(actor=actor, rejection=recipient, context=context)
             raise HumanInputFormError(recipient.code)
-        return context.form, recipient
+        return _AuthorizedForm(context.form, recipient, context.delivery)
 
     @staticmethod
     def _resolve_im_form_context(
@@ -705,7 +717,8 @@ class HumanInputSubmissionService:
         # Approval commit and broker publication are separate. A redelivery can
         # repair a failed resume publication without changing the saved approval.
         with self._session_factory() as session, session.begin():
-            form, recipient = self._authorize_im_form(session, actor=actor, token_hash=token_hash)
+            authorized = self._authorize_im_form(session, actor=actor, token_hash=token_hash)
+            form, recipient = authorized.form, authorized.recipient
             submission = form.submission
             if (
                 submission is None

@@ -76,10 +76,12 @@ def _submit(
     repo: SQLAlchemyFormRepository,
     form_id: str,
     recipient: RecipientId = _RECIPIENT,
+    delivery_id: str = "00000000-0000-0000-0000-000000000004",
 ) -> Form | FormSubmissionFailure:
     return repo.submit_form(
         form_id,
         submitted_by_recipient_id=recipient,
+        submitted_by_delivery_id=delivery_id,
         selected_action_id="approve",
         raw_submission_inputs={"answer": " original "},
         normalized_submission_data={"answer": StringSegment(value="original")},
@@ -182,6 +184,7 @@ def test_submission_round_trips_raw_inputs_and_concrete_segments(form_engine: En
         submitted = SQLAlchemyFormRepository(session, _TENANT, _APP).submit_form(
             form.id,
             submitted_by_recipient_id=_RECIPIENT,
+            submitted_by_delivery_id="00000000-0000-0000-0000-000000000004",
             selected_action_id="approve",
             raw_submission_inputs={"answer": " raw ", "extra": {"enabled": True}},
             normalized_submission_data=inputs,
@@ -351,7 +354,7 @@ def test_concurrent_submissions_have_one_winner(form_engine: Engine) -> None:
     def submit(recipient: RecipientId) -> Form | FormSubmissionFailure:
         with Session(form_engine) as session, session.begin():
             barrier.wait(timeout=10)
-            return _submit(SQLAlchemyFormRepository(session, _TENANT, _APP), form.id, recipient)
+            return _submit(SQLAlchemyFormRepository(session, _TENANT, _APP), form.id, recipient, str(uuid4()))
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         futures = [executor.submit(submit, RecipientId(str(uuid4()))) for _ in range(2)]

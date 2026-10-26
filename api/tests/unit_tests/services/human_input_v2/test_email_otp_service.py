@@ -276,6 +276,7 @@ def test_submission_and_success_audit_commit_or_rollback_together(context: Conte
         return SQLAlchemyFormRepository(session, context.form.tenant_id, context.form.app_id).submit_form(
             context.form.id,
             submitted_by_recipient_id=context.delivery.recipient_id,
+            submitted_by_delivery_id=context.delivery.id,
             selected_action_id="approve",
             raw_submission_inputs={},
             normalized_submission_data={},
@@ -454,6 +455,7 @@ def test_two_verified_challenges_accept_one_submission_and_success_audit(context
             result = SQLAlchemyFormRepository(session, context.form.tenant_id, context.form.app_id).submit_form(
                 context.form.id,
                 submitted_by_recipient_id=context.delivery.recipient_id,
+                submitted_by_delivery_id=context.delivery.id,
                 selected_action_id="approve",
                 raw_submission_inputs={},
                 normalized_submission_data={},

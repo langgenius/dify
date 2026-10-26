@@ -83,6 +83,7 @@ def test_submission_rechecks_facts_and_clock_after_the_lock(db_session_with_cont
             return repo.submit_form(
                 form.id,
                 submitted_by_recipient_id=RecipientId(str(uuid4())),
+                submitted_by_delivery_id=str(uuid4()),
                 selected_action_id="approve",
                 raw_submission_inputs={},
                 normalized_submission_data={},

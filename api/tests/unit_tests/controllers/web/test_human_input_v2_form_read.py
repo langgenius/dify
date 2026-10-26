@@ -355,6 +355,7 @@ def test_submitted_form_is_reported_as_complete(public_form: PublicForm) -> None
         SQLAlchemyFormRepository(session, public_form.form.tenant_id, public_form.form.app_id).submit_form(
             public_form.form.id,
             submitted_by_recipient_id=public_form.recipient.id,
+            submitted_by_delivery_id=session.scalars(sa.select(HumanInputDelivery)).one().id,
             selected_action_id="approve",
             raw_submission_inputs={"note": "Approved"},
             normalized_submission_data={"note": StringSegment(value="Approved")},

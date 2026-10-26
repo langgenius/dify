@@ -1231,6 +1231,7 @@ class HumanInputForm(DefaultFieldsDCMixin, TypeBase):
     submitted_by_recipient_id: Mapped[str | None] = mapped_column(
         StringUUID, nullable=True
     )
+    submitted_by_delivery_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None, kw_only=True)
     # submission_data
     selected_action_id: Mapped[str | None] = mapped_column(
         sa.String(200), nullable=True

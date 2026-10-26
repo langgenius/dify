@@ -8,6 +8,7 @@ from typing import Self, override
 
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Json, JsonValue, NaiveDatetime, TypeAdapter, model_validator
+from pydantic_core import PydanticCustomError
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -56,6 +57,7 @@ class _StoredForm(BaseModel):
     global_timeout_deadline: NaiveDatetime
     submitted_at: NaiveDatetime | None
     submitted_by_recipient_id: RecipientId | None
+    submitted_by_delivery_id: str | None
     selected_action_id: str | None
     raw_submission_inputs: Json[dict[str, JsonValue]] | None
     normalized_submission_data: Json[dict[str, SerializableSegment]] | None
@@ -71,15 +73,16 @@ class _StoredForm(BaseModel):
         submission_fields = (
             self.submitted_at,
             self.submitted_by_recipient_id,
+            self.submitted_by_delivery_id,
             self.selected_action_id,
             self.raw_submission_inputs,
             self.normalized_submission_data,
         )
         if self.status == HumanInputFormStatus.SUBMITTED:
             if any(value is None for value in submission_fields):
-                raise ValueError("Submitted forms require a complete submission")
+                raise PydanticCustomError("submission_data", "Submitted forms require a complete submission")
         elif any(value is not None for value in submission_fields):
-            raise ValueError("Only submitted forms may contain submission data")
+            raise PydanticCustomError("submission_data", "Only submitted forms may contain submission data")
         return self
 
     def to_form(self) -> Form:
@@ -88,12 +91,14 @@ class _StoredForm(BaseModel):
             # Validation above establishes this all-or-none boundary contract.
             assert self.submitted_at is not None
             assert self.submitted_by_recipient_id is not None
+            assert self.submitted_by_delivery_id is not None
             assert self.selected_action_id is not None
             assert self.raw_submission_inputs is not None
             assert self.normalized_submission_data is not None
             submission = FormSubmission(
                 submitted_at=self.submitted_at,
                 submitted_by_recipient_id=self.submitted_by_recipient_id,
+                submitted_by_delivery_id=self.submitted_by_delivery_id,
                 selected_action_id=self.selected_action_id,
                 raw_submission_inputs=self.raw_submission_inputs,
                 normalized_submission_data=self.normalized_submission_data,
@@ -231,6 +236,7 @@ class SQLAlchemyFormRepository(FormRepository):
             "updated_at": now,
             "submitted_at": None,
             "submitted_by_recipient_id": None,
+            "submitted_by_delivery_id": None,
             "selected_action_id": None,
             "raw_submission_inputs": None,
             "normalized_submission_data": None,
@@ -314,6 +320,7 @@ class SQLAlchemyFormRepository(FormRepository):
         form_id: str,
         *,
         submitted_by_recipient_id: RecipientId,
+        submitted_by_delivery_id: str,
         selected_action_id: str,
         raw_submission_inputs: Mapping[str, JsonValue],
         normalized_submission_data: Mapping[str, Segment],
@@ -339,6 +346,7 @@ class SQLAlchemyFormRepository(FormRepository):
         record.status = HumanInputFormStatus.SUBMITTED
         record.submitted_at = now
         record.submitted_by_recipient_id = submitted_by_recipient_id
+        record.submitted_by_delivery_id = submitted_by_delivery_id
         record.selected_action_id = selected_action_id
         record.raw_submission_inputs = raw_inputs
         record.normalized_submission_data = normalized_inputs

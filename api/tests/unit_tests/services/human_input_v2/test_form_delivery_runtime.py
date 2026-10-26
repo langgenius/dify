@@ -770,6 +770,7 @@ def test_delivery_is_independent_of_form_and_workflow_state(context: Context, pr
                     SQLAlchemyFormRepository(session, _TENANT, _APP).submit_form(
                         created.form.id,
                         submitted_by_recipient_id=recipient.id,
+                        submitted_by_delivery_id=str(uuid4()),
                         selected_action_id="approve",
                         raw_submission_inputs={},
                         normalized_submission_data={},
@@ -2009,9 +2010,12 @@ def test_im_card_updates_render_typed_inputs_and_skip_missing_values(
             }
         )
         recipient = session.scalars(sa.select(HumanInputRecipient)).one()
+        delivery = session.scalars(sa.select(HumanInputDelivery)).first()
+        assert delivery is not None
         SQLAlchemyFormRepository(session, _TENANT, _APP).submit_form(
             form_id,
             submitted_by_recipient_id=RecipientId(recipient.id),
+            submitted_by_delivery_id=delivery.id,
             selected_action_id="approve",
             raw_submission_inputs={},
             normalized_submission_data={
@@ -2800,6 +2804,7 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
             SQLAlchemyFormRepository(session, _TENANT, _APP).submit_form(
                 eligible.form_id,
                 submitted_by_recipient_id=RecipientId(eligible.recipient_id),
+                submitted_by_delivery_id=eligible.id,
                 selected_action_id="approve",
                 raw_submission_inputs={},
                 normalized_submission_data={},

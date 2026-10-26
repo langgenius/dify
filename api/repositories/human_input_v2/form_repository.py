@@ -21,6 +21,7 @@ class FormSubmission:
 
     submitted_at: NaiveDatetime
     submitted_by_recipient_id: RecipientId
+    submitted_by_delivery_id: str
     selected_action_id: str
     raw_submission_inputs: Mapping[str, JsonValue]
     normalized_submission_data: Mapping[str, Segment]
@@ -135,13 +136,15 @@ class FormRepository(Protocol):
         form_id: str,
         *,
         submitted_by_recipient_id: RecipientId,
+        submitted_by_delivery_id: str,
         selected_action_id: str,
         raw_submission_inputs: Mapping[str, JsonValue],
         normalized_submission_data: Mapping[str, Segment],
     ) -> Form | FormSubmissionFailure:
         """Atomically accept the first submission while both deadlines allow it.
 
-        The caller has already authorized the recipient for this form and
+        The caller has already authorized this exact delivery and recipient for
+        the same tenant/form; never infer a delivery from the recipient. It has
         validated the action, inputs, and file ownership. Preserve raw inputs
         without sanitizing them; persist normalized inputs with their types.
 
