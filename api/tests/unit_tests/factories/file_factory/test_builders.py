@@ -1,8 +1,8 @@
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from httpx import Response
@@ -712,7 +712,9 @@ def test_custom_bucket_document_is_attached_to_llm_prompt(file_records: FileReco
     assert any(part is prompt_content for part in last_content)
 
 
-def test_custom_bucket_pdf_converts_to_document_prompt_content(file_records: FileRecords):
+def test_custom_bucket_pdf_converts_to_document_prompt_content(
+    file_records: FileRecords, config_overrides: Callable[..., None]
+):
     """Detected type must produce document prompt content, not an unsupported placeholder."""
     file_records.upload_file.extension = "pdf"
     file_records.upload_file.name = "report.pdf"
@@ -733,12 +735,8 @@ def test_custom_bucket_pdf_converts_to_document_prompt_content(file_records: Fil
     )
     assert file.type == FileType.DOCUMENT
 
-    runtime = MagicMock()
-    runtime.multimodal_send_format = "url"
-    with (
-        patch("graphon.file.file_manager.get_workflow_file_runtime", return_value=runtime),
-        patch("graphon.file.helpers.resolve_file_url", return_value="https://files.example/report.pdf"),
-    ):
+    config_overrides(MULTIMODAL_SEND_FORMAT="url")
+    with patch("graphon.file.helpers.resolve_file_url", return_value="https://files.example/report.pdf"):
         content = to_prompt_message_content(file)
 
     assert isinstance(content, DocumentPromptMessageContent)
