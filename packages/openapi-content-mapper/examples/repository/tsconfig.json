@@ -12,7 +12,10 @@
   "contentMappers": [
     {
       "package": "../..",
-      "extensions": [".yaml", ".yml", ".openapi"]
+      "extensions": [".yaml", ".yml", ".openapi", ".openapi-source"],
+      "options": {
+        "sources": ["./console.openapi-source"]
+      }
     }
   ],
   "include": ["*.ts"]

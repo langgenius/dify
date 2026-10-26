@@ -17,7 +17,7 @@ import sys
 from collections.abc import MutableMapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, TypeGuard
+from typing import Any, Protocol, TypeGuard
 
 from flask import Flask
 from flask_restx import Api
@@ -272,15 +272,11 @@ def _materialize_inline_model_definitions(api: RestxApi) -> None:
                 materialize_field(field)
 
 
-def generate_specs(output_dir: Path) -> list[Path]:
-    """Write all OpenAPI specs to `output_dir` and return the written paths."""
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-
+def export_specs() -> dict[str, dict[str, Any]]:
+    """Build OpenAPI documents in memory without writing generated files."""
     app = create_spec_app()
     target_apis = _target_apis()
-
-    written_paths: list[Path] = []
+    documents = {}
     for target in SPEC_TARGETS:
         # Build directly from the API instance instead of depending on the
         # optional HTTP spec route. ExternalApi decides whether to register
@@ -289,8 +285,16 @@ def generate_specs(output_dir: Path) -> list[Path]:
         with app.test_request_context(target.route):
             payload = Swagger(target_apis[target.route]).as_dict()
         payload = finalize_openapi_payload(payload)
+        documents[target.filename] = payload
+    return documents
 
-        output_path = output_dir / target.filename
+
+def generate_specs(output_dir: Path) -> list[Path]:
+    """Write all OpenAPI specs to `output_dir` and return the written paths."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    written_paths: list[Path] = []
+    for filename, payload in export_specs().items():
+        output_path = output_dir / filename
         output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         written_paths.append(output_path)
 

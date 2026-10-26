@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process'
 import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { join, relative, resolve } from 'node:path'
 import { test } from 'node:test'
+import { loadConsoleDocument } from '../../contracts/scripts/compose-console-openapi.mjs'
 
 const repository = resolve(import.meta.dirname, '../../..')
 const web = join(repository, 'web')
@@ -23,12 +24,7 @@ async function javascript(directory) {
 
 for (const bundler of ['turbopack', 'webpack']) {
   test(`Next ${bundler}: Console and Marketplace imports keep separate transports and prune unused operations`, async () => {
-    const consoleSpec = JSON.parse(
-      await readFile(
-        join(repository, 'packages/contracts/openapi/console-client-openapi.json'),
-        'utf8',
-      ),
-    )
+    const consoleSpec = loadConsoleDocument()
     const alias = 'enterprise.access.getMetadata'
     consoleSpec.paths['/knowledge-fs/spaces/{control_space_id}/metadata'].get['x-client-path'] =
       alias.split('.')
@@ -46,25 +42,31 @@ const marketplaceLoader = { loader: '@dify/openapi-content-mapper/loader', optio
 const namespaceLoader = { loader: '@dify/openapi-content-mapper/loader' };
 export default {
   experimental: { cpus: 1, extensionAlias: { '.js': ['.ts', '.js'] } },
-  turbopack: { root: ${JSON.stringify(repository)}, rules: { '*console-spec.json': { loaders: [loader], as: '*.js' }, '*marketplace-spec.json': { loaders: [marketplaceLoader], as: '*.js' }, '*openapi-namespace.js': { loaders: [namespaceLoader], as: '*.js' } } },
-  webpack(config) { config.module.rules.push({ test: /console-spec\\.json$/, type: 'javascript/auto', use: [loader] }, { test: /marketplace-spec\\.json$/, type: 'javascript/auto', use: [marketplaceLoader] }, { test: /openapi-namespace\\.js$/, type: 'javascript/auto', use: [namespaceLoader] }); return config; },
+  turbopack: { root: ${JSON.stringify(repository)}, rules: { '*console-spec.openapi-source': { loaders: [loader], as: '*.js' }, '*marketplace-spec.json': { loaders: [marketplaceLoader], as: '*.js' }, '*openapi-namespace.js': { loaders: [namespaceLoader], as: '*.js' } } },
+  webpack(config) { config.module.rules.push({ test: /console-spec\\.openapi-source$/, type: 'javascript/auto', use: [loader] }, { test: /marketplace-spec\\.json$/, type: 'javascript/auto', use: [marketplaceLoader] }, { test: /openapi-namespace\\.js$/, type: 'javascript/auto', use: [namespaceLoader] }); return config; },
 };
 `,
       )
       await writeFile(
-        join(specDir, 'console-spec.json'),
-        JSON.stringify({
-          ...consoleSpec,
-          info: { title: 'SCHEMA_METADATA_MUST_DISAPPEAR', version: '1' },
-          paths: {
-            ...consoleSpec.paths,
-            '/UNUSED_ENDPOINT_MUST_DISAPPEAR': {
-              get: { responses: { 200: { description: 'OK' } } },
+        join(specDir, 'console-export.mjs'),
+        `process.stdout.write(${JSON.stringify(
+          JSON.stringify({
+            ...consoleSpec,
+            info: { title: 'SCHEMA_METADATA_MUST_DISAPPEAR', version: '1' },
+            paths: {
+              ...consoleSpec.paths,
+              '/UNUSED_ENDPOINT_MUST_DISAPPEAR': {
+                get: { responses: { 200: { description: 'OK' } } },
+              },
             },
-          },
-        }),
+          }),
+        )});`,
       )
-      await symlink(join(specDir, 'console-spec.json'), join(dir, 'spec.openapi'))
+      await writeFile(
+        join(specDir, 'console-spec.openapi-source'),
+        JSON.stringify({ command: ['node', 'console-export.mjs'], inputs: ['console-export.mjs'] }),
+      )
+      await symlink(join(specDir, 'console-spec.openapi-source'), join(dir, 'spec.openapi'))
       await writeFile(
         join(specDir, 'marketplace-spec.json'),
         JSON.stringify({

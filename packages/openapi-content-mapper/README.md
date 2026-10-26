@@ -121,6 +121,65 @@ ln -s pets.json pets.openapi
 
 Import `./pets.openapi`. On platforms where symlinks are unavailable, use a regular `.openapi` file containing JSON. Vite and Node preserve the logical extension of symlinks.
 
+### Local backend sources without generated specification files
+
+Use an authored `pets.openapi-source` descriptor when the backend can export its
+OpenAPI document to stdout. The descriptor contains the command, not the schema:
+
+```json
+{
+  "command": ["python", "export_openapi.py"],
+  "cwd": "../backend",
+  "inputs": ["**/*.py", "pyproject.toml"],
+  "env": ["API_EDITION"],
+  "timeoutMs": 60000
+}
+```
+
+`cwd` is relative to the descriptor; input glob patterns are relative to `cwd`.
+Declare every source/configuration input and any environment variables that affect
+exported schemas. Inputs must match existing paths. Dependency scanning excludes
+`node_modules`, `.venv`, `.git` and `__pycache__`. Commands run without a shell;
+`node` uses the current Node executable. Write exactly one OpenAPI JSON document to
+stdout and send diagnostics to stderr. No running backend is needed if the exporter
+can construct its schemas without starting services.
+
+Register both the extension and the source in the consuming tsconfig:
+
+```json
+{
+  "contentMappers": [
+    {
+      "package": "@dify/openapi-content-mapper",
+      "extensions": [".openapi-source", ".openapi", ".yaml", ".yml"],
+      "options": { "sources": ["./pets.openapi-source"] }
+    }
+  ]
+}
+```
+
+Source entries are relative to this tsconfig's directory; inherited configurations
+should declare them in the consuming project. Registration lets TypeScript watch
+backend inputs and invalidate incremental builds even when the descriptor is
+unchanged. Keep the descriptor in a package with an SDK dependency so its inferred
+types can resolve the SDK. Then import it normally:
+
+```ts
+import { api, query } from './pets.openapi-source'
+```
+
+Vite and Node recognize `.openapi-source` automatically. Add a matching loader rule
+for Next.js, as for an ordinary `.openapi` file. Existing document imports continue
+to work alongside command sources. Configuration, queries and errors use the same
+adjacent sidecars, such as `pets.openapi-source.config.ts`.
+
+The editor, type checker and runtime adapters execute the same command-source
+resolver. Exported OpenAPI content is cached in process memory until its declared
+inputs change; the mapper's temporary cache stores derived types, not a committed
+specification. Each new process needs the backend export environment. The exporter
+and schema do not ship to the browser. Definitions from a command source have no
+schema-file location; file imports retain their existing source navigation.
+
 ## API and transport
 
 Documents export only `api` and `query`; operation IDs are not exports. `/pets/{petId}` becomes `pets.byPetId`, hyphenated segments become camelCase and HTTP methods are leaf functions. Colon actions such as `/chat:run` become `chat.run`. `key` is reserved as a route segment for query helpers. Unresolvable member collisions fail during compilation.
@@ -251,7 +310,7 @@ This package consumes OpenAPI directly and prunes statically used operations whi
 node --import @dify/openapi-content-mapper/register app.ts
 ```
 
-The hook loads YAML and `.openapi` files; Node's native TypeScript support loads configuration sidecars. Native execution does not replace the separate type check.
+The hook loads YAML, `.openapi` and `.openapi-source` files; Node's native TypeScript support loads configuration sidecars. Native execution does not replace the separate type check.
 
 ### Next.js
 
@@ -307,16 +366,23 @@ future OpenAPI imports. Production Console and Marketplace calls continue to use
 their existing oRPC clients. Application transports, query-policy migration and
 business call-site changes are deferred.
 
-`@dify/contracts` composes the tracked Console, FastOpenAPI, Enterprise and App
-Deploy snapshots during installation. Docker runs preparation explicitly when
-lifecycle scripts are disabled. No running API or private source checkout is
-needed to prepare the composed document:
+The repository Console source descriptor lives in
+`examples/repository/console.openapi-source`. Its command exports community Console
+and FastOpenAPI schemas from local Python code into memory, then composes them with
+the retained Enterprise and App Deploy snapshots. Community specifications and the
+composed document are not committed or written during workspace installation.
+Ordinary installation and production application builds do not execute the exporter;
+consuming the experimental Console source requires Python dependencies:
 
 ```sh
-pnpm --filter @dify/contracts compose:console
+uv sync --project api --frozen
 pnpm --filter @dify/openapi-content-mapper build
 pnpm --filter @dify/openapi-content-mapper check:console
 ```
+
+No running API, database or private source checkout is needed. CI installs the
+Python environment before the standalone Console checks. `compose:console` now
+prints the composed OpenAPI JSON to stdout instead of creating a file.
 
 The Console audit checks every generated procedure against a reviewed per-operation
 type-difference baseline. Standalone fixtures verify bundle pruning, error maps and
@@ -324,11 +390,11 @@ workspace editor support without importing a production mapper client. The broad
 `test:repository` suite also needs the ignored API specifications generated with
 `pnpm --dir packages/contracts gen-api-contract`.
 
-Update source snapshots and generated contracts together. Enterprise regeneration
-uses the matching source checkout through `DIFY_ENTERPRISE_SERVER`. The composed
-document and compiler caches stay out of Git. Inspect the comparison report before
-accepting intentional baseline changes with
-`compare:orpc -- --console --update-baseline`.
+Regenerate existing oRPC contracts when backend schemas change. Enterprise snapshot
+regeneration still uses the matching source checkout through
+`DIFY_ENTERPRISE_SERVER`; those snapshots remain tracked because community checkouts
+cannot regenerate them. Inspect the comparison report before accepting intentional
+baseline changes with `compare:orpc -- --console --update-baseline`.
 
 ## Development and release
 

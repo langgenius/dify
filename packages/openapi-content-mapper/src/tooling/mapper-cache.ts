@@ -96,6 +96,7 @@ export function mapperTransform() {
   const files = [
     'mapper-cache.js',
     'transform.js',
+    'source.js',
     'runtime-config.js',
     'operation-config.js',
     'type-document.js',

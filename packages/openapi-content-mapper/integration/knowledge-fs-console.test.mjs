@@ -1,21 +1,21 @@
 /* oxlint-disable vitest/no-import-node-test, antfu/no-import-dist -- Verify standalone Console imports with the built mapper and bundler. */
 import assert from 'node:assert/strict'
 import { Buffer } from 'node:buffer'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { gzipSync } from 'node:zlib'
 import { build } from 'vite'
+import { loadConsoleDocument } from '../../contracts/scripts/compose-console-openapi.mjs'
 import { openapi } from '../dist/tooling/vite.js'
 /* oxlint-enable vitest/no-import-node-test, antfu/no-import-dist */
 
 const repository = resolve(import.meta.dirname, '../../..')
-const specFile = join(repository, 'packages/contracts/openapi/console-client-openapi.json')
 
 test('a standalone metadata consumer prunes every unused console operation', async (t) => {
   const directory = await mkdtemp(join(import.meta.dirname, '.console-bundle-'))
   try {
-    const spec = JSON.parse(await readFile(specFile, 'utf8'))
+    const spec = loadConsoleDocument()
     const path = '/knowledge-fs/spaces/{control_space_id}/metadata'
     const fullSpec = join(directory, 'console.openapi')
     const entry = join(directory, 'consumer.ts')

@@ -2,9 +2,10 @@ import { Buffer } from 'node:buffer'
 import { record } from '../document.js'
 import { readFrames } from './framing.js'
 import { mapperTransform } from './mapper-cache.js'
+import { isSource, resolveDocument, sourceProject } from './source.js'
 
 // TS 7.1 content mapper JSON-RPC, framed with byte-counted Content-Length.
-const projects = new Set<string>()
+const projects = new Map<string, ReturnType<typeof sourceProject>>()
 let initialized = false
 const transform = mapperTransform()
 
@@ -15,19 +16,51 @@ async function dispatch(method: string, params: Record<string, unknown>): Promis
         throw new Error('This mapper requires UTF-16 position support')
       initialized = true
       return JSON.stringify({ positionEncoding: 'utf-16', diagnosticSource: 'openapi' })
-    case 'openProject':
+    case 'openProject': {
       if (!initialized || typeof params.projectHandle !== 'string')
         throw new Error('Initialize the mapper and supply a projectHandle first')
-      projects.add(params.projectHandle)
-      return '{}'
+      const project = sourceProject(params.configFileName, params.options)
+      projects.set(params.projectHandle, project)
+      return JSON.stringify({
+        configIdentity: project.configIdentity,
+        watchedFiles: project.watchedFiles,
+      })
+    }
     case 'closeProject':
       projects.delete(String(params.projectHandle))
       return 'null'
-    case 'transform':
+    case 'transform': {
       if (!projects.has(String(params.projectHandle))) throw new Error('Unknown projectHandle')
       if (typeof params.content !== 'string' || typeof params.fileName !== 'string')
         throw new Error('Expected content and fileName strings')
-      return transform(params.content, params.fileName)
+      try {
+        if (
+          isSource(params.fileName) &&
+          !projects.get(String(params.projectHandle))?.registered.has(params.fileName)
+        )
+          throw new Error(
+            `Register ${params.fileName} in contentMappers options.sources to track its backend inputs`,
+          )
+        return await transform(
+          resolveDocument(params.content, params.fileName).content,
+          params.fileName,
+        )
+      } catch (error) {
+        return JSON.stringify({
+          text: 'export {};',
+          extension: '.ts',
+          mappings: [],
+          diagnostics: [
+            {
+              messageText: error instanceof Error ? error.message : String(error),
+              start: 0,
+              length: 0,
+              code: 1002,
+            },
+          ],
+        })
+      }
+    }
     default:
       throw new Error(`Unknown method: ${method}`)
   }

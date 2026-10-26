@@ -9,6 +9,7 @@ import { operationConfig } from './operation-config.js'
 import { createRouter, routerModule, routerModuleId } from './router.js'
 import { operationConfigFile, runtimeConfigFile } from './runtime-config.js'
 import { schemaTypes } from './schema-types.js'
+import { isSource, resolveDocument } from './source.js'
 import { typeDocument } from './type-document.js'
 
 // Positions use UTF-16, as do YAML's ranges and JavaScript string offsets.
@@ -139,14 +140,17 @@ export function transformSpec(content: string, fileName: string): Transform {
       'export declare const api: import("@dify/openapi-content-mapper").RpcRouter<Document, Routes, Context, Errors>;\n'
     text +=
       'export declare const query: import("@dify/openapi-content-mapper").RpcQueryRouter<Document, Routes, Context, Errors>;\n'
-    return { text, extension: '.ts', mappings }
+    // Exporter output has no source positions in the authored command descriptor.
+    return { text, extension: '.ts', mappings: isSource(fileName) ? [] : mappings }
   } catch (error) {
     const position =
       error && typeof error === 'object' && 'pos' in error
         ? (error.pos as [number, number])
         : [0, Math.min(content.length, 1)]
-    const start = Math.min(content.length, Math.max(0, position[0] ?? 0))
-    const end = Math.min(content.length, Math.max(start, position[1] ?? start))
+    const start = isSource(fileName) ? 0 : Math.min(content.length, Math.max(0, position[0] ?? 0))
+    const end = isSource(fileName)
+      ? 0
+      : Math.min(content.length, Math.max(start, position[1] ?? start))
     return {
       text: 'declare const invalid: never; export default invalid;',
       extension: '.ts',
@@ -175,7 +179,8 @@ export function compileRuntime(
     errors: operationConfig(sidecarFileName, 'errors'),
   },
 ) {
-  const { router } = parseSpec(content, fileName)
+  const source = resolveDocument(content, fileName)
+  const { router } = parseSpec(source.content, fileName)
   const text =
     `export * as api from ${JSON.stringify(routerModuleId(namespaceFileName, []))};\n` +
     `export * as query from ${JSON.stringify(routerModuleId(namespaceFileName, [], true))};\n`
@@ -192,6 +197,12 @@ export function compileRuntime(
             resolveModule,
           )
         : text,
-    { dependencies: [...configs.queries.dependencies, ...configs.errors.dependencies] },
+    {
+      dependencies: [
+        ...source.dependencies,
+        ...configs.queries.dependencies,
+        ...configs.errors.dependencies,
+      ],
+    },
   )
 }

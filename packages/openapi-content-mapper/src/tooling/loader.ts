@@ -10,6 +10,7 @@ type LoaderContext = {
   resourceQuery: string
   getOptions: () => { runtime?: string; sidecars?: string }
   addDependency: (file: string) => void
+  addContextDependency?: (directory: string) => void
   addMissingDependency?: (file: string) => void
   async: () => (error: Error | null, source?: string) => void
   getResolve: (options: {
@@ -104,8 +105,10 @@ async function render(this: LoaderContext): Promise<string> {
     }
   }
   for (const file of new Set([...sidecars, ...compiled.render.dependencies])) {
-    if (existsSync(file)) this.addDependency(file)
-    else this.addMissingDependency?.(file)
+    if (existsSync(file)) {
+      if (statSync(file).isDirectory()) this.addContextDependency?.(file)
+      else this.addDependency(file)
+    } else this.addMissingDependency?.(file)
   }
   const isQuery = query.has('openapi-errors') ? 'errors' : query.has('openapi-query')
   const path = query.get(

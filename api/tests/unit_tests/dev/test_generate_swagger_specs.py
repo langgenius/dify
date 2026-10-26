@@ -71,6 +71,19 @@ def _reset_schema_cache(api):
     api.__dict__.pop("__schema__", None)
 
 
+def test_console_stdout_export_contains_both_surfaces_without_spec_files(tmp_path: Path):
+    script = Path(__file__).resolve().parents[3] / "dev" / "export_console_openapi.py"
+    result = subprocess.run(
+        [sys.executable, str(script)], cwd=tmp_path, capture_output=True, text=True, check=True, timeout=60
+    )
+    documents = json.loads(result.stdout)
+    assert set(documents) == {"console", "fast"}
+    for document in documents.values():
+        assert document["openapi"].startswith("3.")
+        assert document["paths"]
+    assert not list(tmp_path.rglob("*.json"))
+
+
 def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 

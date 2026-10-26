@@ -115,6 +115,28 @@ test('packed SDK installs and works outside the workspace with npm and official 
     }
     assert(packedFiles.includes(packed.typescript.contentMapper.exec[1]))
     await writeFile(
+      join(directory, 'export.mjs'),
+      `console.log(JSON.stringify({
+      openapi: '3.1.0', paths: { '/status': { get: { responses: { 200: { content: {
+        'application/json': { schema: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } } }
+      } } } } } }
+    }));`,
+    )
+    await writeFile(
+      join(directory, 'backend.openapi-source'),
+      JSON.stringify({
+        command: ['node', 'export.mjs'],
+        inputs: ['export.mjs'],
+      }),
+    )
+    await writeFile(
+      join(directory, 'backend.openapi-source.config.ts'),
+      `
+export { default } from './pets.yaml.config.ts';
+export type { Context } from './pets.yaml.config.ts';
+`,
+    )
+    await writeFile(
       join(directory, 'pets.yaml'),
       `
 openapi: 3.1.0
@@ -174,7 +196,11 @@ export default runtime;
       join(directory, 'index.ts'),
       `
 import { api, query } from './pets.yaml';
+import { api as backend } from './backend.openapi-source';
 import { safe } from '@orpc/client';
+const backendName: string = (await backend.status.get()).name;
+// @ts-expect-error command-source types survive packaging
+const wrongBackendName: number = (await backend.status.get()).name;
 const result = await safe(api.pets.byPetId.get({params: {petId: 1}}));
 if (result.isDefined) { const code: 'CONFLICT' = result.error.code; }
 const pet = await api.pets.byPetId.get({params: {petId: 1}}, {context: {name: 'Mochi'}});
@@ -198,8 +224,15 @@ api.pets.byPetId.get({params: {petId: 1}}, {context: {name: 123}});
             module,
             moduleResolution: module === 'NodeNext' ? 'NodeNext' : 'Bundler',
             types: [],
+            allowImportingTsExtensions: true,
           },
-          contentMappers: [{ package: manifest.name, extensions: ['.yaml', '.openapi'] }],
+          contentMappers: [
+            {
+              package: manifest.name,
+              extensions: ['.yaml', '.openapi', '.openapi-source'],
+              options: { sources: ['./backend.openapi-source'] },
+            },
+          ],
           include: ['*.ts'],
         }),
       )
@@ -214,7 +247,9 @@ api.pets.byPetId.get({params: {petId: 1}}, {context: {name: 123}});
       `
 import assert from 'node:assert/strict';
 import * as document from './pets.yaml';
+import { api as backend } from './backend.openapi-source';
 import { safe } from '@orpc/client';
+assert.deepEqual(await backend.status.get(undefined, {context: {name: 'backend'}}), {name: 'backend'});
 assert.deepEqual(Object.keys(document), ['api', 'query']);
 assert.deepEqual(await document.api.pets.byPetId.get({params: {petId: 1}}, {context: {name: 'packed'}}), {name: 'packed'});
 assert.deepEqual(document.query.key(), [['pets'], {}]);
@@ -230,7 +265,9 @@ assert.equal(typeof (await import('@dify/openapi-content-mapper/loader')).defaul
       join(directory, 'entry.mjs'),
       `
 import { api } from './pets.yaml';
+import { api as backend } from './backend.openapi-source';
 export const getPet = (input) => api.pets.byPetId.get(input);
+export const getStatus = () => backend.status.get();
 `,
     )
     await writeFile(
@@ -245,6 +282,8 @@ const result = await build({
 });
 const code = result[0].output.filter(file => file.type === 'chunk').map(file => file.code).join('\\n');
 assert(code.includes('/pets/{petId}'));
+assert(code.includes('/status'));
+assert(!code.includes('export.mjs'));
 assert(!code.includes('UNUSED_ENDPOINT'));
 assert(!code.includes('parseDocument'));
 `,

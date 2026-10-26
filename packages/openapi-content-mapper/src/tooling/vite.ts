@@ -1,8 +1,8 @@
 import type { Plugin, ViteDevServer } from 'vite'
 import { createHash } from 'node:crypto'
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { readFile, realpath } from 'node:fs/promises'
-import { dirname, relative, resolve } from 'node:path'
+import { dirname, relative, resolve, sep } from 'node:path'
 import { loadOperationConfigs } from './operation-config.js'
 import { errorsQuery, moduleQuery, queryQuery } from './router.js'
 import { compileRuntime } from './transform.js'
@@ -14,7 +14,7 @@ export function openapi(
     runtime?: (fileName: string) => string | undefined
   } = {},
 ): Plugin {
-  const include = options.include ?? /\.(openapi|ya?ml)$/
+  const include = options.include ?? /\.(openapi-source|openapi|ya?ml)$/
   const cache = new Map<string, ReturnType<typeof compileRuntime>>()
   const realPaths = new Map<string, string>()
   let root = process.cwd()
@@ -88,7 +88,10 @@ export function openapi(
         this.addWatchFile(physical)
       }
       dependencies.set(fileName, render.dependencies)
-      for (const dependency of render.dependencies) this.addWatchFile(dependency)
+      for (const dependency of render.dependencies) {
+        if (server && statSync(dependency).isDirectory()) server.watcher.add(dependency)
+        else this.addWatchFile(dependency)
+      }
       server?.watcher.add([`${fileName}.queries.ts`, `${fileName}.errors.ts`])
       return {
         code: render(
@@ -140,20 +143,25 @@ export function openapi(
     watchChange() {
       cache.clear()
     },
-    handleHotUpdate(context) {
+    hotUpdate(context) {
       const affected = [...realPaths].filter(
         ([file, physical]) =>
           file === context.file ||
           physical === context.file ||
-          dependencies.get(file)?.includes(context.file) ||
+          dependencies
+            .get(file)
+            ?.some(
+              (dependency) =>
+                context.file === dependency || context.file.startsWith(`${dependency}${sep}`),
+            ) ||
           [`${file}.queries.ts`, `${file}.errors.ts`].includes(context.file),
       )
       if (!affected.length) return
       const modules = new Set(context.modules)
       for (const [file] of affected) {
         cache.delete(file)
-        for (const module of context.server.moduleGraph.getModulesByFile(file) ?? []) {
-          context.server.moduleGraph.invalidateModule(module)
+        for (const module of this.environment.moduleGraph.getModulesByFile(file) ?? []) {
+          this.environment.moduleGraph.invalidateModule(module)
           modules.add(module)
         }
       }

@@ -20,14 +20,13 @@ const nextConfig: NextConfig = {
     rules: {
       ...codeInspectorPlugin({ bundler: 'turbopack' }),
       '*.openapi': { loaders: [openapiLoader], as: '*.js' },
-      // Next resolves the .openapi symlink to its JSON target before applying loaders.
-      '*console-client-openapi.json': { loaders: [openapiLoader], as: '*.js' },
+      '*.openapi-source': { loaders: [openapiLoader], as: '*.js' },
       '*openapi-namespace.js': { loaders: [openapiLoader], as: '*.js' },
     },
   },
   webpack(config) {
     config.module.rules.push({
-      test: /(?:\.openapi|console-client-openapi\.json|openapi-namespace\.js)$/,
+      test: /(?:\.openapi|\.openapi-source|openapi-namespace\.js)$/,
       type: 'javascript/auto',
       use: [openapiLoader],
     })

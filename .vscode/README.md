@@ -19,6 +19,10 @@ repository root in a trusted workspace, then open a consuming TypeScript file so
 the language server loads the project's Content Mapper configuration.
 
 If lifecycle scripts were disabled during installation, first run
-`pnpm --filter @dify/contracts compose:console` and
-`pnpm --filter @dify/openapi-content-mapper build`. Local `settings.json` remains
-ignored; the shared template is exercised by the Console language-server test.
+`pnpm --filter @dify/openapi-content-mapper build`. For the repository Console
+example, run `uv sync --project api --frozen` to prepare its local schema exporter,
+then open `packages/openapi-content-mapper/examples/repository/client.ts`. The
+exported OpenAPI content stays in memory; no preparation of a specification file
+is needed. Accept the editor prompt to use the workspace TypeScript 7.1 compiler.
+Local `settings.json` remains ignored; the shared template is exercised by the
+Console language-server test.

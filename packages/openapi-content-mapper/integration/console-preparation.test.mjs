@@ -1,25 +1,30 @@
 /* oxlint-disable vitest/no-import-node-test, antfu/no-import-dist -- Verify the composed migration surface against the existing public contract. */
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { test } from 'node:test'
 import { consoleRouterContract } from '../../contracts/console.ts'
 import {
   composeConsoleDocuments,
-  composeConsoleFile,
+  loadConsoleDocument,
 } from '../../contracts/scripts/compose-console-openapi.mjs'
 import { describeOperations } from '../dist/operation.js'
 import { createRouter } from '../dist/tooling/router.js'
 /* oxlint-enable vitest/no-import-node-test, antfu/no-import-dist */
 
-const file = new URL('../../contracts/openapi/console-client-openapi.json', import.meta.url)
+const files = [
+  'console-openapi.json',
+  'fastopenapi-console-openapi.json',
+  'console-client-openapi.json',
+].map((name) => new URL(`../../contracts/openapi/${name}`, import.meta.url))
 
 test('every existing Console member retains its name, HTTP method and route', (t) => {
-  const before = readFileSync(file, 'utf8')
-  const document = composeConsoleFile()
-  assert.equal(
-    readFileSync(file, 'utf8'),
+  const before = files.map((file) => existsSync(file))
+  const document = loadConsoleDocument()
+  assert.deepEqual(loadConsoleDocument(), document, 'In-memory composition must be deterministic')
+  assert.deepEqual(
+    files.map((file) => existsSync(file)),
     before,
-    'The composed document must be deterministic and current',
+    'Export must not create OpenAPI files',
   )
   const operations = describeOperations(document)
   const router = createRouter(operations)

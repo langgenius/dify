@@ -5,6 +5,7 @@
 Initial experimental release. Requires TypeScript 7.1.0-beta for native content mapping and Node.js 24+ for tooling.
 
 - Import OpenAPI 3.0/3.1 YAML or JSON-backed `.openapi` documents with inferred request and response types.
+- Import `.openapi-source` command descriptors to infer from backend-exported OpenAPI in memory, with compiler and bundler dependency tracking.
 - Export only `api` and `query`, with statically tree-shakable namespaces and typed document context.
 - Support explicit `x-client-path` operation names without changing HTTP serialization or per-operation sidecars.
 - Integrate with Vite, Next.js Turbopack/Webpack and Node module hooks, preserving independent document transports and sidecars.

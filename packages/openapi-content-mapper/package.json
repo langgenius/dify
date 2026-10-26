@@ -116,6 +116,7 @@
   "typescript": {
     "contentMapper": {
       "compilerOptions": [],
+      "dynamicConfig": true,
       "exec": [
         "node",
         "dist/tooling/mapper.js"

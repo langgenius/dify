@@ -24,7 +24,7 @@
   "contentMappers": [
     {
       "package": "@dify/openapi-content-mapper",
-      "extensions": [".openapi"]
+      "extensions": [".openapi", ".openapi-source"]
     }
   ]
 }

@@ -19,13 +19,16 @@ registerHooks({
       (specifier.startsWith('file:') ||
         (context.parentURL?.startsWith('file:') &&
           (specifier.startsWith('.') || specifier.startsWith('/')))) &&
-      specifier.endsWith('.openapi')
+      /\.(?:openapi|openapi-source)$/.test(specifier)
     )
       return { url: new URL(specifier, context.parentURL).href, shortCircuit: true }
     return nextResolve(specifier, context)
   },
   load(url, context, nextLoad) {
-    if (url.startsWith('file:') && /\.(?:openapi|ya?ml)$/.test(new URL(url).pathname)) {
+    if (
+      url.startsWith('file:') &&
+      /\.(?:openapi-source|openapi|ya?ml)$/.test(new URL(url).pathname)
+    ) {
       const sourceUrl = new URL(url)
       const isQuery = sourceUrl.searchParams.has('openapi-errors')
         ? 'errors'

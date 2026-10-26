@@ -13,6 +13,7 @@ import {
 } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { loadConsoleDocument } from '../../contracts/scripts/compose-console-openapi.mjs'
 import { describeOperations } from '../dist/operation.js'
 import { createRouter } from '../dist/tooling/router.js'
 /* oxlint-enable antfu/no-import-dist */
@@ -139,7 +140,7 @@ try {
       name === 'knowledge-fs'
         ? join(repo, 'api/knowledge-fs-contract/knowledge-fs.openapi.json')
         : join(specDir, `${name}-openapi.json`)
-    const bytes = readFileSync(file)
+    const bytes = consoleOnly ? JSON.stringify(loadConsoleDocument()) : readFileSync(file)
     const spec = JSON.parse(bytes)
     const inventory = [...routes(createRouter(describeOperations(spec)))]
     report.documents.push({
@@ -147,8 +148,11 @@ try {
       operations: inventory.length,
       sha256: createHash('sha256').update(bytes).digest('hex'),
     })
-    symlinkSync(file, join(dir, `${name}.openapi`))
-    add(`import { api as api${docIndex} } from './${name}.openapi';`)
+    if (!consoleOnly) symlinkSync(file, join(dir, `${name}.openapi`))
+    const specifier = consoleOnly
+      ? join(repo, 'packages/openapi-content-mapper/examples/repository/console.openapi-source')
+      : `./${name}.openapi`
+    add(`import { api as api${docIndex} } from ${JSON.stringify(specifier)};`)
     for (const { operation, members } of inventory) {
       const surface = consoleOnly || name === 'fastopenapi-console' ? 'console' : name
       const path =
@@ -305,7 +309,22 @@ try {
         types: ['node'],
         lib: ['ES2022', 'DOM'],
       },
-      contentMappers: [{ package: root, extensions: ['.openapi'] }],
+      contentMappers: [
+        {
+          package: root,
+          extensions: ['.openapi', '.openapi-source'],
+          options: {
+            sources: consoleOnly
+              ? [
+                  join(
+                    repo,
+                    'packages/openapi-content-mapper/examples/repository/console.openapi-source',
+                  ),
+                ]
+              : [],
+          },
+        },
+      ],
       include: ['*.ts'],
     }),
   )

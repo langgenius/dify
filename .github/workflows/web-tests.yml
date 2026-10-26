@@ -23,6 +23,16 @@ jobs:
       - name: Setup web environment
         uses: ./.github/actions/setup-web
 
+      - name: Setup Python for in-memory Console schema export
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+          python-version: '3.12'
+          cache-dependency-glob: api/uv.lock
+
+      - name: Install schema exporter dependencies
+        run: uv sync --project api --frozen
+
       - name: Test SDK types, runtime and Vite integration
         run: pnpm --filter @dify/openapi-content-mapper test
 

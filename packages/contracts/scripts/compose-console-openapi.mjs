@@ -1,5 +1,6 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 const methods = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'])
 
@@ -61,24 +62,27 @@ export function composeConsoleDocuments(sources) {
   return result
 }
 
-export function composeConsoleFile(
-  root = resolve(import.meta.dirname, '..'),
-  output = resolve(root, 'openapi/console-client-openapi.json'),
-) {
-  const sources = [
-    ['console', 'openapi/console-openapi.json'],
-    ['fast', 'openapi/fastopenapi-console-openapi.json', '/console/api'],
+export function loadConsoleDocument(root = resolve(import.meta.dirname, '..')) {
+  const community = JSON.parse(
+    execFileSync('uv', ['run', '--project', 'api', 'api/dev/export_console_openapi.py'], {
+      cwd: resolve(root, '../..'),
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: 60000,
+    }),
+  )
+  const snapshots = [
     ['enterprise', 'generated/enterprise/openapi.gen.json'],
     ['appDeploy', 'generated/enterprise-app-deploy/openapi.gen.json'],
-  ].map(([name, path, stripPrefix]) => ({
+  ].map(([name, path]) => ({
     name,
     document: JSON.parse(readFileSync(resolve(root, path), 'utf8')),
-    stripPrefix,
   }))
-  const document = composeConsoleDocuments(sources)
-  mkdirSync(dirname(output), { recursive: true })
-  writeFileSync(output, `${JSON.stringify(document)}\n`)
-  return document
+  return composeConsoleDocuments([
+    { name: 'console', document: community.console },
+    { name: 'fast', document: community.fast, stripPrefix: '/console/api' },
+    ...snapshots,
+  ])
 }
 
-if (import.meta.main) composeConsoleFile()
+if (import.meta.main) process.stdout.write(`${JSON.stringify(loadConsoleDocument())}\n`)

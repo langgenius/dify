@@ -1,4 +1,4 @@
-import { api as consoleClient, query as consoleQuery } from './console.openapi'
+import { api as consoleClient, query as consoleQuery } from './console.openapi-source'
 import { api as knowledgeClient } from './knowledge-fs.openapi'
 
 // Hover over `result`, `total`, or a query option to see inferred types.
