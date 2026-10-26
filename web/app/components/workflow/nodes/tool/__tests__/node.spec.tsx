@@ -128,17 +128,18 @@ describe('ToolNode', () => {
   })
 })
 
-it('inherits live App user errors from its direct Reuse source and restores Workspace checks', () => {
+it('does not repeat its Reuse source App user or Workspace authorization errors on the canvas', () => {
   const data = createNodeData({ credential_source: 'reuse_node', reuse_node_id: 'auth-source' })
   const source = createNode({
     id: 'auth-source',
     data: createNodeData({
       credential_source: 'end_user',
-      end_user_auth: { allowed_credential_types: ['api-key'], purpose: '' },
+      end_user_auth: { allowed_credential_types: ['oauth2', 'api-key'], purpose: '' },
     }),
   })
   const { graph } = renderTool(data, { authorized: false, nodes: [source] })
-  expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeVisible()
+  expect(screen.queryByText('plugin.auth.appUser.clientRequired')).not.toBeInTheDocument()
+  expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
   expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
   act(() =>
     graph.current?.setNodes([
@@ -146,12 +147,13 @@ it('inherits live App user errors from its direct Reuse source and restores Work
         ...source,
         data: {
           ...source.data,
-          end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Find repositories' },
+          end_user_auth: { allowed_credential_types: [], purpose: 'Find repositories' },
         },
       },
     ]),
   )
   expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
+  expect(screen.queryByText('plugin.auth.appUser.selectMethod')).not.toBeInTheDocument()
   expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
   act(() =>
     graph.current?.setNodes([
@@ -161,7 +163,7 @@ it('inherits live App user errors from its direct Reuse source and restores Work
       },
     ]),
   )
-  expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeVisible()
+  expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
 })
 
 it('shows the invalid Reuse reference on the canvas instead of a Workspace authorization error', () => {

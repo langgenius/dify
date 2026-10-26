@@ -366,8 +366,8 @@ const validAppUserAuth: Partial<ToolNodeType> = {
   end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Find repositories' },
 }
 
-function buildReusableToolGraph() {
-  const graph = buildUnauthorizedToolGraph()
+function buildReusableToolGraph(requiredForm?: 'llm' | 'form') {
+  const graph = buildUnauthorizedToolGraph(requiredForm)
   const tool = graph.nodes.find((node) => node.id === 'tool')!
   return {
     ...graph,
@@ -376,11 +376,19 @@ function buildReusableToolGraph() {
         node.id === 'tool'
           ? {
               ...node,
-              data: { ...node.data, credential_source: 'reuse_node', reuse_node_id: 'auth-source' },
+              data: {
+                ...node.data,
+                title: 'Reuse consumer',
+                credential_source: 'reuse_node',
+                reuse_node_id: 'auth-source',
+              },
             }
           : node,
       ),
-      createNode({ id: 'auth-source', data: { ...tool.data, ...validAppUserAuth } }),
+      createNode({
+        id: 'auth-source',
+        data: { ...tool.data, title: 'Authorization source', ...validAppUserAuth },
+      }),
     ],
     edges: [
       createEdge({ source: 'start', target: 'auth-source' }),
@@ -390,7 +398,7 @@ function buildReusableToolGraph() {
 }
 
 describe('useChecklist', () => {
-  it('validates the direct Reuse source and updates dependent nodes from live graph changes', () => {
+  it('reports live authorization errors only on the Reuse source', () => {
     const { nodes, edges, options } = buildReusableToolGraph()
     const { result, graph } = renderChecklist(nodes, edges, options)
     expect(result.current).toEqual([])
@@ -400,21 +408,41 @@ describe('useChecklist', () => {
         end_user_auth: { allowed_credential_types: ['api-key'], purpose: ' ' },
       }),
     )
-    for (const id of ['auth-source', 'tool'])
-      expect(result.current.find((item) => item.id === id)?.errorMessages).toEqual([
-        'plugin.auth.appUser.descriptionRequired',
-      ])
+    expect(result.current.find((item) => item.id === 'auth-source')?.errorMessages).toEqual([
+      'plugin.auth.appUser.descriptionRequired',
+    ])
+    expect(result.current.find((item) => item.id === 'tool')).toBeUndefined()
     act(() =>
       setNodeAuthorization(graph, 'auth-source', {
         credential_source: 'workspace',
         end_user_auth: undefined,
       }),
     )
-    for (const id of ['auth-source', 'tool'])
-      expect(result.current.find((item) => item.id === id)?.errorMessages).toEqual([
-        'workflow.errorMsg.authRequired',
-      ])
+    expect(result.current.find((item) => item.id === 'auth-source')?.errorMessages).toEqual([
+      'workflow.errorMsg.authRequired',
+    ])
+    expect(result.current.find((item) => item.id === 'tool')).toBeUndefined()
   })
+
+  it.each(['llm', 'form'] as const)(
+    'keeps the Reuse node own required %s field error while its source requires authorization',
+    (requiredForm) => {
+      const { nodes, edges, options } = buildReusableToolGraph(requiredForm)
+      const { result, graph } = renderChecklist(nodes, edges, options)
+      act(() =>
+        setNodeAuthorization(graph, 'auth-source', {
+          credential_source: 'workspace',
+          end_user_auth: undefined,
+        }),
+      )
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        'workflow.errorMsg.fieldRequired:{"field":"Query"}',
+      ])
+      expect(result.current.find((item) => item.id === 'auth-source')?.errorMessages).toContain(
+        'workflow.errorMsg.authRequired',
+      )
+    },
+  )
 
   it.each(['workspace', 'reuse_node'] as const)(
     'uses saved App user authorization errors and restores errors for %s',
@@ -889,7 +917,7 @@ describe('useChecklistBeforePublish', () => {
     expect(screen.getByText(/workflow.panel.selectReuseNode/)).toBeVisible()
   })
 
-  it('checks direct Reuse against the saved App user or Workspace authorization', async () => {
+  it('blocks publishing on the source authorization error without attributing it to the Reuse node', async () => {
     const { nodes, edges, options } = buildReusableToolGraph()
     const { wrapper, graph } = createChecklistWrapper({ nodes, edges }, options)
     const { result } = renderHook(() => useChecklistBeforePublish(), { wrapper })
@@ -901,6 +929,10 @@ describe('useChecklistBeforePublish', () => {
       }),
     )
     await act(async () => expect(await result.current.handleCheckBeforePublish()).toBe(false))
+    expect(screen.getByText('[Authorization source] workflow.errorMsg.authRequired')).toBeVisible()
+    expect(
+      screen.queryByText('[Reuse consumer] workflow.errorMsg.authRequired'),
+    ).not.toBeInTheDocument()
   })
 
   it('does not reject valid saved App user authorization as missing Workspace authorization', async () => {

@@ -58,6 +58,7 @@ import {
   resolveLLMNodeModel,
 } from '../nodes/llm/utils'
 import { resolveToolAuthorization } from '../nodes/tool/authorization'
+import { getToolAuthorizationTab } from '../nodes/tool/authorization-config'
 import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
 import {
@@ -380,7 +381,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       const node = filteredNodes[i]
       const authorization = resolveToolAuthorization({ node: node!, nodes })
       const appUserAuthDraft =
-        authorization?.status === 'resolved' && authorization.authorizationTab === 'app-user-auth'
+        authorization?.status === 'resolved' &&
+        authorization.sourceNodeId === node!.id &&
+        authorization.authorizationTab === 'app-user-auth'
           ? authorization.appUserDraft
           : undefined
       let moreDataForCheckValid: CheckValidExtraData
@@ -394,7 +397,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           workflowTools || [],
           language,
         )
-        if (appUserAuthDraft || authorization?.status === 'invalid')
+        if (getToolAuthorizationTab(node!.data as ToolNodeType) !== 'workspace-auth')
           moreDataForCheckValid = { ...moreDataForCheckValid, notAuthed: false }
       }
 
@@ -826,10 +829,7 @@ export const useChecklistBeforePublish = () => {
           )
           return false
         }
-        if (
-          authorization?.status === 'resolved' &&
-          authorization.authorizationTab === 'app-user-auth'
-        )
+        if (getToolAuthorizationTab(node!.data as ToolNodeType) !== 'workspace-auth')
           moreDataForCheckValid = { ...moreDataForCheckValid, notAuthed: false }
       }
 

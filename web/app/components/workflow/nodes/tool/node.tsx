@@ -24,16 +24,21 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
     node: { id, data },
     nodes,
   })
-  const authDraft =
-    authorization?.status === 'resolved' && authorization.authorizationTab === 'app-user-auth'
-      ? authorization.appUserDraft
+  const ownAuthorization =
+    authorization?.status === 'resolved' && authorization.sourceNodeId === id
+      ? authorization
       : undefined
-  const isAppUserAuth = !!authDraft
-  const authErrors = isAppUserAuth ? authDraft.errors : undefined
+  const authErrors =
+    ownAuthorization?.authorizationTab === 'app-user-auth'
+      ? ownAuthorization.appUserDraft.errors
+      : undefined
   const authorizationWarnings: string[] = []
   if (authorization?.status === 'invalid')
     authorizationWarnings.push(t(($) => $['panel.selectReuseNode'], { ns: 'workflow' }))
-  else if (!isAppUserAuth && isToolAuthorizationRequired(data.provider_type, currCollection))
+  else if (
+    ownAuthorization?.authorizationTab === 'workspace-auth' &&
+    isToolAuthorizationRequired(data.provider_type, currCollection)
+  )
     authorizationWarnings.push(t(($) => $['nodes.tool.authorizationRequired'], { ns: 'workflow' }))
   if (authErrors?.methods)
     authorizationWarnings.push(t(($) => $['auth.appUser.selectMethod'], { ns: 'plugin' }))
