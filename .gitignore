@@ -230,8 +230,8 @@ node_modules
 # plugin migrate
 plugins.jsonl
 
-# Generated community API OpenAPI specs remain local artifacts.
-packages/contracts/openapi/*
+# generated API OpenAPI specs
+packages/contracts/openapi/
 
 # mise
 mise.toml

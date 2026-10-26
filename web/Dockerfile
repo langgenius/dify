@@ -41,7 +41,7 @@ COPY --from=packages /app/ .
 COPY . .
 
 WORKDIR /app/web
-# Bound native compiler parallelism while loader workers process the console specification.
+# Bound native compiler parallelism during image builds.
 ENV RAYON_NUM_THREADS=2
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV pnpm_config_verify_deps_before_run=false
