@@ -133,7 +133,7 @@ const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
                     </div>
                   )}
                   <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
-                    <label className="flex items-center space-x-2">
+                    <label className="flex cursor-pointer items-center space-x-2">
                       <Checkbox checked={isCreateNext} onCheckedChange={setIsCreateNext} />
                       <span>{t(($) => $['addModal.createNext'], { ns: 'appAnnotation' })}</span>
                     </label>

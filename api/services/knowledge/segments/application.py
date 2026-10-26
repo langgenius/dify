@@ -751,6 +751,11 @@ class SegmentMutationService:
             raise SegmentNotFoundError("Segment not found")
         if self._indexing_state.is_segment_indexing(segment_id):
             raise ValueError("Segment is indexing, please try again later")
+        if args.enabled is True and not previous.enabled and args.model_fields_set == {"enabled"}:
+            # Disabled segments have no vectors to update. Reuse the console's load-based enable task.
+            self._store.save_segment(segment_ref, {"enabled": True, "disabled_at": None, "disabled_by": None})
+            self._index.change_status(scope.document.ref, [segment_id], "enable")
+            return
         if args.enabled is False and previous.enabled:
             self._store.save_segment(
                 segment_ref, {"enabled": False, "disabled_at": naive_utc_now(), "disabled_by": actor_id}

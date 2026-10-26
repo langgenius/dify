@@ -121,13 +121,13 @@ class TestMessageListQuery:
     def test_query_rejects_limit_below_minimum(self):
         """Test query rejects limit < 1."""
         conversation_id = str(uuid.uuid4())
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for MessageListQuery\\\nlimit"):
             MessageListQuery(conversation_id=conversation_id, limit=0)  # pyrefly: ignore[bad-argument-type]
 
     def test_query_rejects_limit_above_maximum(self):
         """Test query rejects limit > 100."""
         conversation_id = str(uuid.uuid4())
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for MessageListQuery\\\nlimit"):
             MessageListQuery(conversation_id=conversation_id, limit=101)  # pyrefly: ignore[bad-argument-type]
 
 
@@ -198,7 +198,7 @@ class TestFeedbackListQuery:
 
     def test_query_rejects_page_below_minimum(self):
         """Test query rejects page < 1."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for FeedbackListQuery\\\npage"):
             FeedbackListQuery(page=0)  # pyrefly: ignore[bad-argument-type]
 
     def test_query_limit_boundaries(self):
@@ -211,12 +211,12 @@ class TestFeedbackListQuery:
 
     def test_query_rejects_limit_below_minimum(self):
         """Test query rejects limit < 1."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for FeedbackListQuery\\\nlimit"):
             FeedbackListQuery(limit=0)  # pyrefly: ignore[bad-argument-type]
 
     def test_query_rejects_limit_above_maximum(self):
         """Test query rejects limit > 101."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="1 validation error for FeedbackListQuery\\\nlimit"):
             FeedbackListQuery(limit=102)  # pyrefly: ignore[bad-argument-type]
 
 

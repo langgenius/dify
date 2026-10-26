@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from http import HTTPStatus
 from inspect import unwrap
 from types import SimpleNamespace
@@ -132,6 +133,7 @@ def test_account_endpoint_parses_bearer_token_and_serializes_account() -> None:
         avatar="avatar",
         interface_language="en-US",
         timezone="UTC",
+        created_at=datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC),
     )
 
     with (
@@ -151,6 +153,7 @@ def test_account_endpoint_parses_bearer_token_and_serializes_account() -> None:
             "avatar": "avatar",
             "interface_language": "en-US",
             "timezone": "UTC",
+            "created_at": 1704164645,
         },
         HTTPStatus.OK,
     )
@@ -167,6 +170,7 @@ def test_account_endpoint_serializes_nullable_account_preferences() -> None:
         avatar=None,
         interface_language=None,
         timezone=None,
+        created_at=datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC),
     )
 
     with (
@@ -186,6 +190,7 @@ def test_account_endpoint_serializes_nullable_account_preferences() -> None:
             "avatar": None,
             "interface_language": None,
             "timezone": None,
+            "created_at": 1704164645,
         },
         HTTPStatus.OK,
     )

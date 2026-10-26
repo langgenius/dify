@@ -11,12 +11,14 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
 from controllers.openapi.auth.requirements import Requirement
 from enums import DeploymentEdition
+
+type AdmissionContext = Literal["orm", "workspace", "app"]
 
 
 class Kind(StrEnum):
@@ -62,12 +64,17 @@ class EndpointSpec:
     is read, because the route is not exposed on this edition at all. It is
     not `ExternalSsoPipeline`'s own gate, which 403s a token kind after
     authentication.
+
+    `context` selects the handler's `ctx` argument and admission Session lifetime.
+    `"orm"` keeps the Session open for the handler; all other values commit and
+    close it before the handler runs. `None` omits the `ctx` argument; admission
+    requirements still run for every endpoint.
     """
 
     requirements: tuple[Requirement, ...]
     catalog: CatalogMeta
     edition: frozenset[DeploymentEdition] | None = None
-    account_context: bool = False
+    context: AdmissionContext | None = "orm"
 
     def allows(self, edition: DeploymentEdition) -> bool:
         """Whether this deployment exposes the route at all. `edition is None`

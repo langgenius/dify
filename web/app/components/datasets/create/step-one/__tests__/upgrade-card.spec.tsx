@@ -1,36 +1,24 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import UpgradeCard from '../upgrade-card'
 
-const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithConsoleQuery, () => ({ onUrlUpdate }))
 
-const renderWithoutPricing = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
+it('opens pricing from the multiple-file upload upgrade action', async () => {
+  const user = userEvent.setup()
+  render(<UpgradeCard />, { systemFeatures: { deployment_edition: 'CLOUD' } })
+  await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.upgrade' }))
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+  )
+})
 
-vi.mock('@/app/components/billing/upgrade-btn', () => ({
-  default: ({ onClick }: { onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>
-      upgrade
-    </button>
-  ),
-}))
-
-function render(...args: Parameters<typeof renderWithoutPricing>) {
-  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
-  return renderWithoutPricing(...args)
-}
-
-describe('UpgradeCard', () => {
-  it('opens pricing from the upgrade action', async () => {
-    const user = userEvent.setup()
-    render(<UpgradeCard />)
-
-    await user.click(screen.getByRole('button', { name: 'upgrade' }))
-
-    await waitFor(() =>
-      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
-    )
-  })
+it('does not offer a Cloud upgrade on a community deployment', () => {
+  render(<UpgradeCard />, { systemFeatures: { deployment_edition: 'COMMUNITY' } })
+  expect(
+    screen.queryByRole('button', { name: 'billing.triggerLimitModal.upgrade' }),
+  ).not.toBeInTheDocument()
 })

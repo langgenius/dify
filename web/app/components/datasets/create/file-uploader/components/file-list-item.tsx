@@ -15,7 +15,7 @@ const SimplePieChart = dynamic(() => import('@/app/components/base/simple-pie-ch
   ssr: false,
 })
 
-export type FileListItemProps = {
+type FileListItemProps = {
   fileItem: FileItem
   onPreview: (file: File) => void
   onRemove: (fileID: string) => void

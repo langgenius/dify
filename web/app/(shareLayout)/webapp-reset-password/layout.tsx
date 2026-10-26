@@ -5,6 +5,6 @@ export function generateMetadata() {
   return getRouteMetadata('login', ($) => $.resetPassword)
 }
 
-export default function SignInLayout({ children }: any) {
+export default function SignInLayout({ children }: { children: React.ReactNode }) {
   return <ResetPasswordLayout>{children}</ResetPasswordLayout>
 }

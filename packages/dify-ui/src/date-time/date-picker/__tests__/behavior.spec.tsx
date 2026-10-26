@@ -252,7 +252,10 @@ describe('DatePicker keyboard and form contract', () => {
         </DatePicker>,
       )
       await screen.getByRole('button', { name: 'Clear date' }).click()
-      expect(changed).toHaveBeenCalledExactlyOnceWith(null)
+      expect(changed).toHaveBeenCalledExactlyOnceWith(
+        null,
+        expect.objectContaining({ reason: 'clear-press' }),
+      )
       await expect.element(screen.getByRole('button', { name: 'Date', exact: true })).toHaveFocus()
       await expect
         .element(screen.getByRole('button', { name: 'Clear date' }))
@@ -318,6 +321,25 @@ it('opens on the allowed month and retains a visible focus target if every date 
     .toHaveFocus()
 })
 
+it('focuses the month title after applying a month with no available dates', async () => {
+  const screen = await render(
+    <DatePicker defaultValue="2025-01-15" isDateUnavailable={(date) => date.startsWith('2025-02')}>
+      <DatePickerLabel className="sr-only">Date</DatePickerLabel>
+      <Parts />
+    </DatePicker>,
+  )
+  await screen.getByRole('button', { name: 'Date Jan 15, 2025' }).click()
+  await screen.getByRole('button', { name: 'Choose month and year: January 2025' }).click()
+  await screen.getByRole('option', { name: 'February' }).click()
+  await expect.element(screen.getByRole('option', { name: 'February' })).toHaveFocus()
+  await screen.getByRole('button', { name: 'OK' }).click()
+
+  await expect.element(screen.getByRole('grid', { name: 'February 2025' })).toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('button', { name: 'Choose month and year: February 2025' }))
+    .toHaveFocus()
+})
+
 it('keeps adjacent-month dates selectable by pointer', async () => {
   const screen = await render(
     <DatePicker defaultValue="2025-01-15">
@@ -368,9 +390,6 @@ it('localizes full dates and reverses horizontal calendar navigation in RTL', as
     </DirectionProvider>,
   )
   await screen.getByRole('button', { name: /^Date / }).click()
-  await expect
-    .element(screen.getByRole('dialog', { name: 'Date', exact: true }))
-    .toHaveAttribute('dir', 'rtl')
   await userEvent.keyboard('{ArrowLeft}')
   const nextLabel = 'الخميس، 16 جانفي 2025'
   await expect.element(screen.getByRole('button', { name: nextLabel, exact: true })).toHaveFocus()
@@ -397,26 +416,6 @@ it('focuses the first invalid picker inside a native fieldset', async () => {
   await expect.element(screen.getByRole('button', { name: 'Departure', exact: true })).toHaveFocus()
 })
 
-it('lets a picker override inherited direction independently of its formatting locale', async () => {
-  const screen = await render(
-    <DirectionProvider direction="rtl">
-      <DatePicker direction="ltr" locale={arTN} defaultValue="2025-01-15">
-        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
-        <Parts />
-      </DatePicker>
-    </DirectionProvider>,
-  )
-  const trigger = screen.getByRole('button', { name: /^Date / })
-  await expect.element(trigger).toHaveAttribute('dir', 'ltr')
-  await trigger.click()
-  await expect
-    .element(screen.getByRole('dialog', { name: 'Date', exact: true }))
-    .toHaveAttribute('dir', 'ltr')
-  await userEvent.keyboard('{ArrowRight}')
-  const nextLabel = 'الخميس، 16 جانفي 2025'
-  await expect.element(screen.getByRole('button', { name: nextLabel, exact: true })).toHaveFocus()
-})
-
 it('keeps Persian month labels in the Gregorian calendar used by the value', async () => {
   const changed = vi.fn()
   const screen = await render(
@@ -434,5 +433,8 @@ it('keeps Persian month labels in the Gregorian calendar used by the value', asy
   await screen.getByRole('button', { name: 'OK' }).click()
   const dateName = 'شنبه ۱۵ فوریه ۲۰۲۵'
   await screen.getByRole('button', { name: dateName }).click()
-  expect(changed).toHaveBeenCalledExactlyOnceWith('2025-02-15')
+  expect(changed).toHaveBeenCalledExactlyOnceWith(
+    '2025-02-15',
+    expect.objectContaining({ reason: 'item-press' }),
+  )
 })

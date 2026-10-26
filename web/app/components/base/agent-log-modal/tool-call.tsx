@@ -1,6 +1,6 @@
 'use client'
+import type { AgentToolCallResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { ToolCall } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckboxCircleLine, RiErrorWarningLine } from '@remixicon/react'
 import { useState } from 'react'
@@ -10,8 +10,15 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 
+const getToolIcon = (icon: AgentToolCallResponse['tool_icon']) => {
+  if (typeof icon === 'string') return icon
+  if (icon?.content !== undefined && icon.background !== undefined)
+    return { content: icon.content, background: icon.background }
+  return undefined
+}
+
 type Props = Readonly<{
-  toolCall: ToolCall
+  toolCall: Partial<AgentToolCallResponse> & Pick<AgentToolCallResponse, 'status'>
   isLLM: boolean
   isFinal?: boolean
   tokens?: number
@@ -31,7 +38,9 @@ const ToolCallItem: FC<Props> = ({
   const locale = useLocale()
   const toolName = isLLM
     ? 'LLM'
-    : toolCall.tool_label[locale] || toolCall.tool_label[locale.replaceAll('-', '_')]
+    : typeof toolCall.tool_label === 'string'
+      ? toolCall.tool_label
+      : toolCall.tool_label?.[locale] || toolCall.tool_label?.[locale.replaceAll('-', '_')]
 
   const getTime = (time: number) => {
     if (time < 1) return `${(time * 1000).toFixed(3)} ms`
@@ -73,7 +82,7 @@ const ToolCallItem: FC<Props> = ({
           <BlockIcon
             className={cn('mr-2 shrink-0')}
             type={isLLM ? BlockEnum.LLM : BlockEnum.Tool}
-            toolIcon={toolCall.tool_icon}
+            toolIcon={getToolIcon(toolCall.tool_icon)}
           />
           <div
             className={cn('grow truncate text-[13px] leading-4 font-semibold text-text-secondary')}

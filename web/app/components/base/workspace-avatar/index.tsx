@@ -1,8 +1,9 @@
 'use client'
 
 import type { AvatarSize } from '@langgenius/dify-ui/avatar'
-import { AvatarFallback, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import { getAvatarInitial } from '@/utils/avatar'
 
 export type WorkspaceAvatarSize = Extract<AvatarSize, 'xs' | 'sm' | 'lg' | '2xl'>
 
@@ -23,12 +24,12 @@ export function WorkspaceAvatar({
   className?: string
 }) {
   return (
-    <AvatarRoot
+    <Avatar
+      aria-hidden="true"
       size={size}
       className={cn('shadow-xs', workspaceAvatarClasses[size].root, className)}
     >
       <AvatarFallback
-        size={size}
         className={cn(
           'border border-divider-regular bg-components-icon-bg-orange-dark-solid bg-linear-to-br from-components-avatar-bg-mask-stop-0 to-components-avatar-bg-mask-stop-100 p-1',
         )}
@@ -39,9 +40,9 @@ export function WorkspaceAvatar({
             workspaceAvatarClasses[size].text,
           )}
         >
-          {name?.[0]?.toLocaleUpperCase() || '?'}
+          {getAvatarInitial(name)}
         </span>
       </AvatarFallback>
-    </AvatarRoot>
+    </Avatar>
   )
 }

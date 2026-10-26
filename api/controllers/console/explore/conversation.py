@@ -24,6 +24,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.conversation_fields import ConversationInfiniteScrollPagination, ResultResponse, SimpleConversation
+from libs.external_api import error_responses
 from libs.helper import UUIDStrOrEmpty, dump_response
 from machinery.context import RequestContext
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
@@ -84,6 +85,7 @@ def _conversation_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/conversations", endpoint="installed_app_conversations")
 class ConversationListApi(Resource):
+    @error_responses(ConversationCursorNotFoundHTTPError, NotChatAppError)
     @console_ns.doc(params=query_params_from_model(ConversationListQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ConversationInfiniteScrollPagination.__name__])
     @console_account_admission()
@@ -107,6 +109,7 @@ class ConversationListApi(Resource):
     "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>", endpoint="installed_app_conversation"
 )
 class ConversationApi(Resource):
+    @error_responses(ConversationNotFoundHTTPError, NotChatAppError)
     @console_ns.response(HTTPStatus.NO_CONTENT, "Conversation deleted successfully")
     @console_account_admission()
     @get_installed_app
@@ -123,6 +126,12 @@ class ConversationApi(Resource):
     endpoint="installed_app_conversation_rename",
 )
 class ConversationRenameApi(Resource):
+    @error_responses(
+        ConversationFirstMessageNotFoundHTTPError,
+        ConversationNameRequiredHTTPError,
+        ConversationNotFoundHTTPError,
+        NotChatAppError,
+    )
     @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
     @console_ns.response(
         HTTPStatus.OK, "Conversation renamed successfully", console_ns.models[SimpleConversation.__name__]
@@ -152,6 +161,7 @@ class ConversationRenameApi(Resource):
     "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/pin", endpoint="installed_app_conversation_pin"
 )
 class ConversationPinApi(Resource):
+    @error_responses(ConversationNotFoundHTTPError, NotChatAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
@@ -171,6 +181,7 @@ class ConversationPinApi(Resource):
     endpoint="installed_app_conversation_unpin",
 )
 class ConversationUnPinApi(Resource):
+    @error_responses(ConversationNotFoundHTTPError, NotChatAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app

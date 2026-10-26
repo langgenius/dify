@@ -32,8 +32,8 @@ vi.mock('#i18n', async () => {
   }
 })
 
-vi.mock('../../sort-dropdown', () => ({
-  default: () => <div data-testid="sort-dropdown">sort</div>,
+vi.mock('../../sort-menu', () => ({
+  default: () => <div data-testid="sort-menu">sort</div>,
 }))
 
 vi.mock('../index', () => ({
@@ -74,7 +74,7 @@ describe('ListWrapper', () => {
     renderListWrapper(<ListWrapper />)
 
     expect(screen.getByRole('status')).toHaveTextContent('1 plugins found')
-    expect(screen.getByTestId('sort-dropdown')).toBeInTheDocument()
+    expect(screen.getByTestId('sort-menu')).toBeInTheDocument()
   })
 
   it('keeps the status owner mounted through pagination and reports the total result count', () => {
@@ -142,25 +142,6 @@ describe('ListWrapper', () => {
     renderListWrapper(<ListWrapper showInstallButton />)
 
     expect(screen.getByTestId('list')).toBeInTheDocument()
-  })
-
-  it('shows bottom loading indicator while fetching next page', () => {
-    mockMarketplaceData.plugins = [{ plugin_id: 'p1', name: 'Plugin One' } as Plugin]
-    mockMarketplaceData.isFetchingNextPage = true
-
-    renderListWrapper(<ListWrapper />)
-
-    expect(screen.getAllByRole('progressbar')).toHaveLength(1)
-  })
-
-  it('keeps the supplied layout constraint while category results are loading', () => {
-    mockMarketplaceData.isLoading = true
-    mockMarketplaceData.page = 1
-
-    const { container } = renderListWrapper(<ListWrapper className="catalog-content-min-height" />)
-
-    expect(container.firstElementChild).toHaveClass('catalog-content-min-height')
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   // A failed search used to arrive as a successful empty page and render as

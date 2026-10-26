@@ -29,6 +29,7 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthWorkspaceQuery
 from services.account_ports import AccountWorkspaceMembershipQuery, AccountWorkspaceSnapshotQuery
+from services.app.query_service import DiscoveryWorkspaces
 from services.entities.account_access_entities import AccountWorkspaceSnapshot
 from services.errors.workspace import (
     MemberNotInTenantError,
@@ -61,20 +62,22 @@ class WorkspaceRepository(
     ConsoleAuthWorkspaceQuery,
     DeviceWorkspaceQuery,
     WorkspaceMemberQuery,
+    DiscoveryWorkspaces,
 ):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    @override
+    def names_by_ids(self, workspace_ids: Sequence[str]) -> dict[str, str]:
+        if not workspace_ids:
+            return {}
+        with self._session_factory() as session:
+            rows = session.execute(select(Tenant.id, Tenant.name).where(Tenant.id.in_(workspace_ids)))
+            return dict(rows.tuples().all())
+
     def get_account_role(self, *, account_id: str, tenant_id: str) -> str | None:
         """Read the current membership role without loading or mutating an Account."""
-        stmt = (
-            select(TenantAccountJoin.role)
-            .where(TenantAccountJoin.account_id == account_id, TenantAccountJoin.tenant_id == tenant_id)
-            .limit(1)
-        )
-        with self._session_factory() as session:
-            role = session.scalar(stmt)
-            return role.value if role is not None else None
+        return self.get_legacy_role(workspace_id=tenant_id, account_id=account_id)
 
     def provision(
         self,
@@ -391,7 +394,7 @@ class WorkspaceRepository(
 
     @override
     def list_for_workspace(
-        self, workspace_id: str, *, role: TenantAccountRole | None = None
+        self, workspace_id: str, *, role: TenantAccountRole | None = None, account_ids: Sequence[str] | None = None
     ) -> tuple[WorkspaceMemberRecord, ...]:
         """Read membership snapshots without retaining a Session during role resolution."""
         stmt = (
@@ -412,6 +415,10 @@ class WorkspaceRepository(
         )
         if role is not None:
             stmt = stmt.where(TenantAccountJoin.role == role)
+        if account_ids is not None:
+            if not account_ids:
+                return ()
+            stmt = stmt.where(Account.id.in_(account_ids))
 
         with self._session_factory() as session:
             return tuple(
@@ -447,7 +454,14 @@ class WorkspaceRepository(
                 .limit(1)
             )
 
-    def upsert_member(self, *, workspace_id: str, account_id: str, role: TenantAccountRole) -> WorkspaceMemberWrite:
+    def upsert_member(
+        self,
+        *,
+        workspace_id: str,
+        account_id: str,
+        role: TenantAccountRole,
+        actor_account_id: str | None = None,
+    ) -> WorkspaceMemberWrite:
         with self._session_factory.begin() as session:
             account = session.get(Account, account_id)
             if account is None:
@@ -458,13 +472,33 @@ class WorkspaceRepository(
                 .limit(1)
             )
             created = membership is None
+            previous_role = None if membership is None else TenantAccountRole(membership.role)
             if membership is None:
                 session.add(TenantAccountJoin(tenant_id=workspace_id, account_id=account_id, role=role))
             else:
                 membership.role = role
+            if previous_role is not role:
+                from services.knowledge_fs.membership_changes import (
+                    KnowledgeFSWorkspaceMembershipChange,
+                    apply_workspace_membership_change,
+                )
+
+                apply_workspace_membership_change(
+                    session=session,
+                    tenant_id=workspace_id,
+                    actor_account_id=actor_account_id or account_id,
+                    account_ids=(account_id,),
+                    change=(
+                        KnowledgeFSWorkspaceMembershipChange.MEMBER_ADDED
+                        if created
+                        else KnowledgeFSWorkspaceMembershipChange.ROLE_CHANGED
+                    ),
+                )
             return WorkspaceMemberWrite(workspace_id, account_id, role.value, account.status.value, created)
 
-    def remove_member(self, *, workspace_id: str, account_id: str, owner_id: str) -> WorkspaceMemberRemoval:
+    def remove_member(
+        self, *, workspace_id: str, account_id: str, owner_id: str, actor_account_id: str
+    ) -> WorkspaceMemberRemoval:
         with self._session_factory.begin() as session:
             account = session.get(Account, account_id)
             membership = session.scalar(
@@ -484,6 +518,20 @@ class WorkspaceRepository(
                 .where(Dataset.tenant_id == workspace_id, Dataset.maintainer == account_id)
                 .values(maintainer=owner_id)
             )
+            from services.knowledge_fs.membership_changes import (
+                KnowledgeFSWorkspaceMembershipChange,
+                apply_workspace_membership_change,
+            )
+
+            apply_workspace_membership_change(
+                session=session,
+                tenant_id=workspace_id,
+                actor_account_id=actor_account_id,
+                account_ids=(account_id,),
+                change=KnowledgeFSWorkspaceMembershipChange.MEMBER_REMOVED,
+                removed_account_id=account_id,
+                replacement_owner_account_id=owner_id,
+            )
             session.delete(membership)
             delete_account = account.status == AccountStatus.PENDING and not session.scalar(
                 select(func.count(TenantAccountJoin.id)).where(TenantAccountJoin.account_id == account_id)
@@ -493,7 +541,15 @@ class WorkspaceRepository(
                 session.delete(account)
             return WorkspaceMemberRemoval(account_id, email, delete_account)
 
-    def update_member_role(self, *, workspace_id: str, account_id: str, role: TenantAccountRole) -> None:
+    def update_member_role(
+        self,
+        *,
+        workspace_id: str,
+        account_id: str,
+        role: TenantAccountRole,
+        actor_account_id: str,
+        previous_owner_account_ids: Sequence[str] = (),
+    ) -> None:
         with self._session_factory.begin() as session:
             membership = session.scalar(
                 select(TenantAccountJoin)
@@ -502,6 +558,7 @@ class WorkspaceRepository(
             )
             if membership is None:
                 raise MemberNotInTenantError("Member not in tenant.")
+            affected_account_ids = [account_id, *previous_owner_account_ids]
             if role == TenantAccountRole.OWNER:
                 owner = session.scalar(
                     select(TenantAccountJoin)
@@ -511,8 +568,21 @@ class WorkspaceRepository(
                     .limit(1)
                 )
                 if owner:
+                    affected_account_ids.append(str(owner.account_id))
                     owner.role = TenantAccountRole.NORMAL
             membership.role = role
+            from services.knowledge_fs.membership_changes import (
+                KnowledgeFSWorkspaceMembershipChange,
+                apply_workspace_membership_change,
+            )
+
+            apply_workspace_membership_change(
+                session=session,
+                tenant_id=workspace_id,
+                actor_account_id=actor_account_id,
+                account_ids=tuple(affected_account_ids),
+                change=KnowledgeFSWorkspaceMembershipChange.ROLE_CHANGED,
+            )
 
     def list_member_ids(self, workspace_id: str, *, offset: int, limit: int) -> tuple[str, ...]:
         with self._session_factory() as session:

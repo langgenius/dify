@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import OperationDropdown from '../action'
+import OperationMenu from '../action'
 
 const mockDownloadBlob = vi.fn()
 const mockDownloadPlugin = vi.fn()
@@ -42,12 +42,12 @@ const createQueryClient = () =>
     },
   })
 
-const renderComponent = (props?: Partial<ComponentProps<typeof OperationDropdown>>) => {
+const renderComponent = (props?: Partial<ComponentProps<typeof OperationMenu>>) => {
   const queryClient = createQueryClient()
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <OperationDropdown
+      <OperationMenu
         open={false}
         onOpenChange={vi.fn()}
         author="langgenius"
@@ -59,24 +59,20 @@ const renderComponent = (props?: Partial<ComponentProps<typeof OperationDropdown
   )
 }
 
-describe('MarketplaceOperationDropdown', () => {
+describe('MarketplaceOperationMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDownloadPlugin.mockResolvedValue(new Blob(['plugin zip'], { type: 'application/zip' }))
   })
 
-  it('should render download and view details actions when opened', async () => {
-    renderComponent({ open: true })
-
-    expect(screen.getByText('common.operation.download')).toBeInTheDocument()
-    expect(screen.getByText('common.operation.viewDetails')).toBeInTheDocument()
-  })
-
-  it('should request a download when download is clicked', async () => {
+  it('downloads the requested plugin version with its archive filename', async () => {
+    const user = userEvent.setup()
+    const archive = new Blob(['plugin zip'], { type: 'application/zip' })
+    mockDownloadPlugin.mockResolvedValue(archive)
     const onOpenChange = vi.fn()
     renderComponent({ open: true, onOpenChange })
 
-    await userEvent.setup().click(screen.getByText('common.operation.download'))
+    await user.click(screen.getByText('common.operation.download'))
 
     expect(onOpenChange).toHaveBeenCalledWith(false)
     await waitFor(() => {
@@ -86,6 +82,10 @@ describe('MarketplaceOperationDropdown', () => {
           pluginName: 'test-plugin',
           version: '1.0.0',
         },
+      })
+      expect(mockDownloadBlob).toHaveBeenCalledWith({
+        data: archive,
+        fileName: 'langgenius-test-plugin_1.0.0.zip',
       })
     })
   })
@@ -105,19 +105,6 @@ describe('MarketplaceOperationDropdown', () => {
     await user.click(screen.getByText('common.operation.download'))
 
     expect(mockDownloadPlugin).toHaveBeenCalledTimes(1)
-  })
-
-  it('should download the blob when the request returns data', async () => {
-    renderComponent({ open: true })
-
-    await userEvent.setup().click(screen.getByText('common.operation.download'))
-
-    await waitFor(() => {
-      expect(mockDownloadBlob).toHaveBeenCalledWith({
-        data: expect.any(Blob),
-        fileName: 'langgenius-test-plugin_1.0.0.zip',
-      })
-    })
   })
 
   it('should link to the marketplace detail page', () => {

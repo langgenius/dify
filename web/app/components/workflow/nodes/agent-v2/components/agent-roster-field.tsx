@@ -1,10 +1,10 @@
 import type { ReactElement, ReactNode, RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
-import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -19,19 +19,16 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { Suspense, useState } from 'react'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { Suspense, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
+import {
+  AgentSelectorMenu,
+  AgentSelectorMenuContent,
+  AgentSelectorMenuTrigger,
+} from '@/app/components/workflow/block-selector/agent-selector'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { EditInConsoleLink } from './edit-in-console-link'
@@ -51,12 +48,6 @@ type AgentRosterDisplayData = {
   role?: string | null
 }
 
-const getAppIconType = (iconType?: string | null): AppIconType | null => {
-  if (iconType === 'emoji' || iconType === 'image' || iconType === 'link') return iconType
-
-  return null
-}
-
 function AgentRosterAvatar({
   agent,
   size = 'lg',
@@ -68,16 +59,7 @@ function AgentRosterAvatar({
 }) {
   const iconSize = size === 'md' ? 'medium' : size === 'xs' ? 'tiny' : 'small'
 
-  return (
-    <AppIcon
-      size={iconSize}
-      iconType={getAppIconType(agent.icon_type)}
-      icon={agent.icon ?? undefined}
-      background={agent.icon_background}
-      imageUrl={agent.icon ?? undefined}
-      className={className}
-    />
-  )
+  return <AppIcon size={iconSize} className={className} icon={{ ...agent, icon_url: agent.icon }} />
 }
 
 function InlineSetupAvatar({ className }: { className?: string }) {
@@ -148,7 +130,8 @@ function AgentRosterDrawer({
       }}
     >
       <DrawerPortal container={portalContainerRef}>
-        <DrawerViewport className="pointer-events-none">
+        {/* Portaled into the panel, not body: keep a layer above the panel's positioned content. */}
+        <DrawerViewport className="pointer-events-none z-50">
           <DrawerPopup
             className="pointer-events-auto p-0 data-[swipe-direction=right]:top-14 data-[swipe-direction=right]:bottom-1 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle data-[swipe-direction=right]:shadow-2xl data-[swipe-direction=right]:shadow-shadow-shadow-5"
             style={{
@@ -217,21 +200,17 @@ function AgentRosterDrawer({
                   <div className="flex shrink-0 items-center gap-1 py-1">
                     {showInlineActions && (
                       <>
-                        <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger
+                        <Menu modal={false}>
+                          <MenuTrigger
                             aria-label={t(($) => $[`${i18nPrefix}.roster.more`], {
                               ns: 'workflowAgent',
                             })}
                             className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
                           >
                             <span aria-hidden className="i-ri-more-fill size-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            placement="bottom-end"
-                            sideOffset={4}
-                            className="w-max min-w-44"
-                          >
-                            <DropdownMenuItem
+                          </MenuTrigger>
+                          <MenuContent align="end" className="w-max min-w-44">
+                            <MenuItem
                               className="gap-2 whitespace-nowrap"
                               onClick={onSaveInlineToRoster}
                             >
@@ -242,9 +221,9 @@ function AgentRosterDrawer({
                               <span>
                                 {t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}
                               </span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            </MenuItem>
+                          </MenuContent>
+                        </Menu>
                         <div className="flex h-3.5 items-start px-1">
                           <div className="h-full w-px bg-divider-regular" />
                         </div>
@@ -313,19 +292,31 @@ function AgentRosterInlineConfigureDialog({
   trigger: ReactElement
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation(['workflow', 'workflowAgent'])
+  const { t } = useTranslation(['workflow', 'workflowAgent', 'common'])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
       <DialogTrigger render={trigger} />
-      <DialogContent className="h-[min(760px,calc(100dvh-32px))] w-[min(1120px,calc(100vw-32px))] max-w-none overflow-hidden p-0">
+      <DialogContent className="h-[min(760px,calc(100dvh-32px))] w-[min(1120px,calc(100vw-32px))] overflow-hidden">
         <DialogTitle className="sr-only">{agent.name}</DialogTitle>
         <DialogDescription className="sr-only">
           {t(($) => $[`${i18nPrefix}.roster.inlineSetup.description`], { ns: 'workflowAgent' })}
         </DialogDescription>
-        <Suspense fallback={<InlineAgentLoading />}>
-          {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
-        </Suspense>
+        <div className="contents [--agent-preview-header-end:4.625rem] max-sm:[--agent-preview-header-end:3.5rem]">
+          <Suspense fallback={<InlineAgentLoading />}>
+            {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
+          </Suspense>
+          <div className="absolute top-3 right-5 flex items-center max-sm:right-3">
+            <span aria-hidden className="mx-3 h-3.5 w-px bg-divider-regular max-sm:hidden" />
+            <DialogClose
+              render={
+                <IconButton size="lg" aria-label={t(($) => $['operation.close'], { ns: 'common' })}>
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )
@@ -375,8 +366,8 @@ export function AgentRosterField({
   onStartFromScratch?: () => void
 }) {
   const { t } = useTranslation(['common', 'workflow', 'workflowAgent', 'agentRoster'])
+  const labelId = useId()
   const [localPanelOpen, setLocalPanelOpen] = useState(false)
-  const [isSelectorOpen, setIsSelectorOpen] = useState(false)
   const panelOpen = isPanelOpen ?? localPanelOpen
   const setPanelOpen = onPanelOpenChange ?? setLocalPanelOpen
   const inlineSetupName = t(($) => $[`${i18nPrefix}.roster.inlineSetup.name`], {
@@ -427,58 +418,29 @@ export function AgentRosterField({
   )
 
   return (
-    <Field name="agent_binding" className="gap-1 px-4 py-2">
+    <div role="group" aria-labelledby={labelId} className="grid min-w-0 gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-2">
-        <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase! text-text-secondary">
-          {t(($) => $['nodes.agent.roster.label'], { ns: 'workflow' })}
-        </FieldLabel>
-        <Popover
-          open={isPending ? false : isSelectorOpen}
-          onOpenChange={(open) => {
-            if (!isPending) setIsSelectorOpen(open)
-          }}
+        <span
+          id={labelId}
+          className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase text-text-secondary"
         >
-          <PopoverTrigger
+          {t(($) => $['nodes.agent.roster.label'], { ns: 'workflow' })}
+        </span>
+        <AgentSelectorMenu>
+          <AgentSelectorMenuTrigger
             render={
-              <button
-                type="button"
-                disabled={isPending}
-                className={cn(
-                  'flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                  isPending &&
-                    'cursor-not-allowed opacity-50 hover:bg-transparent hover:text-text-tertiary',
-                )}
-              >
-                {t(($) => $[`${i18nPrefix}.roster.change`], { ns: 'workflowAgent' })}
-              </button>
+              <Button
+                variant="ghost"
+                size="small"
+                loading={isPending}
+                className="shrink-0 text-text-tertiary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+              />
             }
-          />
-          <PopoverContent
-            placement="bottom-end"
-            sideOffset={4}
-            className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
           >
-            <PopoverTitle className="sr-only">
-              {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentRoster' })}
-            </PopoverTitle>
-            <AgentSelectorContent
-              open={isSelectorOpen}
-              onOpenChange={setIsSelectorOpen}
-              onSelect={(nextAgent) => {
-                setIsSelectorOpen(false)
-                onChange(nextAgent)
-              }}
-              onStartFromScratch={
-                onStartFromScratch
-                  ? () => {
-                      setIsSelectorOpen(false)
-                      onStartFromScratch()
-                    }
-                  : undefined
-              }
-            />
-          </PopoverContent>
-        </Popover>
+            {t(($) => $[`${i18nPrefix}.roster.change`], { ns: 'workflowAgent' })}
+          </AgentSelectorMenuTrigger>
+          <AgentSelectorMenuContent onSelect={onChange} onStartFromScratch={onStartFromScratch} />
+        </AgentSelectorMenu>
       </div>
       {errorMessage ? (
         <div
@@ -557,6 +519,6 @@ export function AgentRosterField({
           </span>
         </div>
       )}
-    </Field>
+    </div>
   )
 }

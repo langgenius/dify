@@ -1,12 +1,13 @@
 'use client'
 
-import type { Input as BaseInputNS } from '@base-ui/react/input'
 import { Input as BaseInput } from '@base-ui/react/input'
 import { cn } from '../cn'
-import { textControlClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { textControlClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
-type InputProps = Omit<BaseInputNS.Props, 'size'>
+type InputProps = Omit<BaseInput.Props, 'size'>
+type InputChangeEventReason = BaseInput.ChangeEventReason
+type InputChangeEventDetails = BaseInput.ChangeEventDetails
 
 function Input({ className, ...props }: InputProps) {
   return (
@@ -24,4 +25,4 @@ function Input({ className, ...props }: InputProps) {
 }
 
 export { Input }
-export type { InputProps }
+export type { InputChangeEventDetails, InputChangeEventReason, InputProps }

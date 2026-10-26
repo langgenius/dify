@@ -1,5 +1,4 @@
 {
-  "workflowGenerator.applied": "適用済み",
   "workflowGenerator.appliedRefineHint": "適用しました — ⌘K → /refine でいつでも調整できます",
   "workflowGenerator.applyFailed": "ワークフローの適用に失敗しました",
   "workflowGenerator.applyToNew": "新しいアプリを作成する",

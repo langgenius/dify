@@ -1,5 +1,5 @@
 site_name: Dify Agent
-site_description: Agent runtime and Agenton composition framework documentation
+site_description: Native Pydantic AI agent runtime documentation
 strict: true
 
 repo_name: langgenius/dify
@@ -8,10 +8,6 @@ edit_uri: edit/main/dify-agent/docs/
 
 nav:
   - Home: index.md
-  - Agenton:
-      - Overview: agenton/index.md
-      - Guide: agenton/guide/index.md
-      - Examples: agenton/examples/index.md
   - Dify Agent:
       - Overview: dify-agent/index.md
       - Concepts:
@@ -19,14 +15,13 @@ nav:
           - Runtime Resources: dify-agent/concepts/runtime-resources/index.md
       - User Manual:
           - Get Started: dify-agent/get-started/index.md
-          - Prompt Layer: dify-agent/user-manual/prompt-layer/index.md
-          - Execution Context Layer: dify-agent/user-manual/execution-context-layer/index.md
-          - Shell Layer: dify-agent/user-manual/shell-layer/index.md
-          - Ask Human Layer: dify-agent/user-manual/ask-human-layer/index.md
-          - Plugin LLM Layer: dify-agent/user-manual/plugin-llm-layer/index.md
-          - Plugin Tool Layer: dify-agent/user-manual/plugin-tool-layer/index.md
-          - History Layer: dify-agent/user-manual/history-layer/index.md
-          - Structured Output Layer: dify-agent/user-manual/structured-output-layer/index.md
+          - Prompt Module: dify-agent/user-manual/prompt-layer/index.md
+          - Execution Context Module: dify-agent/user-manual/execution-context-layer/index.md
+          - Shell Module: dify-agent/user-manual/shell-layer/index.md
+          - Plugin LLM Module: dify-agent/user-manual/plugin-llm-layer/index.md
+          - Plugin Tool Module: dify-agent/user-manual/plugin-tool-layer/index.md
+          - History Module: dify-agent/user-manual/history-layer/index.md
+          - Structured Output Module: dify-agent/user-manual/structured-output-layer/index.md
       - Operations Guide:
           - Overview: dify-agent/guide/index.md
           - OpenShell Runtime Backend: dify-agent/guide/openshell.md

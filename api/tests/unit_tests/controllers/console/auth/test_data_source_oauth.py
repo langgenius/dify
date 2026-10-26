@@ -19,7 +19,7 @@ from services.data_source.oauth_service import (
     InvalidDataSourceOAuthCodeError,
     InvalidDataSourceOAuthProviderError,
 )
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 def _request_context() -> RequestContext:

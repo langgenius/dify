@@ -3,7 +3,6 @@
   "action.delete": "Eklentiyi kaldır",
   "action.deleteContentLeft": "Kaldırmak ister misiniz",
   "action.deleteContentRight": "eklenti?",
-  "action.deleteSuccess": "Eklenti başarıyla kaldırıldı",
   "action.pluginInfo": "Eklenti bilgisi",
   "allCategories": "Tüm Kategoriler",
   "auth.addApi": "API Anahtarını Ekle",
@@ -302,9 +301,7 @@
   "task.runningPlugins": "Eklentiler Yükleniyor",
   "task.successPlugins": "Başarıyla Yüklenen Eklentiler",
   "templatePublishingGuide": "Şablon yayınlama kılavuzu",
-  "upgrade.close": "Kapat",
   "upgrade.description": "Aşağıdaki eklentiyi güncellemek üzeresiniz",
-  "upgrade.successfulTitle": "Güncelleme başarılı",
   "upgrade.title": "Eklentiyi Güncelle",
   "upgrade.upgrade": "Güncelle",
   "upgrade.upgrading": "Güncelleniyor..."

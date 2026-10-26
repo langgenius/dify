@@ -8,7 +8,9 @@ from controllers.service_api.end_user.error import EndUserNotFoundError
 from controllers.service_api.wraps import validate_app_token
 from extensions.ext_application_services import application_services
 from fields.end_user_fields import EndUserDetail
-from machinery.context import ServiceApiRequestContext
+from libs.external_api import error_responses
+from libs.helper import dump_response
+from machinery.context import AppRequestContext
 from models.model import App
 from services.app_scoped_end_user_query_service import AppScopedEndUserNotFoundError
 
@@ -19,6 +21,7 @@ register_response_schema_models(service_api_ns, EndUserDetail)
 class EndUserApi(Resource):
     """Resource for retrieving end user details by ID."""
 
+    @error_responses(EndUserNotFoundError)
     @service_api_ns.doc(
         summary="Get End User Info",
         description=(
@@ -50,7 +53,7 @@ class EndUserApi(Resource):
         cross-tenant/app access when an end-user ID is known.
         """
 
-        request_context = ServiceApiRequestContext(
+        request_context = AppRequestContext(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
         )
@@ -59,4 +62,4 @@ class EndUserApi(Resource):
         except AppScopedEndUserNotFoundError as error:
             raise EndUserNotFoundError() from error
 
-        return EndUserDetail.model_validate(end_user).model_dump(mode="json")
+        return dump_response(EndUserDetail, end_user)

@@ -176,7 +176,7 @@ class TiDBVector(BaseVector):
 
         chunks_table_data = []
         with self._engine.connect() as conn, conn.begin():
-            for doc_id, text, meta, embedding in zip(ids, texts, metas, embeddings):
+            for doc_id, text, meta, embedding in zip(ids, texts, metas, embeddings, strict=False):
                 chunks_table_data.append({"id": doc_id, "vector": embedding, "text": text, "meta": meta})
 
                 # Execute the batch insert when the batch size is reached

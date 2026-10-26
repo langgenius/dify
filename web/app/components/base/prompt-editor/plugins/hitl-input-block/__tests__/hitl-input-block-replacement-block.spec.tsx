@@ -10,6 +10,7 @@ import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import {
   getNodesByType,
   readEditorStateValue,
+  readRootTextContent,
   renderLexicalEditor,
   setEditorRootText,
   waitForEditorReady,
@@ -181,6 +182,7 @@ describe('HITLInputReplacementBlock', () => {
       )
 
       await waitFor(() => {
+        expect(readRootTextContent(editor)).toBe('plain text without replacement token')
         expect(getNodesByType(editor, HITLInputNode)).toHaveLength(0)
       })
     })

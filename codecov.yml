@@ -23,3 +23,8 @@ flags:
     paths:
       - "api/"
     carryforward: true
+
+  cli:
+    paths:
+      - "cli/"
+    carryforward: true

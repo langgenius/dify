@@ -2,15 +2,12 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
 import { memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { consoleQuery } from '@/service/console'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { matchesProviderReference } from '@/utils/provider-reference'
 
@@ -23,10 +20,22 @@ export type ToolIconProps = {
 
 export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const isDataReady = !!buildInTools && !!customTools && !!workflowTools && !!mcpTools
   const currentProvider = useMemo(() => {
     const mergedTools = [
@@ -92,8 +101,11 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
       iconContent = (
         <AppIcon
           className={cn('size-3.5 size-full object-cover', notSuccess && 'opacity-50')}
-          icon={icon?.content}
-          background={icon?.background}
+          icon={{
+            icon_type: 'emoji',
+            icon: icon?.content,
+            icon_background: icon?.background,
+          }}
         />
       )
     }

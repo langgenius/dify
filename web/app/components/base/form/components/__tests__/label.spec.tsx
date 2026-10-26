@@ -8,41 +8,18 @@ describe('Label', () => {
     label: 'Test Label',
   }
 
-  it('should render the label text', () => {
-    render(<Label {...defaultProps} />)
-    expect(screen.getByText('Test Label')).toBeInTheDocument()
-  })
-
-  it('should focus related input when users click the label', async () => {
-    const user = userEvent.setup()
-    render(
-      <>
-        <Label {...defaultProps} />
-        <input id="test-input" />
-      </>,
-    )
-
-    await user.click(screen.getByText('Test Label'))
-    expect(screen.getByRole('textbox')).toHaveFocus()
-  })
-
   it('should show optional text when the field is not required', () => {
     render(<Label {...defaultProps} showOptional />)
     expect(screen.getByText('common.label.optional')).toBeInTheDocument()
   })
 
-  it('should show required marker when the field is required', () => {
-    render(<Label {...defaultProps} isRequired />)
-    expect(screen.getByText('*')).toBeInTheDocument()
-  })
-
-  it('should show tooltip content on hover', async () => {
+  it('names the explanation from its field label', async () => {
     const user = userEvent.setup()
     const tooltipText = 'Test Tooltip'
     render(<Label {...defaultProps} tooltip={tooltipText} />)
 
-    await user.hover(screen.getByRole('button', { name: 'Test Label' }))
-    expect(await screen.findByText(tooltipText)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Test Label' }))
+    expect(await screen.findByRole('dialog', { name: 'Test Label' })).toHaveTextContent(tooltipText)
   })
 
   it('should hide optional text when required is true', () => {

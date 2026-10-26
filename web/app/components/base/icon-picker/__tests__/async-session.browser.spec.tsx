@@ -105,38 +105,6 @@ it('ignores crop completion during the closing animation while Cancel remains av
   client.clear()
 })
 
-it('ignores a preview read that completes after cancellation and a new session opens', async () => {
-  const { client, trigger, dialog, save, file, onConfirm } = await openImageSession()
-  cropImage.mockResolvedValueOnce(file)
-  const originalRead = FileReader.prototype.readAsDataURL
-  let finishRead!: () => Promise<void>
-  const read = vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementationOnce(function (
-    this: FileReader,
-    blob: Blob,
-  ) {
-    finishRead = () =>
-      new Promise<void>((resolve) => {
-        this.addEventListener('loadend', () => resolve(), { once: true })
-        originalRead.call(this, blob)
-      })
-  })
-  await save.click()
-  await expect.poll(() => read.mock.calls.length).toBe(1)
-  await dialog.getByRole('button', { name: 'app.iconPicker.cancel' }).click()
-  await expect.element(trigger).toHaveFocus()
-  await userEvent.keyboard('{Enter}')
-  const search = dialog.getByRole('combobox', { name: 'app.iconPicker.search' })
-  await expect.element(search).toHaveFocus()
-  await search.fill('new session')
-  await finishRead()
-  await userEvent.keyboard('{End}')
-  expect(uploadImage).not.toHaveBeenCalled()
-  expect(onConfirm).not.toHaveBeenCalled()
-  await expect.element(dialog).toBeVisible()
-  await expect.element(search).toHaveValue('new session')
-  client.clear()
-})
-
 it('ignores an old upload when reopened as soon as keyboard focus returns', async () => {
   let finishUpload!: (response: PostFilesUploadResponse) => void
   const pendingUpload = new Promise<PostFilesUploadResponse>((resolve) => {

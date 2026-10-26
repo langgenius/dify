@@ -14,7 +14,7 @@ type SettingItemProps = PropsWithChildren<{
 export const SettingItem = memo(({ label, children, status, tooltip }: SettingItemProps) => {
   const indicator: StatusDotStatus | undefined =
     status === 'error' ? 'error' : status === 'warning' ? 'warning' : undefined
-  const needTooltip = ['error', 'warning'].includes(status as any)
+  const needTooltip = status === 'error' || status === 'warning'
   return (
     <div className="relative flex items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1.5 py-1 text-xs font-normal">
       <div

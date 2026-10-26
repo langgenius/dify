@@ -101,9 +101,9 @@ function OptionColumn({
       // A positioning scroll that never reaches its target was taken over; rest decides.
       if (positioning || !supportsScrollEnd) quietTimer.start(150, () => finishScroll())
     }
-    function onScrollEnd() {
+    const onScrollEnd = function onScrollEnd() {
       const { target } = scrollRef.current
-      if (target === null || Math.abs(column!.scrollTop - target) < 1) finishScroll()
+      if (target === null || Math.abs(column.scrollTop - target) < 1) finishScroll()
     }
     column.addEventListener('scroll', onScroll, { passive: true })
     if (supportsScrollEnd) column.addEventListener('scrollend', onScrollEnd)
@@ -121,14 +121,11 @@ function OptionColumn({
     if (selected) scrollToOption(selected)
   }, [scrollRequest, cancelGesture, scrollToOption])
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (!focusOnMount) return
-    const frame = requestAnimationFrame(() =>
-      ref.current
-        ?.querySelector<HTMLElement>('[aria-selected="true"]')
-        ?.focus({ preventScroll: true }),
-    )
-    return () => cancelAnimationFrame(frame)
+    ref.current
+      ?.querySelector<HTMLElement>('[aria-selected="true"]')
+      ?.focus({ preventScroll: true })
   }, [focusOnMount])
 
   function focusValue(next: number, smooth = false) {
@@ -168,7 +165,9 @@ function OptionColumn({
           event.stopPropagation()
           const currentOption = scrollRef.current.moved
             ? nearestOption()
-            : (event.target as HTMLElement)
+            : event.target instanceof HTMLElement
+              ? event.target
+              : undefined
           const currentValue = Number(currentOption?.dataset.optionValue)
           const currentIndex = Math.max(
             0,
@@ -219,8 +218,8 @@ function OptionColumn({
             : undefined
           if (!numeric) {
             for (let offset = 0; offset < options.length; offset++) {
-              const option = options[(startIndex + offset) % options.length]!
-              if (option.label.toLowerCase().startsWith(text)) {
+              const option = options[(startIndex + offset) % options.length]
+              if (option?.label.toLowerCase().startsWith(text)) {
                 match = option
                 break
               }

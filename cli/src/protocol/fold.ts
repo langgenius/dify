@@ -1,11 +1,6 @@
+import type { Hint } from '@/protocol/hint'
+import { parseHints } from '@/protocol/hint'
 import { isRecord } from '@/util/is-record'
-
-export type Hint = {
-  summary: string
-  op: string
-  input: Record<string, unknown>
-  form?: unknown
-}
 
 export type FoldResult = {
   status: FoldStatus
@@ -14,6 +9,7 @@ export type FoldResult = {
   total_tokens?: number
   message_id?: string
   conversation_id?: string
+  run_id?: string
   error?: { message: string; code?: string }
   hints: Hint[]
 }
@@ -51,7 +47,7 @@ function asString(value: unknown): string | undefined {
 }
 
 function appendHints(result: FoldResult, hints: unknown): void {
-  if (Array.isArray(hints)) result.hints.push(...(hints as Hint[]))
+  result.hints.push(...parseHints(hints))
 }
 
 function appendAnswer(result: FoldResult, event: Record<string, unknown>): void {
@@ -111,6 +107,12 @@ function markError(result: FoldResult, event: Record<string, unknown>): void {
   const code = asString(event.code)
   result.error = code !== undefined ? { message, code } : { message }
   raise(result, FOLD_STATUS.Failed)
+}
+
+/** Runs for every event before its own handler: any workflow event names its run. */
+export const foldAnyEvent: EventHandler = (result, event) => {
+  const runId = asString(event.workflow_run_id)
+  if (runId !== undefined) result.run_id = runId
 }
 
 export const FOLD_TABLE: Readonly<Record<string, EventHandler>> = Object.freeze({

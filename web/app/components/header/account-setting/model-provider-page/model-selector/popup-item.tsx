@@ -1,5 +1,5 @@
 import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ComponentProps } from 'react'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -37,8 +37,6 @@ export type ModelSelectorPreviewPayload = {
   provider: ModelSelectorProvider
   modelItem: ModelSelectorModel
 }
-
-type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
 
 type PopupItemProps = {
   defaultModel?: ModelSelectorValue
@@ -155,7 +153,7 @@ function PopupItem({
                         aria-hidden="true"
                         className="i-custom-vender-line-financeAndECommerce-credits-coin size-3"
                       />
-                      <span className="ml-1 truncate">
+                      <span className="ms-1 truncate">
                         {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'modelProvider' })}
                       </span>
                     </>
@@ -165,7 +163,7 @@ function PopupItem({
                         aria-hidden="true"
                         className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary"
                       />
-                      <span className="ml-1 truncate text-text-warning">
+                      <span className="ms-1 truncate text-text-warning">
                         {t(($) => $['modelProvider.selector.creditsExhausted'], {
                           ns: 'modelProvider',
                         })}
@@ -175,12 +173,12 @@ function PopupItem({
                 ) : credentialName ? (
                   <>
                     <StatusDot size="small" status={isApiKeyActive ? 'success' : 'error'} />
-                    <span className="ml-1 truncate text-text-tertiary">{credentialName}</span>
+                    <span className="ms-1 truncate text-text-tertiary">{credentialName}</span>
                   </>
                 ) : (
                   <>
                     <StatusDot size="small" status="disabled" />
-                    <span className="ml-1 truncate text-text-tertiary">
+                    <span className="ms-1 truncate text-text-tertiary">
                       {t(($) => $['modelProvider.selector.configureRequired'], {
                         ns: 'modelProvider',
                       })}
@@ -196,7 +194,7 @@ function PopupItem({
               </Button>
             }
           />
-          <PopoverContent placement="bottom-end">
+          <PopoverContent align="end">
             <PopoverTitle className="sr-only">{providerLabel}</PopoverTitle>
             {providerDetail && (
               <DropdownContent
@@ -221,7 +219,7 @@ function PopupItem({
             const needsConfiguration = modelItem.status === ModelStatusEnum.noConfigure
             const isSelectable = modelItem.status === ModelStatusEnum.active
             const rowClassName = cn(
-              'group relative mx-1 flex h-8 min-w-0 items-center gap-1 rounded-lg px-3 py-1.5 text-left',
+              'group relative mx-1 flex h-8 min-w-0 items-center gap-1 rounded-lg px-3 py-1.5 text-start',
               isSelectable
                 ? 'cursor-pointer hover:bg-state-base-hover'
                 : 'cursor-not-allowed hover:bg-state-base-hover-alt',
@@ -252,7 +250,7 @@ function PopupItem({
                             </span>
                           }
                         />
-                        <TooltipContent placement="top">{suggestionTip}</TooltipContent>
+                        <TooltipContent>{suggestionTip}</TooltipContent>
                       </Tooltip>
                     )}
                   </ModelName>
@@ -266,7 +264,7 @@ function PopupItem({
               </>
             )
             const row = needsConfiguration ? (
-              <div className={rowClassName} onPointerDown={onPreviewCardClose}>
+              <div className={rowClassName}>
                 {rowContent}
                 {canCreateCredential && (
                   <Button
@@ -286,7 +284,6 @@ function PopupItem({
                 aria-current={isSelected ? 'true' : undefined}
                 disabled={!isSelectable}
                 className={cn(rowClassName, 'w-[calc(100%-0.5rem)] justify-start')}
-                onPointerDown={onPreviewCardClose}
                 onClick={() => onSelect(model.provider, modelItem)}
               >
                 {rowContent}
@@ -296,6 +293,7 @@ function PopupItem({
             return (
               <li key={modelItem.model}>
                 <PreviewCardTrigger
+                  onPointerDown={onPreviewCardClose}
                   delay={150}
                   closeDelay={150}
                   handle={previewCardHandle}

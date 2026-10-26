@@ -1,3 +1,4 @@
+import contextlib
 import re
 from collections.abc import Mapping
 from typing import Any
@@ -70,10 +71,8 @@ class DependenciesAnalysisService:
                 provider = tool.get("provider_id") or tool.get("provider_name") or tool.get("provider")
                 if not isinstance(provider, str):
                     continue
-                try:
+                with contextlib.suppress(ValueError, NotFound):
                     dependencies.append(cls.analyze_tool_provider_reference(provider))
-                except (ValueError, NotFound):
-                    pass
         return dependencies
 
     @classmethod

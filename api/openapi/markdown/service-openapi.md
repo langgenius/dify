@@ -20,6 +20,7 @@ Service operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [IndexInfoResponse](#indexinforesponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/document/create_by_text~~
 
@@ -46,11 +47,12 @@ Deprecated legacy alias for creating a new document by providing text content. U
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | Bad request - invalid parameters |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | Bad request - invalid parameters | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_text~~
 
@@ -78,10 +80,1650 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Document not found |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | Bad Request | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/query-stream
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSAdmittedQueryRequest](#knowledgefsadmittedqueryrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base query event stream | **text/event-stream**: string<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/background-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| task_ids | query | Comma-separated document or document_bulk task IDs for an exact lookup | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listBackgroundTasks | **application/json**: [KnowledgeFSBackgroundTaskListResponse](#knowledgefsbackgroundtasklistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/bulk-jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base bulk job | **application/json**: [KnowledgeFSBulkJobResponse](#knowledgefsbulkjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/deletion-batches/{batch_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| batch_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Deletion batch status | **application/json**: [KnowledgeFSBulkDeletionAcceptedResponse](#knowledgefsbulkdeletionacceptedresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/deletion-jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getDeletionJob | **application/json**: [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/deletion-jobs/{job_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | retryDeletionJob | **application/json**: [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/document-references/resolve
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| document_asset_id | query |  | Yes | string |
+| document_asset_version | query |  | Yes | integer |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | resolveDocumentReference | **application/json**: [KnowledgeFSResolvedDocumentReferenceResponse](#knowledgefsresolveddocumentreferenceresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base documents | **application/json**: [KnowledgeFSDocumentListResponse](#knowledgefsdocumentlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/bulk
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSBulkDocumentDeletePayload](#knowledgefsbulkdocumentdeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base document deletions accepted | **application/json**: [KnowledgeFSBulkDeletionAcceptedResponse](#knowledgefsbulkdeletionacceptedresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/documents/reindex
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentReindexPayload](#knowledgefsdocumentreindexpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base document reindex queued | **application/json**: [KnowledgeFSDocumentReindexResponse](#knowledgefsdocumentreindexresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [KnowledgeFsRequestTooLargeError](#knowledgefsrequesttoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentDeletePayload](#knowledgefsdocumentdeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base document deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document | **application/json**: [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSDocumentMetadataPayload](#knowledgefsdocumentmetadatapayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document metadata updated | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/outline
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document outline | **application/json**: [KnowledgeFSDocumentOutlineResponse](#knowledgefsdocumentoutlineresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document revisions | **application/json**: [KnowledgeFSDocumentRevisionListResponse](#knowledgefsdocumentrevisionlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| query | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| revision | path |  | Yes | integer |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document chunks | **application/json**: [KnowledgeFSDocumentChunkListResponse](#knowledgefsdocumentchunklistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks/{chunk_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| chunk_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| revision | path |  | Yes | integer |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base document chunk | **application/json**: [KnowledgeFSDocumentChunkResponse](#knowledgefsdocumentchunkresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base compilation job canceled | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base compilation job | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/jobs/{job_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base compilation job retried | **application/json**: [KnowledgeFSDocumentCompilationJobResponse](#knowledgefsdocumentcompilationjobresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listLogicalDocuments | **application/json**: [KnowledgeFSLogicalDocumentListResponse](#knowledgefslogicaldocumentlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getLogicalDocument | **application/json**: [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/processing-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document processing history | **application/json**: [KnowledgeFSDocumentProcessingTaskListResponse](#knowledgefsdocumentprocessingtasklistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}/processing-tasks/{task_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document processing task | **application/json**: [KnowledgeFSDocumentProcessingTaskResponse](#knowledgefsdocumentprocessingtaskresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/queries/admission
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSQueryCreatePayload](#knowledgefsquerycreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base streaming query admitted through Dify API | **application/json**: [KnowledgeFSQueryAdmissionResponse](#knowledgefsqueryadmissionresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [KnowledgeFsRequestTooLargeError](#knowledgefsrequesttoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsRequestRejectedError](#knowledgefsrequestrejectederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/query-images
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Query image uploaded | **application/json**: [KnowledgeFSServiceQueryImageUploadResponse](#knowledgefsservicequeryimageuploadresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [KnowledgeFsRequestTooLargeError](#knowledgefsrequesttoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsRequestRejectedError](#knowledgefsrequestrejectederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base research tasks | **application/json**: [KnowledgeFSResearchTaskListResponse](#knowledgefsresearchtasklistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSResearchTaskCreatePayload](#knowledgefsresearchtaskcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base research task accepted | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [KnowledgeFsRequestTooLargeError](#knowledgefsrequesttoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsRequestRejectedError](#knowledgefsrequestrejectederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks/plan
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSResearchTaskPlanPayload](#knowledgefsresearchtaskplanpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base research task plan | **application/json**: [KnowledgeFSResearchTaskPlanResponse](#knowledgefsresearchtaskplanresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [KnowledgeFsRequestTooLargeError](#knowledgefsrequesttoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsRequestRejectedError](#knowledgefsrequestrejectederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base research task canceled | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base research task | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/partials
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 25 |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base research task partial evidence | **application/json**: [KnowledgeFSResearchTaskPartialListResponse](#knowledgefsresearchtaskpartiallistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/research-tasks/{task_id}/resume
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| task_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | resumeResearchTask | **application/json**: [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/settings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base settings | **application/json**: [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/settings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSettingsPayload](#knowledgefssettingspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base settings updated | **application/json**: [KnowledgeFSSettingsUpdateResponse](#knowledgefssettingsupdateresponse)<br> |
+| 202 | Agent Knowledge Base settings migration accepted | **application/json**: [KnowledgeFSSettingsUpdateResponse](#knowledgefssettingsupdateresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Unprocessable Entity | **application/json**: [KnowledgeFsRequestRejectedError](#knowledgefsrequestrejectederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/settings/migrations/{migration_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| migration_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getProfileMigration | **application/json**: [KnowledgeFSProfileMigrationResponse](#knowledgefsprofilemigrationresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-connections
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listSourceConnections | **application/json**: [KnowledgeFSSourceConnectionListResponse](#knowledgefssourceconnectionlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSServiceSourceConnectionCreatePayload](#knowledgefsservicesourceconnectioncreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | createSourceConnection | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-connections/{connection_id}/refresh
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| connection_id | path |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceConnectionRefreshPayload](#knowledgefssourceconnectionrefreshpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | refreshSourceConnection | **application/json**: [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-providers
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Source providers | **application/json**: [KnowledgeFSSourceProviderListResponse](#knowledgefssourceproviderlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| sourceId | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listSourceWorkflows | **application/json**: [KnowledgeFSSourceWorkflowListResponse](#knowledgefssourceworkflowlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/cancel
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceWorkflowCancelPayload](#knowledgefssourceworkflowcancelpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | cancelSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/pages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | listCrawlPreviewPages | **application/json**: [KnowledgeFSCrawlPreviewPageListResponse](#knowledgefscrawlpreviewpagelistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/retry
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | retrySourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/source-workflows/{run_id}/selection
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSCrawlPreviewSelectionPayload](#knowledgefscrawlpreviewselectionpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | selectCrawlPreviewPages | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base sources | **application/json**: [KnowledgeFSSourceListResponse](#knowledgefssourcelistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSServiceSourceCreatePayload](#knowledgefsservicesourcecreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent Knowledge Base source created | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [KnowledgeFsRateLimitExceededError](#knowledgefsratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| documents | query |  | No | string, <br>**Available values:** "cascade", "keep", <br>**Default:** cascade |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceDeletePayload](#knowledgefssourcedeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base source deletion accepted | **application/json**: [KnowledgeFSDurableDeletionAcceptedResponse](#knowledgefsdurabledeletionacceptedresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base source | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSServiceSourceUpdatePayload](#knowledgefsservicesourceupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base source updated | **application/json**: [KnowledgeFSSourceResponse](#knowledgefssourceresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl~~
+
+***DEPRECATED***
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base source crawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-import
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSCrawlImportPayload](#knowledgefscrawlimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | importSelectedSourceCrawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | previewSourceCrawl | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| bucket | query |  | No | string |
+| continuationToken | query |  | No | string |
+| maxKeys | query |  | No | integer |
+| prefix | query |  | No | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base source files | **application/json**: [KnowledgeFSSourceFilesResponse](#knowledgefssourcefilesresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import~~
+
+***DEPRECATED***
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceImportPagesPayload](#knowledgefssourceimportpagespayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base source pages imported | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### ~~[POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/import-files~~
+
+***DEPRECATED***
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceImportFilesPayload](#knowledgefssourceimportfilespayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Agent Knowledge Base source files imported | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base source pages | **application/json**: [KnowledgeFSSourcePagesResponse](#knowledgefssourcepagesresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | syncSource | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | getSourceSyncPolicy | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/sync-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceSyncPolicyPayload](#knowledgefssourcesyncpolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | updateSourceSyncPolicy | **application/json**: [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/test
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base source credential test | **application/json**: [KnowledgeFSSourceCredentialTestResponse](#knowledgefssourcecredentialtestresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /knowledge-fs/spaces/{control_space_id}/sources/{source_id}/workflow-imports
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
+| control_space_id | path |  | Yes | string |
+| source_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeFSSourceWorkflowImportPayload](#knowledgefssourceworkflowimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | importSourceWorkflow | **application/json**: [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 50 |
+| source | query |  | No | string, <br>**Available values:** "agent", "mcp", "retrieval_test", "service_api", "workflow" |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base traces | **application/json**: [KnowledgeFSTraceListResponse](#knowledgefstracelistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base answer trace | **application/json**: [KnowledgeFSAnswerTraceResponse](#knowledgefsanswertraceresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/conflicts
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 100 |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base trace conflicts | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/evidence
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 100 |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base trace evidence view | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}/missing
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 100 |
+| control_space_id | path |  | Yes | string |
+| trace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Knowledge Base trace missing evidence | **application/json**: [KnowledgeFSTraceEntryListResponse](#knowledgefstraceentrylistresponse)<br> |
+| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [KnowledgeFsInvalidCredentialError](#knowledgefsinvalidcredentialerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -103,8 +1745,9 @@ Retrieve a paginated list of all feedback submitted for messages in this applica
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | A list of application feedbacks. | **application/json**: [AppFeedbackListResponse](#appfeedbacklistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /messages/{message_id}/feedbacks
 **Submit Message Feedback**
@@ -128,10 +1771,11 @@ Submit feedback for a message. End users can rate messages as `like` or `dislike
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad request - invalid feedback payload |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Message does not exist. |  |
+| 400 | Bad request - invalid feedback payload | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -158,8 +1802,9 @@ Enables or disables the annotation reply feature. Requires embedding model confi
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation reply settings task initiated. | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/annotation-reply/{action}/status/{job_id}
 **Get Annotation Reply Job Status**
@@ -178,9 +1823,10 @@ Retrieves the status of an asynchronous annotation reply configuration job start
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved task status. | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
-| 400 | `invalid_param` : The specified job does not exist. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `invalid_param` : The specified job does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/annotations
 **List Annotations**
@@ -200,8 +1846,9 @@ Retrieves a paginated list of annotations for the application. Supports keyword 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved annotation list. | **application/json**: [AnnotationList](#annotationlist)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/annotations
 **Create Annotation**
@@ -219,8 +1866,9 @@ Creates a new annotation. Annotations provide predefined question-answer pairs t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Annotation created successfully. | **application/json**: [Annotation](#annotation)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/annotations/{annotation_id}
 **Delete Annotation**
@@ -235,12 +1883,13 @@ Deletes an annotation and its associated hit history.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Annotation deleted successfully. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `forbidden` : Insufficient permissions to edit annotations. |
-| 404 | `not_found` : Annotation does not exist. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Annotation deleted successfully. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions to edit annotations. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Annotation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/annotations/{annotation_id}
 **Update Annotation**
@@ -264,9 +1913,10 @@ Updates the question and answer of an existing annotation.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation updated successfully. | **application/json**: [Annotation](#annotation)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions to edit annotations. |  |
-| 404 | `not_found` : Annotation does not exist. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions to edit annotations. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Annotation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -287,12 +1937,13 @@ Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `au
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully converted audio to text. | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `speech_to_text_disabled` : Speech-to-text is disabled for this app. - `provider_not_support_speech_to_text` : Model provider does not support speech-to-text. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Speech recognition request failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 413 | `audio_too_large` : Audio file size exceeded the limit. |  |
-| 415 | `unsupported_audio_type` : Audio type is not allowed. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `speech_to_text_disabled` : Speech-to-text is disabled for this app. - `provider_not_support_speech_to_text` : Model provider does not support speech-to-text. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Speech recognition request failed. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `audio_too_large` : Audio file size exceeded the limit. | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | `unsupported_audio_type` : Audio type is not allowed. | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /text-to-audio
 **Convert Text to Audio**
@@ -310,10 +1961,11 @@ Convert text to speech.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Returns the generated audio. The `Content-Type` header reflects the provider audio container, verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, MP3, Ogg, WAV, or WebM. | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/mp4**: binary<br>**audio/mpeg**: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/webm**: binary<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -334,12 +1986,13 @@ Send a request to the chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [ChatBlockingResponse](#chatblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |  |
-| 404 | `not_found` : Conversation does not exist. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. | **application/json**: [WorkflowVersionExecutionNotAllowedError](#workflowversionexecutionnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /chat-messages/{task_id}/stop
 **Stop Chat Message Generation**
@@ -363,9 +2016,10 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -384,11 +2038,12 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Message does not exist. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow/{workflow_run_id}/events
 **Stream Workflow Events**
@@ -409,10 +2064,11 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: string<br> |
-| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Workflow run not found. |  |
+| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/logs
 **List Workflow Logs**
@@ -437,9 +2093,10 @@ Retrieve paginated workflow execution logs with filtering options.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow logs. | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
-| 400 | Bad request - invalid query parameters |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | Bad request - invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/run/{workflow_run_id}
 **Get Workflow Run Detail**
@@ -457,10 +2114,11 @@ Retrieve the current execution results of a workflow task based on the workflow 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow run details. | **application/json**: [WorkflowRunResponse](#workflowrunresponse)<br> |
-| 400 | `not_workflow_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Workflow run not found. |  |
+| 400 | `not_workflow_app` : App mode does not match the API route. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -481,12 +2139,13 @@ Send a request to the chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [ChatBlockingResponse](#chatblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |  |
-| 404 | `not_found` : Conversation does not exist. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. | **application/json**: [WorkflowVersionExecutionNotAllowedError](#workflowversionexecutionnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /chat-messages/{task_id}/stop
 **Stop Chat Message Generation**
@@ -510,9 +2169,10 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -531,11 +2191,12 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Message does not exist. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -556,11 +2217,12 @@ Send a request to the text generation application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects. | **application/json**: [CompletionBlockingResponse](#completionblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 429 | `too_many_requests` : Too many concurrent requests for this app. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | `too_many_requests` : Too many concurrent requests for this app. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /completion-messages/{task_id}/stop
 **Stop Completion Message Generation**
@@ -584,9 +2246,10 @@ Stops a completion message generation task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -610,10 +2273,11 @@ Retrieve the conversation list for the current user, ordered by most recently ac
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved conversations list. | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Last conversation does not exist (invalid `last_id`). |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Last conversation does not exist (invalid `last_id`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /conversations/{conversation_id}
 **Delete Conversation**
@@ -634,13 +2298,14 @@ Delete a conversation.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Conversation deleted successfully. |
-| 400 | `not_chat_app` : App mode does not match the API route. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
-| 404 | `not_found` : Conversation does not exist. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Conversation deleted successfully. |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /conversations/{conversation_id}/name
 **Rename Conversation**
@@ -664,10 +2329,11 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation renamed successfully. | **application/json**: [SimpleConversation](#simpleconversation)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Conversation does not exist. |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /conversations/{conversation_id}/variables
 **List Conversation Variables**
@@ -689,10 +2355,11 @@ Retrieve variables from a specific conversation.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved conversation variables. | **application/json**: [ConversationVariableInfiniteScrollPaginationResponse](#conversationvariableinfinitescrollpaginationresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Conversation does not exist. |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /conversations/{conversation_id}/variables/{variable_id}
 **Update Conversation Variable**
@@ -717,10 +2384,11 @@ Update the value of a specific conversation variable. The value must match the e
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully. | **application/json**: [ConversationVariableResponse](#conversationvariableresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Variable value type mismatch. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | - `not_found` : Conversation does not exist. - `not_found` : Conversation variable does not exist. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Variable value type mismatch. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | - `not_found` : Conversation does not exist. - `not_found` : Conversation variable does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages
 **List Conversation Messages**
@@ -741,10 +2409,11 @@ Returns historical chat records in a scrolling load format, with the first page 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved conversation history. | **application/json**: [MessageInfiniteScrollPagination](#messageinfinitescrollpagination)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | - `not_found` : Conversation does not exist. - `not_found` : First message does not exist. |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | - `not_found` : Conversation does not exist. - `not_found` : First message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -769,8 +2438,9 @@ Returns a paginated list of knowledge bases. Supports filtering by keyword and t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of knowledge bases. | **application/json**: [DatasetListResponse](#datasetlistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets
 **Create an Empty Knowledge Base**
@@ -788,10 +2458,11 @@ Create a new empty knowledge base. After creation, use [Create Document by Text]
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Knowledge base created successfully. | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
-| 400 | Bad request - invalid parameters |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 409 | `dataset_name_duplicate` : The dataset name already exists. Please modify your dataset name. |  |
+| 400 | Bad request - invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | `dataset_name_duplicate` : The dataset name already exists. Please modify your dataset name. | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}
 **Delete Knowledge Base**
@@ -806,12 +2477,13 @@ Permanently delete a knowledge base and all its documents.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - dataset API access or workspace access denied |
-| 404 | `not_found` : Dataset not found. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}
 **Get Knowledge Base**
@@ -829,9 +2501,10 @@ Retrieve detailed information about a specific knowledge base, including its emb
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Knowledge base details. | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions to access this knowledge base. |  |
-| 404 | `not_found` : Dataset not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions to access this knowledge base. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}
 **Update Knowledge Base**
@@ -855,10 +2528,11 @@ Update the name, description, permissions, or retrieval settings of an existing 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Knowledge base updated successfully. | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
-| 400 | Bad request - invalid embedding or reranking model configuration |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions to access this knowledge base. |  |
-| 404 | `not_found` : Dataset not found. |  |
+| 400 | Bad request - invalid embedding or reranking model configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions to access this knowledge base. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/hit-testing~~
 
@@ -885,11 +2559,12 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retrieval results. | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
-| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions. |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 500 | `internal_server_error` : An internal error occurred during retrieval. |  |
+| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : An internal error occurred during retrieval. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/retrieve
 **Retrieve Chunks from a Knowledge Base / Test Retrieval**
@@ -913,11 +2588,12 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retrieval results. | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
-| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions. |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 500 | `internal_server_error` : An internal error occurred during retrieval. |  |
+| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : An internal error occurred during retrieval. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -938,11 +2614,12 @@ Upload a file for use in a knowledge pipeline. Accepts a single file via `multip
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully. | **application/json**: [PipelineUploadFileResponse](#pipelineuploadfileresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `filename_not_exists_error` : The specified filename does not exist. - `too_many_files` : Only one file is allowed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 415 | `unsupported_file_type` : File type not allowed. |  |
+| 400 | - `no_file_uploaded` : Please upload your file. - `filename_not_exists_error` : The specified filename does not exist. - `too_many_files` : Only one file is allowed. | **application/json**: [FilenameNotExistsError](#filenamenotexistserror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/pipeline/datasource-plugins
 **List Datasource Plugins**
@@ -961,10 +2638,11 @@ List the datasource nodes configured in the knowledge pipeline. Each node includ
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of datasource nodes configured in the pipeline. | **application/json**: [DatasourcePluginListResponse](#datasourcepluginlistresponse)<br> |
-| 400 | Bad request - pipeline is not configured |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Dataset not found. |  |
+| 400 | Bad request - pipeline is not configured | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/pipeline/datasource/nodes/{node_id}/run
 **Run Datasource Node**
@@ -989,10 +2667,11 @@ Execute a single datasource node within the knowledge pipeline. Returns a stream
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Streaming response with node execution events. | **text/event-stream**: string<br> |
-| 400 | Bad request - invalid payload or pipeline is not configured |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Dataset not found. |  |
+| 400 | Bad request - invalid payload or pipeline is not configured | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/pipeline/run
 **Run Pipeline**
@@ -1016,11 +2695,12 @@ Execute the full knowledge pipeline for a knowledge base. Published runs are que
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Pipeline execution result. Published runs return a JSON object containing `batch`, `dataset`, and `documents`. Draft runs return `text/event-stream` for streaming mode or a workflow result JSON object for blocking mode. | **application/json**: [PipelineRunJsonResponse](#pipelinerunjsonresponse)<br>**text/event-stream**: string<br> |
-| 400 | Bad request - invalid payload or pipeline is not configured |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Forbidden. |  |
-| 404 | `not_found` : Dataset not found. |  |
-| 500 | `pipeline_run_error` : Pipeline execution failed. |  |
+| 400 | Bad request - invalid payload or pipeline is not configured | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Forbidden. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `pipeline_run_error` : Pipeline execution failed. | **application/json**: [PipelineRunError](#pipelinerunerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1038,12 +2718,13 @@ Permanently delete a knowledge base tag. Does not delete the knowledge bases tha
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Tag not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Tag not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/tags
 **List Knowledge Tags**
@@ -1055,8 +2736,9 @@ Returns the list of all knowledge base tags in the workspace.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of tags. | **application/json**: [KnowledgeTagListResponse](#knowledgetaglistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/tags
 **Update Knowledge Tag**
@@ -1074,10 +2756,11 @@ Rename an existing knowledge base tag.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tag updated successfully. | **application/json**: [KnowledgeTagResponse](#knowledgetagresponse)<br> |
-| 400 | Bad request - tag name already exists |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - insufficient permissions |  |
-| 404 | Tag not found |  |
+| 400 | Bad request - tag name already exists | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Tag not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/tags
 **Create Knowledge Tag**
@@ -1095,9 +2778,10 @@ Create a new tag for organizing knowledge bases.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tag created successfully. | **application/json**: [KnowledgeTagResponse](#knowledgetagresponse)<br> |
-| 400 | Bad request - tag name already exists |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - insufficient permissions |  |
+| 400 | Bad request - tag name already exists | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/tags/binding
 **Create Tag Binding**
@@ -1112,12 +2796,13 @@ Bind one or more tags to a knowledge base. A knowledge base can have multiple ta
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/tags/unbinding
 **Delete Tag Binding**
@@ -1132,12 +2817,13 @@ Remove one or more tags from a knowledge base.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/tags
 **Get Knowledge Base Tags**
@@ -1155,9 +2841,10 @@ Returns the list of tags bound to a specific knowledge base.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tags bound to the knowledge base. | **application/json**: [DatasetBoundTagListResponse](#datasetboundtaglistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1184,12 +2871,13 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [FilenameNotExistsError](#filenamenotexistserror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/document/create-by-text
 **Create Document by Text**
@@ -1213,11 +2901,12 @@ Create a document from raw text content. The document is processed asynchronousl
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist. / indexing_technique is required. / Invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist. / indexing_technique is required. / Invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/document/create_by_file~~
 
@@ -1244,12 +2933,13 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [FilenameNotExistsError](#filenamenotexistserror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents
 **List Documents**
@@ -1271,9 +2961,10 @@ Returns a paginated list of documents in the knowledge base. Supports filtering 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of documents. | **application/json**: [DocumentListResponse](#documentlistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/download-zip
 **Download Documents as ZIP**
@@ -1297,9 +2988,10 @@ Download multiple uploaded-file documents as a single ZIP archive. Accepts up to
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | ZIP archive containing the requested documents. | **application/zip**: binary<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions. |  |
-| 404 | `not_found` : Document or dataset not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Document or dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/status/{action}
 **Update Document Status in Batch**
@@ -1324,10 +3016,11 @@ Enable, disable, archive, or unarchive multiple documents at once.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document status updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `invalid_action` : Invalid action. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions. |  |
-| 404 | `not_found` : Knowledge base not found. |  |
+| 400 | `invalid_action` : Invalid action. | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{batch}/indexing-status
 **Get Document Indexing Status**
@@ -1346,9 +3039,10 @@ Check the indexing progress of documents in a batch. Returns the current process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status for documents in the batch. | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. / Documents not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. / Documents not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}
 **Delete Document**
@@ -1364,12 +3058,13 @@ Permanently delete a document and all its chunks from the knowledge base.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `archived_document_immutable` : The archived document is not editable. |
-| 404 | `not_found` : Document Not Exists. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `archived_document_immutable` : The archived document is not editable. | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Document Not Exists. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}
 **Get Document**
@@ -1389,10 +3084,11 @@ Retrieve detailed information about a specific document, including its indexing 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document details. The response shape varies based on the `metadata` query parameter. When `metadata` is `only`, only `id`, `doc_type`, and `doc_metadata` are returned. When `metadata` is `without`, `doc_type` and `doc_metadata` are omitted. | **application/json**: [DocumentDetailResponse](#documentdetailresponse)<br> |
-| 400 | `invalid_metadata` : Invalid metadata value for the specified key. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : No permission. |  |
-| 404 | `not_found` : Document not found. |  |
+| 400 | `invalid_metadata` : Invalid metadata value for the specified key. | **application/json**: [InvalidMetadataError](#invalidmetadataerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : No permission. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Document not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}
 **Update Document by File**
@@ -1417,13 +3113,14 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Document not found |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 415 | Unsupported file type |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [FilenameNotExistsError](#filenamenotexistserror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported file type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
 **Download Document**
@@ -1442,9 +3139,10 @@ Get a signed download URL for a document's original uploaded file.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Download URL generated successfully. | **application/json**: [UrlResponse](#urlresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : No permission to access this document. |  |
-| 404 | `not_found` : Document not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : No permission to access this document. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Document not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update-by-file~~
 
@@ -1472,13 +3170,14 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Document not found |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 415 | Unsupported file type |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [FilenameNotExistsError](#filenamenotexistserror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported file type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/update-by-text
 **Update Document by Text**
@@ -1503,11 +3202,12 @@ Update an existing document's text content, name, or processing configuration. R
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, name is required when text is provided, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Document not found |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, name is required when text is provided, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_file~~
 
@@ -1535,13 +3235,14 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Document not found |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 415 | Unsupported file type |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [FilenameNotExistsError](#filenamenotexistserror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported file type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1568,10 +3269,11 @@ Update metadata values for multiple documents at once. Each document in the requ
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document metadata updated successfully. | **application/json**: [DatasetMetadataActionResponse](#datasetmetadataactionresponse)<br> |
-| 400 | Bad request - invalid or conflicting document metadata operation |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, or metadata not found |  |
+| 400 | Bad request - invalid or conflicting document metadata operation | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or metadata not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/metadata
 **List Metadata Fields**
@@ -1589,9 +3291,10 @@ Returns the list of all metadata fields (both custom and built-in) for the knowl
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Metadata fields for the knowledge base. | **application/json**: [DatasetMetadataListResponse](#datasetmetadatalistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset not found |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/metadata
 **Create Metadata Field**
@@ -1615,10 +3318,11 @@ Create a custom metadata field for the knowledge base. Metadata fields can be us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Metadata field created successfully. | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
-| 400 | Bad request - invalid or duplicate metadata name |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset not found |  |
+| 400 | Bad request - invalid or duplicate metadata name | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/metadata/built-in
 **Get Built-in Metadata Fields**
@@ -1636,9 +3340,10 @@ Returns the list of built-in metadata fields provided by the system (e.g., docum
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Built-in metadata fields. | **application/json**: [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/metadata/built-in/{action}
 **Update Built-in Metadata Field**
@@ -1657,9 +3362,10 @@ Enable or disable built-in metadata fields for the knowledge base.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Built-in metadata field toggled successfully. | **application/json**: [DatasetMetadataActionResponse](#datasetmetadataactionresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset not found |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/metadata/{metadata_id}
 **Delete Metadata Field**
@@ -1675,12 +3381,13 @@ Permanently delete a custom metadata field. Documents using this field will lose
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - dataset API access or workspace access denied |
-| 404 | Dataset or metadata not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset or metadata not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/metadata/{metadata_id}
 **Update Metadata Field**
@@ -1705,10 +3412,11 @@ Rename a custom metadata field.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Metadata field updated successfully. | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
-| 400 | Bad request - invalid or duplicate metadata name |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset or metadata not found |  |
+| 400 | Bad request - invalid or duplicate metadata name | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset or metadata not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1734,10 +3442,11 @@ Returns a paginated list of chunks within a document. Supports filtering by keyw
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of chunks. | **application/json**: [SegmentListResponse](#segmentlistresponse)<br> |
-| 400 | Bad request - embedding model is not configured |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset or document not found |  |
+| 400 | Bad request - embedding model is not configured | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset or document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments
 **Create Chunks**
@@ -1762,11 +3471,12 @@ Create one or more chunks within a document. Each chunk can include optional key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunks created successfully. | **application/json**: [SegmentCreateListResponse](#segmentcreatelistresponse)<br> |
-| 400 | Bad request - segments data is missing |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Document is not completed or is disabled. |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | Bad request - segments data is missing | **application/json**: [ErrorMessageResponse](#errormessageresponse)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Document is not completed or is disabled. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 **Delete Chunk**
@@ -1783,13 +3493,14 @@ Permanently delete a chunk from the document.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 400 | Bad request - invalid dataset model state or concurrent deletion |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - dataset API access or workspace access denied |
-| 404 | Dataset, document, or segment not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 400 | Bad request - invalid dataset model state or concurrent deletion | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 **Get Chunk**
@@ -1809,10 +3520,11 @@ Retrieve detailed information about a specific chunk, including its content, key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunk details. | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
-| 400 | Bad request - invalid dataset model configuration |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, or segment not found |  |
+| 400 | Bad request - invalid dataset model configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 **Update Chunk**
@@ -1838,11 +3550,12 @@ Update a chunk's content, keywords, or answer. Re-triggers indexing for the modi
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunk updated successfully. | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
-| 400 | Bad request - invalid segment or embedding model configuration |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, or segment not found |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | Bad request - invalid segment or embedding model configuration | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 **List Child Chunks**
@@ -1865,9 +3578,10 @@ Returns a paginated list of child chunks under a specific parent chunk.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of child chunks. | **application/json**: [ChildChunkListResponse](#childchunklistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, or segment not found |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 **Create Child Chunk**
@@ -1893,11 +3607,12 @@ Create a child chunk under the specified segment.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunk created successfully. | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
-| 400 | `invalid_param` : Create child chunk index failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, or segment not found |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | `invalid_param` : Create child chunk index failed. | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 **Delete Child Chunk**
@@ -1915,13 +3630,14 @@ Permanently delete a child chunk from its parent chunk.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 400 | `invalid_param` : Delete child chunk index failed. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - dataset API access or workspace access denied |
-| 404 | Dataset, document, segment, or child chunk not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 400 | `invalid_param` : Delete child chunk index failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, segment, or child chunk not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 **Update Child Chunk**
@@ -1948,11 +3664,12 @@ Update the content of an existing child chunk.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunk updated successfully. | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
-| 400 | `invalid_param` : Update child chunk index failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, segment, or child chunk not found |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | `invalid_param` : Update child chunk index failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, segment, or child chunk not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1973,9 +3690,10 @@ Retrieve an end user by ID. Useful when other APIs return an end-user ID (e.g., 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | End user retrieved successfully. | **application/json**: [EndUserDetail](#enduserdetail)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `end_user_not_found` : End user not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `end_user_not_found` : End user not found. | **application/json**: [EndUserNotFoundError](#endusernotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1996,11 +3714,12 @@ Upload a file for use when sending messages, enabling multimodal understanding o
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully. | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 415 | `unsupported_file_type` : File type not allowed. |  |
+| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /files/{file_id}/preview
 **Download File**
@@ -2020,9 +3739,10 @@ Preview or download uploaded files previously uploaded via the [Upload File](/ap
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If `as_attachment` is `true`, the file is returned as a download with `Content-Disposition: attachment`. | `*/*`: binary<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `file_access_denied` : Access to the requested file is denied. |  |
-| 404 | `file_not_found` : The requested file was not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `file_access_denied` : Access to the requested file is denied. | **application/json**: [FileAccessDeniedError](#fileaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `file_not_found` : The requested file was not found. | **application/json**: [FileNotFoundError](#filenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2043,10 +3763,11 @@ Retrieve a paused Human Input form's contents using the `form_token` from a `hum
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form contents retrieved successfully. | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Form not found. |  |
-| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Form not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
 **Submit Human Input Form**
@@ -2070,11 +3791,12 @@ Submit the recipient's response to a paused Human Input form. The workflow resum
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form submitted successfully. The response body is an empty object. | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
-| 400 | - `bad_request` : Form recipient type is invalid. - `invalid_form_data` : Submission failed validation against the form definition. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Form not found. |  |
-| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. |  |
+| 400 | - `bad_request` : Form recipient type is invalid. - `invalid_form_data` : Submission failed validation against the form definition. | **application/json**: [InvalidFormDataError](#invalidformdataerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Form not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2089,9 +3811,10 @@ Retrieve basic information about this application, including name, description, 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Basic information of the application. | **application/json**: [AppInfoResponse](#appinforesponse)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /meta
 **Get App Meta**
@@ -2103,9 +3826,10 @@ Retrieve metadata about this application, including tool icons and other configu
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved application meta information. | **application/json**: [AppMetaResponse](#appmetaresponse)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /parameters
 **Get App Parameters**
@@ -2117,9 +3841,10 @@ Retrieve the application's input form configuration, including feature switches,
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Application parameters information. | **application/json**: [Parameters](#parameters)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /site
 **Get App WebApp Settings**
@@ -2131,8 +3856,9 @@ Retrieve the WebApp settings of this application, including site configuration, 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | WebApp settings of the application. | **application/json**: [Site](#site)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Site not found for this application or the workspace has been archived. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Site not found for this application or the workspace has been archived. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2156,10 +3882,11 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: string<br> |
-| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Workflow run not found. |  |
+| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/logs
 **List Workflow Logs**
@@ -2184,9 +3911,10 @@ Retrieve paginated workflow execution logs with filtering options.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow logs. | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
-| 400 | Bad request - invalid query parameters |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | Bad request - invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/run
 **Run Workflow**
@@ -2204,11 +3932,12 @@ Execute a workflow. Cannot be executed without a published workflow.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through Web App, Service API, OpenAPI, or MCP. | **application/json**: [TriggerWorkflowServiceModeUnavailableError](#triggerworkflowservicemodeunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/run/{workflow_run_id}
 **Get Workflow Run Detail**
@@ -2226,10 +3955,11 @@ Retrieve the current execution results of a workflow task based on the workflow 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow run details. | **application/json**: [WorkflowRunResponse](#workflowrunresponse)<br> |
-| 400 | `not_workflow_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Workflow run not found. |  |
+| 400 | `not_workflow_app` : App mode does not match the API route. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/tasks/{task_id}/stop
 **Stop Workflow Task**
@@ -2253,9 +3983,10 @@ Stop a running workflow task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | - `not_workflow_app` : App mode does not match the API route. - `invalid_param` : Required parameter missing or invalid. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | - `not_workflow_app` : App mode does not match the API route. - `invalid_param` : Required parameter missing or invalid. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/{workflow_id}/run
 **Run Workflow by ID**
@@ -2279,12 +4010,13 @@ Execute a specific workflow version identified by its ID. Useful for running a p
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `not_workflow_app` : App mode does not match the API route. - `bad_request` : Workflow is a draft or has an invalid ID format. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Required parameter missing or invalid. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. - `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
-| 404 | `not_found` : Workflow not found. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `not_workflow_app` : App mode does not match the API route. - `bad_request` : Workflow is a draft or has an invalid ID format. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Required parameter missing or invalid. | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. - `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. | **application/json**: [TriggerWorkflowServiceModeUnavailableError](#triggerworkflowservicemodeunavailableerror)<br>[WorkflowVersionExecutionNotAllowedError](#workflowversionexecutionnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Workflow not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2305,10 +4037,19 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Available models for the specified type. | **application/json**: [ProviderWithModelsListResponse](#providerwithmodelslistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ### Schemas
+
+#### AgentNotPublishedError
+
+Agent has not been published. Please publish the Agent before using the API.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentNotPublishedError |  | Agent has not been published. Please publish the Agent before using the API. |  |
 
 #### AgentThought
 
@@ -2325,7 +4066,7 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | thought | string |  | No |
 | tool | string |  | No |
 | tool_input | string |  | No |
-| tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
+| tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
 
 #### Annotation
 
@@ -2385,6 +4126,12 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | embedding_provider_name | string | Name of the embedding model provider. | Yes |
 | score_threshold | float | Minimum similarity score for an annotation to be considered a match. Higher values require closer matches. | Yes |
 
+#### AnyJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AnyJSONValue |  |  |  |
+
 #### AppFeedbackListResponse
 
 | Name | Type | Description | Required |
@@ -2423,17 +4170,41 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object |  | No |
 
+#### AppUnavailableError
+
+App unavailable, please check your app configurations.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppUnavailableError |  | App unavailable, please check your app configurations. |  |
+
+#### ArchivedDocumentImmutableError
+
+The archived document is not editable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ArchivedDocumentImmutableError |  | The archived document is not editable. |  |
+
 #### AudioBinaryResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AudioBinaryResponse | string |  |  |
 
+#### AudioTooLargeError
+
+Audio size exceeded. {message}
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AudioTooLargeError |  | Audio size exceeded. {message} |  |
+
 #### AudioTranscriptResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| text | string |  | Yes |
+| text | string | Transcribed text from audio | Yes |
 
 #### BinaryFileResponse
 
@@ -2462,6 +4233,7 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | hit_count | integer |  | No |
 | id | string |  | No |
 | index_node_hash | string |  | No |
+| knowledge_fs_citation | [KnowledgeFsCitation](#knowledgefscitation) |  | No |
 | message_id | string |  | No |
 | position | integer |  | Yes |
 | score | number |  | No |
@@ -2636,7 +4408,7 @@ Public pause reason emitted by a blocking Chatflow execution.
 | id | string |  | Yes |
 | position | integer |  | Yes |
 | segment_id | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "automatic", "customized" | *Enum:* `"automatic"`, `"customized"` | Yes |
 | updated_at | integer |  | Yes |
 | word_count | integer |  | Yes |
 
@@ -2658,6 +4430,14 @@ Public pause reason emitted by a blocking Chatflow execution.
 | metadata | [BlockingMetadataResponse](#blockingmetadataresponse) | Metadata including usage and retriever resources. | Yes |
 | mode | string |  | Yes |
 | task_id | string (uuid) |  | Yes |
+
+#### CompletionRequestError
+
+Completion request failed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CompletionRequestError |  | Completion request failed. |  |
 
 #### CompletionRequestPayload
 
@@ -2808,7 +4588,7 @@ Enum class for custom configuration status.
 | chunk_structure | string |  | Yes |
 | created_at | integer |  | Yes |
 | created_by | string |  | Yes |
-| data_source_type | string |  | Yes |
+| data_source_type | string, <br>**Available values:** "local_file", "notion_import", "online_document", "online_drive", "upload_file", "website_crawl" |  | Yes |
 | description | string |  | Yes |
 | doc_form | string |  | Yes |
 | doc_metadata | [ [DatasetDocMetadataResponse](#datasetdocmetadataresponse) ] |  | Yes |
@@ -2821,16 +4601,16 @@ Enum class for custom configuration status.
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
-| indexing_technique | string |  | Yes |
+| indexing_technique | [IndexTechniqueType](#indextechniquetype) |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
 | maintainer | string |  | No |
 | name | string |  | Yes |
-| permission | string |  | Yes |
+| permission | string, <br>**Available values:** "all_team_members", "only_me", "partial_members" | *Enum:* `"all_team_members"`, `"only_me"`, `"partial_members"` | Yes |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
-| runtime_mode | string |  | Yes |
+| runtime_mode | string, <br>**Available values:** "general", "rag_pipeline" |  | Yes |
 | summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
@@ -2849,7 +4629,7 @@ Enum class for custom configuration status.
 | chunk_structure | string |  | Yes |
 | created_at | integer |  | Yes |
 | created_by | string |  | Yes |
-| data_source_type | string |  | Yes |
+| data_source_type | string, <br>**Available values:** "local_file", "notion_import", "online_document", "online_drive", "upload_file", "website_crawl" |  | Yes |
 | description | string |  | Yes |
 | doc_form | string |  | Yes |
 | doc_metadata | [ [DatasetDocMetadataResponse](#datasetdocmetadataresponse) ] |  | Yes |
@@ -2862,17 +4642,17 @@ Enum class for custom configuration status.
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
-| indexing_technique | string |  | Yes |
+| indexing_technique | [IndexTechniqueType](#indextechniquetype) |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
 | maintainer | string |  | No |
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | No |
-| permission | string |  | Yes |
+| permission | string, <br>**Available values:** "all_team_members", "only_me", "partial_members" | *Enum:* `"all_team_members"`, `"only_me"`, `"partial_members"` | Yes |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
-| runtime_mode | string |  | Yes |
+| runtime_mode | string, <br>**Available values:** "general", "rag_pipeline" |  | Yes |
 | summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
@@ -2887,7 +4667,7 @@ Enum class for custom configuration status.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### DatasetExternalKnowledgeInfoResponse
 
@@ -2952,7 +4732,7 @@ Enum class for custom configuration status.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### DatasetMetadataBuiltInFieldsResponse
 
@@ -2967,7 +4747,7 @@ Enum class for custom configuration status.
 | count | integer |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### DatasetMetadataListResponse
 
@@ -2982,7 +4762,15 @@ Enum class for custom configuration status.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
+
+#### DatasetNameDuplicateError
+
+The dataset name already exists. Please modify your dataset name.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetNameDuplicateError |  | The dataset name already exists. Please modify your dataset name. |  |
 
 #### DatasetRerankingModelResponse
 
@@ -3000,7 +4788,7 @@ Enum class for custom configuration status.
 | reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) | Reranking model configuration. | No |
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | Yes |
-| search_method | string |  | Yes |
+| search_method | [RetrievalMethod](#retrievalmethod) |  | Yes |
 | top_k | integer |  | Yes |
 | weights | [DatasetWeightedScoreResponse](#datasetweightedscoreresponse) |  | No |
 
@@ -3185,8 +4973,8 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
-| value | string<br>integer<br>number<br>boolean |  | No |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
+| value | string<br>integer<br>number |  | Yes |
 
 #### DocumentResponse
 
@@ -3196,7 +4984,7 @@ Request payload for bulk downloading documents as a zip archive.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | created_from | string |  | No |
-| data_source_detail_dict | object |  | Yes |
+| data_source_detail_dict | [DocumentSourceDetailResponse](#documentsourcedetailresponse) |  | Yes |
 | data_source_info | object |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
@@ -3216,6 +5004,14 @@ Request payload for bulk downloading documents as a zip archive.
 | summary_index_status | string |  | No |
 | tokens | integer |  | No |
 | word_count | integer |  | No |
+
+#### DocumentSourceDetailResponse
+
+The uploaded file for file documents; Notion and website documents repeat their source info.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| upload_file | [DocumentUploadFileDetailResponse](#documentuploadfiledetailresponse) |  | No |
 
 #### DocumentStatusListResponse
 
@@ -3240,7 +5036,7 @@ Request payload for bulk downloading documents as a zip archive.
 | error_code | string |  | No |
 | estimated_vector_space_mb | integer |  | No |
 | id | string |  | Yes |
-| indexing_status | string |  | Yes |
+| indexing_status | string, <br>**Available values:** "cleaning", "completed", "error", "indexing", "parsing", "paused", "splitting", "waiting" | *Enum:* `"cleaning"`, `"completed"`, `"error"`, `"indexing"`, `"parsing"`, `"paused"`, `"splitting"`, `"waiting"` | Yes |
 | parsing_completed_at | integer |  | Yes |
 | paused_at | integer |  | Yes |
 | processing_started_at | integer |  | Yes |
@@ -3275,6 +5071,18 @@ Request payload for bulk downloading documents as a zip archive.
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Controls how chunks are searched and ranked when querying this knowledge base. | No |
 | text | string | Document text content. | No |
 
+#### DocumentUploadFileDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | number |  | Yes |
+| created_by | string |  | Yes |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+
 #### EndUserDetail
 
 Full end-user detail returned by the Service API.
@@ -3291,6 +5099,37 @@ Full end-user detail returned by the Service API.
 | tenant_id | string (uuid) |  | Yes |
 | type | string |  | Yes |
 | updated_at | dateTime |  | Yes |
+
+#### EndUserNotFoundError
+
+End user not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EndUserNotFoundError |  | End user not found. |  |
+
+#### ErrorMessageResponse
+
+Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | Yes |
+
+#### ErrorResponse
+
+Documented non-2xx body emitted by ``register_external_error_handlers``.
+
+``params`` and ``details`` appear only on the errors that set them. The schema
+stays open because ``HTTPException.data`` may carry extra keys.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| details | object |  | No |
+| message | string |  | Yes |
+| params | string |  | No |
+| status | integer |  | Yes |
 
 #### EventStreamResponse
 
@@ -3319,6 +5158,22 @@ Enum class for fetch from.
 | ---- | ---- | ----------- | -------- |
 | FetchFrom | string | Enum class for fetch from. |  |
 
+#### FileAccessDeniedError
+
+Access to the requested file is denied.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileAccessDeniedError |  | Access to the requested file is denied. |  |
+
+#### FileExtensionBlockedError
+
+The file extension is blocked for security reasons.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileExtensionBlockedError |  | The file extension is blocked for security reasons. |  |
+
 #### FileInputConfig
 
 | Name | Type | Description | Required |
@@ -3339,6 +5194,14 @@ Enum class for fetch from.
 | number_limits | integer |  | No |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
+
+#### FileNotFoundError
+
+The requested file was not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileNotFoundError |  | The requested file was not found. |  |
 
 #### FilePreviewQuery
 
@@ -3366,6 +5229,14 @@ Enum class for fetch from.
 | tenant_id | string |  | No |
 | user_id | string |  | No |
 
+#### FileTooLargeError
+
+File size exceeded. {message}
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileTooLargeError |  | File size exceeded. {message} |  |
+
 #### FileTransferMethod
 
 | Name | Type | Description | Required |
@@ -3377,6 +5248,14 @@ Enum class for fetch from.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | FileType | string |  |  |
+
+#### FilenameNotExistsError
+
+The specified filename does not exist.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FilenameNotExistsError |  | The specified filename does not exist. |  |
 
 #### FormInputConfig
 
@@ -3510,6 +5389,12 @@ Enum class for fetch from.
 | resolved_default_values | object |  | Yes |
 | user_actions | [ [UserActionConfig](#useractionconfig) ] |  | Yes |
 
+#### HumanInputFormExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormExpiredError |  |  |  |
+
 #### HumanInputFormSubmissionData
 
 | Name | Type | Description | Required |
@@ -3541,14 +5426,13 @@ Enum class for fetch from.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 
-#### I18nObject
+#### HumanInputFormSubmittedError
 
-Model class for i18n object.
+This form has already been submitted by another user, form_id={form_id}
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| en_US | string |  | Yes |
-| zh_Hans | string |  | No |
+| HumanInputFormSubmittedError |  | This form has already been submitted by another user, form_id={form_id} |  |
 
 #### IndexInfoResponse
 
@@ -3558,17 +5442,39 @@ Model class for i18n object.
 | server_version | string |  | Yes |
 | welcome | string |  | Yes |
 
+#### IndexTechniqueType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| IndexTechniqueType | string |  |  |
+
+#### InvalidActionError
+
+Invalid action.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidActionError |  | Invalid action. |  |
+
+#### InvalidFormDataError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidFormDataError |  |  |  |
+
+#### InvalidMetadataError
+
+The metadata content is incorrect. Please check and verify.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidMetadataError |  | The metadata content is incorrect. Please check and verify. |  |
+
 #### JSONObject
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | JSONObject | object |  |  |
-
-#### JSONValue
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| JSONValue |  |  |  |
 
 #### JSONValueType
 
@@ -3581,6 +5487,1512 @@ Model class for i18n object.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
+
+#### KnowledgeFSActiveProfileRevisions
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | integer |  | No |
+| retrieval | integer |  | No |
+
+#### KnowledgeFSAdmittedQueryRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| activeDocumentIds | [ string ] |  | No |
+| activeEntityIds | [ string ] |  | No |
+| knowledgeSpaceId | string |  | Yes |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" |  | No |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
+| sessionId | string |  | No |
+
+#### KnowledgeFSAnswerTraceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| evidence_bundle_id | string |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
+| query | string |  | Yes |
+| query_images | [ [KnowledgeFSQueryImageResponse](#knowledgefsqueryimageresponse) ] |  | No |
+| source | [KnowledgeFSTraceSource](#knowledgefstracesource) |  | No |
+| steps | [ [KnowledgeFSAnswerTraceStepResponse](#knowledgefsanswertracestepresponse) ] |  | Yes |
+
+#### KnowledgeFSAnswerTraceStepResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ended_at | string |  | No |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| started_at | dateTime |  | Yes |
+| status | string, <br>**Available values:** "error", "ok", "skipped" | *Enum:* `"error"`, `"ok"`, `"skipped"` | Yes |
+
+#### KnowledgeFSBackgroundTaskFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| document_title | string |  | No |
+| error_code | string |  | Yes |
+| error_message | string |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | Yes |
+| job_id | string |  | No |
+
+#### KnowledgeFSBackgroundTaskListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+| task_ids | string | Comma-separated document or document_bulk task IDs for an exact lookup | No |
+
+#### KnowledgeFSBackgroundTaskListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSBackgroundTaskResponse](#knowledgefsbackgroundtaskresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSBackgroundTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| can_cancel | boolean |  | Yes |
+| can_retry | boolean |  | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| document_id | string |  | No |
+| document_revision | integer |  | No |
+| document_title | string |  | No |
+| error_code | string |  | No |
+| error_message | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| failures | [ [KnowledgeFSBackgroundTaskFailureResponse](#knowledgefsbackgroundtaskfailureresponse) ] |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| operation | string, <br>**Available values:** "document_delete", "document_processing", "document_reindex", "document_upload", "source_bulk", "source_crawl_import", "source_crawl_preview", "source_online_document_import", "source_online_drive_import", "source_sync" | *Enum:* `"document_delete"`, `"document_processing"`, `"document_reindex"`, `"document_upload"`, `"source_bulk"`, `"source_crawl_import"`, `"source_crawl_preview"`, `"source_online_document_import"`, `"source_online_drive_import"`, `"source_sync"` | Yes |
+| progress_completed | integer |  | Yes |
+| progress_failed | integer |  | Yes |
+| progress_percent | integer |  | Yes |
+| progress_total | integer |  | Yes |
+| semantic_enrichment | [KnowledgeFSSemanticEnrichmentResponse](#knowledgefssemanticenrichmentresponse) |  | No |
+| source_id | string |  | No |
+| source_title | string |  | No |
+| state | string, <br>**Available values:** "canceled", "completed", "failed", "queued", "running" | *Enum:* `"canceled"`, `"completed"`, `"failed"`, `"queued"`, `"running"` | Yes |
+| task_kind | string, <br>**Available values:** "document", "document_bulk", "source" | *Enum:* `"document"`, `"document_bulk"`, `"source"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSBulkDeletionAcceptedItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| document_title | string |  | No |
+| job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | Yes |
+| status_url | string |  | Yes |
+
+#### KnowledgeFSBulkDeletionAcceptedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| batch_id | string |  | No |
+| items | [ [KnowledgeFSBulkDeletionAcceptedItemResponse](#knowledgefsbulkdeletionaccepteditemresponse) ] |  | Yes |
+| results | [ [KnowledgeFSBulkDeletionResultResponse](#knowledgefsbulkdeletionresultresponse) ] |  | No |
+| status_url | string |  | No |
+| total | integer |  | Yes |
+
+#### KnowledgeFSBulkDeletionResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| error | [KnowledgeFSDurableDeletionErrorResponse](#knowledgefsdurabledeletionerrorresponse) |  | No |
+| job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | No |
+| status | string, <br>**Available values:** "accepted", "pending", "rejected" | *Enum:* `"accepted"`, `"pending"`, `"rejected"` | Yes |
+| status_url | string |  | No |
+
+#### KnowledgeFSBulkDocumentDeleteItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documentId | string |  | Yes |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSBulkDocumentDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | [ [KnowledgeFSBulkDocumentDeleteItemPayload](#knowledgefsbulkdocumentdeleteitempayload) ] |  | Yes |
+
+#### KnowledgeFSBulkJobFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| document_title | string |  | No |
+| error_code | string |  | Yes |
+| error_message | string |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| job_id | string |  | No |
+
+#### KnowledgeFSBulkJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canceled_items | integer |  | Yes |
+| completed_items | integer |  | Yes |
+| created_at | dateTime |  | Yes |
+| failed_item_ids | [ string ] |  | Yes |
+| failed_items | integer |  | Yes |
+| failures | [ [KnowledgeFSBulkJobFailureResponse](#knowledgefsbulkjobfailureresponse) ] |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| status | string, <br>**Available values:** "canceled", "completed", "failed", "running" | *Enum:* `"canceled"`, `"completed"`, `"failed"`, `"running"` | Yes |
+| total_items | integer |  | Yes |
+| type | string, <br>**Available values:** "document_delete", "document_reindex", "document_upload" | *Enum:* `"document_delete"`, `"document_reindex"`, `"document_upload"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSCrawlImportPagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| description | string |  | No |
+| sourceUrl | string |  | Yes |
+| title | string |  | No |
+
+#### KnowledgeFSCrawlImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| desiredSyncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
+| pages | [ [KnowledgeFSCrawlImportPagePayload](#knowledgefscrawlimportpagepayload) ] |  | No |
+| replaceExistingSelection | boolean |  | No |
+| sourceUpdate | [KnowledgeFSSourceImportConfigurationPayload](#knowledgefssourceimportconfigurationpayload) |  | No |
+| sourceUrls | [ string ] |  | Yes |
+
+#### KnowledgeFSCrawlPreviewPageListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSCrawlPreviewPageListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSCrawlPreviewPageResponse](#knowledgefscrawlpreviewpageresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSCrawlPreviewPageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| etag | string |  | No |
+| page_id | string |  | Yes |
+| source_url | string |  | Yes |
+| title | string |  | No |
+
+#### KnowledgeFSCrawlPreviewSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pageIds | [ string ] |  | Yes |
+
+#### KnowledgeFSCrawledPageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| description | string |  | No |
+| source_url | string |  | Yes |
+| title | string |  | No |
+
+#### KnowledgeFSCursorQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSDocumentChunkListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+| query | string |  | No |
+
+#### KnowledgeFSDocumentChunkListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentChunkResponse](#knowledgefsdocumentchunkresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentChunkResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| document_id | string |  | Yes |
+| document_revision | integer |  | Yes |
+| enabled | boolean |  | Yes |
+| end_offset | integer |  | No |
+| id | string |  | Yes |
+| kind | string, <br>**Available values:** "chunk", "image", "section", "summary", "table", <br>**Default:** chunk | *Enum:* `"chunk"`, `"image"`, `"section"`, `"summary"`, `"table"` | No |
+| knowledge_space_id | string |  | Yes |
+| ordinal | integer |  | Yes |
+| parent_chunk_id | string |  | No |
+| parse_element_ids | [ string ] |  | Yes |
+| section_path | [ string ] |  | No |
+| start_offset | integer |  | No |
+| text | string |  | Yes |
+| token_count | integer |  | Yes |
+| user_metadata | object |  | Yes |
+
+#### KnowledgeFSDocumentCompilationJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| base_head_revision | integer |  | No |
+| candidate_fingerprint | string |  | No |
+| candidate_publication_id | string |  | No |
+| completed_at | number |  | No |
+| created_at | number |  | Yes |
+| document_asset_id | string |  | Yes |
+| error | string |  | No |
+| execution_attempts | integer |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| max_execution_attempts | integer |  | No |
+| run_state | string |  | No |
+| stage | string, <br>**Available values:** "canceled", "failed", "nodes_generated", "outline_built", "parsed", "projection_built", "published", "queued", "smoke_eval_passed" | *Enum:* `"canceled"`, `"failed"`, `"nodes_generated"`, `"outline_built"`, `"parsed"`, `"projection_built"`, `"published"`, `"queued"`, `"smoke_eval_passed"` | Yes |
+| updated_at | number |  | Yes |
+| version | integer |  | Yes |
+
+#### KnowledgeFSDocumentDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSDocumentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentMetadataPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRowVersion | integer |  | Yes |
+| patch | object |  | Yes |
+
+#### KnowledgeFSDocumentOutlineNodeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| child_node_ids | [ string ] |  | No |
+| children | [ [KnowledgeFSDocumentOutlineNodeResponse](#knowledgefsdocumentoutlinenoderesponse) ] |  | No |
+| end_offset | integer |  | No |
+| end_page | integer |  | No |
+| id | string |  | Yes |
+| level | integer |  | Yes |
+| metadata | object |  | Yes |
+| section_path | [ string ] |  | No |
+| source_element_ids | [ string ] |  | No |
+| source_node_ids | [ string ] |  | No |
+| start_offset | integer |  | No |
+| start_page | integer |  | No |
+| summary | string |  | No |
+| title | string |  | Yes |
+| title_location | object |  | No |
+| toc_source | string |  | Yes |
+
+#### KnowledgeFSDocumentOutlineResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| artifact_hash | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| document_asset_id | string |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| metadata | object |  | Yes |
+| nodes | [ [KnowledgeFSDocumentOutlineNodeResponse](#knowledgefsdocumentoutlinenoderesponse) ] |  | Yes |
+| outline_version | string |  | Yes |
+| parse_artifact_id | string |  | Yes |
+| updated_at | string |  | No |
+| version | integer |  | Yes |
+
+#### KnowledgeFSDocumentProcessingTaskListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentProcessingTaskResponse](#knowledgefsdocumentprocessingtaskresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentProcessingTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_operations | [ string ] |  | No |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| document_id | string |  | Yes |
+| document_revision | integer |  | Yes |
+| error_code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" |  | No |
+| error_message | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| phase | string |  | No |
+| progress_percent | integer |  | Yes |
+| retry_at | string |  | No |
+| semantic_enrichment | [KnowledgeFSSemanticEnrichmentResponse](#knowledgefssemanticenrichmentresponse) |  | No |
+| stage | string, <br>**Available values:** "nodes_generated", "outline_built", "parsed", "projection_built", "published", "queued", "smoke_eval_passed" | *Enum:* `"nodes_generated"`, `"outline_built"`, `"parsed"`, `"projection_built"`, `"published"`, `"queued"`, `"smoke_eval_passed"` | Yes |
+| state | string, <br>**Available values:** "canceled", "dispatch_pending", "failed", "queued", "retry_wait", "running", "succeeded", "superseded" | *Enum:* `"canceled"`, `"dispatch_pending"`, `"failed"`, `"queued"`, `"retry_wait"`, `"running"`, `"succeeded"`, `"superseded"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSDocumentReferenceQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_asset_id | string |  | Yes |
+| document_asset_version | integer |  | Yes |
+
+#### KnowledgeFSDocumentReindexItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| asset | [KnowledgeFSDocumentResponse](#knowledgefsdocumentresponse) |  | No |
+| code | string |  | No |
+| compilation_job | object |  | No |
+| document_id | string |  | No |
+| error | string |  | No |
+| status | string, <br>**Available values:** "disabled", "failed", "not_found", "pending", "queued" | *Enum:* `"disabled"`, `"failed"`, `"not_found"`, `"pending"`, `"queued"` | Yes |
+| status_url | string |  | No |
+
+#### KnowledgeFSDocumentReindexPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| all | boolean |  | No |
+| documentIds | [ string ] |  | No |
+
+#### KnowledgeFSDocumentReindexResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bulk_job_id | string |  | Yes |
+| items | [ [KnowledgeFSDocumentReindexItemResponse](#knowledgefsdocumentreindexitemresponse) ] |  | Yes |
+| total | integer |  | Yes |
+
+#### KnowledgeFSDocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| filename | string |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| metadata | object |  | Yes |
+| mime_type | string |  | Yes |
+| object_key | string |  | Yes |
+| parser_status | string, <br>**Available values:** "failed", "parsed", "pending" | *Enum:* `"failed"`, `"parsed"`, `"pending"` | Yes |
+| sha256 | string |  | Yes |
+| size_bytes | integer |  | Yes |
+| source_id | string |  | No |
+| updated_at | string |  | No |
+| version | integer |  | Yes |
+
+#### KnowledgeFSDocumentRevisionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSDocumentRevisionResponse](#knowledgefsdocumentrevisionresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSDocumentRevisionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| activated_at | string |  | No |
+| content_hash | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| document_asset_id | string |  | Yes |
+| document_asset_version | integer |  | Yes |
+| document_id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mime_type | string |  | Yes |
+| revision | integer |  | Yes |
+| size_bytes | integer |  | Yes |
+| state | string, <br>**Available values:** "active", "candidate", "failed", "superseded" | *Enum:* `"active"`, `"candidate"`, `"failed"`, `"superseded"` | Yes |
+
+#### KnowledgeFSDurableDeletionAcceptedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_title | string |  | No |
+| job | [KnowledgeFSDurableDeletionJobResponse](#knowledgefsdurabledeletionjobresponse) |  | Yes |
+| status_url | string |  | Yes |
+
+#### KnowledgeFSDurableDeletionErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| retryable | boolean |  | Yes |
+
+#### KnowledgeFSDurableDeletionJobResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checkpoint | string, <br>**Available values:** "completed", "deleting_derived_data", "deleting_objects", "deleting_primary_data", "quiescing", "requested" | *Enum:* `"completed"`, `"deleting_derived_data"`, `"deleting_objects"`, `"deleting_primary_data"`, `"quiescing"`, `"requested"` | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| error | [KnowledgeFSDurableDeletionErrorResponse](#knowledgefsdurabledeletionerrorresponse) |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mode | string, <br>**Available values:** "cascade", "keep" |  | No |
+| progress | [KnowledgeFSDurableDeletionProgressResponse](#knowledgefsdurabledeletionprogressresponse) |  | No |
+| retry_at | string |  | No |
+| run_state | string, <br>**Available values:** "canceled", "completed", "dispatch_pending", "failed", "queued", "retry_wait", "running" | *Enum:* `"canceled"`, `"completed"`, `"dispatch_pending"`, `"failed"`, `"queued"`, `"retry_wait"`, `"running"` | Yes |
+| target_id | string |  | Yes |
+| target_type | string, <br>**Available values:** "document", "knowledge_space", "logical_document", "source" | *Enum:* `"document"`, `"knowledge_space"`, `"logical_document"`, `"source"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSDurableDeletionProgressResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_items | integer |  | Yes |
+| current_item_kind | string |  | No |
+| total_items | integer |  | No |
+
+#### KnowledgeFSEmbeddingSettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dimension | integer |  | No |
+| model | string |  | Yes |
+| plugin_id | string |  | Yes |
+| provider | string |  | Yes |
+| revision | integer |  | No |
+| vector_space_id | string |  | No |
+
+#### KnowledgeFSLogicalDocumentListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSLogicalDocumentResponse](#knowledgefslogicaldocumentresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSLogicalDocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active | [KnowledgeFSDocumentRevisionResponse](#knowledgefsdocumentrevisionresponse) |  | Yes |
+| active_revision | integer |  | No |
+| created_at | dateTime |  | Yes |
+| disabled_at | string |  | No |
+| disabled_by_subject_id | string |  | No |
+| enabled | boolean, <br>**Default:** true |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| latest_task | [KnowledgeFSBackgroundTaskResponse](#knowledgefsbackgroundtaskresponse) |  | No |
+| provider_item_id | string |  | No |
+| row_version | integer |  | Yes |
+| source_id | string |  | No |
+| status | string, <br>**Available values:** "deleting", "failed", "pending", "ready" | *Enum:* `"deleting"`, `"failed"`, `"pending"`, `"ready"` | Yes |
+| title | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| user_metadata | object |  | Yes |
+
+#### KnowledgeFSOnlineDocumentWorkflowImportItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| etag | string |  | No |
+| lastEditedTime | string |  | No |
+| name | string |  | No |
+| pageId | string |  | Yes |
+| providerItemId | string |  | Yes |
+| type | string |  | Yes |
+| workspaceId | string |  | Yes |
+
+#### KnowledgeFSOnlineDocumentWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| desiredSyncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
+| items | [ [KnowledgeFSOnlineDocumentWorkflowImportItemPayload](#knowledgefsonlinedocumentworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+| sourceUpdate | [KnowledgeFSSourceImportConfigurationPayload](#knowledgefssourceimportconfigurationpayload) |  | No |
+
+#### KnowledgeFSOnlineDriveWorkflowImportItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| etag | string |  | No |
+| id | string |  | Yes |
+| mimeType | string |  | No |
+| name | string |  | Yes |
+| providerItemId | string |  | Yes |
+
+#### KnowledgeFSOnlineDriveWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| desiredSyncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
+| items | [ [KnowledgeFSOnlineDriveWorkflowImportItemPayload](#knowledgefsonlinedriveworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+| sourceUpdate | [KnowledgeFSSourceImportConfigurationPayload](#knowledgefssourceimportconfigurationpayload) |  | No |
+
+#### KnowledgeFSProductRerankProfile
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| model | [KnowledgeFSProfileModelSelection](#knowledgefsprofilemodelselection) |  | No |
+
+#### KnowledgeFSProductRetrievalProfile
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| defaultMode | string, <br>**Available values:** "deep", "fast", "research" | *Enum:* `"deep"`, `"fast"`, `"research"` | Yes |
+| reasoningModel | [KnowledgeFSProfileModelSelection](#knowledgefsprofilemodelselection) |  | Yes |
+| rerank | [KnowledgeFSProductRerankProfile](#knowledgefsproductrerankprofile) |  | Yes |
+| scoreThreshold | [KnowledgeFSProductScoreThreshold](#knowledgefsproductscorethreshold) |  | Yes |
+| topK | integer |  | Yes |
+
+#### KnowledgeFSProductScoreThreshold
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| stage | string, <br>**Available values:** "mode-final", "rerank", <br>**Default:** mode-final | *Enum:* `"mode-final"`, `"rerank"` | No |
+| value | number |  | No |
+
+#### KnowledgeFSProfileMigrationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| candidate_publication_fingerprint | string |  | No |
+| changed_kind | string, <br>**Available values:** "embedding", "retrieval" | *Enum:* `"embedding"`, `"retrieval"` | Yes |
+| checkpoint | string, <br>**Available values:** "activated", "candidate-built", "evaluated", "queued" | *Enum:* `"activated"`, `"candidate-built"`, `"evaluated"`, `"queued"` | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| error_code | string |  | No |
+| evaluation_summary | object |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| rebuild_scope | string, <br>**Available values:** "clone-publication", "full-page-index-summary-outline", "full-vector-space" | *Enum:* `"clone-publication"`, `"full-page-index-summary-outline"`, `"full-vector-space"` | Yes |
+| run_state | string, <br>**Available values:** "canceled", "failed", "queued", "running", "succeeded" | *Enum:* `"canceled"`, `"failed"`, `"queued"`, `"running"`, `"succeeded"` | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSProfileModelSelection
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| pluginId | string |  | Yes |
+| provider | string |  | Yes |
+
+#### KnowledgeFSPublicFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string, <br>**Available values:** "configure_model", "configure_parser", "configure_source", "contact_admin", "retry", "reupload" |  | No |
+| category | string, <br>**Available values:** "authorization", "canceled", "configuration", "conflict", "dependency", "internal", "not_found", "rate_limit", "timeout", "validation" | *Enum:* `"authorization"`, `"canceled"`, `"configuration"`, `"conflict"`, `"dependency"`, `"internal"`, `"not_found"`, `"rate_limit"`, `"timeout"`, `"validation"` | Yes |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_PROFILE_CHANGED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_COUNT_QUOTA_EXCEEDED"`, `"DOCUMENT_COUNT_QUOTA_UNAVAILABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"DURABLE_DELETION_IDEMPOTENCY_CONFLICT"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS"`, `"KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"`, `"LOGICAL_DOCUMENT_CAS_CONFLICT"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_CONTEXT_LIMIT"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_OUTPUT_LIMIT"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_VERSION_CONFLICT"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"`, `"VECTOR_SPACE_QUOTA_EXCEEDED"`, `"VECTOR_SPACE_QUOTA_UNAVAILABLE"` | Yes |
+| message | string |  | Yes |
+| parameters | object |  | No |
+| retryPolicy | string, <br>**Available values:** "after_configuration", "automatic", "manual", "never" | *Enum:* `"after_configuration"`, `"automatic"`, `"manual"`, `"never"` | Yes |
+| stage | string |  | No |
+| traceId | string |  | No |
+
+#### KnowledgeFSQueryAdmissionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | dateTime |  | Yes |
+| operation_id | string |  | Yes |
+| request | [KnowledgeFSAdmittedQueryRequest](#knowledgefsadmittedqueryrequest) |  | Yes |
+| token | string |  | Yes |
+| trace_id | string |  | Yes |
+| url | string |  | Yes |
+
+#### KnowledgeFSQueryCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| activeDocumentIds | [ string ] |  | No |
+| activeEntityIds | [ string ] |  | No |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" |  | No |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
+| sessionId | string |  | No |
+
+#### KnowledgeFSQueryImageReference
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| uploadFileId | string |  | Yes |
+
+#### KnowledgeFSQueryImageResponse
+
+One query image a retrieval run was asked with, enriched for console display.
+
+The gateway persists only the UploadFile reference and static metadata; the console fills in
+the file name and a short-lived signed preview URL for files the caller still owns.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| byte_size | integer |  | No |
+| mime_type | string |  | No |
+| name | string |  | No |
+| preview_url | string |  | No |
+| upload_file_id | string |  | Yes |
+
+#### KnowledgeFSReadinessCapabilities
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deep | boolean |  | Yes |
+| index | boolean |  | Yes |
+| ingest | boolean |  | Yes |
+| query | boolean |  | Yes |
+| research | boolean |  | Yes |
+| source_sync | boolean |  | Yes |
+
+#### KnowledgeFSReadinessIssue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "binding_missing", "incompatible", "missing", "unavailable", "validation_failed" | *Enum:* `"binding_missing"`, `"incompatible"`, `"missing"`, `"unavailable"`, `"validation_failed"` | Yes |
+| field | string, <br>**Available values:** "embedding", "publication", "reasoning", "rerank" | *Enum:* `"embedding"`, `"publication"`, `"reasoning"`, `"rerank"` | Yes |
+| retryable | boolean |  | Yes |
+
+#### KnowledgeFSResearchTaskCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budgetUsd | number |  | No |
+| limits | [KnowledgeFSResearchTaskLimits](#knowledgefsresearchtasklimits) |  | No |
+| metadata | object |  | No |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" |  | No |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
+| topK | integer |  | No |
+
+#### KnowledgeFSResearchTaskLimits
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| maxRetrievalSteps | integer |  | No |
+| maxScannedResources | integer |  | No |
+| maxToolCalls | integer |  | No |
+| timeoutMs | integer |  | No |
+
+#### KnowledgeFSResearchTaskListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSResearchTaskResponse](#knowledgefsresearchtaskresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSResearchTaskPartialListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSResearchTaskPartialResponse](#knowledgefsresearchtaskpartialresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSResearchTaskPartialResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
+| evidence_bundle | object |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| research_task_job_id | string |  | Yes |
+| sequence | integer |  | Yes |
+
+#### KnowledgeFSResearchTaskPartialsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 25 |  | No |
+
+#### KnowledgeFSResearchTaskPlanBudgetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budget_usd | number |  | No |
+| exceeds_budget | boolean |  | Yes |
+| remaining_budget_usd | number |  | No |
+
+#### KnowledgeFSResearchTaskPlanPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budgetUsd | number |  | No |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" |  | No |
+| query | string |  | No |
+| queryImages | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
+| topK | integer |  | No |
+
+#### KnowledgeFSResearchTaskPlanResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budget | [KnowledgeFSResearchTaskPlanBudgetResponse](#knowledgefsresearchtaskplanbudgetresponse) |  | Yes |
+| estimates | object |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| query | string |  | Yes |
+| query_images | [ [KnowledgeFSQueryImageReference](#knowledgefsqueryimagereference) ] |  | No |
+| retrieval_plan | [KnowledgeFSResearchTaskRetrievalPlanResponse](#knowledgefsresearchtaskretrievalplanresponse) |  | Yes |
+| steps | [ object ] |  | Yes |
+| strategy_version | string |  | Yes |
+
+#### KnowledgeFSResearchTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| budget_usd | number |  | No |
+| completed_at | number |  | No |
+| cost | object |  | Yes |
+| created_at | number |  | Yes |
+| error | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| limits | [KnowledgeFSResearchTaskLimits](#knowledgefsresearchtasklimits) |  | No |
+| metadata | object |  | Yes |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" |  | No |
+| query | string |  | Yes |
+| query_images | [ [KnowledgeFSQueryImageResponse](#knowledgefsqueryimageresponse) ] |  | No |
+| stage | string, <br>**Available values:** "analyzing", "canceled", "completed", "failed", "generating", "paused", "planning", "queued", "retrieving" | *Enum:* `"analyzing"`, `"canceled"`, `"completed"`, `"failed"`, `"generating"`, `"paused"`, `"planning"`, `"queued"`, `"retrieving"` | Yes |
+| top_k | integer |  | No |
+| updated_at | number |  | Yes |
+
+#### KnowledgeFSResearchTaskRetrievalPlanResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dense_top_k | integer |  | Yes |
+| fts_top_k | integer |  | Yes |
+| fusion_limit | integer |  | Yes |
+| query_language | string, <br>**Available values:** "cjk", "latin", "mixed-cjk-latin", "other" | *Enum:* `"cjk"`, `"latin"`, `"mixed-cjk-latin"`, `"other"` | Yes |
+| requested_mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
+| rerank_candidate_limit | integer |  | Yes |
+| resolved_mode | string, <br>**Available values:** "deep", "fast", "research" | *Enum:* `"deep"`, `"fast"`, `"research"` | Yes |
+| strategy_version | string |  | Yes |
+| top_k | integer |  | Yes |
+
+#### KnowledgeFSResolvedDocumentReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_id | string |  | Yes |
+| revision | integer |  | Yes |
+
+#### KnowledgeFSRetrievalSettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_mode | string, <br>**Available values:** "deep", "fast", "research" | *Enum:* `"deep"`, `"fast"`, `"research"` | Yes |
+| reasoning_model | [KnowledgeFSEmbeddingSettingsResponse](#knowledgefsembeddingsettingsresponse) |  | Yes |
+| rerank | [KnowledgeFSProductRerankProfile](#knowledgefsproductrerankprofile) |  | Yes |
+| revision | integer |  | No |
+| score_threshold | [KnowledgeFSProductScoreThreshold](#knowledgefsproductscorethreshold) |  | Yes |
+| top_k | integer |  | Yes |
+
+#### KnowledgeFSSemanticEnrichmentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error_code | string |  | No |
+| error_message | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| nodes_completed | integer |  | Yes |
+| nodes_total | integer |  | No |
+| provider_calls | integer |  | No |
+| provider_calls_maximum | integer |  | No |
+| state | string, <br>**Available values:** "disabled", "failed", "not_scheduled", "pending", "ready", "running" | *Enum:* `"disabled"`, `"failed"`, `"not_scheduled"`, `"pending"`, `"ready"`, `"running"` | Yes |
+| updated_at | string |  | No |
+
+#### KnowledgeFSServiceQueryImageUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| byte_size | integer |  | Yes |
+| mime_type | string |  | Yes |
+| upload_file_id | string |  | Yes |
+
+#### KnowledgeFSServiceSourceConnectionCreatePayload
+
+Dify owns datasource secrets; clients supply an opaque binding in configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authKind | string, <br>**Default:** endpoint |  | No |
+| configuration | object |  | No |
+| credentials | object |  | No |
+| name | string |  | Yes |
+| providerId | string |  | Yes |
+
+#### KnowledgeFSServiceSourceCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connectionId | string |  | No |
+| metadata | object |  | No |
+| name | string |  | Yes |
+| permissionScope | [ string ] |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| type | string, <br>**Available values:** "connector", "object-storage", "upload", "web" | *Enum:* `"connector"`, `"object-storage"`, `"upload"`, `"web"` | Yes |
+| uri | string |  | Yes |
+
+#### KnowledgeFSServiceSourceUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | No |
+| metadata | object |  | No |
+| name | string |  | No |
+| providerParameters | object |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| syncAfterUpdate | boolean |  | No |
+| uri | string |  | No |
+
+#### KnowledgeFSSettingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding | [KnowledgeFSProfileModelSelection](#knowledgefsprofilemodelselection) |  | No |
+| expectedRevision | integer |  | Yes |
+| retrieval | [KnowledgeFSProductRetrievalProfile](#knowledgefsproductretrievalprofile) |  | No |
+
+#### KnowledgeFSSettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_profile_available | boolean |  | Yes |
+| active_profile_revisions | [KnowledgeFSActiveProfileRevisions](#knowledgefsactiveprofilerevisions) |  | Yes |
+| capabilities | [KnowledgeFSReadinessCapabilities](#knowledgefsreadinesscapabilities) |  | Yes |
+| configuration_state | string, <br>**Available values:** "active", "pending-validation", "setup-required", "validation-failed" | *Enum:* `"active"`, `"pending-validation"`, `"setup-required"`, `"validation-failed"` | Yes |
+| embedding | [KnowledgeFSEmbeddingSettingsResponse](#knowledgefsembeddingsettingsresponse) |  | Yes |
+| issues | [ [KnowledgeFSReadinessIssue](#knowledgefsreadinessissue) ] |  | Yes |
+| retrieval | [KnowledgeFSRetrievalSettingsResponse](#knowledgefsretrievalsettingsresponse) |  | Yes |
+| revision | integer |  | Yes |
+
+#### KnowledgeFSSettingsUpdateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| migration | [KnowledgeFSProfileMigrationResponse](#knowledgefsprofilemigrationresponse) |  | No |
+| settings | [KnowledgeFSSettingsResponse](#knowledgefssettingsresponse) |  | Yes |
+
+#### KnowledgeFSSourceConnectionListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSSourceConnectionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceConnectionResponse](#knowledgefssourceconnectionresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSSourceConnectionRefreshPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | Yes |
+
+#### KnowledgeFSSourceConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_kind | string, <br>**Available values:** "api-key", "endpoint", "oauth2" | *Enum:* `"api-key"`, `"endpoint"`, `"oauth2"` | Yes |
+| configuration | object |  | Yes |
+| created_at | dateTime |  | Yes |
+| error_code | string |  | No |
+| expires_at | string |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| name | string |  | Yes |
+| provider_id | string |  | Yes |
+| scopes | [ string ] |  | Yes |
+| status | string, <br>**Available values:** "active", "error", "expired", "provisioning", "revoked" | *Enum:* `"active"`, `"error"`, `"expired"`, `"provisioning"`, `"revoked"` | Yes |
+| updated_at | dateTime |  | Yes |
+| version | integer |  | Yes |
+
+#### KnowledgeFSSourceCrawlResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed | integer |  | No |
+| failed | integer |  | No |
+| imported | integer |  | No |
+| pages | [ [KnowledgeFSCrawledPageResponse](#knowledgefscrawledpageresponse) ] |  | Yes |
+| replaced | integer |  | No |
+| skipped | integer |  | No |
+| status | string |  | No |
+| total | integer |  | No |
+
+#### KnowledgeFSSourceCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connectionId | string |  | No |
+| credentials | object |  | No |
+| metadata | object |  | No |
+| name | string |  | Yes |
+| permissionScope | [ string ] |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| type | string, <br>**Available values:** "connector", "object-storage", "upload", "web" | *Enum:* `"connector"`, `"object-storage"`, `"upload"`, `"web"` | Yes |
+| uri | string |  | Yes |
+
+#### KnowledgeFSSourceCredentialTestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" |  | No |
+| error | string |  | No |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| valid | boolean |  | Yes |
+
+#### KnowledgeFSSourceDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedRevision | integer |  | Yes |
+
+#### KnowledgeFSSourceDeleteQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | string, <br>**Available values:** "cascade", "keep", <br>**Default:** cascade | *Enum:* `"cascade"`, `"keep"` | No |
+
+#### KnowledgeFSSourceEditOnlineDocumentSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSOnlineDocumentWorkflowImportItemPayload](#knowledgefsonlinedocumentworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+
+#### KnowledgeFSSourceEditOnlineDriveSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [KnowledgeFSOnlineDriveWorkflowImportItemPayload](#knowledgefsonlinedriveworkflowimportitempayload) ] |  | Yes |
+| kind | string |  | Yes |
+
+#### KnowledgeFSSourceEditSyncPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customIntervalSeconds | integer |  | No |
+| enabled | boolean |  | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual" | *Enum:* `"custom"`, `"interval"`, `"manual"` | Yes |
+
+#### KnowledgeFSSourceEditWebsiteSelectionPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string |  | Yes |
+| sourceUrls | [ string ] |  | Yes |
+
+#### KnowledgeFSSourceFileBucketResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| continuation_token | string |  | No |
+| files | [ [KnowledgeFSSourceFileResponse](#knowledgefssourcefileresponse) ] |  | Yes |
+| is_truncated | boolean |  | No |
+
+#### KnowledgeFSSourceFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| size | number |  | No |
+| type | string |  | Yes |
+
+#### KnowledgeFSSourceFilesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| continuationToken | string |  | No |
+| maxKeys | integer |  | No |
+| prefix | string |  | No |
+
+#### KnowledgeFSSourceFilesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| buckets | [ [KnowledgeFSSourceFileBucketResponse](#knowledgefssourcefilebucketresponse) ] |  | Yes |
+
+#### KnowledgeFSSourceImportConfigurationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | Yes |
+| metadata | object |  | No |
+| name | string |  | No |
+| providerParameters | object |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| uri | string |  | No |
+
+#### KnowledgeFSSourceImportFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_PROFILE_CHANGED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_COUNT_QUOTA_EXCEEDED"`, `"DOCUMENT_COUNT_QUOTA_UNAVAILABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"DURABLE_DELETION_IDEMPOTENCY_CONFLICT"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS"`, `"KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"`, `"LOGICAL_DOCUMENT_CAS_CONFLICT"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_CONTEXT_LIMIT"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_OUTPUT_LIMIT"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_VERSION_CONFLICT"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"`, `"VECTOR_SPACE_QUOTA_EXCEEDED"`, `"VECTOR_SPACE_QUOTA_UNAVAILABLE"` | Yes |
+| error | string |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| filename | string |  | Yes |
+
+#### KnowledgeFSSourceImportFilePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| bucket | string |  | No |
+| id | string |  | Yes |
+| mimeType | string |  | No |
+| name | string |  | Yes |
+
+#### KnowledgeFSSourceImportFilesPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [ [KnowledgeFSSourceImportFilePayload](#knowledgefssourceimportfilepayload) ] |  | Yes |
+
+#### KnowledgeFSSourceImportPagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| lastEditedTime | string |  | No |
+| name | string |  | No |
+| pageId | string |  | Yes |
+| type | string |  | Yes |
+| workspaceId | string |  | Yes |
+
+#### KnowledgeFSSourceImportPagesPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pages | [ [KnowledgeFSSourceImportPagePayload](#knowledgefssourceimportpagepayload) ] |  | Yes |
+
+#### KnowledgeFSSourceImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| documents | [ [KnowledgeFSSourceImportedDocumentResponse](#knowledgefssourceimporteddocumentresponse) ] |  | Yes |
+| failed | [ [KnowledgeFSSourceImportFailureResponse](#knowledgefssourceimportfailureresponse) ] |  | Yes |
+| skipped | [ string ] |  | Yes |
+
+#### KnowledgeFSSourceImportedDocumentResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_asset_id | string |  | Yes |
+| filename | string |  | Yes |
+
+#### KnowledgeFSSourceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceResponse](#knowledgefssourceresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSSourcePageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| last_edited_time | string |  | No |
+| page_id | string |  | Yes |
+| page_name | string |  | Yes |
+| parent_id | string |  | No |
+| type | string |  | Yes |
+
+#### KnowledgeFSSourcePagesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+
+#### KnowledgeFSSourcePagesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| next_cursor | string |  | No |
+| workspaces | [ [KnowledgeFSSourceWorkspacePagesResponse](#knowledgefssourceworkspacepagesresponse) ] |  | Yes |
+
+#### KnowledgeFSSourceProviderFieldResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| format | string, <br>**Available values:** "password", "uri" |  | No |
+| name | string |  | Yes |
+| required | boolean |  | Yes |
+| secret | boolean |  | Yes |
+| type | string, <br>**Available values:** "boolean", "integer", "string" | *Enum:* `"boolean"`, `"integer"`, `"string"` | Yes |
+
+#### KnowledgeFSSourceProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceProviderResponse](#knowledgefssourceproviderresponse) ] |  | Yes |
+
+#### KnowledgeFSSourceProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_kinds | [ string, <br>**Available values:** "api-key", "endpoint", "oauth2" ] |  | Yes |
+| available | boolean |  | Yes |
+| capabilities | [ string, <br>**Available values:** "online-document", "online-drive", "website-crawl" ] |  | Yes |
+| configuration | [ [KnowledgeFSSourceProviderFieldResponse](#knowledgefssourceproviderfieldresponse) ] |  | Yes |
+| display_name | string |  | Yes |
+| id | string |  | Yes |
+| unavailable_reason | string |  | No |
+
+#### KnowledgeFSSourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_id | string |  | No |
+| created_at | dateTime |  | Yes |
+| credential_configured | boolean |  | No |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| last_synced_at | string |  | No |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| permission_scope | [ string ] |  | Yes |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" | *Enum:* `"active"`, `"disabled"`, `"error"`, `"syncing"` | Yes |
+| sync_policy | [KnowledgeFSSourceSyncPolicyResponse](#knowledgefssourcesyncpolicyresponse) |  | No |
+| sync_workflow | [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse) |  | No |
+| type | string, <br>**Available values:** "connector", "object-storage", "upload", "web" | *Enum:* `"connector"`, `"object-storage"`, `"upload"`, `"web"` | Yes |
+| updated_at | dateTime |  | Yes |
+| uri | string |  | Yes |
+| version | integer |  | Yes |
+
+#### KnowledgeFSSourceSyncPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customIntervalSeconds | integer |  | No |
+| enabled | boolean |  | Yes |
+| expectedRevision | integer |  | Yes |
+| expectedSourceVersion | integer |  | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual" | *Enum:* `"custom"`, `"interval"`, `"manual"` | Yes |
+
+#### KnowledgeFSSourceSyncPolicyResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| custom_interval_seconds | integer |  | No |
+| enabled | boolean |  | Yes |
+| expected_source_version | integer |  | Yes |
+| id | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| mode | string, <br>**Available values:** "custom", "interval", "manual" | *Enum:* `"custom"`, `"interval"`, `"manual"` | Yes |
+| next_run_at | string |  | No |
+| revision | integer |  | Yes |
+| source_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSSourceUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expectedVersion | integer |  | No |
+| metadata | object |  | No |
+| name | string |  | No |
+| providerParameters | object |  | No |
+| selection | [KnowledgeFSSourceEditWebsiteSelectionPayload](#knowledgefssourceeditwebsiteselectionpayload)<br>[KnowledgeFSSourceEditOnlineDocumentSelectionPayload](#knowledgefssourceeditonlinedocumentselectionpayload)<br>[KnowledgeFSSourceEditOnlineDriveSelectionPayload](#knowledgefssourceeditonlinedriveselectionpayload) |  | No |
+| status | string, <br>**Available values:** "active", "disabled", "error", "syncing" |  | No |
+| syncAfterUpdate | boolean |  | No |
+| syncPolicy | [KnowledgeFSSourceEditSyncPolicyPayload](#knowledgefssourceeditsyncpolicypayload) |  | No |
+| uri | string |  | No |
+
+#### KnowledgeFSSourceWorkflowCancelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reason | string |  | No |
+
+#### KnowledgeFSSourceWorkflowImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSSourceWorkflowImportPayload | [KnowledgeFSOnlineDocumentWorkflowImportPayload](#knowledgefsonlinedocumentworkflowimportpayload)<br>[KnowledgeFSOnlineDriveWorkflowImportPayload](#knowledgefsonlinedriveworkflowimportpayload) |  |  |
+
+#### KnowledgeFSSourceWorkflowListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 50 |  | No |
+| sourceId | string |  | No |
+
+#### KnowledgeFSSourceWorkflowListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSSourceWorkflowResponse](#knowledgefssourceworkflowresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSSourceWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| canceled_at | string |  | No |
+| checkpoint | string |  | Yes |
+| completed_at | string |  | No |
+| created_at | dateTime |  | Yes |
+| cursor | string |  | No |
+| execution_attempts | integer |  | Yes |
+| failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
+| id | string |  | Yes |
+| kind | string |  | Yes |
+| knowledge_space_id | string |  | Yes |
+| last_error_code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" |  | No |
+| max_execution_attempts | integer |  | Yes |
+| progress_completed | integer |  | Yes |
+| progress_failed | integer |  | Yes |
+| progress_skipped | integer |  | Yes |
+| progress_total | integer |  | No |
+| source_id | string |  | No |
+| state | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### KnowledgeFSSourceWorkspacePagesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pages | [ [KnowledgeFSSourcePageResponse](#knowledgefssourcepageresponse) ] |  | Yes |
+| total | integer |  | No |
+| workspace_id | string |  | No |
+| workspace_name | string |  | No |
+
+#### KnowledgeFSTraceEntriesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| cursor | string |  | No |
+| limit | integer, <br>**Default:** 100 |  | No |
+
+#### KnowledgeFSTraceEntryListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| consistency_class | string |  | No |
+| data | [ [KnowledgeFSTraceEntryResponse](#knowledgefstraceentryresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+| path | string |  | Yes |
+| preview | boolean |  | No |
+| truncated | boolean |  | Yes |
+
+#### KnowledgeFSTraceEntryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string, <br>**Available values:** "directory", "resource" | *Enum:* `"directory"`, `"resource"` | Yes |
+| metadata | object |  | Yes |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| resource_type | string |  | No |
+| target_id | string |  | No |
+| version | integer |  | No |
+
+#### KnowledgeFSTraceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [KnowledgeFSTraceResponse](#knowledgefstraceresponse) ] |  | Yes |
+| next_cursor | string |  | No |
+
+#### KnowledgeFSTraceProfileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model | string |  | No |
+| embedding_vector_space_id | string |  | No |
+| projection_publication_id | string |  | No |
+| projection_version | integer |  | No |
+| reasoning_model | string |  | No |
+| rerank_model | string |  | No |
+| retrieval_profile_revision | integer |  | No |
+
+#### KnowledgeFSTraceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed | boolean |  | Yes |
+| created_at | dateTime |  | Yes |
+| duration_ms | integer |  | No |
+| evidence_bundle_id | string |  | No |
+| evidence_state | string |  | No |
+| final_score | number |  | No |
+| id | string |  | Yes |
+| mode | string, <br>**Available values:** "auto", "deep", "fast", "research" | *Enum:* `"auto"`, `"deep"`, `"fast"`, `"research"` | Yes |
+| open_bad_case_id | string |  | No |
+| profile | [KnowledgeFSTraceProfileResponse](#knowledgefstraceprofileresponse) |  | Yes |
+| query | string |  | Yes |
+| query_images | [ [KnowledgeFSQueryImageResponse](#knowledgefsqueryimageresponse) ] |  | No |
+| result_count | integer |  | Yes |
+| scores | [KnowledgeFSTraceScoresResponse](#knowledgefstracescoresresponse) |  | Yes |
+| source | [KnowledgeFSTraceSource](#knowledgefstracesource) |  | No |
+| stages | [ [KnowledgeFSTraceStageResponse](#knowledgefstracestageresponse) ] |  | Yes |
+
+#### KnowledgeFSTraceScoresResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| final | number |  | No |
+| rerank | number |  | No |
+| retrieval | number |  | No |
+
+#### KnowledgeFSTraceSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFSTraceSource | string |  |  |
+
+#### KnowledgeFSTraceStageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| candidate_count | integer |  | No |
+| name | string |  | Yes |
+| status | string, <br>**Available values:** "error", "ok", "skipped" | *Enum:* `"error"`, `"ok"`, `"skipped"` | Yes |
+
+#### KnowledgeFsAccessDeniedError
+
+Agent Knowledge Base operation is not allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsAccessDeniedError |  | Agent Knowledge Base operation is not allowed. |  |
+
+#### KnowledgeFsCitation
+
+Immutable evidence identity; no signed URLs, tokens or storage keys.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| artifact_hash | string |  | Yes |
+| control_space_id | string |  | Yes |
+| document_asset_id | string |  | Yes |
+| document_title | string |  | No |
+| document_version | integer |  | No |
+| end_offset | integer |  | No |
+| id | string |  | Yes |
+| node_id | string |  | Yes |
+| page_number | integer |  | No |
+| parse_artifact_id | string |  | No |
+| section_path | [ string ] |  | No |
+| space_name | string |  | Yes |
+| start_offset | integer |  | No |
+
+#### KnowledgeFsConflictError
+
+Agent Knowledge Base operation conflicts with the current resource state.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsConflictError |  | Agent Knowledge Base operation conflicts with the current resource state. |  |
+
+#### KnowledgeFsInvalidCredentialError
+
+Invalid Agent Knowledge Base service credential.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsInvalidCredentialError |  | Invalid Agent Knowledge Base service credential. |  |
+
+#### KnowledgeFsInvalidRequestError
+
+Agent Knowledge Base request is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsInvalidRequestError |  | Agent Knowledge Base request is invalid. |  |
+
+#### KnowledgeFsOperationUnavailableError
+
+Agent Knowledge Base operation is not available.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsOperationUnavailableError |  | Agent Knowledge Base operation is not available. |  |
+
+#### KnowledgeFsRateLimitExceededError
+
+Agent Knowledge Base request rate limit exceeded.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsRateLimitExceededError |  | Agent Knowledge Base request rate limit exceeded. |  |
+
+#### KnowledgeFsRequestRejectedError
+
+Agent Knowledge Base request was rejected.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsRequestRejectedError |  | Agent Knowledge Base request was rejected. |  |
+
+#### KnowledgeFsRequestTooLargeError
+
+Agent Knowledge Base request is too large.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsRequestTooLargeError |  | Agent Knowledge Base request is too large. |  |
+
+#### KnowledgeFsResourceNotFoundError
+
+Agent Knowledge Base resource was not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsResourceNotFoundError |  | Agent Knowledge Base resource was not found. |  |
+
+#### KnowledgeFsUpstreamUnavailableError
+
+Agent Knowledge Base is unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| KnowledgeFsUpstreamUnavailableError |  | Agent Knowledge Base is unavailable. |  |
 
 #### KnowledgeTagListResponse
 
@@ -3705,6 +7117,14 @@ Metadata operation data
 | ---- | ---- | ----------- | -------- |
 | name | string | New metadata field name. | Yes |
 
+#### ModelCurrentlyNotSupportError
+
+Dify Hosted OpenAI trial currently not support the GPT-4 model.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelCurrentlyNotSupportError |  | Dify Hosted OpenAI trial currently not support the GPT-4 model. |  |
+
 #### ModelFeature
 
 Enum class for llm feature.
@@ -3721,6 +7141,15 @@ Enum class for model property key.
 | ---- | ---- | ----------- | -------- |
 | ModelPropertyKey | string | Enum class for model property key. |  |
 
+#### ModelRuntimeI18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| zh_Hans | string |  | No |
+
 #### ModelStatus
 
 Enum class for model status.
@@ -3736,6 +7165,38 @@ Enum class for model type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ModelType | string | Enum class for model type. |  |
+
+#### NoAudioUploadedError
+
+Please upload your audio.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NoAudioUploadedError |  | Please upload your audio. |  |
+
+#### NoFileUploadedError
+
+Please upload your file.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NoFileUploadedError |  | Please upload your file. |  |
+
+#### NotChatAppError
+
+Please check if your app mode matches the right API route.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NotChatAppError |  | Please check if your app mode matches the right API route. |  |
+
+#### NotWorkflowAppError
+
+Please check if your app mode matches the right API route.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NotWorkflowAppError |  | Please check if your app mode matches the right API route. |  |
 
 #### OptionalServiceApiUserPayload
 
@@ -3811,6 +7272,14 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode for draft runs. Use `streaming` for SSE or `blocking` for JSON. Published runs are queued and always return batch metadata as JSON.<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
 | start_node_id | string | ID of the datasource node where the run starts. | Yes |
 
+#### PipelineRunError
+
+An error occurred while running the pipeline.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PipelineRunError |  | An error occurred while running the pipeline. |  |
+
 #### PipelineRunJsonResponse
 
 JSON result for published runs and draft runs using `response_mode: blocking`.
@@ -3869,12 +7338,36 @@ Model class for model response.
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
 | fetch_from | [FetchFrom](#fetchfrom) | Where the model definition comes from. `predefined-model` for built-in models, `customizable-model` for user-configured models. | Yes |
 | has_invalid_load_balancing_configs | boolean |  | No |
-| label | [I18nObject](#i18nobject) | Localized display name of the model. | Yes |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) | Localized display name of the model. | Yes |
 | load_balancing_enabled | boolean |  | No |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
 | model_type | [ModelType](#modeltype) | Type of the model, matching the `model_type` path parameter. | Yes |
 | status | [ModelStatus](#modelstatus) | Model availability status. `active` when ready to use. | Yes |
+
+#### ProviderNotInitializeError
+
+No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderNotInitializeError |  | No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. |  |
+
+#### ProviderNotSupportSpeechToTextError
+
+Provider not support speech to text.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderNotSupportSpeechToTextError |  | Provider not support speech to text. |  |
+
+#### ProviderQuotaExceededError
+
+Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderQuotaExceededError |  | Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. |  |
 
 #### ProviderWithModelsListResponse
 
@@ -3888,9 +7381,9 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| icon_small | [I18nObject](#i18nobject) |  | No |
-| icon_small_dark | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) | Localized display name of the provider. | Yes |
+| icon_small | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| icon_small_dark | [ModelRuntimeI18nObject](#modelruntimei18nobject) |  | No |
+| label | [ModelRuntimeI18nObject](#modelruntimei18nobject) | Localized display name of the provider. | Yes |
 | models | [ [ProviderModelWithStatusEntity](#providermodelwithstatusentity) ] |  | Yes |
 | provider | string |  | Yes |
 | status | [CustomConfigurationStatus](#customconfigurationstatus) | Provider status. `active` when credentials are configured and valid. | Yes |
@@ -3903,6 +7396,14 @@ Model class for provider with models response.
 | batch | string |  | Yes |
 | dataset | [PipelineDataset](#pipelinedataset) |  | Yes |
 | documents | [ [PipelineDocument](#pipelinedocument) ] |  | Yes |
+
+#### RateLimitError
+
+Rate Limit Error
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RateLimitError |  | Rate Limit Error |  |
 
 #### RerankingModel
 
@@ -3947,12 +7448,16 @@ Model class for provider with models response.
 | dataset_id | string |  | No |
 | dataset_name | string |  | No |
 | doc_metadata | object |  | No |
+| document_asset_id | string |  | No |
 | document_id | string |  | No |
 | document_name | string |  | No |
+| document_revision | integer |  | No |
+| document_version | integer |  | No |
 | files | [ object ] |  | No |
 | hit_count | integer |  | No |
 | id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
+| knowledge_fs_citation | [KnowledgeFsCitation](#knowledgefscitation) |  | No |
 | message_id | string (uuid) |  | No |
 | page | integer |  | No |
 | position | integer |  | Yes |
@@ -4063,7 +7568,7 @@ Model class for provider with models response.
 | keywords | [ string ] |  | Yes |
 | position | integer |  | Yes |
 | sign_content | string |  | Yes |
-| status | string |  | Yes |
+| status | string, <br>**Available values:** "completed", "error", "indexing", "paused", "re_segment", "waiting" | *Enum:* `"completed"`, `"error"`, `"indexing"`, `"paused"`, `"re_segment"`, `"waiting"` | Yes |
 | stopped_at | integer |  | Yes |
 | summary | string |  | Yes |
 | tokens | integer |  | Yes |
@@ -4174,6 +7679,14 @@ Model class for provider with models response.
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 
+#### SpeechToTextDisabledError
+
+Speech to text is disabled.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SpeechToTextDisabledError |  | Speech to text is disabled. |  |
+
 #### StringListSource
 
 | Name | Type | Description | Required |
@@ -4255,12 +7768,44 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 | user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | No |
 | voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
+#### TooManyFilesError
+
+Only one file is allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TooManyFilesError |  | Only one file is allowed. |  |
+
 #### ToolIcon
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | background | string |  | Yes |
 | content | string |  | Yes |
+
+#### TriggerWorkflowServiceModeUnavailableError
+
+This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerWorkflowServiceModeUnavailableError |  | This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
+
+#### UnsupportedAudioTypeError
+
+Audio type not allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| UnsupportedAudioTypeError |  | Audio type not allowed. |  |
+
+#### UnsupportedFileTypeError
+
+File type not allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| UnsupportedFileTypeError |  | File type not allowed. |  |
 
 #### UrlResponse
 
@@ -4483,3 +8028,11 @@ Public pause reason emitted by a blocking Workflow execution.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | user | string | End-user identifier, defined by your app and unique within it. It does not need to match the `user` that started the run; the stop applies to the task regardless of `user`. See [End User Identity](/api-reference/guides/end-user-identity). | Yes |
+
+#### WorkflowVersionExecutionNotAllowedError
+
+Workflow version execution is not available on your current plan. Please upgrade to a paid plan.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowVersionExecutionNotAllowedError |  | Workflow version execution is not available on your current plan. Please upgrade to a paid plan. |  |

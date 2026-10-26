@@ -8,16 +8,11 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,7 +27,6 @@ type AccessRuleRowMenuProps = {
 
 const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => {
   const { t } = useTranslation(['common', 'permission'])
-  const [open, setOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { mutate: copyAccessRule } = useMutation(
@@ -52,7 +46,6 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
       {
         onSuccess: () => {
           toast.success(t(($) => $['accessRule.copied'], { ns: 'permission' }))
-          setOpen(false)
         },
       },
     )
@@ -60,7 +53,6 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
 
   const openDeleteConfirm = useCallback(() => {
     setShowDeleteConfirm(true)
-    setOpen(false)
   }, [])
 
   const handleDelete = useCallback(() => {
@@ -68,19 +60,18 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
       { params: { policy_id: rule.id } },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['accessRule.deleted'], { ns: 'permission' }))
           setShowDeleteConfirm(false)
         },
       },
     )
-  }, [deleteAccessRule, rule.id, t])
+  }, [deleteAccessRule, rule.id])
 
   const isBuiltIn = rule.is_builtin
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
-        <DropdownMenuTrigger
+      <Menu>
+        <MenuTrigger
           render={
             <IconButton
               size="lg"
@@ -91,52 +82,46 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
             </IconButton>
           }
         />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-35">
+        <MenuContent align="end" className="min-w-35">
           {isBuiltIn ? (
-            <DropdownMenuItem
-              className="system-sm-semibold text-text-secondary"
-              onClick={handleView}
-            >
+            <MenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
               {t(($) => $['operation.view'], { ns: 'common' })}
-            </DropdownMenuItem>
+            </MenuItem>
           ) : (
-            <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={onEdit}>
+            <MenuItem className="system-sm-semibold text-text-secondary" onClick={onEdit}>
               {t(($) => $['operation.edit'], { ns: 'common' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-          <DropdownMenuItem
-            className="system-sm-semibold text-text-secondary"
-            onClick={handleCopyRules}
-          >
+          <MenuItem className="system-sm-semibold text-text-secondary" onClick={handleCopyRules}>
             {t(($) => $['common.duplicateAction'], { ns: 'permission' })}
-          </DropdownMenuItem>
+          </MenuItem>
           {!isBuiltIn && (
             <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
+              <MenuSeparator />
+              <MenuItem
                 variant="destructive"
                 className="system-sm-semibold"
                 onClick={openDeleteConfirm}
               >
                 {t(($) => $['operation.delete'], { ns: 'common' })}
-              </DropdownMenuItem>
+              </MenuItem>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       <AlertDialog
         open={showDeleteConfirm}
         onOpenChange={(open) => !open && setShowDeleteConfirm(false)}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['accessRule.deleteTitle'], { ns: 'permission', name: rule.name })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['accessRule.deleteDescription'], { ns: 'permission' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

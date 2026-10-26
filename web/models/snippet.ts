@@ -33,8 +33,6 @@ export type SnippetCanvasData = {
   viewport: Viewport
 }
 
-export type SnippetInputField = InputVar
-
 type SnippetDetailUIModel = {
   inputFieldCount: number
   checklistCount: number
@@ -44,6 +42,6 @@ type SnippetDetailUIModel = {
 export type SnippetDetailPayload = {
   snippet: SnippetDetail
   graph: SnippetCanvasData
-  inputFields: SnippetInputField[]
+  inputFields: InputVar[]
   uiMeta: SnippetDetailUIModel
 }

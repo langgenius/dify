@@ -67,6 +67,26 @@ export const zAnnotationReplyActionPayload = z.object({
   score_threshold: z.number(),
 })
 
+export const zAnyJsonValue = z.unknown()
+
+/**
+ * AgentThought
+ */
+export const zAgentThought = z.object({
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  files: z.array(z.string()),
+  id: z.string(),
+  message_id: z.string(),
+  observation: z.string().nullish(),
+  position: z.int(),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_input: z.string().nullish(),
+  tool_labels: zAnyJsonValue,
+})
+
 /**
  * AppFeedbackResponse
  */
@@ -124,29 +144,6 @@ export const zBinaryFileResponse = z.custom<Blob | File>(
 )
 
 /**
- * BlockingRetrieverResourceResponse
- */
-export const zBlockingRetrieverResourceResponse = z.object({
-  content: z.string().nullish(),
-  created_at: z.int().nullish(),
-  data_source_type: z.string().nullish(),
-  dataset_id: z.uuid().nullish(),
-  dataset_name: z.string().nullish(),
-  document_id: z.uuid().nullish(),
-  document_name: z.string().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.uuid().nullish(),
-  index_node_hash: z.string().nullish(),
-  message_id: z.uuid().nullish(),
-  position: z.int(),
-  score: z.number().nullish(),
-  segment_id: z.uuid().nullish(),
-  segment_position: z.int().nullish(),
-  summary: z.string().nullish(),
-  word_count: z.int().nullish(),
-})
-
-/**
  * BlockingUsageResponse
  */
 export const zBlockingUsageResponse = z.object({
@@ -165,34 +162,11 @@ export const zBlockingUsageResponse = z.object({
 })
 
 /**
- * BlockingMetadataResponse
- */
-export const zBlockingMetadataResponse = z.object({
-  retriever_resources: z.array(zBlockingRetrieverResourceResponse).nullish(),
-  usage: zBlockingUsageResponse.nullish(),
-})
-
-/**
  * ButtonStyle
  *
  * Button styles for user actions.
  */
 export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
-
-/**
- * ChatMessageBlockingResponse
- */
-export const zChatMessageBlockingResponse = z.object({
-  answer: z.string(),
-  conversation_id: z.uuid(),
-  created_at: z.int(),
-  event: z.literal('message'),
-  id: z.uuid(),
-  message_id: z.uuid(),
-  metadata: zBlockingMetadataResponse,
-  mode: z.string(),
-  task_id: z.uuid(),
-})
 
 /**
  * ChatRequestPayload
@@ -312,7 +286,7 @@ export const zChildChunkResponse = z.object({
   id: z.string(),
   position: z.int(),
   segment_id: z.string(),
-  type: z.string(),
+  type: z.enum(['automatic', 'customized']),
   updated_at: z.int(),
   word_count: z.int(),
 })
@@ -340,20 +314,6 @@ export const zChildChunkListResponse = z.object({
  */
 export const zChildChunkUpdatePayload = z.object({
   content: z.string(),
-})
-
-/**
- * CompletionBlockingResponse
- */
-export const zCompletionBlockingResponse = z.object({
-  answer: z.string(),
-  created_at: z.int(),
-  event: z.string(),
-  id: z.uuid(),
-  message_id: z.uuid(),
-  metadata: zBlockingMetadataResponse,
-  mode: z.string(),
-  task_id: z.uuid(),
 })
 
 /**
@@ -597,7 +557,7 @@ export const zDatasetBoundTagListResponse = z.object({
 export const zDatasetDocMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -659,7 +619,7 @@ export const zDatasetMetadataActionResponse = z.object({
  */
 export const zDatasetMetadataBuiltInFieldResponse = z.object({
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -676,7 +636,7 @@ export const zDatasetMetadataListItemResponse = z.object({
   count: z.int().optional().default(0),
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -693,7 +653,7 @@ export const zDatasetMetadataListResponse = z.object({
 export const zDatasetMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -739,116 +699,6 @@ export const zDatasetWeightedScoreResponse = z.object({
   keyword_setting: zDatasetKeywordSettingResponse.optional(),
   vector_setting: zDatasetVectorSettingResponse.optional(),
   weight_type: z.string().nullish(),
-})
-
-/**
- * DatasetRetrievalModelResponse
- */
-export const zDatasetRetrievalModelResponse = z.object({
-  reranking_enable: z.boolean(),
-  reranking_mode: z.string().nullish(),
-  reranking_model: zDatasetRerankingModelResponse.optional(),
-  score_threshold: z.number().nullish(),
-  score_threshold_enabled: z.boolean(),
-  search_method: z.string(),
-  top_k: z.int(),
-  weights: zDatasetWeightedScoreResponse.nullish(),
-})
-
-/**
- * DatasetDetailResponse
- */
-export const zDatasetDetailResponse = z.object({
-  app_count: z.int(),
-  author_name: z.string().nullable(),
-  built_in_field_enabled: z.boolean(),
-  chunk_structure: z.string().nullable(),
-  created_at: z.int(),
-  created_by: z.string(),
-  data_source_type: z.string().nullable(),
-  description: z.string().nullable(),
-  doc_form: z.string().nullable(),
-  doc_metadata: z.array(zDatasetDocMetadataResponse),
-  document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
-  embedding_model: z.string().nullable(),
-  embedding_model_provider: z.string().nullable(),
-  enable_api: z.boolean(),
-  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
-  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
-  icon_info: zDatasetIconInfoResponse.optional(),
-  id: z.string(),
-  indexing_technique: z.string().nullable(),
-  is_multimodal: z.boolean(),
-  is_published: z.boolean(),
-  maintainer: z.string().nullish(),
-  name: z.string(),
-  permission: z.string(),
-  pipeline_id: z.string().nullable(),
-  provider: z.string(),
-  retrieval_model_dict: zDatasetRetrievalModelResponse,
-  runtime_mode: z.string().nullable(),
-  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
-  tags: z.array(zDatasetTagResponse),
-  total_available_documents: z.int(),
-  total_documents: z.int(),
-  updated_at: z.int(),
-  updated_by: z.string().nullable(),
-  word_count: z.int(),
-})
-
-/**
- * DatasetDetailWithPartialMembersResponse
- */
-export const zDatasetDetailWithPartialMembersResponse = z.object({
-  app_count: z.int(),
-  author_name: z.string().nullable(),
-  built_in_field_enabled: z.boolean(),
-  chunk_structure: z.string().nullable(),
-  created_at: z.int(),
-  created_by: z.string(),
-  data_source_type: z.string().nullable(),
-  description: z.string().nullable(),
-  doc_form: z.string().nullable(),
-  doc_metadata: z.array(zDatasetDocMetadataResponse),
-  document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
-  embedding_model: z.string().nullable(),
-  embedding_model_provider: z.string().nullable(),
-  enable_api: z.boolean(),
-  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
-  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
-  icon_info: zDatasetIconInfoResponse.optional(),
-  id: z.string(),
-  indexing_technique: z.string().nullable(),
-  is_multimodal: z.boolean(),
-  is_published: z.boolean(),
-  maintainer: z.string().nullish(),
-  name: z.string(),
-  partial_member_list: z.array(z.string()).nullish(),
-  permission: z.string(),
-  pipeline_id: z.string().nullable(),
-  provider: z.string(),
-  retrieval_model_dict: zDatasetRetrievalModelResponse,
-  runtime_mode: z.string().nullable(),
-  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
-  tags: z.array(zDatasetTagResponse),
-  total_available_documents: z.int(),
-  total_documents: z.int(),
-  updated_at: z.int(),
-  updated_by: z.string().nullable(),
-  word_count: z.int(),
-})
-
-/**
- * DatasetListResponse
- */
-export const zDatasetListResponse = z.object({
-  data: z.array(zDatasetDetailResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
 })
 
 /**
@@ -930,8 +780,8 @@ export const zDocumentListQuery = z.object({
 export const zDocumentMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
-  value: z.union([z.string(), z.int(), z.number(), z.boolean()]).nullish(),
+  type: z.enum(['number', 'string', 'time']),
+  value: z.union([z.string(), z.int(), z.number()]).nullable(),
 })
 
 /**
@@ -974,55 +824,6 @@ export const zDocumentDetailResponse = z.object({
 })
 
 /**
- * DocumentResponse
- */
-export const zDocumentResponse = z.object({
-  archived: z.boolean().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_detail_dict: z.record(z.string(), z.unknown()),
-  data_source_info: z.record(z.string(), z.unknown()).nullish(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule_id: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
-  doc_metadata: z.array(zDocumentMetadataResponse).optional(),
-  enabled: z.boolean().nullish(),
-  error: z.string().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.string(),
-  indexing_status: z.string().nullish(),
-  name: z.string(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  summary_index_status: z.string().nullish(),
-  tokens: z.int().nullish(),
-  word_count: z.int().nullish(),
-})
-
-/**
- * DocumentAndBatchResponse
- */
-export const zDocumentAndBatchResponse = z.object({
-  batch: z.string(),
-  document: zDocumentResponse,
-})
-
-/**
- * DocumentListResponse
- */
-export const zDocumentListResponse = z.object({
-  data: z.array(zDocumentResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
  * DocumentStatusPayload
  */
 export const zDocumentStatusPayload = z.object({
@@ -1037,10 +838,19 @@ export const zDocumentStatusResponse = z.object({
   completed_at: z.int().nullable(),
   completed_segments: z.int().nullish(),
   error: z.string().nullable(),
-  error_code: z.string().nullish(),
+  error_code: z.literal('vector_space_estimate_exceeded').nullish(),
   estimated_vector_space_mb: z.int().nullish(),
   id: z.string(),
-  indexing_status: z.string(),
+  indexing_status: z.enum([
+    'cleaning',
+    'completed',
+    'error',
+    'indexing',
+    'parsing',
+    'paused',
+    'splitting',
+    'waiting',
+  ]),
   parsing_completed_at: z.int().nullable(),
   paused_at: z.int().nullable(),
   processing_started_at: z.int().nullable(),
@@ -1055,6 +865,28 @@ export const zDocumentStatusResponse = z.object({
  */
 export const zDocumentStatusListResponse = z.object({
   data: z.array(zDocumentStatusResponse),
+})
+
+/**
+ * DocumentUploadFileDetailResponse
+ */
+export const zDocumentUploadFileDetailResponse = z.object({
+  created_at: z.number(),
+  created_by: z.string(),
+  extension: z.string(),
+  id: z.string(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  size: z.int(),
+})
+
+/**
+ * DocumentSourceDetailResponse
+ *
+ * The uploaded file for file documents; Notion and website documents repeat their source info.
+ */
+export const zDocumentSourceDetailResponse = z.object({
+  upload_file: zDocumentUploadFileDetailResponse.nullish(),
 })
 
 /**
@@ -1074,6 +906,115 @@ export const zEndUserDetail = z.object({
   type: z.string(),
   updated_at: z.iso.datetime(),
 })
+
+/**
+ * ErrorMessageResponse
+ *
+ * Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
+ */
+export const zErrorMessageResponse = z.object({
+  error: z.string(),
+})
+
+/**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AgentNotPublishedError
+ *
+ * Agent has not been published. Please publish the Agent before using the API.
+ */
+export const zAgentNotPublishedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_published'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AppUnavailableError
+ *
+ * App unavailable, please check your app configurations.
+ */
+export const zAppUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_unavailable'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ArchivedDocumentImmutableError
+ *
+ * The archived document is not editable.
+ */
+export const zArchivedDocumentImmutableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('archived_document_immutable'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AudioTooLargeError
+ *
+ * Audio size exceeded. {message}
+ */
+export const zAudioTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('audio_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * CompletionRequestError
+ *
+ * Completion request failed.
+ */
+export const zCompletionRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * DatasetNameDuplicateError
+ *
+ * The dataset name already exists. Please modify your dataset name.
+ */
+export const zDatasetNameDuplicateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_name_duplicate'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * EndUserNotFoundError
+ *
+ * End user not found.
+ */
+export const zEndUserNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('end_user_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * EventStreamResponse
@@ -1099,6 +1040,42 @@ export const zFeedbackListQuery = z.object({
  * Enum class for fetch from.
  */
 export const zFetchFrom = z.enum(['customizable-model', 'predefined-model'])
+
+/**
+ * FileAccessDeniedError
+ *
+ * Access to the requested file is denied.
+ */
+export const zFileAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_access_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * FileExtensionBlockedError
+ *
+ * The file extension is blocked for security reasons.
+ */
+export const zFileExtensionBlockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_extension_blocked'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * FileNotFoundError
+ *
+ * The requested file was not found.
+ */
+export const zFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * FilePreviewQuery
@@ -1127,6 +1104,18 @@ export const zFileResponse = z.object({
   tenant_id: z.uuid().nullish(),
   user_id: z.uuid().nullish(),
 })
+
+/**
+ * FileTooLargeError
+ *
+ * File size exceeded. {message}
+ */
+export const zFileTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_too_large'),
+    status: z.literal(413),
+  }),
+)
 
 /**
  * FileTransferMethod
@@ -1165,6 +1154,18 @@ export const zFileListInputConfig = z.object({
   output_variable_name: z.string(),
   type: z.literal('file-list').optional().default('file-list'),
 })
+
+/**
+ * FilenameNotExistsError
+ *
+ * The specified filename does not exist.
+ */
+export const zFilenameNotExistsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('filename_not_exists_error'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * HitTestingChildChunk
@@ -1256,19 +1257,31 @@ export const zHitTestingResponse = z.object({
 })
 
 /**
+ * HumanInputFormExpiredError
+ */
+export const zHumanInputFormExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_expired'),
+    status: z.literal(412),
+  }),
+)
+
+/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
 
 /**
- * I18nObject
+ * HumanInputFormSubmittedError
  *
- * Model class for i18n object.
+ * This form has already been submitted by another user, form_id={form_id}
  */
-export const zI18nObject = z.object({
-  en_US: z.string(),
-  zh_Hans: z.string().nullish(),
-})
+export const zHumanInputFormSubmittedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_submitted'),
+    status: z.literal(412),
+  }),
+)
 
 /**
  * IndexInfoResponse
@@ -1278,6 +1291,45 @@ export const zIndexInfoResponse = z.object({
   server_version: z.string(),
   welcome: z.string(),
 })
+
+/**
+ * IndexTechniqueType
+ */
+export const zIndexTechniqueType = z.enum(['economy', 'high_quality'])
+
+/**
+ * InvalidActionError
+ *
+ * Invalid action.
+ */
+export const zInvalidActionError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_action'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidFormDataError
+ */
+export const zInvalidFormDataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_form_data'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidMetadataError
+ *
+ * The metadata content is incorrect. Please check and verify.
+ */
+export const zInvalidMetadataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_metadata'),
+    status: z.literal(400),
+  }),
+)
 
 export const zJsonObject = z.record(z.string(), z.unknown())
 
@@ -1300,6 +1352,2352 @@ export const zChatPauseReasonResponse = z.object({
   node_id: z.string().nullish(),
   node_title: z.string().nullish(),
   resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+})
+
+export const zJsonValueType = z.unknown()
+
+export const zJsonValue = z.unknown()
+
+/**
+ * DocumentResponse
+ */
+export const zDocumentResponse = z.object({
+  archived: z.boolean().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  created_from: z.string().nullish(),
+  data_source_detail_dict: zDocumentSourceDetailResponse,
+  data_source_info: z.record(z.string(), zJsonValue).nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_process_rule_id: z.string().nullish(),
+  disabled_at: z.int().nullish(),
+  disabled_by: z.string().nullish(),
+  display_status: z.string().nullish(),
+  doc_form: z.string().nullish(),
+  doc_metadata: z.array(zDocumentMetadataResponse).optional(),
+  enabled: z.boolean().nullish(),
+  error: z.string().nullish(),
+  hit_count: z.int().nullish(),
+  id: z.string(),
+  indexing_status: z.string().nullish(),
+  name: z.string(),
+  need_summary: z.boolean().nullish(),
+  position: z.int().nullish(),
+  summary_index_status: z.string().nullish(),
+  tokens: z.int().nullish(),
+  word_count: z.int().nullish(),
+})
+
+/**
+ * DocumentAndBatchResponse
+ */
+export const zDocumentAndBatchResponse = z.object({
+  batch: z.string(),
+  document: zDocumentResponse,
+})
+
+/**
+ * DocumentListResponse
+ */
+export const zDocumentListResponse = z.object({
+  data: z.array(zDocumentResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * HumanInputFormSubmissionData
+ */
+export const zHumanInputFormSubmissionData = z.object({
+  action_id: z.string(),
+  action_text: z.string(),
+  node_id: z.string(),
+  node_title: z.string(),
+  rendered_content: z.string(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
+})
+
+/**
+ * HumanInputFormSubmitPayload
+ */
+export const zHumanInputFormSubmitPayload = z.object({
+  action: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * HumanInputFormSubmitPayload
+ */
+export const zHumanInputFormSubmitPayloadWithUser = z.object({
+  action: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+  user: z.string(),
+})
+
+/**
+ * KnowledgeFSActiveProfileRevisions
+ */
+export const zKnowledgeFsActiveProfileRevisions = z.object({
+  embedding: z.int().gte(1).nullish(),
+  retrieval: z.int().gte(1).nullish(),
+})
+
+/**
+ * KnowledgeFSAnswerTraceStepResponse
+ */
+export const zKnowledgeFsAnswerTraceStepResponse = z.object({
+  ended_at: z.iso.datetime().nullish(),
+  metadata: z.record(z.string(), z.unknown()),
+  name: z.string(),
+  started_at: z.iso.datetime(),
+  status: z.enum(['error', 'ok', 'skipped']),
+})
+
+/**
+ * KnowledgeFSBackgroundTaskListQuery
+ */
+export const zKnowledgeFsBackgroundTaskListQuery = z.object({
+  cursor: z.string().min(1).max(8192).nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+  task_ids: z
+    .string()
+    .max(3699)
+    .regex(
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,99}$/,
+    )
+    .nullish(),
+})
+
+/**
+ * KnowledgeFSBulkDocumentDeleteItemPayload
+ */
+export const zKnowledgeFsBulkDocumentDeleteItemPayload = z.object({
+  documentId: z.string().min(1),
+  expectedRevision: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSBulkDocumentDeletePayload
+ */
+export const zKnowledgeFsBulkDocumentDeletePayload = z.object({
+  documents: z.array(zKnowledgeFsBulkDocumentDeleteItemPayload).min(1).max(100),
+})
+
+/**
+ * KnowledgeFSCrawlImportPagePayload
+ */
+export const zKnowledgeFsCrawlImportPagePayload = z.object({
+  content: z.string().max(10000000),
+  description: z.string().nullish(),
+  sourceUrl: z.string().min(1).max(4096),
+  title: z.string().max(500).nullish(),
+})
+
+/**
+ * KnowledgeFSCrawlPreviewPageListQuery
+ */
+export const zKnowledgeFsCrawlPreviewPageListQuery = z.object({
+  cursor: z.string().min(1).max(4096).nullish(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * KnowledgeFSCrawlPreviewPageResponse
+ */
+export const zKnowledgeFsCrawlPreviewPageResponse = z.object({
+  description: z.string().nullish(),
+  etag: z.string().nullish(),
+  page_id: z.string(),
+  source_url: z.string(),
+  title: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSCrawlPreviewPageListResponse
+ */
+export const zKnowledgeFsCrawlPreviewPageListResponse = z.object({
+  data: z.array(zKnowledgeFsCrawlPreviewPageResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSCrawlPreviewSelectionPayload
+ */
+export const zKnowledgeFsCrawlPreviewSelectionPayload = z.object({
+  pageIds: z.array(z.string()).min(1).max(200),
+})
+
+/**
+ * KnowledgeFSCrawledPageResponse
+ */
+export const zKnowledgeFsCrawledPageResponse = z.object({
+  content: z.string(),
+  description: z.string().nullish(),
+  source_url: z.string(),
+  title: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSCursorQuery
+ */
+export const zKnowledgeFsCursorQuery = z.object({
+  cursor: z.string().min(1).max(1000).nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * KnowledgeFSDocumentChunkListQuery
+ */
+export const zKnowledgeFsDocumentChunkListQuery = z.object({
+  cursor: z.string().min(1).max(1000).nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+  query: z.string().min(1).max(512).nullish(),
+})
+
+/**
+ * KnowledgeFSDocumentChunkResponse
+ */
+export const zKnowledgeFsDocumentChunkResponse = z.object({
+  created_at: z.iso.datetime(),
+  document_id: z.string(),
+  document_revision: z.int().gte(1),
+  enabled: z.boolean(),
+  end_offset: z.int().gte(0).nullish(),
+  id: z.string(),
+  kind: z.enum(['chunk', 'image', 'section', 'summary', 'table']).optional().default('chunk'),
+  knowledge_space_id: z.string(),
+  ordinal: z.int().gte(0),
+  parent_chunk_id: z.string().nullish(),
+  parse_element_ids: z.array(z.string()),
+  section_path: z.array(z.string()).optional(),
+  start_offset: z.int().gte(0).nullish(),
+  text: z.string(),
+  token_count: z.int().gte(0),
+  user_metadata: z.record(z.string(), z.unknown()),
+})
+
+/**
+ * KnowledgeFSDocumentChunkListResponse
+ */
+export const zKnowledgeFsDocumentChunkListResponse = z.object({
+  data: z.array(zKnowledgeFsDocumentChunkResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSDocumentDeletePayload
+ */
+export const zKnowledgeFsDocumentDeletePayload = z.object({
+  expectedRevision: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSDocumentMetadataPayload
+ */
+export const zKnowledgeFsDocumentMetadataPayload = z.object({
+  expectedRowVersion: z.int().gte(0),
+  patch: z.record(z.string(), z.unknown()),
+})
+
+/**
+ * KnowledgeFSDocumentOutlineNodeResponse
+ */
+export const zKnowledgeFsDocumentOutlineNodeResponse = z.object({
+  child_node_ids: z.array(z.string()).optional(),
+  children: z.array(z.lazy((): any => zKnowledgeFsDocumentOutlineNodeResponse)).optional(),
+  end_offset: z.int().gte(0).nullish(),
+  end_page: z.int().gte(1).nullish(),
+  id: z.string(),
+  level: z.int().gte(1),
+  metadata: z.record(z.string(), z.unknown()),
+  section_path: z.array(z.string()).optional(),
+  source_element_ids: z.array(z.string()).optional(),
+  source_node_ids: z.array(z.string()).optional(),
+  start_offset: z.int().gte(0).nullish(),
+  start_page: z.int().gte(1).nullish(),
+  summary: z.string().nullish(),
+  title: z.string(),
+  title_location: z.record(z.string(), z.unknown()).nullish(),
+  toc_source: z.string(),
+})
+
+/**
+ * KnowledgeFSDocumentOutlineResponse
+ */
+export const zKnowledgeFsDocumentOutlineResponse = z.object({
+  artifact_hash: z.string(),
+  created_at: z.iso.datetime(),
+  document_asset_id: z.string(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  metadata: z.record(z.string(), z.unknown()),
+  nodes: z.array(zKnowledgeFsDocumentOutlineNodeResponse),
+  outline_version: z.string(),
+  parse_artifact_id: z.string(),
+  updated_at: z.iso.datetime().nullish(),
+  version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSDocumentReferenceQuery
+ */
+export const zKnowledgeFsDocumentReferenceQuery = z.object({
+  document_asset_id: z.string().min(1).max(255),
+  document_asset_version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSDocumentReindexPayload
+ */
+export const zKnowledgeFsDocumentReindexPayload = z.object({
+  all: z.boolean().nullish(),
+  documentIds: z.array(z.string()).min(1).max(100).nullish(),
+})
+
+/**
+ * KnowledgeFSDocumentResponse
+ */
+export const zKnowledgeFsDocumentResponse = z.object({
+  created_at: z.iso.datetime(),
+  filename: z.string(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  metadata: z.record(z.string(), z.unknown()),
+  mime_type: z.string(),
+  object_key: z.string(),
+  parser_status: z.enum(['failed', 'parsed', 'pending']),
+  sha256: z.string(),
+  size_bytes: z.int().gte(0),
+  source_id: z.string().nullish(),
+  updated_at: z.iso.datetime().nullish(),
+  version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSDocumentListResponse
+ */
+export const zKnowledgeFsDocumentListResponse = z.object({
+  data: z.array(zKnowledgeFsDocumentResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSDocumentReindexItemResponse
+ */
+export const zKnowledgeFsDocumentReindexItemResponse = z.object({
+  asset: zKnowledgeFsDocumentResponse.nullish(),
+  code: z.string().nullish(),
+  compilation_job: z.record(z.string(), z.unknown()).nullish(),
+  document_id: z.string().nullish(),
+  error: z.string().nullish(),
+  status: z.enum(['disabled', 'failed', 'not_found', 'pending', 'queued']),
+  status_url: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSDocumentReindexResponse
+ */
+export const zKnowledgeFsDocumentReindexResponse = z.object({
+  bulk_job_id: z.string(),
+  items: z.array(zKnowledgeFsDocumentReindexItemResponse),
+  total: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSDocumentRevisionResponse
+ */
+export const zKnowledgeFsDocumentRevisionResponse = z.object({
+  activated_at: z.iso.datetime().nullish(),
+  content_hash: z.string(),
+  created_at: z.iso.datetime(),
+  document_asset_id: z.string(),
+  document_asset_version: z.int().gte(1),
+  document_id: z.string(),
+  knowledge_space_id: z.string(),
+  mime_type: z.string(),
+  revision: z.int().gte(1),
+  size_bytes: z.int().gte(0),
+  state: z.enum(['active', 'candidate', 'failed', 'superseded']),
+})
+
+/**
+ * KnowledgeFSDocumentRevisionListResponse
+ */
+export const zKnowledgeFsDocumentRevisionListResponse = z.object({
+  data: z.array(zKnowledgeFsDocumentRevisionResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSDurableDeletionErrorResponse
+ */
+export const zKnowledgeFsDurableDeletionErrorResponse = z.object({
+  code: z.string(),
+  message: z.string(),
+  retryable: z.boolean(),
+})
+
+/**
+ * KnowledgeFSDurableDeletionProgressResponse
+ */
+export const zKnowledgeFsDurableDeletionProgressResponse = z.object({
+  completed_items: z.int().gte(0),
+  current_item_kind: z.string().nullish(),
+  total_items: z.int().gte(0).nullish(),
+})
+
+/**
+ * KnowledgeFSDurableDeletionJobResponse
+ */
+export const zKnowledgeFsDurableDeletionJobResponse = z.object({
+  checkpoint: z.enum([
+    'completed',
+    'deleting_derived_data',
+    'deleting_objects',
+    'deleting_primary_data',
+    'quiescing',
+    'requested',
+  ]),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  error: zKnowledgeFsDurableDeletionErrorResponse.nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  mode: z.enum(['cascade', 'keep']).nullish(),
+  progress: zKnowledgeFsDurableDeletionProgressResponse.nullish(),
+  retry_at: z.iso.datetime().nullish(),
+  run_state: z.enum([
+    'canceled',
+    'completed',
+    'dispatch_pending',
+    'failed',
+    'queued',
+    'retry_wait',
+    'running',
+  ]),
+  target_id: z.string(),
+  target_type: z.enum(['document', 'knowledge_space', 'logical_document', 'source']),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSBulkDeletionAcceptedItemResponse
+ */
+export const zKnowledgeFsBulkDeletionAcceptedItemResponse = z.object({
+  document_id: z.string(),
+  document_title: z.string().nullish(),
+  job: zKnowledgeFsDurableDeletionJobResponse,
+  status_url: z.string(),
+})
+
+/**
+ * KnowledgeFSBulkDeletionResultResponse
+ */
+export const zKnowledgeFsBulkDeletionResultResponse = z.object({
+  document_id: z.string(),
+  error: zKnowledgeFsDurableDeletionErrorResponse.nullish(),
+  job: zKnowledgeFsDurableDeletionJobResponse.nullish(),
+  status: z.enum(['accepted', 'pending', 'rejected']),
+  status_url: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSBulkDeletionAcceptedResponse
+ */
+export const zKnowledgeFsBulkDeletionAcceptedResponse = z.object({
+  batch_id: z.string().nullish(),
+  items: z.array(zKnowledgeFsBulkDeletionAcceptedItemResponse),
+  results: z.array(zKnowledgeFsBulkDeletionResultResponse).optional(),
+  status_url: z.string().nullish(),
+  total: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSDurableDeletionAcceptedResponse
+ */
+export const zKnowledgeFsDurableDeletionAcceptedResponse = z.object({
+  document_title: z.string().nullish(),
+  job: zKnowledgeFsDurableDeletionJobResponse,
+  status_url: z.string(),
+})
+
+/**
+ * KnowledgeFSEmbeddingSettingsResponse
+ */
+export const zKnowledgeFsEmbeddingSettingsResponse = z.object({
+  dimension: z.int().gte(1).nullish(),
+  model: z.string(),
+  plugin_id: z.string(),
+  provider: z.string(),
+  revision: z.int().gte(1).nullish(),
+  vector_space_id: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSOnlineDocumentWorkflowImportItemPayload
+ */
+export const zKnowledgeFsOnlineDocumentWorkflowImportItemPayload = z.object({
+  etag: z.string().max(1024).nullish(),
+  lastEditedTime: z.string().max(128).nullish(),
+  name: z.string().max(500).nullish(),
+  pageId: z.string().min(1).max(1024),
+  providerItemId: z.string().min(1).max(1024),
+  type: z.string().min(1).max(128),
+  workspaceId: z.string().min(1).max(1024),
+})
+
+/**
+ * KnowledgeFSOnlineDriveWorkflowImportItemPayload
+ */
+export const zKnowledgeFsOnlineDriveWorkflowImportItemPayload = z.object({
+  bucket: z.string().max(1024).nullish(),
+  etag: z.string().max(1024).nullish(),
+  id: z.string().min(1).max(1024),
+  mimeType: z.string().max(255).nullish(),
+  name: z.string().min(1).max(500),
+  providerItemId: z.string().min(1).max(1024),
+})
+
+/**
+ * KnowledgeFSProductScoreThreshold
+ */
+export const zKnowledgeFsProductScoreThreshold = z.object({
+  enabled: z.boolean(),
+  stage: z.enum(['mode-final', 'rerank']).optional().default('mode-final'),
+  value: z.number().gte(0).lte(1).nullish(),
+})
+
+/**
+ * KnowledgeFSProfileMigrationResponse
+ */
+export const zKnowledgeFsProfileMigrationResponse = z.object({
+  candidate_publication_fingerprint: z.string().nullish(),
+  changed_kind: z.enum(['embedding', 'retrieval']),
+  checkpoint: z.enum(['activated', 'candidate-built', 'evaluated', 'queued']),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  error_code: z.string().nullish(),
+  evaluation_summary: z
+    .record(z.string(), z.union([z.boolean(), z.number(), z.int(), z.string()]))
+    .nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  rebuild_scope: z.enum([
+    'clone-publication',
+    'full-page-index-summary-outline',
+    'full-vector-space',
+  ]),
+  run_state: z.enum(['canceled', 'failed', 'queued', 'running', 'succeeded']),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSProfileModelSelection
+ */
+export const zKnowledgeFsProfileModelSelection = z.object({
+  model: z.string().min(1).max(256),
+  pluginId: z.string().min(1).max(256),
+  provider: z.string().min(1).max(256),
+})
+
+/**
+ * KnowledgeFSProductRerankProfile
+ */
+export const zKnowledgeFsProductRerankProfile = z.object({
+  enabled: z.boolean(),
+  model: zKnowledgeFsProfileModelSelection.nullish(),
+})
+
+/**
+ * KnowledgeFSProductRetrievalProfile
+ */
+export const zKnowledgeFsProductRetrievalProfile = z.object({
+  defaultMode: z.enum(['deep', 'fast', 'research']),
+  reasoningModel: zKnowledgeFsProfileModelSelection,
+  rerank: zKnowledgeFsProductRerankProfile,
+  scoreThreshold: zKnowledgeFsProductScoreThreshold,
+  topK: z.int().gte(1).lte(100),
+})
+
+/**
+ * KnowledgeFSPublicFailureResponse
+ */
+export const zKnowledgeFsPublicFailureResponse = z.object({
+  action: z
+    .enum([
+      'configure_model',
+      'configure_parser',
+      'configure_source',
+      'contact_admin',
+      'retry',
+      'reupload',
+    ])
+    .nullish(),
+  category: z.enum([
+    'authorization',
+    'canceled',
+    'configuration',
+    'conflict',
+    'dependency',
+    'internal',
+    'not_found',
+    'rate_limit',
+    'timeout',
+    'validation',
+  ]),
+  code: z.enum([
+    'DOCUMENT_COMPILATION_FAILED',
+    'DOCUMENT_COMPILATION_LEASE_LOST',
+    'DOCUMENT_COMPILATION_PROFILE_CHANGED',
+    'DOCUMENT_COMPILATION_RETRYABLE',
+    'DOCUMENT_COUNT_QUOTA_EXCEEDED',
+    'DOCUMENT_COUNT_QUOTA_UNAVAILABLE',
+    'DOCUMENT_DISABLED',
+    'DOCUMENT_PARSER_INPUT_INVALID',
+    'DOCUMENT_PARSER_NOT_CONFIGURED',
+    'DOCUMENT_PARSER_RATE_LIMITED',
+    'DOCUMENT_PARSER_RESPONSE_INVALID',
+    'DOCUMENT_PARSER_TIMEOUT',
+    'DOCUMENT_PARSER_UNAVAILABLE',
+    'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
+    'DOCUMENT_PDF_RENDER_FAILED',
+    'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
+    'EMBEDDING_DIMENSION_INVALID',
+    'EMBEDDING_DIMENSION_UNSUPPORTED',
+    'EXECUTION_ATTEMPTS_EXHAUSTED',
+    'KNOWLEDGE_FS_ACCESS_DENIED',
+    'KNOWLEDGE_FS_CONFLICT',
+    'KNOWLEDGE_FS_INTERNAL_ERROR',
+    'KNOWLEDGE_FS_INVALID_REQUEST',
+    'KNOWLEDGE_FS_NOT_FOUND',
+    'KNOWLEDGE_FS_RATE_LIMITED',
+    'KNOWLEDGE_FS_TIMEOUT',
+    'KNOWLEDGE_FS_UNAVAILABLE',
+    'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND',
+    'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED',
+    'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS',
+    'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED',
+    'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT',
+    'LOGICAL_DOCUMENT_CAS_CONFLICT',
+    'MODEL_CAPABILITY_MISMATCH',
+    'MODEL_CONFIGURATION_STALE',
+    'MODEL_CREDENTIAL_INVALID',
+    'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE',
+    'MODEL_IDENTITY_MISMATCH',
+    'MODEL_PREFLIGHT_CANCELED',
+    'MODEL_PREFLIGHT_FAILED',
+    'MODEL_PREFLIGHT_TIMEOUT',
+    'MODEL_PREFLIGHT_UNAVAILABLE',
+    'MODEL_PROFILE_ACTIVATION_INCOMPLETE',
+    'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED',
+    'MODEL_RUNTIME_CONTEXT_LIMIT',
+    'MODEL_RUNTIME_FAILED',
+    'MODEL_RUNTIME_OUTPUT_LIMIT',
+    'MODEL_RUNTIME_RESPONSE_INVALID',
+    'MODEL_RUNTIME_TIMEOUT',
+    'MODEL_RUNTIME_UNAVAILABLE',
+    'MODEL_SELECTION_NOT_FOUND',
+    'RESEARCH_TASK_CAPABILITY_REVOKED',
+    'RESEARCH_TASK_DISPATCH_DEAD',
+    'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED',
+    'RESEARCH_TASK_FAILED',
+    'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID',
+    'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID',
+    'RETRIEVAL_DELETION_IN_PROGRESS',
+    'RETRIEVAL_EXECUTION_LEASE_LOST',
+    'SOURCE_BULK_ACTION_FAILED',
+    'SOURCE_CONNECTION_UNAVAILABLE',
+    'SOURCE_CRAWL_PAGE_NOT_FOUND',
+    'SOURCE_CRAWL_PROVIDER_UNAVAILABLE',
+    'SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED',
+    'SOURCE_CREDENTIAL_CONFIG_INVALID',
+    'SOURCE_CREDENTIAL_MUTATION_FAILED',
+    'SOURCE_CREDENTIAL_TEST_FAILED',
+    'SOURCE_CREDENTIAL_UNAVAILABLE',
+    'SOURCE_DOCUMENT_COMPILATION_FAILED',
+    'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
+    'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
+    'SOURCE_IMPORT_PARTIAL_FAILURE',
+    'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
+    'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED',
+    'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED',
+    'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED',
+    'SOURCE_ONLINE_DOCUMENT_UNAVAILABLE',
+    'SOURCE_ONLINE_DRIVE_CONFIG_INVALID',
+    'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED',
+    'SOURCE_ONLINE_DRIVE_IMPORT_FAILED',
+    'SOURCE_ONLINE_DRIVE_REQUEST_FAILED',
+    'SOURCE_ONLINE_DRIVE_UNAVAILABLE',
+    'SOURCE_OPERATION_FAILED',
+    'SOURCE_PROVIDER_REJECTED',
+    'SOURCE_PROVIDER_TIMEOUT',
+    'SOURCE_PROVIDER_UNAVAILABLE',
+    'SOURCE_SECRET_INTEGRITY_FAILED',
+    'SOURCE_SECRET_REF_CONFLICT',
+    'SOURCE_SYNC_FAILED',
+    'SOURCE_SYNC_SELECTION_MISMATCH',
+    'SOURCE_VERSION_CONFLICT',
+    'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
+    'SOURCE_WEBSITE_CRAWL_FAILED',
+    'SOURCE_WORKFLOW_CONTENT_MISSING',
+    'SOURCE_WORKFLOW_CONTENT_TOO_LARGE',
+    'SOURCE_WORKFLOW_EXTERNAL_TIMEOUT',
+    'SOURCE_WORKFLOW_FAILED',
+    'UPLOAD_INITIALIZATION_FAILED',
+    'UPLOAD_INTEGRITY_MISMATCH',
+    'VECTOR_SPACE_QUOTA_EXCEEDED',
+    'VECTOR_SPACE_QUOTA_UNAVAILABLE',
+  ]),
+  message: z.string().min(1).max(1024),
+  parameters: z
+    .record(z.string(), z.union([z.string(), z.int(), z.number(), z.boolean()]))
+    .nullish(),
+  retryPolicy: z.enum(['after_configuration', 'automatic', 'manual', 'never']),
+  stage: z
+    .string()
+    .min(1)
+    .max(128)
+    .regex(/^[a-z][a-z0-9_.-]{0,127}$/)
+    .nullish(),
+  traceId: z
+    .string()
+    .min(1)
+    .max(128)
+    .regex(/^[A-Za-z0-9._:-]{1,128}$/)
+    .nullish(),
+})
+
+/**
+ * KnowledgeFSBackgroundTaskFailureResponse
+ */
+export const zKnowledgeFsBackgroundTaskFailureResponse = z.object({
+  document_id: z.string(),
+  document_title: z.string().nullish(),
+  error_code: z.string(),
+  error_message: z.string(),
+  failure: zKnowledgeFsPublicFailureResponse,
+  job_id: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSBulkJobFailureResponse
+ */
+export const zKnowledgeFsBulkJobFailureResponse = z.object({
+  document_id: z.string(),
+  document_title: z.string().nullish(),
+  error_code: z.string(),
+  error_message: z.string(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  job_id: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSBulkJobResponse
+ */
+export const zKnowledgeFsBulkJobResponse = z.object({
+  canceled_items: z.int().gte(0),
+  completed_items: z.int().gte(0),
+  created_at: z.iso.datetime(),
+  failed_item_ids: z.array(z.string()),
+  failed_items: z.int().gte(0),
+  failures: z.array(zKnowledgeFsBulkJobFailureResponse).optional(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  status: z.enum(['canceled', 'completed', 'failed', 'running']),
+  total_items: z.int().gte(0),
+  type: z.enum(['document_delete', 'document_reindex', 'document_upload']),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSDocumentCompilationJobResponse
+ */
+export const zKnowledgeFsDocumentCompilationJobResponse = z.object({
+  base_head_revision: z.int().gte(0).nullish(),
+  candidate_fingerprint: z.string().nullish(),
+  candidate_publication_id: z.string().nullish(),
+  completed_at: z.number().nullish(),
+  created_at: z.number(),
+  document_asset_id: z.string(),
+  error: z.string().nullish(),
+  execution_attempts: z.int().gte(0).nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  max_execution_attempts: z.int().gte(1).nullish(),
+  run_state: z.string().nullish(),
+  stage: z.enum([
+    'canceled',
+    'failed',
+    'nodes_generated',
+    'outline_built',
+    'parsed',
+    'projection_built',
+    'published',
+    'queued',
+    'smoke_eval_passed',
+  ]),
+  updated_at: z.number(),
+  version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSQueryImageReference
+ */
+export const zKnowledgeFsQueryImageReference = z.object({
+  uploadFileId: z.string().min(1),
+})
+
+/**
+ * KnowledgeFSAdmittedQueryRequest
+ */
+export const zKnowledgeFsAdmittedQueryRequest = z.object({
+  activeDocumentIds: z.array(z.string()).max(100).optional(),
+  activeEntityIds: z.array(z.string()).max(100).optional(),
+  knowledgeSpaceId: z.string().min(1),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
+  sessionId: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSQueryAdmissionResponse
+ */
+export const zKnowledgeFsQueryAdmissionResponse = z.object({
+  expires_at: z.iso.datetime(),
+  operation_id: z.literal('createQuery'),
+  request: zKnowledgeFsAdmittedQueryRequest,
+  token: z.string(),
+  trace_id: z.string(),
+  url: z.string(),
+})
+
+/**
+ * KnowledgeFSQueryCreatePayload
+ */
+export const zKnowledgeFsQueryCreatePayload = z.object({
+  activeDocumentIds: z.array(z.string()).max(100).optional(),
+  activeEntityIds: z.array(z.string()).max(100).optional(),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
+  sessionId: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSQueryImageResponse
+ *
+ * One query image a retrieval run was asked with, enriched for console display.
+ *
+ * The gateway persists only the UploadFile reference and static metadata; the console fills in
+ * the file name and a short-lived signed preview URL for files the caller still owns.
+ */
+export const zKnowledgeFsQueryImageResponse = z.object({
+  byte_size: z.int().gte(0).nullish(),
+  mime_type: z.string().nullish(),
+  name: z.string().nullish(),
+  preview_url: z.string().nullish(),
+  upload_file_id: z.string(),
+})
+
+/**
+ * KnowledgeFSReadinessCapabilities
+ */
+export const zKnowledgeFsReadinessCapabilities = z.object({
+  deep: z.boolean(),
+  index: z.boolean(),
+  ingest: z.boolean(),
+  query: z.boolean(),
+  research: z.boolean(),
+  source_sync: z.boolean(),
+})
+
+/**
+ * KnowledgeFSReadinessIssue
+ */
+export const zKnowledgeFsReadinessIssue = z.object({
+  code: z.enum(['binding_missing', 'incompatible', 'missing', 'unavailable', 'validation_failed']),
+  field: z.enum(['embedding', 'publication', 'reasoning', 'rerank']),
+  retryable: z.boolean(),
+})
+
+/**
+ * KnowledgeFSResearchTaskLimits
+ */
+export const zKnowledgeFsResearchTaskLimits = z.object({
+  maxRetrievalSteps: z.int().gte(1).nullish(),
+  maxScannedResources: z.int().gte(1).nullish(),
+  maxToolCalls: z.int().gte(1).nullish(),
+  timeoutMs: z.int().gte(1).nullish(),
+})
+
+/**
+ * KnowledgeFSResearchTaskCreatePayload
+ */
+export const zKnowledgeFsResearchTaskCreatePayload = z.object({
+  budgetUsd: z.number().gte(0).nullish(),
+  limits: zKnowledgeFsResearchTaskLimits.nullish(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
+  topK: z.int().gte(1).lte(50).nullish(),
+})
+
+/**
+ * KnowledgeFSResearchTaskPartialResponse
+ */
+export const zKnowledgeFsResearchTaskPartialResponse = z.object({
+  answer: z.string().min(1).max(20000).nullish(),
+  evidence_bundle: z.record(z.string(), z.unknown()),
+  knowledge_space_id: z.string(),
+  research_task_job_id: z.string(),
+  sequence: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSResearchTaskPartialListResponse
+ */
+export const zKnowledgeFsResearchTaskPartialListResponse = z.object({
+  data: z.array(zKnowledgeFsResearchTaskPartialResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSResearchTaskPartialsQuery
+ */
+export const zKnowledgeFsResearchTaskPartialsQuery = z.object({
+  cursor: z.string().min(1).max(1000).nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(25),
+})
+
+/**
+ * KnowledgeFSResearchTaskPlanBudgetResponse
+ */
+export const zKnowledgeFsResearchTaskPlanBudgetResponse = z.object({
+  budget_usd: z.number().gte(0).nullish(),
+  exceeds_budget: z.boolean(),
+  remaining_budget_usd: z.number().nullish(),
+})
+
+/**
+ * KnowledgeFSResearchTaskPlanPayload
+ */
+export const zKnowledgeFsResearchTaskPlanPayload = z.object({
+  budgetUsd: z.number().gte(0).nullish(),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
+  query: z.string().max(16000).nullish(),
+  queryImages: z.array(zKnowledgeFsQueryImageReference).max(4).optional(),
+  topK: z.int().gte(1).lte(50).nullish(),
+})
+
+/**
+ * KnowledgeFSResearchTaskResponse
+ */
+export const zKnowledgeFsResearchTaskResponse = z.object({
+  budget_usd: z.number().gte(0).nullish(),
+  completed_at: z.number().nullish(),
+  cost: z.record(z.string(), z.unknown()),
+  created_at: z.number(),
+  error: z.string().nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  limits: zKnowledgeFsResearchTaskLimits.nullish(),
+  metadata: z.record(z.string(), z.unknown()),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']).nullish(),
+  query: z.string(),
+  query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
+  stage: z.enum([
+    'analyzing',
+    'canceled',
+    'completed',
+    'failed',
+    'generating',
+    'paused',
+    'planning',
+    'queued',
+    'retrieving',
+  ]),
+  top_k: z.int().nullish(),
+  updated_at: z.number(),
+})
+
+/**
+ * KnowledgeFSResearchTaskListResponse
+ */
+export const zKnowledgeFsResearchTaskListResponse = z.object({
+  data: z.array(zKnowledgeFsResearchTaskResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSResearchTaskRetrievalPlanResponse
+ */
+export const zKnowledgeFsResearchTaskRetrievalPlanResponse = z.object({
+  dense_top_k: z.int().gte(0),
+  fts_top_k: z.int().gte(0),
+  fusion_limit: z.int().gte(0),
+  query_language: z.enum(['cjk', 'latin', 'mixed-cjk-latin', 'other']),
+  requested_mode: z.enum(['auto', 'deep', 'fast', 'research']),
+  rerank_candidate_limit: z.int().gte(0),
+  resolved_mode: z.enum(['deep', 'fast', 'research']),
+  strategy_version: z.string(),
+  top_k: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSResearchTaskPlanResponse
+ */
+export const zKnowledgeFsResearchTaskPlanResponse = z.object({
+  budget: zKnowledgeFsResearchTaskPlanBudgetResponse,
+  estimates: z.record(z.string(), z.unknown()),
+  knowledge_space_id: z.string(),
+  query: z.string(),
+  query_images: z.array(zKnowledgeFsQueryImageReference).optional(),
+  retrieval_plan: zKnowledgeFsResearchTaskRetrievalPlanResponse,
+  steps: z.array(z.record(z.string(), z.unknown())),
+  strategy_version: z.literal('research-dry-run-planner-v1'),
+})
+
+/**
+ * KnowledgeFSResolvedDocumentReferenceResponse
+ */
+export const zKnowledgeFsResolvedDocumentReferenceResponse = z.object({
+  document_id: z.string(),
+  revision: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSRetrievalSettingsResponse
+ */
+export const zKnowledgeFsRetrievalSettingsResponse = z.object({
+  default_mode: z.enum(['deep', 'fast', 'research']),
+  reasoning_model: zKnowledgeFsEmbeddingSettingsResponse,
+  rerank: zKnowledgeFsProductRerankProfile,
+  revision: z.int().gte(1).nullish(),
+  score_threshold: zKnowledgeFsProductScoreThreshold,
+  top_k: z.int().gte(1).lte(100),
+})
+
+/**
+ * KnowledgeFSSemanticEnrichmentResponse
+ */
+export const zKnowledgeFsSemanticEnrichmentResponse = z.object({
+  error_code: z.string().nullish(),
+  error_message: z.string().nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  nodes_completed: z.int().gte(0),
+  nodes_total: z.int().gte(0).nullish(),
+  provider_calls: z.int().gte(0).nullish(),
+  provider_calls_maximum: z.int().gte(0).nullish(),
+  state: z.enum(['disabled', 'failed', 'not_scheduled', 'pending', 'ready', 'running']),
+  updated_at: z.iso.datetime().nullish(),
+})
+
+/**
+ * KnowledgeFSBackgroundTaskResponse
+ */
+export const zKnowledgeFsBackgroundTaskResponse = z.object({
+  can_cancel: z.boolean(),
+  can_retry: z.boolean(),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  document_id: z.string().nullish(),
+  document_revision: z.int().gte(1).nullish(),
+  document_title: z.string().nullish(),
+  error_code: z.string().nullish(),
+  error_message: z.string().nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  failures: z.array(zKnowledgeFsBackgroundTaskFailureResponse).nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  operation: z.enum([
+    'document_delete',
+    'document_processing',
+    'document_reindex',
+    'document_upload',
+    'source_bulk',
+    'source_crawl_import',
+    'source_crawl_preview',
+    'source_online_document_import',
+    'source_online_drive_import',
+    'source_sync',
+  ]),
+  progress_completed: z.int().gte(0),
+  progress_failed: z.int().gte(0),
+  progress_percent: z.int().gte(0).lte(100),
+  progress_total: z.int().gte(0),
+  semantic_enrichment: zKnowledgeFsSemanticEnrichmentResponse.nullish(),
+  source_id: z.string().nullish(),
+  source_title: z.string().nullish(),
+  state: z.enum(['canceled', 'completed', 'failed', 'queued', 'running']),
+  task_kind: z.enum(['document', 'document_bulk', 'source']),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSBackgroundTaskListResponse
+ */
+export const zKnowledgeFsBackgroundTaskListResponse = z.object({
+  data: z.array(zKnowledgeFsBackgroundTaskResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSDocumentProcessingTaskResponse
+ */
+export const zKnowledgeFsDocumentProcessingTaskResponse = z.object({
+  active_operations: z.array(z.string()).nullish(),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  document_id: z.string(),
+  document_revision: z.int().gte(1),
+  error_code: z
+    .enum([
+      'DOCUMENT_COMPILATION_FAILED',
+      'DOCUMENT_COMPILATION_LEASE_LOST',
+      'DOCUMENT_COMPILATION_PROFILE_CHANGED',
+      'DOCUMENT_COMPILATION_RETRYABLE',
+      'DOCUMENT_COUNT_QUOTA_EXCEEDED',
+      'DOCUMENT_COUNT_QUOTA_UNAVAILABLE',
+      'DOCUMENT_DISABLED',
+      'DOCUMENT_PARSER_INPUT_INVALID',
+      'DOCUMENT_PARSER_NOT_CONFIGURED',
+      'DOCUMENT_PARSER_RATE_LIMITED',
+      'DOCUMENT_PARSER_RESPONSE_INVALID',
+      'DOCUMENT_PARSER_TIMEOUT',
+      'DOCUMENT_PARSER_UNAVAILABLE',
+      'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
+      'DOCUMENT_PDF_RENDER_FAILED',
+      'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
+      'EMBEDDING_DIMENSION_INVALID',
+      'EMBEDDING_DIMENSION_UNSUPPORTED',
+      'EXECUTION_ATTEMPTS_EXHAUSTED',
+      'KNOWLEDGE_FS_ACCESS_DENIED',
+      'KNOWLEDGE_FS_CONFLICT',
+      'KNOWLEDGE_FS_INTERNAL_ERROR',
+      'KNOWLEDGE_FS_INVALID_REQUEST',
+      'KNOWLEDGE_FS_NOT_FOUND',
+      'KNOWLEDGE_FS_RATE_LIMITED',
+      'KNOWLEDGE_FS_TIMEOUT',
+      'KNOWLEDGE_FS_UNAVAILABLE',
+      'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND',
+      'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED',
+      'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS',
+      'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED',
+      'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT',
+      'LOGICAL_DOCUMENT_CAS_CONFLICT',
+      'MODEL_CAPABILITY_MISMATCH',
+      'MODEL_CONFIGURATION_STALE',
+      'MODEL_CREDENTIAL_INVALID',
+      'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE',
+      'MODEL_IDENTITY_MISMATCH',
+      'MODEL_PREFLIGHT_CANCELED',
+      'MODEL_PREFLIGHT_FAILED',
+      'MODEL_PREFLIGHT_TIMEOUT',
+      'MODEL_PREFLIGHT_UNAVAILABLE',
+      'MODEL_PROFILE_ACTIVATION_INCOMPLETE',
+      'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED',
+      'MODEL_RUNTIME_CONTEXT_LIMIT',
+      'MODEL_RUNTIME_FAILED',
+      'MODEL_RUNTIME_OUTPUT_LIMIT',
+      'MODEL_RUNTIME_RESPONSE_INVALID',
+      'MODEL_RUNTIME_TIMEOUT',
+      'MODEL_RUNTIME_UNAVAILABLE',
+      'MODEL_SELECTION_NOT_FOUND',
+      'RESEARCH_TASK_CAPABILITY_REVOKED',
+      'RESEARCH_TASK_DISPATCH_DEAD',
+      'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED',
+      'RESEARCH_TASK_FAILED',
+      'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID',
+      'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID',
+      'RETRIEVAL_DELETION_IN_PROGRESS',
+      'RETRIEVAL_EXECUTION_LEASE_LOST',
+      'SOURCE_BULK_ACTION_FAILED',
+      'SOURCE_CONNECTION_UNAVAILABLE',
+      'SOURCE_CRAWL_PAGE_NOT_FOUND',
+      'SOURCE_CRAWL_PROVIDER_UNAVAILABLE',
+      'SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED',
+      'SOURCE_CREDENTIAL_CONFIG_INVALID',
+      'SOURCE_CREDENTIAL_MUTATION_FAILED',
+      'SOURCE_CREDENTIAL_TEST_FAILED',
+      'SOURCE_CREDENTIAL_UNAVAILABLE',
+      'SOURCE_DOCUMENT_COMPILATION_FAILED',
+      'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
+      'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
+      'SOURCE_IMPORT_PARTIAL_FAILURE',
+      'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
+      'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_UNAVAILABLE',
+      'SOURCE_ONLINE_DRIVE_CONFIG_INVALID',
+      'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED',
+      'SOURCE_ONLINE_DRIVE_IMPORT_FAILED',
+      'SOURCE_ONLINE_DRIVE_REQUEST_FAILED',
+      'SOURCE_ONLINE_DRIVE_UNAVAILABLE',
+      'SOURCE_OPERATION_FAILED',
+      'SOURCE_PROVIDER_REJECTED',
+      'SOURCE_PROVIDER_TIMEOUT',
+      'SOURCE_PROVIDER_UNAVAILABLE',
+      'SOURCE_SECRET_INTEGRITY_FAILED',
+      'SOURCE_SECRET_REF_CONFLICT',
+      'SOURCE_SYNC_FAILED',
+      'SOURCE_SYNC_SELECTION_MISMATCH',
+      'SOURCE_VERSION_CONFLICT',
+      'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
+      'SOURCE_WEBSITE_CRAWL_FAILED',
+      'SOURCE_WORKFLOW_CONTENT_MISSING',
+      'SOURCE_WORKFLOW_CONTENT_TOO_LARGE',
+      'SOURCE_WORKFLOW_EXTERNAL_TIMEOUT',
+      'SOURCE_WORKFLOW_FAILED',
+      'UPLOAD_INITIALIZATION_FAILED',
+      'UPLOAD_INTEGRITY_MISMATCH',
+      'VECTOR_SPACE_QUOTA_EXCEEDED',
+      'VECTOR_SPACE_QUOTA_UNAVAILABLE',
+    ])
+    .nullish(),
+  error_message: z.string().nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  phase: z.string().nullish(),
+  progress_percent: z.int().gte(0).lte(100),
+  retry_at: z.iso.datetime().nullish(),
+  semantic_enrichment: zKnowledgeFsSemanticEnrichmentResponse.nullish(),
+  stage: z.enum([
+    'nodes_generated',
+    'outline_built',
+    'parsed',
+    'projection_built',
+    'published',
+    'queued',
+    'smoke_eval_passed',
+  ]),
+  state: z.enum([
+    'canceled',
+    'dispatch_pending',
+    'failed',
+    'queued',
+    'retry_wait',
+    'running',
+    'succeeded',
+    'superseded',
+  ]),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSDocumentProcessingTaskListResponse
+ */
+export const zKnowledgeFsDocumentProcessingTaskListResponse = z.object({
+  data: z.array(zKnowledgeFsDocumentProcessingTaskResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSLogicalDocumentResponse
+ */
+export const zKnowledgeFsLogicalDocumentResponse = z.object({
+  active: zKnowledgeFsDocumentRevisionResponse.nullable(),
+  active_revision: z.int().gte(1).nullish(),
+  created_at: z.iso.datetime(),
+  disabled_at: z.iso.datetime().nullish(),
+  disabled_by_subject_id: z.string().nullish(),
+  enabled: z.boolean().optional().default(true),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  latest_task: zKnowledgeFsBackgroundTaskResponse.nullish(),
+  provider_item_id: z.string().nullish(),
+  row_version: z.int().gte(0),
+  source_id: z.string().nullish(),
+  status: z.enum(['deleting', 'failed', 'pending', 'ready']),
+  title: z.string(),
+  updated_at: z.iso.datetime(),
+  user_metadata: z.record(z.string(), z.unknown()),
+})
+
+/**
+ * KnowledgeFSLogicalDocumentListResponse
+ */
+export const zKnowledgeFsLogicalDocumentListResponse = z.object({
+  data: z.array(zKnowledgeFsLogicalDocumentResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSServiceQueryImageUploadResponse
+ */
+export const zKnowledgeFsServiceQueryImageUploadResponse = z.object({
+  byte_size: z.int().gte(1),
+  mime_type: z.string(),
+  upload_file_id: z.string(),
+})
+
+/**
+ * KnowledgeFSServiceSourceConnectionCreatePayload
+ *
+ * Dify owns datasource secrets; clients supply an opaque binding in configuration.
+ */
+export const zKnowledgeFsServiceSourceConnectionCreatePayload = z.object({
+  authKind: z.literal('endpoint').optional().default('endpoint'),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.int(), z.string()])).optional(),
+  credentials: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().min(1).max(160),
+  providerId: z.string().min(1).max(128),
+})
+
+/**
+ * KnowledgeFSServiceSourceCreatePayload
+ */
+export const zKnowledgeFsServiceSourceCreatePayload = z.object({
+  connectionId: z.string().nullish(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().min(1).max(200),
+  permissionScope: z.array(z.string()).max(0).optional(),
+  status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
+  type: z.enum(['connector', 'object-storage', 'upload', 'web']),
+  uri: z.string().min(1).max(4096),
+})
+
+/**
+ * KnowledgeFSServiceSourceUpdatePayload
+ */
+export const zKnowledgeFsServiceSourceUpdatePayload = z.object({
+  expectedVersion: z.int().gte(1).nullish(),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string().min(1).max(200).nullish(),
+  providerParameters: z
+    .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
+    .nullish(),
+  status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
+  syncAfterUpdate: z.boolean().nullish(),
+  uri: z.string().min(1).max(4096).nullish(),
+})
+
+/**
+ * KnowledgeFSSettingsPayload
+ */
+export const zKnowledgeFsSettingsPayload = z.object({
+  embedding: zKnowledgeFsProfileModelSelection.nullish(),
+  expectedRevision: z.int().gte(1),
+  retrieval: zKnowledgeFsProductRetrievalProfile.nullish(),
+})
+
+/**
+ * KnowledgeFSSettingsResponse
+ */
+export const zKnowledgeFsSettingsResponse = z.object({
+  active_profile_available: z.boolean(),
+  active_profile_revisions: zKnowledgeFsActiveProfileRevisions,
+  capabilities: zKnowledgeFsReadinessCapabilities,
+  configuration_state: z.enum([
+    'active',
+    'pending-validation',
+    'setup-required',
+    'validation-failed',
+  ]),
+  embedding: zKnowledgeFsEmbeddingSettingsResponse.nullable(),
+  issues: z.array(zKnowledgeFsReadinessIssue),
+  retrieval: zKnowledgeFsRetrievalSettingsResponse.nullable(),
+  revision: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSSettingsUpdateResponse
+ */
+export const zKnowledgeFsSettingsUpdateResponse = z.object({
+  migration: zKnowledgeFsProfileMigrationResponse.nullish(),
+  settings: zKnowledgeFsSettingsResponse,
+})
+
+/**
+ * KnowledgeFSSourceConnectionListQuery
+ */
+export const zKnowledgeFsSourceConnectionListQuery = z.object({
+  cursor: z.string().min(1).max(4096).nullish(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * KnowledgeFSSourceConnectionRefreshPayload
+ */
+export const zKnowledgeFsSourceConnectionRefreshPayload = z.object({
+  expectedVersion: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSSourceConnectionResponse
+ */
+export const zKnowledgeFsSourceConnectionResponse = z.object({
+  auth_kind: z.enum(['api-key', 'endpoint', 'oauth2']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.int(), z.string()])),
+  created_at: z.iso.datetime(),
+  error_code: z.string().nullish(),
+  expires_at: z.iso.datetime().nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  name: z.string(),
+  provider_id: z.string(),
+  scopes: z.array(z.string()),
+  status: z.enum(['active', 'error', 'expired', 'provisioning', 'revoked']),
+  updated_at: z.iso.datetime(),
+  version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSSourceConnectionListResponse
+ */
+export const zKnowledgeFsSourceConnectionListResponse = z.object({
+  data: z.array(zKnowledgeFsSourceConnectionResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSSourceCrawlResponse
+ */
+export const zKnowledgeFsSourceCrawlResponse = z.object({
+  completed: z.int().gte(0).nullish(),
+  failed: z.int().gte(0).nullish(),
+  imported: z.int().gte(0).nullish(),
+  pages: z.array(zKnowledgeFsCrawledPageResponse),
+  replaced: z.int().gte(0).nullish(),
+  skipped: z.int().gte(0).nullish(),
+  status: z.string().nullish(),
+  total: z.int().gte(0).nullish(),
+})
+
+/**
+ * KnowledgeFSSourceCreatePayload
+ */
+export const zKnowledgeFsSourceCreatePayload = z.object({
+  connectionId: z.string().nullish(),
+  credentials: z.record(z.string(), z.unknown()).nullish(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().min(1).max(200),
+  permissionScope: z.array(z.string()).max(1000).optional(),
+  status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
+  type: z.enum(['connector', 'object-storage', 'upload', 'web']),
+  uri: z.string().min(1).max(4096),
+})
+
+/**
+ * KnowledgeFSSourceCredentialTestResponse
+ */
+export const zKnowledgeFsSourceCredentialTestResponse = z.object({
+  code: z
+    .enum([
+      'DOCUMENT_COMPILATION_FAILED',
+      'DOCUMENT_COMPILATION_LEASE_LOST',
+      'DOCUMENT_COMPILATION_PROFILE_CHANGED',
+      'DOCUMENT_COMPILATION_RETRYABLE',
+      'DOCUMENT_COUNT_QUOTA_EXCEEDED',
+      'DOCUMENT_COUNT_QUOTA_UNAVAILABLE',
+      'DOCUMENT_DISABLED',
+      'DOCUMENT_PARSER_INPUT_INVALID',
+      'DOCUMENT_PARSER_NOT_CONFIGURED',
+      'DOCUMENT_PARSER_RATE_LIMITED',
+      'DOCUMENT_PARSER_RESPONSE_INVALID',
+      'DOCUMENT_PARSER_TIMEOUT',
+      'DOCUMENT_PARSER_UNAVAILABLE',
+      'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
+      'DOCUMENT_PDF_RENDER_FAILED',
+      'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
+      'EMBEDDING_DIMENSION_INVALID',
+      'EMBEDDING_DIMENSION_UNSUPPORTED',
+      'EXECUTION_ATTEMPTS_EXHAUSTED',
+      'KNOWLEDGE_FS_ACCESS_DENIED',
+      'KNOWLEDGE_FS_CONFLICT',
+      'KNOWLEDGE_FS_INTERNAL_ERROR',
+      'KNOWLEDGE_FS_INVALID_REQUEST',
+      'KNOWLEDGE_FS_NOT_FOUND',
+      'KNOWLEDGE_FS_RATE_LIMITED',
+      'KNOWLEDGE_FS_TIMEOUT',
+      'KNOWLEDGE_FS_UNAVAILABLE',
+      'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND',
+      'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED',
+      'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS',
+      'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED',
+      'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT',
+      'LOGICAL_DOCUMENT_CAS_CONFLICT',
+      'MODEL_CAPABILITY_MISMATCH',
+      'MODEL_CONFIGURATION_STALE',
+      'MODEL_CREDENTIAL_INVALID',
+      'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE',
+      'MODEL_IDENTITY_MISMATCH',
+      'MODEL_PREFLIGHT_CANCELED',
+      'MODEL_PREFLIGHT_FAILED',
+      'MODEL_PREFLIGHT_TIMEOUT',
+      'MODEL_PREFLIGHT_UNAVAILABLE',
+      'MODEL_PROFILE_ACTIVATION_INCOMPLETE',
+      'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED',
+      'MODEL_RUNTIME_CONTEXT_LIMIT',
+      'MODEL_RUNTIME_FAILED',
+      'MODEL_RUNTIME_OUTPUT_LIMIT',
+      'MODEL_RUNTIME_RESPONSE_INVALID',
+      'MODEL_RUNTIME_TIMEOUT',
+      'MODEL_RUNTIME_UNAVAILABLE',
+      'MODEL_SELECTION_NOT_FOUND',
+      'RESEARCH_TASK_CAPABILITY_REVOKED',
+      'RESEARCH_TASK_DISPATCH_DEAD',
+      'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED',
+      'RESEARCH_TASK_FAILED',
+      'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID',
+      'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID',
+      'RETRIEVAL_DELETION_IN_PROGRESS',
+      'RETRIEVAL_EXECUTION_LEASE_LOST',
+      'SOURCE_BULK_ACTION_FAILED',
+      'SOURCE_CONNECTION_UNAVAILABLE',
+      'SOURCE_CRAWL_PAGE_NOT_FOUND',
+      'SOURCE_CRAWL_PROVIDER_UNAVAILABLE',
+      'SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED',
+      'SOURCE_CREDENTIAL_CONFIG_INVALID',
+      'SOURCE_CREDENTIAL_MUTATION_FAILED',
+      'SOURCE_CREDENTIAL_TEST_FAILED',
+      'SOURCE_CREDENTIAL_UNAVAILABLE',
+      'SOURCE_DOCUMENT_COMPILATION_FAILED',
+      'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
+      'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
+      'SOURCE_IMPORT_PARTIAL_FAILURE',
+      'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
+      'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_UNAVAILABLE',
+      'SOURCE_ONLINE_DRIVE_CONFIG_INVALID',
+      'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED',
+      'SOURCE_ONLINE_DRIVE_IMPORT_FAILED',
+      'SOURCE_ONLINE_DRIVE_REQUEST_FAILED',
+      'SOURCE_ONLINE_DRIVE_UNAVAILABLE',
+      'SOURCE_OPERATION_FAILED',
+      'SOURCE_PROVIDER_REJECTED',
+      'SOURCE_PROVIDER_TIMEOUT',
+      'SOURCE_PROVIDER_UNAVAILABLE',
+      'SOURCE_SECRET_INTEGRITY_FAILED',
+      'SOURCE_SECRET_REF_CONFLICT',
+      'SOURCE_SYNC_FAILED',
+      'SOURCE_SYNC_SELECTION_MISMATCH',
+      'SOURCE_VERSION_CONFLICT',
+      'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
+      'SOURCE_WEBSITE_CRAWL_FAILED',
+      'SOURCE_WORKFLOW_CONTENT_MISSING',
+      'SOURCE_WORKFLOW_CONTENT_TOO_LARGE',
+      'SOURCE_WORKFLOW_EXTERNAL_TIMEOUT',
+      'SOURCE_WORKFLOW_FAILED',
+      'UPLOAD_INITIALIZATION_FAILED',
+      'UPLOAD_INTEGRITY_MISMATCH',
+      'VECTOR_SPACE_QUOTA_EXCEEDED',
+      'VECTOR_SPACE_QUOTA_UNAVAILABLE',
+    ])
+    .nullish(),
+  error: z.string().nullish(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  valid: z.boolean(),
+})
+
+/**
+ * KnowledgeFSSourceDeletePayload
+ */
+export const zKnowledgeFsSourceDeletePayload = z.object({
+  expectedRevision: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSSourceDeleteQuery
+ */
+export const zKnowledgeFsSourceDeleteQuery = z.object({
+  documents: z.enum(['cascade', 'keep']).optional().default('cascade'),
+})
+
+/**
+ * KnowledgeFSSourceEditOnlineDocumentSelectionPayload
+ */
+export const zKnowledgeFsSourceEditOnlineDocumentSelectionPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online_document'),
+})
+
+/**
+ * KnowledgeFSSourceEditOnlineDriveSelectionPayload
+ */
+export const zKnowledgeFsSourceEditOnlineDriveSelectionPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online_drive'),
+})
+
+/**
+ * KnowledgeFSSourceEditSyncPolicyPayload
+ */
+export const zKnowledgeFsSourceEditSyncPolicyPayload = z.object({
+  customIntervalSeconds: z.int().gte(3600).lte(2592000).nullish(),
+  enabled: z.boolean(),
+  mode: z.enum(['custom', 'interval', 'manual']),
+})
+
+/**
+ * KnowledgeFSSourceEditWebsiteSelectionPayload
+ */
+export const zKnowledgeFsSourceEditWebsiteSelectionPayload = z.object({
+  kind: z.literal('website_crawl'),
+  sourceUrls: z.array(z.string()).min(1).max(200),
+})
+
+/**
+ * KnowledgeFSSourceFileResponse
+ */
+export const zKnowledgeFsSourceFileResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  size: z.number().gte(0).nullish(),
+  type: z.string(),
+})
+
+/**
+ * KnowledgeFSSourceFileBucketResponse
+ */
+export const zKnowledgeFsSourceFileBucketResponse = z.object({
+  bucket: z.string().nullish(),
+  continuation_token: z.string().nullish(),
+  files: z.array(zKnowledgeFsSourceFileResponse),
+  is_truncated: z.boolean().nullish(),
+})
+
+/**
+ * KnowledgeFSSourceFilesQuery
+ */
+export const zKnowledgeFsSourceFilesQuery = z.object({
+  bucket: z.string().nullish(),
+  continuationToken: z.string().min(1).max(4096).nullish(),
+  maxKeys: z.int().gte(1).lte(1000).nullish(),
+  prefix: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSSourceFilesResponse
+ */
+export const zKnowledgeFsSourceFilesResponse = z.object({
+  buckets: z.array(zKnowledgeFsSourceFileBucketResponse),
+})
+
+/**
+ * KnowledgeFSSourceImportConfigurationPayload
+ */
+export const zKnowledgeFsSourceImportConfigurationPayload = z.object({
+  expectedVersion: z.int().gte(1),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string().min(1).max(200).nullish(),
+  providerParameters: z
+    .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
+    .nullish(),
+  status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
+  uri: z.string().min(1).max(4096).nullish(),
+})
+
+/**
+ * KnowledgeFSCrawlImportPayload
+ */
+export const zKnowledgeFsCrawlImportPayload = z.object({
+  desiredSyncPolicy: zKnowledgeFsSourceEditSyncPolicyPayload.nullish(),
+  pages: z.array(zKnowledgeFsCrawlImportPagePayload).min(1).max(200).nullish(),
+  replaceExistingSelection: z.boolean().optional().default(false),
+  sourceUpdate: zKnowledgeFsSourceImportConfigurationPayload.nullish(),
+  sourceUrls: z.array(z.string()).min(1).max(200),
+})
+
+/**
+ * KnowledgeFSOnlineDocumentWorkflowImportPayload
+ */
+export const zKnowledgeFsOnlineDocumentWorkflowImportPayload = z.object({
+  desiredSyncPolicy: zKnowledgeFsSourceEditSyncPolicyPayload.nullish(),
+  items: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online-document-import'),
+  sourceUpdate: zKnowledgeFsSourceImportConfigurationPayload.nullish(),
+})
+
+/**
+ * KnowledgeFSOnlineDriveWorkflowImportPayload
+ */
+export const zKnowledgeFsOnlineDriveWorkflowImportPayload = z.object({
+  desiredSyncPolicy: zKnowledgeFsSourceEditSyncPolicyPayload.nullish(),
+  items: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online-drive-import'),
+  sourceUpdate: zKnowledgeFsSourceImportConfigurationPayload.nullish(),
+})
+
+/**
+ * KnowledgeFSSourceImportFailureResponse
+ */
+export const zKnowledgeFsSourceImportFailureResponse = z.object({
+  code: z.enum([
+    'DOCUMENT_COMPILATION_FAILED',
+    'DOCUMENT_COMPILATION_LEASE_LOST',
+    'DOCUMENT_COMPILATION_PROFILE_CHANGED',
+    'DOCUMENT_COMPILATION_RETRYABLE',
+    'DOCUMENT_COUNT_QUOTA_EXCEEDED',
+    'DOCUMENT_COUNT_QUOTA_UNAVAILABLE',
+    'DOCUMENT_DISABLED',
+    'DOCUMENT_PARSER_INPUT_INVALID',
+    'DOCUMENT_PARSER_NOT_CONFIGURED',
+    'DOCUMENT_PARSER_RATE_LIMITED',
+    'DOCUMENT_PARSER_RESPONSE_INVALID',
+    'DOCUMENT_PARSER_TIMEOUT',
+    'DOCUMENT_PARSER_UNAVAILABLE',
+    'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
+    'DOCUMENT_PDF_RENDER_FAILED',
+    'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
+    'EMBEDDING_DIMENSION_INVALID',
+    'EMBEDDING_DIMENSION_UNSUPPORTED',
+    'EXECUTION_ATTEMPTS_EXHAUSTED',
+    'KNOWLEDGE_FS_ACCESS_DENIED',
+    'KNOWLEDGE_FS_CONFLICT',
+    'KNOWLEDGE_FS_INTERNAL_ERROR',
+    'KNOWLEDGE_FS_INVALID_REQUEST',
+    'KNOWLEDGE_FS_NOT_FOUND',
+    'KNOWLEDGE_FS_RATE_LIMITED',
+    'KNOWLEDGE_FS_TIMEOUT',
+    'KNOWLEDGE_FS_UNAVAILABLE',
+    'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND',
+    'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED',
+    'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS',
+    'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED',
+    'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT',
+    'LOGICAL_DOCUMENT_CAS_CONFLICT',
+    'MODEL_CAPABILITY_MISMATCH',
+    'MODEL_CONFIGURATION_STALE',
+    'MODEL_CREDENTIAL_INVALID',
+    'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE',
+    'MODEL_IDENTITY_MISMATCH',
+    'MODEL_PREFLIGHT_CANCELED',
+    'MODEL_PREFLIGHT_FAILED',
+    'MODEL_PREFLIGHT_TIMEOUT',
+    'MODEL_PREFLIGHT_UNAVAILABLE',
+    'MODEL_PROFILE_ACTIVATION_INCOMPLETE',
+    'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED',
+    'MODEL_RUNTIME_CONTEXT_LIMIT',
+    'MODEL_RUNTIME_FAILED',
+    'MODEL_RUNTIME_OUTPUT_LIMIT',
+    'MODEL_RUNTIME_RESPONSE_INVALID',
+    'MODEL_RUNTIME_TIMEOUT',
+    'MODEL_RUNTIME_UNAVAILABLE',
+    'MODEL_SELECTION_NOT_FOUND',
+    'RESEARCH_TASK_CAPABILITY_REVOKED',
+    'RESEARCH_TASK_DISPATCH_DEAD',
+    'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED',
+    'RESEARCH_TASK_FAILED',
+    'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID',
+    'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID',
+    'RETRIEVAL_DELETION_IN_PROGRESS',
+    'RETRIEVAL_EXECUTION_LEASE_LOST',
+    'SOURCE_BULK_ACTION_FAILED',
+    'SOURCE_CONNECTION_UNAVAILABLE',
+    'SOURCE_CRAWL_PAGE_NOT_FOUND',
+    'SOURCE_CRAWL_PROVIDER_UNAVAILABLE',
+    'SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED',
+    'SOURCE_CREDENTIAL_CONFIG_INVALID',
+    'SOURCE_CREDENTIAL_MUTATION_FAILED',
+    'SOURCE_CREDENTIAL_TEST_FAILED',
+    'SOURCE_CREDENTIAL_UNAVAILABLE',
+    'SOURCE_DOCUMENT_COMPILATION_FAILED',
+    'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
+    'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
+    'SOURCE_IMPORT_PARTIAL_FAILURE',
+    'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
+    'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED',
+    'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED',
+    'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED',
+    'SOURCE_ONLINE_DOCUMENT_UNAVAILABLE',
+    'SOURCE_ONLINE_DRIVE_CONFIG_INVALID',
+    'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED',
+    'SOURCE_ONLINE_DRIVE_IMPORT_FAILED',
+    'SOURCE_ONLINE_DRIVE_REQUEST_FAILED',
+    'SOURCE_ONLINE_DRIVE_UNAVAILABLE',
+    'SOURCE_OPERATION_FAILED',
+    'SOURCE_PROVIDER_REJECTED',
+    'SOURCE_PROVIDER_TIMEOUT',
+    'SOURCE_PROVIDER_UNAVAILABLE',
+    'SOURCE_SECRET_INTEGRITY_FAILED',
+    'SOURCE_SECRET_REF_CONFLICT',
+    'SOURCE_SYNC_FAILED',
+    'SOURCE_SYNC_SELECTION_MISMATCH',
+    'SOURCE_VERSION_CONFLICT',
+    'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
+    'SOURCE_WEBSITE_CRAWL_FAILED',
+    'SOURCE_WORKFLOW_CONTENT_MISSING',
+    'SOURCE_WORKFLOW_CONTENT_TOO_LARGE',
+    'SOURCE_WORKFLOW_EXTERNAL_TIMEOUT',
+    'SOURCE_WORKFLOW_FAILED',
+    'UPLOAD_INITIALIZATION_FAILED',
+    'UPLOAD_INTEGRITY_MISMATCH',
+    'VECTOR_SPACE_QUOTA_EXCEEDED',
+    'VECTOR_SPACE_QUOTA_UNAVAILABLE',
+  ]),
+  error: z.string(),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  filename: z.string(),
+})
+
+/**
+ * KnowledgeFSSourceImportFilePayload
+ */
+export const zKnowledgeFsSourceImportFilePayload = z.object({
+  bucket: z.string().nullish(),
+  id: z.string().min(1),
+  mimeType: z.string().nullish(),
+  name: z.string().min(1).max(255),
+})
+
+/**
+ * KnowledgeFSSourceImportFilesPayload
+ */
+export const zKnowledgeFsSourceImportFilesPayload = z.object({
+  files: z.array(zKnowledgeFsSourceImportFilePayload).min(1).max(200),
+})
+
+/**
+ * KnowledgeFSSourceImportPagePayload
+ */
+export const zKnowledgeFsSourceImportPagePayload = z.object({
+  lastEditedTime: z.string().nullish(),
+  name: z.string().min(1).max(200).nullish(),
+  pageId: z.string().min(1),
+  type: z.string().min(1),
+  workspaceId: z.string().min(1),
+})
+
+/**
+ * KnowledgeFSSourceImportPagesPayload
+ */
+export const zKnowledgeFsSourceImportPagesPayload = z.object({
+  pages: z.array(zKnowledgeFsSourceImportPagePayload).min(1).max(200),
+})
+
+/**
+ * KnowledgeFSSourceImportedDocumentResponse
+ */
+export const zKnowledgeFsSourceImportedDocumentResponse = z.object({
+  document_asset_id: z.string(),
+  filename: z.string(),
+})
+
+/**
+ * KnowledgeFSSourceImportResponse
+ */
+export const zKnowledgeFsSourceImportResponse = z.object({
+  documents: z.array(zKnowledgeFsSourceImportedDocumentResponse),
+  failed: z.array(zKnowledgeFsSourceImportFailureResponse),
+  skipped: z.array(z.string()),
+})
+
+/**
+ * KnowledgeFSSourcePageResponse
+ */
+export const zKnowledgeFsSourcePageResponse = z.object({
+  last_edited_time: z.string().nullish(),
+  page_id: z.string(),
+  page_name: z.string(),
+  parent_id: z.string().nullish(),
+  type: z.string(),
+})
+
+/**
+ * KnowledgeFSSourcePagesQuery
+ */
+export const zKnowledgeFsSourcePagesQuery = z.object({
+  cursor: z.string().min(1).max(4096).nullish(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * KnowledgeFSSourceProviderFieldResponse
+ */
+export const zKnowledgeFsSourceProviderFieldResponse = z.object({
+  description: z.string().nullish(),
+  format: z.enum(['password', 'uri']).nullish(),
+  name: z.string(),
+  required: z.boolean(),
+  secret: z.boolean(),
+  type: z.enum(['boolean', 'integer', 'string']),
+})
+
+/**
+ * KnowledgeFSSourceProviderResponse
+ */
+export const zKnowledgeFsSourceProviderResponse = z.object({
+  auth_kinds: z.array(z.enum(['api-key', 'endpoint', 'oauth2'])),
+  available: z.boolean(),
+  capabilities: z.array(z.enum(['online-document', 'online-drive', 'website-crawl'])),
+  configuration: z.array(zKnowledgeFsSourceProviderFieldResponse),
+  display_name: z.string(),
+  id: z.string(),
+  unavailable_reason: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSSourceProviderListResponse
+ */
+export const zKnowledgeFsSourceProviderListResponse = z.object({
+  data: z.array(zKnowledgeFsSourceProviderResponse),
+})
+
+/**
+ * KnowledgeFSSourceSyncPolicyPayload
+ */
+export const zKnowledgeFsSourceSyncPolicyPayload = z.object({
+  customIntervalSeconds: z.int().gte(3600).lte(2592000).nullish(),
+  enabled: z.boolean(),
+  expectedRevision: z.int().gte(0),
+  expectedSourceVersion: z.int().gte(1),
+  mode: z.enum(['custom', 'interval', 'manual']),
+})
+
+/**
+ * KnowledgeFSSourceSyncPolicyResponse
+ */
+export const zKnowledgeFsSourceSyncPolicyResponse = z.object({
+  created_at: z.iso.datetime(),
+  custom_interval_seconds: z.int().nullish(),
+  enabled: z.boolean(),
+  expected_source_version: z.int().gte(1),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  mode: z.enum(['custom', 'interval', 'manual']),
+  next_run_at: z.iso.datetime().nullish(),
+  revision: z.int().gte(1),
+  source_id: z.string(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSSourceUpdatePayload
+ */
+export const zKnowledgeFsSourceUpdatePayload = z.object({
+  expectedVersion: z.int().gte(1).nullish(),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string().min(1).max(200).nullish(),
+  providerParameters: z
+    .record(z.string(), z.union([z.boolean(), z.number(), z.string()]))
+    .nullish(),
+  selection: z
+    .discriminatedUnion('kind', [
+      zKnowledgeFsSourceEditWebsiteSelectionPayload,
+      zKnowledgeFsSourceEditOnlineDocumentSelectionPayload,
+      zKnowledgeFsSourceEditOnlineDriveSelectionPayload,
+    ])
+    .nullish(),
+  status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
+  syncAfterUpdate: z.boolean().nullish(),
+  syncPolicy: zKnowledgeFsSourceEditSyncPolicyPayload.nullish(),
+  uri: z.string().min(1).max(4096).nullish(),
+})
+
+/**
+ * KnowledgeFSSourceWorkflowCancelPayload
+ */
+export const zKnowledgeFsSourceWorkflowCancelPayload = z.object({
+  reason: z.string().max(1000).nullish(),
+})
+
+/**
+ * KnowledgeFSSourceWorkflowImportPayload
+ */
+export const zKnowledgeFsSourceWorkflowImportPayload = z.discriminatedUnion('kind', [
+  zKnowledgeFsOnlineDocumentWorkflowImportPayload,
+  zKnowledgeFsOnlineDriveWorkflowImportPayload,
+])
+
+/**
+ * KnowledgeFSSourceWorkflowListQuery
+ */
+export const zKnowledgeFsSourceWorkflowListQuery = z.object({
+  cursor: z.string().min(1).max(1000).nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+  sourceId: z.string().min(1).max(255).nullish(),
+})
+
+/**
+ * KnowledgeFSSourceWorkflowResponse
+ */
+export const zKnowledgeFsSourceWorkflowResponse = z.object({
+  canceled_at: z.iso.datetime().nullish(),
+  checkpoint: z.string(),
+  completed_at: z.iso.datetime().nullish(),
+  created_at: z.iso.datetime(),
+  cursor: z.string().nullish(),
+  execution_attempts: z.int().gte(0),
+  failure: zKnowledgeFsPublicFailureResponse.nullish(),
+  id: z.string(),
+  kind: z.string(),
+  knowledge_space_id: z.string(),
+  last_error_code: z
+    .enum([
+      'DOCUMENT_COMPILATION_FAILED',
+      'DOCUMENT_COMPILATION_LEASE_LOST',
+      'DOCUMENT_COMPILATION_PROFILE_CHANGED',
+      'DOCUMENT_COMPILATION_RETRYABLE',
+      'DOCUMENT_COUNT_QUOTA_EXCEEDED',
+      'DOCUMENT_COUNT_QUOTA_UNAVAILABLE',
+      'DOCUMENT_DISABLED',
+      'DOCUMENT_PARSER_INPUT_INVALID',
+      'DOCUMENT_PARSER_NOT_CONFIGURED',
+      'DOCUMENT_PARSER_RATE_LIMITED',
+      'DOCUMENT_PARSER_RESPONSE_INVALID',
+      'DOCUMENT_PARSER_TIMEOUT',
+      'DOCUMENT_PARSER_UNAVAILABLE',
+      'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
+      'DOCUMENT_PDF_RENDER_FAILED',
+      'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
+      'EMBEDDING_DIMENSION_INVALID',
+      'EMBEDDING_DIMENSION_UNSUPPORTED',
+      'EXECUTION_ATTEMPTS_EXHAUSTED',
+      'KNOWLEDGE_FS_ACCESS_DENIED',
+      'KNOWLEDGE_FS_CONFLICT',
+      'KNOWLEDGE_FS_INTERNAL_ERROR',
+      'KNOWLEDGE_FS_INVALID_REQUEST',
+      'KNOWLEDGE_FS_NOT_FOUND',
+      'KNOWLEDGE_FS_RATE_LIMITED',
+      'KNOWLEDGE_FS_TIMEOUT',
+      'KNOWLEDGE_FS_UNAVAILABLE',
+      'KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND',
+      'KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED',
+      'KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS',
+      'KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED',
+      'KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT',
+      'LOGICAL_DOCUMENT_CAS_CONFLICT',
+      'MODEL_CAPABILITY_MISMATCH',
+      'MODEL_CONFIGURATION_STALE',
+      'MODEL_CREDENTIAL_INVALID',
+      'MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE',
+      'MODEL_IDENTITY_MISMATCH',
+      'MODEL_PREFLIGHT_CANCELED',
+      'MODEL_PREFLIGHT_FAILED',
+      'MODEL_PREFLIGHT_TIMEOUT',
+      'MODEL_PREFLIGHT_UNAVAILABLE',
+      'MODEL_PROFILE_ACTIVATION_INCOMPLETE',
+      'MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED',
+      'MODEL_RUNTIME_CONTEXT_LIMIT',
+      'MODEL_RUNTIME_FAILED',
+      'MODEL_RUNTIME_OUTPUT_LIMIT',
+      'MODEL_RUNTIME_RESPONSE_INVALID',
+      'MODEL_RUNTIME_TIMEOUT',
+      'MODEL_RUNTIME_UNAVAILABLE',
+      'MODEL_SELECTION_NOT_FOUND',
+      'RESEARCH_TASK_CAPABILITY_REVOKED',
+      'RESEARCH_TASK_DISPATCH_DEAD',
+      'RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED',
+      'RESEARCH_TASK_FAILED',
+      'RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID',
+      'RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID',
+      'RETRIEVAL_DELETION_IN_PROGRESS',
+      'RETRIEVAL_EXECUTION_LEASE_LOST',
+      'SOURCE_BULK_ACTION_FAILED',
+      'SOURCE_CONNECTION_UNAVAILABLE',
+      'SOURCE_CRAWL_PAGE_NOT_FOUND',
+      'SOURCE_CRAWL_PROVIDER_UNAVAILABLE',
+      'SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED',
+      'SOURCE_CREDENTIAL_CONFIG_INVALID',
+      'SOURCE_CREDENTIAL_MUTATION_FAILED',
+      'SOURCE_CREDENTIAL_TEST_FAILED',
+      'SOURCE_CREDENTIAL_UNAVAILABLE',
+      'SOURCE_DOCUMENT_COMPILATION_FAILED',
+      'SOURCE_DOCUMENT_MATERIALIZATION_FAILED',
+      'SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED',
+      'SOURCE_IMPORT_PARTIAL_FAILURE',
+      'SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID',
+      'SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED',
+      'SOURCE_ONLINE_DOCUMENT_UNAVAILABLE',
+      'SOURCE_ONLINE_DRIVE_CONFIG_INVALID',
+      'SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED',
+      'SOURCE_ONLINE_DRIVE_IMPORT_FAILED',
+      'SOURCE_ONLINE_DRIVE_REQUEST_FAILED',
+      'SOURCE_ONLINE_DRIVE_UNAVAILABLE',
+      'SOURCE_OPERATION_FAILED',
+      'SOURCE_PROVIDER_REJECTED',
+      'SOURCE_PROVIDER_TIMEOUT',
+      'SOURCE_PROVIDER_UNAVAILABLE',
+      'SOURCE_SECRET_INTEGRITY_FAILED',
+      'SOURCE_SECRET_REF_CONFLICT',
+      'SOURCE_SYNC_FAILED',
+      'SOURCE_SYNC_SELECTION_MISMATCH',
+      'SOURCE_VERSION_CONFLICT',
+      'SOURCE_WEBSITE_CRAWL_CONFIG_INVALID',
+      'SOURCE_WEBSITE_CRAWL_FAILED',
+      'SOURCE_WORKFLOW_CONTENT_MISSING',
+      'SOURCE_WORKFLOW_CONTENT_TOO_LARGE',
+      'SOURCE_WORKFLOW_EXTERNAL_TIMEOUT',
+      'SOURCE_WORKFLOW_FAILED',
+      'UPLOAD_INITIALIZATION_FAILED',
+      'UPLOAD_INTEGRITY_MISMATCH',
+      'VECTOR_SPACE_QUOTA_EXCEEDED',
+      'VECTOR_SPACE_QUOTA_UNAVAILABLE',
+    ])
+    .nullish(),
+  max_execution_attempts: z.int().gte(1),
+  progress_completed: z.int().gte(0),
+  progress_failed: z.int().gte(0),
+  progress_skipped: z.int().gte(0),
+  progress_total: z.int().gte(0).nullish(),
+  source_id: z.string().nullish(),
+  state: z.string(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * KnowledgeFSSourceResponse
+ */
+export const zKnowledgeFsSourceResponse = z.object({
+  connection_id: z.string().nullish(),
+  created_at: z.iso.datetime(),
+  credential_configured: z.boolean().nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  last_synced_at: z.iso.datetime().nullish(),
+  metadata: z.record(z.string(), z.unknown()),
+  name: z.string(),
+  permission_scope: z.array(z.string()),
+  status: z.enum(['active', 'disabled', 'error', 'syncing']),
+  sync_policy: zKnowledgeFsSourceSyncPolicyResponse.nullish(),
+  sync_workflow: zKnowledgeFsSourceWorkflowResponse.nullish(),
+  type: z.enum(['connector', 'object-storage', 'upload', 'web']),
+  updated_at: z.iso.datetime(),
+  uri: z.string(),
+  version: z.int().gte(1),
+})
+
+/**
+ * KnowledgeFSSourceListResponse
+ */
+export const zKnowledgeFsSourceListResponse = z.object({
+  data: z.array(zKnowledgeFsSourceResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSSourceWorkflowListResponse
+ */
+export const zKnowledgeFsSourceWorkflowListResponse = z.object({
+  data: z.array(zKnowledgeFsSourceWorkflowResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSSourceWorkspacePagesResponse
+ */
+export const zKnowledgeFsSourceWorkspacePagesResponse = z.object({
+  pages: z.array(zKnowledgeFsSourcePageResponse),
+  total: z.int().gte(0).nullish(),
+  workspace_id: z.string().nullish(),
+  workspace_name: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSSourcePagesResponse
+ */
+export const zKnowledgeFsSourcePagesResponse = z.object({
+  next_cursor: z.string().nullish(),
+  workspaces: z.array(zKnowledgeFsSourceWorkspacePagesResponse),
+})
+
+/**
+ * KnowledgeFSTraceEntriesQuery
+ */
+export const zKnowledgeFsTraceEntriesQuery = z.object({
+  cursor: z.string().min(1).max(1000).nullish(),
+  limit: z.int().gte(1).lte(200).optional().default(100),
+})
+
+/**
+ * KnowledgeFSTraceEntryResponse
+ */
+export const zKnowledgeFsTraceEntryResponse = z.object({
+  kind: z.enum(['directory', 'resource']),
+  metadata: z.record(z.string(), z.unknown()),
+  name: z.string(),
+  path: z.string(),
+  resource_type: z.string().nullish(),
+  target_id: z.string().nullish(),
+  version: z.int().gte(1).nullish(),
+})
+
+/**
+ * KnowledgeFSTraceEntryListResponse
+ */
+export const zKnowledgeFsTraceEntryListResponse = z.object({
+  consistency_class: z.string().nullish(),
+  data: z.array(zKnowledgeFsTraceEntryResponse),
+  next_cursor: z.string().nullish(),
+  path: z.string(),
+  preview: z.boolean().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
+ * KnowledgeFSTraceProfileResponse
+ */
+export const zKnowledgeFsTraceProfileResponse = z.object({
+  embedding_model: z.string().nullish(),
+  embedding_vector_space_id: z.string().nullish(),
+  projection_publication_id: z.string().nullish(),
+  projection_version: z.int().gte(1).nullish(),
+  reasoning_model: z.string().nullish(),
+  rerank_model: z.string().nullish(),
+  retrieval_profile_revision: z.int().gte(1).nullish(),
+})
+
+/**
+ * KnowledgeFSTraceScoresResponse
+ */
+export const zKnowledgeFsTraceScoresResponse = z.object({
+  final: z.number().gte(0).lte(1).nullish(),
+  rerank: z.number().gte(0).lte(1).nullish(),
+  retrieval: z.number().gte(0).lte(1).nullish(),
+})
+
+export const zKnowledgeFsTraceSource = z.enum([
+  'agent',
+  'mcp',
+  'retrieval_test',
+  'service_api',
+  'workflow',
+])
+
+/**
+ * KnowledgeFSAnswerTraceResponse
+ */
+export const zKnowledgeFsAnswerTraceResponse = z.object({
+  created_at: z.iso.datetime(),
+  evidence_bundle_id: z.string().nullish(),
+  id: z.string(),
+  knowledge_space_id: z.string(),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']),
+  query: z.string(),
+  query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
+  source: zKnowledgeFsTraceSource.optional().default('retrieval_test'),
+  steps: z.array(zKnowledgeFsAnswerTraceStepResponse),
+})
+
+/**
+ * KnowledgeFSTraceStageResponse
+ */
+export const zKnowledgeFsTraceStageResponse = z.object({
+  candidate_count: z.int().gte(0).nullish(),
+  name: z.string(),
+  status: z.enum(['error', 'ok', 'skipped']),
+})
+
+/**
+ * KnowledgeFSTraceResponse
+ */
+export const zKnowledgeFsTraceResponse = z.object({
+  completed: z.boolean(),
+  created_at: z.iso.datetime(),
+  duration_ms: z.int().gte(0).nullish(),
+  evidence_bundle_id: z.string().nullish(),
+  evidence_state: z.string().nullish(),
+  final_score: z.number().gte(0).lte(1).nullish(),
+  id: z.string(),
+  mode: z.enum(['auto', 'deep', 'fast', 'research']),
+  open_bad_case_id: z.string().nullish(),
+  profile: zKnowledgeFsTraceProfileResponse,
+  query: z.string(),
+  query_images: z.array(zKnowledgeFsQueryImageResponse).optional(),
+  result_count: z.int().gte(0),
+  scores: zKnowledgeFsTraceScoresResponse,
+  source: zKnowledgeFsTraceSource.optional().default('retrieval_test'),
+  stages: z.array(zKnowledgeFsTraceStageResponse),
+})
+
+/**
+ * KnowledgeFSTraceListResponse
+ */
+export const zKnowledgeFsTraceListResponse = z.object({
+  data: z.array(zKnowledgeFsTraceResponse),
+  next_cursor: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFsAccessDeniedError
+ *
+ * Agent Knowledge Base operation is not allowed.
+ */
+export const zKnowledgeFsAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_access_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * KnowledgeFsCitation
+ *
+ * Immutable evidence identity; no signed URLs, tokens or storage keys.
+ */
+export const zKnowledgeFsCitation = z.object({
+  artifact_hash: z.string().min(1).max(255),
+  control_space_id: z.string().length(36),
+  document_asset_id: z.string().min(1).max(512),
+  document_title: z.string().max(2000).nullish(),
+  document_version: z.int().gte(1).nullish(),
+  end_offset: z.int().gte(0).nullish(),
+  id: z.string().regex(/^kfs_[a-f0-9]{32}$/),
+  node_id: z.string().min(1).max(512),
+  page_number: z.int().gte(0).nullish(),
+  parse_artifact_id: z.string().max(512).nullish(),
+  section_path: z.array(z.string()).max(64).optional(),
+  space_name: z.string().min(1).max(120),
+  start_offset: z.int().gte(0).nullish(),
+})
+
+/**
+ * BlockingRetrieverResourceResponse
+ */
+export const zBlockingRetrieverResourceResponse = z.object({
+  content: z.string().nullish(),
+  created_at: z.int().nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_id: z.uuid().nullish(),
+  dataset_name: z.string().nullish(),
+  document_id: z.uuid().nullish(),
+  document_name: z.string().nullish(),
+  hit_count: z.int().nullish(),
+  id: z.uuid().nullish(),
+  index_node_hash: z.string().nullish(),
+  knowledge_fs_citation: zKnowledgeFsCitation.nullish(),
+  message_id: z.uuid().nullish(),
+  position: z.int(),
+  score: z.number().nullish(),
+  segment_id: z.uuid().nullish(),
+  segment_position: z.int().nullish(),
+  summary: z.string().nullish(),
+  word_count: z.int().nullish(),
+})
+
+/**
+ * BlockingMetadataResponse
+ */
+export const zBlockingMetadataResponse = z.object({
+  retriever_resources: z.array(zBlockingRetrieverResourceResponse).nullish(),
+  usage: zBlockingUsageResponse.nullish(),
+})
+
+/**
+ * ChatMessageBlockingResponse
+ */
+export const zChatMessageBlockingResponse = z.object({
+  answer: z.string(),
+  conversation_id: z.uuid(),
+  created_at: z.int(),
+  event: z.literal('message'),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  task_id: z.uuid(),
 })
 
 /**
@@ -1345,62 +3743,131 @@ export const zChatPausedBlockingResponse = z.object({
  * Blocking chat response for a completed message or paused Chatflow.
  */
 export const zChatBlockingResponse = z.discriminatedUnion('event', [
-  zChatMessageBlockingResponse.extend({ event: z.literal('message') }),
-  zChatPausedBlockingResponse.extend({ event: z.literal('workflow_paused') }),
+  zChatMessageBlockingResponse,
+  zChatPausedBlockingResponse,
 ])
 
-export const zJsonValue = z.unknown()
-
 /**
- * AgentThought
+ * CompletionBlockingResponse
  */
-export const zAgentThought = z.object({
-  answer: z.string().nullish(),
-  chain_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  files: z.array(z.string()),
-  id: z.string(),
-  message_id: z.string(),
-  observation: z.string().nullish(),
-  position: z.int(),
-  thought: z.string().nullish(),
-  tool: z.string().nullish(),
-  tool_input: z.string().nullish(),
-  tool_labels: zJsonValue,
-})
-
-export const zJsonValueType = z.unknown()
-
-export const zJsonValue2 = z.unknown()
-
-/**
- * HumanInputFormSubmissionData
- */
-export const zHumanInputFormSubmissionData = z.object({
-  action_id: z.string(),
-  action_text: z.string(),
-  node_id: z.string(),
-  node_title: z.string(),
-  rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+export const zCompletionBlockingResponse = z.object({
+  answer: z.string(),
+  created_at: z.int(),
+  event: z.string(),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  task_id: z.uuid(),
 })
 
 /**
- * HumanInputFormSubmitPayload
+ * KnowledgeFsConflictError
+ *
+ * Agent Knowledge Base operation conflicts with the current resource state.
  */
-export const zHumanInputFormSubmitPayload = z.object({
-  action: z.string(),
-  inputs: z.record(z.string(), zJsonValue2),
-})
+export const zKnowledgeFsConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_conflict'),
+    status: z.literal(409),
+  }),
+)
 
 /**
- * HumanInputFormSubmitPayload
+ * KnowledgeFsInvalidCredentialError
+ *
+ * Invalid Agent Knowledge Base service credential.
  */
-export const zHumanInputFormSubmitPayloadWithUser = z.object({
-  action: z.string(),
-  inputs: z.record(z.string(), zJsonValue2),
-  user: z.string(),
-})
+export const zKnowledgeFsInvalidCredentialError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_invalid_credential'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * KnowledgeFsInvalidRequestError
+ *
+ * Agent Knowledge Base request is invalid.
+ */
+export const zKnowledgeFsInvalidRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_invalid_request'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * KnowledgeFsOperationUnavailableError
+ *
+ * Agent Knowledge Base operation is not available.
+ */
+export const zKnowledgeFsOperationUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_operation_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * KnowledgeFsRateLimitExceededError
+ *
+ * Agent Knowledge Base request rate limit exceeded.
+ */
+export const zKnowledgeFsRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * KnowledgeFsRequestRejectedError
+ *
+ * Agent Knowledge Base request was rejected.
+ */
+export const zKnowledgeFsRequestRejectedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_request_rejected'),
+    status: z.literal(422),
+  }),
+)
+
+/**
+ * KnowledgeFsRequestTooLargeError
+ *
+ * Agent Knowledge Base request is too large.
+ */
+export const zKnowledgeFsRequestTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_request_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * KnowledgeFsResourceNotFoundError
+ *
+ * Agent Knowledge Base resource was not found.
+ */
+export const zKnowledgeFsResourceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_resource_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * KnowledgeFsUpstreamUnavailableError
+ *
+ * Agent Knowledge Base is unavailable.
+ */
+export const zKnowledgeFsUpstreamUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_upstream_unavailable'),
+    status: z.literal(502),
+  }),
+)
 
 /**
  * KnowledgeTagResponse
@@ -1511,6 +3978,18 @@ export const zMetadataUpdatePayload = z.object({
 })
 
 /**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ModelFeature
  *
  * Enum class for llm feature.
@@ -1548,6 +4027,16 @@ export const zModelPropertyKey = z.enum([
 ])
 
 /**
+ * I18nObject
+ *
+ * Model class for i18n object.
+ */
+export const zModelRuntimeI18nObject = z.object({
+  en_US: z.string(),
+  zh_Hans: z.string().nullish(),
+})
+
+/**
  * ModelStatus
  *
  * Enum class for model status.
@@ -1574,6 +4063,54 @@ export const zModelType = z.enum([
   'text-embedding',
   'tts',
 ])
+
+/**
+ * NoAudioUploadedError
+ *
+ * Please upload your audio.
+ */
+export const zNoAudioUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_audio_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NoFileUploadedError
+ *
+ * Please upload your file.
+ */
+export const zNoFileUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_file_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotChatAppError
+ *
+ * Please check if your app mode matches the right API route.
+ */
+export const zNotChatAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_chat_app'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotWorkflowAppError
+ *
+ * Please check if your app mode matches the right API route.
+ */
+export const zNotWorkflowAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_workflow_app'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ServiceApiUserPayload
@@ -1652,6 +4189,18 @@ export const zPipelineRunApiEntity = z.object({
 })
 
 /**
+ * PipelineRunError
+ *
+ * An error occurred while running the pipeline.
+ */
+export const zPipelineRunError = zErrorResponse.and(
+  z.object({
+    code: z.literal('pipeline_run_error'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * PipelineUploadFileResponse
  */
 export const zPipelineUploadFileResponse = z.object({
@@ -1695,7 +4244,7 @@ export const zProviderModelWithStatusEntity = z.object({
   features: z.array(zModelFeature).nullish(),
   fetch_from: zFetchFrom,
   has_invalid_load_balancing_configs: z.boolean().optional().default(false),
-  label: zI18nObject,
+  label: zModelRuntimeI18nObject,
   load_balancing_enabled: z.boolean().optional().default(false),
   model: z.string(),
   model_properties: z.record(z.string(), z.unknown()),
@@ -1704,14 +4253,50 @@ export const zProviderModelWithStatusEntity = z.object({
 })
 
 /**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotSupportSpeechToTextError
+ *
+ * Provider not support speech to text.
+ */
+export const zProviderNotSupportSpeechToTextError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_speech_to_text'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ProviderWithModelsResponse
  *
  * Model class for provider with models response.
  */
 export const zProviderWithModelsResponse = z.object({
-  icon_small: zI18nObject.nullish(),
-  icon_small_dark: zI18nObject.nullish(),
-  label: zI18nObject,
+  icon_small: zModelRuntimeI18nObject.nullish(),
+  icon_small_dark: zModelRuntimeI18nObject.nullish(),
+  label: zModelRuntimeI18nObject,
   models: z.array(zProviderModelWithStatusEntity),
   provider: z.string(),
   status: zCustomConfigurationStatus,
@@ -1733,6 +4318,18 @@ export const zPublishedPipelineRunResponse = z.object({
   dataset: zPipelineDataset,
   documents: z.array(zPipelineDocument),
 })
+
+/**
+ * RateLimitError
+ *
+ * Rate Limit Error
+ */
+export const zRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * RerankingModel
@@ -1760,6 +4357,134 @@ export const zRetrievalMethod = z.enum([
 ])
 
 /**
+ * DatasetRetrievalModelResponse
+ */
+export const zDatasetRetrievalModelResponse = z.object({
+  reranking_enable: z.boolean(),
+  reranking_mode: z.string().nullish(),
+  reranking_model: zDatasetRerankingModelResponse.optional(),
+  score_threshold: z.number().nullish(),
+  score_threshold_enabled: z.boolean(),
+  search_method: zRetrievalMethod,
+  top_k: z.int(),
+  weights: zDatasetWeightedScoreResponse.nullish(),
+})
+
+/**
+ * DatasetDetailResponse
+ */
+export const zDatasetDetailResponse = z.object({
+  app_count: z.int(),
+  author_name: z.string().nullable(),
+  built_in_field_enabled: z.boolean(),
+  chunk_structure: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string(),
+  data_source_type: z
+    .enum([
+      'local_file',
+      'notion_import',
+      'online_document',
+      'online_drive',
+      'upload_file',
+      'website_crawl',
+    ])
+    .nullable(),
+  description: z.string().nullable(),
+  doc_form: z.string().nullable(),
+  doc_metadata: z.array(zDatasetDocMetadataResponse),
+  document_count: z.int(),
+  embedding_available: z.boolean().nullish(),
+  embedding_model: z.string().nullable(),
+  embedding_model_provider: z.string().nullable(),
+  enable_api: z.boolean(),
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
+  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  icon_info: zDatasetIconInfoResponse.optional(),
+  id: z.string(),
+  indexing_technique: zIndexTechniqueType.nullable(),
+  is_multimodal: z.boolean(),
+  is_published: z.boolean(),
+  maintainer: z.string().nullish(),
+  name: z.string(),
+  permission: z.enum(['all_team_members', 'only_me', 'partial_members']),
+  pipeline_id: z.string().nullable(),
+  provider: z.string(),
+  retrieval_model_dict: zDatasetRetrievalModelResponse,
+  runtime_mode: z.enum(['general', 'rag_pipeline']).nullable(),
+  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
+  tags: z.array(zDatasetTagResponse),
+  total_available_documents: z.int(),
+  total_documents: z.int(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  word_count: z.int(),
+})
+
+/**
+ * DatasetDetailWithPartialMembersResponse
+ */
+export const zDatasetDetailWithPartialMembersResponse = z.object({
+  app_count: z.int(),
+  author_name: z.string().nullable(),
+  built_in_field_enabled: z.boolean(),
+  chunk_structure: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string(),
+  data_source_type: z
+    .enum([
+      'local_file',
+      'notion_import',
+      'online_document',
+      'online_drive',
+      'upload_file',
+      'website_crawl',
+    ])
+    .nullable(),
+  description: z.string().nullable(),
+  doc_form: z.string().nullable(),
+  doc_metadata: z.array(zDatasetDocMetadataResponse),
+  document_count: z.int(),
+  embedding_available: z.boolean().nullish(),
+  embedding_model: z.string().nullable(),
+  embedding_model_provider: z.string().nullable(),
+  enable_api: z.boolean(),
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
+  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  icon_info: zDatasetIconInfoResponse.optional(),
+  id: z.string(),
+  indexing_technique: zIndexTechniqueType.nullable(),
+  is_multimodal: z.boolean(),
+  is_published: z.boolean(),
+  maintainer: z.string().nullish(),
+  name: z.string(),
+  partial_member_list: z.array(z.string()).nullish(),
+  permission: z.enum(['all_team_members', 'only_me', 'partial_members']),
+  pipeline_id: z.string().nullable(),
+  provider: z.string(),
+  retrieval_model_dict: zDatasetRetrievalModelResponse,
+  runtime_mode: z.enum(['general', 'rag_pipeline']).nullable(),
+  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
+  tags: z.array(zDatasetTagResponse),
+  total_available_documents: z.int(),
+  total_documents: z.int(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  word_count: z.int(),
+})
+
+/**
+ * DatasetListResponse
+ */
+export const zDatasetListResponse = z.object({
+  data: z.array(zDatasetDetailResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * RetrieverResource
  */
 export const zRetrieverResource = z.object({
@@ -1769,12 +4494,16 @@ export const zRetrieverResource = z.object({
   dataset_id: z.uuid().nullish(),
   dataset_name: z.string().nullish(),
   doc_metadata: z.record(z.string(), zJsonValueType).nullish(),
+  document_asset_id: z.uuid().nullish(),
   document_id: z.uuid().nullish(),
   document_name: z.string().nullish(),
+  document_revision: z.int().nullish(),
+  document_version: z.int().nullish(),
   files: z.array(z.record(z.string(), zJsonValueType)).nullish(),
   hit_count: z.int().nullish(),
   id: z.uuid().optional(),
   index_node_hash: z.string().nullish(),
+  knowledge_fs_citation: zKnowledgeFsCitation.nullish(),
   message_id: z.uuid().optional(),
   page: z.int().nullish(),
   position: z.int(),
@@ -1857,7 +4586,7 @@ export const zSegmentResponse = z.object({
   keywords: z.array(z.string()).nullable(),
   position: z.int(),
   sign_content: z.string(),
-  status: z.string(),
+  status: z.enum(['completed', 'error', 'indexing', 'paused', 're_segment', 'waiting']),
   stopped_at: z.int().nullable(),
   summary: z.string().nullable(),
   tokens: z.int(),
@@ -1956,7 +4685,7 @@ export const zSimpleAccountResponse = z.object({
 export const zSimpleConversation = z.object({
   created_at: z.int().nullish(),
   id: z.uuid(),
-  inputs: z.record(z.string(), zJsonValue),
+  inputs: z.record(z.string(), zAnyJsonValue),
   introduction: z.string().nullish(),
   name: z.string(),
   status: z.string(),
@@ -2024,6 +4753,18 @@ export const zSite = z.object({
   title: z.string(),
   use_icon_as_answer_icon: z.boolean(),
 })
+
+/**
+ * SpeechToTextDisabledError
+ *
+ * Speech to text is disabled.
+ */
+export const zSpeechToTextDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('speech_to_text_disabled'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * SystemParameters
@@ -2448,6 +5189,18 @@ export const zTextToAudioPayloadWithUser = z.object({
 })
 
 /**
+ * TooManyFilesError
+ *
+ * Only one file is allowed.
+ */
+export const zTooManyFilesError = zErrorResponse.and(
+  z.object({
+    code: z.literal('too_many_files'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * ToolIcon
  */
 export const zToolIcon = z.object({
@@ -2461,6 +5214,42 @@ export const zToolIcon = z.object({
 export const zAppMetaResponse = z.object({
   tool_icons: z.record(z.string(), z.union([z.string(), zToolIcon])).optional(),
 })
+
+/**
+ * TriggerWorkflowServiceModeUnavailableError
+ *
+ * This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
+ */
+export const zTriggerWorkflowServiceModeUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trigger_workflow_service_mode_unavailable'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * UnsupportedAudioTypeError
+ *
+ * Audio type not allowed.
+ */
+export const zUnsupportedAudioTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_audio_type'),
+    status: z.literal(415),
+  }),
+)
+
+/**
+ * UnsupportedFileTypeError
+ *
+ * File type not allowed.
+ */
+export const zUnsupportedFileTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_file_type'),
+    status: z.literal(415),
+  }),
+)
 
 /**
  * UrlResponse
@@ -2532,10 +5321,10 @@ export const zParagraphInputConfig = z.object({
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
 ])
 
 /**
@@ -3064,6 +5853,18 @@ export const zWorkflowRunResponse = z.object({
 export const zWorkflowTaskStopPayload = z.object({
   user: z.string(),
 })
+
+/**
+ * WorkflowVersionExecutionNotAllowedError
+ *
+ * Workflow version execution is not available on your current plan. Please upgrade to a paid plan.
+ */
+export const zWorkflowVersionExecutionNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_version_execution_not_allowed'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * HumanInputFormSubmitResponse
@@ -3970,6 +6771,969 @@ export const zPostFormHumanInputByFormTokenResponse = zHumanInputFormSubmitRespo
  * Basic information of the application.
  */
 export const zGetInfoResponse = zAppInfoResponse
+
+export const zPostKnowledgeFsQueryStreamBody = zKnowledgeFsAdmittedQueryRequest
+
+/**
+ * Agent Knowledge Base query event stream
+ */
+export const zPostKnowledgeFsQueryStreamResponse = z.string()
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksQuery = z.object({
+  cursor: z.string().min(1).max(8192).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+  task_ids: z
+    .string()
+    .max(3699)
+    .regex(
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,99}$/,
+    )
+    .optional(),
+})
+
+/**
+ * listBackgroundTasks
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksResponse =
+  zKnowledgeFsBackgroundTaskListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdPath = z.object({
+  control_space_id: z.string(),
+  job_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base bulk job
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponse =
+  zKnowledgeFsBulkJobResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdPath = z.object({
+  batch_id: z.string(),
+  control_space_id: z.string(),
+})
+
+/**
+ * Deletion batch status
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdResponse =
+  zKnowledgeFsBulkDeletionAcceptedResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdPath = z.object({
+  control_space_id: z.string(),
+  job_id: z.string(),
+})
+
+/**
+ * getDeletionJob
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdResponse =
+  zKnowledgeFsDurableDeletionJobResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryPath = z.object({
+  control_space_id: z.string(),
+  job_id: z.string(),
+})
+
+/**
+ * retryDeletionJob
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryResponse =
+  zKnowledgeFsDurableDeletionJobResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolvePath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveQuery = z.object({
+  document_asset_id: z.string().min(1).max(255),
+  document_asset_version: z.int().gte(1),
+})
+
+/**
+ * resolveDocumentReference
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponse =
+  zKnowledgeFsResolvedDocumentReferenceResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * Agent Knowledge Base documents
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
+  zKnowledgeFsDocumentListResponse
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkBody =
+  zKnowledgeFsBulkDocumentDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base document deletions accepted
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkResponse =
+  zKnowledgeFsBulkDeletionAcceptedResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexBody =
+  zKnowledgeFsDocumentReindexPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255).optional(),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base document reindex queued
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponse =
+  zKnowledgeFsDocumentReindexResponse
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdBody =
+  zKnowledgeFsDocumentDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base document deletion accepted
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse =
+  zKnowledgeFsDurableDeletionAcceptedResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base document
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse =
+  zKnowledgeFsDocumentResponse
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdBody =
+  zKnowledgeFsDocumentMetadataPayload
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base document metadata updated
+ */
+export const zPatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse =
+  zKnowledgeFsLogicalDocumentResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlinePath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base document outline
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineResponse =
+  zKnowledgeFsDocumentOutlineResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * Agent Knowledge Base document revisions
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsResponse =
+  zKnowledgeFsDocumentRevisionListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksPath =
+  z.object({
+    control_space_id: z.string(),
+    document_id: z.string(),
+    revision: z.int(),
+  })
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksQuery =
+  z.object({
+    cursor: z.string().min(1).max(1000).optional(),
+    limit: z.int().gte(1).lte(100).optional().default(50),
+    query: z.string().min(1).max(512).optional(),
+  })
+
+/**
+ * Agent Knowledge Base document chunks
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksResponse =
+  zKnowledgeFsDocumentChunkListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdPath =
+  z.object({
+    chunk_id: z.string(),
+    control_space_id: z.string(),
+    document_id: z.string(),
+    revision: z.int(),
+  })
+
+/**
+ * Agent Knowledge Base document chunk
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponse =
+  zKnowledgeFsDocumentChunkResponse
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdPath = z.object({
+  control_space_id: z.string(),
+  job_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base compilation job canceled
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponse =
+  zKnowledgeFsDocumentCompilationJobResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdPath = z.object({
+  control_space_id: z.string(),
+  job_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base compilation job
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponse =
+  zKnowledgeFsDocumentCompilationJobResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryPath = z.object({
+  control_space_id: z.string(),
+  job_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base compilation job retried
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponse =
+  zKnowledgeFsDocumentCompilationJobResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * listLogicalDocuments
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse =
+  zKnowledgeFsLogicalDocumentListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath = z.object({
+  control_space_id: z.string(),
+  document_id: z.string(),
+})
+
+/**
+ * getLogicalDocument
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse =
+  zKnowledgeFsLogicalDocumentResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksPath =
+  z.object({
+    control_space_id: z.string(),
+    document_id: z.string(),
+  })
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksQuery =
+  z.object({
+    cursor: z.string().min(1).max(1000).optional(),
+    limit: z.int().gte(1).lte(100).optional().default(50),
+  })
+
+/**
+ * Document processing history
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksResponse =
+  zKnowledgeFsDocumentProcessingTaskListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdPath =
+  z.object({
+    control_space_id: z.string(),
+    document_id: z.string(),
+    task_id: z.string(),
+  })
+
+/**
+ * Document processing task
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
+  zKnowledgeFsDocumentProcessingTaskResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionBody =
+  zKnowledgeFsQueryCreatePayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base streaming query admitted through Dify API
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponse =
+  zKnowledgeFsQueryAdmissionResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdQueryImagesBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdQueryImagesPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Query image uploaded
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdQueryImagesResponse =
+  zKnowledgeFsServiceQueryImageUploadResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * Agent Knowledge Base research tasks
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksResponse =
+  zKnowledgeFsResearchTaskListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksBody =
+  zKnowledgeFsResearchTaskCreatePayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255).optional(),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base research task accepted
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksResponse =
+  zKnowledgeFsResearchTaskResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanBody =
+  zKnowledgeFsResearchTaskPlanPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base research task plan
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanResponse =
+  zKnowledgeFsResearchTaskPlanResponse
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPath = z.object({
+  control_space_id: z.string(),
+  task_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base research task canceled
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse =
+  zKnowledgeFsResearchTaskResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPath = z.object({
+  control_space_id: z.string(),
+  task_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base research task
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse =
+  zKnowledgeFsResearchTaskResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsPath = z.object({
+  control_space_id: z.string(),
+  task_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(25),
+})
+
+/**
+ * Agent Knowledge Base research task partial evidence
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsResponse =
+  zKnowledgeFsResearchTaskPartialListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumePath = z.object({
+  control_space_id: z.string(),
+  task_id: z.string(),
+})
+
+/**
+ * resumeResearchTask
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeResponse =
+  zKnowledgeFsResearchTaskResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSettingsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base settings
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSettingsResponse = zKnowledgeFsSettingsResponse
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdSettingsBody = zKnowledgeFsSettingsPayload
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdSettingsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base settings updated
+ */
+export const zPatchKnowledgeFsSpacesByControlSpaceIdSettingsResponse =
+  zKnowledgeFsSettingsUpdateResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdPath = z.object({
+  control_space_id: z.string(),
+  migration_id: z.string(),
+})
+
+/**
+ * getProfileMigration
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponse =
+  zKnowledgeFsProfileMigrationResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsQuery = z.object({
+  cursor: z.string().min(1).max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * listSourceConnections
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse =
+  zKnowledgeFsSourceConnectionListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsBody =
+  zKnowledgeFsServiceSourceConnectionCreatePayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * createSourceConnection
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse =
+  zKnowledgeFsSourceConnectionResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshBody =
+  zKnowledgeFsSourceConnectionRefreshPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshPath =
+  z.object({
+    connection_id: z.string(),
+    control_space_id: z.string(),
+  })
+
+/**
+ * refreshSourceConnection
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshResponse =
+  zKnowledgeFsSourceConnectionResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceProvidersPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Source providers
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceProvidersResponse =
+  zKnowledgeFsSourceProviderListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+  sourceId: z.string().min(1).max(255).optional(),
+})
+
+/**
+ * listSourceWorkflows
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsResponse =
+  zKnowledgeFsSourceWorkflowListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPath = z.object({
+  control_space_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * getSourceWorkflow
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelBody =
+  zKnowledgeFsSourceWorkflowCancelPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelPath = z.object({
+  control_space_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * cancelSourceWorkflow
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesPath = z.object({
+  control_space_id: z.string(),
+  run_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesQuery = z.object({
+  cursor: z.string().min(1).max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * listCrawlPreviewPages
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesResponse =
+  zKnowledgeFsCrawlPreviewPageListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryPath = z.object({
+  control_space_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * retrySourceWorkflow
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionBody =
+  zKnowledgeFsCrawlPreviewSelectionPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionHeaders =
+  z.object({
+    'Idempotency-Key': z.string().min(8).max(255),
+  })
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionPath = z.object({
+  control_space_id: z.string(),
+  run_id: z.string(),
+})
+
+/**
+ * selectCrawlPreviewPages
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * Agent Knowledge Base sources
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesResponse = zKnowledgeFsSourceListResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBody =
+  zKnowledgeFsServiceSourceCreatePayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base source created
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesResponse = zKnowledgeFsSourceResponse
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdBody =
+  zKnowledgeFsSourceDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdQuery = z.object({
+  documents: z.enum(['cascade', 'keep']).optional().default('cascade'),
+})
+
+/**
+ * Agent Knowledge Base source deletion accepted
+ */
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
+  zKnowledgeFsDurableDeletionAcceptedResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base source
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
+  zKnowledgeFsSourceResponse
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdBody =
+  zKnowledgeFsServiceSourceUpdatePayload
+
+export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base source updated
+ */
+export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
+  zKnowledgeFsSourceResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base source crawl
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportBody =
+  zKnowledgeFsCrawlImportPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * importSelectedSourceCrawl
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * previewSourceCrawl
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesQuery = z.object({
+  bucket: z.string().optional(),
+  continuationToken: z.string().min(1).max(4096).optional(),
+  maxKeys: z.int().gte(1).lte(1000).optional(),
+  prefix: z.string().optional(),
+})
+
+/**
+ * Agent Knowledge Base source files
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesResponse =
+  zKnowledgeFsSourceFilesResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportBody =
+  zKnowledgeFsSourceImportPagesPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base source pages imported
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesBody =
+  zKnowledgeFsSourceImportFilesPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base source files imported
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesQuery = z.object({
+  cursor: z.string().min(1).max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * Agent Knowledge Base source pages
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesResponse =
+  zKnowledgeFsSourcePagesResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * syncSource
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * getSourceSyncPolicy
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse =
+  zKnowledgeFsSourceSyncPolicyResponse
+
+export const zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyBody =
+  zKnowledgeFsSourceSyncPolicyPayload
+
+export const zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * updateSourceSyncPolicy
+ */
+export const zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse =
+  zKnowledgeFsSourceSyncPolicyResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base source credential test
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponse =
+  zKnowledgeFsSourceCredentialTestResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsBody =
+  zKnowledgeFsSourceWorkflowImportPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsHeaders =
+  z.object({
+    'Idempotency-Key': z.string().min(8).max(255),
+  })
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * importSourceWorkflow
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponse =
+  zKnowledgeFsSourceWorkflowResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesPath = z.object({
+  control_space_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(50),
+  source: z.enum(['agent', 'mcp', 'retrieval_test', 'service_api', 'workflow']).optional(),
+})
+
+/**
+ * Agent Knowledge Base traces
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesResponse = zKnowledgeFsTraceListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdPath = z.object({
+  control_space_id: z.string(),
+  trace_id: z.string(),
+})
+
+/**
+ * Agent Knowledge Base answer trace
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdResponse =
+  zKnowledgeFsAnswerTraceResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsPath = z.object({
+  control_space_id: z.string(),
+  trace_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(100),
+})
+
+/**
+ * Agent Knowledge Base trace conflicts
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsResponse =
+  zKnowledgeFsTraceEntryListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidencePath = z.object({
+  control_space_id: z.string(),
+  trace_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(100),
+})
+
+/**
+ * Agent Knowledge Base trace evidence view
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceResponse =
+  zKnowledgeFsTraceEntryListResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingPath = z.object({
+  control_space_id: z.string(),
+  trace_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingQuery = z.object({
+  cursor: z.string().min(1).max(1000).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(100),
+})
+
+/**
+ * Agent Knowledge Base trace missing evidence
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponse =
+  zKnowledgeFsTraceEntryListResponse
 
 export const zGetMessagesQuery = z.object({
   conversation_id: z.string(),

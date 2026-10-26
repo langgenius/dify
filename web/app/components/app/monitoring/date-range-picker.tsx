@@ -35,12 +35,14 @@ export function MonitoringDateRangePicker({ start, end, onStartChange, onEndChan
         }}
       >
         <DatePickerLabel className="sr-only">{t(($) => $['picker.startDate'])}</DatePickerLabel>
-        <DatePickerTrigger className="h-7 w-auto px-1">
+        <DatePickerTrigger className="h-7 w-auto bg-transparent px-1">
           <DatePickerValue>{formatToLocalTime(start, locale, 'MMM D')}</DatePickerValue>
         </DatePickerTrigger>
         <DatePickerContent />
       </DatePicker>
-      <span aria-hidden="true">–</span>
+      <span aria-hidden="true" className="shrink-0 system-sm-regular text-text-tertiary">
+        -
+      </span>
       <DatePicker
         value={end.format('YYYY-MM-DD')}
         minDate={start.format('YYYY-MM-DD')}
@@ -50,7 +52,7 @@ export function MonitoringDateRangePicker({ start, end, onStartChange, onEndChan
         }}
       >
         <DatePickerLabel className="sr-only">{t(($) => $['picker.endDate'])}</DatePickerLabel>
-        <DatePickerTrigger className="h-7 w-auto px-1">
+        <DatePickerTrigger className="h-7 w-auto bg-transparent px-1">
           <DatePickerValue>{formatToLocalTime(end, locale, 'MMM D')}</DatePickerValue>
         </DatePickerTrigger>
         <DatePickerContent />

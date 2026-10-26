@@ -1,7 +1,7 @@
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { noop } from 'es-toolkit/function'
 import { createContext, use } from 'react'
 import { useMitt } from '@/hooks/use-mitt'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { createVisualEditorStore } from './store'
 
 type VisualEditorStore = ReturnType<typeof createVisualEditorStore>

@@ -307,12 +307,13 @@ class ClientSession(
             types.CompleteResult,
         )
 
-    def list_tools(self) -> types.ListToolsResult:
-        """Send a tools/list request."""
+    def list_tools(self, cursor: str | None = None) -> types.ListToolsResult:
+        """Send a tools/list request for one page."""
         return self.send_request(
             types.ClientRequest(
                 types.ListToolsRequest(
                     method="tools/list",
+                    params=types.PaginatedRequestParams(cursor=cursor) if cursor is not None else None,
                 )
             ),
             types.ListToolsResult,

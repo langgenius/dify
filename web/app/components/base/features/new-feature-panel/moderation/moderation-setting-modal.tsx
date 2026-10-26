@@ -3,23 +3,33 @@ import type { CodeBasedExtensionItem } from '@/models/common'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
+import { codeBasedExtensionsQueryOptions } from '@/features/code-based-extension/query'
 import { LanguagesSupported } from '@/i18n/language'
-import { useCodeBasedExtensions, useModelProviderDetails } from '@/service/use-common'
 import FormGeneration from './form-generation'
 import ModerationContent from './moderation-content'
 
@@ -60,7 +70,9 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
   const { t } = useTranslation(['appDebug', 'common', 'navigation'])
   const docLink = useDocLink()
   const locale = useLocale()
-  const { data: modelProviders, isPending: isLoading } = useModelProviderDetails()
+  const { data: modelProviders, isPending: isLoading } = useQuery(
+    modelProviderDetailsQueryOptions(),
+  )
   const localeDataRef = useRef<ModerationConfig>(data)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -80,7 +92,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
   const handleOpenSettingsModal = () => {
     setSettingsDestination('provider')
   }
-  const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
+  const { data: codeBasedExtensionList } = useQuery(codeBasedExtensionsQueryOptions('moderation'))
   const openaiProvider = modelProviders?.data.find(
     (item) => item.provider === 'langgenius/openai/openai',
   )
@@ -304,9 +316,10 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
   }
 
   return (
-    <Dialog open>
-      <DialogContent className="mt-14! w-150! max-w-none! overflow-hidden border-[0.5px]! border-components-panel-border! p-0! text-left align-middle">
+    <Dialog open onOpenChange={(open) => !open && onCancel()} disablePointerDismissal>
+      <DialogContent className="w-150">
         <form
+          className="contents"
           onSubmit={(event) => {
             // Portalled child forms still bubble submit events through the React tree.
             if (event.target !== event.currentTarget) return
@@ -315,20 +328,15 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
             handleSave()
           }}
         >
-          <div className="flex items-start gap-2 px-6 pt-6 pr-14 pb-3">
-            <div className="title-2xl-semi-bold text-text-primary">
+          <DialogHeader>
+            <DialogTitle>
               {t(($) => $['feature.moderation.modal.title'], { ns: 'appDebug' })}
-            </div>
-            <button
-              type="button"
+            </DialogTitle>
+            <DialogHeaderCloseButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="absolute top-5 right-5 flex size-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={onCancel}
-            >
-              <span className="i-ri-close-line size-4.5" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="flex flex-col gap-4 px-6 py-3">
+            />
+          </DialogHeader>
+          <DialogBody className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <div className="system-sm-medium text-text-secondary">
                 {t(($) => $['feature.moderation.modal.provider.title'], { ns: 'appDebug' })}
@@ -489,8 +497,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
                 {t(($) => $['feature.moderation.modal.content.condition'], { ns: 'appDebug' })}
               </div>
             </div>
-          </div>
-          <div className="flex h-19 items-center justify-end gap-2 px-6 pt-5 pb-6">
+          </DialogBody>
+          <DialogFooter>
             <Button type="button" onClick={onCancel} size="medium" className="min-w-18">
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
@@ -503,7 +511,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
             >
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
