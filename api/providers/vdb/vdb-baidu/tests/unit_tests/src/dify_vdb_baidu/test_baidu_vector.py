@@ -1,7 +1,7 @@
 import importlib
 import json
 import sys
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,7 +11,7 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-def _build_fake_pymochow_modules():
+def _build_fake_pymochow_modules() -> dict[str, FakeModule]:
     pymochow = FakeModule("pymochow")
     pymochow.__path__ = []
     pymochow_auth = FakeModule("pymochow.auth")
@@ -27,13 +27,13 @@ def _build_fake_pymochow_modules():
     pymochow_model_table = FakeModule("pymochow.model.table")
 
     class _SimpleObject:
-        def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
+        def __init__[**P](self, *args: P.args, **kwargs: P.kwargs) -> None:
             self.args = args
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
     class ServerError(Exception):
-        def __init__(self, code):
+        def __init__(self, code: int) -> None:
             super().__init__(f"server error {code}")
             self.code = code
 
@@ -123,7 +123,7 @@ def _build_fake_pymochow_modules():
 
 
 @pytest.fixture
-def baidu_module(monkeypatch: pytest.MonkeyPatch):
+def baidu_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     for name, module in _build_fake_pymochow_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
     import dify_vdb_baidu.baidu_vector as module
@@ -131,7 +131,7 @@ def baidu_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module)
 
 
-def test_baidu_config_validation(baidu_module):
+def test_baidu_config_validation(baidu_module: ModuleType) -> None:
     values = {
         "endpoint": "https://example.com",
         "account": "account",
@@ -153,7 +153,7 @@ def test_baidu_config_validation(baidu_module):
             baidu_module.BaiduConfig.model_validate(invalid)
 
 
-def test_get_search_result_handles_metadata_and_threshold(baidu_module):
+def test_get_search_result_handles_metadata_and_threshold(baidu_module: ModuleType) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     response = SimpleNamespace(
         rows=[
@@ -171,7 +171,7 @@ def test_get_search_result_handles_metadata_and_threshold(baidu_module):
     assert docs[1].page_content == "doc3"
 
 
-def test_delete_by_ids_and_delete_by_metadata_field(baidu_module):
+def test_delete_by_ids_and_delete_by_metadata_field(baidu_module: ModuleType) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     table = MagicMock()
     vector._db = MagicMock()
@@ -190,7 +190,7 @@ def test_delete_by_ids_and_delete_by_metadata_field(baidu_module):
     assert delete_filter == 'metadata["source"] = "abc\\"def"'
 
 
-def test_delete_handles_table_not_exist_error_and_raises_for_other_codes(baidu_module):
+def test_delete_handles_table_not_exist_error_and_raises_for_other_codes(baidu_module: ModuleType) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     vector._db = MagicMock()
@@ -203,7 +203,7 @@ def test_delete_handles_table_not_exist_error_and_raises_for_other_codes(baidu_m
         vector.delete()
 
 
-def test_init_database_uses_existing_or_creates_when_missing(baidu_module):
+def test_init_database_uses_existing_or_creates_when_missing(baidu_module: ModuleType) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._client = MagicMock()
     vector._client_config = SimpleNamespace(database="my_db")
@@ -212,7 +212,8 @@ def test_init_database_uses_existing_or_creates_when_missing(baidu_module):
     vector._client.database.return_value = "existing_db"
     assert vector._init_database() == "existing_db"
 
-    vector._client.list_databases.return_value = []
+    empty_databases: list[SimpleNamespace] = []
+    vector._client.list_databases.return_value = empty_databases
     vector._client.database.return_value = "created_db"
     vector._client.create_database.side_effect = None
     assert vector._init_database() == "created_db"
@@ -221,7 +222,7 @@ def test_init_database_uses_existing_or_creates_when_missing(baidu_module):
     assert vector._init_database() == "created_db"
 
 
-def test_table_existed_checks_table_access(baidu_module):
+def test_table_existed_checks_table_access(baidu_module: ModuleType) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     vector._db = MagicMock()
@@ -237,7 +238,7 @@ def test_table_existed_checks_table_access(baidu_module):
         vector._table_existed()
 
 
-def test_search_methods_delegate_to_database_table(baidu_module):
+def test_search_methods_delegate_to_database_table(baidu_module: ModuleType) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     vector._db = MagicMock()
@@ -256,7 +257,9 @@ def test_search_methods_delegate_to_database_table(baidu_module):
     assert vector._get_search_res.call_count == 2
 
 
-def test_factory_initializes_collection_name_and_index_struct(baidu_module, monkeypatch: pytest.MonkeyPatch):
+def test_factory_initializes_collection_name_and_index_struct(
+    baidu_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory = baidu_module.BaiduVectorFactory()
     dataset = Dataset(id="dataset-1")
     monkeypatch.setattr(baidu_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
@@ -281,7 +284,9 @@ def test_factory_initializes_collection_name_and_index_struct(baidu_module, monk
     assert dataset.index_struct is not None
 
 
-def test_init_get_type_to_index_struct_and_create_delegate(baidu_module, monkeypatch: pytest.MonkeyPatch):
+def test_init_get_type_to_index_struct_and_create_delegate(
+    baidu_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     init_client = MagicMock(return_value="client")
     init_database = MagicMock(return_value="database")
     monkeypatch.setattr(baidu_module.BaiduVector, "_init_client", init_client)
@@ -308,7 +313,7 @@ def test_init_get_type_to_index_struct_and_create_delegate(baidu_module, monkeyp
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_add_texts_batches_rows(baidu_module):
+def test_add_texts_batches_rows(baidu_module: ModuleType) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     table = MagicMock()
@@ -326,7 +331,7 @@ def test_add_texts_batches_rows(baidu_module):
     assert len(inserted_rows) == 2
 
 
-def test_add_texts_batches_more_than_batch_size(baidu_module):
+def test_add_texts_batches_more_than_batch_size(baidu_module: ModuleType) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     table = MagicMock()
@@ -346,7 +351,7 @@ def test_add_texts_batches_more_than_batch_size(baidu_module):
     assert len(table.upsert.call_args_list[1].kwargs["rows"]) == 1
 
 
-def test_text_exists_returns_false_when_query_code_is_not_success(baidu_module):
+def test_text_exists_returns_false_when_query_code_is_not_success(baidu_module: ModuleType) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     table = MagicMock()
@@ -363,7 +368,7 @@ def test_text_exists_returns_false_when_query_code_is_not_success(baidu_module):
     assert vector.text_exists("id-1") is False
 
 
-def test_get_search_result_handles_invalid_metadata_json(baidu_module):
+def test_get_search_result_handles_invalid_metadata_json(baidu_module: ModuleType) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     response = SimpleNamespace(rows=[{"row": {"page_content": "doc1", "metadata": "{bad json"}, "score": 0.7}])
 
@@ -374,7 +379,9 @@ def test_get_search_result_handles_invalid_metadata_json(baidu_module):
     assert "document_id" not in docs[0].metadata
 
 
-def test_init_client_constructs_configuration_and_client(baidu_module, monkeypatch: pytest.MonkeyPatch):
+def test_init_client_constructs_configuration_and_client(
+    baidu_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     credentials = MagicMock(return_value="credentials")
     configuration = MagicMock(return_value="configuration")
     client_cls = MagicMock(return_value="client")
@@ -402,18 +409,21 @@ def test_init_client_constructs_configuration_and_client(baidu_module, monkeypat
     client_cls.assert_called_once_with("configuration")
 
 
-def test_init_database_raises_for_unknown_create_database_error(baidu_module):
+def test_init_database_raises_for_unknown_create_database_error(baidu_module: ModuleType) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._client = MagicMock()
     vector._client_config = SimpleNamespace(database="my_db")
-    vector._client.list_databases.return_value = []
+    empty_databases: list[SimpleNamespace] = []
+    vector._client.list_databases.return_value = empty_databases
     vector._client.create_database.side_effect = baidu_module.ServerError(9999)
 
     with pytest.raises(baidu_module.ServerError):
         vector._init_database()
 
 
-def test_create_table_handles_cache_and_validation_paths(baidu_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_table_handles_cache_and_validation_paths(
+    baidu_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     vector._client_config = SimpleNamespace(
@@ -462,7 +472,9 @@ def test_create_table_handles_cache_and_validation_paths(baidu_module, monkeypat
     vector._wait_for_index_ready.assert_called_once_with(table, 3600)
 
 
-def test_create_table_raises_for_invalid_index_or_metric(baidu_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_table_raises_for_invalid_index_or_metric(
+    baidu_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     vector._db = MagicMock()
@@ -495,7 +507,9 @@ def test_create_table_raises_for_invalid_index_or_metric(baidu_module, monkeypat
         vector._create_table(3)
 
 
-def test_create_table_raises_timeout_if_table_never_becomes_normal(baidu_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_table_raises_timeout_if_table_never_becomes_normal(
+    baidu_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
     vector._collection_name = "collection_1"
     vector._client_config = SimpleNamespace(
@@ -527,8 +541,8 @@ def test_create_table_raises_timeout_if_table_never_becomes_normal(baidu_module,
 
 
 def test_factory_uses_existing_collection_prefix_when_index_struct_exists(
-    baidu_module, monkeypatch: pytest.MonkeyPatch
-):
+    baidu_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory = baidu_module.BaiduVectorFactory()
     dataset = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})

@@ -1,5 +1,5 @@
 from typing import Protocol, cast
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -21,7 +21,7 @@ class ScrollMock(Protocol):
 
 class TestTidbOnQdrantVectorFullTextSearch:
     @pytest.fixture
-    def vector(self):
+    def vector(self) -> TidbOnQdrantVector:
         with patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.qdrant_client.QdrantClient"):
             return TidbOnQdrantVector(
                 collection_name="test_collection",
@@ -30,7 +30,7 @@ class TestTidbOnQdrantVectorFullTextSearch:
             )
 
     @pytest.fixture
-    def points(self):
+    def points(self) -> list[rest.Record]:
         return [
             rest.Record(
                 id=index,
@@ -41,14 +41,18 @@ class TestTidbOnQdrantVectorFullTextSearch:
         ]
 
     @pytest.mark.parametrize("query", ["apple", "量子计算", "量子コンピューター"])
-    def test_sends_text_and_document_filters(self, vector, points, query):
+    def test_sends_text_and_document_filters(
+        self, vector: TidbOnQdrantVector, points: list[rest.Record], query: str
+    ) -> None:
         # CJK cases verify transport only; tokenization must be tested against the TiDB gateway.
+        scroll = cast(MagicMock, vector._client.scroll)
+        assert points[0].payload is not None
         points[0].payload["page_content"] = query
-        vector._client.scroll.return_value = ([points[0]], None)
+        scroll.return_value = ([points[0]], None)
 
         documents = vector.search_by_full_text(query, top_k=3, document_ids_filter=["document-1"])
 
-        vector._client.scroll.assert_called_once_with(
+        scroll.assert_called_once_with(
             collection_name="test_collection",
             scroll_filter=rest.Filter(
                 must=[
@@ -65,13 +69,16 @@ class TestTidbOnQdrantVectorFullTextSearch:
         assert "score" not in documents[0].metadata
 
     @pytest.mark.parametrize("top_k", [1, 2, 3, 4])
-    def test_merges_keyword_matches_and_respects_top_k(self, vector, points, top_k):
-        vector._client.scroll.side_effect = [([points[0], points[1]][:top_k], None), (points[1:][:top_k], None)]
+    def test_merges_keyword_matches_and_respects_top_k(
+        self, vector: TidbOnQdrantVector, points: list[rest.Record], top_k: int
+    ) -> None:
+        scroll = cast(MagicMock, vector._client.scroll)
+        scroll.side_effect = [([points[0], points[1]][:top_k], None), (points[1:][:top_k], None)]
 
         documents = vector.search_by_full_text(" apple\tapple banana ", top_k=top_k)
 
         assert [doc.metadata["doc_id"] for doc in documents] == ["1", "2", "3"][:top_k]
-        calls = vector._client.scroll.call_args_list
+        calls = scroll.call_args_list
         keywords = [call.kwargs["scroll_filter"].must[0].match.text for call in calls]
         assert keywords == ["apple", "banana"]
 
@@ -109,28 +116,36 @@ class TestTidbOnQdrantVectorFullTextSearch:
         assert [doc.metadata["doc_id"] for doc in documents] == ["1", "2"]
         assert scroll.call_count == 2
 
-    def test_no_match_does_not_fall_back_to_unfiltered_scroll(self, vector):
-        vector._client.scroll.return_value = ([], None)
+    def test_no_match_does_not_fall_back_to_unfiltered_scroll(self, vector: TidbOnQdrantVector) -> None:
+        scroll = cast(MagicMock, vector._client.scroll)
+        scroll.return_value = (list[rest.Record](), None)
 
         assert vector.search_by_full_text("absentword") == []
-        vector._client.scroll.assert_called_once()
-        assert vector._client.scroll.call_args.kwargs["scroll_filter"] == rest.Filter(
+        scroll.assert_called_once()
+        assert scroll.call_args.kwargs["scroll_filter"] == rest.Filter(
             must=[rest.FieldCondition(key="page_content", match=rest.MatchText(text="absentword"))]
         )
 
     @pytest.mark.parametrize(("query", "top_k"), [("", 2), (" \t\n", 2), ("apple", 0), ("apple", -1)])
-    def test_empty_query_or_nonpositive_limit_does_not_scroll(self, vector, query, top_k):
+    def test_empty_query_or_nonpositive_limit_does_not_scroll(
+        self, vector: TidbOnQdrantVector, query: str, top_k: int
+    ) -> None:
+        scroll = cast(MagicMock, vector._client.scroll)
         assert vector.search_by_full_text(query, top_k=top_k) == []
-        vector._client.scroll.assert_not_called()
+        scroll.assert_not_called()
 
-    def test_limits_keyword_requests(self, vector):
-        vector._client.scroll.return_value = ([], None)
+    def test_limits_keyword_requests(self, vector: TidbOnQdrantVector) -> None:
+        scroll = cast(MagicMock, vector._client.scroll)
+        scroll.return_value = (list[rest.Record](), None)
 
         assert vector.search_by_full_text(" ".join(f"word{index}" for index in range(12))) == []
-        assert vector._client.scroll.call_count == 10
+        assert scroll.call_count == 10
 
-    def test_keyword_only_hit_gets_a_weighted_rerank_score(self, vector, points):
-        vector._client.scroll.return_value = ([points[0]], None)
+    def test_keyword_only_hit_gets_a_weighted_rerank_score(
+        self, vector: TidbOnQdrantVector, points: list[rest.Record]
+    ) -> None:
+        scroll = cast(MagicMock, vector._client.scroll)
+        scroll.return_value = ([points[0]], None)
         documents = vector.search_by_full_text("apple")
         runner = WeightRerankRunner(
             tenant_id="tenant-1",
@@ -156,7 +171,7 @@ class TestTidbOnQdrantVectorDeleteByIds:
     """Unit tests for TidbOnQdrantVector.delete_by_ids method."""
 
     @pytest.fixture
-    def vector_instance(self):
+    def vector_instance(self) -> TidbOnQdrantVector:
         """Create a TidbOnQdrantVector instance for testing."""
         config = TidbOnQdrantConfig(
             endpoint="http://localhost:6333",
@@ -171,15 +186,16 @@ class TestTidbOnQdrantVectorDeleteByIds:
             )
             return vector
 
-    def test_delete_by_ids_with_multiple_ids(self, vector_instance):
+    def test_delete_by_ids_with_multiple_ids(self, vector_instance: TidbOnQdrantVector) -> None:
         """Test batch deletion with multiple document IDs."""
+        delete = cast(MagicMock, vector_instance._client.delete)
         ids = ["doc1", "doc2", "doc3"]
 
         vector_instance.delete_by_ids(ids)
 
         # Verify that delete was called once with MatchAny filter
-        vector_instance._client.delete.assert_called_once()
-        call_args = vector_instance._client.delete.call_args
+        delete.assert_called_once()
+        call_args = delete.call_args
 
         # Check collection name
         assert call_args[1]["collection_name"] == "test_collection"
@@ -194,15 +210,16 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert isinstance(field_condition.match, rest.MatchAny)
         assert set(field_condition.match.any) == {"doc1", "doc2", "doc3"}
 
-    def test_delete_by_ids_with_single_id(self, vector_instance):
+    def test_delete_by_ids_with_single_id(self, vector_instance: TidbOnQdrantVector) -> None:
         """Test deletion with a single document ID."""
+        delete = cast(MagicMock, vector_instance._client.delete)
         ids = ["doc1"]
 
         vector_instance.delete_by_ids(ids)
 
         # Verify that delete was called once
-        vector_instance._client.delete.assert_called_once()
-        call_args = vector_instance._client.delete.call_args
+        delete.assert_called_once()
+        call_args = delete.call_args
 
         # Verify filter uses MatchAny with single ID
         filter_selector = call_args[1]["points_selector"]
@@ -211,15 +228,17 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert isinstance(field_condition.match, rest.MatchAny)
         assert field_condition.match.any == ["doc1"]
 
-    def test_delete_by_ids_with_empty_list(self, vector_instance):
+    def test_delete_by_ids_with_empty_list(self, vector_instance: TidbOnQdrantVector) -> None:
         """Test deletion with empty ID list returns early without API call."""
+        delete = cast(MagicMock, vector_instance._client.delete)
         vector_instance.delete_by_ids([])
 
         # Verify that delete was NOT called
-        vector_instance._client.delete.assert_not_called()
+        delete.assert_not_called()
 
-    def test_delete_by_ids_with_404_error(self, vector_instance):
+    def test_delete_by_ids_with_404_error(self, vector_instance: TidbOnQdrantVector) -> None:
         """Test that 404 errors (collection not found) are handled gracefully."""
+        delete = cast(MagicMock, vector_instance._client.delete)
         ids = ["doc1", "doc2"]
 
         # Mock a 404 error
@@ -229,16 +248,17 @@ class TestTidbOnQdrantVectorDeleteByIds:
             content=b"Collection not found",
             headers=httpx.Headers(),
         )
-        vector_instance._client.delete.side_effect = error
+        delete.side_effect = error
 
         # Should not raise an exception
         vector_instance.delete_by_ids(ids)
 
         # Verify delete was called
-        vector_instance._client.delete.assert_called_once()
+        delete.assert_called_once()
 
-    def test_delete_by_ids_with_unexpected_error(self, vector_instance):
+    def test_delete_by_ids_with_unexpected_error(self, vector_instance: TidbOnQdrantVector) -> None:
         """Test that non-404 errors are re-raised."""
+        delete = cast(MagicMock, vector_instance._client.delete)
         ids = ["doc1", "doc2"]
 
         # Mock a 500 error
@@ -248,7 +268,7 @@ class TestTidbOnQdrantVectorDeleteByIds:
             content=b"Server error",
             headers=httpx.Headers(),
         )
-        vector_instance._client.delete.side_effect = error
+        delete.side_effect = error
 
         # Should re-raise the exception
         with pytest.raises(UnexpectedResponse) as exc_info:
@@ -256,14 +276,15 @@ class TestTidbOnQdrantVectorDeleteByIds:
 
         assert exc_info.value.status_code == 500
 
-    def test_delete_by_ids_with_exactly_1000(self, vector_instance):
+    def test_delete_by_ids_with_exactly_1000(self, vector_instance: TidbOnQdrantVector) -> None:
         """Test deletion with exactly 1000 IDs triggers a single batch."""
+        delete = cast(MagicMock, vector_instance._client.delete)
         ids = [f"doc_{i}" for i in range(1000)]
 
         vector_instance.delete_by_ids(ids)
 
-        vector_instance._client.delete.assert_called_once()
-        call_args = vector_instance._client.delete.call_args
+        delete.assert_called_once()
+        call_args = delete.call_args
 
         filter_selector = call_args[1]["points_selector"]
         filter_obj = filter_selector.filter
@@ -273,16 +294,17 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert "doc_0" in field_condition.match.any
         assert "doc_999" in field_condition.match.any
 
-    def test_delete_by_ids_splits_into_batches(self, vector_instance):
+    def test_delete_by_ids_splits_into_batches(self, vector_instance: TidbOnQdrantVector) -> None:
         """Test deletion with >1000 IDs triggers multiple batched calls."""
+        delete = cast(MagicMock, vector_instance._client.delete)
         ids = [f"doc_{i}" for i in range(2500)]
 
         vector_instance.delete_by_ids(ids)
 
-        assert vector_instance._client.delete.call_count == 3
+        assert delete.call_count == 3
 
         batches = []
-        for call in vector_instance._client.delete.call_args_list:
+        for call in delete.call_args_list:
             filter_selector = call[1]["points_selector"]
             field_condition = filter_selector.filter.must[0]
             batches.append(field_condition.match.any)
@@ -291,13 +313,14 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert len(batches[1]) == 1000
         assert len(batches[2]) == 500
 
-    def test_delete_by_ids_filter_structure(self, vector_instance):
+    def test_delete_by_ids_filter_structure(self, vector_instance: TidbOnQdrantVector) -> None:
         """Test that the filter structure is correctly constructed."""
+        delete = cast(MagicMock, vector_instance._client.delete)
         ids = ["doc1", "doc2"]
 
         vector_instance.delete_by_ids(ids)
 
-        call_args = vector_instance._client.delete.call_args
+        call_args = delete.call_args
         filter_selector = call_args[1]["points_selector"]
         filter_obj = filter_selector.filter
 
@@ -323,7 +346,7 @@ class TestInitVectorEndpointSelection:
     by testing the endpoint selection logic directly on TidbOnQdrantConfig.
     """
 
-    def test_uses_binding_endpoint_when_present(self):
+    def test_uses_binding_endpoint_when_present(self) -> None:
         binding_endpoint = "https://qdrant-custom.tidb.com"
         global_url = "https://qdrant-global.tidb.com"
 
@@ -333,7 +356,7 @@ class TestInitVectorEndpointSelection:
         config = TidbOnQdrantConfig(endpoint=qdrant_url)
         assert config.endpoint == "https://qdrant-custom.tidb.com"
 
-    def test_falls_back_to_global_when_binding_endpoint_is_none(self):
+    def test_falls_back_to_global_when_binding_endpoint_is_none(self) -> None:
         binding_endpoint = None
         global_url = "https://qdrant-global.tidb.com"
 
@@ -343,7 +366,7 @@ class TestInitVectorEndpointSelection:
         config = TidbOnQdrantConfig(endpoint=qdrant_url)
         assert config.endpoint == "https://qdrant-global.tidb.com"
 
-    def test_falls_back_to_empty_when_both_none(self):
+    def test_falls_back_to_empty_when_both_none(self) -> None:
         binding_endpoint = None
         global_url = None
 
@@ -353,7 +376,7 @@ class TestInitVectorEndpointSelection:
         config = TidbOnQdrantConfig(endpoint=qdrant_url)
         assert config.endpoint == ""
 
-    def test_binding_endpoint_takes_precedence_over_global(self):
+    def test_binding_endpoint_takes_precedence_over_global(self) -> None:
         binding_endpoint = "https://qdrant-ap-southeast.tidb.com"
         global_url = "https://qdrant-us-east.tidb.com"
 
@@ -361,7 +384,7 @@ class TestInitVectorEndpointSelection:
 
         assert qdrant_url == "https://qdrant-ap-southeast.tidb.com"
 
-    def test_empty_string_binding_endpoint_falls_back_to_global(self):
+    def test_empty_string_binding_endpoint_falls_back_to_global(self) -> None:
         binding_endpoint = ""
         global_url = "https://qdrant-global.tidb.com"
 
@@ -375,14 +398,14 @@ class TestTidbCloudRequestTimeouts:
     block cluster provisioning or password rotation forever."""
 
     @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.httpx.post")
-    def test_create_cluster_passes_bounded_timeout(self, mock_post):
+    def test_create_cluster_passes_bounded_timeout(self, mock_post: MagicMock) -> None:
         from dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector import (
             TidbConfig,
             TidbOnQdrantVectorFactory,
         )
 
         mock_post.return_value.status_code = 200
-        mock_post.return_value.json.return_value = {}
+        mock_post.return_value.json.return_value = dict[str, object]()
         factory = TidbOnQdrantVectorFactory()
         config = TidbConfig(api_url="https://api.tidbcloud.test", public_key="pub", private_key="priv")
 
@@ -391,14 +414,14 @@ class TestTidbCloudRequestTimeouts:
         assert mock_post.call_args.kwargs["timeout"] is not None
 
     @patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.httpx.put")
-    def test_change_password_passes_bounded_timeout(self, mock_put):
+    def test_change_password_passes_bounded_timeout(self, mock_put: MagicMock) -> None:
         from dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector import (
             TidbConfig,
             TidbOnQdrantVectorFactory,
         )
 
         mock_put.return_value.status_code = 200
-        mock_put.return_value.json.return_value = {}
+        mock_put.return_value.json.return_value = dict[str, object]()
         factory = TidbOnQdrantVectorFactory()
         config = TidbConfig(api_url="https://api.tidbcloud.test", public_key="pub", private_key="priv")
 
