@@ -16,10 +16,9 @@ from core.app.app_config.entities import (
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
-from models.account import Account
 from models.model import App, AppMode, Conversation, Message
 from services.errors.app_model_config import AppModelConfigBrokenError
-from tests.helpers.unit.model_factories import make_account, make_app
+from tests.helpers.unit.model_factories import make_app
 
 
 @dataclass(eq=False, repr=False)
@@ -50,10 +49,6 @@ class DummyCompletionGenerateEntity:
 
 def _app(*, app_id: str = "app") -> App:
     return make_app(app_id=app_id, tenant_id="tenant-id", name="Message App", icon_type=None)
-
-
-def _account() -> Account:
-    return make_account(account_id="user-id", name="Message User", email="message-user@example.com")
 
 
 def _make_app_config(app_mode: AppMode) -> EasyUIBasedAppConfig:
@@ -151,7 +146,6 @@ class TestMessageBasedAppGeneratorExtras:
                 queue_manager=SimpleNamespace(),
                 conversation=Conversation(id="conv", app_id="app"),
                 message=Message(id="msg", app_id="app", conversation_id="conv"),
-                user=_account(),
                 stream=False,
             )
 

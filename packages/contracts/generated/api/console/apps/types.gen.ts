@@ -635,6 +635,11 @@ export type AppMessageFeedbackPayload = {
   rating?: 'dislike' | 'like' | null
 }
 
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
+}
+
 export type AppIconPayload = {
   icon?: string | null
   icon_background?: string | null
@@ -6170,7 +6175,7 @@ export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
     | ErrorResponse
   401: ErrorResponse
   403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -6468,6 +6473,8 @@ export type PostAppsByAppIdFeedbacksData = {
 }
 
 export type PostAppsByAppIdFeedbacksErrors = {
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
+  403: ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }

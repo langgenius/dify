@@ -945,6 +945,66 @@ export const zAgentNotPublishedError = zErrorResponse.and(
 )
 
 /**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AppAbnormalStatusError
+ *
+ * The app's status is abnormal.
+ */
+export const zAppAbnormalStatusError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_abnormal_status'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppApiDisabledError
+ *
+ * The app's API service has been disabled.
+ */
+export const zAppApiDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_api_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppNotFoundError
+ *
+ * The app no longer exists.
+ */
+export const zAppNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_not_found'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppSuggestedQuestionsAfterAnswerDisabledError
+ *
+ * The 'Suggested Questions After Answer' feature is disabled.
+ */
+export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_suggested_questions_after_answer_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * AppUnavailableError
  *
  * App unavailable, please check your app configurations.
@@ -3902,6 +3962,18 @@ export const zMessageFeedbackPayloadWithUser = z.object({
 })
 
 /**
+ * MessageFeedbackRatingRequiredError
+ *
+ * A rating is required when there is no existing feedback to remove.
+ */
+export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_feedback_rating_required'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * MessageFile
  */
 export const zMessageFile = z.object({
@@ -5862,6 +5934,30 @@ export const zWorkflowTaskStopPayload = z.object({
 export const zWorkflowVersionExecutionNotAllowedError = zErrorResponse.and(
   z.object({
     code: z.literal('workflow_version_execution_not_allowed'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * WorkspaceArchivedError
+ *
+ * The workspace's status is archived.
+ */
+export const zWorkspaceArchivedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workspace_archived'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * WorkspaceNotFoundError
+ *
+ * Tenant does not exist.
+ */
+export const zWorkspaceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workspace_not_found'),
     status: z.literal(403),
   }),
 )

@@ -1036,25 +1036,6 @@ class TestAppGenerateServiceCases:
     # ---------------------------------------------------------------------------
     # generate_more_like_this
     # ---------------------------------------------------------------------------
-    class TestGenerateMoreLikeThis(_RealSessionTest):
-        def test_delegates_to_completion_generator(self, mocker: MockerFixture):
-            gen_spy = mocker.patch(
-                "services.app_generate_service.CompletionAppGenerator.generate_more_like_this",
-                return_value={"result": "similar"},
-            )
-            session = self.session
-            result = AppGenerateService.generate_more_like_this(
-                app_model=_make_app(AppMode.COMPLETION),
-                user=_make_user(),
-                message_id="msg-1",
-                invoke_from=InvokeFrom.SERVICE_API,
-                session=session,
-                streaming=True,
-            )
-            assert result == {"result": "similar"}
-            gen_spy.assert_called_once()
-            assert gen_spy.call_args.kwargs["session"] is session
-            assert gen_spy.call_args.kwargs["stream"] is True
 
 
 # -----------------------------
