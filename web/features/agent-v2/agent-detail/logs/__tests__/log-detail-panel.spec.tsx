@@ -8,6 +8,7 @@ import { Drawer } from '@langgenius/dify-ui/drawer'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { AgentLogDetailPanel } from '../components/log-detail-panel'
 
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   chatProps: vi.fn(),
   feedbackMutationFn: vi.fn(),
   messagesQueryFn: vi.fn(),
+  agentQueryFn: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }))
@@ -32,7 +34,6 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onOpenLog?: (item: IChatItem) => void
   }) => {
     mocks.chatProps({ chatList, config, onFeedback, onOpenLog })
-    const loggable = chatList.find((item) => item.conversationId)
     return (
       <div>
         <button
@@ -40,9 +41,9 @@ vi.mock('@/app/components/base/chat/chat', () => ({
         >
           submit-feedback
         </button>
-        {onOpenLog && loggable && (
+        {onOpenLog && (
           <button
-            onClick={() => onOpenLog(loggable)}
+            onClick={() => onOpenLog(chatList.find((item) => item.conversationId) ?? chatList[0]!)}
           >
             open-log
           </button>
@@ -77,41 +78,18 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    agent: {
-      byAgentId: {
-        get: {
-          queryOptions: ({ input }: { input: unknown }) => ({
-            queryFn: () => Promise.resolve({ backing_app_id: 'backing-app-1' }),
-            queryKey: ['agent', input],
-          }),
-        },
-        feedbacks: {
-          post: {
-            mutationOptions: () => ({ mutationFn: mocks.feedbackMutationFn }),
-          },
-        },
-        logs: {
-          get: {
-            key: () => ['agent-logs'],
-          },
-          byConversationId: {
-            messages: {
-              get: {
-                key: () => ['agent-log-messages'],
-                queryOptions: ({ input }: { input: unknown }) => ({
-                  queryFn: () => mocks.messagesQueryFn(input),
-                  queryKey: ['agent-log-messages', input],
-                }),
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.get': mocks.agentQueryFn,
+      'agent.byAgentId.feedbacks.post': mocks.feedbackMutationFn,
+      'agent.byAgentId.logs.byConversationId.messages.get': mocks.messagesQueryFn,
+    }),
+  }
+})
 
 const webappLog: AgentLogConversationItemResponse = {
   conversation_id: 'conversation-1',
@@ -176,7 +154,7 @@ function renderPanel(log: AgentLogConversationItemResponse, messages: AgentLogMe
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
   render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -191,8 +169,9 @@ function renderPanel(log: AgentLogConversationItemResponse, messages: AgentLogMe
 
 describe('AgentLogDetailPanel', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     mocks.feedbackMutationFn.mockResolvedValue({ result: 'success' })
+    mocks.agentQueryFn.mockResolvedValue({ backing_app_id: 'backing-app-1' })
   })
 
   it('maps user and admin feedback and submits operator feedback for webapp messages', async () => {
@@ -217,7 +196,7 @@ describe('AgentLogDetailPanel', () => {
     await user.click(screen.getByRole('button', { name: 'submit-feedback' }))
 
     await waitFor(() => {
-      expect(mocks.feedbackMutationFn.mock.calls[0]?.[0]).toEqual({
+      expect(mocks.feedbackMutationFn).toHaveBeenCalledExactlyOnceWith({
         body: {
           content: undefined,
           message_id: 'message-1',
@@ -226,8 +205,12 @@ describe('AgentLogDetailPanel', () => {
         params: { agent_id: 'agent-1' },
       })
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-logs'] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-log-messages'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.logs.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.logs.byConversationId.messages.get.key(),
+    })
   })
 
   it('reports operator feedback failures without refreshing log queries', async () => {
@@ -237,7 +220,9 @@ describe('AgentLogDetailPanel', () => {
 
     await user.click(await screen.findByRole('button', { name: 'submit-feedback' }))
 
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully'),
+    )
     expect(invalidateQueries).not.toHaveBeenCalled()
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })
@@ -266,19 +251,17 @@ describe('AgentLogDetailPanel', () => {
     )
   })
 
-  it('opens the per-message agent log modal when the log icon is clicked', async () => {
+  it('opens the agent log modal for a message and closes it', async () => {
     const user = userEvent.setup()
     renderPanel(webappLog, webappMessages)
 
-    const openButton = await screen.findByRole('button', { name: 'open-log' })
-    expect(mocks.chatProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({ onOpenLog: expect.any(Function) }),
-    )
+    await screen.findByRole('button', { name: 'open-log' })
+    expect(screen.queryByText('agent-log-modal')).not.toBeInTheDocument()
 
-    await user.click(openButton)
-    expect(await screen.findByText('agent-log-modal')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'open-log' }))
+    expect(screen.getByText('agent-log-modal')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'close-modal' }))
-    await waitFor(() => expect(screen.queryByText('agent-log-modal')).not.toBeInTheDocument())
+    expect(screen.queryByText('agent-log-modal')).not.toBeInTheDocument()
   })
 })
