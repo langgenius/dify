@@ -1,5 +1,6 @@
 import type { OperationDescriptor } from './operation.js'
 import type { CallOptions } from './types.js'
+import { getFilenameFromContentDisposition } from '@orpc/standard-server'
 
 export type ClientOptions = {
   baseUrl?: string
@@ -197,7 +198,13 @@ export function createClient(initial: ClientOptions = {}): HttpClient {
     const contentType = response.headers.get('content-type')?.split(';')[0]?.trim() ?? ''
     let data: unknown
     if (response.status !== 204 && response.status !== 205 && method !== 'head') {
-      if (response.ok && contentType === 'text/event-stream') data = response.body
+      const disposition = response.headers.get('content-disposition')
+      if (response.ok && disposition !== null) {
+        const blob = await response.blob()
+        data = new File([blob], getFilenameFromContentDisposition(disposition) ?? 'blob', {
+          type: blob.type,
+        })
+      } else if (response.ok && contentType === 'text/event-stream') data = response.body
       else if (contentType === 'application/json' || contentType.endsWith('+json'))
         data = await response.json()
       else if (contentType.startsWith('text/')) data = await response.text()

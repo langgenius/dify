@@ -260,6 +260,9 @@ catalogs:
     '@orpc/openapi-client':
       specifier: 1.15.7
       version: 1.15.7
+    '@orpc/standard-server':
+      specifier: 1.15.7
+      version: 1.15.7
     '@orpc/tanstack-query':
       specifier: 1.15.7
       version: 1.15.7
@@ -1344,6 +1347,9 @@ importers:
         specifier: 'catalog:'
         version: 1.15.7
       '@orpc/contract':
+        specifier: 'catalog:'
+        version: 1.15.7
+      '@orpc/standard-server':
         specifier: 'catalog:'
         version: 1.15.7
       '@orpc/tanstack-query':
@@ -17066,6 +17072,7 @@ time:
   '@orpc/client@1.15.7': '2026-10-14T14:02:31.729Z'
   '@orpc/contract@1.15.7': '2026-10-14T14:01:38.932Z'
   '@orpc/openapi-client@1.15.7': '2026-10-14T14:02:09.442Z'
+  '@orpc/standard-server@1.15.7': '2026-10-14T14:03:19.540Z'
   '@orpc/tanstack-query@1.15.7': '2026-10-14T14:01:31.626Z'
   '@pierre/highlights@0.2.0': '2026-10-21T08:43:01.821Z'
   '@playwright/test@1.64.1': '2026-10-14T11:58:13.696Z'

@@ -147,7 +147,7 @@ await api.pets.byPetId.get(
 
 A client override takes precedence over document configuration. Otherwise the document's `servers` URL is used; relative server URLs require a browser origin or an explicit absolute `baseUrl` in Node. The exported shared `client` also supports `setConfig()`, but request-specific credentials should use independent clients.
 
-Successful calls return decoded response data. Non-2xx responses throw `ApiError` with `response` and decoded `data`; network and cancellation failures propagate. Responses are not runtime-validated and schema defaults are not filled in. JSON binary-formatted fields remain strings; binary response media return Blob objects; SSE returns a raw `ReadableStream<Uint8Array>`.
+Successful calls return decoded response data. Non-2xx responses throw `ApiError` with `response` and decoded `data`; network and cancellation failures propagate. Responses are not runtime-validated and schema defaults are not filled in. JSON binary-formatted fields remain strings; binary response media return Blob objects (File with the response filename when Content-Disposition is present); SSE returns a raw `ReadableStream<Uint8Array>`.
 
 With one request media type, `contentType` can be omitted. With multiple media types, only `application/json` is implicit; other alternatives require an explicit matching `contentType`. Multipart accepts flat objects with scalar, Blob/File or repeated array fields, plus explicit JSON part encodings. Fetch supplies its boundary. Optional request bodies may be omitted entirely.
 

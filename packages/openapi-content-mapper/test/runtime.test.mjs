@@ -348,3 +348,28 @@ test('request media defaults agree with types and JSON responses preserve wire v
     referenced: 'referenced',
   })
 })
+
+test('downloads preserve filenames, encoded names, media type and bytes', async () => {
+  const bytes = new Uint8Array([0x50, 0x4b, 0x00, 0xff])
+  for (const [disposition, name] of [
+    ['attachment; filename="agent.ifpkg"', 'agent.ifpkg'],
+    ['attachment; filename="fallback.zip"; filename*=UTF-8\'\'%E7%9F%A5%E8%AF%86.zip', '知识.zip'],
+    ['attachment', 'blob'],
+  ]) {
+    const client = createClient({
+      baseUrl: 'https://example.test',
+      fetch: async () =>
+        new Response(bytes, {
+          headers: {
+            'content-type': 'application/zip',
+            'content-disposition': disposition,
+          },
+        }),
+    })
+    const result = await client.request({ method: 'get', path: '/download' })
+    assert(result instanceof File)
+    assert.equal(result.name, name)
+    assert.equal(result.type, 'application/zip')
+    assert.deepEqual(new Uint8Array(await result.arrayBuffer()), bytes)
+  }
+})

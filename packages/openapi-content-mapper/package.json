@@ -94,6 +94,7 @@
   "dependencies": {
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
+    "@orpc/standard-server": "catalog:",
     "@orpc/tanstack-query": "catalog:",
     "es-module-lexer": "catalog:",
     "import-meta-resolve": "catalog:",

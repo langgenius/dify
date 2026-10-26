@@ -9,7 +9,7 @@ Initial experimental release. Requires TypeScript 7.1.0-beta for native content 
 - Support explicit `x-client-path` operation names without changing HTTP serialization or per-operation sidecars.
 - Integrate with Vite, Next.js Turbopack/Webpack and Node module hooks, preserving independent document transports and sidecars.
 - Support local schema references, recursive types, JSON, explicit multipart alternatives, binary bodies and raw SSE responses.
-- Preserve JSON wire strings for binary-formatted response fields and require explicit media selection for non-default alternatives.
+- Preserve download filenames from Content-Disposition, JSON wire strings for binary-formatted response fields and require explicit media selection for non-default alternatives.
 - Resolve API/query types lazily, omit redundant schema representations and cache serialized mapper results across compiler processes, with invalidation for document, implementation and sidecar changes.
 
 - Add statically selected operation query defaults and typed error maps, with lazy error validators and Vite/Next sidecar tracking.

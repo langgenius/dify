@@ -104,6 +104,7 @@ catalog:
   '@orpc/client': 1.15.7
   '@orpc/contract': 1.15.7
   '@orpc/openapi-client': 1.15.7
+  '@orpc/standard-server': 1.15.7
   '@orpc/tanstack-query': 1.15.7
   '@pierre/highlights': 0.2.0
   '@playwright/test': 1.64.1
