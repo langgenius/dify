@@ -191,7 +191,7 @@ class PdfExtractor(BaseExtractor):
                         # reuse the same assets (mirrors ExcelExtractor).
                         file_key = (
                             f"image_files/{self._tenant_id}/{self._source_file_id}/"
-                            f"p{page_number}_i{obj_index}_{content_hash}.{image_ext}"
+                            f"p{page_number}_{obj_index}_{content_hash}.{image_ext}"
                         )
                     else:
                         # Without a source upload file id there is no stable

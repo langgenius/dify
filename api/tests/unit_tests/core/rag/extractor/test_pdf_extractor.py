@@ -272,7 +272,7 @@ def test_extract_images_with_source_file_id_reuses_existing_assets(
     assert first_link == second_link
     assert mock_dependencies.storage.saves == [(upload_file.key, jpeg_bytes)]
     expected_hash = hashlib.sha256(jpeg_bytes).hexdigest()
-    assert upload_file.key == f"image_files/{TENANT_ID}/{source_file_id}/p2_i0_{expected_hash}.jpg"
+    assert upload_file.key == f"image_files/{TENANT_ID}/{source_file_id}/p2_0_{expected_hash}.jpg"
     assert upload_file.hash == expected_hash
 
 
@@ -297,8 +297,8 @@ def test_extract_images_with_source_file_id_keeps_unique_keys_per_page(
     rows = mock_dependencies.session.scalars(select(UploadFile)).all()
     assert len(rows) == 2
     assert {row.key for row in rows} == {
-        f"image_files/{TENANT_ID}/{source_file_id}/p0_i0_{hashlib.sha256(jpeg_bytes).hexdigest()}.jpg",
-        f"image_files/{TENANT_ID}/{source_file_id}/p1_i0_{hashlib.sha256(jpeg_bytes).hexdigest()}.jpg",
+        f"image_files/{TENANT_ID}/{source_file_id}/p0_0_{hashlib.sha256(jpeg_bytes).hexdigest()}.jpg",
+        f"image_files/{TENANT_ID}/{source_file_id}/p1_0_{hashlib.sha256(jpeg_bytes).hexdigest()}.jpg",
     }
     assert first_link != second_link
     assert len(mock_dependencies.storage.saves) == 2
@@ -350,7 +350,7 @@ def test_extract_images_storage_failure_isolated_and_retryable(
             assert first_result == ""
         else:
             assert first_result == f"![image](http://files.local/files/{rows[0].id}/file-preview)"
-            assert "/p0_i1_" in rows[0].key
+            assert "/p0_1_" in rows[0].key
 
         monkeypatch.setattr(mock_dependencies.storage, "save", save)
         retry_result = extractor._extract_images(page)
