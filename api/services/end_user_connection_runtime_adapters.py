@@ -41,7 +41,12 @@ def get_tool_runtime(
 ) -> Tool:
     try:
         root_id, root = resolve_tool_credential_root(graph, node_id)
-        if root.tool_name != spec.tool_name or root.provider_type.value != spec.provider_type.value:
+        node_data = next(
+            node["data"]
+            for node in graph.get("nodes", [])
+            if node.get("type") != "custom-note" and node["id"] == node_id
+        )
+        if node_data["tool_name"] != spec.tool_name or root.provider_type.value != spec.provider_type.value:
             raise ConnectionConfigurationError()
         if spec.provider_id != root.provider_id and str(ToolProviderID(spec.provider_id)) != str(
             ToolProviderID(root.provider_id)
