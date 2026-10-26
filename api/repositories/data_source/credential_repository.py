@@ -103,6 +103,41 @@ class SQLAlchemyDatasourceCredentialRepository:
             provider_record = session.scalar(query.limit(1))
             return _datasource_credential_record(provider_record) if provider_record is not None else None
 
+    def get_visible_preferred(
+        self,
+        *,
+        workspace_id: str,
+        actor_id: str,
+        provider: str,
+        plugin_id: str,
+        credential_id: str | None,
+    ) -> DatasourceCredentialRecord | None:
+        """Return the requested visible credential, or the actor's preferred one when none is requested.
+
+        Without ``credential_id`` the workspace default wins, then the oldest visible credential.
+        """
+        query = select(DatasourceProvider).where(
+            DatasourceProvider.tenant_id == workspace_id,
+            DatasourceProvider.provider == provider,
+            DatasourceProvider.plugin_id == plugin_id,
+        )
+        if credential_id is not None:
+            query = query.where(DatasourceProvider.id == credential_id)
+        query = apply_credential_visibility_filter_for_actor(
+            query,
+            tenant_id=workspace_id,
+            model_id_column=DatasourceProvider.id,
+            model_user_id_column=DatasourceProvider.user_id,
+            model_visibility_column=DatasourceProvider.visibility,
+            credential_type=CredentialType.DATASOURCE_PROVIDER,
+            actor_id=actor_id,
+        )
+        with self._session_factory() as session:
+            provider_record = session.scalar(
+                query.order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc()).limit(1)
+            )
+            return _datasource_credential_record(provider_record) if provider_record is not None else None
+
     def get_oauth_client_config(
         self,
         *,

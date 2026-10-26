@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useAtomValue } from 'jotai'
 import {
   forwardRef,
   memo,
@@ -20,7 +21,7 @@ import {
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
-import { useParams } from '@/next/navigation'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { consoleClient } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
 import { useStore, useWorkflowStore } from '../store'
@@ -56,9 +57,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     },
     forwardedRef,
   ) => {
-    const params = useParams()
     const { t } = useTranslation(['common', 'workflowComments', 'workflowAgent'])
-    const appId = params.appId as string
+    const appId = useAtomValue(editorAppIdAtom)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const highlightContentRef = useRef<HTMLDivElement>(null)
     const actionContainerRef = useRef<HTMLDivElement | null>(null)
@@ -642,7 +642,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           typeof document !== 'undefined' &&
           createPortal(
             <div
-              className="fixed z-50 max-h-62 w-70 overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg/95 shadow-lg backdrop-blur-[10px]"
+              className="fixed max-h-62 w-70 overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg/95 shadow-lg backdrop-blur-[10px]"
               style={{
                 left: dropdownPosition.x,
                 [dropdownPosition.placement === 'top' ? 'bottom' : 'top']:

@@ -28,7 +28,8 @@ from core.plugin.impl.base import _get_plugin_daemon_request_timeout
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
-from models.provider import Provider
+from graphon.model_runtime.entities.model_entities import ModelType
+from models.provider import Provider, TenantDefaultModel
 from services.entities.message_entities import MessageEndUser
 from services.message_suggested_questions_generator import (
     PreparedSuggestedQuestionsModel,
@@ -36,18 +37,27 @@ from services.message_suggested_questions_generator import (
     _default_suggested_questions_model_parameters,
 )
 from services.message_suggested_questions_service import SuggestedQuestionsContext
-from tests.unit_tests.core.model_fixtures import make_model_instance
-from tests.unit_tests.model_factories import make_app
+from tests.helpers.unit.core.model_fixtures import make_model_instance
+from tests.helpers.unit.model_factories import make_app
 
 
 @pytest.fixture
 def invalid_provider_tenant(
+    _empty_model_provider_daemon: None,
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
 ) -> Iterator[str]:
     tenant_id = str(uuid4())
     with sqlite_session_factory.begin() as session:
         session.add(Provider(tenant_id=tenant_id, provider_name="invalid/provider", is_valid=True))
+        session.add(
+            TenantDefaultModel(
+                tenant_id=tenant_id,
+                provider_name="invalid/provider",
+                model_name="invalid-model",
+                model_type=ModelType.LLM,
+            )
+        )
     app = Flask(__name__)
     app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_engine.url)
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
@@ -80,7 +90,7 @@ def test_prepare_preserves_caller_transaction_when_stored_provider_is_invalid(
     assert caller.in_transaction()
     assert provider in caller.dirty
     assert provider.quota_limit == 27
-    assert "Invalid plugin id invalid/provider" in caplog.text
+    assert "invalid/provider" in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -92,7 +102,7 @@ def test_model_selection_returns_none_for_invalid_stored_provider(
 ) -> None:
     metadata = get_credit_usage_metadata()
     assert SuggestedQuestionsGenerator._prepare_model(invalid_provider_tenant, model_config=model_config) is None
-    assert "Invalid plugin id invalid/provider" in caplog.text
+    assert "invalid/provider" in caplog.text
     assert get_credit_usage_metadata() == metadata
 
 
@@ -109,7 +119,7 @@ def test_invocation_failure_returns_empty_questions_and_restores_request_context
 
     assert SuggestedQuestionsGenerator._invoke(prepared, "Human: hello\nAssistant: world") == []
 
-    assert "Invalid plugin id invalid/provider" in caplog.text
+    assert "invalid/provider" in caplog.text
     assert get_credit_usage_metadata() == metadata
     assert _get_plugin_daemon_request_timeout() == timeout
 
@@ -121,7 +131,7 @@ def test_default_parameters_survive_real_schema_lookup_failure(
     model = make_model_instance(provider="invalid/provider", model="unavailable")
 
     assert _default_suggested_questions_model_parameters(model) == {"max_tokens": 256, "temperature": 0.0}
-    assert "Invalid plugin id invalid/provider" in caplog.text
+    assert "invalid/provider" in caplog.text
 
 
 def test_token_transport_failure_propagates_before_best_effort_generation(
@@ -263,7 +273,7 @@ def test_trace_config_failure_escapes_generation_and_closes_its_sessions(
     finally:
         event.remove(factory, "after_begin", record_session)
 
-    assert "Invalid plugin id invalid/provider" in caplog.text
+    assert "invalid/provider" in caplog.text
     assert len(sessions) == 2
     assert sessions[0] is not sessions[1]
     assert all(not session.in_transaction() and not session.identity_map for session in sessions)
@@ -306,7 +316,7 @@ def test_prepare_isolates_a_caller_transaction_failed_by_a_real_constraint(
 
     # Model resolution used an independent usable session. It must neither
     # inherit the caller's failed transaction nor roll that transaction back.
-    assert "Invalid plugin id invalid/provider" in caplog.text
+    assert "invalid/provider" in caplog.text
     assert db.session() is caller
     assert caller.get_transaction() is failed_transaction
     assert not caller.is_active

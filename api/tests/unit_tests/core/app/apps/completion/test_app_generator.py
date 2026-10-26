@@ -1,0 +1,374 @@
+import contextlib
+from decimal import Decimal
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
+import pytest
+from pydantic import ValidationError
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
+
+import core.app.apps.completion.app_generator as module
+from core.app.apps.completion.app_generator import CompletionAppGenerator
+from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.entities.app_invoke_entities import InvokeFrom
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from models import Account
+from models.enums import ConversationFromSource
+from models.model import App, AppMode, AppModelConfig, Conversation, Message
+
+TABLES = (AppModelConfig, Conversation, Message)
+
+
+@pytest.fixture
+def generator(mocker: MockerFixture):
+    gen = CompletionAppGenerator()
+
+    mocker.patch.object(module, "copy_current_request_context", side_effect=lambda fn: fn)
+
+    flask_app = MagicMock()
+    flask_app.app_context.return_value = contextlib.nullcontext()
+    mocker.patch.object(module, "current_app", MagicMock(_get_current_object=MagicMock(return_value=flask_app)))
+
+    thread = MagicMock()
+    mocker.patch.object(module.threading, "Thread", return_value=thread)
+
+    mocker.patch.object(module, "MessageBasedAppQueueManager", return_value=MagicMock())
+    mocker.patch.object(module, "TraceQueueManager", return_value=MagicMock())
+    generate_entity = mocker.patch.object(
+        module, "CompletionAppGenerateEntity", side_effect=lambda **kwargs: SimpleNamespace(**kwargs)
+    )
+    gen.generate_entity = generate_entity
+
+    return gen
+
+
+@pytest.fixture(autouse=True)
+def _bind_db_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(module.db, "session", sqlite_session)
+
+
+def _build_app_model() -> App:
+    return App(
+        id="app1",
+        tenant_id="tenant",
+        name="Completion app",
+        description="",
+        mode=AppMode.COMPLETION,
+        app_model_config_id="cfg-current",
+        enable_site=False,
+        enable_api=False,
+    )
+
+
+def _build_user() -> Account:
+    account = Account(name="User", email="user@example.com")
+    account.id = "user"
+    return account
+
+
+def _build_app_model_config() -> AppModelConfig:
+    return AppModelConfig(app_id="app1", model='{"provider": "x"}')
+
+
+def _persist_message(
+    session: Session,
+    *,
+    message_id: str = "msg",
+    app_id: str = "app1",
+    app_model_config: AppModelConfig | None = None,
+) -> Message:
+    conversation = Conversation(
+        app_id=app_id,
+        app_model_config_id=app_model_config.id if app_model_config else None,
+        model_provider=None,
+        override_model_configs=None,
+        model_id=None,
+        mode=AppMode.COMPLETION,
+        name="completion conversation",
+        summary=None,
+        _inputs={},
+        introduction="",
+        system_instruction="",
+        invoke_from=InvokeFrom.WEB_APP,
+        from_source=ConversationFromSource.CONSOLE,
+        from_end_user_id=None,
+        from_account_id="user",
+        read_at=None,
+        read_account_id=None,
+    )
+    session.add(conversation)
+    session.flush()
+
+    message = Message(
+        id=message_id,
+        app_id=app_id,
+        model_provider=None,
+        model_id=None,
+        override_model_configs=None,
+        conversation_id=conversation.id,
+        _inputs={"a": 1},
+        query="q",
+        message={},
+        message_unit_price=Decimal(0),
+        answer="",
+        answer_unit_price=Decimal(0),
+        parent_message_id=None,
+        total_price=None,
+        currency="USD",
+        error=None,
+        message_metadata=None,
+        invoke_from=InvokeFrom.WEB_APP,
+        from_source=ConversationFromSource.CONSOLE,
+        from_end_user_id=None,
+        from_account_id="user",
+        workflow_run_id=None,
+        app_mode=AppMode.COMPLETION,
+    )
+    session.add(message)
+    session.flush()
+    return message
+
+
+@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
+class TestCompletionAppGenerator:
+    def test_generate_invalid_query_type(self, generator, sqlite_session: Session):
+        with pytest.raises(ValueError, match="query must be a string"):
+            generator.generate(
+                session=sqlite_session,
+                app_model=_build_app_model(),
+                user=_build_user(),
+                args={"query": 123, "inputs": {}, "files": []},
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=True,
+            )
+
+    def test_generate_override_not_debugger(self, generator, sqlite_session: Session):
+        with pytest.raises(ValueError, match="^$"):
+            generator.generate(
+                session=sqlite_session,
+                app_model=_build_app_model(),
+                user=_build_user(),
+                args={"query": "q", "inputs": {}, "files": [], "model_config": {}},
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=False,
+            )
+
+    def test_generate_success_no_file_config(self, generator, mocker: MockerFixture, sqlite_session: Session):
+        app_model_config = _build_app_model_config()
+        mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
+        to_dict = mocker.patch.object(AppModelConfig, "to_dict", return_value={"model": {"provider": "x"}})
+        annotation_reply = {"enabled": False}
+        load_annotation_reply_config = mocker.patch.object(
+            module,
+            "load_annotation_reply_config",
+            return_value=annotation_reply,
+        )
+        mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
+        mocker.patch.object(module.file_factory, "build_from_mappings")
+
+        app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
+        get_app_config = mocker.patch.object(
+            module.CompletionAppConfigManager,
+            "get_app_config",
+            return_value=app_config,
+        )
+        mocker.patch.object(module.ModelConfigConverter, "convert", return_value=MagicMock())
+
+        mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
+
+        conversation = Conversation(
+            id="conv",
+            app_id="app1",
+            mode=AppMode.COMPLETION,
+            name="Conversation",
+            _inputs={},
+            from_source=ConversationFromSource.CONSOLE,
+        )
+        message = Message(
+            id="msg",
+            app_id="app1",
+            conversation_id="conv",
+            _inputs={},
+            query="q",
+            message={},
+            message_unit_price=Decimal(0),
+            answer="",
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.CONSOLE,
+        )
+        mocker.patch.object(generator, "_init_generate_records", return_value=(conversation, message))
+
+        mocker.patch.object(generator, "_handle_response", return_value="response")
+        mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
+
+        result = generator.generate(
+            session=sqlite_session,
+            app_model=_build_app_model(),
+            user=_build_user(),
+            args={"query": "q", "inputs": {"a": 1}, "files": [], "trace_session_id": "session-1"},
+            invoke_from=InvokeFrom.WEB_APP,
+            streaming=True,
+        )
+
+        assert result == "converted"
+        assert generator.generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
+        module.file_factory.build_from_mappings.assert_not_called()
+        load_annotation_reply_config.assert_called_once_with(sqlite_session, "app1")
+        to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        assert get_app_config.call_args.kwargs["annotation_reply"] is annotation_reply
+
+    def test_generate_success_with_files(self, generator, mocker: MockerFixture, sqlite_session: Session):
+        app_model_config = _build_app_model_config()
+        mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
+        mocker.patch.object(AppModelConfig, "to_dict", return_value={"model": {"provider": "x"}})
+
+        file_extra_config = MagicMock()
+        mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=file_extra_config)
+        mocker.patch.object(module.file_factory, "build_from_mappings", return_value=["file1"])
+
+        app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
+        mocker.patch.object(module.CompletionAppConfigManager, "get_app_config", return_value=app_config)
+        mocker.patch.object(module.ModelConfigConverter, "convert", return_value=MagicMock())
+
+        mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
+
+        conversation = Conversation(
+            id="conv",
+            app_id="app1",
+            mode=AppMode.COMPLETION,
+            name="Conversation",
+            _inputs={},
+            from_source=ConversationFromSource.CONSOLE,
+        )
+        message = Message(
+            id="msg",
+            app_id="app1",
+            conversation_id="conv",
+            _inputs={},
+            query="q",
+            message={},
+            message_unit_price=Decimal(0),
+            answer="",
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.CONSOLE,
+        )
+        mocker.patch.object(generator, "_init_generate_records", return_value=(conversation, message))
+
+        mocker.patch.object(generator, "_handle_response", return_value="response")
+        mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
+
+        result = generator.generate(
+            session=sqlite_session,
+            app_model=_build_app_model(),
+            user=_build_user(),
+            args={"query": "q", "inputs": {"a": 1}, "files": [{"id": "f"}]},
+            invoke_from=InvokeFrom.WEB_APP,
+            streaming=False,
+        )
+
+        assert result == "converted"
+        module.file_factory.build_from_mappings.assert_called_once()
+
+    def test_generate_override_model_config_debugger(self, generator, mocker: MockerFixture, sqlite_session: Session):
+        app_model_config = _build_app_model_config()
+        mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
+
+        override_config = {"model": {"provider": "override"}}
+        mocker.patch.object(module.CompletionAppConfigManager, "config_validate", return_value=override_config)
+
+        app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
+        get_app_config = mocker.patch.object(
+            module.CompletionAppConfigManager,
+            "get_app_config",
+            return_value=app_config,
+        )
+        mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
+        mocker.patch.object(module.ModelConfigConverter, "convert", return_value=MagicMock())
+        mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
+        mocker.patch.object(
+            generator,
+            "_init_generate_records",
+            return_value=(
+                Conversation(
+                    id="conv",
+                    app_id="app1",
+                    mode=AppMode.COMPLETION,
+                    name="Conversation",
+                    _inputs={},
+                    from_source=ConversationFromSource.CONSOLE,
+                ),
+                Message(
+                    id="msg",
+                    app_id="app1",
+                    conversation_id="conv",
+                    _inputs={},
+                    query="q",
+                    message={},
+                    message_unit_price=Decimal(0),
+                    answer="",
+                    answer_unit_price=Decimal(0),
+                    currency="USD",
+                    from_source=ConversationFromSource.CONSOLE,
+                ),
+            ),
+        )
+        mocker.patch.object(generator, "_handle_response", return_value="response")
+        mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
+
+        generator.generate(
+            session=sqlite_session,
+            app_model=_build_app_model(),
+            user=_build_user(),
+            args={"query": "q", "inputs": {}, "files": [], "model_config": override_config},
+            invoke_from=InvokeFrom.DEBUGGER,
+            streaming=True,
+        )
+
+        assert get_app_config.call_args.kwargs["override_config_dict"] == override_config
+
+    @pytest.mark.parametrize(
+        ("error", "should_publish"),
+        [
+            (GenerateTaskStoppedError(), False),
+            (InvokeAuthorizationError("bad"), True),
+            (
+                ValidationError.from_exception_data(
+                    "Model",
+                    [{"type": "missing", "loc": ("x",), "msg": "Field required", "input": {}}],
+                ),
+                True,
+            ),
+            (ValueError("bad"), True),
+            (RuntimeError("boom"), True),
+        ],
+    )
+    def test_generate_worker_error_handling(
+        self,
+        generator,
+        mocker: MockerFixture,
+        sqlite_session: Session,
+        error,
+        should_publish,
+    ):
+        flask_app = MagicMock()
+        flask_app.app_context.return_value = contextlib.nullcontext()
+
+        message = _persist_message(sqlite_session)
+        mocker.patch.object(generator, "_get_message", return_value=message)
+
+        runner_instance = MagicMock()
+        runner_instance.run.side_effect = error
+        mocker.patch.object(module, "CompletionAppRunner", return_value=runner_instance)
+
+        queue_manager = MagicMock()
+        generator._generate_worker(
+            flask_app=flask_app,
+            application_generate_entity=MagicMock(),
+            queue_manager=queue_manager,
+            message_id="msg",
+        )
+
+        assert queue_manager.publish_error.called is should_publish

@@ -5,25 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useSearchParams } from '@/next/navigation'
 import { OAuthRegistrationAnalytics } from '../oauth-registration-analytics'
 
-const {
-  mockConsent,
-  mockNormalizeRegistrationAttribution,
-  mockRememberRegistrationSuccess,
-  mockSendGAEvent,
-} = vi.hoisted(() => ({
+const { mockConsent, mockRememberRegistrationSuccess, mockSendGAEvent } = vi.hoisted(() => ({
   mockConsent: { value: 'granted' as 'unknown' | 'denied' | 'granted' | 'disabled' },
-  mockNormalizeRegistrationAttribution: vi.fn((value: Record<string, unknown> | null) => {
-    if (!value) return null
-    const allowed = Object.fromEntries(
-      Object.entries(value).filter(
-        ([key, item]) =>
-          ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'slug'].includes(
-            key,
-          ) && typeof item === 'string',
-      ),
-    )
-    return Object.keys(allowed).length ? allowed : null
-  }),
   mockRememberRegistrationSuccess: vi.fn(),
   mockSendGAEvent: vi.fn(),
 }))
@@ -40,10 +23,8 @@ vi.mock('../base/analytics-consent/consent-store', () => ({
   useAnalyticsConsent: () => mockConsent.value,
 }))
 
-vi.mock('../base/amplitude/registration-tracking', () => ({
-  normalizeRegistrationAttribution: (
-    ...args: Parameters<typeof mockNormalizeRegistrationAttribution>
-  ) => mockNormalizeRegistrationAttribution(...args),
+vi.mock('../base/amplitude/registration-tracking', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../base/amplitude/registration-tracking')>()),
   rememberRegistrationSuccess: (...args: unknown[]) => mockRememberRegistrationSuccess(...args),
 }))
 
@@ -51,7 +32,7 @@ const mockUseSearchParams = vi.mocked(useSearchParams)
 
 const setSearchParams = (searchParams = '') => {
   mockUseSearchParams.mockReturnValue(
-    new URLSearchParams(searchParams) as unknown as ReturnType<typeof useSearchParams>,
+    new URLSearchParams(searchParams) as ReturnType<typeof useSearchParams>,
   )
   window.history.replaceState(null, '', `/signin${searchParams ? `?${searchParams}` : ''}`)
 }
@@ -59,12 +40,18 @@ const setSearchParams = (searchParams = '') => {
 describe('OAuthRegistrationAnalytics', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    window.sessionStorage.clear()
+    window.sessionStorage.removeItem('oauth_registration_ga_sent')
     mockConsent.value = 'granted'
     mockRememberRegistrationSuccess.mockReturnValue(true)
     Cookies.remove('utm_info')
     vi.spyOn(console, 'error').mockImplementation(() => {})
     setSearchParams()
+  })
+  afterEach(() => {
+    Cookies.remove('utm_info')
+    window.sessionStorage.removeItem('oauth_registration_ga_sent')
+    window.history.replaceState(null, '', '/')
+    vi.restoreAllMocks()
   })
 
   it('queues the Amplitude marker while consent is unknown and cleans the URL after persist', async () => {

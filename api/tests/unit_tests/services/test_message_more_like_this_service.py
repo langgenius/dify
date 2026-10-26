@@ -3,6 +3,7 @@
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -14,7 +15,7 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from extensions.ext_database import db
 from graphon.file import FileTransferMethod, FileType
 from models import Account, App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
-from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType, MessageFileBelongsTo
 from models.provider import Provider
 from repositories.message_repository import MessageRepository
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -82,7 +83,7 @@ def harness(
         account = Account(name="Viewer", email="viewer@example.com")
         session.add_all([app, account])
         session.flush()
-        end_user = EndUser(tenant_id=tenant_id, app_id=app.id, type="browser", session_id=str(uuid4()))
+        end_user = EndUser(tenant_id=tenant_id, app_id=app.id, type=EndUserType.BROWSER, session_id=str(uuid4()))
         session.add(end_user)
         session.flush()
         current = AppModelConfig(
@@ -110,7 +111,7 @@ def harness(
             app_model_config_id=historical.id,
             mode=AppMode.COMPLETION,
             name="Earlier completion",
-            inputs={},
+            _inputs={},
             from_source=from_source,
             from_account_id=account.id if is_account else None,
             from_end_user_id=None if is_account else end_user.id,
@@ -120,12 +121,12 @@ def harness(
         message = Message(
             app_id=app.id,
             conversation_id=conversation.id,
-            inputs={"count": 0, "empty": "", "items": [], "optional": None},
+            _inputs={"count": 0, "empty": "", "items": [], "optional": None},
             query="Original query",
             message={},
             answer="Original answer",
-            message_unit_price=0,
-            answer_unit_price=0,
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
             currency="USD",
             from_source=from_source,
             from_account_id=account.id if is_account else None,

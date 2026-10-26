@@ -1,0 +1,657 @@
+'use client'
+
+import type { KnowledgeFsSpaceCreateResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { NewKnowledgeStartMode } from '../routes'
+import type { NewKnowledgeSourceDraft } from '../sources/setup/source-draft'
+import type {
+  KnowledgeFsUploadPhase,
+  KnowledgeFsUploadProgress,
+} from '../upload/knowledge-fs-upload'
+import type { QueuedUpload } from './upload-queue'
+import type { KnowledgeVisibility } from './workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { ScopeProvider } from 'jotai-scope'
+import { useCallback, useId, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
+import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
+import { deploymentEditionAtom, rbacEnabledAtom } from '@/features/system-features/state'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { DatasetACLPermission, hasPermission } from '@/utils/permission'
+import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
+import { ModelCostNotice } from '../components/model-cost-notice'
+import { knowledgeFsRequestFailureMessageKey } from '../knowledge-fs-task-error'
+import { createRequestId } from '../request-id'
+import {
+  newKnowledgeDetailPath,
+  newKnowledgeDocumentsPath,
+  newKnowledgeListPath,
+  newKnowledgeSettingsPath,
+} from '../routes'
+import { createNewKnowledgeSourceDraft } from '../sources/setup/source-draft'
+import {
+  discardKnowledgeFsStagedUpload,
+  stageKnowledgeFsDocument,
+  uploadKnowledgeFsDocuments,
+} from '../upload/knowledge-fs-upload'
+import { DOCUMENT_UPLOAD_FILE_SIZE_LIMIT_MB as fileSizeLimitMb } from '../upload/policy'
+import { getKnowledgeFsUploadQuotaFailure } from '../upload/quota'
+import { useKnowledgeBatchUpload } from '../upload/use-batch-upload'
+import { KnowledgeIllustration, StartMode } from './components/dialog-parts'
+import { KnowledgeCreationPermissions } from './permissions'
+import { CreateSourceSetup } from './source-setup'
+import { createSourceSelectionAtom, useCreateInitialSource } from './source-state'
+import { CreateUploadQueue } from './upload-queue'
+import {
+  createKnowledge,
+  DESCRIPTION_MAX_LENGTH,
+  isDefinitiveCreationRejection,
+  KnowledgeCreationError,
+  NAME_MAX_LENGTH,
+  waitForKnowledgeSpaceReady,
+} from './workflow'
+
+function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
+  if (value === 'source' || value === 'upload') return value
+  return 'empty'
+}
+
+const sourceSessionAtoms = [createSourceSelectionAtom]
+
+export function CreateKnowledgePage() {
+  return (
+    <ScopeProvider atoms={sourceSessionAtoms}>
+      <CreateKnowledgeSession />
+    </ScopeProvider>
+  )
+}
+
+function CreateKnowledgeSession() {
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tDatasetCreation } = useTranslation(['datasetCreation'])
+  const { t: tWorkflow } = useTranslation(['workflow'])
+  const { t: tError } = useTranslation(['knowledgeErrors'])
+  const { t: tDocuments } = useTranslation(['knowledgeDocuments'])
+  const supportBatchUpload = useKnowledgeBatchUpload()
+  useDocumentTitle(t(($) => $.createTitle, { ns: 'knowledgeCreate' }))
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
+  const dialogTitleId = useId()
+  const modelCostNoticeId = useId()
+  const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
+  const isRbacEnabled = useAtomValue(rbacEnabledAtom)
+  const canConfigureAccess =
+    !isRbacEnabled || hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.AccessConfig)
+  const defaultVisibility: KnowledgeVisibility =
+    isRbacEnabled && canConfigureAccess ? 'all_team_members' : 'only_me'
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [visibility, setVisibility] = useState<KnowledgeVisibility>(defaultVisibility)
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
+  const requestedStartMode = normalizeStartMode(searchParams.get('start'))
+  const initialStartMode =
+    requestedStartMode === 'upload' && !uploadAvailable ? 'empty' : requestedStartMode
+  const [startMode, setStartMode] = useState<NewKnowledgeStartMode>(initialStartMode)
+  const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(() =>
+    createNewKnowledgeSourceDraft('websiteCrawl'),
+  )
+  const initialSource = useCreateInitialSource(sourceDraft, startMode === 'source')
+  const setSourceSelection = useSetAtom(createSourceSelectionAtom)
+  const preservePreviewOnUnmountRef = useRef(false)
+  const [uploads, setUploads] = useState<QueuedUpload[]>([])
+  const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeFsSpaceCreateResponse>()
+  const [modelSetupDialogOpen, setModelSetupDialogOpen] = useState(false)
+  const [submissionLocked, setSubmissionLocked] = useState(false)
+  const [stagingCount, setStagingCount] = useState(0)
+  const [uploading, setUploading] = useState(false)
+  const [uploadPhases, setUploadPhases] = useState<ReadonlyMap<File, KnowledgeFsUploadPhase>>(
+    () => new Map(),
+  )
+  const [uploadError, setUploadError] = useState<string>()
+  const idempotencyKeyRef = useRef<string | undefined>(undefined)
+  const uploadsRef = useRef<QueuedUpload[]>([])
+  const uploadSelectionPendingRef = useRef(false)
+  const uploadProgressRef = useRef<KnowledgeFsUploadProgress>(new Map())
+  const createMutation = useMutation({ mutationFn: createKnowledge })
+  const submissionPending = createMutation.isPending || uploading || stagingCount > 0
+  const validUploads = uploads.filter(({ issue }) => !issue)
+  const createErrorMessage = t(($) => $.createFailed, { ns: 'knowledgeCreate' })
+  const normalizedName = name.trim()
+  const normalizedDescription = description.trim()
+  const uploadSubmissionBlocked =
+    startMode === 'upload' &&
+    (!uploadAvailable ||
+      (!supportBatchUpload && validUploads.length > 1) ||
+      !validUploads.length ||
+      validUploads.some((upload) => upload.stagingFailed || !upload.stagedUploadId))
+  const sourceSubmissionBlocked = startMode === 'source' && !initialSource
+  const membersInvalid = visibility === 'partial_members' && selectedMemberIds.length === 0
+  const shouldPreservePreviewOnUnmount = useCallback(() => preservePreviewOnUnmountRef.current, [])
+
+  const resetUnsubmittedError = () => {
+    if (!submissionLocked) createMutation.reset()
+    setUploadError(undefined)
+  }
+
+  const updateUploads = (update: (current: QueuedUpload[]) => QueuedUpload[]) => {
+    const next = update(uploadsRef.current)
+    uploadsRef.current = next
+    setUploads(next)
+  }
+
+  const checkUploadQuota = async () => {
+    if (deploymentEdition !== 'CLOUD') return true
+    const failure = await getKnowledgeFsUploadQuotaFailure(queryClient)
+    if (!failure) return true
+    setUploadError(tError(($) => $[failure]))
+    return false
+  }
+
+  const handleUploadsChange = async (nextUploads: QueuedUpload[]) => {
+    if (uploadSelectionPendingRef.current) return
+    const previousUploads = uploadsRef.current
+    const nextIds = new Set(nextUploads.map(({ id }) => id))
+    const previousIds = new Set(previousUploads.map(({ id }) => id))
+    const removedUploads = previousUploads.filter(({ id }) => !nextIds.has(id))
+    const addedUploads = nextUploads.filter(({ id }) => !previousIds.has(id))
+    if (
+      !supportBatchUpload &&
+      nextUploads.length > 1 &&
+      (addedUploads.length > 0 || nextUploads.length > previousUploads.length)
+    ) {
+      setUploadError(
+        tDatasetCreation(($) => $['stepOne.uploader.validation.filesNumber'], { filesNumber: 1 }),
+      )
+      return
+    }
+    resetUnsubmittedError()
+    if (deploymentEdition === 'CLOUD' && addedUploads.some((upload) => !upload.issue)) {
+      uploadSelectionPendingRef.current = true
+      setStagingCount((count) => count + 1)
+      try {
+        if (!(await checkUploadQuota())) return
+      } finally {
+        uploadSelectionPendingRef.current = false
+        setStagingCount((count) => Math.max(0, count - 1))
+      }
+    }
+    uploadsRef.current = nextUploads
+    setUploads(nextUploads)
+
+    for (const removed of removedUploads) {
+      if (removed.stagedUploadId)
+        void discardKnowledgeFsStagedUpload(removed.stagedUploadId).catch(() => undefined)
+    }
+
+    for (const added of addedUploads) {
+      if (added.issue) continue
+      setStagingCount((count) => count + 1)
+      setUploadPhases((current) => new Map(current).set(added.file, 'pending'))
+      void stageKnowledgeFsDocument(added.file)
+        .then((stagedUploadId) => {
+          const stillQueued = uploadsRef.current.some(({ id }) => id === added.id)
+          if (!stillQueued) {
+            void discardKnowledgeFsStagedUpload(stagedUploadId).catch(() => undefined)
+            return
+          }
+          updateUploads((current) =>
+            current.map((upload) =>
+              upload.id === added.id ? { ...upload, stagedUploadId, stagingFailed: false } : upload,
+            ),
+          )
+          setUploadPhases((current) => {
+            const next = new Map(current)
+            next.delete(added.file)
+            return next
+          })
+        })
+        .catch(async (error: unknown) => {
+          updateUploads((current) =>
+            current.map((upload) =>
+              upload.id === added.id ? { ...upload, stagingFailed: true } : upload,
+            ),
+          )
+          setUploadPhases((current) => {
+            const next = new Map(current)
+            next.delete(added.file)
+            return next
+          })
+          const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+          setUploadError(
+            messageKey ? tError(($) => $[messageKey]) : t(($) => $.documentUploadFailed),
+          )
+        })
+        .finally(() => setStagingCount((count) => Math.max(0, count - 1)))
+    }
+  }
+
+  const requestClose = () => {
+    if (submissionPending) return
+    for (const upload of uploadsRef.current) {
+      if (upload.stagedUploadId)
+        void discardKnowledgeFsStagedUpload(upload.stagedUploadId).catch(() => undefined)
+    }
+    router.replace(
+      createdKnowledge
+        ? newKnowledgeDetailPath(createdKnowledge.control_space_id)
+        : newKnowledgeListPath,
+    )
+  }
+
+  const handleSubmit = async () => {
+    if (submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked || membersInvalid)
+      return
+
+    if (startMode === 'source' && !initialSource) return
+
+    if (
+      startMode === 'upload' &&
+      deploymentEdition === 'CLOUD' &&
+      validUploads.some(({ id }) => uploadProgressRef.current.get(id)?.phase !== 'completed')
+    ) {
+      setSubmissionLocked(true)
+      setUploading(true)
+      setUploadError(undefined)
+      try {
+        if (!(await checkUploadQuota())) {
+          setSubmissionLocked(submissionLocked)
+          return
+        }
+      } finally {
+        setUploading(false)
+      }
+    }
+
+    idempotencyKeyRef.current ??= createRequestId()
+    setSubmissionLocked(true)
+    try {
+      const result = await createMutation.mutateAsync({
+        existingKnowledge: createdKnowledge,
+        description: normalizedDescription,
+        idempotencyKey: idempotencyKeyRef.current,
+        initialSource: startMode === 'source' ? initialSource : undefined,
+        name: normalizedName,
+        members: selectedMemberIds.map((accountId) => ({ account_id: accountId, role: 'viewer' })),
+        onCreated: (knowledgeSpace) => {
+          setCreatedKnowledge(knowledgeSpace)
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
+          })
+        },
+        visibility,
+      })
+      const created = result.knowledgeSpace
+      if (startMode === 'source' && initialSource && 'previewJobId' in initialSource)
+        preservePreviewOnUnmountRef.current = true
+      if (startMode === 'upload') {
+        if (result.modelSetupRequired) {
+          setModelSetupDialogOpen(true)
+          return
+        }
+        setUploading(true)
+        setUploadError(undefined)
+        try {
+          await waitForKnowledgeSpaceReady(created.control_space_id)
+          await uploadKnowledgeFsDocuments(
+            created.control_space_id,
+            validUploads.map(({ file, id, stagedUploadId }) => ({
+              file,
+              id,
+              uploadId: stagedUploadId!,
+            })),
+            uploadProgressRef.current,
+            (file, phase) => {
+              setUploadPhases((current) => {
+                const next = new Map(current)
+                next.set(file, phase)
+                return next
+              })
+            },
+          )
+        } catch (error) {
+          const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+          const reason = messageKey
+            ? tError(($) => $[messageKey])
+            : t(($) => $.documentUploadFailed)
+          const completed = validUploads.filter(
+            ({ id }) => uploadProgressRef.current.get(id)?.phase === 'completed',
+          ).length
+          setUploadError(
+            completed
+              ? tDocuments(($) => $.documentUploadIncomplete, {
+                  completed,
+                  remaining: validUploads.length - completed,
+                  reason,
+                })
+              : reason,
+          )
+          return
+        } finally {
+          setUploading(false)
+          setUploadPhases(
+            (current) => new Map([...current].filter(([, phase]) => phase === 'completed')),
+          )
+          if (
+            deploymentEdition === 'CLOUD' &&
+            validUploads.some(({ id }) => uploadProgressRef.current.get(id)?.phase === 'completed')
+          )
+            void Promise.allSettled([
+              queryClient.invalidateQueries(
+                { queryKey: consoleQuery.features.get.key() },
+                { cancelRefetch: false },
+              ),
+              queryClient.invalidateQueries(
+                { queryKey: consoleQuery.features.vectorSpace.get.key() },
+                { cancelRefetch: false },
+              ),
+            ])
+        }
+      }
+
+      router.replace(
+        startMode === 'upload'
+          ? newKnowledgeDocumentsPath(created.control_space_id)
+          : `${newKnowledgeDetailPath(created.control_space_id)}${
+              startMode === 'source'
+                ? `?awaitInitialSource=${encodeURIComponent(created.operation_id)}`
+                : ''
+            }`,
+      )
+    } catch (error) {
+      if (
+        error instanceof KnowledgeCreationError &&
+        (error.stage === 'preflight' || isDefinitiveCreationRejection(error.originalError))
+      ) {
+        idempotencyKeyRef.current = undefined
+        setSubmissionLocked(false)
+      }
+      // The mutation state renders a retryable, localized error without exposing upstream details.
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) requestClose()
+      }}
+    >
+      <DialogPortal>
+        <DialogBackdrop className="bg-background-overlay-backdrop backdrop-blur-[6px]" />
+        <DialogPopup
+          aria-labelledby={dialogTitleId}
+          className="fixed inset-x-3 top-4 bottom-4 grid min-h-0 min-w-0 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl xl:grid-cols-2"
+        >
+          <IconButton
+            size="lg"
+            variant="ghost"
+            aria-label={tCommon(($) => $['operation.close'])}
+            className="absolute top-3 right-3 z-10 bg-background-section-burn"
+            onClick={requestClose}
+            disabled={submissionPending}
+          >
+            <span aria-hidden className="i-ri-close-line size-5" />
+          </IconButton>
+
+          <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle xl:items-end xl:border-r">
+            <div className="min-h-6 w-full max-w-180 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
+            <Form
+              className="flex max-h-full min-h-0 w-full max-w-180 flex-col"
+              onFormSubmit={() => void handleSubmit()}
+            >
+              <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
+                <DialogTitle id={dialogTitleId}>
+                  {t(($) => $.createTitle, { ns: 'knowledgeCreate' })}
+                </DialogTitle>
+              </header>
+
+              <div className="flex min-h-0 scrollbar-none flex-col gap-7 overflow-y-auto px-6 pb-7 sm:px-10">
+                <div className="flex flex-col gap-4">
+                  <Field
+                    name="name"
+                    className="gap-1.5"
+                    validate={(value) => {
+                      const trimmed = String(value).trim()
+                      if (value !== '' && !trimmed)
+                        return t(($) => $.nameRequired, { ns: 'knowledgeCreate' })
+                      if (Array.from(trimmed).length > NAME_MAX_LENGTH)
+                        return tDatasetCreation(($) => $['stepOne.modal.nameLengthInvalid'])
+
+                      return null
+                    }}
+                  >
+                    <FieldLabel>
+                      {t(($) => $.name)}
+                      <span aria-hidden className="ml-0.5 text-text-destructive">
+                        *
+                      </span>
+                    </FieldLabel>
+                    <Input
+                      autoComplete="off"
+                      disabled={submissionLocked}
+                      placeholder={t(($) => $.namePlaceholder, { ns: 'knowledgeCreate' })}
+                      required
+                      value={name}
+                      onValueChange={(value) => {
+                        setName(value)
+                        resetUnsubmittedError()
+                      }}
+                    />
+                    <FieldError match="valueMissing">
+                      {t(($) => $.nameRequired, { ns: 'knowledgeCreate' })}
+                    </FieldError>
+                    <FieldError match="customError" />
+                  </Field>
+                  <Field
+                    name="description"
+                    className="gap-1.5"
+                    validate={(value) => {
+                      if (Array.from(String(value).trim()).length > DESCRIPTION_MAX_LENGTH)
+                        return tWorkflow(($) => $['chatVariable.modal.descriptionTooLong'], {
+                          maxLength: DESCRIPTION_MAX_LENGTH,
+                        })
+                      return null
+                    }}
+                  >
+                    <FieldLabel>{t(($) => $.description, { ns: 'knowledgeCreate' })}</FieldLabel>
+                    <Textarea
+                      autoComplete="off"
+                      className="min-h-20"
+                      disabled={submissionLocked}
+                      name="description"
+                      placeholder={t(($) => $.descriptionPlaceholder, { ns: 'knowledgeCreate' })}
+                      value={description}
+                      onValueChange={(value) => {
+                        setDescription(value)
+                        resetUnsubmittedError()
+                      }}
+                    />
+                    <FieldDescription>
+                      {t(($) => $.descriptionHelp, { ns: 'knowledgeCreate' })}
+                    </FieldDescription>
+                    <FieldError />
+                  </Field>
+                  <KnowledgeCreationPermissions
+                    canConfigureAccess={canConfigureAccess}
+                    disabled={submissionLocked}
+                    selectedMemberIds={selectedMemberIds}
+                    visibility={visibility}
+                    onSelectedMemberIdsChange={(memberIds) => {
+                      setSelectedMemberIds(memberIds)
+                      resetUnsubmittedError()
+                    }}
+                    onVisibilityChange={(value) => {
+                      setVisibility(value)
+                      resetUnsubmittedError()
+                    }}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <Fieldset>
+                    <FieldsetLegend className="py-0 system-md-semibold">
+                      {t(($) => $.startWith, { ns: 'knowledgeCreate' })}
+                    </FieldsetLegend>
+                    <p className="pb-1.5 body-xs-regular text-text-tertiary">
+                      {t(($) => $.startWithHelp, { ns: 'knowledgeCreate' })}
+                    </p>
+                    <RadioGroup<NewKnowledgeStartMode>
+                      value={startMode}
+                      aria-label={t(($) => $.startWith, { ns: 'knowledgeCreate' })}
+                      className="mt-2 flex-col items-stretch gap-2"
+                      disabled={submissionLocked}
+                      onValueChange={(value) => {
+                        setSourceSelection(undefined)
+                        setStartMode(value)
+                        resetUnsubmittedError()
+                      }}
+                    >
+                      <StartMode
+                        value="empty"
+                        icon="i-ri-folder-6-line"
+                        selected={startMode === 'empty'}
+                        title={t(($) => $.startEmpty)}
+                        description={t(($) => $.startEmptyDescription)}
+                      />
+                      <StartMode
+                        value="source"
+                        icon="i-custom-public-new-rag-connect-source"
+                        selected={startMode === 'source'}
+                        title={t(($) => $.connectSource)}
+                        description={t(($) => $.connectSourceDescription)}
+                        endAdornment={
+                          <span
+                            aria-hidden
+                            className="h-4 w-20.5 shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
+                          />
+                        }
+                      >
+                        <CreateSourceSetup
+                          disabled={submissionLocked}
+                          draft={sourceDraft}
+                          onDraftChange={(value) => {
+                            setSourceDraft(value)
+                            resetUnsubmittedError()
+                          }}
+                          shouldPreservePreviewOnUnmount={shouldPreservePreviewOnUnmount}
+                          onSourceTypeChange={(value) => {
+                            setSourceDraft(createNewKnowledgeSourceDraft(value))
+                            setSourceSelection(undefined)
+                            resetUnsubmittedError()
+                          }}
+                        />
+                      </StartMode>
+                      <StartMode
+                        value="upload"
+                        icon="i-ri-file-text-line"
+                        selected={startMode === 'upload'}
+                        disabled={!uploadAvailable}
+                        title={t(($) => $.uploadFiles)}
+                        description={t(($) => $.uploadFilesDescription, { ns: 'knowledgeCreate' })}
+                      >
+                        <CreateUploadQueue
+                          supportBatchUpload={supportBatchUpload}
+                          disabled={submissionPending}
+                          fileSizeLimitMb={fileSizeLimitMb}
+                          uploads={uploads}
+                          uploadPhases={uploadPhases}
+                          uploading={uploading || stagingCount > 0}
+                          onChange={handleUploadsChange}
+                        />
+                      </StartMode>
+                    </RadioGroup>
+                  </Fieldset>
+
+                  {createMutation.isError && (
+                    <div
+                      className="rounded-lg bg-state-destructive-hover px-3 py-2 system-sm-regular text-text-destructive"
+                      role="alert"
+                    >
+                      {createErrorMessage}
+                    </div>
+                  )}
+                  {uploadError && (
+                    <div
+                      className="rounded-lg bg-state-destructive-hover px-3 py-2 system-sm-regular text-text-destructive"
+                      role="alert"
+                    >
+                      {uploadError}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10">
+                {startMode === 'upload' && (
+                  <ModelCostNotice
+                    id={modelCostNoticeId}
+                    className="mb-4"
+                    summary={
+                      validUploads.length > 0 &&
+                      t(($) => $['modelCost.uploadSummary'], { count: validUploads.length })
+                    }
+                    description={t(($) => $['modelCost.uploadDescription'])}
+                  />
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button type="button" disabled={submissionPending} onClick={requestClose}>
+                    {tCommon(($) => $['operation.cancel'])}
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    loading={submissionPending}
+                    disabled={uploadSubmissionBlocked || sourceSubmissionBlocked || membersInvalid}
+                    aria-describedby={startMode === 'upload' ? modelCostNoticeId : undefined}
+                  >
+                    {startMode === 'upload'
+                      ? t(($) => $.createAndProcess, { ns: 'knowledgeCreate' })
+                      : t(($) => $.createTitle, { ns: 'knowledgeCreate' })}
+                  </Button>
+                </div>
+              </div>
+            </Form>
+            <div className="min-h-px w-full max-w-180 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
+          </div>
+
+          <aside className="hidden min-h-0 min-w-0 xl:block">
+            <KnowledgeIllustration
+              title={t(($) => $.illustrationHeadline, { ns: 'knowledgeCreate' })}
+            />
+          </aside>
+        </DialogPopup>
+      </DialogPortal>
+      <KnowledgeModelSetupDialog
+        open={modelSetupDialogOpen}
+        onOpenChange={setModelSetupDialogOpen}
+        onConfigure={() => {
+          setModelSetupDialogOpen(false)
+          if (createdKnowledge)
+            router.replace(newKnowledgeSettingsPath(createdKnowledge.control_space_id))
+        }}
+      />
+    </Dialog>
+  )
+}

@@ -109,10 +109,10 @@ class MessageListApi(WebApiResource):
                 has_more=pagination.has_more,
                 data=items,
             ).model_dump(mode="json")
-        except ConversationNotExistsError:
-            raise NotFoundError("Conversation Not Exists.")
-        except FirstMessageNotExistsError:
-            raise NotFoundError("First Message Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except FirstMessageNotExistsError as caught_error:
+            raise NotFoundError("First Message Not Exists.") from caught_error
 
 
 @web_ns.route("/messages/<uuid:message_id>/feedbacks")
@@ -155,8 +155,8 @@ class MessageFeedbackApi(WebApiResource):
                 content=payload.content,
                 session=db.session(),
             )
-        except MessageNotExistsError:
-            raise NotFoundError("Message Not Exists.")
+        except MessageNotExistsError as caught_error:
+            raise NotFoundError("Message Not Exists.") from caught_error
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -218,23 +218,23 @@ class MessageMoreLikeThisApi(WebApiResource):
             raise NotFoundError("End user not found") from error
         except MoreLikeThisNotCompletionError as error:
             raise NotCompletionAppError() from error
-        except MessageNotExistsError:
-            raise NotFoundError("Message Not Exists.")
-        except MoreLikeThisDisabledError:
-            raise AppMoreLikeThisDisabledError()
+        except MessageNotExistsError as caught_error:
+            raise NotFoundError("Message Not Exists.") from caught_error
+        except MoreLikeThisDisabledError as caught_error:
+            raise AppMoreLikeThisDisabledError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except (BaseHTTPException, ValueError):
             raise
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @web_ns.route("/messages/<uuid:message_id>/suggested-questions")
@@ -294,26 +294,26 @@ class MessageSuggestedQuestionApi(WebApiResource):
             raise AppUnavailableError() from None
         except MessageActorNotFoundError:
             raise NotFoundError("End user not found") from None
-        except MessageNotExistsError:
-            raise NotFoundError("Message not found")
-        except ConversationNotExistsError:
-            raise NotFoundError("Conversation not found")
-        except SuggestedQuestionsAfterAnswerDisabledError:
-            raise AppSuggestedQuestionsAfterAnswerDisabledError()
+        except MessageNotExistsError as caught_error:
+            raise NotFoundError("Message not found") from caught_error
+        except ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation not found") from caught_error
+        except SuggestedQuestionsAfterAnswerDisabledError as caught_error:
+            raise AppSuggestedQuestionsAfterAnswerDisabledError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except AgentVersionNotFoundError:
             # The legacy Agent config reader still owns this HTTP error.
             # Remove this compatibility case when it exposes a domain error.
             raise
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
         return helper.dump_response(SuggestedQuestionsResponse, {"data": questions})

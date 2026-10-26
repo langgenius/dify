@@ -4,8 +4,11 @@ import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -30,33 +33,36 @@ function EditAccountNameForm({ name, isPending, onSave }: EditAccountNameFormPro
 
   return (
     <form
+      className="contents"
       onSubmit={(event) => {
         event.preventDefault()
         if (!isPending && draftName) void onSave(draftName)
       }}
     >
-      <DialogTitle className="mb-6 title-2xl-semi-bold text-text-primary">
-        {t(($) => $['account.editName'], { ns: 'accountSettings' })}
-      </DialogTitle>
-      <Field name="name" className="gap-0">
-        <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
-          {t(($) => $['account.name'], { ns: 'accountSettings' })}
-        </FieldLabel>
-        <Input
-          className="mt-2"
-          value={draftName}
-          onValueChange={setDraftName}
-          readOnly={isPending}
-        />
-      </Field>
-      <div className="mt-10 flex justify-end">
-        <DialogClose render={<Button className="mr-2" disabled={isPending} />}>
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['account.editName'], { ns: 'accountSettings' })}</DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        <Field name="name" className="gap-0">
+          <FieldLabel className="py-0 system-sm-semibold text-text-secondary">
+            {t(($) => $['account.name'], { ns: 'accountSettings' })}
+          </FieldLabel>
+          <Input
+            className="mt-2"
+            value={draftName}
+            onValueChange={setDraftName}
+            readOnly={isPending}
+          />
+        </Field>
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose render={<Button disabled={isPending} />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
         <Button type="submit" disabled={!draftName} loading={isPending} variant="primary">
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }
@@ -89,7 +95,7 @@ export function EditAccountNameDialog({ name }: { name: string }) {
       <DialogTrigger className="cursor-pointer rounded-lg bg-components-button-tertiary-bg px-3 py-2 system-sm-medium text-components-button-tertiary-text">
         {t(($) => $['operation.edit'])}
       </DialogTrigger>
-      <DialogContent className="w-105 p-6">
+      <DialogContent className="w-105">
         <EditAccountNameForm name={name} isPending={updateProfile.isPending} onSave={handleSave} />
       </DialogContent>
     </Dialog>

@@ -43,6 +43,6 @@ export const PluginPageContext = createContext<PluginPageContextValue>({
   options: [],
 })
 
-export function usePluginPageContext(selector: (value: PluginPageContextValue) => any) {
+export function usePluginPageContext<T>(selector: (value: PluginPageContextValue) => T) {
   return useContextSelector(PluginPageContext, selector)
 }

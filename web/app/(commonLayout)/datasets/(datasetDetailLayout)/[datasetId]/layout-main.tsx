@@ -1,9 +1,9 @@
 'use client'
 
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
@@ -19,8 +19,8 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
-import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 
 type IAppDetailLayoutProps = {
@@ -64,7 +64,7 @@ const DatasetDetailPageTitle = ({ title }: { title: string }) => {
 }
 
 const getDatasetRedirectionPath = (
-  dataset: DataSet,
+  dataset: DatasetDetailWithPartialMembersResponse,
   datasetACLCapabilities: ReturnType<typeof getDatasetACLCapabilities>,
 ) => {
   if (dataset.provider === 'external') {
@@ -96,7 +96,16 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
+  const {
+    data: datasetRes,
+    error,
+    refetch: mutateDatasetRes,
+  } = useQuery(
+    consoleQuery.datasets.byDatasetId.get.queryOptions({
+      input: { params: { dataset_id: datasetId } },
+      enabled: !!datasetId,
+    }),
+  )
   const shouldRedirect = shouldRedirectToDatasetList(error)
   const datasetACLCapabilities = React.useMemo(
     () =>
@@ -158,7 +167,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     >
       <DatasetDetailContext.Provider
         value={{
-          indexingTechnique: datasetRes?.indexing_technique,
+          indexingTechnique: datasetRes?.indexing_technique ?? undefined,
           dataset: datasetRes,
           mutateDatasetRes,
         }}

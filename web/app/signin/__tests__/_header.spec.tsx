@@ -1,6 +1,8 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { setLocaleOnClient } from '@/i18n/client'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import Header from '../_header'
 
 vi.mock('@/i18n/client', () => ({
@@ -11,21 +13,11 @@ vi.mock('next/dynamic', () => ({
   default: () => () => null,
 }))
 
-vi.mock('../_locale-menu', () => ({
-  default: ({ onChange }: { onChange?: (value: string) => void }) => (
-    <button type="button" onClick={() => onChange?.('ja-JP')}>
-      Switch Language
-    </button>
-  ),
-}))
-
 const mockSetLocaleOnClient = vi.mocked(setLocaleOnClient)
+const navigation = vi.hoisted(() => ({ refresh: vi.fn() }))
+vi.mock('@/next/navigation', () => ({ useRouter: () => navigation }))
 
 describe('Signin Header', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('uses the application title as the custom logo accessible name', () => {
     render(<Header />, {
       systemFeatures: {
@@ -64,11 +56,18 @@ describe('Signin Header', () => {
     expect(screen.getByRole('img', { name: 'Dify' })).toBeInTheDocument()
   })
 
-  it('should switch locale without forcing a full page reload', () => {
+  it('refreshes server content only after the selected language is ready', async () => {
+    const user = userEvent.setup()
+    const languageChange = createDeferred()
+    mockSetLocaleOnClient.mockReturnValueOnce(languageChange.promise)
     render(<Header />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Switch Language' }))
+    await user.click(screen.getByRole('button', { name: /English/i }))
+    await user.click(screen.getByRole('menuitemradio', { name: '日本語 (日本)' }))
 
-    expect(mockSetLocaleOnClient).toHaveBeenCalledWith('ja-JP', false)
+    expect(mockSetLocaleOnClient).toHaveBeenCalledWith('ja-JP')
+    expect(navigation.refresh).not.toHaveBeenCalled()
+    await act(async () => languageChange.resolve())
+    await waitFor(() => expect(navigation.refresh).toHaveBeenCalledOnce())
   })
 })

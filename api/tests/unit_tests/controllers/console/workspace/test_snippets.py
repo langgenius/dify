@@ -13,8 +13,8 @@ from controllers.console.workspace import snippets as snippets_module
 from models.account import Account, TenantAccountRole
 from models.snippet import CustomizedSnippet
 from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
-from tests.unit_tests.controllers.error_body import raised_error
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.controllers.error_body import raised_error
+from tests.helpers.unit.model_factories import make_account
 
 
 def _account(account_id: str = "account-1") -> Account:
@@ -43,10 +43,10 @@ def _snippet(**overrides) -> CustomizedSnippet:
         icon_info=None,
         input_fields=None,
         created_by=None,
-        created_at=datetime.fromtimestamp(1_704_067_200, UTC),
         updated_by=None,
-        updated_at=datetime.fromtimestamp(1_704_153_600, UTC),
     )
+    snippet.created_at = datetime.fromtimestamp(1_704_067_200, UTC)
+    snippet.updated_at = datetime.fromtimestamp(1_704_153_600, UTC)
     snippet.id = "snippet-1"
     for name, value in overrides.items():
         setattr(snippet, name, value)

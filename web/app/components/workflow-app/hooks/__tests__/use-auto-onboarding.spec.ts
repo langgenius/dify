@@ -1,145 +1,85 @@
-import { act, renderHook } from '@testing-library/react'
+import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflow/store'
+import type { Node } from '@/app/components/workflow/types'
+import { act } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createWorkflowSlice } from '../../store/workflow/workflow-slice'
 import { useAutoOnboarding } from '../use-auto-onboarding'
 
-const mockGetNodes = vi.fn()
-const mockWorkflowStore = {
-  getState: vi.fn(),
-}
-
-const mockSetShowOnboarding = vi.fn()
-const mockSetHasShownOnboarding = vi.fn()
-const mockSetShouldAutoOpenStartNodeSelector = vi.fn()
-const mockSetHasSelectedStartNode = vi.fn()
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-    }),
-  }),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => mockWorkflowStore,
-}))
+const setup = (initialState: Partial<Shape> = {}, nodes: Node[] = []) =>
+  renderWorkflowFlowHook(() => useAutoOnboarding(), {
+    nodes,
+    initialStoreState: { isWorkflowDataLoaded: true, ...initialState },
+    injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
+  })
 
 describe('useAutoOnboarding', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.useFakeTimers()
-    mockGetNodes.mockReturnValue([])
-    mockWorkflowStore.getState.mockReturnValue({
-      showOnboarding: false,
-      hasShownOnboarding: false,
-      notInitialWorkflow: false,
-      isWorkflowDataLoaded: true,
-      setShowOnboarding: mockSetShowOnboarding,
-      setHasShownOnboarding: mockSetHasShownOnboarding,
-      setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
-      hasSelectedStartNode: false,
-      setHasSelectedStartNode: mockSetHasSelectedStartNode,
-    })
   })
-
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('should open onboarding after the delayed empty-canvas check on mount', () => {
-    renderHook(() => useAutoOnboarding())
-
+  it('opens onboarding and the start selector after the delayed empty-canvas check', () => {
+    const { store } = setup()
     act(() => {
-      vi.advanceTimersByTime(500)
+      vi.advanceTimersByTime(499)
     })
-
-    expect(mockSetShowOnboarding).toHaveBeenCalledWith(true)
-    expect(mockSetHasShownOnboarding).toHaveBeenCalledWith(true)
-    expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(true)
-  })
-
-  it('should skip auto onboarding before workflow data is loaded', () => {
-    mockWorkflowStore.getState.mockReturnValue({
-      showOnboarding: false,
-      hasShownOnboarding: false,
-      notInitialWorkflow: false,
-      isWorkflowDataLoaded: false,
-      setShowOnboarding: mockSetShowOnboarding,
-      setHasShownOnboarding: mockSetHasShownOnboarding,
-      setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
-      hasSelectedStartNode: false,
-      setHasSelectedStartNode: mockSetHasSelectedStartNode,
-    })
-
-    renderHook(() => useAutoOnboarding())
-
+    expect(store.getState().showOnboarding).toBe(false)
     act(() => {
-      vi.advanceTimersByTime(500)
+      vi.advanceTimersByTime(1)
     })
-
-    expect(mockSetShowOnboarding).not.toHaveBeenCalled()
-    expect(mockSetHasShownOnboarding).not.toHaveBeenCalled()
-    expect(mockSetShouldAutoOpenStartNodeSelector).not.toHaveBeenCalled()
-  })
-
-  it('should skip auto onboarding when it is already visible or the workflow is not initial', () => {
-    mockWorkflowStore.getState.mockReturnValue({
+    expect(store.getState()).toMatchObject({
       showOnboarding: true,
-      hasShownOnboarding: false,
-      notInitialWorkflow: true,
-      isWorkflowDataLoaded: true,
-      setShowOnboarding: mockSetShowOnboarding,
-      setHasShownOnboarding: mockSetHasShownOnboarding,
-      setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
-      hasSelectedStartNode: false,
-      setHasSelectedStartNode: mockSetHasSelectedStartNode,
+      hasShownOnboarding: true,
+      shouldAutoOpenStartNodeSelector: true,
     })
+  })
 
-    renderHook(() => useAutoOnboarding())
-
+  it.each([
+    { isWorkflowDataLoaded: false },
+    { notInitialWorkflow: true },
+    { hasShownOnboarding: true },
+  ])('does not open onboarding when a prerequisite is missing (%j)', (initialState) => {
+    const { store } = setup(initialState)
     act(() => {
       vi.advanceTimersByTime(500)
     })
-
-    expect(mockSetShowOnboarding).not.toHaveBeenCalled()
-    expect(mockSetHasShownOnboarding).not.toHaveBeenCalled()
-    expect(mockSetShouldAutoOpenStartNodeSelector).not.toHaveBeenCalled()
+    expect(store.getState().showOnboarding).toBe(false)
+    expect(store.getState().shouldAutoOpenStartNodeSelector).toBe(false)
   })
 
-  it('should close onboarding and reset selected start node state when one was chosen', () => {
-    mockWorkflowStore.getState.mockReturnValue({
-      showOnboarding: false,
-      hasShownOnboarding: true,
-      notInitialWorkflow: false,
-      isWorkflowDataLoaded: true,
-      setShowOnboarding: mockSetShowOnboarding,
-      setHasShownOnboarding: mockSetHasShownOnboarding,
-      setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
-      hasSelectedStartNode: true,
-      setHasSelectedStartNode: mockSetHasSelectedStartNode,
-    })
-
-    const { result } = renderHook(() => useAutoOnboarding())
-
+  it('preserves an existing canvas instead of opening onboarding over it', () => {
+    const { store } = setup({}, [createNode({ id: 'existing-node', type: 'default' })])
     act(() => {
-      result.current.handleOnboardingClose()
+      vi.advanceTimersByTime(500)
     })
-
-    expect(mockSetShowOnboarding).toHaveBeenCalledWith(false)
-    expect(mockSetHasShownOnboarding).toHaveBeenCalledWith(true)
-    expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(false)
-    expect(mockSetShouldAutoOpenStartNodeSelector).not.toHaveBeenCalled()
+    expect(store.getState().showOnboarding).toBe(false)
+    expect(store.getState().hasShownOnboarding).toBe(false)
   })
 
-  it('should close onboarding and disable auto-open when no start node was selected', () => {
-    const { result } = renderHook(() => useAutoOnboarding())
-
-    act(() => {
-      result.current.handleOnboardingClose()
-    })
-
-    expect(mockSetShowOnboarding).toHaveBeenCalledWith(false)
-    expect(mockSetHasShownOnboarding).toHaveBeenCalledWith(true)
-    expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
-    expect(mockSetHasSelectedStartNode).not.toHaveBeenCalled()
-  })
+  it.each([true, false])(
+    'closes onboarding and preserves auto-open only for a selected start node (selected=%s)',
+    (hasSelectedStartNode) => {
+      const { result, store } = setup({
+        showOnboarding: true,
+        shouldAutoOpenStartNodeSelector: true,
+        hasSelectedStartNode,
+      })
+      act(() => {
+        result.current.handleOnboardingClose()
+      })
+      expect(store.getState()).toMatchObject({
+        showOnboarding: false,
+        hasShownOnboarding: true,
+        hasSelectedStartNode: false,
+        shouldAutoOpenStartNodeSelector: hasSelectedStartNode,
+      })
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+      expect(store.getState().showOnboarding).toBe(false)
+    },
+  )
 })

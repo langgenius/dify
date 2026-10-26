@@ -1,6 +1,5 @@
 'use client'
 import type { FormActions } from '@langgenius/dify-ui/form'
-import type { MailRegisterResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -12,7 +11,7 @@ import {
 } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,7 +22,6 @@ import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useMailRegister } from '@/service/use-common'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 import { sendGAEvent } from '@/utils/gtag'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
@@ -56,7 +54,9 @@ const ChangePasswordForm = () => {
 
   const formActionsRef = useRef<FormActions>(null)
   const confirmPasswordRef = useRef<HTMLInputElement>(null)
-  const { mutateAsync: register, isPending } = useMailRegister()
+  const { mutateAsync: register, isPending } = useMutation(
+    consoleQuery.emailRegister.post.mutationOptions(),
+  )
   const pageTitle = t(($) => $.changePassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
 
@@ -65,13 +65,15 @@ const ChangePasswordForm = () => {
       if (isPending) return
       try {
         const res = await register({
-          token,
-          new_password: formValues.password,
-          password_confirm: formValues.confirmPassword,
-          language: locale,
-          timezone: getBrowserTimezone(),
+          body: {
+            token,
+            new_password: formValues.password,
+            password_confirm: formValues.confirmPassword,
+            language: locale,
+            timezone: getBrowserTimezone(),
+          },
         })
-        const { result } = res as MailRegisterResponse
+        const { result } = res
         if (result === 'success') {
           const utmInfo = parseUtmInfo()
           rememberCreateAppExternalAttribution({ utmInfo })

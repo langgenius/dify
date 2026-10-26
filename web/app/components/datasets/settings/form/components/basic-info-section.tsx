@@ -1,7 +1,9 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
-import type { Member } from '@/models/common'
-import type { DataSet, DatasetPermission, IconInfo } from '@/models/datasets'
+import type { IconInfo } from '@/models/datasets'
+import type { PermissionLevel } from '@/models/permission'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -19,18 +21,18 @@ const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settin
 const labelClass = 'flex shrink-0 flex-col pt-1 @3xl/settings:w-45'
 
 type BasicInfoSectionProps = {
-  currentDataset: DataSet | undefined
+  currentDataset: DatasetDetailWithPartialMembersResponse | undefined
   name: string
   setName: (value: string) => void
   description: string
   setDescription: (value: string) => void
   iconInfo: IconInfo
   handleSelectAppIcon: (icon: IconPickerValue) => void
-  permission: DatasetPermission | undefined
-  setPermission: (value: DatasetPermission | undefined) => void
+  permission: PermissionLevel | undefined
+  setPermission: (value: PermissionLevel | undefined) => void
   selectedMemberIDs: string[]
   setSelectedMemberIDs: (value: string[]) => void
-  memberList: Member[]
+  memberList: AccountWithRoleResponse[]
   readonly?: boolean
 }
 

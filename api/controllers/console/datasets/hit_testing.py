@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -14,22 +15,21 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import with_session
-from controllers.console.wraps import RBACPermission, rbac_permission_required
+from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
+from controllers.console.wraps import (
+    RBACPermission,
+    account_initialization_required,
+    cloud_edition_billing_rate_limit_check,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from fields.hit_testing_fields import HitTestingResponse
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
-
-from .. import console_ns
-from ..datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
-from ..wraps import (
-    account_initialization_required,
-    cloud_edition_billing_rate_limit_check,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
 
 register_schema_models(console_ns, HitTestingPayload)
 register_response_schema_models(console_ns, HitTestingResponse)

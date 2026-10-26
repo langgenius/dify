@@ -1,11 +1,8 @@
-import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { screen } from '@testing-library/react'
-import { vi } from 'vite-plus/test'
-import { useWorkspacePermissions } from '@/service/use-workspace'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { onTestFinished, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { InviteButton } from '../invite-button'
-
-const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -14,9 +11,8 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-workspace')
-
 describe('InviteButton', () => {
+  let queryClient: ReturnType<typeof createConsoleQueryClient>
   const setupPermissions = ({
     isFetching,
     allowInvite,
@@ -24,23 +20,26 @@ describe('InviteButton', () => {
     isFetching: boolean
     allowInvite?: boolean
   }) => {
-    vi.mocked(useWorkspacePermissions).mockReturnValue({
-      data: allowInvite === undefined ? null : { allow_member_invite: allowInvite },
-      isFetching,
-    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+    queryClient = createConsoleQueryClient()
+    const client = queryClient
+    onTestFinished(() => client.clear())
+    const { queryKey } = consoleQuery.workspaces.current.permission.get.queryOptions()
+    if (isFetching) {
+      void queryClient.query({ queryKey, queryFn: () => new Promise(() => {}) }).catch(() => {})
+      return
+    }
+    queryClient.setQueryData(queryKey, {
+      workspace_id: 'workspace-id',
+      allow_member_invite: allowInvite ?? false,
+      allow_owner_transfer: false,
+    })
   }
 
   const renderInviteButton = (brandingEnabled: boolean) =>
     renderWithConsoleQuery(<InviteButton />, {
+      queryClient,
       systemFeatures: { branding: { enabled: brandingEnabled } },
     })
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockConsoleStateReader.mockReturnValue({
-      currentWorkspace: { id: 'workspace-id' },
-    } as unknown as ConsoleStateFixture)
-  })
 
   it('should show invite button when branding is disabled', () => {
     setupPermissions({ isFetching: false })

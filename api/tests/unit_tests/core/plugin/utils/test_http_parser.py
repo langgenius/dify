@@ -560,16 +560,20 @@ class TestFileUploads:
 
         # Build multipart body
         body_parts = []
-        body_parts.append(f"------{boundary}".encode())
-        body_parts.append(b'Content-Disposition: form-data; name="image"; filename="test.png"')
-        body_parts.append(b"Content-Type: image/png")
-        body_parts.append(b"")
-        body_parts.append(binary_content)
-        body_parts.append(f"------{boundary}".encode())
-        body_parts.append(b'Content-Disposition: form-data; name="caption"')
-        body_parts.append(b"")
-        body_parts.append(b"Test image")
-        body_parts.append(f"------{boundary}--".encode())
+        body_parts.extend(
+            (
+                f"------{boundary}".encode(),
+                b'Content-Disposition: form-data; name="image"; filename="test.png"',
+                b"Content-Type: image/png",
+                b"",
+                binary_content,
+                f"------{boundary}".encode(),
+                b'Content-Disposition: form-data; name="caption"',
+                b"",
+                b"Test image",
+                f"------{boundary}--".encode(),
+            )
+        )
 
         body = b"\r\n".join(body_parts)
 
@@ -602,16 +606,20 @@ class TestFileUploads:
         binary_content = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
 
         body_parts = []
-        body_parts.append(f"------{boundary}".encode())
-        body_parts.append(b'Content-Disposition: form-data; name="photo"; filename="photo.jpg"')
-        body_parts.append(b"Content-Type: image/jpeg")
-        body_parts.append(b"")
-        body_parts.append(binary_content)
-        body_parts.append(f"------{boundary}".encode())
-        body_parts.append(b'Content-Disposition: form-data; name="album"')
-        body_parts.append(b"")
-        body_parts.append(b"Vacation 2024")
-        body_parts.append(f"------{boundary}--".encode())
+        body_parts.extend(
+            (
+                f"------{boundary}".encode(),
+                b'Content-Disposition: form-data; name="photo"; filename="photo.jpg"',
+                b"Content-Type: image/jpeg",
+                b"",
+                binary_content,
+                f"------{boundary}".encode(),
+                b'Content-Disposition: form-data; name="album"',
+                b"",
+                b"Vacation 2024",
+                f"------{boundary}--".encode(),
+            )
+        )
 
         body = b"\r\n".join(body_parts)
 
@@ -648,23 +656,27 @@ class TestFileUploads:
 
         body_parts = []
         # First file (text)
-        body_parts.append(f"------{boundary}".encode())
-        body_parts.append(b'Content-Disposition: form-data; name="files"; filename="doc.txt"')
-        body_parts.append(b"Content-Type: text/plain")
-        body_parts.append(b"")
-        body_parts.append(text_file)
-        # Second file (binary)
-        body_parts.append(f"------{boundary}".encode())
-        body_parts.append(b'Content-Disposition: form-data; name="files"; filename="data.bin"')
-        body_parts.append(b"Content-Type: application/octet-stream")
-        body_parts.append(b"")
-        body_parts.append(binary_file)
-        # Additional form field
-        body_parts.append(f"------{boundary}".encode())
-        body_parts.append(b'Content-Disposition: form-data; name="folder"')
-        body_parts.append(b"")
-        body_parts.append(b"uploads/2024")
-        body_parts.append(f"------{boundary}--".encode())
+        body_parts.extend(
+            [
+                f"------{boundary}".encode(),
+                b'Content-Disposition: form-data; name="files"; filename="doc.txt"',
+                b"Content-Type: text/plain",
+                b"",
+                text_file,
+                # Second file (binary)
+                f"------{boundary}".encode(),
+                b'Content-Disposition: form-data; name="files"; filename="data.bin"',
+                b"Content-Type: application/octet-stream",
+                b"",
+                binary_file,
+                # Additional form field
+                f"------{boundary}".encode(),
+                b'Content-Disposition: form-data; name="folder"',
+                b"",
+                b"uploads/2024",
+                f"------{boundary}--".encode(),
+            ]
+        )
 
         body = b"\r\n".join(body_parts)
 
@@ -700,16 +712,20 @@ class TestFileUploads:
         file_content = b"This is my file content with special chars: \xf0\x9f\x98\x80"
 
         body_parts = []
-        body_parts.append(f"------{boundary}".encode())
-        body_parts.append(b'Content-Disposition: form-data; name="upload"; filename="emoji.txt"')
-        body_parts.append(b"Content-Type: text/plain; charset=utf-8")
-        body_parts.append(b"")
-        body_parts.append(file_content)
-        body_parts.append(f"------{boundary}".encode())
-        body_parts.append(b'Content-Disposition: form-data; name="metadata"')
-        body_parts.append(b"")
-        body_parts.append(b'{"encoding": "utf-8", "size": 42}')
-        body_parts.append(f"------{boundary}--".encode())
+        body_parts.extend(
+            (
+                f"------{boundary}".encode(),
+                b'Content-Disposition: form-data; name="upload"; filename="emoji.txt"',
+                b"Content-Type: text/plain; charset=utf-8",
+                b"",
+                file_content,
+                f"------{boundary}".encode(),
+                b'Content-Disposition: form-data; name="metadata"',
+                b"",
+                b'{"encoding": "utf-8", "size": 42}',
+                f"------{boundary}--".encode(),
+            )
+        )
 
         body = b"\r\n".join(body_parts)
 

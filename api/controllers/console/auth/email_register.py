@@ -15,6 +15,12 @@ from controllers.console.auth.error import (
     NormalizedEmailAlreadyInUseError,
     PasswordMismatchError,
 )
+from controllers.console.error import (
+    AccountInFreezeError,
+    EmailDomainSuspendedError,
+    EmailSendIpLimitError,
+    SeatsLimitExceeded,
+)
 from controllers.console.flask_admission import console_email_registration_admission
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
@@ -37,8 +43,6 @@ from services.account_errors import (
     InvalidEmailRegistrationCodeError,
     InvalidEmailRegistrationTokenError,
 )
-
-from ..error import AccountInFreezeError, EmailDomainSuspendedError, EmailSendIpLimitError, SeatsLimitExceeded
 
 
 class EmailRegisterSendPayload(BaseModel):

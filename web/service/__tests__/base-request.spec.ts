@@ -34,7 +34,8 @@ vi.mock('../refresh-token', () => ({
   refreshAccessTokenOrReLogin: mocks.refreshAccessTokenOrReLogin,
 }))
 
-vi.mock('../webapp-address', () => ({
+vi.mock('../webapp-address', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../webapp-address')>()),
   getWebAppPublicApiPath: (_address: unknown, path: string) => path,
   resolveWebAppAddress: mocks.resolveWebAppAddress,
 }))
@@ -88,8 +89,6 @@ function arrangeClientRequest({ response, refreshError }: ClientRequestOptions) 
 }
 
 describe('request 401 handling', () => {
-  const originalLocation = globalThis.location
-
   beforeEach(() => {
     mocks.isClient = true
     mocks.baseFetch.mockReset()
@@ -100,28 +99,21 @@ describe('request 401 handling', () => {
     mocks.completeWebAppAuthorizationRecovery.mockReset()
     mocks.refreshAccessTokenOrReLogin.mockReset()
     mocks.resolveWebAppAddress.mockReset()
-    Object.defineProperty(globalThis, 'location', {
-      value: {
-        origin: 'https://example.com',
-        pathname: '/app/apps',
-        search: '?category=agent',
-        hash: '#recent',
-        href: 'https://example.com/app/apps?category=agent#recent',
-        reload: vi.fn(),
-      },
-      writable: true,
-      configurable: true,
+    vi.stubGlobal('location', {
+      origin: 'https://example.com',
+      pathname: '/app/apps',
+      search: '?category=agent',
+      hash: '#recent',
+      href: 'https://example.com/app/apps?category=agent#recent',
+      reload: vi.fn(),
     })
     window.sessionStorage.clear()
   })
 
   afterEach(() => {
     discardRegistrationSessionState()
-    Object.defineProperty(globalThis, 'location', {
-      value: originalLocation,
-      writable: true,
-      configurable: true,
-    })
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('should not run browser auth recovery when handling 401 on the server', async () => {
@@ -171,8 +163,6 @@ describe('request 401 handling', () => {
     })
 
     expect(reload).toHaveBeenCalledOnce()
-    window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'account-b-marker')
-    expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe('account-b-marker')
   })
 
   it('should preserve the current URL when token refresh fails', async () => {

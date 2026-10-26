@@ -1,31 +1,56 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalTraceRun } from './external-trace-row'
+import type { WorkflowRunInfo } from './workflow-tool-tracing-context'
 import type { NodeTracing } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { use, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import formatNodeList from '@/app/components/workflow/run/utils/format-log'
+import { BlockEnum } from '../types'
 import { getHoveredParallelId } from './get-hovered-parallel-id'
 import { useLogs } from './hooks'
 import NodePanel from './node'
 import SpecialResultPanel from './special-result-panel'
+import { getIterationDurationMap, getIterationResultList } from './utils/format-log/iteration'
+import WorkflowToolTracing from './workflow-tool-tracing'
+import { WorkflowToolTracingContext } from './workflow-tool-tracing-context'
 
 type TracingPanelProps = {
   list: NodeTracing[]
+  externalTraceRun?: ExternalTraceRun
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
+  workflowRun?: WorkflowRunInfo
+}
+
+function findExecution(nodes: NodeTracing[], id: string): NodeTracing | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    const child = node.parallelDetail?.children && findExecution(node.parallelDetail.children, id)
+    if (child) return child
+  }
 }
 
 const TracingPanel: FC<TracingPanelProps> = ({
   list,
+  externalTraceRun,
   className,
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
+  workflowRun,
 }) => {
+  const parentTracing = use(WorkflowToolTracingContext)
+  const currentWorkflowRun = workflowRun ?? parentTracing?.workflowRun
+  const [workflowTool, setWorkflowTool] = useState<NodeTracing | null>(null)
   const { t } = useTranslation(['workflow'])
   const treeNodes = formatNodeList(list, t)
+  const [containerId, setContainerId] = useState<string | null>(null)
+  const container = containerId ? findExecution(treeNodes, containerId) : undefined
+  const iteration = container?.node_type === BlockEnum.Iteration ? container : undefined
+  const loop = container?.node_type === BlockEnum.Loop ? container : undefined
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)
 
@@ -47,31 +72,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
     setHoveredParallel(getHoveredParallelId(e.relatedTarget))
   }, [])
 
-  const {
-    showSpecialResultPanel,
-
-    showRetryDetail,
-    setShowRetryDetailFalse,
-    retryResultList,
-    handleShowRetryResultList,
-
-    showIteratingDetail,
-    setShowIteratingDetailFalse,
-    iterationResultList,
-    iterationResultDurationMap,
-    handleShowIterationResultList,
-
-    showLoopingDetail,
-    setShowLoopingDetailFalse,
-    loopResultList,
-    loopResultDurationMap,
-    loopResultVariableMap,
-    handleShowLoopResultList,
-
-    agentOrToolLogItemStack,
-    agentOrToolLogListMap,
-    handleShowAgentOrToolLog,
-  } = useLogs()
+  const logs = useLogs()
 
   const renderNode = (node: NodeTracing) => {
     const isParallelFirstNode = !!node.parallelDetail?.isParallelStartNode
@@ -118,10 +119,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
               }}
             ></div>
           </div>
-          <div
-            id={`${node.id}-children`}
-            className={`relative pl-2 ${isCollapsed ? 'hidden' : ''}`}
-          >
+          <div id={`${node.id}-children`} hidden={isCollapsed} className="relative pl-2">
             <div
               className={cn(
                 'absolute top-0 bottom-0 left-1.25 w-0.5',
@@ -147,10 +145,11 @@ const TracingPanel: FC<TracingPanelProps> = ({
           <NodePanel
             nodeInfo={node!}
             allExecutions={list}
-            onShowIterationDetail={handleShowIterationResultList}
-            onShowLoopDetail={handleShowLoopResultList}
-            onShowRetryDetail={handleShowRetryResultList}
-            onShowAgentOrToolLog={handleShowAgentOrToolLog}
+            externalTraceRun={externalTraceRun}
+            onShowIterationDetail={() => setContainerId(node.id)}
+            onShowLoopDetail={() => setContainerId(node.id)}
+            onShowRetryDetail={logs.handleShowRetryResultList}
+            onShowAgentOrToolLog={logs.handleShowAgentOrToolLog}
             hideInfo={hideNodeInfo}
             hideProcessDetail={hideNodeProcessDetail}
           />
@@ -159,38 +158,50 @@ const TracingPanel: FC<TracingPanelProps> = ({
     }
   }
 
-  if (showSpecialResultPanel) {
-    return (
-      <SpecialResultPanel
-        showRetryDetail={showRetryDetail}
-        setShowRetryDetailFalse={setShowRetryDetailFalse}
-        retryResultList={retryResultList}
-        showIteratingDetail={showIteratingDetail}
-        setShowIteratingDetailFalse={setShowIteratingDetailFalse}
-        iterationResultList={iterationResultList}
-        iterationResultDurationMap={iterationResultDurationMap}
-        showLoopingDetail={showLoopingDetail}
-        setShowLoopingDetailFalse={setShowLoopingDetailFalse}
-        loopResultList={loopResultList}
-        loopResultDurationMap={loopResultDurationMap}
-        loopResultVariableMap={loopResultVariableMap}
-        agentOrToolLogItemStack={agentOrToolLogItemStack}
-        agentOrToolLogListMap={agentOrToolLogListMap}
-        handleShowAgentOrToolLog={handleShowAgentOrToolLog}
+  const content =
+    workflowTool && currentWorkflowRun ? (
+      <WorkflowToolTracing
+        key={workflowTool.id}
+        node={workflowTool}
+        workflowRun={currentWorkflowRun}
+        onBack={() => setWorkflowTool(null)}
       />
+    ) : container || logs.showSpecialResultPanel ? (
+      <SpecialResultPanel
+        {...logs}
+        externalTraceRun={externalTraceRun}
+        showIteratingDetail={!!iteration}
+        setShowIteratingDetailFalse={() => setContainerId(null)}
+        iterationResultList={iteration ? getIterationResultList(iteration, list) : undefined}
+        iterationResultDurationMap={iteration ? getIterationDurationMap(iteration) : undefined}
+        showLoopingDetail={!!loop}
+        setShowLoopingDetailFalse={() => setContainerId(null)}
+        loopResultList={loop?.details}
+        loopResultDurationMap={loop?.loopDurationMap || loop?.execution_metadata?.loop_duration_map}
+        loopResultVariableMap={loop?.execution_metadata?.loop_variable_map}
+      />
+    ) : (
+      <div
+        className={cn('py-2', className)}
+        onClick={(e) => {
+          e.stopPropagation()
+          e.nativeEvent.stopImmediatePropagation()
+        }}
+      >
+        {treeNodes.map(renderNode)}
+      </div>
     )
-  }
 
   return (
-    <div
-      className={cn('py-2', className)}
-      onClick={(e) => {
-        e.stopPropagation()
-        e.nativeEvent.stopImmediatePropagation()
-      }}
+    <WorkflowToolTracingContext
+      value={
+        currentWorkflowRun
+          ? { workflowRun: currentWorkflowRun, onShowWorkflowTool: setWorkflowTool }
+          : null
+      }
     >
-      {treeNodes.map(renderNode)}
-    </div>
+      {content}
+    </WorkflowToolTracingContext>
   )
 }
 

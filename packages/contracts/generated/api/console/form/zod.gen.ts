@@ -36,15 +36,6 @@ export const zHumanInputFormSubmittedError = zErrorResponse.and(
 )
 
 /**
- * HumanInputFormSubmitPayload
- */
-export const zHumanInputFormSubmitPayload = z.object({
-  action: z.string(),
-  form_inputs: z.record(z.string(), z.unknown()),
-  inputs: z.record(z.string(), z.unknown()),
-})
-
-/**
  * ConsoleHumanInputFormSubmitResponse
  */
 export const zConsoleHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
@@ -68,6 +59,16 @@ export const zHumanInputFormExpiredError = zErrorResponse.and(
     status: z.literal(412),
   }),
 )
+
+export const zJsonValue = z.unknown()
+
+/**
+ * HumanInputFormSubmitPayload
+ */
+export const zHumanInputFormSubmitPayload = z.object({
+  action: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+})
 
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),

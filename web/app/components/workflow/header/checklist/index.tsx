@@ -15,7 +15,6 @@ import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { useHooksStore } from '../../hooks-store/store'
 import { useChecklist } from '../../hooks/use-checklist'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useStore } from '../../store'
@@ -33,8 +32,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
   const [open, setOpen] = useState(false)
   const edges = useEdges<CommonEdgeType>()
   const nodes = useNodes()
-  const flowType = useHooksStore((s) => s.configsMap?.flowType)
-  const needWarningNodes = useChecklist(nodes, edges, { flowType })
+  const needWarningNodes = useChecklist(nodes, edges)
   const { handleNodeSelect } = useNodesInteractions()
   const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
   const checklistLabel = t(($) => $['panel.checklist'], { ns: 'workflow' })
@@ -94,7 +92,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
         <TooltipContent>{checklistLabel}</TooltipContent>
       </Tooltip>
       <PopoverContent
-        placement="bottom-start"
+        align="start"
         sideOffset={12}
         alignOffset={-30}
         className="w-105 rounded-2xl bg-background-default-subtle"

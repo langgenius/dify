@@ -559,7 +559,7 @@ class TestSchemaResolverClass:
         for _ in range(10):
             SchemaResolver.clear_cache()
             start = time.perf_counter()
-            result_slow = resolve_dify_schema_refs(with_refs_schema, max_depth=50)
+            resolve_dify_schema_refs(with_refs_schema, max_depth=50)
             elapsed = time.perf_counter() - start
             slow_times.append(elapsed)
 

@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import EnvItem from '../env-item'
@@ -34,11 +35,23 @@ const renderWithProviders = (
 }
 
 describe('EnvItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+  it('lets keyboard users edit and delete the identified variable', async () => {
+    const user = userEvent.setup()
+    const env = createEnv()
+    const onEdit = vi.fn()
+    const onDelete = vi.fn()
+    renderWithProviders(<EnvItem env={env} onEdit={onEdit} onDelete={onDelete} />)
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'common.operation.edit api_key' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(onEdit).toHaveBeenCalledWith(env)
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'common.operation.delete api_key' })).toHaveFocus()
+    await user.keyboard(' ')
+    expect(onDelete).toHaveBeenCalledWith(env)
   })
 
-  it('renders an LLM environment variable without exposing its object value', () => {
+  it('renders the model name for an LLM environment variable', () => {
     const env = createEnv({
       id: 'env-llm',
       name: 'for_summarize',

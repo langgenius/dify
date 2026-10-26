@@ -686,9 +686,9 @@ class CheckEmailUnique(Resource):
     @error_responses(AccountInFreezeError, EmailAlreadyInUseError, EmailDomainSuspendedError)
     @console_ns.expect(console_ns.models[CheckEmailUniquePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @setup_required
+    @console_account_admission()
     @model_validate(CheckEmailUniquePayload)
-    def post(self, args: CheckEmailUniquePayload):
+    def post(self, args: CheckEmailUniquePayload, request_context: RequestContext):
         try:
             application_services().accounts.change_email.ensure_available(args.email)
         except account_errors.AccountEmailDomainSuspendedError:

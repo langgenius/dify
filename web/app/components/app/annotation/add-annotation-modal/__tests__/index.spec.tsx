@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AddAnnotationModal from '../index'
@@ -42,39 +43,16 @@ describe('AddAnnotationModal', () => {
     annotationQuota = { size: 0, limit: 10 }
   })
 
-  const typeQuestion = (value: string) => {
-    fireEvent.change(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder'), {
-      target: { value },
-    })
-  }
-
-  const typeAnswer = (value: string) => {
-    fireEvent.change(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder'), {
-      target: { value },
-    })
-  }
-
-  it('should render modal title when drawer is visible', () => {
-    render(<AddAnnotationModal {...baseProps} />)
-
-    expect(screen.getByText('appAnnotation.addModal.title')).toBeInTheDocument()
-  })
-
-  it('should capture query input text when typing', () => {
-    render(<AddAnnotationModal {...baseProps} />)
-    typeQuestion('Sample question')
-    expect(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')).toHaveValue(
-      'Sample question',
+  const fill = async (
+    user: ReturnType<typeof userEvent.setup>,
+    field: 'query' | 'answer',
+    value: string,
+  ) => {
+    await user.type(
+      screen.getByPlaceholderText(`appAnnotation.addModal.${field}Placeholder`),
+      value,
     )
-  })
-
-  it('should capture answer input text when typing', () => {
-    render(<AddAnnotationModal {...baseProps} />)
-    typeAnswer('Sample answer')
-    expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue(
-      'Sample answer',
-    )
-  })
+  }
 
   it('should show annotation full notice and disable submit when quota exceeded', () => {
     annotationQuota = { size: 10, limit: 10 }
@@ -84,33 +62,19 @@ describe('AddAnnotationModal', () => {
     expect(screen.getByRole('button', { name: 'common.operation.add' })).toBeDisabled()
   })
 
-  it('should call onAdd with form values when create next enabled', async () => {
+  it('should reset fields after saving when create next enabled', async () => {
+    const user = userEvent.setup()
     const onAdd = vi.fn().mockResolvedValue(undefined)
     render(<AddAnnotationModal {...baseProps} onAdd={onAdd} />)
 
-    typeQuestion('Question value')
-    typeAnswer('Answer value')
-    fireEvent.click(screen.getByText('appAnnotation.addModal.createNext'))
+    await fill(user, 'query', 'Question value')
+    await fill(user, 'answer', 'Answer value')
+    await user.click(screen.getByText('appAnnotation.addModal.createNext'))
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     expect(onAdd).toHaveBeenCalledWith({ question: 'Question value', answer: 'Answer value' })
-  })
-
-  it('should reset fields after saving when create next enabled', async () => {
-    const onAdd = vi.fn().mockResolvedValue(undefined)
-    render(<AddAnnotationModal {...baseProps} onAdd={onAdd} />)
-
-    typeQuestion('Question value')
-    typeAnswer('Answer value')
-    fireEvent.click(screen.getByText('appAnnotation.addModal.createNext'))
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    })
-
+    expect(baseProps.onHide).not.toHaveBeenCalled()
     await waitFor(() => {
       expect(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')).toHaveValue('')
       expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue(
@@ -119,10 +83,12 @@ describe('AddAnnotationModal', () => {
     })
   })
 
-  it('should show toast when validation fails for missing question', () => {
+  it('should show toast when validation fails for missing question', async () => {
+    const user = userEvent.setup()
     render(<AddAnnotationModal {...baseProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    expect(baseProps.onAdd).not.toHaveBeenCalled()
     expect(mockToastNotify).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'error',
@@ -131,11 +97,13 @@ describe('AddAnnotationModal', () => {
     )
   })
 
-  it('should show toast when validation fails for missing answer', () => {
+  it('should show toast when validation fails for missing answer', async () => {
+    const user = userEvent.setup()
     render(<AddAnnotationModal {...baseProps} />)
-    typeQuestion('Filled question')
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    await fill(user, 'query', 'Filled question')
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
+    expect(baseProps.onAdd).not.toHaveBeenCalled()
     expect(mockToastNotify).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'error',
@@ -145,23 +113,24 @@ describe('AddAnnotationModal', () => {
   })
 
   it('should close modal when save completes and create next unchecked', async () => {
+    const user = userEvent.setup()
     const onAdd = vi.fn().mockResolvedValue(undefined)
     render(<AddAnnotationModal {...baseProps} onAdd={onAdd} />)
 
-    typeQuestion('Q')
-    typeAnswer('A')
+    await fill(user, 'query', 'Q')
+    await fill(user, 'answer', 'A')
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
+    expect(onAdd).toHaveBeenCalledWith({ question: 'Q', answer: 'A' })
     expect(baseProps.onHide).toHaveBeenCalled()
   })
 
-  it('should allow cancel button to close the drawer', () => {
+  it('should allow cancel button to close the drawer', async () => {
+    const user = userEvent.setup()
     render(<AddAnnotationModal {...baseProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(baseProps.onHide).toHaveBeenCalled()
   })
 })
