@@ -551,6 +551,7 @@ def test_custom_file_type_uses_extension_validation_under_strict_mode(file_recor
     assert file.type == FileType.DOCUMENT
 
 
+@pytest.mark.parametrize("strict_type_validation", [False, True])
 @pytest.mark.parametrize(
     ("extension", "name", "mime_type", "expected_type"),
     [
@@ -568,6 +569,7 @@ def test_custom_bucket_preserves_detected_type_for_llm(
     name: str,
     mime_type: str,
     expected_type: FileType,
+    strict_type_validation: bool,
 ):
     """Other File Types is an upload bucket, not a prompt-content type.
 
@@ -589,10 +591,44 @@ def test_custom_bucket_preserves_detected_type_for_llm(
         "type": "custom",
     }
 
-    file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=custom_config)
+    file = build_from_mapping(
+        mapping=mapping,
+        tenant_id=TEST_TENANT_ID,
+        config=custom_config,
+        strict_type_validation=strict_type_validation,
+    )
 
     assert file.type == expected_type
     assert file.filename == name
+
+
+@pytest.mark.parametrize("strict_type_validation", [False, True])
+@pytest.mark.parametrize("allow_documents", [False, True])
+def test_custom_bucket_rejects_disallowed_extension_for_detected_document(
+    file_records: FileRecords,
+    strict_type_validation: bool,
+    allow_documents: bool,
+):
+    """Detecting a document must not bypass the submitted custom bucket's allowlist."""
+    file_records.upload_file.extension = "pdf"
+    file_records.upload_file.name = "report.pdf"
+    file_records.upload_file.mime_type = "application/pdf"
+    file_records.session.commit()
+
+    allowed_types = [FileType.CUSTOM]
+    if allow_documents:
+        allowed_types.append(FileType.DOCUMENT)
+
+    with pytest.raises(ValueError, match="File validation failed"):
+        build_from_mapping(
+            mapping=local_file_mapping(file_type="custom"),
+            tenant_id=TEST_TENANT_ID,
+            config=FileUploadConfig(
+                allowed_file_types=allowed_types,
+                allowed_file_extensions=[".txt"],
+            ),
+            strict_type_validation=strict_type_validation,
+        )
 
 
 @pytest.mark.parametrize(
