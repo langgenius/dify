@@ -34,6 +34,7 @@ from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
@@ -174,10 +175,10 @@ def workflow_case(db_session_with_containers: Session) -> WorkflowCase:
         id=str(uuid4()),
         tenant_id=tenant.id,
         app_id=str(uuid4()),
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version="draft",
         graph=json.dumps(graph),
-        features="{}",
+        _features="{}",
         created_by=account.id,
     )
     session.add(workflow)

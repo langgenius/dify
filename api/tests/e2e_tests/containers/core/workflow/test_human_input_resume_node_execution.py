@@ -31,6 +31,7 @@ from models.human_input_contracts import HumanInputFormRepository
 from models.human_input_entities import HumanInputNodeData, UserActionConfig
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.human_input.form_repository import HumanInputFormRepositoryImpl
 from services.workflow.execution.adapters.human_input import (
     DifyHITLCallback,
@@ -203,13 +204,13 @@ class TestHumanInputResumeNodeExecutionIntegration:
         workflow = Workflow(
             tenant_id=tenant.id,
             app_id=app.id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
+            _features='{"file_upload": {"enabled": false}}',
             created_by=account.id,
-            created_at=naive_utc_now(),
         )
+        workflow.created_at = naive_utc_now()
         db_session_with_containers.add(workflow)
         db_session_with_containers.commit()
 
