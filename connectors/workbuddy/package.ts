@@ -1,14 +1,15 @@
 import type { SkillMeta } from './lib.ts'
 import { execFileSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { insertFrontmatter, latestStableTag, skillFields } from './lib.ts'
 
 const WORKBUDDY_DIR = fileURLToPath(new URL('.', import.meta.url))
 const REPO_ROOT = join(WORKBUDDY_DIR, '..', '..')
-const BUILD_DIR = join(WORKBUDDY_DIR, 'build')
+const BUILD_NAME = 'build'
+const BUILD_DIR = join(WORKBUDDY_DIR, BUILD_NAME)
 const ICON_FILES = ['icon.svg', 'icon.png', 'icon.jpg']
 const COPIED_FILES = ['connector-meta.json', 'cli.json']
 
@@ -28,6 +29,14 @@ function main() {
   const connector = positionals[0]
   if (!connector || positionals.length > 1)
     throw new Error('usage: node package.ts <connector> [--tag <tag>]')
+
+  if (
+    basename(connector) !== connector ||
+    connector === '.' ||
+    connector === '..' ||
+    connector === BUILD_NAME
+  )
+    throw new Error(`invalid connector name "${connector}"`)
 
   const sourceDir = join(WORKBUDDY_DIR, connector)
   if (!existsSync(sourceDir))
