@@ -110,6 +110,7 @@ const unsupportedSnippetNodeTypes = new Set([
   BlockEnum.Start,
   BlockEnum.HumanInput,
   BlockEnum.KnowledgeRetrieval,
+  BlockEnum.KnowledgeRetrievalV2,
 ])
 
 const getAlignableNodes = (nodes: Node[], selectedNodes: Node[]) => {
@@ -409,7 +410,6 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
           return returnToCanvas ? (flowStore.getState().domNode ?? true) : true
         }}
         className="w-60"
-        sideOffset={4}
         onKeyDown={(event) => {
           if (getNodesReadOnly()) return
           handleWorkflowMenuKeyDown(event, [

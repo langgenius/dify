@@ -29,7 +29,7 @@ from services.retention.workflow_run.constants import (
     ARCHIVE_BUNDLE_RESTORED_MARKER_NAME,
     ARCHIVE_BUNDLE_SCHEMA_VERSION,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
 CATALOG_ID = "019f63b7-5ca4-7681-9ce0-800283608f39"

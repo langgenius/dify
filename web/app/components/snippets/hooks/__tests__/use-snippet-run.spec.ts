@@ -1,5 +1,5 @@
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { useNodes } from 'reactflow'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import {
@@ -47,14 +47,14 @@ vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () =>
   useSetWorkflowVarsWithValue: () => ({ fetchInspectVars: mockFetchInspectVars }),
 }))
 
+const mockStopWorkflowRun = vi
+  .fn()
+  .mockImplementation(async () => Response.json({ result: 'success' }))
+
 const mockSsePost = vi.fn()
 vi.mock('@/service/base', () => ({
   ssePost: (...args: unknown[]) => mockSsePost(...args),
-}))
-
-const mockStopWorkflowRun = vi.fn()
-vi.mock('@/service/workflow', () => ({
-  stopWorkflowRun: (url: string) => mockStopWorkflowRun(url),
+  request: (...args: unknown[]) => mockStopWorkflowRun(...args),
 }))
 
 const mockInvalidAllLastRun = vi.fn()
@@ -295,8 +295,12 @@ describe('useSnippetRun', () => {
 
       act(() => result.current.run.handleStopRun('task-1'))
 
-      expect(mockStopWorkflowRun).toHaveBeenCalledExactlyOnceWith(
-        '/snippets/snippet-1/workflow-runs/tasks/task-1/stop',
+      await waitFor(() =>
+        expect(mockStopWorkflowRun).toHaveBeenCalledWith(
+          expect.stringContaining('/snippets/snippet-1/workflow-runs/tasks/task-1/stop'),
+          expect.anything(),
+          expect.anything(),
+        ),
       )
       expect(controller.signal.aborted).toBe(true)
       expect(store.getState().workflowRunningData?.result.status).toBe(

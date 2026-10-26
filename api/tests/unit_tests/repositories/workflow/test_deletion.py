@@ -13,7 +13,7 @@ from models.workflow import Workflow
 from repositories.workflow.definition_repository import WorkflowDefinitionStore
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.workflow_ref_service import WorkflowRef
-from tests.unit_tests.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_workflow
 
 
 class TestWorkflowDeletion:
