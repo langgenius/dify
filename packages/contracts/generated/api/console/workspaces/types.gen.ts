@@ -7022,7 +7022,9 @@ export type PostWorkspacesCurrentSkillsFilesUploadResponse =
   PostWorkspacesCurrentSkillsFilesUploadResponses[keyof PostWorkspacesCurrentSkillsFilesUploadResponses]
 
 export type PostWorkspacesCurrentSkillsImportData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/current/skills/import'

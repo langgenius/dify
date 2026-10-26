@@ -634,7 +634,7 @@
     "compatible",
     "parsed-vs-wire-output"
   ],
-  "console POST /workspaces/current/skills/import": ["no-input-schema", "parsed-vs-wire-output"],
+  "console POST /workspaces/current/skills/import": ["compatible", "parsed-vs-wire-output"],
   "console POST /workspaces/current/tool-provider/api/schema": [
     "compatible",
     "parsed-vs-wire-output"

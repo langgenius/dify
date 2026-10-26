@@ -451,6 +451,7 @@ import {
   zPostWorkspacesCurrentSkillsBySkillIdRestoreResponse,
   zPostWorkspacesCurrentSkillsFilesUploadBody,
   zPostWorkspacesCurrentSkillsFilesUploadResponse,
+  zPostWorkspacesCurrentSkillsImportBody,
   zPostWorkspacesCurrentSkillsImportResponse,
   zPostWorkspacesCurrentSkillsResponse,
   zPostWorkspacesCurrentToolProviderApiAddBody,
@@ -3816,6 +3817,7 @@ export const post50 = oc
     successStatus: 201,
     tags: ['console'],
   })
+  .input(z.object({ body: zPostWorkspacesCurrentSkillsImportBody }))
   .output(zPostWorkspacesCurrentSkillsImportResponse)
   .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 

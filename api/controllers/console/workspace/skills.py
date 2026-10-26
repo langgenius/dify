@@ -389,7 +389,11 @@ class WorkspaceSkillTagsApi(Resource):
 @console_ns.route("/workspaces/current/skills/import")
 class WorkspaceSkillImportApi(Resource):
     @error_responses(RelayedHTTPError, SkillRequestError)
-    @console_ns.doc(description="Import a Skill zip package from multipart form field `file`.")
+    @console_ns.doc(
+        description="Import a Skill zip package from multipart form field `file`.",
+        consumes=["multipart/form-data"],
+        params=_FILE_UPLOAD_PARAMS,
+    )
     @console_ns.response(201, "Skill imported", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
         rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],

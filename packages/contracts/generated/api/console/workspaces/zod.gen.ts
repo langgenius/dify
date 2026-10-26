@@ -6205,6 +6205,10 @@ export const zPostWorkspacesCurrentSkillsFilesUploadBody = z.object({
  */
 export const zPostWorkspacesCurrentSkillsFilesUploadResponse = zSkillFileUploadResponse
 
+export const zPostWorkspacesCurrentSkillsImportBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 /**
  * Skill imported
  */

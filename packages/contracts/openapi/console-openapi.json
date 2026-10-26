@@ -151976,6 +151976,26 @@
       "post": {
         "description": "Import a Skill zip package from multipart form field `file`.",
         "operationId": "post_workspace_skill_import_api",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "description": "Skill draft file payload",
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
