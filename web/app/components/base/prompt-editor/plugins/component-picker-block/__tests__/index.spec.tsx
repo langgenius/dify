@@ -37,6 +37,7 @@ import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { INSERT_AGENT_OUTPUT_BLOCK_COMMAND } from '../../agent-output-block/commands'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from '../../context-block'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../../current-block'
+import { CustomTextNode } from '../../custom-text/node'
 import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../../error-message-block'
 import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../../last-run-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../../variable-block'
@@ -174,6 +175,7 @@ const MinimalEditor: React.FC<{
   const initialConfig = React.useMemo(
     () => ({
       namespace: `component-picker-test-${Math.random().toString(16).slice(2)}`,
+      nodes: [CustomTextNode],
       onError: (e: Error) => {
         throw e
       },
@@ -305,6 +307,32 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     })
   })
 
+  it.each(['{[', '[Open manual]({source_url})'])(
+    'keeps the add-variable action usable after entering "%s"',
+    async (text) => {
+      const user = userEvent.setup()
+      const captures: Captures = { editor: null, eventEmitter: null }
+      render(
+        <MinimalEditor
+          triggerString="{"
+          variableBlock={{ show: true, variables: [] }}
+          captures={captures}
+        />,
+      )
+
+      const editor = await waitForEditor(captures)
+      await setEditorText(editor, text, true)
+
+      const addVariable = await screen.findByRole('option', {
+        name: 'common.promptEditor.variable.modal.add',
+      })
+      expect(readEditorText(editor)).toBe(text)
+      await user.click(addVariable)
+
+      await waitFor(() => expect(readEditorText(editor)).toContain('{{}}'))
+    },
+  )
+
   it('renders prompt options in a portal and removes the trigger TextNode when selecting a normal option (nodeToRemove && key truthy)', async () => {
     const user = userEvent.setup()
 
@@ -365,16 +393,13 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
 
     await setEditorText(editor, '{', true)
 
-    // There is no accessible "option" role here (menu items are plain divs).
-    // We locate menu items by `tabindex="-1"` inside the listbox.
     const listbox = await screen.findByRole('listbox', { name: /typeahead menu/i })
-    const menuItems = Array.from(listbox.querySelectorAll('[tabindex="-1"]'))
+    expect(
+      within(listbox).getByRole('option', { name: 'common.promptEditor.variable.modal.add' }),
+    ).toBeInTheDocument()
 
-    // Expect at least: (1) our empty variable option, (2) the "add variable" option.
-    expect(menuItems.length).toBeGreaterThanOrEqual(2)
-    expect(within(listbox).getByText('common.promptEditor.variable.modal.add')).toBeInTheDocument()
-
-    fireEvent.click(menuItems[0] as HTMLElement)
+    const user = userEvent.setup()
+    await user.click(within(listbox).getByRole('option', { name: '' }))
 
     // Since the key is falsy, ComponentPicker should NOT call nodeToRemove.remove().
     // The trigger remains in editor content.

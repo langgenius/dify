@@ -455,7 +455,7 @@ describe('useVariableOptions', () => {
   })
 
   /**
-   * queryString filtering: only variable keys that match the regex survive.
+   * queryString filtering: only variable keys containing the literal query survive.
    */
   describe('with queryString filtering', () => {
     it('should filter variables by queryString (case-insensitive)', () => {
@@ -467,7 +467,7 @@ describe('useVariableOptions', () => {
       const { result } = renderHook(() => useVariableOptions(makeVariableBlock(vars), 'alpha'), {
         wrapper,
       })
-      // 'alpha' regex (case-insensitive) matches 'alpha' and 'ALPHA_UPPER'; addOption is always appended
+      // 'alpha' matches 'alpha' and 'ALPHA_UPPER' case-insensitively; addOption is always appended
       expect(result.current).toHaveLength(3)
       expect(result.current[0]!.key).toBe('alpha')
       expect(result.current[1]!.key).toBe('ALPHA_UPPER')
@@ -483,6 +483,21 @@ describe('useVariableOptions', () => {
       })
       // No match → filtered options=[] + addOption = 1
       expect(result.current).toHaveLength(1)
+    })
+
+    it.each(['[', '.*'])('treats "%s" as literal text when filtering variables', (queryString) => {
+      const vars: Option[] = [
+        { value: 'alpha', name: 'Alpha' },
+        { value: 'beta', name: 'Beta' },
+      ]
+      const { result } = renderHook(
+        () => useVariableOptions(makeVariableBlock(vars), queryString),
+        { wrapper },
+      )
+
+      expect(result.current.map((option) => option.key)).toEqual([
+        'common.promptEditor.variable.modal.add',
+      ])
     })
   })
 
@@ -614,7 +629,7 @@ describe('useExternalToolOptions', () => {
         () => useExternalToolOptions(makeExternalToolBlock({}, tools), 'weather'),
         { wrapper },
       )
-      // 'weather' regex matches 'WeatherTool'; addOption is always appended
+      // 'weather' matches 'WeatherTool' case-insensitively; addOption is always appended
       expect(result.current).toHaveLength(2)
       expect(result.current[0]!.key).toBe('WeatherTool')
     })
@@ -626,6 +641,23 @@ describe('useExternalToolOptions', () => {
         { wrapper },
       )
       expect(result.current).toHaveLength(1)
+    })
+
+    it.each(['[', '.*'])('treats "%s" as literal text when filtering tools', (queryString) => {
+      const matchingName = `Weather ${queryString}`
+      const tools: ExternalToolOption[] = [
+        { name: matchingName, variableName: 'weather' },
+        { name: 'Search', variableName: 'search' },
+      ]
+      const { result } = renderHook(
+        () => useExternalToolOptions(makeExternalToolBlock({}, tools), queryString),
+        { wrapper },
+      )
+
+      expect(result.current.map((option) => option.key)).toEqual([
+        matchingName,
+        'common.promptEditor.variable.modal.addTool',
+      ])
     })
   })
 
