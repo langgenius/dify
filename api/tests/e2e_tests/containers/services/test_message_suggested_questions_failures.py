@@ -1,20 +1,24 @@
-"""Exercise real model resolution and missing-plugin failures with PostgreSQL/Redis.
+"""Exercise real model resolution, generation and failures with PostgreSQL/Redis.
 
 Only provider discovery, decoded credentials and schema data are seeded in their
-normal caches. ModelManager, HTTP transport and the plugin daemon all run normally;
-the deliberately absent installation represents stale cached provider metadata.
+normal caches. ModelManager and HTTP transport run normally, against either a
+loopback provider returning valid SSE or a daemon with a missing installation.
 """
 
+import json
 from collections.abc import Iterator
 from dataclasses import dataclass
 from decimal import Decimal
 from http import HTTPStatus
+from threading import Thread
 
 import httpx
 import pytest
+from flask import Flask, Response
 from flask.testing import FlaskClient
 from sqlalchemy import Connection, delete, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction
+from werkzeug.serving import make_server
 from yarl import URL
 
 from configs import dify_config
@@ -144,6 +148,122 @@ def scenario(db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatc
             timer.cancel()
             timer.join(timeout=1)
             ops_trace_manager.trace_manager_timer = previous_timer
+
+
+@pytest.fixture
+def _successful_model_provider(scenario: _Scenario, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    app = Flask(__name__)
+    route = f"/plugin/{scenario.context.tenant_id}/dispatch/llm"
+
+    @app.post(f"{route}/num_tokens")
+    def count_tokens() -> Response:
+        payload = {"code": 0, "message": "success", "data": {"num_tokens": 8}}
+        return Response(f"data: {json.dumps(payload)}\n\n", mimetype="text/event-stream")
+
+    @app.post(f"{route}/invoke")
+    def invoke() -> Response:
+        def chunks() -> Iterator[str]:
+            for index, content in enumerate(
+                ('```json\n["What should I try next?",', '"Can you show an example?"]\n```')
+            ):
+                payload = {
+                    "code": 0,
+                    "message": "success",
+                    "data": {
+                        "model": _MODEL,
+                        "delta": {
+                            "index": index,
+                            "message": {"role": "assistant", "content": content},
+                            "finish_reason": "stop" if index == 1 else None,
+                        },
+                    },
+                }
+                yield f"data: {json.dumps(payload)}\n\n"
+
+        return Response(chunks(), mimetype="text/event-stream")
+
+    server = make_server("127.0.0.1", 0, app, threaded=True)
+    thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+    thread.start()
+    monkeypatch.setattr(plugin_base, "plugin_daemon_inner_api_baseurl", URL(f"http://127.0.0.1:{server.server_port}"))
+    try:
+        yield
+    finally:
+        server.shutdown()
+        thread.join()
+        server.server_close()
+
+
+@pytest.mark.parametrize("configured_model", [False, True], ids=["default-model", "configured-model"])
+@pytest.mark.usefixtures("_successful_model_provider")
+def test_console_returns_generated_questions_through_real_http_provider(
+    scenario: _Scenario,
+    test_client_with_containers: FlaskClient,
+    monkeypatch: pytest.MonkeyPatch,
+    configured_model: bool,
+) -> None:
+    feature: dict[str, object] = {"enabled": True, "prompt": "Give two concrete follow-ups."}
+    if configured_model:
+        feature["model"] = {"provider": _PROVIDER, "name": _MODEL, "completion_params": {"temperature": 0.2}}
+    db.session.execute(
+        update(AppModelConfig)
+        .where(AppModelConfig.app_id == scenario.context.app_id)
+        .values(suggested_questions_after_answer=json.dumps(feature))
+    )
+    db.session.commit()
+    headers = authenticate_console_client(test_client_with_containers, scenario.account)
+    monkeypatch.setattr(dify_config, "PLUGIN_BASED_TOKEN_COUNTING_ENABLED", True)
+    db.session.remove()
+    caller = db.session()
+    sessions: list[Session] = []
+    requests: list[httpx.Request] = []
+    active_sessions: list[Session] = []
+
+    def remember_session(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        sessions.append(session)
+
+    def observe_request(request: httpx.Request) -> None:
+        requests.append(request)
+        active_sessions.extend(session for session in sessions if session is not caller and session.in_transaction())
+
+    event.listen(Session, "after_begin", remember_session)
+    hooks = plugin_base._httpx_client.event_hooks["request"]
+    hooks.append(observe_request)
+    try:
+        response = test_client_with_containers.get(
+            f"/console/api/apps/{scenario.context.app_id}/chat-messages/"
+            f"{scenario.context.message_id}/suggested-questions",
+            headers=headers,
+        )
+    finally:
+        hooks.remove(observe_request)
+        event.remove(Session, "after_begin", remember_session)
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.headers["Content-Type"] == "application/json"
+    assert response.get_json() == {"data": ["What should I try next?", "Can you show an example?"]}
+    assert [request.url.path for request in requests] == [
+        f"/plugin/{scenario.context.tenant_id}/dispatch/llm/num_tokens",
+        f"/plugin/{scenario.context.tenant_id}/dispatch/llm/invoke",
+    ]
+    assert not active_sessions
+    invocation = requests[1]
+    payload = json.loads(invocation.content)["data"]
+    assert payload["provider"] == "suggested"
+    assert payload["model"] == _MODEL
+    assert payload["credentials"] == {"api_key": "unused-test-key"}
+    assert payload["stream"] is False
+    assert payload["model_parameters"] == (
+        {"temperature": 0.2} if configured_model else {"max_tokens": 256, "temperature": 0.0}
+    )
+    assert len(payload["prompt_messages"]) == 1
+    prompt = payload["prompt_messages"][0]
+    assert prompt["role"] == "user"
+    assert "Human: How does this work?\nAssistant: Read the documentation." in prompt["content"]
+    assert "Give two concrete follow-ups." in prompt["content"]
+    assert 'You must output a JSON array like ["question1", "question2", "question3"].' in prompt["content"]
+    assert invocation.headers["X-Plugin-ID"] == "tests/suggested"
+    assert invocation.headers["X-Plugin-Unique-Identifier"] == "tests/suggested:0.0.1@" + "0" * 64
 
 
 @pytest.mark.parametrize("configured_provider", [_PROVIDER, "tests/missing/missing"])
