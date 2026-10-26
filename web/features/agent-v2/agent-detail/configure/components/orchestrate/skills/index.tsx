@@ -9,13 +9,7 @@ import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   keepPreviousData,
@@ -396,13 +390,13 @@ function WorkspaceAgentSkillItem({
           {skill.name}
         </span>
       </Link>
-      <DropdownMenu
+      <Menu
         modal={false}
         onOpenChange={(open) => {
           if (!open) setIsRemoveHighlighted(false)
         }}
       >
-        <DropdownMenuTrigger
+        <MenuTrigger
           aria-label={t(($) => $['agentDetail.configure.skills.moreActions'], {
             name: displayName,
           })}
@@ -413,19 +407,19 @@ function WorkspaceAgentSkillItem({
           onClick={(event) => event.stopPropagation()}
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-48">
-          <DropdownMenuItem className="gap-2" onClick={handleOpenInLibrary}>
+        </MenuTrigger>
+        <MenuContent align="end" className="w-48">
+          <MenuItem className="gap-2" onClick={handleOpenInLibrary}>
             <span
               aria-hidden
               className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary"
             />
             <span>{t(($) => $['agentDetail.configure.skills.openInLibrary'])}</span>
-          </DropdownMenuItem>
+          </MenuItem>
           {canRemove && (
             <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
+              <MenuSeparator />
+              <MenuItem
                 data-workspace-skill-remove-action
                 className="group gap-2 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
                 onClick={() => onRemove(skill.id)}
@@ -439,11 +433,11 @@ function WorkspaceAgentSkillItem({
                   className="i-ri-delete-bin-line size-4 shrink-0 text-text-tertiary group-data-highlighted:text-text-destructive"
                 />
                 <span>{t(($) => $['agentDetail.configure.skills.removeAction'])}</span>
-              </DropdownMenuItem>
+              </MenuItem>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
     </div>
   )
 }

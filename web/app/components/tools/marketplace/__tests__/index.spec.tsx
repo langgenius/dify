@@ -1,242 +1,132 @@
-import type { SearchParamsFromCollection } from '@dify/contracts/marketplace'
-import type { useMarketplace } from '../hooks'
-import type { Plugin } from '@/app/components/plugins/types'
-import { render, screen } from '@testing-library/react'
+import type { MarketplaceCollection } from '@dify/contracts/marketplace'
+import type { ComponentProps } from 'react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { getMarketplaceUrl } from '@/utils/var'
+import { useState } from 'react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import Marketplace from '../index'
 
-const { mockRouterPush } = vi.hoisted(() => ({
-  mockRouterPush: vi.fn(),
-}))
-
-const { mockCanInstallPlugin } = vi.hoisted(() => ({
-  mockCanInstallPlugin: vi.fn(() => true),
-}))
-
-const listRenderSpy = vi.fn()
-vi.mock('@/app/components/plugins/marketplace/list', () => ({
-  default: (props: {
-    marketplaceCollections: unknown[]
-    marketplaceCollectionPluginsMap: Record<string, unknown[]>
-    cardContainerClassName?: string
-    plugins?: unknown[]
-    showInstallButton?: boolean
-    onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
-  }) => {
-    listRenderSpy(props)
-    return (
-      <div data-testid="marketplace-list">
-        <button
-          onClick={() =>
-            props.onCollectionMoreClick?.({
-              query: 'featured tools',
-              sort_by: 'install_count',
-              sort_order: 'DESC',
-            })
-          }
-        >
-          More featured tools
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
-  usePluginSettingsAccess: () => ({
-    canInstallPlugin: mockCanInstallPlugin(),
-  }),
-}))
-
-const mockUseMarketplaceCollectionsAndPlugins = vi.fn()
-const mockUseMarketplacePlugins = vi.fn()
-vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
-  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) =>
-    mockUseMarketplaceCollectionsAndPlugins(...args),
-  useMarketplacePlugins: (...args: unknown[]) => mockUseMarketplacePlugins(...args),
-}))
-
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: vi.fn(() => 'https://marketplace.test/market'),
-}))
-
-const mockGetMarketplaceUrl = vi.mocked(getMarketplaceUrl)
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockRouterPush,
-  }),
-}))
-
-const createPlugin = (overrides: Partial<Plugin> = {}): Plugin => ({
-  type: 'plugin',
-  org: 'org',
-  author: 'author',
-  name: 'Plugin One',
-  plugin_id: 'plugin-1',
-  version: '1.0.0',
-  latest_version: '1.0.0',
-  latest_package_identifier: 'plugin-1@1.0.0',
-  icon: 'icon',
-  verified: true,
-  label: { en_US: 'Plugin One' },
-  brief: { en_US: 'Brief' },
-  description: { en_US: 'Plugin description' },
-  introduction: 'Intro',
-  repository: 'https://example.com',
-  category: PluginCategoryEnum.tool,
-  install_count: 0,
-  endpoint: { settings: [] },
-  tags: [{ name: 'tag' }],
-  badges: [],
-  verification: { authorized_category: 'community' },
-  from: 'marketplace',
-  ...overrides,
+const requests = vi.hoisted(() => ({ push: vi.fn() }))
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: requests.push }) }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.permission.fetch.get': () => ({
+        install_permission: 'everyone',
+        debug_permission: 'everyone',
+      }),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': () => ({ plugins: [] }),
+    }),
+  }
 })
+const render = createNuqsTestRenderer(renderWithConsoleQuery)
 
-const createMarketplaceContext = (overrides: Partial<ReturnType<typeof useMarketplace>> = {}) => ({
+type Props = ComponentProps<typeof Marketplace>
+const plugin = createMarketplacePluginFixture({ label: { en_US: 'Search Tool' }, tags: [] })
+const collection: MarketplaceCollection = {
+  name: 'featured',
+  label: { en_US: 'Featured tools' },
+  description: { en_US: 'Recommended tools' },
+  rule: '',
+  created_at: '',
+  updated_at: '',
+  searchable: true,
+  search_params: { query: 'featured tools', sort_by: 'install_count', sort_order: 'DESC' },
+}
+const context = (
+  overrides: Partial<Props['marketplaceContext']> = {},
+): Props['marketplaceContext'] => ({
   isLoading: false,
   marketplaceCollections: [],
   marketplaceCollectionPluginsMap: {},
-  plugins: [],
-  handleScroll: vi.fn(),
+  plugins: [plugin],
+  handleScroll: () => {},
   page: 1,
   ...overrides,
 })
-
-describe('Marketplace', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockCanInstallPlugin.mockReturnValue(true)
-  })
-
-  // Rendering the marketplace panel based on loading and visibility state.
-  describe('Rendering', () => {
-    it('should show loading indicator when loading first page', () => {
-      // Arrange
-      const marketplaceContext = createMarketplaceContext({ isLoading: true, page: 1 })
-      render(
-        <Marketplace
-          searchPluginText=""
-          filterPluginTags={[]}
-          isMarketplaceArrowVisible={false}
-          showMarketplacePanel={vi.fn()}
-          marketplaceContext={marketplaceContext}
-        />,
-      )
-
-      // Assert
-      expect(screen.queryByRole('progressbar')).toBeInTheDocument()
-      expect(screen.queryByTestId('marketplace-list')).not.toBeInTheDocument()
-    })
-
-    it('should render list when not loading', () => {
-      // Arrange
-      const marketplaceContext = createMarketplaceContext({
-        isLoading: false,
-        plugins: [createPlugin()],
-      })
-      render(
-        <Marketplace
-          searchPluginText=""
-          filterPluginTags={[]}
-          isMarketplaceArrowVisible={false}
-          showMarketplacePanel={vi.fn()}
-          marketplaceContext={marketplaceContext}
-        />,
-      )
-
-      // Assert
-      expect(screen.getByTestId('marketplace-list')).toBeInTheDocument()
-      expect(listRenderSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          showInstallButton: true,
-        }),
-      )
-    })
-
-    it('should hide install actions when plugin install permission is missing', () => {
-      mockCanInstallPlugin.mockReturnValue(false)
-      const marketplaceContext = createMarketplaceContext({
-        isLoading: false,
-        plugins: [createPlugin()],
-      })
-
-      render(
-        <Marketplace
-          searchPluginText=""
-          filterPluginTags={[]}
-          isMarketplaceArrowVisible={false}
-          showMarketplacePanel={vi.fn()}
-          marketplaceContext={marketplaceContext}
-        />,
-      )
-
-      expect(listRenderSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          showInstallButton: false,
-        }),
-      )
-    })
-  })
-
-  // Prop-driven UI output such as links and action triggers.
-  describe('Props', () => {
-    it('should build marketplace link and trigger panel when arrow is clicked', async () => {
-      const user = userEvent.setup()
-      // Arrange
-      const marketplaceContext = createMarketplaceContext()
-      const showMarketplacePanel = vi.fn()
-      render(
+function renderMarketplace(props: Partial<Props> = {}, canInstall = true) {
+  return render(
+    <Marketplace
+      searchPluginText=""
+      filterPluginTags={[]}
+      isMarketplaceArrowVisible={false}
+      showMarketplacePanel={() => {}}
+      marketplaceContext={context()}
+      {...props}
+    />,
+    {
+      workspacePermissionKeys: canInstall ? ['plugin.install'] : [],
+      systemFeatures: { rbac_enabled: true },
+    },
+  )
+}
+it('shows loading in place of plugin cards while the first page is pending', () => {
+  renderMarketplace({ marketplaceContext: context({ isLoading: true }) })
+  expect(screen.getByRole('progressbar')).toBeInTheDocument()
+  expect(screen.queryByText('Search Tool')).not.toBeInTheDocument()
+})
+it('renders the plugin and its install action for an allowed workspace', async () => {
+  renderMarketplace()
+  expect(await screen.findByText('Search Tool')).toBeInTheDocument()
+  expect(
+    await screen.findByRole('button', { name: 'plugin.detailPanel.operation.install' }),
+  ).toBeEnabled()
+})
+it('keeps the plugin visible but removes install actions without installation permission', async () => {
+  renderMarketplace({}, false)
+  expect(await screen.findByText('Search Tool')).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'plugin.detailPanel.operation.install' }),
+  ).not.toBeInTheDocument()
+})
+it('opens the caller panel and exposes a marketplace link with the current filters', async () => {
+  const user = userEvent.setup()
+  function Caller() {
+    const [open, setOpen] = useState(false)
+    return (
+      <>
+        {open && <section aria-label="Marketplace panel">Expanded marketplace</section>}
         <Marketplace
           searchPluginText="vector"
           filterPluginTags={['tag-a', 'tag-b']}
           isMarketplaceArrowVisible
-          showMarketplacePanel={showMarketplacePanel}
-          marketplaceContext={marketplaceContext}
-        />,
-      )
-
-      // Act
-      await user.click(screen.getByRole('button', { name: /plugin.marketplace.moreFrom/i }))
-
-      // Assert
-      expect(showMarketplacePanel).toHaveBeenCalledTimes(1)
-      expect(mockGetMarketplaceUrl).toHaveBeenCalledWith('', {
-        language: 'en-US',
-        q: 'vector',
-        tags: 'tag-a,tag-b',
-        theme: undefined,
-      })
-      const marketplaceLink = screen.getByRole('link', {
-        name: /plugin.marketplace.difyMarketplace/i,
-      })
-      expect(marketplaceLink).toHaveAttribute('href', 'https://marketplace.test/market')
-    })
-
-    it('should open integrations marketplace when collection more is clicked', async () => {
-      const user = userEvent.setup()
-      const marketplaceContext = createMarketplaceContext()
-      render(
-        <Marketplace
-          searchPluginText=""
-          filterPluginTags={[]}
-          isMarketplaceArrowVisible={false}
-          showMarketplacePanel={vi.fn()}
-          marketplaceContext={marketplaceContext}
-        />,
-      )
-
-      await user.click(screen.getByRole('button', { name: 'More featured tools' }))
-
-      expect(mockRouterPush).toHaveBeenCalledWith(
-        '/marketplace?category=tool&q=featured+tools&sort_by=install_count&sort_order=DESC',
-      )
-    })
+          showMarketplacePanel={() => setOpen(true)}
+          marketplaceContext={context()}
+        />
+      </>
+    )
+  }
+  render(<Caller />, {
+    workspacePermissionKeys: ['plugin.install'],
+    systemFeatures: { rbac_enabled: true },
   })
+  await user.click(screen.getByRole('button', { name: 'plugin.marketplace.moreFrom' }))
+  expect(screen.getByRole('region', { name: 'Marketplace panel' })).toBeInTheDocument()
+  const link = screen.getByRole('link', { name: 'plugin.marketplace.difyMarketplace' })
+  const url = new URL(link.getAttribute('href')!, window.location.origin)
+  expect(url.searchParams.get('q')).toBe('vector')
+  expect(url.searchParams.get('tags')).toBe('tag-a,tag-b')
+  expect(url.searchParams.get('language')).toBe('en-US')
 })
-
-// useMarketplace hook tests moved to hooks.spec.ts
+it('opens the integrations marketplace from the real collection more button', async () => {
+  const user = userEvent.setup()
+  renderMarketplace({
+    marketplaceContext: context({
+      plugins: undefined,
+      marketplaceCollections: [collection],
+      marketplaceCollectionPluginsMap: { featured: [plugin] },
+    }),
+  })
+  await user.click(await screen.findByRole('button', { name: 'plugin.marketplace.viewMore' }))
+  expect(requests.push).toHaveBeenCalledWith(
+    '/marketplace?category=tool&q=featured+tools&sort_by=install_count&sort_order=DESC',
+  )
+})

@@ -94,6 +94,9 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       workspaces: {
         current: {
+          members: {
+            byMemberId: { delete: defaults.workspaces_current_members_byMemberId_delete },
+          },
           toolProvider: {
             builtin: {
               byProvider: {
@@ -271,11 +274,18 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: { delete: defaults.knowledgeFs_spaces_byControlSpaceId_delete },
+        },
+      },
       datasets: {
         processRule: { get: defaults.datasets_processRule_get },
         byDatasetId: {
+          delete: defaults.datasets_byDatasetId_delete,
           get: defaults.datasets_byDatasetId_get,
           documents: {
+            delete: defaults.datasets_byDatasetId_documents_delete,
             byDocumentId: {
               pipelineExecutionLog: {
                 get: defaults.datasets_byDatasetId_documents_byDocumentId_pipelineExecutionLog_get,

@@ -89,9 +89,9 @@
       "types": "./src/drawer/index.tsx",
       "import": "./src/drawer/index.tsx"
     },
-    "./dropdown-menu": {
-      "types": "./src/dropdown-menu/index.tsx",
-      "import": "./src/dropdown-menu/index.tsx"
+    "./menu": {
+      "types": "./src/menu/index.tsx",
+      "import": "./src/menu/index.tsx"
     },
     "./field": {
       "types": "./src/field/index.tsx",

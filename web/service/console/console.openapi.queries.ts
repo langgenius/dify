@@ -133,4 +133,9 @@ export { enterprise_appDeploy_accessService_deleteEnvironmentApiKey as 'DELETE /
 export { enterprise_appDeploy_deploymentService_deployWorkflow as 'POST /enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment:deploy' } from './query-defaults'
 export { enterprise_appDeploy_deploymentService_undeployWorkflow as 'POST /enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment:undeploy' } from './query-defaults'
 export { enterprise_webAppAuth_updateWebAppWhitelistSubjects as 'POST /enterprise/webapp/app/access-mode' } from './query-defaults'
+
+export { workspaces_current_members_byMemberId_delete as 'DELETE /workspaces/current/members/{member_id}' } from './query-defaults'
+export { knowledgeFs_spaces_byControlSpaceId_delete as 'DELETE /knowledge-fs/spaces/{control_space_id}' } from './query-defaults'
+export { datasets_byDatasetId_delete as 'DELETE /datasets/{dataset_id}' } from './query-defaults'
+export { datasets_byDatasetId_documents_delete as 'DELETE /datasets/{dataset_id}/documents' } from './query-defaults'
 // oxlint-enable no-barrel-files/no-barrel-files

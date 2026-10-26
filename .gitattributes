@@ -22,3 +22,4 @@
 /packages/contracts/openapi/console-openapi.json text eol=lf linguist-generated
 
 /packages/contracts/openapi/fastopenapi-console-openapi.json text eol=lf linguist-generated
+/oxlint-suppressions.json         linguist-generated
