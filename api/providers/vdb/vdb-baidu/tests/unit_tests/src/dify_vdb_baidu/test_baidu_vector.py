@@ -172,21 +172,38 @@ def test_get_search_result_handles_metadata_and_threshold(baidu_module: ModuleTy
 
 
 def test_delete_by_ids_and_delete_by_metadata_field(baidu_module: ModuleType) -> None:
+    deleted_filters: list[str] = []
+    collection_names: list[str] = []
+
+    class Table:
+        def delete(self, *, filter: str) -> None:
+            deleted_filters.append(filter)
+
+    table = Table()
+
+    class Database:
+        def table(self, collection_name: str) -> Table:
+            collection_names.append(collection_name)
+            return table
+
     vector = baidu_module.BaiduVector.__new__(baidu_module.BaiduVector)
-    table = MagicMock()
-    vector._db = MagicMock()
-    vector._db.table.return_value = table
+    vector._db = Database()
     vector._collection_name = "collection_1"
 
     vector.delete_by_ids([])
-    table.delete.assert_not_called()
+    assert deleted_filters == []
+    assert collection_names == []
 
     vector.delete_by_ids(["id1", "id2"])
-    table.delete.assert_called_once()
+    assert deleted_filters == ["id IN('id1', 'id2')"]
+    assert collection_names == ["collection_1"]
 
-    table.delete.reset_mock()
+    deleted_filters.clear()
+    collection_names.clear()
     vector.delete_by_metadata_field("source", 'abc"def')
-    delete_filter = table.delete.call_args.kwargs["filter"]
+    assert len(deleted_filters) == 1
+    assert collection_names == ["collection_1"]
+    delete_filter = deleted_filters[0]
     assert delete_filter == 'metadata["source"] = "abc\\"def"'
 
 

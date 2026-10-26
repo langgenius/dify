@@ -1,4 +1,4 @@
-from typing import Protocol, cast
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -14,20 +14,22 @@ from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
 from core.rag.rerank.weight_rerank import WeightRerankRunner
 
 
-class ScrollMock(Protocol):
-    side_effect: object
-    call_count: int
+@pytest.fixture
+def qdrant_client_mock() -> Iterator[MagicMock]:
+    with patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.qdrant_client.QdrantClient") as client_cls:
+        yield client_cls.return_value
 
 
 class TestTidbOnQdrantVectorFullTextSearch:
     @pytest.fixture
-    def vector(self) -> TidbOnQdrantVector:
-        with patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.qdrant_client.QdrantClient"):
-            return TidbOnQdrantVector(
-                collection_name="test_collection",
-                group_id="test_group",
-                config=TidbOnQdrantConfig(endpoint="http://localhost:6333"),
-            )
+    def vector(self, qdrant_client_mock: MagicMock) -> TidbOnQdrantVector:
+        vector = TidbOnQdrantVector(
+            collection_name="test_collection",
+            group_id="test_group",
+            config=TidbOnQdrantConfig(endpoint="http://localhost:6333"),
+        )
+        assert vector._client is qdrant_client_mock
+        return vector
 
     @pytest.fixture
     def points(self) -> list[rest.Record]:
@@ -42,10 +44,10 @@ class TestTidbOnQdrantVectorFullTextSearch:
 
     @pytest.mark.parametrize("query", ["apple", "量子计算", "量子コンピューター"])
     def test_sends_text_and_document_filters(
-        self, vector: TidbOnQdrantVector, points: list[rest.Record], query: str
+        self, qdrant_client_mock: MagicMock, vector: TidbOnQdrantVector, points: list[rest.Record], query: str
     ) -> None:
         # CJK cases verify transport only; tokenization must be tested against the TiDB gateway.
-        scroll = cast(MagicMock, vector._client.scroll)
+        scroll = qdrant_client_mock.scroll
         assert points[0].payload is not None
         points[0].payload["page_content"] = query
         scroll.return_value = ([points[0]], None)
@@ -70,9 +72,9 @@ class TestTidbOnQdrantVectorFullTextSearch:
 
     @pytest.mark.parametrize("top_k", [1, 2, 3, 4])
     def test_merges_keyword_matches_and_respects_top_k(
-        self, vector: TidbOnQdrantVector, points: list[rest.Record], top_k: int
+        self, qdrant_client_mock: MagicMock, vector: TidbOnQdrantVector, points: list[rest.Record], top_k: int
     ) -> None:
-        scroll = cast(MagicMock, vector._client.scroll)
+        scroll = qdrant_client_mock.scroll
         scroll.side_effect = [([points[0], points[1]][:top_k], None), (points[1:][:top_k], None)]
 
         documents = vector.search_by_full_text(" apple\tapple banana ", top_k=top_k)
@@ -83,9 +85,9 @@ class TestTidbOnQdrantVectorFullTextSearch:
         assert keywords == ["apple", "banana"]
 
     def test_later_keywords_are_not_starved_by_first_keyword(
-        self, vector: TidbOnQdrantVector, points: list[rest.Record]
+        self, qdrant_client_mock: MagicMock, vector: TidbOnQdrantVector, points: list[rest.Record]
     ) -> None:
-        scroll = cast(ScrollMock, vector._client.scroll)
+        scroll = qdrant_client_mock.scroll
         scroll.side_effect = [([points[0], points[1]], None), ([points[2]], None)]
 
         documents = vector.search_by_full_text("common rare", top_k=2)
@@ -94,9 +96,9 @@ class TestTidbOnQdrantVectorFullTextSearch:
         assert scroll.call_count == 2
 
     def test_overlapping_keyword_matches_are_deduplicated(
-        self, vector: TidbOnQdrantVector, points: list[rest.Record]
+        self, qdrant_client_mock: MagicMock, vector: TidbOnQdrantVector, points: list[rest.Record]
     ) -> None:
-        cast(ScrollMock, vector._client.scroll).side_effect = [
+        qdrant_client_mock.scroll.side_effect = [
             ([points[0], points[1]], None),
             ([points[0], points[2]], None),
         ]
@@ -106,9 +108,9 @@ class TestTidbOnQdrantVectorFullTextSearch:
         assert [doc.metadata["doc_id"] for doc in documents] == ["1", "3", "2"]
 
     def test_stops_after_exhausting_duplicate_keyword_matches(
-        self, vector: TidbOnQdrantVector, points: list[rest.Record]
+        self, qdrant_client_mock: MagicMock, vector: TidbOnQdrantVector, points: list[rest.Record]
     ) -> None:
-        scroll = cast(ScrollMock, vector._client.scroll)
+        scroll = qdrant_client_mock.scroll
         scroll.side_effect = [([points[0], points[1]], None), ([points[0]], None)]
 
         documents = vector.search_by_full_text("common rare", top_k=4)
@@ -116,8 +118,10 @@ class TestTidbOnQdrantVectorFullTextSearch:
         assert [doc.metadata["doc_id"] for doc in documents] == ["1", "2"]
         assert scroll.call_count == 2
 
-    def test_no_match_does_not_fall_back_to_unfiltered_scroll(self, vector: TidbOnQdrantVector) -> None:
-        scroll = cast(MagicMock, vector._client.scroll)
+    def test_no_match_does_not_fall_back_to_unfiltered_scroll(
+        self, qdrant_client_mock: MagicMock, vector: TidbOnQdrantVector
+    ) -> None:
+        scroll = qdrant_client_mock.scroll
         scroll.return_value = (list[rest.Record](), None)
 
         assert vector.search_by_full_text("absentword") == []
@@ -128,23 +132,23 @@ class TestTidbOnQdrantVectorFullTextSearch:
 
     @pytest.mark.parametrize(("query", "top_k"), [("", 2), (" \t\n", 2), ("apple", 0), ("apple", -1)])
     def test_empty_query_or_nonpositive_limit_does_not_scroll(
-        self, vector: TidbOnQdrantVector, query: str, top_k: int
+        self, qdrant_client_mock: MagicMock, vector: TidbOnQdrantVector, query: str, top_k: int
     ) -> None:
-        scroll = cast(MagicMock, vector._client.scroll)
+        scroll = qdrant_client_mock.scroll
         assert vector.search_by_full_text(query, top_k=top_k) == []
         scroll.assert_not_called()
 
-    def test_limits_keyword_requests(self, vector: TidbOnQdrantVector) -> None:
-        scroll = cast(MagicMock, vector._client.scroll)
+    def test_limits_keyword_requests(self, qdrant_client_mock: MagicMock, vector: TidbOnQdrantVector) -> None:
+        scroll = qdrant_client_mock.scroll
         scroll.return_value = (list[rest.Record](), None)
 
         assert vector.search_by_full_text(" ".join(f"word{index}" for index in range(12))) == []
         assert scroll.call_count == 10
 
     def test_keyword_only_hit_gets_a_weighted_rerank_score(
-        self, vector: TidbOnQdrantVector, points: list[rest.Record]
+        self, qdrant_client_mock: MagicMock, vector: TidbOnQdrantVector, points: list[rest.Record]
     ) -> None:
-        scroll = cast(MagicMock, vector._client.scroll)
+        scroll = qdrant_client_mock.scroll
         scroll.return_value = ([points[0]], None)
         documents = vector.search_by_full_text("apple")
         runner = WeightRerankRunner(
@@ -171,24 +175,26 @@ class TestTidbOnQdrantVectorDeleteByIds:
     """Unit tests for TidbOnQdrantVector.delete_by_ids method."""
 
     @pytest.fixture
-    def vector_instance(self) -> TidbOnQdrantVector:
+    def vector_instance(self, qdrant_client_mock: MagicMock) -> TidbOnQdrantVector:
         """Create a TidbOnQdrantVector instance for testing."""
         config = TidbOnQdrantConfig(
             endpoint="http://localhost:6333",
             api_key="test_api_key",
         )
 
-        with patch("dify_vdb_tidb_on_qdrant.tidb_on_qdrant_vector.qdrant_client.QdrantClient"):
-            vector = TidbOnQdrantVector(
-                collection_name="test_collection",
-                group_id="test_group",
-                config=config,
-            )
-            return vector
+        vector = TidbOnQdrantVector(
+            collection_name="test_collection",
+            group_id="test_group",
+            config=config,
+        )
+        assert vector._client is qdrant_client_mock
+        return vector
 
-    def test_delete_by_ids_with_multiple_ids(self, vector_instance: TidbOnQdrantVector) -> None:
+    def test_delete_by_ids_with_multiple_ids(
+        self, qdrant_client_mock: MagicMock, vector_instance: TidbOnQdrantVector
+    ) -> None:
         """Test batch deletion with multiple document IDs."""
-        delete = cast(MagicMock, vector_instance._client.delete)
+        delete = qdrant_client_mock.delete
         ids = ["doc1", "doc2", "doc3"]
 
         vector_instance.delete_by_ids(ids)
@@ -210,9 +216,11 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert isinstance(field_condition.match, rest.MatchAny)
         assert set(field_condition.match.any) == {"doc1", "doc2", "doc3"}
 
-    def test_delete_by_ids_with_single_id(self, vector_instance: TidbOnQdrantVector) -> None:
+    def test_delete_by_ids_with_single_id(
+        self, qdrant_client_mock: MagicMock, vector_instance: TidbOnQdrantVector
+    ) -> None:
         """Test deletion with a single document ID."""
-        delete = cast(MagicMock, vector_instance._client.delete)
+        delete = qdrant_client_mock.delete
         ids = ["doc1"]
 
         vector_instance.delete_by_ids(ids)
@@ -228,17 +236,21 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert isinstance(field_condition.match, rest.MatchAny)
         assert field_condition.match.any == ["doc1"]
 
-    def test_delete_by_ids_with_empty_list(self, vector_instance: TidbOnQdrantVector) -> None:
+    def test_delete_by_ids_with_empty_list(
+        self, qdrant_client_mock: MagicMock, vector_instance: TidbOnQdrantVector
+    ) -> None:
         """Test deletion with empty ID list returns early without API call."""
-        delete = cast(MagicMock, vector_instance._client.delete)
+        delete = qdrant_client_mock.delete
         vector_instance.delete_by_ids([])
 
         # Verify that delete was NOT called
         delete.assert_not_called()
 
-    def test_delete_by_ids_with_404_error(self, vector_instance: TidbOnQdrantVector) -> None:
+    def test_delete_by_ids_with_404_error(
+        self, qdrant_client_mock: MagicMock, vector_instance: TidbOnQdrantVector
+    ) -> None:
         """Test that 404 errors (collection not found) are handled gracefully."""
-        delete = cast(MagicMock, vector_instance._client.delete)
+        delete = qdrant_client_mock.delete
         ids = ["doc1", "doc2"]
 
         # Mock a 404 error
@@ -256,9 +268,11 @@ class TestTidbOnQdrantVectorDeleteByIds:
         # Verify delete was called
         delete.assert_called_once()
 
-    def test_delete_by_ids_with_unexpected_error(self, vector_instance: TidbOnQdrantVector) -> None:
+    def test_delete_by_ids_with_unexpected_error(
+        self, qdrant_client_mock: MagicMock, vector_instance: TidbOnQdrantVector
+    ) -> None:
         """Test that non-404 errors are re-raised."""
-        delete = cast(MagicMock, vector_instance._client.delete)
+        delete = qdrant_client_mock.delete
         ids = ["doc1", "doc2"]
 
         # Mock a 500 error
@@ -276,9 +290,11 @@ class TestTidbOnQdrantVectorDeleteByIds:
 
         assert exc_info.value.status_code == 500
 
-    def test_delete_by_ids_with_exactly_1000(self, vector_instance: TidbOnQdrantVector) -> None:
+    def test_delete_by_ids_with_exactly_1000(
+        self, qdrant_client_mock: MagicMock, vector_instance: TidbOnQdrantVector
+    ) -> None:
         """Test deletion with exactly 1000 IDs triggers a single batch."""
-        delete = cast(MagicMock, vector_instance._client.delete)
+        delete = qdrant_client_mock.delete
         ids = [f"doc_{i}" for i in range(1000)]
 
         vector_instance.delete_by_ids(ids)
@@ -294,9 +310,11 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert "doc_0" in field_condition.match.any
         assert "doc_999" in field_condition.match.any
 
-    def test_delete_by_ids_splits_into_batches(self, vector_instance: TidbOnQdrantVector) -> None:
+    def test_delete_by_ids_splits_into_batches(
+        self, qdrant_client_mock: MagicMock, vector_instance: TidbOnQdrantVector
+    ) -> None:
         """Test deletion with >1000 IDs triggers multiple batched calls."""
-        delete = cast(MagicMock, vector_instance._client.delete)
+        delete = qdrant_client_mock.delete
         ids = [f"doc_{i}" for i in range(2500)]
 
         vector_instance.delete_by_ids(ids)
@@ -313,9 +331,11 @@ class TestTidbOnQdrantVectorDeleteByIds:
         assert len(batches[1]) == 1000
         assert len(batches[2]) == 500
 
-    def test_delete_by_ids_filter_structure(self, vector_instance: TidbOnQdrantVector) -> None:
+    def test_delete_by_ids_filter_structure(
+        self, qdrant_client_mock: MagicMock, vector_instance: TidbOnQdrantVector
+    ) -> None:
         """Test that the filter structure is correctly constructed."""
-        delete = cast(MagicMock, vector_instance._client.delete)
+        delete = qdrant_client_mock.delete
         ids = ["doc1", "doc2"]
 
         vector_instance.delete_by_ids(ids)
