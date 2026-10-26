@@ -1,3 +1,4 @@
+import json
 import threading
 import uuid
 from collections.abc import Callable, Generator, Sequence
@@ -40,6 +41,7 @@ class _Environment:
     redis: _Redis
     create: MagicMock
     get: MagicMock
+    find: MagicMock
 
 
 class _CredentialFields(TypedDict, total=False):
@@ -51,6 +53,8 @@ class _CredentialFields(TypedDict, total=False):
 class _BindingFields(_CredentialFields, total=False):
     active: bool
     status: TidbAuthBindingStatus
+    cluster_id: str
+    creation_error_status: int | None
 
 
 class _UnusedEmbeddings(Embeddings):
@@ -75,9 +79,14 @@ def environment(
     lock = threading.Lock()
 
     @contextmanager
-    def acquire(*_args: object, **_kwargs: object) -> Generator[None]:
-        with lock:
+    def acquire(*_args: object, **kwargs: object) -> Generator[None]:
+        acquired = lock.acquire(blocking=kwargs.get("blocking_timeout") != 0)
+        if not acquired:
+            raise LockError("busy")
+        try:
             yield
+        finally:
+            lock.release()
 
     redis = _Redis(lock=RecordingCallable(side_effect=acquire))
     monkeypatch.setattr(service, "redis_client", redis)
@@ -95,6 +104,7 @@ def environment(
         session.add_all(tenants)
     with (
         patch.object(TidbService, "start_tidb_serverless_cluster", return_value="new-cluster") as create,
+        patch.object(TidbService, "find_tidb_serverless_cluster", return_value=None) as find,
         patch.object(
             TidbService,
             "get_tidb_serverless_cluster",
@@ -105,14 +115,14 @@ def environment(
             },
         ) as get,
     ):
-        yield _Environment(engine=sqlite_engine, tenants=tenants, redis=redis, create=create, get=get)
+        yield _Environment(engine=sqlite_engine, tenants=tenants, redis=redis, create=create, get=get, find=find)
 
 
 def add_binding(env: _Environment, *, tenant: str | None = None, **changes: Unpack[_BindingFields]) -> TidbAuthBinding:
     with Session(env.engine, expire_on_commit=False) as session, session.begin():
         binding = TidbAuthBinding(
             tenant_id=tenant,
-            cluster_id=uuid.uuid4().hex,
+            cluster_id=changes.get("cluster_id", uuid.uuid4().hex),
             cluster_name="cluster",
             account=changes.get("account", "account"),
             password=changes.get("password", "password"),
@@ -120,6 +130,8 @@ def add_binding(env: _Environment, *, tenant: str | None = None, **changes: Unpa
             active=changes.get("active", False),
             status=changes.get("status", TidbAuthBindingStatus.ACTIVE),
         )
+        if "creation_error_status" in changes:
+            binding.creation_error_status = changes["creation_error_status"]
         session.add(binding)
     return binding
 
@@ -266,6 +278,231 @@ def test_uncertain_create_is_not_reissued_on_retry(environment: _Environment) ->
     assert bindings(env)[0].status == TidbAuthBindingStatus.FAILED
     assert bindings(env)[0].tenant_id == env.tenants[0].id
     env.create.assert_called_once()
+    env.find.assert_called_once()
+
+
+@pytest.mark.parametrize("status", [TidbAuthBindingStatus.FAILED, TidbAuthBindingStatus.CREATING])
+@pytest.mark.parametrize("allow_create", [True, False])
+def test_missing_cluster_id_recovers_the_original_reservation(
+    environment: _Environment, status: TidbAuthBindingStatus, allow_create: bool
+) -> None:
+    env = environment
+    own = add_binding(env, tenant=env.tenants[0].id, active=True, status=status, cluster_id="", account="")
+    env.find.return_value = "recovered-id"
+
+    ready = service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=allow_create)
+
+    assert ready.id == own.id
+    assert ready.cluster_id == "recovered-id"
+    assert ready.status == TidbAuthBindingStatus.ACTIVE
+    assert ready.password == own.password
+    assert ready.account == "tenant-prefix.root"
+    assert len(bindings(env)) == 1
+    env.create.assert_not_called()
+    assert env.find.call_args.kwargs["display_name"] == own.cluster_name
+
+
+def test_failed_binding_with_cluster_id_checks_readiness_before_failing(environment: _Environment) -> None:
+    env = environment
+    own = add_binding(env, tenant=env.tenants[0].id, active=True, status=TidbAuthBindingStatus.FAILED)
+    ready = service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
+    assert ready.cluster_id == own.cluster_id
+    assert ready.status == TidbAuthBindingStatus.ACTIVE
+    env.find.assert_not_called()
+    env.create.assert_not_called()
+
+
+@pytest.mark.parametrize("status_code", [400, 401, 403, 429])
+def test_explicitly_rejected_creation_can_retry_after_cloud_lookup(environment: _Environment, status_code: int) -> None:
+    env = environment
+    response = httpx.Response(status_code, request=httpx.Request("POST", "https://tidb.test/clusters"))
+    env.create.side_effect = [
+        httpx.HTTPStatusError("secret response", request=response.request, response=response),
+        "retry-id",
+    ]
+    with pytest.raises(service.TidbBindingUnavailableError):
+        service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
+    reserved = bindings(env)[0]
+    assert reserved.creation_error_status == status_code
+
+    ready = service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
+
+    assert ready.id == reserved.id
+    assert ready.cluster_id == "retry-id"
+    assert ready.status == TidbAuthBindingStatus.ACTIVE
+    assert ready.creation_error_status is None
+    assert len(bindings(env)) == 1
+    env.find.assert_called_once()
+    assert env.create.call_args_list[0] == env.create.call_args_list[1]
+
+
+@pytest.mark.parametrize("creation_error_status", [None, 500, 502, 504, 409])
+def test_unknown_or_ambiguous_creation_is_reconciled_without_duplicate_creation(
+    environment: _Environment, creation_error_status: int | None
+) -> None:
+    env = environment
+    add_binding(
+        env,
+        tenant=env.tenants[0].id,
+        active=True,
+        status=TidbAuthBindingStatus.FAILED,
+        cluster_id="",
+        creation_error_status=creation_error_status,
+    )
+    with pytest.raises(service.TidbBindingUnavailableError, match="reconciliation"):
+        service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
+    env.find.assert_called_once()
+    env.create.assert_not_called()
+    assert bindings(env)[0].cluster_id == ""
+
+
+def test_read_only_recovery_never_reissues_creation(environment: _Environment) -> None:
+    env = environment
+    add_binding(
+        env,
+        tenant=env.tenants[0].id,
+        active=True,
+        status=TidbAuthBindingStatus.FAILED,
+        cluster_id="",
+        creation_error_status=401,
+    )
+    with pytest.raises(service.TidbBindingUnavailableError):
+        service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=False)
+    env.find.assert_called_once()
+    env.create.assert_not_called()
+
+
+def test_lookup_failure_is_retryable_without_leaking_or_recreating(environment: _Environment) -> None:
+    env = environment
+    add_binding(
+        env,
+        tenant=env.tenants[0].id,
+        active=True,
+        status=TidbAuthBindingStatus.FAILED,
+        cluster_id="",
+        creation_error_status=401,
+    )
+    env.find.side_effect = RuntimeError("private provider response")
+    with pytest.raises(service.TidbBindingPendingError) as error:
+        service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
+    assert "private" not in str(error.value)
+    env.create.assert_not_called()
+    assert bindings(env)[0].status == TidbAuthBindingStatus.FAILED
+
+
+@pytest.mark.parametrize("change", ["revoke", "reassign", "password", "name"])
+def test_reservation_changed_during_reconciliation_cannot_be_bound(environment: _Environment, change: str) -> None:
+    env = environment
+    own = add_binding(env, tenant=env.tenants[0].id, active=True, status=TidbAuthBindingStatus.FAILED, cluster_id="")
+
+    def find(**_kwargs: object) -> str:
+        with Session(env.engine) as session, session.begin():
+            row = session.get(TidbAuthBinding, own.id)
+            assert row is not None
+            if change == "revoke":
+                row.active = False
+            elif change == "reassign":
+                row.tenant_id = env.tenants[1].id
+            elif change == "password":
+                row.password = "changed"
+            else:
+                row.cluster_name = "changed"
+        return "recovered-id"
+
+    env.find.side_effect = find
+    with pytest.raises(service.TidbBindingUnavailableError, match="changed"):
+        service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
+    assert bindings(env)[0].cluster_id == ""
+    env.create.assert_not_called()
+
+
+def test_inactive_binding_never_attempts_recovery(environment: _Environment) -> None:
+    env = environment
+    add_binding(env, tenant=env.tenants[0].id, status=TidbAuthBindingStatus.FAILED, cluster_id="")
+    with pytest.raises(service.TidbBindingUnavailableError, match="inactive"):
+        service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
+    env.find.assert_not_called()
+    env.create.assert_not_called()
+
+
+def test_recovery_cannot_reuse_a_cluster_already_bound_to_another_workspace(environment: _Environment) -> None:
+    env = environment
+    other = add_binding(env, tenant=env.tenants[1].id, active=True)
+    own = add_binding(env, tenant=env.tenants[0].id, active=True, status=TidbAuthBindingStatus.FAILED, cluster_id="")
+    env.find.return_value = other.cluster_id
+    with pytest.raises(service.TidbBindingUnavailableError, match="already bound"):
+        service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
+    assert next(row for row in bindings(env) if row.id == own.id).cluster_id == ""
+    env.create.assert_not_called()
+
+
+@pytest.mark.parametrize("change", ["completed", "revoked", "reassigned"])
+def test_recovery_rechecks_the_reservation_after_acquiring_the_lock(environment: _Environment, change: str) -> None:
+    env = environment
+    own = add_binding(env, tenant=env.tenants[0].id, active=True, status=TidbAuthBindingStatus.FAILED, cluster_id="")
+    original_load = service._load_binding
+    loads = 0
+
+    def load(tenant_id: str) -> TidbAuthBinding | None:
+        nonlocal loads
+        loads += 1
+        if loads == 2:
+            with Session(env.engine) as session, session.begin():
+                row = session.get(TidbAuthBinding, own.id)
+                assert row is not None
+                if change == "completed":
+                    row.cluster_id = "already-recovered"
+                    row.status = TidbAuthBindingStatus.CREATING
+                elif change == "revoked":
+                    row.active = False
+                else:
+                    row.tenant_id = env.tenants[1].id
+        return original_load(tenant_id)
+
+    with patch.object(service, "_load_binding", side_effect=load):
+        if change == "completed":
+            ready = service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
+            assert ready.cluster_id == "already-recovered"
+            assert ready.status == TidbAuthBindingStatus.ACTIVE
+        else:
+            with pytest.raises(service.TidbBindingUnavailableError, match="changed"):
+                service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
+    env.find.assert_not_called()
+    env.create.assert_not_called()
+
+
+def test_concurrent_recovery_does_not_create_twice(environment: _Environment) -> None:
+    env = environment
+    add_binding(
+        env,
+        tenant=env.tenants[0].id,
+        active=True,
+        status=TidbAuthBindingStatus.FAILED,
+        cluster_id="",
+        creation_error_status=401,
+    )
+    started, finish = threading.Event(), threading.Event()
+
+    def create(**_kwargs: object) -> str:
+        reserved = bindings(env)[0]
+        assert reserved.creation_error_status is None
+        assert reserved.status == TidbAuthBindingStatus.CREATING
+        started.set()
+        assert finish.wait(5)
+        return "retry-id"
+
+    env.create.side_effect = create
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(service.resolve_tidb_auth_binding, env.tenants[0].id, allow_create=True)
+        try:
+            assert started.wait(5)
+            with pytest.raises(service.TidbBindingPendingError):
+                service.resolve_tidb_auth_binding(env.tenants[0].id, allow_create=True)
+        finally:
+            finish.set()
+        assert first.result(timeout=5).cluster_id == "retry-id"
+    env.create.assert_called_once()
+    assert len(bindings(env)) == 1
 
 
 def test_missing_config_does_not_reserve_or_call_cloud(
@@ -395,6 +632,90 @@ def test_cloud_create_reuses_configured_budget_and_has_bounded_timeout(config_ov
         "rootPassword": "saved-password",
     }
     assert http.post.call_args.kwargs["timeout"].read == 30
+
+
+@pytest.mark.parametrize("found", [True, False])
+def test_cloud_lookup_is_bounded_and_checks_the_exact_reservation(found: bool) -> None:
+    name = 'saved-"name'
+    clusters: list[dict[str, object]] = (
+        [
+            {
+                "clusterId": "found-id",
+                "displayName": name,
+                "labels": {"tidb.cloud/project": "project"},
+                "region": {"name": "region"},
+            }
+        ]
+        if found
+        else []
+    )
+    response = httpx.Response(
+        200,
+        json={"clusters": clusters, "totalSize": len(clusters), "nextPageToken": ""},
+        request=httpx.Request("GET", "https://tidb.test/clusters"),
+    )
+    with patch("dify_vdb_tidb_on_qdrant.tidb_service._tidb_http_client") as http:
+        http.get.return_value = response
+        result = TidbService.find_tidb_serverless_cluster(
+            "project", "https://tidb.test", "pub", "priv", "region", display_name=name
+        )
+    assert result == ("found-id" if found else None)
+    assert http.get.call_count == 1
+    assert http.get.call_args.kwargs["params"] == {"pageSize": 2, "filter": f"displayName={json.dumps(name)}"}
+    assert http.get.call_args.kwargs["timeout"].read == 10
+    http.post.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        "duplicate",
+        "pagination",
+        "truncated",
+        "project",
+        "region",
+        "name",
+        "id",
+        "malformed",
+        "missing",
+        "total",
+    ],
+)
+def test_cloud_lookup_rejects_ambiguous_foreign_or_incomplete_results(invalid: str) -> None:
+    cluster: dict[str, object] = {
+        "clusterId": "id",
+        "displayName": "saved-name",
+        "labels": {"tidb.cloud/project": "project"},
+        "region": {"name": "region"},
+    }
+    payload: dict[str, object] = {"clusters": [cluster], "totalSize": 1}
+    if invalid == "duplicate":
+        payload.update(clusters=[cluster, cluster], totalSize=2)
+    elif invalid == "pagination":
+        payload["nextPageToken"] = "next"
+    elif invalid == "truncated":
+        payload["totalSize"] = 2
+    elif invalid == "project":
+        cluster["labels"] = {"tidb.cloud/project": "other"}
+    elif invalid == "region":
+        cluster["region"] = {"name": "other"}
+    elif invalid == "name":
+        cluster["displayName"] = "other"
+    elif invalid == "id":
+        cluster["clusterId"] = ""
+    elif invalid == "malformed":
+        payload["clusters"] = [None]
+    elif invalid == "missing":
+        payload = {}
+    else:
+        payload["totalSize"] = True
+    response = httpx.Response(200, json=payload, request=httpx.Request("GET", "https://tidb.test/clusters"))
+    with patch("dify_vdb_tidb_on_qdrant.tidb_service._tidb_http_client") as http:
+        http.get.return_value = response
+        with pytest.raises(ValueError, match="TiDB cluster"):
+            TidbService.find_tidb_serverless_cluster(
+                "project", "https://tidb.test", "pub", "priv", "region", display_name="saved-name"
+            )
 
 
 @pytest.mark.parametrize(

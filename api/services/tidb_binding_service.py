@@ -2,12 +2,15 @@
 
 Claim an existing idle cluster before provisioning. Persist a reservation before
 the cloud request, so retries and concurrent requests cannot create a second
-cluster. SQL transactions never span a cloud request. An ambiguous create result
-keeps its reservation for reconciliation instead of issuing another paid create.
+cluster. SQL transactions never span a cloud request. Missing IDs are reconciled
+against the cloud before failing. Only explicitly rejected creates can be
+reissued; ambiguous outcomes keep their reservation to prevent duplicate billing.
 """
 
+import logging
 import uuid
 
+import httpx
 from redis.exceptions import LockError
 from sqlalchemy import literal, or_, select
 from sqlalchemy.orm import Session
@@ -18,6 +21,12 @@ from extensions.ext_redis import redis_client
 from models.account import Tenant
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
+
+logger = logging.getLogger(__name__)
+
+# These documented API responses reject creation. Timeout, 409 and 5xx outcomes
+# remain uncertain even when a subsequent list request finds no cluster.
+_REJECTED_CREATE_STATUSES = frozenset({400, 401, 403, 429})
 
 
 class TidbBindingUnavailableError(Exception):
@@ -108,34 +117,118 @@ def _start_cluster(binding: TidbAuthBinding) -> None:
             password=binding.password,
         )
         with Session(db.engine) as session, session.begin():
-            saved = session.scalar(
-                select(TidbAuthBinding)
-                .where(TidbAuthBinding.id == binding.id, TidbAuthBinding.tenant_id == binding.tenant_id)
-                .with_for_update()
-            )
-            if saved is None or not saved.active or saved.cluster_id:
-                raise TidbBindingUnavailableError("TiDB cluster reservation changed during provisioning")
+            saved = _locked_reservation(session, binding)
             saved.cluster_id = cluster_id
+            saved.creation_error_status = None
         binding.cluster_id = cluster_id
-    except Exception:
+        binding.creation_error_status = None
+    except Exception as error:
         # Keep the tenant and generated name/password even if the cloud response
-        # or SQL acknowledgement was lost. Never reissue this create on retry.
+        # or SQL acknowledgement was lost. Record only a safe HTTP status, never
+        # response bodies, credentials, or exception messages.
+        status = error.response.status_code if isinstance(error, httpx.HTTPStatusError) else None
         with Session(db.engine) as session, session.begin():
             saved = session.scalar(
                 select(TidbAuthBinding)
                 .where(TidbAuthBinding.id == binding.id, TidbAuthBinding.tenant_id == binding.tenant_id)
                 .with_for_update()
             )
-            if saved is not None and not saved.cluster_id:
+            if (
+                saved is not None
+                and saved.active
+                and not saved.cluster_id
+                and saved.cluster_name == binding.cluster_name
+                and saved.password == binding.password
+                and saved.status == binding.status
+                and saved.creation_error_status == binding.creation_error_status
+            ):
                 saved.status = TidbAuthBindingStatus.FAILED
+                saved.creation_error_status = status
+        logger.warning(
+            "TiDB create failed: tenant_id=%s binding_id=%s http_status=%s error_type=%s",
+            binding.tenant_id,
+            binding.id,
+            status,
+            type(error).__name__,
+        )
         raise TidbBindingUnavailableError("TiDB cluster creation needs administrator reconciliation") from None
+
+
+def _locked_reservation(session: Session, binding: TidbAuthBinding) -> TidbAuthBinding:
+    saved = session.scalar(
+        select(TidbAuthBinding)
+        .where(TidbAuthBinding.id == binding.id, TidbAuthBinding.tenant_id == binding.tenant_id)
+        .with_for_update()
+    )
+    if (
+        saved is None
+        or not saved.active
+        or saved.cluster_id
+        or saved.cluster_name != binding.cluster_name
+        or saved.password != binding.password
+        or saved.status != binding.status
+        or saved.creation_error_status != binding.creation_error_status
+    ):
+        raise TidbBindingUnavailableError("TiDB cluster reservation changed during provisioning")
+    return saved
+
+
+def _reconcile_missing_cluster(binding: TidbAuthBinding, *, allow_create: bool) -> TidbAuthBinding:
+    from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
+
+    try:
+        # A concurrent request may still be creating this reservation. Return
+        # Pending immediately; it will be retried through the normal poll path.
+        with redis_client.lock("create_tidb_serverless_cluster_lock", timeout=90, blocking_timeout=0):
+            current = _load_binding(binding.tenant_id or "")
+            if current is None or current.id != binding.id or not current.active:
+                raise TidbBindingUnavailableError("TiDB cluster reservation changed during provisioning")
+            if current.cluster_id:
+                return current
+            _require_cloud_config()
+            if not current.cluster_name or not current.password:
+                raise TidbBindingUnavailableError("TiDB cluster reservation is incomplete")
+            try:
+                cluster_id = TidbService.find_tidb_serverless_cluster(
+                    project_id=dify_config.TIDB_PROJECT_ID or "",
+                    api_url=dify_config.TIDB_API_URL or "",
+                    public_key=dify_config.TIDB_PUBLIC_KEY or "",
+                    private_key=dify_config.TIDB_PRIVATE_KEY or "",
+                    region=dify_config.TIDB_REGION or "",
+                    display_name=current.cluster_name,
+                )
+            except Exception:
+                raise TidbBindingPendingError("TiDB cluster recovery could not yet be confirmed") from None
+            if cluster_id is None and (
+                not allow_create or current.creation_error_status not in _REJECTED_CREATE_STATUSES
+            ):
+                raise TidbBindingUnavailableError("TiDB cluster creation needs administrator reconciliation")
+            with Session(db.engine, expire_on_commit=False) as session, session.begin():
+                saved = _locked_reservation(session, current)
+                if cluster_id is not None:
+                    already_bound = session.scalar(
+                        select(TidbAuthBinding.id)
+                        .where(TidbAuthBinding.cluster_id == cluster_id, TidbAuthBinding.id != current.id)
+                        .limit(1)
+                    )
+                    if already_bound is not None:
+                        raise TidbBindingUnavailableError("TiDB cluster is already bound to another reservation")
+                    saved.cluster_id = cluster_id
+                saved.status = TidbAuthBindingStatus.CREATING
+                # Clear rejection evidence BEFORE retrying. A crash or expired
+                # lease must not allow another caller to reissue the same create.
+                saved.creation_error_status = None
+                current = saved
+            if cluster_id is None:
+                _start_cluster(current)
+            return current
+    except LockError:
+        raise TidbBindingPendingError("Dify workspace vector backend allocation is in progress") from None
 
 
 def _ready_or_refresh(binding: TidbAuthBinding) -> TidbAuthBinding:
     if not binding.active:
         raise TidbBindingUnavailableError("Dify workspace vector backend binding is inactive")
-    if binding.status == TidbAuthBindingStatus.FAILED:
-        raise TidbBindingUnavailableError("TiDB cluster creation needs administrator reconciliation")
     if binding.status == TidbAuthBindingStatus.ACTIVE:
         if (
             not (binding.qdrant_endpoint or dify_config.TIDB_ON_QDRANT_URL)
@@ -179,6 +272,7 @@ def _ready_or_refresh(binding: TidbAuthBinding) -> TidbAuthBinding:
         saved.account = f"{prefix}.root"
         saved.qdrant_endpoint = endpoint
         saved.status = TidbAuthBindingStatus.ACTIVE
+        saved.creation_error_status = None
         return saved
 
 
@@ -186,6 +280,8 @@ def resolve_tidb_auth_binding(tenant_id: str, *, allow_create: bool) -> TidbAuth
     """Read a binding; allocation requires the caller's explicit allow_create."""
     binding = _load_binding(tenant_id)
     if binding is not None:
+        if binding.active and not binding.cluster_id and binding.status != TidbAuthBindingStatus.ACTIVE:
+            binding = _reconcile_missing_cluster(binding, allow_create=allow_create)
         return _ready_or_refresh(binding)
     if not allow_create:
         raise TidbBindingUnavailableError("Dify workspace has no active vector backend binding")
@@ -200,4 +296,6 @@ def resolve_tidb_auth_binding(tenant_id: str, *, allow_create: bool) -> TidbAuth
         raise TidbBindingPendingError("Dify workspace vector backend allocation is in progress") from None
     if created:
         raise TidbBindingPendingError("Dify workspace vector backend is being provisioned")
+    if binding.active and not binding.cluster_id and binding.status != TidbAuthBindingStatus.ACTIVE:
+        binding = _reconcile_missing_cluster(binding, allow_create=allow_create)
     return _ready_or_refresh(binding)

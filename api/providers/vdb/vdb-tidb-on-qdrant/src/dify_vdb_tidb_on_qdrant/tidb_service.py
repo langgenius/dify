@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 import uuid
@@ -24,6 +25,59 @@ _tidb_http_client: httpx.Client = get_pooled_http_client(
 
 
 class TidbService:
+    @staticmethod
+    def find_tidb_serverless_cluster(
+        project_id: str,
+        api_url: str,
+        public_key: str,
+        private_key: str,
+        region: str,
+        *,
+        display_name: str,
+    ) -> str | None:
+        """Resolve a persisted reservation with one bounded, filtered request.
+
+        Display names are not documented as unique or idempotent. Check project
+        and region as well, and reject ambiguous/incomplete results. An absent
+        result alone does not establish that an earlier create was rejected.
+        """
+        response = _tidb_http_client.get(
+            f"{api_url}/clusters",
+            params={"pageSize": 2, "filter": f"displayName={json.dumps(display_name)}"},
+            auth=DigestAuth(public_key, private_key),
+            timeout=httpx.Timeout(10.0, connect=5.0),
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise ValueError("TiDB cluster lookup response is incomplete")
+        clusters, total = payload.get("clusters"), payload.get("totalSize")
+        if (
+            not isinstance(clusters, list)
+            or len(clusters) > 1
+            or type(total) is not int
+            or total != len(clusters)
+            or payload.get("nextPageToken")
+        ):
+            raise ValueError("TiDB cluster lookup is ambiguous or incomplete")
+        if not clusters:
+            return None
+        cluster = clusters[0]
+        if not isinstance(cluster, dict):
+            raise ValueError("TiDB cluster lookup response is incomplete")
+        labels, cloud_region, cluster_id = cluster.get("labels"), cluster.get("region"), cluster.get("clusterId")
+        if (
+            cluster.get("displayName") != display_name
+            or not isinstance(labels, dict)
+            or labels.get("tidb.cloud/project") != project_id
+            or not isinstance(cloud_region, dict)
+            or cloud_region.get("name") != region
+            or not isinstance(cluster_id, str)
+            or not cluster_id
+        ):
+            raise ValueError("TiDB cluster does not match the reserved project, region and name")
+        return cluster_id
+
     @staticmethod
     def start_tidb_serverless_cluster(
         project_id: str,

@@ -770,6 +770,7 @@ class TidbAuthBinding(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tidb_auth_bindings_pkey"),
         sa.Index("tidb_auth_bindings_tenant_idx", "tenant_id"),
+        sa.Index("tidb_auth_bindings_cluster_idx", "cluster_id"),
         sa.Index("tidb_auth_bindings_active_idx", "active"),
         sa.Index("tidb_auth_bindings_created_at_idx", "created_at"),
         sa.Index("tidb_auth_bindings_status_idx", "status"),
@@ -791,6 +792,8 @@ class TidbAuthBinding(TypeBase):
     account: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     qdrant_endpoint: Mapped[str | None] = mapped_column(String(512), nullable=True, default=None)
+    # NULL means the outcome is unknown, including reservations from older releases.
+    creation_error_status: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
