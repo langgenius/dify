@@ -1,38 +1,18 @@
 import logging
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
-from datetime import datetime
-from typing import cast
+from collections.abc import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
-from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
-from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
-from core.llm_generator.llm_generator import LLMGenerator
-from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_context import use_credit_usage_metadata
-from core.model_manager import ModelInstance, ModelManager
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.ops.utils import measure_time
 from extensions.ext_database import db
-from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
-from models.agent_config_entities import AgentSoulConfig
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import (
     App,
-    AppMode,
-    AppModelConfig,
-    Conversation,
     EndUser,
     Message,
     MessageFeedback,
-    SuggestedQuestionsAfterAnswerConfig,
-    load_annotation_reply_config,
 )
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 from repositories.sqlalchemy_execution_extra_content_repository import (
@@ -43,9 +23,7 @@ from services.errors.message import (
     FirstMessageNotExistsError,
     LastMessageNotExistsError,
     MessageNotExistsError,
-    SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -67,56 +45,7 @@ def attach_message_extra_contents(messages: Sequence[Message]) -> None:
         message.set_extra_contents([content.model_dump(mode="json", exclude_none=True) for content in contents])
 
 
-@dataclass(frozen=True, slots=True)
-class SuggestedQuestionsContext:
-    """Validated configuration and loaded conversation for the legacy history reader.
-
-    The conversation's scalar fields remain usable after the preparation session
-    closes. History loading must use an explicit session, never ORM properties.
-    """
-
-    app_id: str
-    tenant_id: str
-    app_mode: str
-    message_id: str
-    conversation: Conversation
-    instruction_prompt: str | None
-    model_config: object | None
-
-
 class MessageService:
-    @classmethod
-    def _get_agent_suggested_questions_config(
-        cls,
-        *,
-        app_model: App,
-        user: Account | EndUser,
-        conversation: Conversation,
-        invoke_from: InvokeFrom,
-        session: Session,
-    ) -> SuggestedQuestionsAfterAnswerConfig:
-        from services.agent.runtime_config_service import AgentRuntimeConfigService
-
-        agent_soul = AgentRuntimeConfigService(session).resolve_conversation_soul(
-            app_model=app_model,
-            conversation=conversation,
-            account_id=user.id if isinstance(user, Account) else None,
-            use_debug_draft=invoke_from == InvokeFrom.DEBUGGER,
-        )
-        app_model_config = (
-            session.get(AppModelConfig, app_model.app_model_config_id) if app_model.app_model_config_id else None
-        )
-        annotation_reply = load_annotation_reply_config(session, app_model.id) if app_model_config else None
-        features = merge_agent_app_features(
-            agent_soul=agent_soul or AgentSoulConfig(),
-            app_model_config=app_model_config,
-            annotation_reply=annotation_reply,
-        )
-        suggested_questions = features.get("suggested_questions_after_answer")
-        if not isinstance(suggested_questions, dict) or not suggested_questions.get("enabled", False):
-            raise SuggestedQuestionsAfterAnswerDisabledError()
-        return cast(SuggestedQuestionsAfterAnswerConfig, suggested_questions)
-
     @classmethod
     def pagination_by_first_id(
         cls,
@@ -351,157 +280,3 @@ class MessageService:
             raise MessageNotExistsError()
 
         return message
-
-    @classmethod
-    def prepare_suggested_questions_after_answer(
-        cls,
-        app_model: App,
-        user: Account | EndUser | None,
-        message_id: str,
-        invoke_from: InvokeFrom,
-        *,
-        session: Session,
-    ) -> SuggestedQuestionsContext | None:
-        """Read authorization and feature configuration; None means no published workflow."""
-        if not user:
-            raise ValueError("user cannot be None")
-
-        message = cls.get_message(app_model=app_model, user=user, message_id=message_id, session=session)
-
-        conversation = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=message.conversation_id, user=user, session=session
-        )
-
-        suggested_questions_after_answer_config: SuggestedQuestionsAfterAnswerConfig = {"enabled": False}
-
-        if app_model.mode == AppMode.ADVANCED_CHAT:
-            workflow_service = WorkflowService()
-            if invoke_from == InvokeFrom.DEBUGGER:
-                workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
-            else:
-                workflow = workflow_service.get_published_workflow(app_model=app_model, session=session)
-
-            if workflow is None:
-                return None
-
-            app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
-
-            if not app_config.additional_features:
-                raise ValueError("Additional features not found")
-
-            if not app_config.additional_features.suggested_questions_after_answer:
-                raise SuggestedQuestionsAfterAnswerDisabledError()
-
-            suggested_questions_after_answer = workflow.features_dict.get("suggested_questions_after_answer")
-            if isinstance(suggested_questions_after_answer, dict):
-                suggested_questions_after_answer_config = cast(
-                    SuggestedQuestionsAfterAnswerConfig, suggested_questions_after_answer
-                )
-        elif app_model.mode == AppMode.AGENT:
-            suggested_questions_after_answer_config = cls._get_agent_suggested_questions_config(
-                app_model=app_model,
-                user=user,
-                conversation=conversation,
-                invoke_from=invoke_from,
-                session=session,
-            )
-        else:
-            if not conversation.override_model_configs:
-                app_model_config = session.scalar(
-                    select(AppModelConfig)
-                    .where(AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id)
-                    .limit(1)
-                )
-            else:
-                app_model_config = AppModelConfig(
-                    app_id=app_model.id,
-                )
-                # Reuse Conversation.model_config so suggested-questions reads the same
-                # compatibility-normalized config as the rest of the message flow.
-                app_model_config = app_model_config.from_model_config_dict(
-                    conversation.model_config_with_session(session=session)
-                )
-            if not app_model_config:
-                raise ValueError("did not find app model config")
-
-            suggested_questions_after_answer_config = app_model_config.suggested_questions_after_answer_dict
-            if suggested_questions_after_answer_config.get("enabled", False) is False:
-                raise SuggestedQuestionsAfterAnswerDisabledError()
-
-        instruction_prompt = suggested_questions_after_answer_config.get("prompt")
-        if not isinstance(instruction_prompt, str) or not instruction_prompt.strip():
-            instruction_prompt = None
-        return SuggestedQuestionsContext(
-            app_id=app_model.id,
-            tenant_id=app_model.tenant_id,
-            app_mode=app_model.mode,
-            message_id=message_id,
-            conversation=conversation,
-            instruction_prompt=instruction_prompt,
-            model_config=suggested_questions_after_answer_config.get("model"),
-        )
-
-    @staticmethod
-    def get_suggested_questions_history_model(*, tenant_id: str) -> ModelInstance | None:
-        """Resolve the history token counter; None preserves the no-model fallback."""
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
-        try:
-            return model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.LLM)
-        except Exception:
-            logger.exception("Failed to resolve the history model for suggested questions")
-            return None
-
-    @classmethod
-    def get_suggested_questions_after_answer(
-        cls,
-        app_model: App,
-        user: Account | EndUser | None,
-        message_id: str,
-        invoke_from: InvokeFrom,
-        *,
-        session: Session,
-    ) -> list[str]:
-        """Compatibility entry point; the caller still owns its request session.
-
-        Admitted callers use MessageSuggestedQuestionsRuntime to release query
-        and model-resolution sessions before attachment and provider I/O.
-        """
-        context = cls.prepare_suggested_questions_after_answer(
-            app_model=app_model, user=user, message_id=message_id, invoke_from=invoke_from, session=session
-        )
-        if context is None:
-            return []
-        model_instance = cls.get_suggested_questions_history_model(tenant_id=context.tenant_id)
-        if model_instance is None:
-            return []
-        memory = TokenBufferMemory(conversation=context.conversation, model_instance=model_instance)
-        histories = memory.get_history_prompt_text(max_token_limit=3000, message_limit=3)
-
-        with (
-            measure_time() as timer,
-            use_credit_usage_metadata({"app_type": get_credit_usage_app_type(context.app_mode)}),
-        ):
-            questions = list(
-                LLMGenerator.generate_suggested_questions_after_answer(
-                    tenant_id=context.tenant_id,
-                    histories=histories,
-                    instruction_prompt=context.instruction_prompt,
-                    model_config=context.model_config,
-                )
-            )
-        cls.trace_suggested_questions(context=context, questions=questions, timer=timer)
-        return questions
-
-    @staticmethod
-    def trace_suggested_questions(
-        *, context: SuggestedQuestionsContext, questions: list[str], timer: Mapping[str, datetime | None]
-    ) -> None:
-        trace_manager = TraceQueueManager(app_id=context.app_id)
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.SUGGESTED_QUESTION_TRACE,
-                message_id=context.message_id,
-                suggested_question=questions,
-                timer=timer,
-            )
-        )

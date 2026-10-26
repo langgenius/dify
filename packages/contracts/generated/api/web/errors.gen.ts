@@ -26,6 +26,14 @@ const zAgentNotPublishedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zAgentVersionNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('agent_version_not_found_error'),
+      status: z.literal(404),
+    }),
+  ))()
+
 const zAppMoreLikeThisDisabledError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -526,10 +534,12 @@ export const get4Errors = {
 }
 
 export const get5Errors = {
+  agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   app_suggested_questions_after_answer_disabled: {
     status: 403,
     data: zAppSuggestedQuestionsAfterAnswerDisabledError,
   },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_chat_app: { status: 400, data: zNotChatAppError },

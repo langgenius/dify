@@ -6,9 +6,11 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, func, select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, Unauthorized
+from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
+from controllers.common.errors import InternalServerError as InternalServerHTTPError
+from controllers.common.errors import NotFoundError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -60,10 +62,14 @@ from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.conversation_service import ConversationService
+from services.entities.message_entities import MessageAccount
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.message import (
+    MessageActorNotFoundError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 from services.message_service import attach_message_extra_contents
-from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +284,7 @@ class MessageAnnotationCountApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(Resource):
     @error_responses(
+        AgentVersionNotFoundError,
         AppNotFoundError,
         AppSuggestedQuestionsAfterAnswerDisabledError,
         AppUnavailableError,
@@ -522,17 +529,18 @@ def _get_message_suggested_questions(
             app_id=app_id,
             app_owner_tenant_id=context.active_workspace_id,
             expected_app_mode=app_mode,
-            actor=SuggestedQuestionsAccount(account_id=context.account_id, invoke_from="debugger"),
+            actor=MessageAccount(account_id=context.account_id),
+            invoke_from="debugger",
             message_id=str(message_id),
         )
     except AppDefinitionUnavailableError as exc:
         raise AppUnavailableError() from exc
-    except SuggestedQuestionsActorNotFoundError as exc:
-        raise Unauthorized("Account no longer exists") from exc
+    except MessageActorNotFoundError as exc:
+        raise UnauthorizedError("Account no longer exists") from exc
     except MessageNotExistsError as caught_error:
-        raise NotFound("Message not found") from caught_error
+        raise NotFoundError("Message not found") from caught_error
     except ConversationNotExistsError as caught_error:
-        raise NotFound("Conversation not found") from caught_error
+        raise NotFoundError("Conversation not found") from caught_error
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description) from ex
     except QuotaExceededError as caught_error:
@@ -543,11 +551,13 @@ def _get_message_suggested_questions(
         raise CompletionRequestError(e.description) from e
     except SuggestedQuestionsAfterAnswerDisabledError as caught_error:
         raise AppSuggestedQuestionsAfterAnswerDisabledError() from caught_error
-    except HTTPException:
+    except AgentVersionNotFoundError:
+        # The legacy Agent config reader still owns this HTTP error.
+        # Remove this compatibility case when it exposes a domain error.
         raise
     except Exception as caught_error:
         logger.exception("internal server error.")
-        raise InternalServerError() from caught_error
+        raise InternalServerHTTPError() from caught_error
 
     return dump_response(SuggestedQuestionsResponse, {"data": questions})
 

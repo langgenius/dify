@@ -620,6 +620,7 @@ export const get24Errors = { app_not_found: { status: 404, data: zAppNotFoundErr
 export const get25Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
 export const get26Errors = {
+  agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   app_not_found: { status: 404, data: zAppNotFoundError },
   app_suggested_questions_after_answer_disabled: {
     status: 403,
