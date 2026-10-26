@@ -102,6 +102,9 @@ class WorkflowTool(Tool):
         """
         invoke the tool
         """
+        if self._workflow_runtime is None:
+            raise ToolInvokeError("Workflow execution dependencies are required")
+
         app = self._get_app(app_id=self.workflow_app_id)
         workflow = self._get_workflow(app_id=self.workflow_app_id, version=self.version)
 
@@ -110,7 +113,7 @@ class WorkflowTool(Tool):
 
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 
-        generator = WorkflowAppGenerator()
+        generator = WorkflowAppGenerator(execution_driver=self._workflow_runtime.execution_driver)
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
 
