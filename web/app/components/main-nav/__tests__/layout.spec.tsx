@@ -53,6 +53,9 @@ vi.mock('../index', () => ({
   MainNav: ({ className }: { className?: string }) => (
     <aside className={className} data-testid="main-nav">
       MainNav
+      <a href="/apps">Apps</a>
+      <a href="/agents">Agents</a>
+      <a href="/integrations/model-provider">Integrations</a>
     </aside>
   ),
 }))
@@ -70,6 +73,29 @@ describe('MainNavLayout', () => {
       isCurrentWorkspaceDatasetOperator: false,
     }
     ;(isAgentV2Enabled as Mock).mockReturnValue(true)
+  })
+
+  it.each([
+    { from: '/apps', to: '/agents', name: 'Agents' },
+    { from: '/agents', to: '/apps', name: 'Apps' },
+    { from: '/apps', to: '/integrations/model-provider', name: 'Integrations' },
+    { from: '/integrations/model-provider', to: '/apps', name: 'Apps' },
+    { from: '/datasets/create', to: '/apps', name: 'Apps' },
+  ])('preserves navigation focus from $from to $to', async ({ from, to, name }) => {
+    const user = userEvent.setup()
+    vi.mocked(usePathname).mockReturnValue(from)
+    const renderLayout = () => (
+      <MainNavLayout initialDetailSidebarMode="expand">
+        <div>content</div>
+      </MainNavLayout>
+    )
+    const { rerender } = render(renderLayout())
+
+    await user.click(screen.getByRole('link', { name }))
+    vi.mocked(usePathname).mockReturnValue(to)
+    rerender(renderLayout())
+
+    expect(screen.getByRole('link', { name })).toHaveFocus()
   })
 
   it('uses the request preference in server-rendered sidebar markup', () => {
@@ -162,6 +188,25 @@ describe('MainNavLayout', () => {
     },
   )
 
+  it('ignores a retained legacy detail sidebar on New Knowledge routes', () => {
+    ;(usePathname as Mock).mockReturnValue('/datasets/new/knowledge-1/sources')
+
+    render(
+      <MainNavLayout
+        initialDetailSidebarMode="expand"
+        detailSidebar={<aside aria-label="Legacy dataset sidebar">Legacy dataset sidebar</aside>}
+      >
+        <div>new knowledge detail</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('complementary', { name: 'Legacy dataset sidebar' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('new knowledge detail')
+  })
+
   it('hides the global main nav on a skill detail route', () => {
     ;(usePathname as Mock).mockReturnValue('/skills/skill-1')
 
@@ -214,6 +259,7 @@ describe('MainNavLayout', () => {
     '/datasets/create',
     '/datasets/create-from-pipeline',
     '/datasets/connect',
+    '/datasets/new/create',
     '/deployments/create',
   ])('keeps the global main nav on collection and creation route %s', (pathname) => {
     ;(usePathname as Mock).mockReturnValue(pathname)

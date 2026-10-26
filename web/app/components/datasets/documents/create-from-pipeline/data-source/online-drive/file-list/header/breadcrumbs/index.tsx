@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../../../../store'
 import Bucket from './bucket'
 import Drive from './drive'
-import Dropdown from './dropdown'
 import BreadcrumbItem from './item'
+import ActionsMenu from './menu'
 
 type BreadcrumbsProps = {
   breadcrumbs: string[]
@@ -153,7 +153,7 @@ const Breadcrumbs = ({
                     />
                   )
                 })}
-                <Dropdown
+                <ActionsMenu
                   startIndex={breadcrumbsConfig.prefixBreadcrumbs.length}
                   breadcrumbs={breadcrumbsConfig.collapsedBreadcrumbs}
                   onBreadcrumbClick={handleClickBreadcrumb}

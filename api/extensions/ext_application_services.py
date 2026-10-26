@@ -20,6 +20,7 @@ from core.db.session_factory import get_session_maker
 from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool_manager import ToolManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
@@ -140,6 +141,8 @@ from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.knowledge.api_key_service import DatasetApiKeyService
+from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
+from services.knowledge_fs.workflow_runtime import build_knowledge_fs_node_dependencies
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
 from services.message_suggested_questions_service import MessageSuggestedQuestions
@@ -754,6 +757,8 @@ def build_application_services(
 def init_app(app: Flask) -> None:
     from extensions.ext_login import bind_account_loader
 
+    app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
+    ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
     services = build_application_services(
         database_client=get_session_maker(),
         deployment_edition=dify_config.DEPLOYMENT_EDITION,

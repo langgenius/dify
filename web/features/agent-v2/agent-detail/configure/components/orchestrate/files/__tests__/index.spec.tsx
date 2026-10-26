@@ -351,7 +351,25 @@ describe('AgentFiles', () => {
     expect(screen.queryByText('diagram.png')).not.toBeInTheDocument()
   })
 
-  it('should upload through the two-step config file flow and persist config_files in draft state', async () => {
+  it('keeps both upload stages open until the committed file reaches the draft', async () => {
+    let finishUpload!: () => void
+    let finishCommit!: () => void
+    const upload = new Promise<void>((resolve) => {
+      finishUpload = resolve
+    })
+    const commit = new Promise<void>((resolve) => {
+      finishCommit = resolve
+    })
+    const uploadFile = mocks.uploadFileMutationFn.getMockImplementation()!
+    const commitFile = mocks.commitFileMutationFn.getMockImplementation()!
+    mocks.uploadFileMutationFn.mockImplementationOnce(async (input) => {
+      await upload
+      return uploadFile(input)
+    })
+    mocks.commitFileMutationFn.mockImplementationOnce(async (input) => {
+      await commit
+      return commitFile(input)
+    })
     const user = userEvent.setup()
     renderAgentFiles({ initialDraft: defaultAgentSoulConfigFormState })
 
@@ -381,6 +399,14 @@ describe('AgentFiles', () => {
       )
     })
 
+    await user.keyboard('{Escape}')
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'common.operation.close' }),
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(mocks.commitFileMutationFn).not.toHaveBeenCalled()
+    finishUpload()
+
     await waitFor(() => {
       expect(mocks.commitFileMutationFn).toHaveBeenCalledExactlyOnceWith(
         {
@@ -398,6 +424,11 @@ describe('AgentFiles', () => {
         expect.anything(),
       )
     })
+
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    finishCommit()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_files).toEqual([

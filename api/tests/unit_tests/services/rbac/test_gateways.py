@@ -2,7 +2,7 @@ import pytest
 
 from services.enterprise.base import EnterpriseRequest
 from services.enterprise.rbac_service import RBACService
-from tests.unit_tests.rbac_fakes import RBACTransport
+from tests.helpers.unit.rbac_fakes import RBACTransport
 
 
 def test_membership_gateway_sends_identity_language_and_assignment(monkeypatch: pytest.MonkeyPatch) -> None:

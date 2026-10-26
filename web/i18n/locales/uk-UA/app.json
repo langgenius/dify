@@ -29,6 +29,7 @@
   "appSelector.noParams": "Параметри не потрібні",
   "appSelector.params": "ПАРАМЕТРИ ПРОГРАМИ",
   "appSelector.placeholder": "Виберіть програму...",
+  "appSelector.searchPlaceholder": "Пошук застосунків за назвою…",
   "chooseAppFile": "Виберіть пакет застосунку або файл DSL",
   "deleteAppConfirmContent": "Видалення додатка незворотнє. Користувачі більше не зможуть отримати доступ до вашого додатка, і всі налаштування запитів та журнали будуть остаточно видалені.",
   "deleteAppConfirmInputLabel": "Для підтвердження введіть <appName>{{appName}}</appName> у поле нижче:",

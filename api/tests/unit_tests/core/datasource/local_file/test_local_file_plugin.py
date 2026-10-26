@@ -3,7 +3,7 @@ from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
 )
 from core.datasource.local_file.local_file_plugin import LocalFileDatasourcePlugin
-from tests.unit_tests.core.datasource.factories import datasource_entity
+from tests.helpers.unit.core.datasource.factories import datasource_entity
 
 
 class TestLocalFileDatasourcePlugin:

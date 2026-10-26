@@ -13,6 +13,7 @@ class ApiKeyRecord:
     last_used_at: datetime | None = None
     created_at: datetime | None = None
     dataset_ids: tuple[str, ...] = ()
+    knowledge_space_ids: tuple[str, ...] = ()
 
 
 class ApiKeyCache(Protocol):

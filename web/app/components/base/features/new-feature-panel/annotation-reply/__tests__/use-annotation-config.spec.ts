@@ -1,10 +1,9 @@
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { act } from '@testing-library/react'
+import { useState } from 'react'
 import { updateAnnotationStatus } from '@/service/annotation'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useAnnotationConfig from '../use-annotation-config'
-
-let mockIsAnnotationFull = false
 
 const { queryAnnotationJobStatus } = vi.hoisted(() => ({
   queryAnnotationJobStatus: vi.fn().mockResolvedValue({ job_status: 'completed' }),
@@ -25,11 +24,24 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-function renderHook<Result>(callback: () => Result) {
-  return renderHookWithConsoleQuery(callback, {
+function renderConfig(
+  initialConfig: AnnotationReplyConfig,
+  options: Parameters<typeof renderHookWithConsoleQuery>[1] = {
     systemFeatures: { deployment_edition: 'CLOUD' },
-    features: { annotation_quota_limit: { size: mockIsAnnotationFull ? 100 : 5, limit: 100 } },
-  })
+    features: { annotation_quota_limit: { size: 5, limit: 100 } },
+  },
+) {
+  return renderHookWithConsoleQuery(() => {
+    const [config, setConfig] = useState(initialConfig)
+    return {
+      ...useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: config,
+        setAnnotationConfig: setConfig,
+      }),
+      config,
+    }
+  }, options)
 }
 
 describe('useAnnotationConfig', () => {
@@ -44,21 +56,15 @@ describe('useAnnotationConfig', () => {
   }
 
   beforeEach(() => {
-    vi.clearAllMocks()
     queryAnnotationJobStatus.mockResolvedValue({ job_status: 'completed' })
-    mockIsAnnotationFull = false
   })
 
   it('edits enabled annotation parameters without depending on unused creation quota', async () => {
-    const setAnnotationConfig = vi.fn()
-    const { result } = renderHookWithConsoleQuery(
-      () =>
-        useAnnotationConfig({
-          appId: 'test-app',
-          annotationConfig: { ...defaultConfig, enabled: true },
-          setAnnotationConfig,
-        }),
-      { systemFeatures: { deployment_edition: 'CLOUD' } },
+    const { result } = renderConfig(
+      { ...defaultConfig, enabled: true },
+      {
+        systemFeatures: { deployment_edition: 'CLOUD' },
+      },
     )
 
     act(() => result.current.setIsShowAnnotationConfigInit(true))
@@ -66,19 +72,17 @@ describe('useAnnotationConfig', () => {
     await act(async () => {
       await result.current.handleEnableAnnotation(defaultConfig.embedding_model!)
     })
-    expect(updateAnnotationStatus).toHaveBeenCalled()
-    expect(setAnnotationConfig).toHaveBeenCalled()
+    expect(updateAnnotationStatus).toHaveBeenCalledWith(
+      'test-app',
+      'enable',
+      defaultConfig.embedding_model,
+      undefined,
+    )
+    expect(result.current.config).toEqual({ ...defaultConfig, enabled: true })
   })
 
   it('should enable annotation and update config', async () => {
-    const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() =>
-      useAnnotationConfig({
-        appId: 'test-app',
-        annotationConfig: defaultConfig,
-        setAnnotationConfig,
-      }),
-    )
+    const { result } = renderConfig(defaultConfig)
 
     await act(async () => {
       await result.current.handleEnableAnnotation(
@@ -90,23 +94,17 @@ describe('useAnnotationConfig', () => {
       )
     })
 
-    expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
+    const updatedConfig = result.current.config
     expect(updatedConfig.enabled).toBe(true)
     expect(updatedConfig.embedding_model.embedding_model_name).toBe('text-embedding-3-small')
     expect(updatedConfig.score_threshold).toBe(0.95)
+    await act(async () => result.current.handleDisableAnnotation(updatedConfig.embedding_model!))
+    expect(result.current.config.enabled).toBe(false)
   })
 
   it('should disable annotation and update config', async () => {
     const enabledConfig = { ...defaultConfig, enabled: true }
-    const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() =>
-      useAnnotationConfig({
-        appId: 'test-app',
-        annotationConfig: enabledConfig,
-        setAnnotationConfig,
-      }),
-    )
+    const { result } = renderConfig(enabledConfig)
 
     await act(async () => {
       await result.current.handleDisableAnnotation({
@@ -115,20 +113,12 @@ describe('useAnnotationConfig', () => {
       })
     })
 
-    expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
+    const updatedConfig = result.current.config
     expect(updatedConfig.enabled).toBe(false)
   })
 
   it('should not disable when already disabled', async () => {
-    const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() =>
-      useAnnotationConfig({
-        appId: 'test-app',
-        annotationConfig: defaultConfig,
-        setAnnotationConfig,
-      }),
-    )
+    const { result } = renderConfig(defaultConfig)
 
     await act(async () => {
       await result.current.handleDisableAnnotation({
@@ -137,38 +127,24 @@ describe('useAnnotationConfig', () => {
       })
     })
 
-    expect(setAnnotationConfig).not.toHaveBeenCalled()
+    expect(result.current.config).toEqual(defaultConfig)
+    expect(updateAnnotationStatus).not.toHaveBeenCalled()
   })
 
   it('should set score threshold', () => {
-    const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() =>
-      useAnnotationConfig({
-        appId: 'test-app',
-        annotationConfig: defaultConfig,
-        setAnnotationConfig,
-      }),
-    )
+    const { result } = renderConfig(defaultConfig)
 
     act(() => {
       result.current.setScore(0.85)
     })
 
-    expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
+    const updatedConfig = result.current.config
     expect(updatedConfig.score_threshold).toBe(0.85)
   })
 
   it('should preserve zero score threshold when enabling annotation', async () => {
     const zeroScoreConfig = { ...defaultConfig, score_threshold: 0 }
-    const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() =>
-      useAnnotationConfig({
-        appId: 'test-app',
-        annotationConfig: zeroScoreConfig,
-        setAnnotationConfig,
-      }),
-    )
+    const { result } = renderConfig(zeroScoreConfig)
 
     await act(async () => {
       await result.current.handleEnableAnnotation(
@@ -189,19 +165,12 @@ describe('useAnnotationConfig', () => {
       },
       0,
     )
-    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
+    const updatedConfig = result.current.config
     expect(updatedConfig.score_threshold).toBe(0)
   })
 
   it('should set score and embedding model together', () => {
-    const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() =>
-      useAnnotationConfig({
-        appId: 'test-app',
-        annotationConfig: defaultConfig,
-        setAnnotationConfig,
-      }),
-    )
+    const { result } = renderConfig(defaultConfig)
 
     act(() => {
       result.current.setScore(0.95, {
@@ -210,22 +179,16 @@ describe('useAnnotationConfig', () => {
       })
     })
 
-    expect(setAnnotationConfig).toHaveBeenCalled()
-    const updatedConfig = setAnnotationConfig.mock.calls[0]![0]
+    const updatedConfig = result.current.config
     expect(updatedConfig.score_threshold).toBe(0.95)
     expect(updatedConfig.embedding_model.embedding_provider_name).toBe('cohere')
   })
 
   it('should show annotation full modal instead of config init when annotation is full', () => {
-    mockIsAnnotationFull = true
-    const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() =>
-      useAnnotationConfig({
-        appId: 'test-app',
-        annotationConfig: defaultConfig,
-        setAnnotationConfig,
-      }),
-    )
+    const { result } = renderConfig(defaultConfig, {
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { annotation_quota_limit: { size: 100, limit: 100 } },
+    })
 
     act(() => {
       result.current.setIsShowAnnotationConfigInit(true)
@@ -236,15 +199,10 @@ describe('useAnnotationConfig', () => {
   })
 
   it('should not enable annotation when annotation is full', async () => {
-    mockIsAnnotationFull = true
-    const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() =>
-      useAnnotationConfig({
-        appId: 'test-app',
-        annotationConfig: defaultConfig,
-        setAnnotationConfig,
-      }),
-    )
+    const { result } = renderConfig(defaultConfig, {
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { annotation_quota_limit: { size: 100, limit: 100 } },
+    })
 
     await act(async () => {
       await result.current.handleEnableAnnotation({
@@ -253,27 +211,21 @@ describe('useAnnotationConfig', () => {
       })
     })
 
-    expect(setAnnotationConfig).not.toHaveBeenCalled()
+    expect(result.current.config).toEqual(defaultConfig)
+    expect(updateAnnotationStatus).not.toHaveBeenCalled()
   })
 
   it('waits between polling attempts and only commits after completion', async () => {
     vi.useFakeTimers()
-    const setAnnotationConfig = vi.fn()
     queryAnnotationJobStatus
       .mockResolvedValueOnce({ job_status: 'processing' })
       .mockResolvedValueOnce({ job_status: 'completed' })
-    const { result } = renderHook(() =>
-      useAnnotationConfig({
-        appId: 'test-app',
-        annotationConfig: defaultConfig,
-        setAnnotationConfig,
-      }),
-    )
+    const { result } = renderConfig(defaultConfig)
     let pending: Promise<void>
     await act(async () => {
       pending = result.current.handleEnableAnnotation(defaultConfig.embedding_model, 0.95)
     })
-    expect(setAnnotationConfig).not.toHaveBeenCalled()
+    expect(result.current.config).toEqual(defaultConfig)
     expect(queryAnnotationJobStatus).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: 'test-app', action: 'enable', job_id: 'test-job-id' },
     })
@@ -283,7 +235,7 @@ describe('useAnnotationConfig', () => {
       await vi.advanceTimersByTimeAsync(1)
       await pending
     })
-    expect(setAnnotationConfig).toHaveBeenCalledExactlyOnceWith({
+    expect(result.current.config).toEqual({
       ...defaultConfig,
       enabled: true,
       score_threshold: 0.95,
@@ -295,21 +247,14 @@ describe('useAnnotationConfig', () => {
       job_status: 'error',
       error_msg: 'Embedding model unavailable',
     })
-    const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() =>
-      useAnnotationConfig({
-        appId: 'test-app',
-        annotationConfig: defaultConfig,
-        setAnnotationConfig,
-      }),
-    )
+    const { result } = renderConfig(defaultConfig)
     await act(async () => {
       await expect(
         result.current.handleEnableAnnotation(defaultConfig.embedding_model),
       ).rejects.toThrow('Embedding model unavailable')
     })
     expect(queryAnnotationJobStatus).toHaveBeenCalledTimes(1)
-    expect(setAnnotationConfig).not.toHaveBeenCalled()
+    expect(result.current.config).toEqual(defaultConfig)
   })
 
   afterEach(() => vi.useRealTimers())
