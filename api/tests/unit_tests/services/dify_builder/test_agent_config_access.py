@@ -73,16 +73,16 @@ def config_read(operations_service: AgentOperationService) -> Generator[ConfigRe
         "config_version_id": "snapshot",
         "config_version_kind": "snapshot",
     }
-    with patch.object(service, "validate_claimed_shell", return_value=context):
+    with patch.object(service, "validate_config_read_shell", return_value=context):
         yield context, envelope, service, query
 
 
-def test_selected_asset_requires_current_claimed_operation(config_read: ConfigReadCase) -> None:
+def test_selected_asset_requires_current_config_read_authority(config_read: ConfigReadCase) -> None:
     context, envelope, service, query = config_read
     validate_config_read(
         context=context, envelope=envelope, operations=service, source={"kind": "file", "name": "input.txt"}, **query
     )
-    installed_mock(service.validate_claimed_shell).assert_called_once_with(envelope=envelope)
+    installed_mock(service.validate_config_read_shell).assert_called_once_with(envelope=envelope)
 
 
 @pytest.mark.parametrize(
@@ -113,9 +113,9 @@ def test_other_declared_kind_or_unknown_asset_is_not_a_file_pull(config_read: Co
             validate_config_read(context=context, envelope=envelope, operations=service, source=source, **query)
 
 
-def test_revoked_or_completed_claim_never_falls_back_to_ordinary_access(config_read: ConfigReadCase) -> None:
+def test_refused_config_claim_never_falls_back_to_ordinary_access(config_read: ConfigReadCase) -> None:
     context, envelope, service, query = config_read
-    spy = installed_mock(service.validate_claimed_shell)
+    spy = installed_mock(service.validate_config_read_shell)
     spy.side_effect = BuilderExecutionPolicyError("native_effect_owner_mismatch")
     with pytest.raises(BuilderExecutionPolicyError):
         validate_config_read(context=context, envelope=envelope, operations=service, **query)
@@ -123,7 +123,7 @@ def test_revoked_or_completed_claim_never_falls_back_to_ordinary_access(config_r
 
 def test_changed_protected_context_rejected_after_claim_validation(config_read: ConfigReadCase) -> None:
     context, envelope, service, query = config_read
-    spy = installed_mock(service.validate_claimed_shell)
+    spy = installed_mock(service.validate_config_read_shell)
     spy.return_value = replace(
         context, config=context.config.model_copy(update={"config_ref": "changed-protected-config"})
     )
