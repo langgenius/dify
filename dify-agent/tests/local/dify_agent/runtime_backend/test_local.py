@@ -277,6 +277,66 @@ async def test_local_binding_create_failure_removes_partial_home_and_workspace()
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("exit_code", [2, 125])
+async def test_local_binding_create_failure_without_stdout_keeps_job_diagnostics(exit_code: int) -> None:
+    client = _Client(runs=[], exit_codes=[exit_code, 0])
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        materialized_home_root="/homes",
+        workspace_root="/workspaces",
+        client_factory=lambda: client,
+    )
+
+    with pytest.raises(BindingCreateError) as raised:
+        await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                binding_id="binding-1",
+                workspace_id="workspace-1",
+                existing_workspace_ref=None,
+                home_snapshot_ref=None,
+            )
+        )
+
+    message = str(raised.value)
+    assert "Local binding setup failed" in message
+    assert "job_id=job-1" in message
+    assert "status=exited" in message
+    assert f"exit_code={exit_code}" in message
+    assert "stderr" in message
+    assert len(client.runs) == 2  # Setup once, then existing partial-resource cleanup; no retry.
+    assert client.closed
+
+
+@pytest.mark.anyio
+async def test_local_binding_create_failure_preserves_existing_stdout() -> None:
+    client = _Client(runs=[], exit_codes=[1, 0], output="snapshot was not readable")
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        materialized_home_root="/homes",
+        workspace_root="/workspaces",
+        client_factory=lambda: client,
+    )
+
+    with pytest.raises(BindingCreateError) as raised:
+        await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                binding_id="binding-1",
+                workspace_id="workspace-1",
+                existing_workspace_ref=None,
+                home_snapshot_ref=None,
+            )
+        )
+
+    assert str(raised.value) == "snapshot was not readable"
+
+
+@pytest.mark.anyio
 async def test_local_binding_acquire_scopes_commands_to_materialized_home_and_workspace() -> None:
     factory = _Factory()
     backend = LocalExecutionBindingBackend(
