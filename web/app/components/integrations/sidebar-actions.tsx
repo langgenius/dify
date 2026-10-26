@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import DebugInfo from '@/app/components/plugins/plugin-page/debug-info'
-import InstallPluginDropdown from '@/app/components/plugins/plugin-page/install-plugin-dropdown'
+import InstallPluginMenu from '@/app/components/plugins/plugin-page/install-plugin-menu'
 import PluginTasks from '@/app/components/plugins/plugin-page/plugin-tasks'
 import { PermissionQuickPanel } from './permission-quick-panel'
 import {
@@ -96,7 +96,7 @@ function IntegrationSidebarInstallActions({
         content={permissionTooltip}
         className="min-w-0 flex-1"
       >
-        <InstallPluginDropdown
+        <InstallPluginMenu
           disabled={!canManagement}
           rootClassName="w-full"
           triggerVariant="primary"

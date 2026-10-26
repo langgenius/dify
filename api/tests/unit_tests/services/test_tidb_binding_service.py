@@ -20,7 +20,7 @@ from models.account import Tenant
 from models.dataset import Dataset, TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 from services import tidb_binding_service as service
-from tests.unit_tests.knowledge_fs_core_fakes import RecordingCallable
+from tests.helpers.unit.knowledge_fs_core_fakes import RecordingCallable
 
 
 @dataclass(frozen=True)

@@ -123,7 +123,7 @@ const AddCustomModel = ({
                 type="button"
                 key={model.model}
                 className={cn(
-                  'flex h-8 w-full items-center rounded-lg px-2 text-left',
+                  'flex h-8 w-full items-center rounded-lg px-2 text-start',
                   canUseCredential
                     ? 'cursor-pointer hover:bg-state-base-hover'
                     : 'cursor-not-allowed opacity-50',
@@ -137,7 +137,7 @@ const AddCustomModel = ({
                 }}
               >
                 <ModelIcon
-                  className="mr-1 size-5 shrink-0"
+                  className="me-1 size-5 shrink-0"
                   iconClassName="h-5 w-5"
                   provider={provider}
                   modelName={model.model}
@@ -160,7 +160,7 @@ const AddCustomModel = ({
                 handleOpenModalForAddNewCustomModel()
               }}
             >
-              <span className="mr-1 i-ri-add-line size-4" />
+              <span className="me-1 i-ri-add-line size-4" />
               {t(($) => $['modelProvider.auth.addNewModel'], { ns: 'modelProvider' })}
             </button>
           )}

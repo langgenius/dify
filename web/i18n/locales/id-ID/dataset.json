@@ -32,7 +32,6 @@
   "createNewExternalAPI": "Membuat API Pengetahuan Eksternal baru",
   "creatorFilter.creators": "Pembuat",
   "creatorFilter.maxCreators": "Pembuat maksimum",
-  "datasetDeleted": "Pengetahuan dihapus",
   "datasetUsedByApp": "Pengetahuan tersebut digunakan oleh beberapa aplikasi. Aplikasi tidak akan lagi dapat menggunakan Pengetahuan ini, dan semua konfigurasi prompt serta log akan dihapus secara permanen.",
   "defaultRetrievalTip": "Pengambilan multi-jalur digunakan secara default. Pengetahuan diambil dari beberapa basis pengetahuan dan kemudian diberi peringkat ulang.",
   "deleteDatasetConfirmContent": "Menghapus Pengetahuan tidak dapat diubah. Pengguna tidak akan lagi dapat mengakses Pengetahuan Anda, dan semua konfigurasi prompt dan log akan dihapus secara permanen.",

@@ -41,27 +41,27 @@ export function ApiKeyTable({
 
   return (
     <div className="mx-6 min-h-0 min-w-0 overflow-auto border-y border-divider-subtle">
-      <table className="w-full min-w-180 table-fixed text-left system-sm-regular text-text-secondary">
+      <table className="w-full min-w-180 table-fixed text-start system-sm-regular text-text-secondary">
         <caption className="sr-only">
           {t(($) => $['apiKeyModal.apiSecretKey'], { ns: 'appApi' })}
         </caption>
         <thead className="sticky top-0 bg-components-panel-bg system-xs-semibold-uppercase text-text-tertiary">
           <tr className="border-b border-divider-regular">
-            <th className="w-60 px-3 py-2" scope="col">
+            <th className="w-60 px-3 py-2 text-start" scope="col">
               {t(($) => $['apiKeyModal.secretKey'], { ns: 'appApi' })}
             </th>
             {showScope && (
-              <th className="w-28 px-3 py-2" scope="col">
+              <th className="w-28 px-3 py-2 text-start" scope="col">
                 {t(($) => $['apiKeyModal.scope'], { ns: 'appApi' })}
               </th>
             )}
-            <th className="w-40 px-3 py-2" scope="col">
+            <th className="w-40 px-3 py-2 text-start" scope="col">
               {t(($) => $['apiKeyModal.created'], { ns: 'appApi' })}
             </th>
-            <th className="w-40 px-3 py-2" scope="col">
+            <th className="w-40 px-3 py-2 text-start" scope="col">
               {t(($) => $['apiKeyModal.lastUsed'], { ns: 'appApi' })}
             </th>
-            <th className="w-28 px-3 py-2" scope="col">
+            <th className="w-28 px-3 py-2 text-start" scope="col">
               <span className="sr-only">
                 {t(($) => $['apiKeyModal.actions'], { ns: 'appApi' })}
               </span>

@@ -4,7 +4,7 @@ import type { DocumentDisplayStatus } from '../model'
 import type { DocumentProcessingTask, LogicalDocument } from '../models'
 import type { DocumentRowAction } from '../state/row-actions'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom, useStore } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -25,6 +25,7 @@ import {
 } from '../model'
 import { backgroundTaskFromApi } from '../models'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
+import { documentsByIdAtom } from '../state/queries'
 import { createDocumentRowCanEditAtom } from '../state/results'
 import {
   beginDocumentRowActionAtom,
@@ -228,15 +229,20 @@ export function useToggleDocumentAvailabilityAction(
   return { busy, pending, run }
 }
 
-export function useRemoveDocumentAction(document: LogicalDocument) {
+export function useRemoveDocumentAction() {
   const { t } = useTranslation(['knowledgeSpace'])
-  const canEdit = useDocumentCanEdit(document.id)
+  const store = useStore()
   const onDocumentRemoved = useSetAtom(removeDocumentFromSelectionAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
-  const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'remove')
+  const begin = useSetAtom(beginDocumentRowActionAtom)
+  const finish = useSetAtom(finishDocumentRowActionAtom)
   const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
-  const { mutateAsync: removeDocument } = useMutation({
-    mutationFn: () =>
+  const {
+    mutateAsync: removeDocument,
+    isPending: pending,
+    reset,
+  } = useMutation({
+    mutationFn: (document: LogicalDocument) =>
       consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete({
         body: { expectedRevision: document.rowVersion },
         headers: { 'Idempotency-Key': createRequestId() },
@@ -244,11 +250,18 @@ export function useRemoveDocumentAction(document: LogicalDocument) {
       }),
   })
 
-  const run = useCallback(async () => {
-    if (!canEdit || !begin()) return false
+  const run = async (documentId: string) => {
+    const document = store.get(documentsByIdAtom).get(documentId)
+    if (!document) {
+      onDocumentRemoved(documentId)
+      return true
+    }
+    if (!store.get(createDocumentRowCanEditAtom(documentId))) return false
+    const action = { action: 'remove', documentId } as const
+    if (!begin(action)) return false
     try {
-      await removeDocument()
-      onDocumentRemoved(document.id)
+      await removeDocument(document)
+      onDocumentRemoved(documentId)
       invalidateDocumentsAndTasks()
       return true
     } catch (error) {
@@ -256,21 +269,11 @@ export function useRemoveDocumentAction(document: LogicalDocument) {
       else toast.error(t(($) => $.documentsErrorDescription))
       return false
     } finally {
-      finish()
+      finish(action)
     }
-  }, [
-    begin,
-    canEdit,
-    document.id,
-    finish,
-    invalidateDocumentsAndTasks,
-    onDocumentRemoved,
-    onWriteDenied,
-    removeDocument,
-    t,
-  ])
+  }
 
-  return { busy, pending, run }
+  return { pending, run, reset }
 }
 
 export function useRetryDocumentTaskAction(

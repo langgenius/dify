@@ -19,7 +19,7 @@ from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, TokenType
 from services.knowledge_fs.feature_service import KnowledgeFSFeatures
 from services.knowledge_fs.product_dto import KnowledgeFSListQuery
-from tests.unit_tests.controllers.knowledge_fs_controller_fakes import (
+from tests.helpers.unit.controllers.knowledge_fs_controller_fakes import (
     FakeComponent,
     FakeRuntime,
     Recorder,

@@ -41,7 +41,7 @@ from models.resource_access_token import (
 )
 from services.api_token_service import ApiTokenCache
 from services.knowledge_fs.control_space_commands import KnowledgeFSControlSpaceCommandService
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 class _RecordingEndUserCommands:

@@ -269,9 +269,9 @@ catalog:
   use-context-selector: 2.0.0
   uuid: 14.0.3
   vinext: 1.2.1
-  vite: npm:@voidzero-dev/vite-plus-core@1.3.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.4.0
   vite-plugin-inspect: 12.1.0
-  vite-plus: 1.3.0
+  vite-plus: 1.4.0
   vitest: 5.0.5
   vitest-browser-react: 2.3.0
   vitest-canvas-mock: 1.2.0

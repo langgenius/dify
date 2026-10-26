@@ -65,7 +65,7 @@ from services.skill_management_service import (
     validate_skill_description,
     validate_skill_name,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 TENANT = "11111111-1111-1111-1111-111111111111"
 AGENT = "22222222-2222-2222-2222-222222222222"

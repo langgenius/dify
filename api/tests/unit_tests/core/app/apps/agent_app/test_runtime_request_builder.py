@@ -42,8 +42,8 @@ from graphon.model_runtime.entities.message_entities import ImagePromptMessageCo
 from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.agent_config_entities import AgentSoulConfig
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
 
 
 @dataclass(frozen=True)
@@ -171,8 +171,11 @@ def test_builder_carries_application_trace_context_but_redacts_it_from_request_l
 
 
 class _NoToolsBuilder:
+    def __init__(self):
+        self.knowledge_fs_spaces = ()
+
     def build_layers(self, **kwargs):
-        del kwargs
+        self.knowledge_fs_spaces = kwargs["knowledge_fs_spaces"]
         return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
 
 
@@ -774,16 +777,23 @@ class TestAgentAppRuntimeRequestBuilder:
                             "id": "new",
                             "name": "New Docs",
                             "control_space_id": "00000000-0000-4000-8000-000000000001",
-                        }
+                        },
+                        {
+                            "id": "other",
+                            "name": "Other Docs",
+                            "control_space_id": "00000000-0000-4000-8000-000000000002",
+                        },
                     ],
                 }
             }
         ).knowledge
 
-        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder()).build(_ctx(soul))  # type: ignore[arg-type]
+        tool_builder = _NoToolsBuilder()
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=tool_builder).build(_ctx(soul))  # type: ignore[arg-type]
         layers = {layer.name: layer for layer in result.request.composition.layers}
         assert layers["knowledge"].config["sets"][0]["id"] == "classic"
         assert layers["knowledge_fs"].config["spaces"][0]["id"] == "new"
+        assert [space.id for space in tool_builder.knowledge_fs_spaces] == ["new", "other"]
 
     def test_build_raises_when_model_missing(self):
         builder = AgentAppRuntimeRequestBuilder(

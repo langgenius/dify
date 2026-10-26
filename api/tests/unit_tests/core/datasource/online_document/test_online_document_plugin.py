@@ -8,7 +8,7 @@ from core.datasource.entities.datasource_entities import (
     OnlineDocumentPagesMessage,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
-from tests.unit_tests.core.datasource.factories import datasource_entity
+from tests.helpers.unit.core.datasource.factories import datasource_entity
 
 
 class TestOnlineDocumentDatasourcePlugin:
