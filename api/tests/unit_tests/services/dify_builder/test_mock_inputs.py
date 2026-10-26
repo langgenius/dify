@@ -196,3 +196,96 @@ def test_business_context_preserves_existing_type_fallbacks(reply: str | None) -
         "category": "paid",
         "note": "test",
     }
+
+
+def test_json_text_samples_are_serialized_once_for_declared_text_fields() -> None:
+    sample = [{"标题": 'quoted "value"', "path": "a\\b", "nested": '{"keep":"text"}'}]
+    schema = {"variables": [{"variable": "payload", "type": "paragraph"}]}
+    model = _FakeInstance([json.dumps({"inputs": {"payload": sample}, "json_text_fields": ["payload"]})])
+
+    result = mock_inputs.generate(model, schema, {})
+
+    assert isinstance(result["payload"], str)
+    assert json.loads(result["payload"]) == sample
+    assert "标题" in result["payload"]
+    assert len(model.prompts) == 1
+
+
+def test_malformed_outer_json_is_corrected_before_nested_values_are_used() -> None:
+    schema = {"variables": [{"variable": "payload", "type": "paragraph"}]}
+    # A quote-escaping failure equivalent to the frozen Dev reasoning example:
+    # permissive outer repair would silently accept a corrupted nested string.
+    malformed = r'{"inputs":{"payload":"[{\\"id\\":\\"A1\\"},{\\"id\\":\\"A2\\"}]"}}}'
+    model = _FakeInstance([malformed, '{"inputs":{"payload":[{"id":"A1"},{"id":"A2"}]}}'])
+
+    result = mock_inputs.generate(model, schema, {})
+
+    assert json.loads(result["payload"]) == [{"id": "A1"}, {"id": "A2"}]
+    assert len(model.prompts) == 2
+
+
+@pytest.mark.parametrize(
+    "first",
+    [
+        '{"inputs":{"payload":"[{broken]"},"json_text_fields":["payload"]}',
+        '{"inputs":{"payload":"null"},"json_text_fields":["payload"]}',
+        '{"inputs":{"payload":12},"json_text_fields":["payload"]}',
+        '{"inputs":{"payload":"okay"},"json_text_fields":"payload"}',
+        '{"inputs":{"payload":"okay"},"json_text_fields":["unknown"]}',
+        '{"inputs":{"payload":"okay"},"json_text_fields":["payload","payload"]}',
+        '{"inputs":{"payload":[NaN]}}',
+    ],
+)
+def test_invalid_generated_content_gets_one_correction(first: str) -> None:
+    schema = {"variables": [{"variable": "payload", "type": "text-input"}]}
+    model = _FakeInstance([first, '{"inputs":{"payload":{"valid":true}},"json_text_fields":["payload"]}'])
+
+    assert json.loads(mock_inputs.generate(model, schema, {})["payload"]) == {"valid": True}
+    assert len(model.prompts) == 2
+
+
+def test_outer_and_inner_failures_share_two_completion_budget() -> None:
+    schema = {"variables": [{"variable": "payload", "type": "paragraph"}]}
+    model = _FakeInstance(["not JSON", '{"inputs":{"payload":"[broken"},"json_text_fields":["payload"]}'])
+
+    assert mock_inputs.generate(model, schema, {}) == {"payload": "test"}
+    assert len(model.prompts) == 2
+
+
+def test_legacy_strings_and_nontext_values_keep_their_original_representation() -> None:
+    values = {
+        "note": '  [looks like JSON but is ordinary prose "中文"]  ',
+        "encoded": ' [ { "x": "\\\\path" } ] ',
+        "count": 7,
+        "upload": [{"id": "file-1", "type": "document"}],
+        "object": {"unchanged": True},
+    }
+    schema = {
+        "variables": [
+            {"variable": "note", "type": "paragraph"},
+            {"variable": "encoded", "type": "text-input"},
+            {"variable": "count", "type": "number"},
+            {"variable": "upload", "type": "file-list"},
+            {"variable": "object", "type": "json"},
+        ]
+    }
+    model = _FakeInstance([json.dumps({"inputs": {**values, "unknown": "discard"}})])
+
+    assert mock_inputs.generate(model, schema, {}) == values
+
+
+def test_explicit_json_string_is_validated_without_reserializing() -> None:
+    sample = '  [ { "标题": "quoted \\"text\\"" } ]  '
+    schema = {"variables": [{"variable": "payload", "type": "paragraph"}]}
+    model = _FakeInstance([json.dumps({"inputs": {"payload": sample}, "json_text_fields": ["payload"]})])
+
+    assert mock_inputs.generate(model, schema, {}) == {"payload": sample}
+    assert len(model.prompts) == 1
+
+
+def test_json_text_metadata_cannot_reinterpret_a_nontext_field() -> None:
+    schema = {"variables": [{"variable": "count", "type": "number"}]}
+    model = _FakeInstance(['{"inputs":{"count":7},"json_text_fields":["count"]}'] * 2)
+
+    assert mock_inputs.generate(model, schema, {}) == {"count": 1}
+    assert len(model.prompts) == 2
