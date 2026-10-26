@@ -29,7 +29,7 @@ def init_app(app: DifyApp):
         from core.ops.ops_trace_manager import TraceQueueManager  # heavy import, do it at startup only
 
         ns = {"TraceQueueManager": TraceQueueManager}
-        for Model in (
+        for model in (
             AppGenerateEntity,
             EasyUIBasedAppGenerateEntity,
             ConversationAppGenerateEntity,
@@ -41,9 +41,9 @@ def init_app(app: DifyApp):
             RagPipelineGenerateEntity,
         ):
             try:
-                Model.model_rebuild(_types_namespace=ns)
+                model.model_rebuild(_types_namespace=ns)
             except Exception as e:
-                logger.debug("model_rebuild skipped for %s: %s", Model.__name__, e)
+                logger.debug("model_rebuild skipped for %s: %s", model.__name__, e)
     except Exception as e:
         # Don't block app startup; just log at debug level.
         logger.debug("ext_forward_refs init skipped: %s", e)

@@ -2,7 +2,7 @@
 
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
-import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetInfo from './dataset-info'
 import NavLink from './nav-link'
@@ -37,10 +37,18 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
-  const { data: datasetRes, refetch: mutateDatasetRes } = useDatasetDetail(datasetId ?? '')
-  const { data: relatedApps } = useDatasetRelatedApps(datasetId ?? '', {
-    enabled: !!datasetId && !!datasetRes,
-  })
+  const { data: datasetRes, refetch: mutateDatasetRes } = useQuery(
+    consoleQuery.datasets.byDatasetId.get.queryOptions({
+      input: { params: { dataset_id: datasetId ?? '' } },
+      enabled: !!datasetId,
+    }),
+  )
+  const { data: relatedApps } = useQuery(
+    consoleQuery.datasets.byDatasetId.relatedApps.get.queryOptions({
+      input: { params: { dataset_id: datasetId ?? '' } },
+      enabled: !!datasetId && !!datasetRes,
+    }),
+  )
   const datasetACLCapabilities = useMemo(
     () =>
       getDatasetACLCapabilities(datasetRes?.permission_keys, {
@@ -127,7 +135,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   return (
     <DatasetDetailContext.Provider
       value={{
-        indexingTechnique: datasetRes.indexing_technique,
+        indexingTechnique: datasetRes.indexing_technique ?? undefined,
         dataset: datasetRes,
         mutateDatasetRes,
       }}

@@ -19,7 +19,7 @@ type CalendarPanelLabels = {
 
 type CalendarPanelProps = {
   value: string | null
-  onSelect: (date: string) => void
+  onSelect: (date: string, event: React.MouseEvent<Element> | React.KeyboardEvent<Element>) => void
   displayMonth: string
   onDisplayMonthChange: (month: string) => void
   locale?: DayPickerProps['locale']

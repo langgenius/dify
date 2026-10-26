@@ -11,6 +11,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, ValidationError, field_validator
+from werkzeug.exceptions import Forbidden
 
 from controllers.common.fields import SimpleMessageResponse
 from controllers.common.schema import (
@@ -24,12 +25,13 @@ from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
-from fields.app_export_fields import AppExportResponse
+from fields.app_fields import AppExportResponse
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from services.entities.app_entities import AppExportOptions
 from services.entities.dsl_entities import AppImportParams, Import, ImportMode, ImportStatus
 from services.errors.app import AppDiscoveryNotFoundError, IsDraftWorkflowError, WorkflowNotFoundError
+from services.errors.base import NoPermissionError
 
 
 class InnerAppDSLImportPayload(BaseModel):
@@ -82,6 +84,7 @@ class EnterpriseAppDSLImport(Resource):
     @inner_api_ns.response(
         HTTPStatus.BAD_REQUEST, "Import failed (business error)", inner_api_ns.models[Import.__name__]
     )
+    @inner_api_ns.response(HTTPStatus.FORBIDDEN, "Import permission denied or app quota exceeded")
     @inner_api_ns.response(
         HTTPStatus.NOT_FOUND,
         "Creator account not found or inactive",
@@ -90,18 +93,21 @@ class EnterpriseAppDSLImport(Resource):
     def post(self, workspace_id: str):
         """Import a DSL into a workspace on behalf of a specified creator."""
         args = validate_request(InnerAppDSLImportPayload)
-        result = application_services().apps.imports.import_as_creator(
-            workspace_id=workspace_id,
-            creator_email=args.creator_email,
-            params=AppImportParams(
-                mode=ImportMode.YAML_CONTENT,
-                yaml_content=args.yaml_content,
-                name=args.name,
-                description=args.description,
-            ),
-            request_id=get_request_id(),
-            trace_id=get_trace_id(),
-        )
+        try:
+            result = application_services().apps.imports.import_as_creator(
+                workspace_id=workspace_id,
+                creator_email=args.creator_email,
+                params=AppImportParams(
+                    mode=ImportMode.YAML_CONTENT,
+                    yaml_content=args.yaml_content,
+                    name=args.name,
+                    description=args.description,
+                ),
+                request_id=get_request_id(),
+                trace_id=get_trace_id(),
+            )
+        except NoPermissionError as error:
+            raise Forbidden(str(error)) from error
         if result is None:
             return dump_response(
                 SimpleMessageResponse, {"message": f"account '{args.creator_email}' not found or inactive"}

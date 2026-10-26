@@ -12,6 +12,18 @@ from controllers.common.errors import NotFoundError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console import console_ns
+from controllers.console.wraps import (
+    RBACPermission,
+    account_initialization_required,
+    edit_permission_required,
+    is_admin_or_owner_required,
+    model_validate,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
@@ -33,19 +45,6 @@ from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
-
-from .. import console_ns
-from ..wraps import (
-    RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
-    is_admin_or_owner_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -512,7 +511,7 @@ class TriggerSubscriptionUpdateApi(Resource):
             )
             return SimpleResultResponse(result="success").model_dump(mode="json")
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error updating subscription", exc_info=e)
             raise
@@ -548,7 +547,7 @@ class TriggerSubscriptionDeleteApi(Resource):
                 )
             return SimpleResultResponse(result="success").model_dump(mode="json")
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error deleting provider credential", exc_info=e)
             raise
@@ -602,6 +601,7 @@ class TriggerOAuthAuthorizeApi(Resource):
                 provider=provider_name,
                 extra_data={
                     "subscription_builder_id": subscription_builder.id,
+                    "plugin_unique_identifier": oauth_client_params.plugin_unique_identifier,
                 },
             )
 
@@ -615,7 +615,8 @@ class TriggerOAuthAuthorizeApi(Resource):
                 plugin_id=plugin_id,
                 provider=provider_name,
                 redirect_uri=redirect_uri,
-                system_credentials=oauth_client_params,
+                system_credentials=dict(oauth_client_params.credentials),
+                plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
             )
 
             response = make_response(
@@ -673,6 +674,16 @@ class TriggerOAuthCallbackApi(Resource):
         if oauth_client_params is None:
             raise Forbidden("No OAuth client configuration found for this trigger provider")
 
+        try:
+            OAuthProxyService.validate_plugin_context(
+                context,
+                plugin_id=plugin_id,
+                provider=provider_name,
+                plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
+            )
+        except ValueError as error:
+            raise Forbidden(str(error)) from error
+
         # Get OAuth credentials from callback
         oauth_handler = OAuthHandler()
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback"
@@ -683,7 +694,8 @@ class TriggerOAuthCallbackApi(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_client_params,
+            system_credentials=dict(oauth_client_params.credentials),
+            plugin_unique_identifier=oauth_client_params.plugin_unique_identifier,
             request=request,
         )
 
@@ -783,7 +795,7 @@ class TriggerOAuthClientManageApi(Resource):
             return dump_response(SimpleResultResponse, result)
 
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error configuring OAuth client", exc_info=e)
             raise
@@ -809,7 +821,7 @@ class TriggerOAuthClientManageApi(Resource):
             )
             return dump_response(SimpleResultResponse, result)
         except ValueError as e:
-            raise BadRequest(str(e))
+            raise BadRequest(str(e)) from e
         except Exception as e:
             logger.exception("Error removing OAuth client", exc_info=e)
             raise

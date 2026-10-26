@@ -928,9 +928,11 @@ class TestBuildSegmentValueErrors:
             # Use test value directly
             test_value = test_case.test_value
 
-            with pytest.raises(ValueError) as exc_info:  # noqa: PT012
-                segment = variable_factory.build_segment(test_value)
-                pytest.fail(f"Test case {index} ({test_case.name}) should raise ValueError but not, result={segment}")
+            with pytest.raises(
+                ValueError,
+                match="not supported value",
+            ) as exc_info:
+                variable_factory.build_segment(test_value)
 
             error_message = str(exc_info.value)
             assert "not supported value" in error_message, (

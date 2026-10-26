@@ -3,9 +3,14 @@
 import * as z from 'zod'
 
 /**
- * GeneratorResponse
+ * RuleGenerateResponse
  */
-export const zGeneratorResponse = z.unknown()
+export const zRuleGenerateResponse = z.object({
+  error: z.string(),
+  opening_statement: z.string(),
+  prompt: z.string(),
+  variables: z.array(z.string()),
+})
 
 /**
  * ErrorResponse
@@ -102,4 +107,4 @@ export const zPostRuleGenerateBody = zRuleGeneratePayload
 /**
  * Rule configuration generated successfully
  */
-export const zPostRuleGenerateResponse = zGeneratorResponse
+export const zPostRuleGenerateResponse = zRuleGenerateResponse

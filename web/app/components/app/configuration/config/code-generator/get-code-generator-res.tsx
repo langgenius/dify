@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { GenRes } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
+import type { CompletionParams, Model, ModelModeType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
@@ -42,7 +42,7 @@ type IGetCodeGeneratorResProps = {
   flowId: string
   nodeId: string
   currentCode?: string
-  mode: AppModeEnum
+  modelMode: ModelModeType
   isShow: boolean
   codeLanguages: CodeLanguage
   onClose: () => void
@@ -53,7 +53,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
   flowId,
   nodeId,
   currentCode,
-  mode,
+  modelMode,
   isShow,
   codeLanguages,
   onClose,
@@ -80,10 +80,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
     return {
       name: defaultModel?.model ?? '',
       provider: defaultModel?.provider.provider ?? '',
-      mode: mode as unknown as ModelModeType,
+      mode: modelMode,
       completion_params: defaultCompletionParams,
     }
-  }, [defaultModel, mode, selectedModel, storedModel])
+  }, [defaultModel, modelMode, selectedModel, storedModel])
   const [instructionFromSessionStorage, setInstructionFromSessionStorage] =
     useSessionStorageState<string>(`improve-instruction-${flowId}-${nodeId}`)
 
@@ -189,7 +189,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-full min-w-285 overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] w-full min-w-285 overflow-hidden">
         <div className="relative flex h-full min-h-0 flex-wrap">
           <div className="h-full w-142.5 shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">

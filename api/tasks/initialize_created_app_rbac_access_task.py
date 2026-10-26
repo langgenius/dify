@@ -194,7 +194,7 @@ def initialize_created_app_rbac_access_task(
             resource_id,
             self.request.retries + 1,
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 @shared_task(queue=APP_RBAC_QUEUE, bind=True, max_retries=3, default_retry_delay=60)
@@ -245,4 +245,4 @@ def sync_joined_workspace_member_rbac_access_task(
             member_account_id,
             self.request.retries + 1,
         )
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc

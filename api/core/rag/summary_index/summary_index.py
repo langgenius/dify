@@ -47,7 +47,7 @@ class SummaryIndex:
                         DocumentSegment.dataset_id == dataset_id,
                         DocumentSegment.document_id == document_id,
                         DocumentSegment.status == "completed",
-                        DocumentSegment.enabled == True,
+                        DocumentSegment.enabled.is_(True),
                     )
                 ).all()
                 segment_ids = [segment.id for segment in segments]

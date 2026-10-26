@@ -186,7 +186,7 @@ class WebsiteService:
         try:
             WebsiteCrawlApiRequest.from_args(args)
         except ValueError as e:
-            raise ValueError(f"Invalid arguments: {e}")
+            raise ValueError(f"Invalid arguments: {e}") from e
 
     def crawl_url(self, api_request: WebsiteCrawlApiRequest) -> dict[str, Any]:
         """Crawl a URL using the specified provider with typed request."""

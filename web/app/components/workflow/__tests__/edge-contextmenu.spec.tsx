@@ -19,21 +19,6 @@ vi.mock('../hooks/use-workflow-history', () => ({
   },
 }))
 
-vi.mock('../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({
-    getNodesReadOnly: () => false,
-  }),
-}))
-
-vi.mock('../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../utils')>()
-
-  return {
-    ...actual,
-    getNodesConnectedSourceOrTargetHandleIdsMap: vi.fn(() => ({})),
-  }
-})
-
 type EdgeRuntimeState = {
   _hovering?: boolean
   _isBundled?: boolean
@@ -76,6 +61,7 @@ function createFlowEdges() {
 
 let latestNodes: Node[] = []
 let latestEdges: Edge[] = []
+let flowStore: ReturnType<typeof useStoreApi>
 
 const RuntimeProbe = () => {
   latestNodes = useNodes() as Node[]
@@ -86,12 +72,18 @@ const RuntimeProbe = () => {
 
 const hooksStoreProps = {
   doSyncWorkflowDraft: vi.fn().mockResolvedValue(undefined),
+  accessControl: {
+    canEdit: true,
+    canRun: true,
+    canImportExportDSL: true,
+    canReleaseAndVersion: true,
+  },
 }
 
 const EdgeMenuHarness = () => {
   const { handleEdgeContextMenu } = useEdgesInteractions()
   const edges = useEdges() as Edge[]
-  const reactFlowStore = useStoreApi()
+  flowStore = useStoreApi()
 
   return (
     <div>
@@ -113,16 +105,6 @@ const EdgeMenuHarness = () => {
         }
       >
         edge-e2
-      </button>
-      <button
-        type="button"
-        aria-label="Remove edge e1"
-        onClick={() => {
-          const { edges, setEdges } = reactFlowStore.getState()
-          setEdges(edges.filter((edge) => edge.id !== 'e1'))
-        }}
-      >
-        remove-e1
       </button>
       <ContextMenu open>
         <EdgeContextmenu onClose={vi.fn()} />
@@ -227,20 +209,6 @@ describe('EdgeContextmenu', () => {
     )
 
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-  })
-
-  it('should open the edge menu for the right-clicked edge', async () => {
-    renderEdgeMenu()
-
-    fireEvent.contextMenu(screen.getByRole('button', { name: 'Right-click edge e2' }), {
-      clientX: 320,
-      clientY: 180,
-    })
-
-    expect(await screen.findByRole('menu'))!.toBeInTheDocument()
-    expect(
-      screen.getByRole('menuitem', { name: /common\.operation\.delete/i }),
-    )!.toBeInTheDocument()
   })
 
   it('should delete the right-clicked edge and close the menu when delete is clicked', async () => {
@@ -374,7 +342,7 @@ describe('EdgeContextmenu', () => {
   })
 
   it('should hide the menu when the target edge disappears after opening it', async () => {
-    const { container } = renderEdgeMenu()
+    renderEdgeMenu()
 
     fireEvent.contextMenu(screen.getByRole('button', { name: 'Right-click edge e1' }), {
       clientX: 160,
@@ -382,12 +350,28 @@ describe('EdgeContextmenu', () => {
     })
     expect(await screen.findByRole('menu'))!.toBeInTheDocument()
 
-    fireEvent.click(
-      container.querySelector('button[aria-label="Remove edge e1"]') as HTMLButtonElement,
-    )
+    act(() => {
+      const { edges, setEdges } = flowStore.getState()
+      setEdges(edges.filter((edge) => edge.id !== 'e1'))
+    })
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
+  })
+  it('does not delete an edge when the canvas becomes readonly after opening the menu', async () => {
+    const user = userEvent.setup()
+    const { store } = renderEdgeMenu()
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Right-click edge e2' }))
+    const item = await screen.findByRole('menuitem', { name: /common.operation.delete/ })
+    act(() => {
+      store.setState({ canvasReadOnly: true })
+      item.focus()
+    })
+    await user.keyboard('{Delete}')
+    expect(latestEdges.map((edge) => edge.id)).toEqual(['e1', 'e2'])
+    await user.click(item)
+    expect(latestEdges.map((edge) => edge.id)).toEqual(['e1', 'e2'])
+    expect(mockSaveStateToHistory).not.toHaveBeenCalled()
   })
 })

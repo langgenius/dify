@@ -1,4 +1,3 @@
-from typing import Any
 from uuid import UUID
 
 from flask_restx import Resource
@@ -11,6 +10,7 @@ from controllers.console.app.error import (
     AppNotFoundError,
     InvalidTracingConfigError,
     TracingConfigAlreadyExistsError,
+    TracingConfigConflictError,
     TracingConfigNotFoundError,
     TracingConfigProcessingError,
     TracingConfigVerificationFailedError,
@@ -31,6 +31,7 @@ from models.account import TenantAccountRole
 from services.app_tracing_config_service import (
     AppTracingConfigAlreadyExistsError,
     AppTracingConfigAppNotFoundError,
+    AppTracingConfigConflictError,
     AppTracingConfigInvalidConfigurationError,
     AppTracingConfigInvalidProviderError,
     AppTracingConfigNotFoundError,
@@ -54,8 +55,12 @@ class TraceProviderQuery(BaseModel):
 
 
 class TraceConfigPayload(BaseModel):
+    activate: bool = Field(
+        default=False,
+        description="Save, select this provider, and enable tracing atomically; preserve capture settings",
+    )
     tracing_provider: str = Field(..., description="Tracing provider name")
-    tracing_config: dict[str, Any] = Field(
+    tracing_config: dict[str, str | None] = Field(
         ...,
         description="Tracing configuration data",
     )
@@ -68,7 +73,7 @@ class TraceAppConfigResponse(ResponseModel):
     id: str | None = None
     app_id: str | None = None
     tracing_provider: str | None = None
-    tracing_config: dict[str, Any] | None = Field(default=None)
+    tracing_config: dict[str, str | None] | None = Field(default=None)
     is_active: bool | None = None
     created_at: str | None = None
     updated_at: str | None = None
@@ -187,6 +192,7 @@ class TraceAppConfigApi(Resource):
                 app_id=str(app_id),
                 tracing_provider=req_data.tracing_provider,
                 tracing_config=req_data.tracing_config,
+                activate=req_data.activate,
             )
         except AppTracingConfigAppNotFoundError as error:
             raise AppNotFoundError() from error
@@ -211,6 +217,7 @@ class TraceAppConfigApi(Resource):
         AppNotFoundError,
         InvalidTracingConfigError,
         TracingConfigNotFoundError,
+        TracingConfigConflictError,
         TracingConfigProcessingError,
         TracingConfigVerificationFailedError,
         TracingProviderUnavailableError,
@@ -247,9 +254,12 @@ class TraceAppConfigApi(Resource):
                 app_id=str(app_id),
                 tracing_provider=req_data.tracing_provider,
                 tracing_config=req_data.tracing_config,
+                activate=req_data.activate,
             )
         except AppTracingConfigAppNotFoundError as error:
             raise AppNotFoundError() from error
+        except AppTracingConfigConflictError as error:
+            raise TracingConfigConflictError() from error
         except AppTracingConfigNotFoundError as error:
             raise TracingConfigNotFoundError() from error
         except AppTracingConfigInvalidProviderError as error:

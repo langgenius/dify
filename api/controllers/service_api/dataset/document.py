@@ -75,6 +75,7 @@ from libs.helper import dump_response
 from libs.login import current_user
 from libs.pagination import clamp_pagination, paginate_query
 from models.dataset import Dataset, Document
+from models.enums import DocumentCreatedFrom
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_creator,
     get_document_hit_count,
@@ -459,11 +460,11 @@ def _create_document_by_text(session: Session, tenant_id: str, dataset_id: UUID)
             dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
+        raise ProviderNotInitializeError(ex.description) from ex
     document = documents[0]
 
     return document, batch
@@ -523,11 +524,11 @@ def _update_document_by_text(
             dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
+        raise ProviderNotInitializeError(ex.description) from ex
     document = documents[0]
 
     return document, batch
@@ -830,7 +831,7 @@ class DocumentAddByFileApi(DatasetApiResource):
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
-            raise FileTooLargeError(file_too_large_error.description)
+            raise FileTooLargeError(file_too_large_error.description) from file_too_large_error
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -852,11 +853,11 @@ class DocumentAddByFileApi(DatasetApiResource):
                 knowledge_config=knowledge_config,
                 account=get_dataset_creator(dataset, session=session),
                 dataset_process_rule=dataset_process_rule,
-                created_from="api",
+                created_from=DocumentCreatedFrom.API,
                 session=session,
             )
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
+            raise ProviderNotInitializeError(ex.description) from ex
         document = documents[0]
         return _document_and_batch_response(document, batch, session=session), 200
 
@@ -910,9 +911,9 @@ def _update_document_by_file(
                 default_file_size_limit=FeatureService.get_knowledge_file_size_limit(tenant_id),
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
-            raise FileTooLargeError(file_too_large_error.description)
-        except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError()
+            raise FileTooLargeError(file_too_large_error.description) from file_too_large_error
+        except services.errors.file.UnsupportedFileTypeError as caught_error:
+            raise UnsupportedFileTypeError() from caught_error
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
@@ -933,11 +934,11 @@ def _update_document_by_file(
             dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
+        raise ProviderNotInitializeError(ex.description) from ex
     document = documents[0]
     return document, document.batch
 
@@ -1324,6 +1325,7 @@ class DocumentApi(DatasetApiResource):
         metadata = query_params.metadata
         response_include: set[str] | None = None
         response_exclude: set[str] | None = None
+        response: dict[str, Any]
 
         # Calculate summary_index_status if needed
         summary_index_status = None

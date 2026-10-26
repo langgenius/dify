@@ -1,8 +1,10 @@
 import type { Node, Var } from '../../types'
 import { uniqBy } from 'es-toolkit/compat'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useNodes } from 'reactflow'
-import { useIsChatMode, useWorkflow } from '../../hooks/use-workflow'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import { useWorkflow } from '../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../hooks/use-workflow-variables'
 import { AssignerNodeInputType, WriteMode } from './types'
 
@@ -10,7 +12,7 @@ export const useGetAvailableVars = () => {
   const nodes: Node[] = useNodes()
   const { getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const getAvailableVars = useCallback(
     (nodeId: string, handleId: string, filterVar: (v: Var) => boolean, hideEnv = false) => {
       const availableNodes: Node[] = []
@@ -26,7 +28,7 @@ export const useGetAvailableVars = () => {
         return getNodeAvailableVars({
           parentNode,
           beforeNodes: uniqBy(availableNodes, 'id').filter((node) => node.id !== nodeId),
-          isChatMode,
+          isChatflow,
           hideEnv,
           hideChatVar: hideEnv,
           filterVar,
@@ -43,11 +45,11 @@ export const useGetAvailableVars = () => {
       return getNodeAvailableVars({
         parentNode,
         beforeNodes: uniqBy(availableNodes, 'id').filter((node) => node.id !== nodeId),
-        isChatMode,
+        isChatflow,
         filterVar,
       })
     },
-    [nodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode],
+    [nodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatflow],
   )
 
   return getAvailableVars

@@ -59,4 +59,4 @@ class LocaltimeToTimestampTool(BuiltinTool):
             timestamp = int(converted_localtime.timestamp())
             return timestamp
         except Exception as e:
-            raise ToolInvokeError(str(e))
+            raise ToolInvokeError(str(e)) from e

@@ -1,16 +1,15 @@
 import type { AvailableModelListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { LLMNodeType } from '../../types'
-import { act, renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
+import { consoleQuery } from '@/service/console'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { Type } from '../../types'
 import useLLMStructuredOutputConfig from '../use-llm-structured-output-config'
 
-const mockModelListQuery = vi.hoisted(() =>
-  vi.fn<() => { data: AvailableModelListResponse['data'] }>(),
-)
+const mockModelListQuery = vi.hoisted(() => vi.fn<() => Promise<AvailableModelListResponse>>())
 
 const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   type: BlockEnum.LLM,
@@ -19,7 +18,7 @@ const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   prompt_template: [],
@@ -38,8 +37,8 @@ describe('use-llm-structured-output-config', () => {
     vi.clearAllMocks()
   })
 
-  it('detects supported models and updates structured output state', () => {
-    mockModelListQuery.mockReturnValue({
+  it('detects supported models and updates structured output state', async () => {
+    mockModelListQuery.mockResolvedValue({
       data: [
         {
           provider: 'openai',
@@ -63,7 +62,7 @@ describe('use-llm-structured-output-config', () => {
 
     const inputRef = {
       current: createPayload(),
-    } as MutableRefObject<LLMNodeType>
+    } as RefObject<LLMNodeType>
     const handleSetInputs = vi.fn((nextInputs: LLMNodeType) => {
       inputRef.current = nextInputs
     })
@@ -79,19 +78,14 @@ describe('use-llm-structured-output-config', () => {
       }),
     )
 
-    expect(result.current.isModelSupportStructuredOutput).toBe(true)
+    await waitFor(() => expect(result.current.isModelSupportStructuredOutput).toBe(true))
     expect(result.current.structuredOutputCollapsed).toBe(true)
 
     act(() => {
       result.current.handleStructureOutputEnableChange(true)
     })
 
-    expect(handleSetInputs).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        structured_output_enabled: true,
-      }),
-    )
+    expect(inputRef.current.structured_output_enabled).toBe(true)
     expect(result.current.structuredOutputCollapsed).toBe(false)
     expect(deleteNodeInspectorVars).toHaveBeenCalledWith('llm-node')
 
@@ -111,38 +105,21 @@ describe('use-llm-structured-output-config', () => {
       result.current.handleStructureOutputEnableChange(false)
     })
 
-    expect(handleSetInputs).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        structured_output: {
-          schema: {
-            type: Type.object,
-            properties: {
-              answer: {
-                type: Type.string,
-              },
-            },
-            additionalProperties: false,
-          },
+    expect(inputRef.current).toMatchObject({
+      structured_output: {
+        schema: {
+          type: Type.object,
+          properties: { answer: { type: Type.string } },
+          additionalProperties: false,
         },
-      }),
-    )
-    expect(handleSetInputs).toHaveBeenNthCalledWith(
-      3,
-      expect.objectContaining({
-        reasoning_format: 'separated',
-      }),
-    )
-    expect(handleSetInputs).toHaveBeenNthCalledWith(
-      4,
-      expect.objectContaining({
-        structured_output_enabled: false,
-      }),
-    )
+      },
+      reasoning_format: 'separated',
+      structured_output_enabled: false,
+    })
   })
 
-  it('returns undefined support when the model is missing from the list', () => {
-    mockModelListQuery.mockReturnValue({
+  it('returns undefined support when the model is missing from the list', async () => {
+    mockModelListQuery.mockResolvedValue({
       data: [
         {
           provider: 'anthropic',
@@ -164,21 +141,31 @@ describe('use-llm-structured-output-config', () => {
       ],
     })
 
-    const { result } = renderHook(() =>
+    const { result, queryClient } = renderHook(() =>
       useLLMStructuredOutputConfig({
         id: 'llm-node',
         model: createPayload().model,
-        inputRef: { current: createPayload() } as MutableRefObject<LLMNodeType>,
+        inputRef: { current: createPayload() } as RefObject<LLMNodeType>,
         setInputs: vi.fn(),
         deleteNodeInspectorVars: vi.fn(),
       }),
     )
 
+    const queryKey = consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+      input: { params: { model_type: 'llm' } },
+    })
+    await waitFor(() => expect(queryClient.getQueryState(queryKey)?.status).toBe('success'))
     expect(result.current.isModelSupportStructuredOutput).toBeUndefined()
   })
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return { ...actual, useQuery: mockModelListQuery }
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.models.modelTypes.byModelType.get': () => mockModelListQuery(),
+    }),
+  }
 })

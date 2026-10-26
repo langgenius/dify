@@ -54,9 +54,7 @@ export type SnippetWorkflowPaginationResponse = {
   page: number
 }
 
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
+export type DefaultBlockConfigsResponse = Array<DefaultBlockConfigItemResponse>
 
 export type SnippetWorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
@@ -131,7 +129,7 @@ export type SnippetIterationNodeRunPayload = {
   } | null
 }
 
-export type GeneratedAppResponse = JsonValue
+export type GeneratedAppResponse = ShallowJsonValue
 
 export type SnippetLoopNodeRunPayload = {
   inputs?: {
@@ -301,7 +299,7 @@ export type WorkflowDraftVariableResponse = {
   name: string
   selector: Array<string>
   type: string
-  value: JsonValue
+  value: RecursiveJsonValue
   value_type: string
   visible: boolean
 }
@@ -311,7 +309,7 @@ export type WorkflowDraftVariableUpdatePayload = {
   value?: unknown | null
 }
 
-export type PublishWorkflowPayload = {
+export type SnippetPublishWorkflowPayload = {
   knowledge_base_setting?: {
     [key: string]: unknown
   } | null
@@ -354,6 +352,13 @@ export type SimpleEndUser = {
   id: string
   is_anonymous: boolean
   session_id?: string | null
+  type: string
+}
+
+export type DefaultBlockConfigItemResponse = {
+  config: {
+    [key: string]: unknown
+  }
   type: string
 }
 
@@ -403,7 +408,7 @@ export type EnvironmentVariableItemResponse = {
   visible: boolean
 }
 
-export type JsonValue =
+export type ShallowJsonValue =
   | string
   | number
   | number
@@ -601,6 +606,17 @@ export type WorkflowDraftVariableFullContentResponse = {
   value_type: string
 }
 
+export type RecursiveJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: RecursiveJsonValue
+    }
+  | Array<RecursiveJsonValue>
+  | null
+
 export type AgentScope = 'roster' | 'workflow_only'
 
 export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'workflow'
@@ -659,6 +675,7 @@ export type AgentSoulHumanConfig = {
 
 export type AgentSoulKnowledgeConfig = {
   sets?: Array<AgentKnowledgeSetConfig>
+  spaces?: Array<AgentKnowledgeSpaceConfig>
 }
 
 export type AgentSoulMemoryConfig = {
@@ -818,9 +835,11 @@ export type AgentComposerDifyToolCandidateResponse = {
 }
 
 export type AgentComposerKnowledgeSetCandidateResponse = {
+  control_space_id?: string | null
   datasets?: Array<AgentComposerKnowledgeDatasetCandidateResponse>
   description?: string | null
   id: string
+  missing?: boolean
   missing_dataset_ids?: Array<string>
   name: string
 }
@@ -926,6 +945,14 @@ export type AgentKnowledgeSetConfig = {
   retrieval: AgentKnowledgeRetrievalConfig
 }
 
+export type AgentKnowledgeSpaceConfig = {
+  control_space_id: string
+  description?: string | null
+  id: string
+  is_missing?: boolean
+  name: string
+}
+
 export type AgentMemoryArtifactConfig = {
   id?: string | null
   name?: string | null
@@ -944,7 +971,7 @@ export type AgentSoulModelSettings = {
   frequency_penalty?: number | null
   max_tokens?: number | null
   presence_penalty?: number | null
-  response_format?: AgentModelResponseFormatConfig | null
+  response_format?: string | AgentModelResponseFormatConfig | null
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
@@ -2014,7 +2041,7 @@ export type GetSnippetsBySnippetIdWorkflowsPublishResponse =
   GetSnippetsBySnippetIdWorkflowsPublishResponses[keyof GetSnippetsBySnippetIdWorkflowsPublishResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsPublishData = {
-  body: PublishWorkflowPayload
+  body: SnippetPublishWorkflowPayload
   path: {
     snippet_id: string
   }

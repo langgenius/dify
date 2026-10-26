@@ -75,10 +75,10 @@ def load_workspace_role(ctx: Context) -> TenantAccountRole:
 def _path_param(ctx: Context, name: str) -> str:
     try:
         return ctx.view_args[name]
-    except KeyError:
+    except KeyError as caught_error:
         raise RouteContractError(
             f"{name} is not a path parameter of this route: the requirement asking for it does not belong here"
-        )
+        ) from caught_error
 
 
 def _fetch_app(ctx: Context) -> App:
@@ -86,8 +86,8 @@ def _fetch_app(ctx: Context) -> App:
     try:
         # Canonical dashed form, so a bare-hex path parameter names the same app.
         app_id = str(uuid.UUID(raw))
-    except ValueError:
-        raise NotFound("app not found")
+    except ValueError as caught_error:
+        raise NotFound("app not found") from caught_error
     app = AppService.get_app_by_id(app_id, ctx.session)
     if not app or app.status != AppStatus.NORMAL:
         raise NotFound("app not found")
@@ -118,8 +118,8 @@ def _workspace_from_request(ctx: Context) -> Tenant:
         raise NotFound("workspace not found")
     try:
         uuid.UUID(workspace_id)
-    except ValueError:
-        raise NotFound("workspace not found")
+    except ValueError as caught_error:
+        raise NotFound("workspace not found") from caught_error
     tenant = application_services().workspaces.identity.get_workspace(workspace_id)
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise NotFound("workspace not found")

@@ -13,6 +13,8 @@ Run backend checks from the repository root:
 
 Run direct Python commands through `uv run --project api`. Docker-backed integration suites are normally CI-owned. Do not start long-running services as part of routine agent work.
 
+Follow the backend developer guide's [test layout and naming requirements](README.md#testing) when adding or moving unit tests.
+
 ## Architecture And Boundaries
 
 The backend uses a ports-and-adapters architecture, with application services orchestrating domain aggregates where business complexity warrants them. Read the [backend architecture][architecture] before adding an endpoint or use case, or moving behavior out of legacy code.

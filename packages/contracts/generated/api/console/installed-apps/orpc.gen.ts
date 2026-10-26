@@ -395,6 +395,7 @@ export const post7 = oc
   .output(zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse)
   .errors({
     access_denied: { status: 403, data: zAccessDeniedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
     installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
     message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
     message_not_found: { status: 404, data: zMessageNotFoundError },
@@ -800,7 +801,7 @@ export const get9 = oc
     path: '/installed-apps',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetInstalledAppsQuery.optional() }))
+  .input(z.object({ query: zGetInstalledAppsQuery.optional() }).optional())
   .output(zGetInstalledAppsResponse)
   .errors({
     invalid_cursor: { status: 400, data: zInvalidCursorError },

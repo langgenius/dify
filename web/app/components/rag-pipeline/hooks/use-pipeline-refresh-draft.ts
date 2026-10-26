@@ -1,17 +1,19 @@
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { processNodesWithoutDataSource } from '../utils'
 
 export const usePipelineRefreshDraft = () => {
+  const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const workflowStore = useWorkflowStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
 
   const handleRefreshWorkflowDraft = useCallback(() => {
     const {
-      pipelineId,
       setSyncWorkflowDraftHash,
       setIsSyncingWorkflowDraft,
       setEnvironmentVariables,
@@ -50,7 +52,7 @@ export const usePipelineRefreshDraft = () => {
         setRagPipelineVariables?.(response.rag_pipeline_variables || [])
       })
       .finally(() => setIsSyncingWorkflowDraft(false))
-  }, [handleUpdateWorkflowCanvas, workflowStore])
+  }, [handleUpdateWorkflowCanvas, workflowStore, pipelineId])
 
   return {
     handleRefreshWorkflowDraft,

@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.expression import and_, or_
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.system_variables import SystemVariableKey
@@ -43,7 +42,7 @@ from graphon.variables.utils import dumps_with_segments
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models import Account, App, Conversation
-from models.enums import ConversationFromSource, DraftVariableType
+from models.enums import ConversationFromSource, ConversationStatus, DraftVariableType, InvokeFrom
 from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
 from repositories.factory import DifyAPIRepositoryFactory
@@ -620,11 +619,11 @@ class WorkflowDraftVariableService:
             override_model_configs=None,
             mode=app.mode,
             name="Draft Debugging Conversation",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,
-            status="normal",
+            status=ConversationStatus.NORMAL,
             invoke_from=InvokeFrom.DEBUGGER,
             from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,
@@ -906,10 +905,8 @@ class DraftVariableSaver:
         )
 
     def _should_save_output_variables_for_draft(self) -> bool:
-        if self._enclosing_node_id is not None and self._node_type != BuiltinNodeTypes.VARIABLE_ASSIGNER:
-            # Currently we do not save output variables for nodes inside loop or iteration.
-            return False
-        return True
+        # Save nested output variables only for variable assigners.
+        return self._enclosing_node_id is None or self._node_type == BuiltinNodeTypes.VARIABLE_ASSIGNER
 
     def _build_from_variable_assigner_mapping(self, process_data: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
         draft_vars: list[WorkflowDraftVariable] = []
@@ -1025,10 +1022,7 @@ class DraftVariableSaver:
                     self._node_type,
                 )
                 continue
-            if isinstance(value, Segment):
-                value_seg = value
-            else:
-                value_seg = _build_segment_for_serialized_values(value)
+            value_seg = value if isinstance(value, Segment) else _build_segment_for_serialized_values(value)
             draft_vars.append(
                 self._create_draft_variable(
                     name=name,
@@ -1183,17 +1177,13 @@ class DraftVariableSaver:
     def _should_variable_be_editable(node_id: str, name: str) -> bool:
         if node_id in (CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID):
             return False
-        if node_id == SYSTEM_VARIABLE_NODE_ID and not is_system_variable_editable(name):
-            return False
-        return True
+        return not (node_id == SYSTEM_VARIABLE_NODE_ID and not is_system_variable_editable(name))
 
     @staticmethod
     def _should_variable_be_visible(node_id: str, node_type: NodeType, name: str) -> bool:
         if node_type == BuiltinNodeTypes.IF_ELSE:
             return False
-        if node_id == SYSTEM_VARIABLE_NODE_ID and not is_system_variable_editable(name):
-            return False
-        return True
+        return not (node_id == SYSTEM_VARIABLE_NODE_ID and not is_system_variable_editable(name))
 
     def _should_variable_be_saved(self, name: str) -> bool:
         exclude_var_names = self._EXCLUDE_VARIABLE_NAMES_MAPPING.get(self._node_type)

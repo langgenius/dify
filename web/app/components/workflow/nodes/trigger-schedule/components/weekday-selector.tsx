@@ -4,11 +4,12 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type WeekdaySelectorProps = {
+  disabled?: boolean
   selectedDays: string[]
   onChange: (days: string[]) => void
 }
 
-const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
+const WeekdaySelector = ({ selectedDays, onChange, disabled }: WeekdaySelectorProps) => {
   const { t } = useTranslation(['workflow'])
 
   const weekdays = [
@@ -39,6 +40,7 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
       <div className="flex gap-1.5">
         {weekdays.map((day) => (
           <Toggle
+            disabled={disabled}
             key={day.key}
             pressed={isDaySelected(day.key)}
             onPressedChange={() => handleDaySelect(day.key)}

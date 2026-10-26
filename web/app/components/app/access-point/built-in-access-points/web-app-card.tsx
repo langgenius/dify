@@ -14,6 +14,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -37,7 +38,6 @@ import {
   useGetUserCanAccessApp,
 } from '@/service/access-control/use-app-access-control'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import { getBuiltInAccessUrls, getHiddenStartInputs } from '../shared/utils'
 import {
@@ -122,8 +122,7 @@ export function WebAppAccessPointCard({
       : appInfo.enable_site
   const running = siteAvailability === 'available' && optimisticEnabled
   const actionsAvailable = running && Boolean(webAppUrl) && !toggleSiteMutation.isPending
-  const supportsEmbedded =
-    appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW
+  const supportsEmbedded = appInfo.mode !== 'completion' && appInfo.mode !== 'workflow'
   const hiddenLaunchVariables = getHiddenStartInputs(workflow)
   const { data: accessSubjects } = useAppWhiteListSubjects(
     appInfo.id,
@@ -173,15 +172,7 @@ export function WebAppAccessPointCard({
         description={t(($) => $['studio.accessPoint.webAppDescription'], {
           ns: 'deployments',
         })}
-        icon={
-          <AppIcon
-            size="large"
-            iconType={appInfo.icon_type}
-            icon={appInfo.icon ?? undefined}
-            background={appInfo.icon_background}
-            imageUrl={appInfo.icon_url}
-          />
-        }
+        icon={<AppIcon size="large" icon={appInfo} />}
         status={status}
         statusLabel={statusLabel}
         highlighted={highlighted}
@@ -228,9 +219,7 @@ export function WebAppAccessPointCard({
             />
             <SettingsDialog
               key={appInfo.id}
-              isChat={
-                appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW
-              }
+              isChat={appInfo.mode !== 'completion' && appInfo.mode !== 'workflow'}
               canDeploy={canDeploy}
               appInfo={site ? { id: appInfo.id, mode: appInfo.mode, site } : undefined}
               disabled={siteAvailability !== 'available' || !canManageAccessPoint}
@@ -296,14 +285,14 @@ export function WebAppAccessPointCard({
       />
       <AlertDialog open={showRegenerate} onOpenChange={(open) => !open && setShowRegenerate(false)}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['overview.appInfo.regenerateNotice'], { ns: 'appOverview' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
