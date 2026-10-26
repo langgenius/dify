@@ -1007,7 +1007,7 @@ def test_unknown_live_payload_is_retained_until_actual_late_cleanup() -> None:
 
     def blocked() -> None:
         entered.set()
-        release.wait(2)
+        release.wait()
 
     thread = worker(life, blocked)
     del engine, factory, runtime
@@ -1016,6 +1016,7 @@ def test_unknown_live_payload_is_retained_until_actual_late_cleanup() -> None:
         close(life, 0.02)
         assert life.settle() == "unknown"
         gc.collect()
+        assert thread.is_alive()
         assert runtime_ref() is not None
         assert context_ref() is not None
         with pytest.raises(ValueError, match="^native_host_registry_disposal_refused$"):
@@ -1025,6 +1026,7 @@ def test_unknown_live_payload_is_retained_until_actual_late_cleanup() -> None:
     finally:
         release.set()
         thread.join(2)
+    assert not thread.is_alive()
     consume(life)
     gc.collect()
     assert runtime_ref() is None

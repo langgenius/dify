@@ -65,9 +65,8 @@ def test_status_real_http_only_get_and_strips_private_fields(backend_name, state
         else (EnterpriseExecutionBindingBackend(gateway_endpoint=endpoint, auth_token="private"))
     )
     service = ExecutionBindingService(backend=backend)
-    router_factory = getattr(execution_bindings, "create_execution_binding_job_router", None)
+    router_factory = execution_bindings.create_execution_binding_job_router
     try:
-        assert router_factory is not None, "read-only protected status route is missing"
         app = FastAPI()
         app.include_router(router_factory(lambda: service), dependencies=[create_bearer_token_dependency("control")])
         with TestClient(app) as http:

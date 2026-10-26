@@ -7,8 +7,7 @@ from dify_agent.protocol import native_testing
 
 
 def test_shell_job_receipt_and_old_payload_wire():
-    receipt_type = getattr(native_testing, "AgentShellJobReceipt", None)
-    assert receipt_type is not None, "structured shell receipt is missing"
+    receipt_type = native_testing.AgentShellJobReceipt
     wire = dict(binding_ref="binding:workspace", job_id="job", status="running", done=False, exit_code=None)
     receipt = receipt_type.model_validate_json(__import__("json").dumps(wire))
     assert receipt.model_dump(mode="json") == wire

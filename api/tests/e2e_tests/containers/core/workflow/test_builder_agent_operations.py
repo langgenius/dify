@@ -470,7 +470,7 @@ class AsyncConfigQuery(TypedDict, closed=True):
     config_version_kind: str
 
 
-@pytest.fixture
+@pytest.fixture(params=["shell_run"])
 def claimed_shell_ack(
     continuation_case: ContinuationCase, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
 ) -> ClaimedShellAck:
@@ -489,7 +489,7 @@ def claimed_shell_ack(
     from services.dify_builder.native_testing.agent_operations import AgentOperationService
 
     case = continuation_case
-    boundary = getattr(request, "param", "shell_run")
+    boundary = request.param
     assert isinstance(boundary, str)
     original_key = operation_digest(case.ledger.intent.key)
     effect = case.ledger.intent.model_copy(
