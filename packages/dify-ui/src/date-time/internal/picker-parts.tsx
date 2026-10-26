@@ -619,6 +619,8 @@ function PickerClear({ onClick, disabled, ref, ...props }: PickerClearProps) {
   )
 }
 
+type PickerLabels = { close: string }
+
 type PickerContentProps = Omit<PopoverContentProps, 'children' | 'initialFocus' | 'render'>
 function PickerContent({
   children,
@@ -692,6 +694,7 @@ export type {
   PickerContentProps,
   PickerFieldProps,
   PickerLabelProps,
+  PickerLabels,
   PickerTriggerProps,
   PickerValueProps,
 }

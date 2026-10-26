@@ -6,6 +6,7 @@ import type {
   PickerContentProps,
   PickerFieldProps,
   PickerLabelProps,
+  PickerLabels,
   PickerTriggerProps,
   PickerValueProps,
 } from '../internal/picker-parts'
@@ -35,8 +36,9 @@ import { TimePanel } from '../internal/time-panel'
 import { usePickerValue } from '../internal/use-picker-value'
 import { getZonedWallTime, resolveZonedWallTime } from './zoned-value'
 
-type DateTimePickerLabels = CalendarPanelLabels &
-  TimePanelLabels & { close: string; pickTime: string; backToDate: string; now: string }
+type DateTimePickerLabels = PickerLabels &
+  CalendarPanelLabels &
+  TimePanelLabels & { pickTime: string; backToDate: string; now: string }
 type DateTimePickerChangeEventReason = PickerChangeEventReason
 type DateTimePickerChangeEventDetails = PickerChangeEventDetails
 

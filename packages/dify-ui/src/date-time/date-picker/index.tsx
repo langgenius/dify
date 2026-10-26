@@ -6,6 +6,7 @@ import type {
   PickerContentProps,
   PickerFieldProps,
   PickerLabelProps,
+  PickerLabels,
   PickerTriggerProps,
   PickerValueProps,
 } from '../internal/picker-parts'
@@ -29,7 +30,7 @@ import {
 } from '../internal/picker-parts'
 import { usePickerValue } from '../internal/use-picker-value'
 
-type DatePickerLabels = CalendarPanelLabels & { close: string }
+type DatePickerLabels = PickerLabels & CalendarPanelLabels
 
 type DatePickerChangeEventReason = PickerChangeEventReason
 type DatePickerChangeEventDetails = PickerChangeEventDetails
