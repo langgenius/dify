@@ -70,22 +70,11 @@ class EndUserConnectionRepository:
         ]
         if tenant_id is not None:
             scope.append(EndUserConnection.tenant_id == tenant_id)
-        rows = session.execute(
-            sa.select(EndUserConnection.id, EndUserConnection.tenant_id).where(*scope).with_for_update()
-        ).all()
-        owners: dict[str, list[str]] = {}
-        for connection_id, owner_tenant in rows:
-            owners.setdefault(owner_tenant, []).append(connection_id)
-        for owner_tenant, connection_ids in owners.items():
-            for selection in (AppConnection, SessionConnection):
-                session.execute(
-                    sa.delete(selection).where(
-                        selection.tenant_id == owner_tenant, selection.connection_id.in_(connection_ids)
-                    )
-                )
+        changed = cast(
+            CursorResult,
             session.execute(
                 sa.update(EndUserConnection)
-                .where(*scope, EndUserConnection.tenant_id == owner_tenant, EndUserConnection.id.in_(connection_ids))
+                .where(*scope)
                 .values(
                     {
                         "status": ConnectionCredentialStatus.RECONNECT_REQUIRED,
@@ -95,8 +84,27 @@ class EndUserConnectionRepository:
                         "updated_at": naive_utc_now(),
                     }
                 )
-            )
-        return len(rows)
+                .execution_options(synchronize_session=False)
+            ),
+        ).rowcount
+        # Lock grants before live choices, matching Run acceptance. Correlated
+        # deletes also avoid loading every grant or expanding large ID lists.
+        if changed:
+            for selection in (AppConnection, SessionConnection):
+                session.execute(
+                    sa.delete(selection)
+                    .where(
+                        sa.exists(
+                            sa.select(EndUserConnection.id).where(
+                                *scope,
+                                EndUserConnection.id == selection.connection_id,
+                                EndUserConnection.tenant_id == selection.tenant_id,
+                            )
+                        )
+                    )
+                    .execution_options(synchronize_session=False)
+                )
+        return changed
 
     @staticmethod
     def _owner(owner: ConnectionOwner) -> tuple[sa.ColumnElement[bool], ...]:
