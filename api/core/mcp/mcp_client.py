@@ -6,11 +6,12 @@ from types import TracebackType
 from typing import Any
 from urllib.parse import urlparse
 
+import httpx
 from flask import has_request_context, request
 
 from core.mcp.client.sse_client import sse_client
 from core.mcp.client.streamable_client import streamablehttp_client
-from core.mcp.error import MCPConnectionError
+from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.session.client_session import ClientSession
 from core.mcp.types import CallToolResult, Tool
 
@@ -62,7 +63,7 @@ class MCPClient:
     def _initialize(
         self,
     ):
-        """Initialize the client with fallback to SSE if streamable connection fails"""
+        """Initialize the client, probing streamable HTTP before SSE for ambiguous URLs."""
         connection_methods: dict[str, Callable[..., AbstractContextManager[Any]]] = {
             "mcp": streamablehttp_client,
             "sse": sse_client,
@@ -75,18 +76,30 @@ class MCPClient:
             client_factory = connection_methods[method_name]
             self.connect_server(client_factory, method_name)
         else:
+            # Ambiguous URL path: probe streamable HTTP first. It fails fast with
+            # plain HTTP responses, while a first SSE probe can block up to
+            # sse_read_timeout on servers that never answer the GET stream,
+            # which made authorization time out for streamable-only servers.
             try:
-                logger.debug("Not supported method %s found in URL path, trying default 'mcp' method.", method_name)
-                self.connect_server(sse_client, "sse")
-            except (MCPConnectionError, ValueError):
-                logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")
-                # The SSE transport and ClientSession can already be entered when
-                # the handshake fails. Close that partial connection before
-                # opening the fallback so both transports are never live at once.
+                logger.debug("URL path %s is ambiguous, trying default 'mcp' transport.", method_name)
+                self.connect_server(streamablehttp_client, "mcp")
+            except MCPAuthError:
+                # OAuth errors must reach the auth flow with their
+                # WWW-Authenticate hints intact; probing another transport
+                # would discard them.
+                raise
+            except (MCPConnectionError, ValueError, httpx.HTTPError) as connection_error:
+                logger.debug(
+                    "MCP connection failed with 'mcp' transport (%s), falling back to 'sse'.", connection_error
+                )
+                # The streamable transport and ClientSession can already be
+                # entered when the handshake fails. Close that partial
+                # connection before opening the fallback so both transports are
+                # never live at once.
                 self._exit_stack.close()
                 self._exit_stack = ExitStack()
                 self._session = None
-                self.connect_server(streamablehttp_client, "mcp")
+                self.connect_server(sse_client, "sse")
 
     def connect_server(self, client_factory: Callable[..., AbstractContextManager[Any]], method_name: str) -> None:
         """
