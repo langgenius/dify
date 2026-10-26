@@ -5,11 +5,14 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from clients.plugin.auth import PluginCredentialAuthClient
 from context.connection_execution import ConnectionExecutionContext
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from repositories.end_user_connection_repository import EndUserConnectionRepository
+from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
 from services.end_user_connection_identity import connection_context_from_web_passport
+from services.end_user_connection_revision_adapters import ConnectionRevisionCodec, PluginConnectionRevisions
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionIdentityError,
@@ -30,11 +33,13 @@ def prepare_web_connection_execution(
         )
     except ValidationError:
         raise ValueError("Invalid connection execution payload.") from None
-    empty_revision = ConnectionContractSnapshot(
-        tenant_id=app.tenant_id, app_id=app.id, providers=(), requirements=()
-    ).revision
-    if not required and command.connection_revision is not None and command.connection_revision != empty_revision:
-        raise ConnectionRevisionChangedError()
+    empty_revision = ConnectionRevisionCodec.encode(
+        ConnectionContractSnapshot(tenant_id=app.tenant_id, app_id=app.id, providers=(), requirements=())
+    )
+    if not required and command.connection_revision is not None:
+        PluginConnectionRevisions(providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())).require(
+            app.tenant_id, app.id, workflow.graph_dict, command.connection_revision
+        )
     if not required and command.connections:
         raise ConnectionConfigurationError()
     if not isinstance(user, EndUser):

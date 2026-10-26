@@ -21,6 +21,8 @@ from services.end_user_connection_revision_adapters import PluginConnectionRevis
 from services.end_user_connections.preflight import ConnectionPreflightService
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
+pytestmark = pytest.mark.usefixtures("connection_revision_key")
+
 
 @pytest.fixture
 def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> OAuthHarness:
@@ -130,7 +132,7 @@ def test_temporary_check_failure_has_unknown_effective_state(client: FlaskClient
 def test_stale_workflow_is_documented_conflict(client: FlaskClient, harness: OAuthHarness) -> None:
     response = client.post(
         "/api/connections/preflight",
-        json={"connection_revision": "0" * 64, "connections": {}},
+        json={"connection_revision": "e30.e30." + "A" * 43, "connections": {}},
     )
     assert response.status_code == 409
     assert response.get_json()["code"] == "connection_revision_changed"
@@ -170,11 +172,11 @@ def test_guest_can_discover_requirements(
     ("payload", "valid"),
     [
         ({"connections": {}}, False),
-        ({"connections": {}, "connection_revision": "0" * 64}, True),
+        ({"connections": {}, "connection_revision": "e30.e30." + "A" * 43}, True),
         ({"connections": {}, "connection_revision": None}, False),
         ({"connections": {"tool-1": None}}, False),
         ({"connections": {"tool-1": str(uuid4())}, "connection_revision": None}, False),
-        ({"connections": {"tool-1": str(uuid4())}, "connection_revision": "0" * 64}, True),
+        ({"connections": {"tool-1": str(uuid4())}, "connection_revision": "e30.e30." + "A" * 43}, True),
         ({}, False),
     ],
 )
@@ -239,4 +241,23 @@ def test_parameters_replace_workflow_id_and_plugin_upgrade_invalidates_the_revis
     )
     assert current.status_code == 200
     assert current.get_json()["connection_revision"] == after["connection_revision"]
+    assert harness.base.auth.calls == []
+
+
+def test_unverified_plugin_change_returns_only_changed_contract_metadata(
+    client: FlaskClient, harness: OAuthHarness
+) -> None:
+    previous = harness.base.connection_revision
+    original = harness.providers.controller.plugin_unique_identifier
+    upgraded = "vendor/calendar:2.0.0@" + "b" * 64
+    harness.providers.controller.plugin_unique_identifier = upgraded
+    response = client.post("/api/connections/preflight", json={"connection_revision": previous, "connections": {}})
+    assert response.status_code == 409
+    payload = response.get_json()
+    assert payload["code"] == "connection_revision_changed"
+    details = payload["details"]
+    assert details["previous_providers"][0]["plugin_unique_identifier"] == original
+    assert details["current_providers"][0]["plugin_unique_identifier"] == upgraded
+    assert details["previous_requirements"] == details["current_requirements"] == []
+    assert details["connection_revision"] != previous
     assert harness.base.auth.calls == []

@@ -15,7 +15,6 @@ from services.end_user_connections.entities import ConnectionOAuthClient, ToolCo
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionReauthorizationRequiredError,
-    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.preflight import ConnectionRequirement
 from services.workflow.tool_credentials import (
@@ -51,13 +50,11 @@ class PublishedPreflightRequirements:
         *,
         oauth_providers: frozenset[str],
         connection_revision: str,
-    ) -> tuple[str, tuple[ConnectionRequirement, ...]]:
+    ) -> tuple[str, str, tuple[ConnectionRequirement, ...]]:
         workflow_id, graph = self._workflows.preflight_graph(context, workflow_id, conversation_id)
-        revision = PluginConnectionRevisions(providers=self._providers).resolve(
-            context.tenant_id, context.app_id, graph
+        revision = PluginConnectionRevisions(providers=self._providers).require(
+            context.tenant_id, context.app_id, graph, connection_revision
         )
-        if connection_revision != revision:
-            raise ConnectionRevisionChangedError()
         try:
             if check_tool_credentials(graph, complete=True):
                 raise ConnectionConfigurationError()
@@ -126,6 +123,6 @@ class PublishedPreflightRequirements:
                         node_ids=requirement.node_ids,
                     )
                 )
-            return workflow_id, tuple(requirements)
+            return workflow_id, revision, tuple(requirements)
         except (KeyError, TypeError, ValueError, ValidationError):
             raise ConnectionConfigurationError() from None

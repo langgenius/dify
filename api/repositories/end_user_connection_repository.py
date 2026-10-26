@@ -278,6 +278,7 @@ class EndUserConnectionRepository:
                     EndUserConnection.oauth_client_configuration_id,
                     EndUserConnection.oauth_client_id,
                     EndUserConnection.oauth_client_fingerprint,
+                    EndUserConnection.oauth_plugin_unique_identifier,
                     EndUserConnection.revision,
                 )
             )
@@ -444,6 +445,7 @@ class EndUserConnectionRepository:
                     EndUserConnection.credential_type,
                     EndUserConnection.status,
                     EndUserConnection.oauth_client_fingerprint,
+                    EndUserConnection.oauth_plugin_unique_identifier,
                     EndUserConnection.account_label,
                     EndUserConnection.expires_at,
                     EndUserConnection.created_at,
@@ -722,6 +724,7 @@ class EndUserConnectionRepository:
                     oauth_client_configuration_id=client.configuration_id,
                     oauth_client_id=client.client_id,
                     oauth_client_fingerprint=attempt.client.fingerprint,
+                    oauth_plugin_unique_identifier=client.plugin_unique_identifier,
                     expires_at=expires_at,
                     account_label=account_label,
                 )
@@ -745,6 +748,7 @@ class EndUserConnectionRepository:
                                 "oauth_client_configuration_id": client.configuration_id,
                                 "oauth_client_id": client.client_id,
                                 "oauth_client_fingerprint": attempt.client.fingerprint,
+                                "oauth_plugin_unique_identifier": client.plugin_unique_identifier,
                                 "expires_at": expires_at,
                                 "account_label": account_label,
                                 "revision": EndUserConnection.revision + 1,
@@ -781,7 +785,9 @@ class EndUserConnectionRepository:
 
     @staticmethod
     def _credential_status(row: EndUserConnection) -> ConnectionCredentialStatus:
-        if row.credential_type == ConnectionCredentialType.OAUTH2 and row.oauth_client_fingerprint is None:
+        if row.credential_type == ConnectionCredentialType.OAUTH2 and (
+            row.oauth_client_fingerprint is None or row.oauth_plugin_unique_identifier is None
+        ):
             return ConnectionCredentialStatus.RECONNECT_REQUIRED
         return row.status
 
@@ -811,6 +817,7 @@ class EndUserConnectionRepository:
                 configuration_id=row.oauth_client_configuration_id,
                 client_id=row.oauth_client_id,
                 fingerprint=row.oauth_client_fingerprint,
+                plugin_unique_identifier=row.oauth_plugin_unique_identifier,
             )
         return ConnectionAccessRecord(
             id=row.id,

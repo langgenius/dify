@@ -9,7 +9,7 @@ from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
 from typing import Literal, cast, override
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 from urllib.parse import parse_qs, urlsplit
 from uuid import UUID, uuid4
 
@@ -120,14 +120,12 @@ from repositories.trial_app_repository import TrialAppRepository
 from services.account_errors import AccountNotFoundError
 from services.agent.errors import AgentVersionNotFoundError
 from services.agent_config_service import AgentConfigService
-from services.end_user_connections.revision import ConnectionRevisions
-from unittest.mock import create_autospec
-
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
 from services.app_preview_details_adapters import AppPreviewDetailsRuntime
 from services.app_preview_query_service import AppPreviewQueryService
 from services.app_service import AppResponseView
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
+from services.end_user_connections.revision import ConnectionRevisions
 from services.entities.feature_entities import FeatureModel
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
@@ -2422,7 +2420,8 @@ class TestTrialPreviewCases:
                 apps=AppPreviewQueryRepository(session_factory=factory), is_previewable=recommendations.is_previewable
             ),
             app_definitions=AppDefinitionQueryService(
-                definitions=AppDefinitionQueryRepository(session_factory=factory), builtin_icon_url_prefix="/tools/",
+                definitions=AppDefinitionQueryRepository(session_factory=factory),
+                builtin_icon_url_prefix="/tools/",
                 connection_revisions=create_autospec(ConnectionRevisions, instance=True, spec_set=True),
             ),
             recommended_app_queries=recommendations,

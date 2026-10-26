@@ -82,6 +82,7 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
     # Already masked OAuth account identity, independent of the editable name.
     # None means unavailable identity metadata or an API-key connection.
     account_label: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    oauth_plugin_unique_identifier: Mapped[str | None] = mapped_column(sa.String(512), nullable=True, default=None)
     # Legacy grants without provenance must be reauthorized before use.
     oauth_client_fingerprint: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None, repr=False)
     revision: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=1, server_default=sa.text("1"))

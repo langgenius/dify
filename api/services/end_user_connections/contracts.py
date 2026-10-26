@@ -224,8 +224,8 @@ class ConnectionManagement(Protocol):
     def delete_connection(self, context: WebConnectionContext, connection_id: str) -> None:
         """Remove the resource and live selections; retain historical Run references.
 
-        Local deletion does not dispatch old OAuth credentials to a mutable plugin
-        installation. Provider-side permission removal requires trusted revocation.
+        Best-effort OAuth revocation uses only the artifact recorded for the grant.
+        Missing artifacts and remote failures never undo the local Disconnect.
         """
         ...
 

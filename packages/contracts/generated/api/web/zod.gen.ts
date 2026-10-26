@@ -88,6 +88,19 @@ export const zAudioToTextResponse = z.object({
 })
 
 /**
+ * AuthorizationRequirementSnapshot
+ */
+export const zAuthorizationRequirementSnapshot = z.object({
+  allowed_credential_types: z.array(z.string()),
+  node_id: z.string(),
+  node_ids: z.array(z.string()),
+  oauth_client_type: z.string().nullable(),
+  provider: z.string(),
+  purpose: z.string(),
+  tool_name: z.string(),
+})
+
+/**
  * BooleanResultResponse
  */
 export const zBooleanResultResponse = z.object({
@@ -118,7 +131,8 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
 export const zChatMessagePayload = z.object({
   connection_revision: z
     .string()
-    .regex(/^[0-9a-f]{64}$/)
+    .max(262144)
+    .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)
     .nullish(),
   connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   conversation_id: z.string().nullish(),
@@ -243,7 +257,10 @@ export const zEndUserConnectionListQuery = z.object({
  * EndUserConnectionOAuthPayload
  */
 export const zEndUserConnectionOAuthPayload = z.object({
-  connection_revision: z.string().regex(/^[0-9a-f]{64}$/),
+  connection_revision: z
+    .string()
+    .max(262144)
+    .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/),
   name: z.string().min(1).max(100),
   node_id: z.string().min(1).max(255),
 })
@@ -259,7 +276,10 @@ export const zEndUserConnectionOAuthResponse = z.object({
  * EndUserConnectionPreflightPayload
  */
 export const zEndUserConnectionPreflightPayload = z.object({
-  connection_revision: z.string().regex(/^[0-9a-f]{64}$/),
+  connection_revision: z
+    .string()
+    .max(262144)
+    .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/),
   connections: z.record(z.string(), z.uuid().nullable()),
   conversation_id: z.uuid().nullish(),
 })
@@ -501,18 +521,6 @@ export const zConnectionRequiredError = zErrorResponse.and(
   z.object({
     code: z.literal('connection_required'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * ConnectionRevisionChangedError
- *
- * The connection requirements changed. Confirm the connection selection again.
- */
-export const zConnectionRevisionChangedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('connection_revision_changed'),
-    status: z.literal(409),
   }),
 )
 
@@ -829,7 +837,10 @@ export const zJsonValue = z.unknown()
  * EndUserConnectionCreatePayload
  */
 export const zEndUserConnectionCreatePayload = z.object({
-  connection_revision: z.string().regex(/^[0-9a-f]{64}$/),
+  connection_revision: z
+    .string()
+    .max(262144)
+    .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/),
   credentials: z.record(z.string(), zJsonValue),
   name: z.string().min(1).max(100),
   node_id: z.string().min(1).max(255),
@@ -1152,6 +1163,38 @@ export const zPluginInstallationPermissionModel = z.object({
   plugin_installation_scope: zPluginInstallationScope.default('all'),
   restrict_to_marketplace_only: z.boolean().default(false),
 })
+
+/**
+ * ProviderContractSnapshot
+ */
+export const zProviderContractSnapshot = z.object({
+  plugin_unique_identifier: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * ConnectionRevisionChangeDetails
+ */
+export const zConnectionRevisionChangeDetails = z.object({
+  connection_revision: z.string().nullable(),
+  current_providers: z.array(zProviderContractSnapshot),
+  current_requirements: z.array(zAuthorizationRequirementSnapshot),
+  previous_providers: z.array(zProviderContractSnapshot),
+  previous_requirements: z.array(zAuthorizationRequirementSnapshot),
+})
+
+/**
+ * ConnectionRevisionChangedError
+ *
+ * The connection requirements changed. Confirm the connection selection again.
+ */
+export const zConnectionRevisionChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_revision_changed'),
+    details: zConnectionRevisionChangeDetails.optional(),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * ProviderNotInitializeError
@@ -2175,7 +2218,8 @@ export const zHumanInputFormDefinitionResponse = z.object({
 export const zWorkflowRunPayload = z.object({
   connection_revision: z
     .string()
-    .regex(/^[0-9a-f]{64}$/)
+    .max(262144)
+    .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)
     .nullish(),
   connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   files: z

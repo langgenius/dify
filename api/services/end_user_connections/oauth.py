@@ -23,6 +23,7 @@ from services.end_user_connections.errors import (
     ConnectionNotFoundError,
     ConnectionOAuthError,
     ConnectionReauthorizationRequiredError,
+    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.management import ConnectionCipher, StoredConnection
 from services.end_user_connections.policy import (
@@ -55,6 +56,7 @@ class ResolvedOAuthClient:
     snapshot: OAuthClientSnapshot
     plugin_unique_identifier: str
     parameters: Mapping[str, Any] = field(repr=False)
+    plugin_is_trusted: bool = False
 
 
 @dataclass(frozen=True)
@@ -90,6 +92,10 @@ class ConnectionOAuthAttempts(Protocol):
 
 
 class ConnectionOAuthGateway(Protocol):
+    def resolve_grant_client(
+        self, tenant_id: str, provider: str, reference: ConnectionOAuthClient
+    ) -> ResolvedOAuthClient: ...
+
     def resolve_client(self, tenant_id: str, provider: str, source: OAuthClientSource) -> ResolvedOAuthClient: ...
 
     def authorization_url(self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient) -> str: ...
@@ -250,8 +256,12 @@ class OAuthConnectionService:
                 target=replace(target, oauth_client=attempt.client.reference),
             )
         client = self._gateway.resolve_client(context.tenant_id, attempt.provider, attempt.client.reference.source)
-        if client.snapshot != attempt.client:
+        if not attempt.client.reference.same_credentials(client.snapshot.reference):
             raise ConnectionReauthorizationRequiredError()
+        if client.snapshot != attempt.client:
+            if not client.plugin_is_trusted:
+                raise ConnectionRevisionChangedError()
+            client = self._gateway.resolve_grant_client(context.tenant_id, attempt.provider, attempt.client.reference)
         grant = self._gateway.exchange(context, attempt.provider, client, query_string)
         if not grant.credentials:
             raise ConnectionOAuthError()

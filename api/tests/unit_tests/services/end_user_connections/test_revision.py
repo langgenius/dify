@@ -24,6 +24,11 @@ class InstalledPlugins:
     identifiers: Mapping[str, str]
     calls: list[tuple[str, str]] = field(default_factory=list)
 
+    def is_plugin_trusted(self, tenant_id: str, identifier: str) -> bool:
+        assert tenant_id
+        assert identifier
+        return False
+
     def plugin_unique_identifier(self, tenant_id: str, provider: str) -> str:
         self.calls.append((tenant_id, provider))
         return self.identifiers[provider]
@@ -276,3 +281,92 @@ def test_republished_authorization_changes_require_a_new_revision(harness: OAuth
         )
         .ready
     )
+
+
+@pytest.mark.parametrize("credential_type", ["api-key", "oauth2"])
+def test_verified_upgrade_inherits_selections_and_returns_current_revision(
+    harness: OAuthHarness, credential_type: str
+) -> None:
+    previous = harness.base.connection_revision
+    connection = (
+        harness.finish(harness.start())
+        if credential_type == "oauth2"
+        else harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    )
+    original = harness.providers.controller.plugin_unique_identifier
+    upgraded = "vendor/calendar:2.0.0@" + "b" * 64
+    harness.providers.controller.plugin_unique_identifier = upgraded
+    harness.providers.trusted_artifacts.add(upgraded)
+    result = preflight(harness).check(
+        harness.base.context,
+        ConnectionPreflightInput(connection_revision=previous, connections={"tool-1": UUID(connection.id)}),
+    )
+    assert result.ready
+    assert result.connection_revision != previous
+    assert harness.base.auth.check_artifacts[-1] == upgraded
+    if credential_type == "oauth2":
+        stored = harness.base.repository.find(harness.base.context, connection.id)
+        assert stored is not None
+        assert stored.access.oauth_client is not None
+        assert stored.access.oauth_client.plugin_unique_identifier == original
+        harness.base.service.delete_connection(harness.base.context, connection.id)
+        assert harness.base.auth.revocation_artifacts == [original]
+
+
+def test_verified_upgrade_does_not_inherit_changed_authorization_requirements(harness: OAuthHarness) -> None:
+    import json
+
+    previous = harness.base.connection_revision
+    upgraded = "vendor/calendar:2.0.0@" + "b" * 64
+    harness.providers.controller.plugin_unique_identifier = upgraded
+    harness.providers.trusted_artifacts.add(upgraded)
+    with harness.base.sessions.begin() as session:
+        workflow = session.get(Workflow, harness.base.workflow_id)
+        assert workflow is not None
+        graph = workflow.graph_dict
+        graph["nodes"][0]["data"]["end_user_auth"]["purpose"] = "Write events"
+        workflow.graph = json.dumps(graph)
+    with pytest.raises(ConnectionRevisionChangedError) as error:
+        preflight(harness).check(
+            harness.base.context, ConnectionPreflightInput(connection_revision=previous, connections={})
+        )
+    assert error.value.previous is not None
+    assert error.value.current is not None
+    assert error.value.previous.requirements[0].purpose != error.value.current.requirements[0].purpose
+
+
+@pytest.mark.parametrize("tamper", ["signature", "scope", "payload"])
+def test_revision_cannot_forge_trust_or_cross_application_scope(harness: OAuthHarness, tamper: str) -> None:
+    import jwt
+
+    from services.end_user_connection_revision_adapters import ConnectionRevisionCodec
+
+    revision = harness.base.connection_revision
+    if tamper == "scope":
+        snapshot = ConnectionRevisionCodec.decode(revision)
+        revision = ConnectionRevisionCodec.encode(snapshot.model_copy(update={"app_id": "another-app"}))
+    elif tamper == "payload":
+        snapshot = ConnectionRevisionCodec.decode(revision)
+        revision = jwt.encode(
+            {"aud": "connection_revision", "version": 1, "snapshot": snapshot.model_dump(mode="json")},
+            "attacker-secret-key-with-sufficient-length",
+            algorithm="HS256",
+        )
+    else:
+        header, payload, signature = revision.split(".")
+        revision = ".".join([header, payload, ("A" if signature[0] != "A" else "B") + signature[1:]])
+    with pytest.raises(ConnectionRevisionChangedError):
+        preflight(harness).check(
+            harness.base.context, ConnectionPreflightInput(connection_revision=revision, connections={})
+        )
+    assert harness.base.auth.calls == []
+
+
+def test_verified_oauth_upgrade_during_redirect_exchanges_only_with_original_artifact(harness: OAuthHarness) -> None:
+    started = harness.start()
+    original = harness.providers.controller.plugin_unique_identifier
+    upgraded = "vendor/calendar:2.0.0@" + "b" * 64
+    harness.providers.controller.plugin_unique_identifier = upgraded
+    harness.providers.trusted_artifacts.add(upgraded)
+    assert harness.finish(started).id
+    assert harness.handler.requested_artifacts == [original, original]

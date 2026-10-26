@@ -77,13 +77,18 @@ def save_choices(harness: OAuthHarness, connection_ids: list[str]) -> None:
 
 
 @pytest.mark.parametrize("change", ["secret", "client_id", "disable", "delete"])
+@pytest.mark.parametrize("verified_upgrade", [False, True])
 def test_workspace_client_changes_clear_all_live_choices_and_require_reauthorization(
-    harness: OAuthHarness, change: str
+    harness: OAuthHarness, change: str, verified_upgrade: bool
 ) -> None:
     one = harness.finish(harness.start())
     two = harness.finish(harness.start())
     api_key = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     save_choices(harness, [one.id, two.id])
+    if verified_upgrade:
+        upgraded = "vendor/calendar:2.0.0@" + "b" * 64
+        harness.providers.controller.plugin_unique_identifier = upgraded
+        harness.providers.trusted_artifacts.add(upgraded)
     if change == "delete":
         BuiltinToolManageService.delete_custom_oauth_client_params(harness.base.context.tenant_id, PROVIDER)
     else:

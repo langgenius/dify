@@ -8,26 +8,28 @@ from typing import Annotated, Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-ConnectionRevision = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+ConnectionRevision = Annotated[
+    str, Field(pattern=r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$", max_length=262144)
+]
 
 
 class ProviderContractSnapshot(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    provider: str
     plugin_unique_identifier: str
+    provider: str
 
 
 class AuthorizationRequirementSnapshot(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
+    allowed_credential_types: tuple[str, ...]
     node_id: str
     node_ids: tuple[str, ...]
-    provider: str
-    tool_name: str
-    purpose: str
-    allowed_credential_types: tuple[str, ...]
     oauth_client_type: str | None
+    provider: str
+    purpose: str
+    tool_name: str
 
 
 class ConnectionContractSnapshot(BaseModel):
@@ -38,16 +40,18 @@ class ConnectionContractSnapshot(BaseModel):
     providers: tuple[ProviderContractSnapshot, ...]
     requirements: tuple[AuthorizationRequirementSnapshot, ...]
 
-    @property
-    def revision(self) -> str:
+    def canonical_json(self) -> str:
         data = self.model_dump(mode="json")
         data["providers"] = sorted(data["providers"], key=itemgetter("provider"))
         for requirement in data["requirements"]:
             requirement["node_ids"] = sorted(requirement["node_ids"])
             requirement["allowed_credential_types"] = sorted(requirement["allowed_credential_types"])
         data["requirements"] = sorted(data["requirements"], key=itemgetter("node_id"))
-        payload = json.dumps(data, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(payload.encode()).hexdigest()
+        return json.dumps(data, sort_keys=True, separators=(",", ":"))
+
+    @property
+    def revision(self) -> str:
+        return hashlib.sha256(self.canonical_json().encode()).hexdigest()
 
 
 class ConnectionRevisions(Protocol):

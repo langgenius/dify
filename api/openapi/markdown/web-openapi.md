@@ -221,7 +221,7 @@ Read saved App or Conversation choices without validating or refreshing credenti
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /connections/{connection_id}
-Disconnect locally and remove live selections. Old OAuth credentials are not sent to mutable plugin installations; users can revoke the remaining permission directly with the Provider.
+Disconnect locally and remove live selections. Best-effort OAuth revocation targets only the original plugin artifact and Client configuration; unavailable artifacts never fall back to the installed version.
 
 #### Parameters
 
@@ -1316,6 +1316,18 @@ Invalid email or password.
 | ---- | ---- | ----------- | -------- |
 | AuthenticationFailedError |  | Invalid email or password. |  |
 
+#### AuthorizationRequirementSnapshot
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_credential_types | [ string ] |  | Yes |
+| node_id | string |  | Yes |
+| node_ids | [ string ] |  | Yes |
+| oauth_client_type | string |  | Yes |
+| provider | string |  | Yes |
+| purpose | string |  | Yes |
+| tool_name | string |  | Yes |
+
 #### BooleanResultResponse
 
 | Name | Type | Description | Required |
@@ -1344,7 +1356,7 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match the current authorization requirements and installed plugin artifacts. | No |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match current authorization requirements; verified plugin upgrades may inherit consent. | No |
 | connections | object | Chatflow choices keyed by independent authorization node ID. Omit on an existing conversation to reuse its last accepted choices. Explicit choices replace the saved configuration after validation. An explicit null, empty map, or missing node does not inherit saved choices. Required for a new conversation with EndUser tool authentication. | No |
 | conversation_id | string | Conversation ID | No |
 | files | [ object ] | Files to be processed | No |
@@ -1467,6 +1479,16 @@ Select a connection for every required tool before running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ConnectionRequiredError |  | Select a connection for every required tool before running. |  |
+
+#### ConnectionRevisionChangeDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string |  | Yes |
+| current_providers | [ [ProviderContractSnapshot](#providercontractsnapshot) ] |  | Yes |
+| current_requirements | [ [AuthorizationRequirementSnapshot](#authorizationrequirementsnapshot) ] |  | Yes |
+| previous_providers | [ [ProviderContractSnapshot](#providercontractsnapshot) ] |  | Yes |
+| previous_requirements | [ [AuthorizationRequirementSnapshot](#authorizationrequirementsnapshot) ] |  | Yes |
 
 #### ConnectionRevisionChangedError
 
@@ -2162,6 +2184,13 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
 
+#### ProviderContractSnapshot
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_unique_identifier | string |  | Yes |
+| provider | string |  | Yes |
+
 #### ProviderNotInitializeError
 
 No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
@@ -2684,7 +2713,7 @@ Web App login is temporarily unavailable. Please retry.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match the current authorization requirements and installed plugin artifacts. | No |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match current authorization requirements; verified plugin upgrades may inherit consent. | No |
 | connections | object | Explicit choices keyed by independent authorization node ID. Required for EndUser tool authentication. Missing/null choices are not filled from saved selections. | No |
 | files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |

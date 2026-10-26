@@ -31,6 +31,7 @@ from services.end_user_connection_execution_adapters import (
     validate_connection_execution,
 )
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
+from services.end_user_connection_revision_adapters import ConnectionRevisionCodec
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
@@ -182,7 +183,7 @@ def test_protocol_mismatch_never_selects_the_requested_workflow(
     with pytest.raises(ConnectionRevisionChangedError):
         service.prepare(
             harness.base.context,
-            ConnectionRunInput.model_validate({"connection_revision": "0" * 64, "connections": {}}),
+            ConnectionRunInput.model_validate({"connection_revision": "e30.e30." + "A" * 43, "connections": {}}),
             workflow_id=harness.base.workflow_id,
             conversation_id=None,
         )
@@ -419,9 +420,11 @@ def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
         args["connections"] = choices
     if pin != "missing":
         args["connection_revision"] = (
-            ConnectionContractSnapshot(tenant_id=app.tenant_id, app_id=app.id, providers=(), requirements=()).revision
+            ConnectionRevisionCodec.encode(
+                ConnectionContractSnapshot(tenant_id=app.tenant_id, app_id=app.id, providers=(), requirements=())
+            )
             if pin == "matching"
-            else "0" * 64
+            else "e30.e30." + "A" * 43
         )
     if pin == "stale":
         with pytest.raises(ConnectionRevisionChangedError):

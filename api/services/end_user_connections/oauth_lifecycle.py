@@ -14,6 +14,7 @@ from services.end_user_connections.errors import (
     ConnectionConflictError,
     ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
+    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.management import ConnectionCipher, StoredConnection
 from services.end_user_connections.oauth import ConnectionOAuthGrant, OAuthClientSnapshot, ResolvedOAuthClient
@@ -34,7 +35,7 @@ class OAuthLifecycleGateway(Protocol):
     ) -> ConnectionOAuthGrant | CredentialCheckResult: ...
 
     def check(
-        self, context: WebConnectionContext, provider: str, credentials: Mapping[str, Any]
+        self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient, credentials: Mapping[str, Any]
     ) -> CredentialCheckResult: ...
 
     def revoke(
@@ -107,8 +108,13 @@ class OAuthConnectionLifecycleService:
         if reference is None:
             raise ConnectionReauthorizationRequiredError()
         client = self._gateway.resolve_client(context.tenant_id, record.access.provider, reference.source)
-        if record.access.oauth_client != client.snapshot.reference:
+        if not reference.same_credentials(client.snapshot.reference) or reference.plugin_unique_identifier is None:
             raise ConnectionReauthorizationRequiredError()
+        if (
+            reference.plugin_unique_identifier != client.snapshot.reference.plugin_unique_identifier
+            and not client.plugin_is_trusted
+        ):
+            raise ConnectionRevisionChangedError()
         return client, self._cipher.decrypt(context.tenant_id, record.encrypted_credentials)
 
     @staticmethod
@@ -119,7 +125,7 @@ class OAuthConnectionLifecycleService:
         if self._expired(record):
             return self._refresh_once(context, record, force_refresh=False)
         client, credentials = self._resolve(context, record)
-        result = self._gateway.check(context, record.access.provider, credentials)
+        result = self._gateway.check(context, record.access.provider, client, credentials)
         if self._reports_expired(result):
             return self._refresh_once(context, record, force_refresh=True)
         outcome = self._persist(context, record, client, result, refreshed=None, lease=None)
@@ -171,7 +177,7 @@ class OAuthConnectionLifecycleService:
             force_refresh and record.access.revision == previous.access.revision
         )
         if not refresh_required:
-            result = self._gateway.check(context, record.access.provider, credentials)
+            result = self._gateway.check(context, record.access.provider, client, credentials)
             if not self._reports_expired(result):
                 return self._persist(context, record, client, result, refreshed=None, lease=lease)
 
@@ -191,7 +197,7 @@ class OAuthConnectionLifecycleService:
                     checked_at=int(datetime.now(UTC).timestamp()),
                 )
             else:
-                result = self._gateway.check(context, record.access.provider, outcome.credentials)
+                result = self._gateway.check(context, record.access.provider, client, outcome.credentials)
         else:
             result = outcome
         return self._persist(context, record, client, result, refreshed=refreshed, lease=lease)
@@ -233,6 +239,23 @@ class OAuthConnectionLifecycleService:
         )
 
     def revoke_deleted(self, context: WebConnectionContext, record: StoredConnection) -> None:
-        # Dispatch currently resolves a mutable plugin ID. Until it can pin the
-        # grant's trusted artifact, sending tokens here could expose them to an upgrade.
-        logger.info("Skipped unpinned OAuth revocation for deleted Connection %s", record.access.id)
+        reference = record.access.oauth_client
+        if (
+            reference is None
+            or reference.plugin_unique_identifier is None
+            or reference.fingerprint is None
+            or not record.encrypted_credentials
+        ):
+            return
+        try:
+            client = self._gateway.resolve_grant_client(context.tenant_id, record.access.provider, reference)
+            credentials = self._cipher.decrypt(context.tenant_id, record.encrypted_credentials)
+            result = self._gateway.revoke(context, record.access.provider, client, credentials)
+            if result.status in {"failed", "temporarily_unavailable"}:
+                logger.warning(
+                    "OAuth revocation incomplete for deleted Connection %s: %s", record.access.id, result.status
+                )
+        except Exception:
+            # Missing old artifacts and changed Clients must never undo local deletion.
+            # Provider exceptions may contain credentials, so only log the Connection ID.
+            logger.warning("Pinned OAuth revocation unavailable for deleted Connection %s", record.access.id)

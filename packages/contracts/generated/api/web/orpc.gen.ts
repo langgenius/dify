@@ -449,12 +449,12 @@ export const reauthorize = {
 }
 
 /**
- * Disconnect locally and remove live selections. Old OAuth credentials are not sent to mutable plugin installations; users can revoke the remaining permission directly with the Provider.
+ * Disconnect locally and remove live selections. Best-effort OAuth revocation targets only the original plugin artifact and Client configuration; unavailable artifacts never fall back to the installed version.
  */
 export const delete_ = oc
   .route({
     description:
-      'Disconnect locally and remove live selections. Old OAuth credentials are not sent to mutable plugin installations; users can revoke the remaining permission directly with the Provider.',
+      'Disconnect locally and remove live selections. Best-effort OAuth revocation targets only the original plugin artifact and Client configuration; unavailable artifacts never fall back to the installed version.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteConnectionsByConnectionId',

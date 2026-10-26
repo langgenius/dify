@@ -93,7 +93,7 @@ class PreflightRequirements(Protocol):
         *,
         oauth_providers: frozenset[str],
         connection_revision: str,
-    ) -> tuple[str, tuple[ConnectionRequirement, ...]]: ...
+    ) -> tuple[str, str, tuple[ConnectionRequirement, ...]]: ...
 
 
 class PreflightConnections(Protocol):
@@ -130,7 +130,7 @@ class ConnectionPreflightService:
         oauth_providers = frozenset(
             record.provider for record in records.values() if record.credential_type == ConnectionCredentialType.OAUTH2
         )
-        workflow_id, requirements = self._requirements.resolve(
+        workflow_id, _, requirements = self._requirements.resolve(
             context,
             workflow_id,
             conversation_id,
@@ -176,7 +176,7 @@ class ConnectionPreflightService:
 
         # Resolve again after external checks so Client changes cannot leave a
         # stale ready response. The final owner/revision read never loads secrets.
-        _, current_requirements = self._requirements.resolve(
+        _, revision, current_requirements = self._requirements.resolve(
             context,
             workflow_id,
             conversation_id,
@@ -232,6 +232,4 @@ class ConnectionPreflightService:
                     check=check,
                 )
             )
-        return ConnectionPreflightView(
-            workflow_id=workflow_id, connection_revision=command.connection_revision, connections=tuple(views)
-        )
+        return ConnectionPreflightView(workflow_id=workflow_id, connection_revision=revision, connections=tuple(views))

@@ -37,6 +37,7 @@ from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
 
 PROVIDER = "vendor/calendar/calendar"
+PLUGIN_UNIQUE_IDENTIFIER = "vendor/calendar:1.0.0@" + "a" * 64
 
 
 class ScriptedAuth(PluginCredentialAuthClient):
@@ -45,11 +46,11 @@ class ScriptedAuth(PluginCredentialAuthClient):
         self.on_check: Callable[[], None] | None = None
         self.calls: list[tuple[str, str, str, dict[str, Any]]] = []
         self.credential_types: list[CredentialType] = []
-        self.check_artifacts: list[str | None] = []
-        self.revocation_artifacts: list[str | None] = []
         self.check_error: Exception | None = None
         self.revoke_result = OAuthRevokeResult(status="revoked", reason_code=None, retryable=False)
         self.on_revoke: Callable[[], None] | None = None
+        self.revocation_artifacts: list[str] = []
+        self.check_artifacts: list[str | None] = []
         self.revocations: list[tuple[str, str, str, dict[str, Any], dict[str, Any]]] = []
 
     @override
@@ -80,9 +81,9 @@ class ScriptedAuth(PluginCredentialAuthClient):
         tenant_id: str,
         user_id: str,
         provider: str,
+        plugin_unique_identifier: str,
         system_credentials: Mapping[str, Any],
         credentials: Mapping[str, Any],
-        plugin_unique_identifier: str | None = None,
     ) -> OAuthRevokeResult:
         self.revocation_artifacts.append(plugin_unique_identifier)
         self.revocations.append((tenant_id, user_id, provider, dict(system_credentials), dict(credentials)))
@@ -105,7 +106,7 @@ def plugin_provider(tenant_id: str) -> PluginToolProviderController:
             tools=[ToolEntity(identity=ToolIdentity(author="test", name="read", label=label, provider=PROVIDER))],
         ),
         plugin_id="vendor/calendar",
-        plugin_unique_identifier="vendor/calendar:1.0",
+        plugin_unique_identifier=PLUGIN_UNIQUE_IDENTIFIER,
         tenant_id=tenant_id,
     )
 
@@ -116,10 +117,15 @@ class TestProviders(PluginApiKeyCredentialGateway):
     def __init__(self, auth: ScriptedAuth, controller: PluginToolProviderController) -> None:
         super().__init__(auth=auth)
         self.controller = controller
+        self.trusted_artifacts: set[str] = set()
 
     @override
     def plugin_unique_identifier(self, tenant_id: str, provider: str) -> str:
         return self.provider(tenant_id, provider).plugin_unique_identifier
+
+    @override
+    def is_plugin_trusted(self, tenant_id: str, identifier: str) -> bool:
+        return identifier in self.trusted_artifacts
 
     @override
     def provider(self, tenant_id: str, provider: str) -> PluginToolProviderController:

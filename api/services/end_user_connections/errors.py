@@ -6,6 +6,8 @@ and changed credentials must remain distinguishable. Never attach provider error
 payloads or credentials to these exceptions.
 """
 
+from services.end_user_connections.revision import ConnectionContractSnapshot
+
 
 class ConnectionError(Exception):
     """Base for personal Connection management failures."""
@@ -37,8 +39,17 @@ class ConnectionConfigurationError(ConnectionError):
 
 
 class ConnectionRevisionChangedError(ConnectionError):
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        previous: ConnectionContractSnapshot | None = None,
+        current: ConnectionContractSnapshot | None = None,
+        current_revision: str | None = None,
+    ) -> None:
         super().__init__("The connection requirements changed. Confirm the connection selection again.")
+        self.previous = previous
+        self.current = current
+        self.current_revision = current_revision
 
 
 class ConnectionReauthorizationRequiredError(ConnectionError):

@@ -139,3 +139,11 @@ def test_personal_tool_operations_pin_the_admitted_artifact(operation: str) -> N
     assert requests[0].url.path == f"/plugin/tenant-1/dispatch/tool/{operation}"
     assert requests[0].headers["X-Plugin-Unique-Identifier"] == ARTIFACT
     assert requests[0].headers["X-Plugin-ID"] == "org/plugin"
+
+
+@pytest.mark.parametrize("identifier", ["org/plugin:1.0", "org/plugin:1.0@bad", "../other:1.0@" + "a" * 64])
+def test_incomplete_artifact_references_are_rejected_before_dispatch(identifier: str) -> None:
+    from clients.plugin.identifiers import plugin_id_from_unique_identifier
+
+    with pytest.raises(ValueError, match="complete plugin artifact"):
+        plugin_id_from_unique_identifier(identifier)

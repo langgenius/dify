@@ -15,6 +15,8 @@ from models.end_user_connection import EndUserConnection
 from models.model import App, EndUser
 from tests.helpers.end_user_api_key import ConnectionHarness, make_harness
 
+pytestmark = pytest.mark.usefixtures("connection_revision_key")
+
 
 @pytest.fixture
 def harness(sqlite_session_factory: sessionmaker[Session]) -> ConnectionHarness:
@@ -151,7 +153,7 @@ def test_stale_workflow_request_is_rejected_before_plugin_calls(
 ) -> None:
     payload = {
         **harness.command().model_dump(mode="json"),
-        "connection_revision": "0" * 64,
+        "connection_revision": "e30.e30." + "A" * 43,
     }
     response = client.post("/api/connections", json=payload)
     assert response.status_code == 409

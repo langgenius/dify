@@ -18,6 +18,7 @@ from core.helper.encrypter import decrypt_token, encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.exc import PluginDaemonError, PluginDaemonNotFoundError, PluginNotFoundError
 from core.plugin.impl.tool import PluginToolManager
+from core.plugin.plugin_service import PluginService
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
@@ -29,7 +30,6 @@ from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
     ConnectionInvalidCredentialsError,
-    ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
 )
 from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig, check_tool_credentials
@@ -97,6 +97,9 @@ class PluginApiKeyCredentialGateway:
         except (PluginDaemonError, httpx.HTTPError):
             raise ConnectionCheckUnavailableError() from None
 
+    def is_plugin_trusted(self, tenant_id: str, identifier: str) -> bool:
+        return PluginService.is_plugin_verified(tenant_id, identifier)
+
     def validate_format(self, tenant_id: str, provider: str, credentials: Mapping[str, Any]) -> dict[str, Any]:
         controller = self.provider(tenant_id, provider)
         if CredentialType.API_KEY not in controller.get_supported_credential_types():
@@ -155,11 +158,9 @@ class PublishedConnectionTargetResolver:
 
     def resolve(self, context: WebConnectionContext, reference: ConnectionTargetInput) -> ToolConnectionTarget:
         workflow_id, graph = self._workflows.published_graph(context)
-        revision = PluginConnectionRevisions(providers=self._providers).resolve(
-            context.tenant_id, context.app_id, graph
+        PluginConnectionRevisions(providers=self._providers).require(
+            context.tenant_id, context.app_id, graph, reference.connection_revision
         )
-        if reference.connection_revision != revision:
-            raise ConnectionRevisionChangedError()
         try:
             if check_tool_credentials(graph, complete=True):
                 raise ConnectionConfigurationError()

@@ -29,7 +29,7 @@ class ConnectionRunInput(BaseModel):
         default=None,
         description=(
             "Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; "
-            "must match the current authorization requirements and installed plugin artifacts."
+            "must match current authorization requirements; verified plugin upgrades may inherit consent."
         ),
     )
 

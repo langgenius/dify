@@ -40,7 +40,10 @@ def context() -> WebConnectionContext:
 @pytest.fixture
 def client() -> ConnectionOAuthClient:
     return ConnectionOAuthClient(
-        source=OAuthClientSource.WORKSPACE, configuration_id="client-config", client_id="client"
+        source=OAuthClientSource.WORKSPACE,
+        configuration_id="client-config",
+        client_id="client",
+        fingerprint="fingerprint",
     )
 
 

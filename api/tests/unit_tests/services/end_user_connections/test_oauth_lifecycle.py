@@ -292,13 +292,22 @@ def test_delete_never_dispatches_secrets_to_an_unpinned_plugin(
     if plugin_change:
         harness.providers.controller.plugin_unique_identifier = "vendor/calendar:9.0@untrusted"
 
-    def deny_decryption(_tenant_id: str, _ciphertext: str) -> dict[str, object]:
-        pytest.fail("Disconnect must not decrypt credentials for plugin revocation.")
+    original = harness.base.repository.find(harness.base.context, connection_id)
+    assert original is not None
+    assert original.access.oauth_client is not None
 
-    monkeypatch.setattr(harness.base.cipher, "decrypt", deny_decryption)
+    def assert_deleted() -> None:
+        assert harness.base.repository.find(harness.base.context, connection_id) is None
+
+    def unavailable_provider(_tenant_id: str, _provider: str) -> None:
+        pytest.fail("Revocation must use the original manifest, not the installed Provider.")
+
+    monkeypatch.setattr(harness.providers, "provider", unavailable_provider)
+    harness.base.auth.on_revoke = assert_deleted
     harness.base.service.delete_connection(harness.base.context, connection_id)
     assert harness.base.repository.find(harness.base.context, connection_id) is None
-    assert harness.base.auth.revocations == []
+    assert harness.base.auth.revocation_artifacts == [original.access.oauth_client.plugin_unique_identifier]
+    assert len(harness.base.auth.revocations) == 1
 
 
 @pytest.mark.parametrize("change", ["missing_client", "changed_client", "disabled_client", "secret_error"])
@@ -325,7 +334,7 @@ def test_configuration_and_provider_failures_do_not_prevent_local_delete(
         harness.base.cipher.values.clear()
     harness.base.service.delete_connection(harness.base.context, connection_id)
     assert harness.base.repository.find(harness.base.context, connection_id) is None
-    assert harness.base.auth.revocations == []
+    assert len(harness.base.auth.revocations) == (1 if change == "disabled_client" else 0)
     assert "private-access-token" not in caplog.text
 
 
@@ -485,3 +494,38 @@ def test_waiter_timeout_does_not_start_another_refresh(harness: OAuthHarness, mo
             release.set()
         assert first.result(timeout=5).check.status == "valid"
     assert len(harness.handler.refreshes) == 1
+
+
+@pytest.mark.parametrize("failure", ["manifest_missing", "legacy_grant", "unsupported", "transport_error"])
+def test_original_artifact_revoke_is_best_effort_without_fallback(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    from clients.plugin.auth_entities import OAuthRevokeResult
+    from core.plugin.impl.plugin import PluginInstaller
+
+    connection_id = create(harness, expired=False)
+    if failure == "manifest_missing":
+
+        def unavailable(*_args: object) -> None:
+            raise ValueError("Artifact no longer exists")
+
+        monkeypatch.setattr(PluginInstaller, "fetch_plugin_manifest", unavailable)
+    elif failure == "legacy_grant":
+        with harness.base.sessions.begin() as session:
+            session.execute(
+                sa.update(EndUserConnection)
+                .where(EndUserConnection.id == connection_id)
+                .values(oauth_plugin_unique_identifier=None)
+            )
+    elif failure == "unsupported":
+        harness.base.auth.revoke_result = OAuthRevokeResult(status="unsupported", reason_code=None, retryable=False)
+    else:
+
+        def fail() -> None:
+            raise ValueError("Private provider failure")
+
+        harness.base.auth.on_revoke = fail
+    harness.providers.controller.plugin_unique_identifier = "vendor/calendar:9.0.0@" + "f" * 64
+    harness.base.service.delete_connection(harness.base.context, connection_id)
+    assert harness.base.repository.find(harness.base.context, connection_id) is None
+    assert len(harness.base.auth.revocations) == (1 if failure in {"unsupported", "transport_error"} else 0)

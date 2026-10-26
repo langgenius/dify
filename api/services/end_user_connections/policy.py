@@ -98,7 +98,8 @@ def require_applicable_connection(
         if (
             target.oauth_client is None
             or target.oauth_client.source != target.oauth_client_source
-            or owned.oauth_client != target.oauth_client
+            or owned.oauth_client is None
+            or not owned.oauth_client.same_credentials(target.oauth_client)
         ):
             raise ConnectionReauthorizationRequiredError()
     return owned

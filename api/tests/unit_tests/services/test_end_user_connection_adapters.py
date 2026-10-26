@@ -15,6 +15,8 @@ from services.end_user_connections.errors import (
 )
 from tests.helpers.end_user_api_key import PROVIDER, ScriptedAuth, make_harness, plugin_provider
 
+pytestmark = pytest.mark.usefixtures("connection_revision_key")
+
 
 def test_cipher_encrypts_the_entire_payload_with_the_tenant_key(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[str, str]] = []
@@ -114,3 +116,17 @@ def test_revision_identifier_bypasses_the_request_controller_cache(monkeypatch: 
     assert gateway.plugin_unique_identifier("tenant", PROVIDER) == "vendor/calendar:1.0@first"
     assert gateway.plugin_unique_identifier("tenant", PROVIDER) == "vendor/calendar:1.0@rebuilt"
     assert calls == [("tenant", PROVIDER), ("tenant", PROVIDER)]
+
+
+def test_plugin_trust_is_checked_for_the_exact_artifact(monkeypatch: pytest.MonkeyPatch) -> None:
+    artifact = "vendor/calendar:2.0.0@" + "b" * 64
+    checked: list[tuple[str, str]] = []
+
+    def verified(tenant_id: str, identifier: str) -> bool:
+        checked.append((tenant_id, identifier))
+        return identifier == artifact
+
+    monkeypatch.setattr(adapters.PluginService, "is_plugin_verified", verified)
+    gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
+    assert gateway.is_plugin_trusted("tenant", artifact)
+    assert checked == [("tenant", artifact)]

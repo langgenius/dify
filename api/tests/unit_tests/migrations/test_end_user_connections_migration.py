@@ -54,6 +54,21 @@ def load_client_fingerprint_migration(connection: sa.Connection) -> ConnectionMi
     return migration
 
 
+def load_plugin_artifact_migration(connection: sa.Connection) -> ConnectionMigration:
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "migrations/versions/2026_10_26_1600-a57d8c91e024_pin_oauth_grant_plugin_artifacts.py"
+    )
+    spec = importlib.util.spec_from_file_location("oauth_grant_plugin_artifact_migration", path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    migration = cast(ConnectionMigration, module)
+    migration.op = Operations(MigrationContext.configure(connection))
+    return migration
+
+
 @pytest.fixture
 def connection_session() -> Iterator[Session]:
     engine = sa.create_engine("sqlite://")
@@ -61,6 +76,7 @@ def connection_session() -> Iterator[Session]:
         connection.exec_driver_sql("PRAGMA foreign_keys=ON")
         load_migration(connection).upgrade()
         load_client_fingerprint_migration(connection).upgrade()
+        load_plugin_artifact_migration(connection).upgrade()
         connection.commit()
         with Session(connection) as session:
             yield session
@@ -108,6 +124,8 @@ def test_upgrade_downgrade_preserves_workspace_credentials() -> None:
         migration.upgrade()
         provenance = load_client_fingerprint_migration(connection)
         provenance.upgrade()
+        artifact = load_plugin_artifact_migration(connection)
+        artifact.upgrade()
         with Session(connection) as session:
             credential = new_connection()
             session.add(credential)
@@ -115,6 +133,7 @@ def test_upgrade_downgrade_preserves_workspace_credentials() -> None:
             session.add(new_app_selection(credential))
             session.flush()
             session.commit()
+        artifact.downgrade()
         provenance.downgrade()
         migration.downgrade()
         assert sa.inspect(connection).get_table_names() == ["builtin_tool_providers"]

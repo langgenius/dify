@@ -25,6 +25,8 @@ from services.end_user_connections.preflight import ConnectionPreflightService
 from tests.helpers.end_user_api_key import PROVIDER
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
+pytestmark = pytest.mark.usefixtures("connection_revision_key")
+
 
 @pytest.fixture
 def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> OAuthHarness:

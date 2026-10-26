@@ -46,6 +46,9 @@ from tests.unit_tests.web_identity_fakes import web_identities
 """Public bootstrap admission with real SQL repositories and the canonical hook."""
 
 
+pytestmark = pytest.mark.usefixtures("connection_revision_key")
+
+
 @dataclass
 class AdmissionHarness:
     app: _public_app_admission_App
@@ -168,7 +171,11 @@ def _harness(
             identities=base_services.web_identity,
             account_passports_enabled=False,
         ),
-        app_definitions=AppDefinitionQueryService(definitions=definitions, builtin_icon_url_prefix=""),
+        app_definitions=AppDefinitionQueryService(
+            definitions=definitions,
+            builtin_icon_url_prefix="",
+            connection_revisions=base_services.app_definitions._connection_revisions,
+        ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=definitions,
             file_service=FileService(session_factory=factory),
