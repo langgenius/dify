@@ -89,14 +89,22 @@ REF_DATA = {
     "context_digest": "a" * 64,
 }
 
+
 def test_waiting_requires_committed_checkpoint():
     with pytest.raises(ValidationError, match="checkpoint"):
-        NativeWorkflowOutcome.model_validate({
-            "status": "waiting", "ref": REF_DATA, "native_run_id": "run-1",
-            "checkpoint_ref": None, "pending_operation_ids": ["operation-1"],
-            "wait_reason": "approval",
-            "reason_code": None, "native_status": None, "output_result_ref": None,
-        })
+        NativeWorkflowOutcome.model_validate(
+            {
+                "status": "waiting",
+                "ref": REF_DATA,
+                "native_run_id": "run-1",
+                "checkpoint_ref": None,
+                "pending_operation_ids": ["operation-1"],
+                "wait_reason": "approval",
+                "reason_code": None,
+                "native_status": None,
+                "output_result_ref": None,
+            }
+        )
 ```
 
 - [ ] **NW1.2 Red run:** 在合格 Linux 容器运行 `uv run --project api pytest api/tests/unit_tests/services/dify_builder/native_testing/test_runtime_contracts.py -q`；预期新数据模型缺失而失败。
@@ -215,13 +223,18 @@ try:
 except NodeExecutionControl as control:
     if control.disposition == "pause":
         reason = ExternalInterventionRequired(
-            continuation_ref=control.continuation_ref, node_id=self.id, node_title=self.title,
+            continuation_ref=control.continuation_ref,
+            node_id=self.id,
+            node_title=self.title,
         )
         yield self._dispatch(PauseRequestedEvent(reason=reason))
     else:
         yield NodeRunControlStoppedEvent(
-            id=self.execution_id, node_id=self.id, node_type=self.node_type,
-            continuation_ref=control.continuation_ref, reason_code=control.reason_code,
+            id=self.execution_id,
+            node_id=self.id,
+            node_type=self.node_type,
+            continuation_ref=control.continuation_ref,
+            reason_code=control.reason_code,
         )
 except Exception as error:
     yield self._build_run_failed_event(error)
@@ -236,8 +249,10 @@ except Exception as error:
 def commit_wait(self, *, ref, generation, payload, pending_operation_ids):
     checkpoint = self.state.commit_checkpoint(ref=ref, generation=generation, payload=payload)
     return self.lifecycle.pause(
-        ref=ref, checkpoint=checkpoint,
-        pending_operation_ids=pending_operation_ids, expected_generation=generation,
+        ref=ref,
+        checkpoint=checkpoint,
+        pending_operation_ids=pending_operation_ids,
+        expected_generation=generation,
     )
 ```
 
@@ -346,9 +361,14 @@ def test_metadata_does_not_refresh_expired_oauth(tool_adapter, expired_tool, cou
 def test_duplicate_child_reservation_keeps_one_invocation(port, state, parent_ref, operation_key):
     inputs = {"contract_text": "synthetic contract", "jurisdiction": "test"}
     result_ref = state.store_result(ref=parent_ref, key=operation_key, result=inputs)
-    args = dict(parent_ref=parent_ref, key=operation_key, child_app_id="child-app",
-                child_workflow_revision="a" * 64, input_digest=canonical_digest(inputs),
-                input_result_ref=result_ref)
+    args = dict(
+        parent_ref=parent_ref,
+        key=operation_key,
+        child_app_id="child-app",
+        child_workflow_revision="a" * 64,
+        input_digest=canonical_digest(inputs),
+        input_result_ref=result_ref,
+    )
     first = port.get_or_create(**args)
     assert port.get_or_create(**args) == first
     assert port.reservation_count == 1

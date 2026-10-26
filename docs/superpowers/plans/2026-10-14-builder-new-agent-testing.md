@@ -68,6 +68,7 @@ Create these DTOs in A2's standalone `protocol/native_testing.py`; API adapters 
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
+
 class AgentNativeTestRef(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
     policy_version: Literal["builder-native-test-v1"]
@@ -75,11 +76,13 @@ class AgentNativeTestRef(BaseModel):
     invocation_id: str = Field(min_length=1)
     context_digest: str = Field(min_length=1)
 
+
 class ContinueRunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
     ref: AgentNativeTestRef
     expected_generation: int = Field(ge=0)
     idempotency_key: str = Field(min_length=1)
+
 
 class AgentApprovalWait(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
@@ -140,12 +143,14 @@ def require_selected_snapshot(*, selected_snapshot_id: str, effective_snapshot_i
 - [ ] **A1.5 Implement honest schemas:** Input declarations come from published Soul `app_variables` and caller inputs. Soul has no reusable first-class output schema: expose `output_schema=None` with `output_contract_source='node_job_required'` when absent. Persist the contract example below as native node-job declarations; do not claim it was published by the Agent.
 
 ```python
-node_job = WorkflowNodeJobConfig.model_validate({
-    "declared_outputs": [
-        {"name": "risks", "type": "array", "array_item": {"type": "object"}},
-        {"name": "summary", "type": "string"},
-    ],
-})
+node_job = WorkflowNodeJobConfig.model_validate(
+    {
+        "declared_outputs": [
+            {"name": "risks", "type": "array", "array_item": {"type": "object"}},
+            {"name": "summary", "type": "string"},
+        ],
+    }
+)
 assert [item.name for item in node_job.declared_outputs] == ["risks", "summary"]
 ```
 
@@ -167,6 +172,7 @@ def test_old_backend_cannot_start_native_test():
     old = NativeTestCapabilities(protocol_version=0, features=frozenset())
     with pytest.raises(NativeTestProtocolUnsupported):
         require_native_test_capabilities(old)
+
 
 @pytest.mark.parametrize("reason", ["approval", "configuration", "interaction"])
 def test_wait_reason_survives_wire_roundtrip(reason):
@@ -259,7 +265,9 @@ Persist canonical file references and business arguments, not temporary signed U
 
 ```python
 def test_lost_job_never_substitutes_another_process():
-    saved = ShellJobRef(binding_ref="binding-1", backend_revision="r1", workspace_generation=3, job_id="job-8", output_offset=12)
+    saved = ShellJobRef(
+        binding_ref="binding-1", backend_revision="r1", workspace_generation=3, job_id="job-8", output_offset=12
+    )
     actual = saved.model_copy(update={"workspace_generation": 4})
     with pytest.raises(AgentJobUnavailable):
         validate_job_identity(saved=saved, actual=actual)
@@ -306,8 +314,10 @@ Map trusted `native_test_required` to backend `execution_mode='builder_test'`; m
 
 ```python
 wire_ref = AgentNativeTestRef(
-    policy_version=ref.policy_version, request_id=ref.request_id,
-    invocation_id=ref.invocation_id, context_digest=ref.context_digest,
+    policy_version=ref.policy_version,
+    request_id=ref.request_id,
+    invocation_id=ref.invocation_id,
+    context_digest=ref.context_digest,
 )
 assert wire_ref.request_id == ref.request_id
 assert wire_ref.context_digest == ref.context_digest
