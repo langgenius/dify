@@ -3699,6 +3699,120 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   })
 
+  it('keeps search focused when clearing a direct-link filter while the full list loads', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?query=sso' })
+    expect(screen.getByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+
+    const fullList = createDeferred<{ error: null }>()
+    documentsQuery.refetch.mockReturnValueOnce(fullList.promise)
+    await user.clear(screen.getByRole('searchbox'))
+    expect(screen.getByRole('searchbox')).toHaveFocus()
+    await user.type(screen.getByRole('searchbox'), 'missing')
+    expect(await screen.findByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+    await act(async () => fullList.resolve({ error: null }))
+    expect(screen.getByRole('searchbox')).toHaveValue('missing')
+    expect(screen.getByRole('searchbox')).toHaveFocus()
+  })
+
+  it('can clear a failed status request without retrying the broken filter', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = undefined
+    documentsQuery.error = createHttpError(new Response(null, { status: 500 }))
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?status=failed' })
+    expect(
+      await screen.findByRole('button', { name: /common.operation.retry/ }),
+    ).toBeInTheDocument()
+
+    documentsQuery.error = null
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('option', { name: 'knowledgeDocuments.allDocumentStatuses' }))
+    expect(await screen.findByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+    expect(lastInput('documents')).toMatchObject({ query: {} })
+  })
+
+  it.each([
+    { filter: 'queued', from: 'queued', to: 'running', matches: false },
+    { filter: 'processing', from: 'queued', to: 'running', matches: true },
+    { filter: 'queued', from: 'running', to: 'retry_wait', matches: true },
+    { filter: 'processing', from: 'running', to: 'retry_wait', matches: false },
+  ] as const)(
+    'refreshes $filter matches when live progress changes $from to $to',
+    async ({ filter, from, to, matches }) => {
+      const progress = createDeferred<void>()
+      const moreProgress = createDeferred<void>()
+      const initialTask = task({ state: from })
+      documentsQuery.data = { pages: [{ items: [document({ latestTask: initialTask })] }] }
+      tasksQuery.data = { pages: [{ items: [initialTask] }] }
+      streamProcessingTaskEvents.mockImplementation(async function* () {
+        await progress.promise
+        yield {
+          data: {
+            progressPercent: 50,
+            stage: 'parsed' as const,
+            state: to,
+            updatedAt: '2026-07-20T10:02:00Z',
+          },
+          event: 'progress' as const,
+          id: 'task-1:changed',
+        }
+        await moreProgress.promise
+        yield {
+          data: {
+            progressPercent: 60,
+            stage: 'parsed' as const,
+            state: to,
+            updatedAt: '2026-07-20T10:03:00Z',
+          },
+          event: 'progress' as const,
+          id: 'task-1:more-progress',
+        }
+        await new Promise<void>(() => {})
+      })
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />, {
+        searchParams: `?status=${filter}`,
+      })
+      if (!matches)
+        expect(screen.getByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+      else expect(screen.getByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+
+      const inactiveFilter = filter === 'queued' ? 'processing' : 'queued'
+      const inactiveKey = logicalDocumentsInfiniteOptions('space-1', {
+        filter: inactiveFilter,
+      }).queryKey
+      const otherSpaceKey = logicalDocumentsInfiniteOptions('space-2', { filter }).queryKey
+      for (const key of [inactiveKey, otherSpaceKey])
+        queryClient.setQueryData(key, { pages: [], pageParams: [] })
+      documentsQuery.refetch.mockClear()
+      documentsQuery.data = {
+        pages: [
+          {
+            items: [
+              document({ latestTask: task({ state: to, updatedAt: '2026-07-20T10:02:00Z' }) }),
+            ],
+          },
+        ],
+      }
+      await act(async () => progress.resolve())
+      if (matches)
+        expect(await screen.findByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+      else
+        expect(
+          await screen.findByText('knowledgeDocuments.noMatchingDocuments'),
+        ).toBeInTheDocument()
+      expect(documentsQuery.refetch).toHaveBeenCalledOnce()
+      expect(lastInput('documents')).toMatchObject({ query: { status: filter } })
+      expect(queryClient.getQueryState(inactiveKey)?.isInvalidated).toBe(true)
+      expect(queryClient.getQueryState(otherSpaceKey)?.isInvalidated).toBe(false)
+
+      await act(async () => moreProgress.resolve())
+      await settle()
+      expect(documentsQuery.refetch).toHaveBeenCalledOnce()
+    },
+  )
+
   it('finds a document beyond twenty unfiltered pages and clears an exhausted search', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
@@ -4024,7 +4138,7 @@ describe('DocumentsPage', () => {
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('sso-enterprise.pdf')).toBeInTheDocument()
-    expect(screen.getByRole('combobox')).toBeDisabled()
+    expect(screen.getByRole('combobox')).not.toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
       'true',

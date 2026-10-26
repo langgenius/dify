@@ -314,8 +314,9 @@ export const taskTriggerFactsAtom = atom((get) => ({
 }))
 
 export const documentsToolbarFactsAtom = atom((get) => ({
-  showTasks: get(showTasksAtom) || Boolean(get(tasksQueryErrorAtom)),
-  statusPending: get(dependencyResultsIncompleteAtom),
+  showTasks:
+    (get(documentsAtom).length > 0 || get(filterActiveAtom)) &&
+    (get(showTasksAtom) || Boolean(get(tasksQueryErrorAtom))),
 }))
 
 export const documentRenderWindowIdentityAtom = atom(

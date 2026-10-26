@@ -297,10 +297,8 @@ function DocumentCollectionState({
 }
 
 function DocumentSearchToolbar() {
-  const documents = useAtomValueRawSync(documentsAtom)
-  const filterActive = useAtomValueRawSync(filterActiveAtom)
   const canRead = useAtomValueRawSync(documentCanReadAtom)
-  return canRead && (documents.length > 0 || filterActive) ? <DocumentsToolbar /> : null
+  return canRead ? <DocumentsToolbar /> : null
 }
 
 export function DocumentResultsSurface() {

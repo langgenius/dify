@@ -346,15 +346,9 @@ const DocumentRow = memo(
 
 export function DocumentsEmpty() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
-  const setMetadataRequest = useSetAtom(documentMetadataAtom)
-  const setUploadRequest = useSetAtom(documentUploadAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
-  const uploading = useAtomValueRawSync(documentUploadingAtom)
-  const { canUpload, restrictionReasonId: uploadRestrictionReasonId } = documentUploadAvailability(
-    canWrite,
-    uploadAvailable,
-  )
+  const { canUpload } = documentUploadAvailability(canWrite, uploadAvailable)
 
   return (
     <div className="flex min-h-96 flex-1 flex-col items-center justify-center gap-4 overflow-clip p-6 text-center">
@@ -367,23 +361,6 @@ export function DocumentsEmpty() {
       <p className="w-115 max-w-full text-[13px] leading-4 font-normal text-text-tertiary">
         {t(($) => $.documentsEmptyDescription)}
       </p>
-      <div className="flex items-center gap-2">
-        <Button className="gap-1 ps-3" onClick={() => void setMetadataRequest('1')}>
-          <span aria-hidden className="i-ri-file-text-line size-4" />
-          {t(($) => $.metadata)}
-        </Button>
-        <Button
-          className="gap-1 ps-3"
-          variant="primary"
-          disabled={!canUpload}
-          loading={uploading}
-          aria-describedby={!canUpload ? uploadRestrictionReasonId : undefined}
-          onClick={() => void setUploadRequest('1')}
-        >
-          <span aria-hidden className="i-ri-add-line size-4" />
-          {t(($) => $.addDocument)}
-        </Button>
-      </div>
       {canUpload && (
         <p className="system-xs-regular text-text-quaternary">
           {t(($) => $.documentsDropHint, { ns: 'knowledgeDocuments' })}
@@ -401,7 +378,7 @@ export function DocumentsToolbar() {
   const setSearch = useSetAtom(documentSearchAtom)
   const setMetadataRequest = useSetAtom(documentMetadataAtom)
   const setUploadRequest = useSetAtom(documentUploadAtom)
-  const { showTasks, statusPending } = useAtomValueRawSync(documentsToolbarFactsAtom)
+  const { showTasks } = useAtomValueRawSync(documentsToolbarFactsAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const uploadAvailable = useAtomValueRawSync(knowledgeFsUploadEnabledAtom)
   const uploading = useAtomValueRawSync(documentUploadingAtom)
@@ -413,7 +390,6 @@ export function DocumentsToolbar() {
   return (
     <div className="mt-4.5 flex flex-col gap-2 @min-[768px]/knowledge-content:flex-row @min-[768px]/knowledge-content:items-center">
       <Select<DocumentFilter>
-        disabled={statusPending}
         value={filter}
         onValueChange={(value) => {
           if (value) void setFilter(value)
