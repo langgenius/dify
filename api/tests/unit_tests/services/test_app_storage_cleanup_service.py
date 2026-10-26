@@ -15,7 +15,6 @@ from extensions.storage.storage_type import StorageType
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
-from models import WorkflowType
 from models.enums import (
     ConversationFromSource,
     CreatorUserRole,
@@ -33,6 +32,7 @@ from models.workflow import (
     WorkflowPauseReason,
     WorkflowRun,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 from services import app_storage_cleanup_service as cleanup
 
 
@@ -117,7 +117,7 @@ def test_nested_offload_cleanup_preserves_retry_references(
             tenant_id="tenant-1",
             app_id="app-1",
             workflow_id="workflow-1",
-            type=WorkflowType.CHAT,
+            type=ModelWorkflowType.CHAT,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="1",
             status=WorkflowExecutionStatus.SUCCEEDED,
@@ -365,7 +365,7 @@ def test_pause_files_and_reasons_are_removed_only_after_storage_success(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType.CHAT,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.PAUSED,

@@ -100,7 +100,7 @@ def _app_generator_make_workflow(
         type=WorkflowType.CHAT,
         version=_app_generator_Workflow.VERSION_DRAFT,
         graph="{}",
-        features=json.dumps(features or {}),
+        _features=json.dumps(features or {}),
         created_by="user",
     )
 
@@ -1869,7 +1869,7 @@ def _pause_resume_make_workflow() -> _pause_resume_Workflow:
         type=WorkflowType.CHAT,
         version=_pause_resume_Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="user",
     )
 

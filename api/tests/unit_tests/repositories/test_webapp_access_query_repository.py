@@ -56,11 +56,11 @@ def _workflow(session: Session, app: App, *, version: str = "published") -> Work
         type=WorkflowType.WORKFLOW if app.mode == AppMode.WORKFLOW else WorkflowType.CHAT,
         version=version,
         graph='{"nodes":[]}',
-        features="{}",
+        _features="{}",
         created_by=str(uuid4()),
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
     session.add(workflow)
     return workflow
