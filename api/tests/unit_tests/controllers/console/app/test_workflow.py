@@ -120,17 +120,17 @@ def _make_workflow(**overrides) -> Workflow:
         type=WorkflowType.WORKFLOW,
         version="1",
         graph=json.dumps(graph),
-        features=json.dumps(features),
+        _features=json.dumps(features),
         marked_name="Release 1",
         marked_comment="Initial release",
         created_by="user-1",
-        created_at=datetime(2024, 1, 1, 12, 0, 0),
         updated_by=None,
-        updated_at=datetime(2024, 1, 1, 12, 1, 0),
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
+    workflow.created_at = datetime(2024, 1, 1, 12, 0, 0)
+    workflow.updated_at = datetime(2024, 1, 1, 12, 1, 0)
     if environment_variables and isinstance(environment_variables[0], dict):
         workflow._environment_variables = json.dumps(
             {str(index): value for index, value in enumerate(environment_variables)}

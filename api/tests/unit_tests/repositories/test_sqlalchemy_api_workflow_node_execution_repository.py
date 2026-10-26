@@ -99,8 +99,11 @@ def test_workflow_history_and_last_execution_exclude_recursive_tool_nodes(
 ) -> None:
     root_id, child_id = str(uuid4()), str(uuid4())
     with sqlite_session_factory.begin() as session:
-        session.add_all(
-            WorkflowNodeExecutionModel(
+        for execution_id, index, origin in (
+            (root_id, 1, WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
+            (child_id, 2, WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+        ):
+            execution = WorkflowNodeExecutionModel(
                 id=execution_id,
                 tenant_id="tenant",
                 app_id="app",
@@ -114,13 +117,9 @@ def test_workflow_history_and_last_execution_exclude_recursive_tool_nodes(
                 triggered_from=origin,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by="account",
-                created_at=datetime(2026, 1, 1) + timedelta(seconds=index),
             )
-            for execution_id, index, origin in (
-                (root_id, 1, WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
-                (child_id, 2, WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
-            )
-        )
+            execution.created_at = datetime(2026, 1, 1) + timedelta(seconds=index)
+            session.add(execution)
     repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
 
     history = repository.get_executions_by_workflow_run(tenant_id="tenant", app_id="app", workflow_run_id="run")
@@ -148,8 +147,8 @@ def test_workflow_tool_children_are_scoped_to_exact_parent_and_run(
         ("legacy-child", "tenant", "run", "source-app", "start", None, None),
     ]
     with sqlite_session_factory.begin() as session:
-        session.add_all(
-            WorkflowNodeExecutionModel(
+        for index, (execution_id, tenant, run, app, node_type, owner, engine_id) in enumerate(records):
+            execution = WorkflowNodeExecutionModel(
                 id=execution_id,
                 tenant_id=tenant,
                 app_id=app,
@@ -180,10 +179,9 @@ def test_workflow_tool_children_are_scoped_to_exact_parent_and_run(
                 ),
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by="account",
-                created_at=datetime(2026, 1, 1) + timedelta(seconds=index),
             )
-            for index, (execution_id, tenant, run, app, node_type, owner, engine_id) in enumerate(records)
-        )
+            execution.created_at = datetime(2026, 1, 1) + timedelta(seconds=index)
+            session.add(execution)
         session.add(
             WorkflowNodeExecutionOffload(
                 tenant_id="tenant",
