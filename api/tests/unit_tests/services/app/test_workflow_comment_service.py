@@ -2,6 +2,7 @@
 
 import datetime
 from collections.abc import Callable, Sequence
+from typing import override
 
 import pytest
 
@@ -26,6 +27,7 @@ from services.app.workflow_comment_service import (
     WorkflowCommentMentionNotifier,
     WorkflowCommentReplyDraft,
     WorkflowCommentResolved,
+    WorkflowCommentSaved,
     WorkflowCommentService,
     WorkflowCommentStore,
     WorkflowCommentSummary,
@@ -45,7 +47,10 @@ NOW = datetime.datetime(2024, 1, 2, 12, 0, 0)
 
 
 class InMemoryStore(WorkflowCommentStore):
-    """Keeps threads by ID, asserts the owner scope of every call, and reports mentions of `members`."""
+    """Keeps threads by ID, asserts the owner scope of every call, and reports mentions of `members`.
+
+    Like the repository, it keeps a stored resolution when a save would resolve a thread that was unresolved on load.
+    """
 
     def __init__(self) -> None:
         self.app_visible = True
@@ -53,6 +58,7 @@ class InMemoryStore(WorkflowCommentStore):
         self.app_name: str | None = "Canvas"
         self.commenter_name: str | None = "Actor"
         self.threads: dict[str, WorkflowCommentAgg] = {}
+        self.loaded: list[WorkflowCommentAgg] = []
         self.calls: list[str] = []
         self.notify_requests: list[tuple[str, ...]] = []
 
@@ -80,7 +86,8 @@ class InMemoryStore(WorkflowCommentStore):
         self.calls.append("load_comment")
         if comment_id not in self.threads:
             raise WorkflowCommentNotFoundError
-        return self.threads[comment_id]
+        self.loaded.append(self.threads[comment_id])
+        return self.loaded[-1]
 
     def add_comment(self, *, comment: WorkflowCommentAgg, notify_user_ids: Sequence[str]) -> MentionContext:
         self._assert_scope(comment)
@@ -90,13 +97,16 @@ class InMemoryStore(WorkflowCommentStore):
 
     def save_comment(
         self, *, loaded: WorkflowCommentAgg, changed: WorkflowCommentAgg, actor_id: str, notify_user_ids: Sequence[str]
-    ) -> MentionContext:
+    ) -> WorkflowCommentSaved:
         self._assert_scope(changed)
         # The service saves the very state it loaded, so the adapter can write only the difference.
-        assert self.threads[changed.id] is loaded
+        assert loaded is self.loaded[-1]
         self.calls.append("save_comment")
+        stored = self.threads[changed.id]
+        if changed.resolved and not loaded.resolved and stored.resolved:
+            return WorkflowCommentSaved(comment=stored, mentions=self._mentions(actor_id, notify_user_ids))
         self.threads[changed.id] = changed
-        return self._mentions(actor_id, notify_user_ids)
+        return WorkflowCommentSaved(comment=changed, mentions=self._mentions(actor_id, notify_user_ids))
 
     def delete_comment(self, *, comment: WorkflowCommentAgg) -> None:
         self._assert_scope(comment)
@@ -328,6 +338,26 @@ def test_any_member_resolves_a_comment() -> None:
 
     assert resolved == WorkflowCommentResolved(id=COMMENT_ID, resolved=True, resolved_at=NOW, resolved_by=ACTOR)
     assert store.threads[COMMENT_ID].resolved_by == ACTOR
+
+
+class ResolvedMeanwhileStore(InMemoryStore):
+    """Another member resolves each thread right after this request loads it."""
+
+    @override
+    def load_comment(self, *, workspace_id: str, app_id: str, comment_id: str) -> WorkflowCommentAgg:
+        loaded = super().load_comment(workspace_id=workspace_id, app_id=app_id, comment_id=comment_id)
+        self.threads[comment_id] = loaded.resolve(actor_id=OTHER, now=STARTED_AT)
+        return loaded
+
+
+def test_a_resolution_that_loses_the_race_returns_the_first_one() -> None:
+    store = ResolvedMeanwhileStore()
+    store.seed(_thread())
+
+    resolved = _service(store).resolve_comment(CONTEXT, APP_ID, COMMENT_ID)
+
+    assert resolved == WorkflowCommentResolved(id=COMMENT_ID, resolved=True, resolved_at=STARTED_AT, resolved_by=OTHER)
+    assert store.threads[COMMENT_ID].resolved_by == OTHER
 
 
 def test_resolving_again_keeps_the_first_resolution() -> None:

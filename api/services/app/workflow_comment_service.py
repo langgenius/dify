@@ -149,6 +149,17 @@ class MentionContext:
 
 
 @dataclass(frozen=True, slots=True)
+class WorkflowCommentSaved:
+    """A committed save: the thread to build results from, and the context for notifying new mentions.
+
+    `comment` is the changed aggregate, or the thread as stored when its resolution lost to a concurrent one.
+    """
+
+    comment: WorkflowCommentAgg
+    mentions: MentionContext
+
+
+@dataclass(frozen=True, slots=True)
 class WorkflowCommentMentionNotification:
     language: str
     to: str
@@ -174,7 +185,9 @@ class WorkflowCommentStore(Protocol):
       reply delete that affects no row means the reply is already gone.
     - Content, positions, and mention lists are last-writer-wins. Saves write only changed values, so concurrent
       changes to other parts of the thread survive.
-    - Not protected: two competing first resolutions both pass on loaded state, and the last one is kept.
+    - Resolution is a conditional write: the save resolves the comment only while it is still unresolved. When that
+      write affects no row, the save re-reads the thread in the same transaction and returns it, so a concurrent
+      request gets the stored resolution and the first resolver wins.
     - Not protected: newly mentioned users come from loaded state, so concurrent edits can notify a user twice.
     - Not protected: the membership read inside the write can miss a membership removed concurrently.
     """
@@ -199,11 +212,12 @@ class WorkflowCommentStore(Protocol):
 
     def save_comment(
         self, *, loaded: WorkflowCommentAgg, changed: WorkflowCommentAgg, actor_id: str, notify_user_ids: Sequence[str]
-    ) -> MentionContext:
+    ) -> WorkflowCommentSaved:
         """Write only what differs between `loaded` and `changed`.
 
         Values the change left alone are never written, so concurrent changes to other parts of the thread survive.
-        Raises `WorkflowCommentReplyNotFoundError` when an edited reply was deleted after the load.
+        A resolution that another request already stored is not written; the saved comment then carries the stored
+        one. Raises `WorkflowCommentReplyNotFoundError` when an edited reply was deleted after the load.
         """
         ...
 
@@ -279,8 +293,9 @@ class WorkflowCommentService:
             mentioned_user_ids=edit.mentioned_user_ids,
             now=self._now(),
         )
-        self._notify(app_id, edit.content, self._save(context, loaded, changed))
-        return WorkflowCommentUpdated(id=changed.id, updated_at=changed.updated_at)
+        saved = self._save(context, loaded, changed)
+        self._notify(app_id, edit.content, saved.mentions)
+        return WorkflowCommentUpdated(id=saved.comment.id, updated_at=saved.comment.updated_at)
 
     def delete_comment(self, context: RequestContext, app_id: str, comment_id: str) -> None:
         self.ensure_app(context, app_id)
@@ -292,12 +307,12 @@ class WorkflowCommentService:
         self.ensure_app(context, app_id)
         loaded = self._load(context, app_id, comment_id)
         changed = loaded.resolve(actor_id=context.account_id, now=self._now())
-        self._save(context, loaded, changed)
+        saved = self._save(context, loaded, changed).comment
         return WorkflowCommentResolved(
-            id=changed.id,
-            resolved=changed.resolved,
-            resolved_at=changed.resolved_at,
-            resolved_by=changed.resolved_by,
+            id=saved.id,
+            resolved=saved.resolved,
+            resolved_at=saved.resolved_at,
+            resolved_by=saved.resolved_by,
         )
 
     def create_reply(
@@ -314,8 +329,9 @@ class WorkflowCommentService:
             mentioned_user_ids=draft.mentioned_user_ids,
             now=self._now(),
         )
-        self._notify(app_id, draft.content, self._save(context, loaded, changed))
-        return WorkflowCommentCreated(id=reply_id, created_at=changed.reply(reply_id).created_at)
+        saved = self._save(context, loaded, changed)
+        self._notify(app_id, draft.content, saved.mentions)
+        return WorkflowCommentCreated(id=reply_id, created_at=saved.comment.reply(reply_id).created_at)
 
     def update_reply(
         self,
@@ -335,8 +351,9 @@ class WorkflowCommentService:
             mentioned_user_ids=draft.mentioned_user_ids,
             now=self._now(),
         )
-        self._notify(app_id, draft.content, self._save(context, loaded, changed))
-        return WorkflowCommentUpdated(id=reply_id, updated_at=changed.reply(reply_id).updated_at)
+        saved = self._save(context, loaded, changed)
+        self._notify(app_id, draft.content, saved.mentions)
+        return WorkflowCommentUpdated(id=reply_id, updated_at=saved.comment.reply(reply_id).updated_at)
 
     def delete_reply(self, context: RequestContext, app_id: str, comment_id: str, reply_id: str) -> None:
         self.ensure_app(context, app_id)
@@ -349,7 +366,9 @@ class WorkflowCommentService:
             workspace_id=context.active_workspace_id, app_id=app_id, comment_id=comment_id
         )
 
-    def _save(self, context: RequestContext, loaded: WorkflowCommentAgg, changed: WorkflowCommentAgg) -> MentionContext:
+    def _save(
+        self, context: RequestContext, loaded: WorkflowCommentAgg, changed: WorkflowCommentAgg
+    ) -> WorkflowCommentSaved:
         return self._comments.save_comment(
             loaded=loaded,
             changed=changed,

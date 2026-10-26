@@ -1,7 +1,7 @@
 """Exercise workflow comment persistence with real short-lived Sessions."""
 
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
@@ -26,6 +26,7 @@ from services.app.workflow_comment_service import (
     WorkflowCommentDraft,
     WorkflowCommentEdit,
     WorkflowCommentReplyDraft,
+    WorkflowCommentSaved,
     WorkflowCommentService,
 )
 from tests.unit_tests.model_factories import make_account, make_app
@@ -275,7 +276,7 @@ def _started(*, mentioned_user_ids: tuple[str, ...]) -> WorkflowCommentAgg:
 
 def _save(
     repository: WorkflowCommentRepository, loaded: WorkflowCommentAgg, changed: WorkflowCommentAgg
-) -> MentionContext:
+) -> WorkflowCommentSaved:
     return repository.save_comment(
         loaded=loaded,
         changed=changed,
@@ -426,7 +427,7 @@ def test_save_comment_writes_the_edit_and_reports_only_new_mentions(
         now=NOW,
     )
 
-    mentions = _save(repository, loaded, changed)
+    mentions = _save(repository, loaded, changed).mentions
 
     sqlite_session.expire_all()
     persisted = sqlite_session.get_one(WorkflowComment, comment.id)
@@ -445,7 +446,7 @@ def test_save_comment_leaves_untouched_mentions_unwritten(
     mention_ids = _mention_row_ids(sqlite_session, comment.id)
     loaded = _load(repository, comment.id)
 
-    mentions = _save(repository, loaded, _edit(loaded, content="updated", mentioned_user_ids=None))
+    mentions = _save(repository, loaded, _edit(loaded, content="updated", mentioned_user_ids=None)).mentions
 
     assert _mention_row_ids(sqlite_session, comment.id) == mention_ids
     assert mentions.recipients == ()
@@ -475,17 +476,53 @@ def test_save_comment_persists_a_resolution(sqlite_session: Session, repository:
     comment = _comment()
     _persist(sqlite_session, comment)
     loaded = _load(repository, comment.id)
+    resolved = loaded.resolve(actor_id=USER_2_ID, now=NOW)
 
-    _save(repository, loaded, loaded.resolve(actor_id=USER_2_ID, now=NOW))
+    saved = _save(repository, loaded, resolved)
 
+    assert saved.comment is resolved
     sqlite_session.expire_all()
     persisted = sqlite_session.get_one(WorkflowComment, comment.id)
     assert (persisted.resolved, persisted.resolved_at, persisted.resolved_by) == (True, NOW, USER_2_ID)
     assert persisted.updated_at == NOW
 
 
-def test_save_comment_writes_only_what_the_change_touched(
+def test_competing_first_resolutions_keep_the_first_resolver(
     sqlite_session: Session, repository: WorkflowCommentRepository
+) -> None:
+    comment = _comment()
+    _persist(sqlite_session, comment)
+    # Both requests load the thread while it is still unresolved.
+    first = _load(repository, comment.id)
+    second = _load(repository, comment.id)
+
+    won = _save(repository, first, first.resolve(actor_id=USER_2_ID, now=NOW))
+    lost = _save(repository, second, second.resolve(actor_id=USER_3_ID, now=NOW + timedelta(minutes=5)))
+
+    assert (won.comment.resolved_by, won.comment.resolved_at) == (USER_2_ID, NOW)
+    assert (lost.comment.resolved, lost.comment.resolved_by, lost.comment.resolved_at) == (True, USER_2_ID, NOW)
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get_one(WorkflowComment, comment.id)
+    assert (persisted.resolved_by, persisted.resolved_at, persisted.updated_at) == (USER_2_ID, NOW, NOW)
+
+
+def test_resolve_after_a_concurrent_delete_is_not_found(
+    sqlite_session: Session, repository: WorkflowCommentRepository
+) -> None:
+    comment = _comment()
+    _persist(sqlite_session, comment)
+    loaded = _load(repository, comment.id)
+    repository.delete_comment(comment=_load(repository, comment.id))
+
+    with pytest.raises(WorkflowCommentNotFoundError):
+        _save(repository, loaded, loaded.resolve(actor_id=USER_2_ID, now=NOW))
+
+    assert sqlite_session.scalar(select(func.count(WorkflowComment.id))) == 0
+
+
+@pytest.mark.parametrize("resolve_first", [True, False], ids=["resolve-then-edit", "edit-then-resolve"])
+def test_a_resolve_racing_a_content_edit_keeps_both(
+    sqlite_session: Session, repository: WorkflowCommentRepository, resolve_first: bool
 ) -> None:
     comment = _comment()
     _persist(sqlite_session, comment)
@@ -493,8 +530,12 @@ def test_save_comment_writes_only_what_the_change_touched(
     loaded_for_resolve = _load(repository, comment.id)
 
     # Two requests load the same thread; the later save must not undo the earlier one.
-    _save(repository, loaded_for_resolve, loaded_for_resolve.resolve(actor_id=USER_2_ID, now=NOW))
-    _save(repository, loaded_for_edit, _edit(loaded_for_edit, content="updated", mentioned_user_ids=None))
+    saves = [
+        lambda: _save(repository, loaded_for_resolve, loaded_for_resolve.resolve(actor_id=USER_2_ID, now=NOW)),
+        lambda: _save(repository, loaded_for_edit, _edit(loaded_for_edit, content="updated", mentioned_user_ids=None)),
+    ]
+    for save in saves if resolve_first else reversed(saves):
+        save()
 
     sqlite_session.expire_all()
     persisted = sqlite_session.get_one(WorkflowComment, comment.id)
@@ -545,7 +586,7 @@ def test_save_comment_inserts_a_reply_with_member_mentions(
         now=NOW,
     )
 
-    mentions = _save(repository, loaded, changed)
+    mentions = _save(repository, loaded, changed).mentions
 
     reply = sqlite_session.get_one(WorkflowCommentReply, "55555555-5555-5555-5555-555555555555")
     assert (reply.comment_id, reply.content, reply.created_by) == (comment.id, "hello", OWNER_ID)
@@ -579,7 +620,7 @@ def test_save_comment_updates_a_reply_and_replaces_its_mentions(
         reply_id=reply.id, actor_id=OWNER_ID, content="new", mentioned_user_ids=(USER_2_ID, USER_3_ID), now=NOW
     )
 
-    mentions = _save(repository, loaded, changed)
+    mentions = _save(repository, loaded, changed).mentions
 
     sqlite_session.expire_all()
     persisted = sqlite_session.get_one(WorkflowCommentReply, reply.id)

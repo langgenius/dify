@@ -8,7 +8,9 @@ notified, except the actor.
 The aggregate is immutable and depends only on plain values. Each behavior returns the changed aggregate, so a
 service can save the loaded and the changed state together and the repository writes only the difference. The
 service supplies new IDs and the current time. Rules that need another aggregate's state, such as keeping only
-workspace members among the mentioned users, run inside the repository's write.
+workspace members among the mentioned users, run inside the repository's write. Two requests can both resolve the same
+loaded thread, so the repository writes a resolution only while the comment is still unresolved, and the first
+resolver wins.
 """
 
 import uuid
@@ -126,7 +128,10 @@ class WorkflowCommentAgg:
             raise WorkflowCommentPermissionError("Only the comment creator can delete it")
 
     def resolve(self, *, actor_id: str, now: datetime) -> Self:
-        """Resolve on behalf of any member; an already resolved thread is returned unchanged."""
+        """Resolve on behalf of any member; an already resolved thread is returned unchanged.
+
+        The decision rests on loaded state, so the repository's conditional write settles concurrent first resolutions.
+        """
         if self.resolved:
             return self
         return replace(self, resolved=True, resolved_at=now, resolved_by=actor_id, updated_at=now)

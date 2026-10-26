@@ -2,8 +2,9 @@
 
 Reads map rows straight to records. The write side loads and saves whole `WorkflowCommentAgg` threads without
 applying thread rules: a save locks the comment row and writes only the columns and rows that differ between the
-loaded and the changed aggregate. Keeping only workspace members among mentioned users is the one rule here, because
-it reads workspace membership, which another aggregate owns, and must hold in the same transaction as the write.
+loaded and the changed aggregate. A resolution is written only while the comment is still unresolved, so the first
+resolver wins. Keeping only workspace members among mentioned users is the one rule here, because it reads
+workspace membership, which another aggregate owns, and must hold in the same transaction as the write.
 """
 
 from collections.abc import Collection, Iterable, Mapping, Sequence
@@ -29,11 +30,13 @@ from services.app.workflow_comment_service import (
     WorkflowCommentDetail,
     WorkflowCommentMentionRecord,
     WorkflowCommentReplyRecord,
+    WorkflowCommentSaved,
     WorkflowCommentStore,
     WorkflowCommentSummary,
 )
 
 _NO_MENTIONS = MentionContext(app_name=None, commenter_name=None, recipients=())
+_RESOLUTION_COLUMNS = frozenset({"resolved", "resolved_at", "resolved_by", "updated_at"})
 
 
 class WorkflowCommentRepository(WorkflowCommentStore):
@@ -105,15 +108,22 @@ class WorkflowCommentRepository(WorkflowCommentStore):
     @override
     def save_comment(
         self, *, loaded: WorkflowCommentAgg, changed: WorkflowCommentAgg, actor_id: str, notify_user_ids: Sequence[str]
-    ) -> MentionContext:
+    ) -> WorkflowCommentSaved:
         with self._session_factory.begin() as session:
             self._lock(session, changed)
             loaded_values = _comment_values(loaded)
             changed_values = {
                 column: value for column, value in _comment_values(changed).items() if value != loaded_values[column]
             }
-            if changed_values:
-                session.execute(update(WorkflowComment).where(WorkflowComment.id == changed.id).values(changed_values))
+            resolves = changed.resolved and not loaded.resolved
+            # `updated_at` moves with the resolution, so a resolution that loses the race writes nothing.
+            resolution = {
+                column: value for column, value in changed_values.items() if resolves and column in _RESOLUTION_COLUMNS
+            }
+            plain_values = {column: value for column, value in changed_values.items() if column not in resolution}
+            if plain_values:
+                session.execute(update(WorkflowComment).where(WorkflowComment.id == changed.id).values(plain_values))
+            resolution_lost = bool(resolution) and not self._resolve_if_unresolved(session, changed, resolution)
             if changed.mentioned_user_ids != loaded.mentioned_user_ids:
                 self._replace_mentions(session, changed, None, changed.mentioned_user_ids)
 
@@ -126,7 +136,10 @@ class WorkflowCommentRepository(WorkflowCommentStore):
                     self._insert_reply(session, changed, reply)
                 elif previous != reply:
                     self._update_reply(session, changed, previous, reply)
-            return self._mention_context(session, changed, actor_id, notify_user_ids)
+            return WorkflowCommentSaved(
+                comment=self._stored_thread(session, changed) if resolution_lost else changed,
+                mentions=self._mention_context(session, changed, actor_id, notify_user_ids),
+            )
 
     @override
     def delete_comment(self, *, comment: WorkflowCommentAgg) -> None:
@@ -148,6 +161,32 @@ class WorkflowCommentRepository(WorkflowCommentStore):
             )
             .limit(1)
         )
+
+    @staticmethod
+    def _resolve_if_unresolved(session: Session, comment: WorkflowCommentAgg, values: Mapping[str, object]) -> bool:
+        """Write the resolution only while the comment is unresolved; False means another resolution came first."""
+        result = cast(
+            CursorResult,
+            session.execute(
+                update(WorkflowComment)
+                .where(
+                    WorkflowComment.id == comment.id,
+                    WorkflowComment.tenant_id == comment.workspace_id,
+                    WorkflowComment.app_id == comment.app_id,
+                    WorkflowComment.resolved.is_(False),
+                )
+                .values(values)
+            ),
+        )
+        return result.rowcount == 1
+
+    @classmethod
+    def _stored_thread(cls, session: Session, comment: WorkflowCommentAgg) -> WorkflowCommentAgg:
+        """Re-read the thread inside the write; the locking read sees the latest commit at any isolation level."""
+        stored = session.scalar(cls._thread(comment.workspace_id, comment.app_id, comment.id).with_for_update())
+        if stored is None:
+            raise WorkflowCommentNotFoundError
+        return cls._aggregate(stored)
 
     @staticmethod
     def _lock(session: Session, comment: WorkflowCommentAgg) -> None:
