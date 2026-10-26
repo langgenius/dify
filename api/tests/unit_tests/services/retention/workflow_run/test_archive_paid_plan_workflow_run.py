@@ -64,7 +64,7 @@ def _db_disconnect_error() -> OperationalError:
 
 def _run(run_id: str = "run-1") -> WorkflowRun:
     """Build the mapped entity consumed by the archiver without persisting it."""
-    return WorkflowRun(
+    workflow_record = WorkflowRun(
         id=run_id,
         tenant_id="tenant-1",
         app_id="app-1",
@@ -82,9 +82,10 @@ def _run(run_id: str = "run-1") -> WorkflowRun:
         total_steps=0,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
-        created_at=_workflow_run_archiver_sqlite_datetime.datetime(2025, 3, 15, 10, 0, 0),
         finished_at=_workflow_run_archiver_sqlite_datetime.datetime(2025, 3, 15, 10, 1, 0),
     )
+    workflow_record.created_at = _workflow_run_archiver_sqlite_datetime.datetime(2025, 3, 15, 10, 0, 0)
+    return workflow_record
 
 
 class TestWorkflowRunArchiverSqliteCases:
