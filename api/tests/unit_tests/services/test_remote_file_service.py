@@ -371,3 +371,37 @@ def test_upload_rejects_file_that_exceeds_size_limit(
 
     size_check.assert_called_once_with(extension=".pdf", file_size=1024)
     upload.assert_not_called()
+
+
+def test_upload_parameterized_content_type_uses_media_extension_and_mimetype(
+    remote_file_service: RemoteFileService,
+    upload: MagicMock,
+    size_check: MagicMock,
+    storage: Storage,
+    sqlite_session: Session,
+) -> None:
+    url = "https://example.com/download"
+    content = b"%PDF-1.7\nremote document"
+    head = httpx.Response(
+        200,
+        request=httpx.Request("HEAD", url),
+        headers={"Content-Type": "application/pdf; charset=binary", "Content-Length": str(len(content))},
+    )
+    body = httpx.Response(200, request=httpx.Request("GET", url), content=content)
+    with (
+        patch("services.remote_file_service.remote_fetcher.make_request", side_effect=[head, body]),
+        patch("services.remote_file_service.file_helpers.get_signed_file_url", return_value="signed-url"),
+    ):
+        result = remote_file_service.upload_from_url(url=url, user=_account())
+
+    size_check.assert_called_once_with(extension=".pdf", file_size=len(content))
+    assert upload.call_args.kwargs["filename"] == "download.pdf"
+    assert upload.call_args.kwargs["mimetype"] == "application/pdf"
+    upload_file = sqlite_session.get(UploadFile, result.id)
+    assert upload_file is not None
+    assert (upload_file.name, upload_file.extension, upload_file.mime_type) == (
+        "download.pdf",
+        "pdf",
+        "application/pdf",
+    )
+    assert storage.load_once(upload_file.key) == content

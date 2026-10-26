@@ -2,7 +2,6 @@
 
 import type { Field } from '@base-ui/react/field'
 import type { BaseUIComponentProps } from '@base-ui/react/internals/types'
-import type { TextDirection } from '../../direction-provider'
 import type { IconButtonProps } from '../../icon-button'
 import type {
   PopoverActions,
@@ -35,20 +34,17 @@ import { useTimeout } from '@base-ui/utils/useTimeout'
 import { visuallyHidden, visuallyHiddenInput } from '@base-ui/utils/visuallyHidden'
 import * as React from 'react'
 import { cn } from '../../cn'
-import { DirectionProvider, useDirection } from '../../direction-provider'
 import { IconButton } from '../../icon-button'
 import { formLabelClassName } from '../../internal/form-control'
 import { resolveClassName } from '../../internal/resolve-class-name'
 import { mergeProps } from '../../merge-props'
-import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '../../popover'
 import { useMergedRefs } from '../../use-merged-refs'
 import { arePickerValuesEqual } from './use-picker-value'
 
 type PickerOpenChangeDetails = Omit<PopoverChangeEventDetails, 'preventUnmountOnClose'>
 
 type PickerFieldProps = Pick<PopoverProps, 'open' | 'defaultOpen'> & {
-  /** Overrides DirectionProvider for this field and its popup; independent of locale. */
-  direction?: TextDirection
   placeholder?: string
   disabled?: boolean
   readOnly?: boolean
@@ -122,8 +118,6 @@ function PickerRoot({
   onClear: (details: PickerChangeEventDetails) => boolean
   onReset: (details: PickerChangeEventDetails) => boolean
 }) {
-  const inheritedDirection = useDirection()
-  const direction = props.direction ?? inheritedDirection
   const field = useFieldRootContext()
   const { clearErrors, elementRef: formElementRef, formRef } = useFormContext()
   const { labelId: fieldLabelId } = useLabelableContext()
@@ -212,7 +206,9 @@ function PickerRoot({
     field.validation.change(value, resetVersion !== handledResetVersionRef.current)
   })
 
+  const blurTimeout = useTimeout()
   const focus = useStableCallback((element: HTMLElement) => {
+    blurTimeout.clear()
     if (disabled || element.matches(':disabled')) return
     focusedPartRef.current = element
     field.focusOwnerRef.current = triggerRef
@@ -229,13 +225,25 @@ function PickerRoot({
     if (
       contains(triggerRef.current, nextTarget) ||
       contains(clearRef.current, nextTarget) ||
-      contains(popupRef.current, nextTarget)
+      contains(popupRef.current, nextTarget) ||
+      (nextTarget?.hasAttribute('data-base-ui-focus-guard') &&
+        nextTarget.parentElement === popupRef.current?.parentElement)
     )
       return
     if (field.focusOwnerRef.current !== triggerRef) return
-    releaseFocus()
-    field.setTouched(true)
-    if (field.validationMode === 'onBlur') field.validation.commit(value)
+    // Closing popovers can briefly restore trigger focus before the outside target receives it.
+    blurTimeout.start(0, () => {
+      const target = activeElement(ownerDocument(inputRef.current))
+      if (
+        contains(triggerRef.current, target) ||
+        contains(clearRef.current, target) ||
+        contains(popupRef.current, target)
+      )
+        return
+      releaseFocus()
+      field.setTouched(true)
+      if (field.validationMode === 'onBlur') field.validation.commit(value)
+    })
   })
   React.useLayoutEffect(() => {
     if (disabled || inputRef.current?.matches(':disabled')) releaseFocus()
@@ -284,122 +292,120 @@ function PickerRoot({
   }, [props.form, formElementRef, resetPicker, resetTimeout])
 
   return (
-    <DirectionProvider direction={direction}>
-      <PickerContext.Provider
-        value={{
-          ...props,
-          disabled,
-          direction,
-          invalid,
-          displayValue,
-          serializedValue,
-          triggerId,
-          valueId: `${id}-value`,
-          labelId:
-            Array.from(new Set([fieldLabelId, labelId].filter(Boolean))).join(' ') || undefined,
-          setLabelId,
-          errorId: errorMessage ? `${id}-error` : '',
-          requiredId: `${id}-required`,
-          triggerRef,
-          clearRef,
-          popupRef,
-          canEdit,
-          focus,
-          releaseFocus,
-          blur,
-          clear: (event) => {
-            if (!canEdit()) return
-            const details = createChangeEventDetails(
-              'clear-press',
-              event.nativeEvent,
-              event.currentTarget,
-            )
-            if (!onClear(details)) return
-            triggerRef.current?.focus()
-            actionsRef.current?.close()
-          },
-          close: () => actionsRef.current?.close(),
+    <PickerContext.Provider
+      value={{
+        ...props,
+        disabled,
+        invalid,
+        displayValue,
+        serializedValue,
+        triggerId,
+        valueId: `${id}-value`,
+        labelId:
+          Array.from(new Set([fieldLabelId, labelId].filter(Boolean))).join(' ') || undefined,
+        setLabelId,
+        errorId: errorMessage ? `${id}-error` : '',
+        requiredId: `${id}-required`,
+        triggerRef,
+        clearRef,
+        popupRef,
+        canEdit,
+        focus,
+        releaseFocus,
+        blur,
+        clear: (event) => {
+          if (!canEdit()) return
+          const details = createChangeEventDetails(
+            'clear-press',
+            event.nativeEvent,
+            event.currentTarget,
+          )
+          if (!onClear(details)) return
+          triggerRef.current?.focus()
+          actionsRef.current?.close()
+        },
+        close: () => actionsRef.current?.close(),
+      }}
+    >
+      {props.required && (
+        <span id={`${id}-required`} style={visuallyHidden}>
+          {props.requiredLabel ?? 'Required'}
+        </span>
+      )}
+      <input
+        {...field.validation.getValidationProps(disabled)}
+        ref={mergedInputRef}
+        style={name ? visuallyHiddenInput : visuallyHidden}
+        aria-hidden="true"
+        tabIndex={-1}
+        type="text"
+        autoComplete="off"
+        name={name}
+        form={props.form}
+        value={serializedValue}
+        required={props.required}
+        disabled={disabled}
+        readOnly={props.readOnly}
+        onChange={() => {}}
+        onFocus={() => triggerRef.current?.focus({ focusVisible: true })}
+        onInvalid={(event) => {
+          event.preventDefault()
+          setValidationAttempted(true)
+          field.setTouched(true)
+          if (triggerId) formRef.current.fields.get(triggerId)?.validate()
+          const firstInvalid = inputRef.current?.form
+            ? Array.from(inputRef.current.form.elements).find((element) =>
+                element.matches('input:invalid, select:invalid, textarea:invalid'),
+              )
+            : undefined
+          if (!firstInvalid || firstInvalid === inputRef.current) triggerRef.current?.focus()
         }}
-      >
-        {props.required && (
-          <span id={`${id}-required`} style={visuallyHidden}>
-            {props.requiredLabel ?? 'Required'}
-          </span>
-        )}
-        <input
-          {...field.validation.getValidationProps(disabled)}
-          ref={mergedInputRef}
-          style={name ? visuallyHiddenInput : visuallyHidden}
-          aria-hidden="true"
-          tabIndex={-1}
-          type="text"
-          autoComplete="off"
-          name={name}
-          form={props.form}
-          value={serializedValue}
-          required={props.required}
-          disabled={disabled}
-          readOnly={props.readOnly}
-          onChange={() => {}}
-          onFocus={() => triggerRef.current?.focus({ focusVisible: true })}
-          onInvalid={(event) => {
-            event.preventDefault()
-            setValidationAttempted(true)
-            field.setTouched(true)
-            if (triggerId) formRef.current.fields.get(triggerId)?.validate()
-            const firstInvalid = inputRef.current?.form
-              ? Array.from(inputRef.current.form.elements).find((element) =>
-                  element.matches('input:invalid, select:invalid, textarea:invalid'),
+      />
+      <Popover
+        modal="trap-focus"
+        open={props.open}
+        defaultOpen={props.defaultOpen}
+        onOpenChange={(open, details) => {
+          if (open && !canEdit()) details.cancel()
+          props.onOpenChange?.(open, details)
+          if (
+            !details.isCanceled &&
+            !open &&
+            (details.reason === 'focus-out' || details.reason === 'outside-press')
+          ) {
+            if (details.reason === 'outside-press') {
+              const document = ownerDocument(inputRef.current)
+              const pressedLabel = [fieldLabelId, labelId].some((id) => {
+                const label = id ? document.getElementById(id) : null
+                return (
+                  label &&
+                  isLabelTextInteraction({
+                    nativeEvent: details.event,
+                    currentTarget: label,
+                  })
                 )
-              : undefined
-            if (!firstInvalid || firstInvalid === inputRef.current) triggerRef.current?.focus()
-          }}
-        />
-        <Popover
-          open={props.open}
-          defaultOpen={props.defaultOpen}
-          onOpenChange={(open, details) => {
-            if (open && !canEdit()) details.cancel()
-            props.onOpenChange?.(open, details)
-            if (
-              !details.isCanceled &&
-              !open &&
-              (details.reason === 'focus-out' || details.reason === 'outside-press')
-            ) {
-              if (details.reason === 'outside-press') {
-                const document = ownerDocument(inputRef.current)
-                const pressedLabel = [fieldLabelId, labelId].some((id) => {
-                  const label = id ? document.getElementById(id) : null
-                  return (
-                    label &&
-                    isLabelTextInteraction({
-                      nativeEvent: details.event,
-                      currentTarget: label,
-                    })
-                  )
-                })
-                if (pressedLabel) return
-              }
-              const target =
-                details.reason === 'outside-press'
-                  ? getTarget(details.event)
-                  : 'relatedTarget' in details.event
-                    ? details.event.relatedTarget
-                    : null
-              blur(target instanceof ownerWindow(inputRef.current).Element ? target : null)
+              })
+              if (pressedLabel) return
             }
-          }}
-          actionsRef={actionsRef}
-        >
-          {children}
-        </Popover>
-        {errorMessage && (
-          <span id={`${id}-error`} role="alert" className="system-xs-regular text-text-destructive">
-            {errorMessage}
-          </span>
-        )}
-      </PickerContext.Provider>
-    </DirectionProvider>
+            const target =
+              details.reason === 'outside-press'
+                ? getTarget(details.event)
+                : 'relatedTarget' in details.event
+                  ? details.event.relatedTarget
+                  : null
+            blur(target instanceof ownerWindow(inputRef.current).Element ? target : null)
+          }
+        }}
+        actionsRef={actionsRef}
+      >
+        {children}
+      </Popover>
+      {errorMessage && (
+        <span id={`${id}-error`} role="alert" className="system-xs-regular text-text-destructive">
+          {errorMessage}
+        </span>
+      )}
+    </PickerContext.Provider>
   )
 }
 
@@ -494,7 +500,6 @@ function PickerTrigger({
   return (
     <PopoverTrigger
       id={triggerId}
-      dir={field.direction}
       aria-label={ariaLabel}
       aria-labelledby={
         labelId
@@ -617,14 +622,14 @@ function PickerClear({ onClick, disabled, ref, ...props }: PickerClearProps) {
 type PickerContentProps = Omit<PopoverContentProps, 'children' | 'initialFocus' | 'render'>
 function PickerContent({
   children,
+  closeLabel,
   ref,
   className,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
   ...props
-}: PickerContentProps & { children: React.ReactNode }) {
+}: PickerContentProps & { children: React.ReactNode; closeLabel: string }) {
   const { labelId, popupRef, focus, blur } = usePickerContext()
-  const direction = useDirection()
   const focusRef = usePickerFocusRef(popupRef)
   const mergedRef = useMergedRefs(popupRef, ref, focusRef)
   return (
@@ -633,7 +638,6 @@ function PickerContent({
       align="start"
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy ?? (ariaLabel ? undefined : labelId)}
-      dir={direction}
       {...mergeProps(
         {
           onFocus: (event: React.FocusEvent<HTMLDivElement>) => focus(event.currentTarget),
@@ -656,7 +660,18 @@ function PickerContent({
         popupRef.current?.querySelector<HTMLElement>('button:not(:disabled)') ??
         true
       }
-      render={(popupProps, state) => <div {...popupProps}>{state.open ? children : null}</div>}
+      render={(popupProps, state) => (
+        <div {...popupProps}>
+          {state.open && (
+            <React.Fragment>
+              {children}
+              <PopoverClose style={visuallyHidden} tabIndex={-1}>
+                {closeLabel}
+              </PopoverClose>
+            </React.Fragment>
+          )}
+        </div>
+      )}
     >
       {children}
     </PopoverContent>

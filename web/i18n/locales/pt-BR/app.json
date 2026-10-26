@@ -29,6 +29,7 @@
   "appSelector.noParams": "Não são necessários parâmetros",
   "appSelector.params": "PARÂMETROS DO APLICATIVO",
   "appSelector.placeholder": "Selecione um aplicativo...",
+  "appSelector.searchPlaceholder": "Buscar aplicativos por nome…",
   "chooseAppFile": "Escolha um pacote de aplicativo ou arquivo DSL",
   "deleteAppConfirmContent": "A exclusão do aplicativo é irreversível. Os usuários não poderão mais acessar seu aplicativo e todas as configurações de prompt e logs serão permanentemente excluídas.",
   "deleteAppConfirmInputLabel": "Para confirmar, digite <appName>{{appName}}</appName> na caixa abaixo:",

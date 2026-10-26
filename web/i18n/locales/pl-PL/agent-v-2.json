@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Ładowanie baz wiedzy Agent…",
   "agentDetail.configure.knowledgeFs.rebind": "Importowane powiązanie: wybierz ponownie tę bazę wiedzy Agent lub zastąp ją dostępną bazą wiedzy Agent.",
   "agentDetail.configure.knowledgeFs.retry": "Ponów",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "Wyszukiwanie w bazach wiedzy Agent nie jest dostępne w tym wdrożeniu. Poproś administratora o jego włączenie.",
   "agentDetail.configure.knowledgeFs.select": "Wybierz do 10 baz wiedzy Agent",
   "agentDetail.configure.knowledgeFs.title": "Baza wiedzy Agent",
   "agentDetail.configure.knowledgeFs.unavailable": "Ta baza wiedzy Agent jest niedostępna lub nie masz uprawnień do używania jej w tym agencie.",

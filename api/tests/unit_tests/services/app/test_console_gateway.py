@@ -754,6 +754,50 @@ def test_dsl_import_forwards_only_a_guarded_draft_hash(
     assert forwarded == [draft_hash]
 
 
+@pytest.mark.parametrize(
+    ("enter", "expected"),
+    [
+        (
+            lambda services, context, _app_id, params: services.imports.import_app(
+                context, params, preserve_agent_bindings=True
+            ),
+            [True],
+        ),
+        (lambda services, context, _app_id, params: services.console.import_app(context, params), [False]),
+        (
+            lambda services, context, app_id, _params: services.console.copy(
+                context, app_id, CopyAppParams(name="Copy")
+            ),
+            [True],
+        ),
+    ],
+    ids=["imports-on", "console", "copy"],
+)
+def test_import_forwards_preserve_agent_bindings_per_entry(
+    app_services: AppServices,
+    copy_source: tuple[RequestContext, str],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    enter: Callable[[AppServices, RequestContext, str, AppImportParams], object],
+    expected: list[bool],
+) -> None:
+    monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", lambda **_kwargs: [])
+    config_overrides(RBAC_ENABLED=False, DEPLOYMENT_EDITION="COMMUNITY")
+    context, app_id = copy_source
+    forwarded: list[bool] = []
+
+    def import_app(_dsl: AppDslService, *, preserve_agent_bindings: bool, **_kwargs: object) -> Import:
+        forwarded.append(preserve_agent_bindings)
+        return Import(id="import-1", status=ImportStatus.FAILED)
+
+    monkeypatch.setattr(AppDslService, "import_app", import_app)
+    params = AppImportParams(mode="yaml-content", yaml_content="kind: app\n")
+
+    enter(app_services, context, app_id, params)
+
+    assert forwarded == expected
+
+
 @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
 def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
     sqlite_session_factory: sessionmaker[Session],
@@ -863,20 +907,38 @@ def test_import_creator_access_runs_after_successful_commit(
         agent_importer=RosterAgentPackageImporter(),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
     )
+    import_entry = gateway.import_copy if entry == "copy" else gateway.import_dsl
     if commit_fails and status != ImportStatus.FAILED and not (entry == "copy" and status == ImportStatus.PENDING):
         if entry == "confirm":
             with pytest.raises(RuntimeError, match="commit failed"):
                 gateway.confirm_import(context, "import")
         else:
             with pytest.raises(RuntimeError, match="commit failed"):
-                gateway.import_dsl(context, AppImportParams(mode="yaml-content"), as_copy=entry == "copy")
+                import_entry(context, AppImportParams(mode="yaml-content"))
         assert "sync" not in events
         return
     if entry == "confirm":
         returned, was_created = gateway.confirm_import(context, "import")
         assert was_created is created
     else:
-        returned = gateway.import_dsl(context, AppImportParams(mode="yaml-content"), as_copy=entry == "copy")
+        returned = import_entry(context, AppImportParams(mode="yaml-content"))
     assert returned is result
     expected = created and status in (ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS)
     assert (events.count("sync") == 1) is expected
+
+
+def test_console_package_export_forwards_roster_options(
+    app_services: AppServices,
+    copy_source: tuple[RequestContext, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    context, app_id = copy_source
+    captured: dict[str, object] = {}
+
+    def export_app(_self: AppPackageService, **kwargs: object) -> object:
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(AppPackageService, "export_app", export_app)
+    app_services.console.export(context, app_id, AppExportOptions(format="ifpkg", preserve_agent_bindings=True))
+    assert captured["preserve_agent_bindings"] is True
