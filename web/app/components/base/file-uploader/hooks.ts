@@ -196,6 +196,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
           onErrorCallback: (error?: unknown) => {
+            if (!fileStore.getState().isActive) return
             const errorMessage = getFileUploadErrorMessage(
               error,
               t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
@@ -222,6 +223,10 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const startProgressTimer = useCallback(
     (fileId: string) => {
       const timer = setInterval(() => {
+        if (!fileStore.getState().isActive) {
+          clearInterval(timer)
+          return
+        }
         const files = fileStore.getState().files
         const file = files.find((file) => file.id === fileId)
 
@@ -259,6 +264,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
 
       remoteUpload
         .then((res) => {
+          if (!fileStore.getState().isActive) return
           const newFile = {
             ...uploadingFile,
             type: res.mime_type ?? '',
@@ -290,6 +296,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           else handleUpdateFile(newFile)
         })
         .catch((error: unknown) => {
+          if (!fileStore.getState().isActive) return
           if (!isAppAccessError(error) && !isAbortError(error))
             toast.error(t(($) => $['fileUploader.pasteFileLinkInvalid'], { ns: 'common' }))
           handleRemoveFile(uploadingFile.id)
@@ -310,6 +317,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       trialAppId,
       uploadConsoleRemoteFile,
       uploadTrialRemoteFile,
+      fileStore,
     ],
   )
 
@@ -356,6 +364,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       reader.addEventListener(
         'load',
         () => {
+          if (!fileStore.getState().isActive) return
           const uploadingFile = {
             id: uuid4(),
             name: file.name,
@@ -381,6 +390,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
               handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
             },
             onErrorCallback: (error?: unknown) => {
+              if (!fileStore.getState().isActive) return
               const errorMessage = getFileUploadErrorMessage(
                 error,
                 t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
@@ -405,6 +415,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       reader.addEventListener(
         'error',
         () => {
+          if (!fileStore.getState().isActive) return
           toast.error(t(($) => $['fileUploader.uploadFromComputerReadError'], { ns: 'common' }))
         },
         false,
@@ -424,6 +435,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       fileConfig?.allowed_file_types,
       fileConfig?.allowed_file_extensions,
       fileConfig?.enabled,
+      fileStore,
     ],
   )
 
