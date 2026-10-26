@@ -7,7 +7,6 @@ import type {
   PipelineTemplateDetailResponse,
   PipelineTemplateListResponse as PipelineTemplateListContract,
   PipelineVariableResponse,
-  PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse,
   RagPipelineImportCheckDependenciesResponse,
   RagPipelinePublishedRunResponse,
   RagPipelinePublishedWorkflowResponse,
@@ -190,9 +189,9 @@ const isFileIndexingEstimate = (value: unknown): value is IndexingEstimateRespon
 export const selectPreviewRunEstimate = (response: WorkflowAppBlockingResponse) =>
   isFileIndexingEstimate(response.data.outputs) ? response.data.outputs : undefined
 
-export const selectOnlineDocumentPreview = (
-  data: PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse,
-) => ({ content: getString(data, 'content') ?? '' })
+export const selectOnlineDocumentPreview = (data: unknown) => ({
+  content: isRecord(data) ? (getString(data, 'content') ?? '') : '',
+})
 
 const BLOCKS: Record<string, BlockEnum> = BlockEnum
 
