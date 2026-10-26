@@ -213,7 +213,9 @@ describe('Configure chat sessions', () => {
   // looks for it after clearing Build. Re-enable once the test waits for that answer.
   it.skip('clears Build through confirmation and leaves later Preview messages intact', async () => {
     const user = userEvent.setup()
-    createEnvironment().render()
+    await act(async () => {
+      createEnvironment().render()
+    })
     expect(await screen.findByText('Earlier answer')).toBeVisible()
     await user.click(restartButton())
     expect(api.refresh).not.toHaveBeenCalled()
