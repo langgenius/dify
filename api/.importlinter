@@ -46,8 +46,6 @@ ignore_imports =
     core.app.apps.base_app_generator -> services.workflow_draft_variable_service
     core.app.apps.chat.app_generator -> services.conversation_service
     core.app.apps.common.workflow_response_converter -> services.variable_truncator
-    core.app.apps.completion.app_generator -> services.errors.app
-    core.app.apps.completion.app_generator -> services.errors.message
     core.app.apps.message_based_app_generator -> services.errors.app_model_config
     core.app.apps.message_based_app_generator -> services.errors.conversation
     core.app.apps.message_based_app_generator -> services.errors.message
@@ -999,7 +997,7 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:message-suggested-questions-boundary]
-name = Message suggested questions port is framework and persistence neutral
+name = Message suggested questions use case is framework and persistence neutral
 type = forbidden
 source_modules =
     services.message_suggested_questions_service
@@ -1010,6 +1008,45 @@ forbidden_modules =
     models
     repositories
     services.message_service
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:message-suggested-questions-legacy-boundary]
+name = Suggested questions do not return to the legacy message or generation service
+type = forbidden
+source_modules =
+    services.message_suggested_questions_service
+    services.message_suggested_questions_queries
+    services.message_suggested_questions_generator
+    repositories.message_repository
+forbidden_modules =
+    services.message_service
+    services.app_generate_service
+allow_indirect_imports = True
+
+[importlinter:contract:message-suggested-questions-persistence-boundary]
+name = Suggested questions persistence does not call concrete configuration services
+type = forbidden
+source_modules =
+    repositories.message_repository
+forbidden_modules =
+    services.conversation_service
+    services.workflow_service
+    services.agent.runtime_config_service
+    services.agent.roster_service
+allow_indirect_imports = True
+
+[importlinter:contract:message-more-like-this-boundary]
+name = More-like-this policy is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.message_more_like_this_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
     sqlalchemy
     werkzeug
 

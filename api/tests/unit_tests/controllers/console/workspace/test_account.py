@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
-from flask import Flask, request
+from flask import Flask, Response, request
 from jsonschema import Draft202012Validator
 from sqlalchemy.orm import Session
 from typing_extensions import TypedDict
@@ -449,6 +449,78 @@ class TestWorkspaceAccountCases:
             deletion_feedback.submit.assert_called_once_with(email="User@Example.com", feedback="test")
 
     class TestCheckEmailUnique:
+        @pytest.mark.parametrize(
+            "availability_error",
+            [
+                None,
+                account_errors.AccountEmailAlreadyInUseError,
+                account_errors.AccountEmailFrozenError,
+                account_errors.AccountEmailDomainSuspendedError,
+            ],
+        )
+        def test_anonymous_request_never_checks_availability(
+            self, app: Flask, availability_error: type[Exception] | None
+        ) -> None:
+            change_email = MagicMock()
+            change_email.ensure_available.side_effect = availability_error
+            services = SimpleNamespace(accounts=SimpleNamespace(change_email=change_email))
+            login_manager = SimpleNamespace(unauthorized=lambda: Response(status=401))
+            with (
+                app.test_request_context(method="POST", json={"email": "candidate@example.com"}),
+                config_overrides_context(LOGIN_DISABLED=False),
+                patch("controllers.console.wraps._is_setup_completed", return_value=True),
+                patch("libs.login._resolve_current_user", return_value=None),
+                patch("libs.login._get_login_manager", return_value=login_manager),
+                patch("controllers.console.workspace.account.application_services", return_value=services),
+            ):
+                response = CheckEmailUnique().post()
+
+            assert isinstance(response, Response)
+            assert response.status_code == 401
+            change_email.ensure_available.assert_not_called()
+
+        @pytest.mark.parametrize("role", [TenantAccountRole.NORMAL, TenantAccountRole.EDITOR])
+        @pytest.mark.parametrize(
+            ("availability_error", "http_error"),
+            [
+                (None, None),
+                (account_errors.AccountEmailAlreadyInUseError, EmailAlreadyInUseError),
+                (account_errors.AccountEmailFrozenError, AccountInFreezeError),
+                (account_errors.AccountEmailDomainSuspendedError, EmailDomainSuspendedError),
+            ],
+        )
+        def test_authenticated_request_preserves_availability_result(
+            self,
+            app: Flask,
+            role: TenantAccountRole,
+            availability_error: type[Exception] | None,
+            http_error: type[Exception] | None,
+        ) -> None:
+            account = _build_account("signed-in@example.com")
+            account.role = role
+            identity = AccountWithTenant(account, "tenant-id")
+            change_email = MagicMock()
+            change_email.ensure_available.side_effect = availability_error
+            services = SimpleNamespace(accounts=SimpleNamespace(change_email=change_email))
+            with (
+                app.test_request_context(method="POST", json={"email": "Case@Test.com"}),
+                config_overrides_context(LOGIN_DISABLED=False),
+                patch("controllers.console.wraps._is_setup_completed", return_value=True),
+                patch("controllers.console.wraps.current_account_with_tenant", return_value=identity),
+                patch("controllers.console.flask_admission.current_account_with_tenant", return_value=identity),
+                patch("libs.login._resolve_current_user", return_value=account),
+                patch("libs.login.check_csrf_token") as csrf,
+                patch("controllers.console.workspace.account.application_services", return_value=services),
+            ):
+                if http_error is not None:
+                    with pytest.raises(http_error):
+                        CheckEmailUnique().post()
+                else:
+                    assert CheckEmailUnique().post() == {"result": "success"}
+                csrf.assert_called_once_with(request, account.id)
+
+            change_email.ensure_available.assert_called_once_with("Case@Test.com")
+
         def test_delegates_to_email_availability_policy(self, app: Flask) -> None:
             change_email = MagicMock()
 
@@ -465,7 +537,7 @@ class TestWorkspaceAccountCases:
             ):
                 api = CheckEmailUnique()
                 response = inspect.unwrap(api.post)(
-                    api, CheckEmailUniquePayload.model_validate(request.get_json() or {})
+                    api, CheckEmailUniquePayload.model_validate(request.get_json() or {}), _change_email_context()
                 )
 
             assert response == {"result": "success"}
@@ -488,7 +560,9 @@ class TestWorkspaceAccountCases:
             ):
                 api = CheckEmailUnique()
                 with pytest.raises(EmailDomainSuspendedError):
-                    inspect.unwrap(api.post)(api, CheckEmailUniquePayload.model_validate(request.get_json() or {}))
+                    inspect.unwrap(api.post)(
+                        api, CheckEmailUniquePayload.model_validate(request.get_json() or {}), _change_email_context()
+                    )
 
 
 def make_account(
@@ -1164,7 +1238,7 @@ class TestAccountsCases:
                 ),
                 patch.object(account_services.change_email, "ensure_available", ensure_available),
             ):
-                result = method(api, CheckEmailUniquePayload.model_validate(payload))
+                result = method(api, CheckEmailUniquePayload.model_validate(payload), _change_email_context())
 
             assert result["result"] == "success"
 
@@ -1186,7 +1260,7 @@ class TestAccountsCases:
                 patch.object(account_services.change_email, "ensure_available", ensure_available),
             ):
                 with pytest.raises(AccountInFreezeError):
-                    method(api, CheckEmailUniquePayload.model_validate(payload))
+                    method(api, CheckEmailUniquePayload.model_validate(payload), _change_email_context())
 
         def test_email_domain_is_suspended(self, app: Flask, account_services: AccountServices):
             api = CheckEmailUnique()
@@ -1206,4 +1280,4 @@ class TestAccountsCases:
                 patch.object(account_services.change_email, "ensure_available", ensure_available),
             ):
                 with pytest.raises(EmailDomainSuspendedError):
-                    method(api, CheckEmailUniquePayload.model_validate(payload))
+                    method(api, CheckEmailUniquePayload.model_validate(payload), _change_email_context())

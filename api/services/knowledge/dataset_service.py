@@ -151,7 +151,6 @@ class DatasetService:
         tag_ids=None,
         include_all=False,
         accessible_dataset_ids: list[str] | None = None,
-        include_own_datasets: bool = False,
         creator_ids: list[str] | None = None,
         *,
         tags: TagTargetQuery,
@@ -161,7 +160,7 @@ class DatasetService:
 
         if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
-            if include_own_datasets and user:
+            if user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             query = query.where(accessible_filter)
 
@@ -276,7 +275,6 @@ class DatasetService:
         tenant_id: str,
         user=None,
         accessible_dataset_ids: list[str] | None = None,
-        include_own_datasets: bool = False,
         *,
         session: Session,
     ):
@@ -291,7 +289,7 @@ class DatasetService:
                 dataset_id for dataset_id in accessible_dataset_ids if dataset_id in requested_dataset_ids
             ]
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
-            if include_own_datasets and user:
+            if user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             stmt = stmt.where(accessible_filter)
 

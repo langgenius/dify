@@ -408,26 +408,25 @@ function CreateKnowledgeSession() {
             size="lg"
             variant="ghost"
             aria-label={tCommon(($) => $['operation.close'])}
-            className="absolute top-3 right-3 z-10 bg-background-section-burn"
+            className="absolute inset-e-3 top-3 z-10 bg-background-section-burn"
             onClick={requestClose}
             disabled={submissionPending}
           >
             <span aria-hidden className="i-ri-close-line size-5" />
           </IconButton>
 
-          <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle xl:items-end xl:border-r">
-            <div className="min-h-6 w-full max-w-180 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
+          <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle py-6 xl:items-end xl:border-e [@media(max-height:600px)]:py-3">
             <Form
-              className="flex max-h-full min-h-0 w-full max-w-180 flex-col"
+              className="flex min-h-0 w-full max-w-180 flex-1 flex-col"
               onFormSubmit={() => void handleSubmit()}
             >
-              <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
+              <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10 [@media(max-height:600px)]:pb-3">
                 <DialogTitle id={dialogTitleId}>
                   {t(($) => $.createTitle, { ns: 'knowledgeCreate' })}
                 </DialogTitle>
               </header>
 
-              <div className="flex min-h-0 scrollbar-none flex-col gap-7 overflow-y-auto px-6 pb-7 sm:px-10">
+              <div className="flex min-h-0 flex-1 scrollbar-none flex-col gap-7 overflow-y-auto px-6 pb-7 sm:px-10">
                 <div className="flex flex-col gap-4">
                   <Field
                     name="name"
@@ -444,7 +443,7 @@ function CreateKnowledgeSession() {
                   >
                     <FieldLabel>
                       {t(($) => $.name)}
-                      <span aria-hidden className="ml-0.5 text-text-destructive">
+                      <span aria-hidden className="ms-0.5 text-text-destructive">
                         *
                       </span>
                     </FieldLabel>
@@ -603,7 +602,7 @@ function CreateKnowledgeSession() {
                 </div>
               </div>
 
-              <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10">
+              <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10 [@media(max-height:600px)]:py-3">
                 {startMode === 'upload' && (
                   <ModelCostNotice
                     id={modelCostNoticeId}
@@ -633,7 +632,6 @@ function CreateKnowledgeSession() {
                 </div>
               </div>
             </Form>
-            <div className="min-h-px w-full max-w-180 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
           </div>
 
           <aside className="hidden min-h-0 min-w-0 xl:block">

@@ -434,6 +434,11 @@ export type AppMessageFeedbackPayload = {
   rating?: 'dislike' | 'like' | null
 }
 
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
+}
+
 export type AgentLogSourceListResponse = {
   data: Array<AgentLogSourceResponse>
   groups: Array<AgentLogSourceGroupResponse>
@@ -3793,6 +3798,7 @@ export type PostAgentByAgentIdFeedbacksData = {
 }
 
 export type PostAgentByAgentIdFeedbacksErrors = {
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
