@@ -41,7 +41,7 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 from services.app_service import AppService
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 def _scope() -> WorkflowAgentSessionScope:

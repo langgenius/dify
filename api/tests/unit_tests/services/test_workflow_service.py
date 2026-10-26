@@ -833,11 +833,11 @@ class TestWorkflowServiceCases:
                 type=WorkflowType.WORKFLOW,
                 version="2026-03-19T00:00:00",
                 graph=json.dumps(TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()),
-            _features=json.dumps(legacy_features),
+                _features=json.dumps(legacy_features),
                 created_by=account.id,
-            _environment_variables=[],
-            _conversation_variables=[],
-            _rag_pipeline_variables=[],
+                _environment_variables=[],
+                _conversation_variables=[],
+                _rag_pipeline_variables=[],
             )
             draft_workflow = Workflow(
                 id="draft-workflow-id",
@@ -846,11 +846,11 @@ class TestWorkflowServiceCases:
                 type=WorkflowType.WORKFLOW,
                 version=Workflow.VERSION_DRAFT,
                 graph=json.dumps({"nodes": [], "edges": []}),
-            _features=json.dumps({}),
+                _features=json.dumps({}),
                 created_by=account.id,
-            _environment_variables=[],
-            _conversation_variables=[],
-            _rag_pipeline_variables=[],
+                _environment_variables=[],
+                _conversation_variables=[],
+                _rag_pipeline_variables=[],
             )
             sqlite_session.add_all([source_workflow, draft_workflow])
             sqlite_session.commit()

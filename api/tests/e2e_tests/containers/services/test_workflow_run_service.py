@@ -8,6 +8,7 @@ from faker import Faker
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from graphon.enums import WorkflowNodeExecutionStatus
 from machinery.context import RequestContext
 from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole
 from models.model import (
@@ -522,7 +523,7 @@ class TestWorkflowRunService:
                 title=f"Node {i}",
                 inputs=json.dumps({"input": f"test_input_{i}"}),
                 process_data=json.dumps({"process": f"test_process_{i}"}),
-                status="succeeded",
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 elapsed_time=0.5,
                 execution_metadata=json.dumps({"tokens": 50}),
                 created_by_role=CreatorUserRole.ACCOUNT,
@@ -544,7 +545,7 @@ class TestWorkflowRunService:
             title="Paused Node",
             inputs=json.dumps({"input": "paused"}),
             process_data=json.dumps({"process": "paused"}),
-            status="paused",
+            status=WorkflowNodeExecutionStatus.PAUSED,
             elapsed_time=0.5,
             execution_metadata=json.dumps({"tokens": 0}),
             created_by_role=CreatorUserRole.ACCOUNT,

@@ -117,7 +117,7 @@ def test_workflow_history_and_last_execution_exclude_recursive_tool_nodes(
                 triggered_from=origin,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by="account",
-        )
+            )
             execution.created_at = datetime(2026, 1, 1) + timedelta(seconds=index)
             session.add(execution)
     repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)
@@ -179,7 +179,7 @@ def test_workflow_tool_children_are_scoped_to_exact_parent_and_run(
                 ),
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by="account",
-        )
+            )
             execution.created_at = datetime(2026, 1, 1) + timedelta(seconds=index)
             session.add(execution)
         session.add(

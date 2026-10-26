@@ -39,13 +39,13 @@ class TestWorkflowDraftVariableFields:
             file_id="test-file-id",
         )
         mock_variable.variable_file = WorkflowDraftVariableFile(
-                size=100000,
-                length=50,
-                value_type=SegmentType.OBJECT,
-                upload_file_id="test-upload-file-id",
-                tenant_id=str(uuid.uuid4()),
-                app_id=str(uuid.uuid4()),
-                user_id=str(uuid.uuid4()),
+            size=100000,
+            length=50,
+            value_type=SegmentType.OBJECT,
+            upload_file_id="test-upload-file-id",
+            tenant_id=str(uuid.uuid4()),
+            app_id=str(uuid.uuid4()),
+            user_id=str(uuid.uuid4()),
         )
 
         # Mock the file helpers

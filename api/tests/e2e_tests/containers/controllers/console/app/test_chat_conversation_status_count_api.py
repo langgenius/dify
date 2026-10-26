@@ -16,8 +16,8 @@ from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowRun
-from tests.e2e_tests.containers.controllers.console.helpers import ensure_dify_setup
 from models.workflow import WorkflowType as ModelWorkflowType
+from tests.e2e_tests.containers.controllers.console.helpers import ensure_dify_setup
 
 
 def _create_account_and_tenant(db_session: Session) -> tuple[Account, Tenant]:

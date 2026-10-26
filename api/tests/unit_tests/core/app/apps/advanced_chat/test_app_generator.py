@@ -1869,7 +1869,7 @@ def _pause_resume_make_workflow() -> _pause_resume_Workflow:
         type=WorkflowType.CHAT,
         version=_pause_resume_Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="user",
     )
 

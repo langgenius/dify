@@ -1223,7 +1223,7 @@ class TestOpsTraceManagerCases:
             created_by="user-1",
             finished_at=datetime(2025, 2, 20, 10, 0, 5),
         )
-    workflow_run.created_at = datetime(2025, 2, 20, 10, 0, 0)
+        workflow_run.created_at = datetime(2025, 2, 20, 10, 0, 0)
         database.add_all([log, workflow_run])
         database.commit()
         repo = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)

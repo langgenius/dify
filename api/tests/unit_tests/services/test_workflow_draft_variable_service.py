@@ -24,6 +24,7 @@ from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
 from factories.variable_factory import build_segment
 from graphon.enums import BuiltinNodeTypes as _workflow_draft_variable_service_BuiltinNodeTypes
+from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes import BuiltinNodeTypes as _workflow_draft_variable_service_sqlite_BuiltinNodeTypes
 from graphon.variables.segments import StringSegment
@@ -1736,7 +1737,7 @@ class TestWorkflowDraftVariableServiceSqliteCases:
                 inputs='{"input": "test input"}',
                 process_data='{"test_var": "process_value", "other_var": "other_process"}',
                 outputs='{"test_var": "output_value", "other_var": "other_output"}',
-                status="succeeded",
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 elapsed_time=1.5,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=str(uuid.uuid4()),
