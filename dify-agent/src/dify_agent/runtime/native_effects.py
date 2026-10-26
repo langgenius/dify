@@ -22,6 +22,7 @@ from dify_agent.protocol.native_testing import (
     AgentOperationKey,
     AgentPolicyStop,
     AgentRecordedResult,
+    AgentShellJobReceipt,
     FiniteJSON,
 )
 from dify_agent.runtime.context import Deps
@@ -112,6 +113,7 @@ class NativeEffectDispatcher:
         result_store: AgentResultStore,
     ) -> JsonValue:
         token = _dispatch.set(NativeDispatchEnvelope(ref, intent, permit))
+        job_token = _shell_job.set(None)
         try:
             try:
                 result = await invoke(permit)
@@ -146,6 +148,7 @@ class NativeEffectDispatcher:
             await self.policy.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
             return result
         finally:
+            _shell_job.reset(job_token)
             _dispatch.reset(token)
 
 
@@ -205,6 +208,25 @@ class NativeDispatchEnvelope:
             "intent": self.intent.model_dump(mode="json"),
             "permit": self.permit.model_dump(mode="json"),
         }
+
+
+_shell_job: ContextVar[AgentShellJobReceipt | None] = ContextVar("native_shell_job", default=None)
+
+
+def current_shell_job_receipt() -> AgentShellJobReceipt | None:
+    return _shell_job.get()
+
+
+def capture_shell_job_receipt(receipt: AgentShellJobReceipt | None) -> None:
+    """Only the live structured shell boundary supplies invocation-local evidence."""
+    envelope = _dispatch.get()
+    if envelope is not None and envelope.intent.key.occurrence_path[-2] in {
+        "shell_run",
+        "shell_wait",
+        "shell_input",
+        "shell_interrupt",
+    }:
+        _shell_job.set(receipt)
 
 
 _dispatch: ContextVar[NativeDispatchEnvelope | None] = ContextVar("native_agent_dispatch", default=None)

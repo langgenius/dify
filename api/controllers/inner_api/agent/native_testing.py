@@ -299,7 +299,11 @@ class AgentNativeStoreResultApi(Resource):
         payload = _parse(AgentStoreResultPayload, limit=MAX_AGENT_CONFIG_BYTES)
         try:
             result_ref = agent_operations_for_ref(payload.ref).store_result(
-                ref=payload.ref, key=payload.key, result=payload.result, native_dispatch=payload.native_dispatch
+                ref=payload.ref,
+                key=payload.key,
+                result=payload.result,
+                native_dispatch=payload.native_dispatch,
+                shell_job=payload.shell_job,
             )
         except BuilderExecutionPolicyError:
             raise AgentNativeControlRefused() from None

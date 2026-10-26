@@ -22,7 +22,7 @@ import httpx2 as httpx
 from shellctl.client import ShellctlClientError
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol, ShellProviderError
-from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlCommands
+from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlCommands, ShellctlJobStatus
 from dify_agent.runtime_backend.errors import (
     BindingAcquireError,
     BindingCreateError,
@@ -236,6 +236,16 @@ class EnterpriseExecutionBindingBackend:
             if isinstance(exc, Exception):
                 raise BindingCreateError(str(exc)) from exc
             raise
+
+    async def read_job_status(self, binding_ref: str, job_id: str) -> ShellctlJobStatus:
+        """Connect directly to the existing sandbox; GET status and close only."""
+        if binding_ref.startswith("native:"):
+            raise BindingAcquireError("binding_job_status_unsupported")
+        data_plane = await self._create_data_plane(binding_ref, transport_retries=0, follow_redirects=False)
+        try:
+            return await data_plane.client.status(job_id)
+        finally:
+            await data_plane.close()
 
     async def keep_alive(self, binding_ref: str) -> None:
         """Touch the existing sandbox through health only, without a command or allocation."""

@@ -50,7 +50,13 @@ from services.dify_builder.native_testing.repository import (
     native_workflow_revision,
     utc_now,
 )
-from services.dify_builder.native_testing.transitions import dispatch_readiness, require_ancestor_authority
+from services.dify_builder.native_testing.transitions import (
+    dispatch_readiness,
+    pending_reason,
+    require_ancestor_authority,
+    validate_pending_fence,
+    validate_pending_history,
+)
 
 
 def validate_binding(intent: EffectIntent, binding: NativeBinding) -> None:
@@ -111,6 +117,59 @@ def _owned_query(model, owned: OwnedNativeTest):
         model.request_id == owned.ref.request_id,
         model.invocation_id == owned.ref.invocation_id,
     )
+
+
+def _completed_config_read_readiness(session: Session, owned: OwnedNativeTest) -> None:
+    """SQL-only authority for a dependency of an already spent, live shell.
+
+    A later valid approval fence does not revoke the original command. It still
+    fences every new dispatch. Other waits and nonactive owners grant no read.
+    Scope cancellation/expiry and the exact original permit are checked by the
+    enclosing completed-claim validator, before and after every external read.
+    """
+    states = {
+        state.invocation_id: state
+        for state in session.scalars(
+            select(NativeInvocationState).where(
+                NativeInvocationState.request_id == owned.ref.request_id,
+                NativeInvocationState.tenant_id == owned.tenant_id,
+            )
+        )
+    }
+    roots = [state for state in states.values() if state.parent_invocation_id is None]
+    if len(roots) != 1 or (roots[0].app_id, roots[0].workflow_id) != (owned.app_id, owned.workflow_id):
+        raise BuilderExecutionPolicyError("native_dispatch_closed")
+    selected, seen = owned.ref.invocation_id, set()
+    while selected is not None:
+        state = states.get(selected)
+        if (
+            selected in seen
+            or state is None
+            or state.state not in {"running", "waiting"}
+            or type(state.pending_ids) is not list
+            or state.wait_reason not in {None, "approval"}
+            or (state.state == "waiting" and state.wait_reason is None)
+        ):
+            raise BuilderExecutionPolicyError("native_dispatch_closed")
+        seen.add(selected)
+        ref = owned.ref.model_copy(update={"invocation_id": selected})
+        if state.wait_reason == "approval":
+            rows = session.scalars(
+                select(NativePendingAction).where(
+                    NativePendingAction.tenant_id == owned.tenant_id,
+                    NativePendingAction.request_id == owned.ref.request_id,
+                    NativePendingAction.invocation_id == selected,
+                    NativePendingAction.id.in_(state.pending_ids),
+                )
+            ).all()
+            pending = validate_pending_fence(
+                rows, state=state, ref=ref, tenant_id=owned.tenant_id, pending_ids=state.pending_ids
+            )
+            if pending_reason(pending) != "approval":
+                raise BuilderExecutionPolicyError("native_pending_mismatch")
+        elif state.pending_ids:
+            validate_pending_history(session, ref=ref, tenant_id=owned.tenant_id, state=state, states=states)
+        selected = state.parent_invocation_id
 
 
 class EffectAuthorizationService:
@@ -505,6 +564,63 @@ class EffectAuthorizationService:
         self.loader.load(ref=ref)
         with self.loader.locked(ref=ref) as (session, owned, scope):
             self._validate_dispatch_locked(session=session, owned=owned, scope=scope, intent=intent, permit=permit)
+
+    def validate_completed_config_claim(
+        self, *, ref: NativeTestContextRef, intent: EffectIntent, permit: DispatchPermit
+    ) -> str:
+        """Read-only ACK admission; never usable as dispatch or result-store permission.
+
+        The caller must additionally prove its immutable typed ACK and the same
+        live physical job, and repeat this check after that external read.
+        """
+        ref = NativeTestContextRef.model_validate(ref.model_dump(mode="json"))
+        intent = EffectIntent.model_validate(intent.model_dump(mode="json"))
+        permit = DispatchPermit.model_validate(permit.model_dump(mode="json"))
+        if (
+            intent.kind != "shell"
+            or intent.key.occurrence_path[-2:-1] != ("shell_run",)
+            or self._permit_ref(permit) != ref
+        ):
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+        self.loader.load(ref=ref)
+        with self.loader.locked(ref=ref) as (session, owned, scope):
+            attempt = self._attempt(session, owned, permit)
+            binding = self._binding(session, owned, intent)
+            operation = session.scalar(
+                _owned_query(NativeEffectOperation, owned).where(NativeEffectOperation.id == permit.operation_id)
+            )
+            claim = session.scalar(
+                _owned_query(NativeEffectDispatchClaim, owned).where(
+                    NativeEffectDispatchClaim.operation_id == permit.operation_id,
+                    NativeEffectDispatchClaim.attempt_id == permit.attempt_id,
+                )
+            )
+            outcome = session.scalar(
+                _owned_query(NativeEffectOutcome, owned).where(
+                    NativeEffectOutcome.operation_id == permit.operation_id,
+                    NativeEffectOutcome.attempt_id == permit.attempt_id,
+                )
+            )
+            now = self.clock()
+            if (
+                operation is None
+                or operation.operation_digest != operation_digest(intent.key)
+                or operation.intent_digest != canonical_digest(intent.model_dump(mode="json"))
+                or operation.scope_digest != _scope_digest(intent, binding)
+                or operation.state != "completed"
+                or claim is None
+                or outcome is None
+                or outcome.outcome != "completed"
+                or outcome.result_ref is None
+                or outcome.result_ref != operation.result_ref
+                or attempt.expires_at != datetime.fromisoformat(permit.expires_at)
+                or now >= attempt.expires_at
+                or now >= scope.expires_at
+            ):
+                raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+            require_ancestor_authority(session, ref, owned.tenant_id)
+            _completed_config_read_readiness(session, owned)
+            return outcome.result_ref
 
     def claim_dispatch(self, *, ref: NativeTestContextRef, intent: EffectIntent, permit: DispatchPermit) -> None:
         """Consume a reserved permit once, durably, before the sole owner's I/O.

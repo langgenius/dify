@@ -52,6 +52,8 @@ class ShellctlJobStatus(Protocol):
 
 
 class ShellctlClientProtocol(Protocol):
+    async def status(self, job_id: str) -> ShellctlJobStatus: ...
+
     async def health(self) -> HealthResponse: ...
 
     async def run(

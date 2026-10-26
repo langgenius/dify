@@ -935,3 +935,41 @@ async def _exercise_direct_plugin_json_guard(approved, actual, matches, *, chang
                 assert events == []
         finally:
             module._dispatch.reset(token)
+
+
+@pytest.mark.anyio
+async def test_shell_receipt_nested_dispatch_and_cancellation_are_invocation_local():
+    from dify_agent.protocol.native_testing import AgentShellJobReceipt
+
+    module = implementation()
+    dispatcher = module.NativeEffectDispatcher(policy=Policy(PERMIT))
+    intent = INTENT.model_copy(update={"key": INTENT.key.model_copy(update={"occurrence_path": ("shell_run", "call")})})
+    receipt = AgentShellJobReceipt(
+        binding_ref="binding:workspace", job_id="outer", status="running", done=False, exit_code=None
+    )
+    observed = []
+
+    class ReceiptResults(Results):
+        async def store(self, **kwargs):
+            observed.append(module.current_shell_job_receipt())
+            return await super().store(**kwargs)
+
+    async def inner(_permit):
+        assert module.current_shell_job_receipt() is None
+        module.capture_shell_job_receipt(receipt.model_copy(update={"job_id": "inner"}))
+        raise asyncio.CancelledError
+
+    async def outer(_permit):
+        module.capture_shell_job_receipt(receipt)
+        with pytest.raises(asyncio.CancelledError):
+            await dispatcher.invoke_permitted(
+                ref=REF, permit=PERMIT, intent=intent, invoke=inner, result_store=ReceiptResults()
+            )
+        assert module.current_shell_job_receipt() == receipt
+        return "ack"
+
+    await dispatcher.invoke_permitted(
+        ref=REF, permit=PERMIT, intent=intent, invoke=outer, result_store=ReceiptResults()
+    )
+    assert observed == [receipt]
+    assert module.current_shell_job_receipt() is None

@@ -193,6 +193,7 @@ class FakeHttpxModule:
         "/runs",
         "/execution-bindings",
         "/execution-bindings/keep-alive",
+        "/execution-bindings/job-status",
         "/home-snapshots/from-binding",
         "/execution-bindings/files/list",
     ],
@@ -625,3 +626,10 @@ def test_keep_alive_is_absent_without_configured_control_plane_auth(monkeypatch:
     with TestClient(create_app(settings)) as client:
         response = client.post("/execution-bindings/keep-alive", json={"binding_ref": "private-binding"})
     assert response.status_code == 404
+
+
+def test_anonymous_mode_does_not_mount_job_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_app_lifecycle(monkeypatch)
+    settings = ServerSettings(redis_url="redis://example.invalid/0", api_token=None)
+    with TestClient(create_app(settings)) as client:
+        assert client.post("/execution-bindings/job-status", json={}).status_code == 404

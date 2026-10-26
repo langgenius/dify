@@ -89,3 +89,19 @@ spends a tool permit or retries a lost operation. Missing bindings return a fixe
 provider text or binding credentials. The endpoint is absent in anonymous
 migration mode. The owning API decides whether a Run remains eligible for this
 bounded infrastructure operation; the immutable test scope and grants are not renewed.
+
+For confirmed native shell calls, the result callback may include a typed
+`shell_job` receipt captured from the structured command result and the actual
+borrowed lease's binding handle. The replayable result stays unchanged. Model
+output, including tagged metadata printed by a script, never supplies this
+receipt. Missing receipt evidence cannot authorize a completed-ACK config read.
+
+Authenticated deployments expose `POST /execution-bindings/job-status`, selected
+by `binding_ref` and `job_id`, through the SDK's `read_execution_binding_job`
+(and synchronous `read_execution_binding_job_sync`). Local and Enterprise
+connections issue only Shellctl's status GET and close their transient client;
+they do not acquire or release a runtime, run a command, allocate a binding, or
+refresh its TTL. The response contains only `job_id`, `status`, `done`, and
+`exit_code`. Unsupported contexts, missing jobs, mismatched or inconsistent
+responses, and transport failures refuse the read. Anonymous deployments do not
+mount this route. A status response alone grants no execution or config access.

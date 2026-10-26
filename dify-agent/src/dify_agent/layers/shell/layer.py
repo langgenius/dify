@@ -21,6 +21,7 @@ from dify_agent.adapters.shell.protocols import (
     CompleteShellCommandResult,
     ShellCommandProtocol,
     ShellCommandResult,
+    ShellCommandStatus,
     ShellPromptObservation,
 )
 from dify_agent.agent_stub.protocol import AGENT_STUB_AUTH_JWE_ENV_VAR
@@ -32,7 +33,10 @@ from dify_agent.layers.shell.output_text import normalized_output_text, utf8_pre
 from dify_agent.runtime.command_runner import execute_complete_with_commands
 from dify_agent.runtime.context import Deps
 from dify_agent.runtime.native_continuation import NativeApprovalSuspended, NativePolicyStopped
-from dify_agent.runtime.native_effects import NativeToolBoundary
+from dify_agent.runtime.native_effects import NativeToolBoundary, capture_shell_job_receipt
+from dify_agent.protocol.native_testing import AgentShellJobReceipt
+from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease
+from dify_agent.runtime_backend.enterprise import EnterpriseRuntimeLease
 from dify_agent.runtime_backend import BindingLostError, RuntimeLease
 from dify_agent.runtime_backend.native_test_scope import (
     AgentJobUnavailable,
@@ -373,12 +377,14 @@ class ShellSession:
         try:
             env = self._build_shell_command_env(include_agent_stub_env=True)
             agent_stub_token = env.get(AGENT_STUB_AUTH_JWE_ENV_VAR)
-            result = await self._require_resource().commands.run(
+            resource = self._require_resource()
+            result = await resource.commands.run(
                 _wrap_user_script(script, self.config),
                 cwd=self._require_workspace_cwd(),
                 env=env,
                 timeout=timeout,
             )
+            self._capture_job_receipt(resource, result)
             # Register the remote job before observing output so cancellation during
             # a tail request still leaves cleanup with its job and redaction token.
             self._remember_job_id(result.job_id)
@@ -421,8 +427,10 @@ class ShellSession:
 
         try:
             offset = self._tracked_offset(job_id)
-            result = await self._require_resource().commands.wait(job_id, offset=offset, timeout=timeout)
+            resource = self._require_resource()
+            result = await resource.commands.wait(job_id, offset=offset, timeout=timeout)
             self._validate_result_job(job_id, result.job_id)
+            self._capture_job_receipt(resource, result)
             observation = await render_prompt_observation_from_result(
                 self._require_resource().commands,
                 result,
@@ -462,8 +470,10 @@ class ShellSession:
 
         try:
             offset = self._tracked_offset(job_id)
-            result = await self._require_resource().commands.input(job_id, text, offset=offset, timeout=timeout)
+            resource = self._require_resource()
+            result = await resource.commands.input(job_id, text, offset=offset, timeout=timeout)
             self._validate_result_job(job_id, result.job_id)
+            self._capture_job_receipt(resource, result)
             observation = await render_prompt_observation_from_result(
                 self._require_resource().commands,
                 result,
@@ -507,8 +517,10 @@ class ShellSession:
 
         try:
             self._ensure_tracked_job(job_id)
-            result = await self._require_resource().commands.interrupt(job_id, grace_seconds=grace_seconds)
+            resource = self._require_resource()
+            result = await resource.commands.interrupt(job_id, grace_seconds=grace_seconds)
             self._validate_result_job(job_id, result.job_id)
+            self._capture_job_receipt(resource, result)
             self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, result.offset)
             self._job_agent_stub_tokens.pop(result.job_id, None)
@@ -551,6 +563,7 @@ class ShellSession:
             return _tool_unexpected_error("shell_interrupt", exc, job_id=job_id)
 
     def _stop_native_job_failure(self) -> None:
+        capture_shell_job_receipt(None)
         if isinstance(self.deps.resources.leases.get(self.config.runtime), NativeScopeLease):
             raise NativePolicyStopped("native_job_unavailable")
 
@@ -607,6 +620,21 @@ class ShellSession:
             max_output_bytes=_REMOTE_COMPLETE_OUTPUT_MAX_BYTES,
             mode="stdio",
         )
+
+    def _capture_job_receipt(self, resource: RuntimeLease, result: ShellCommandResult | ShellCommandStatus) -> None:
+        # The actual borrowed lease owns physical identity; configuration is not evidence.
+        if isinstance(resource, (ShellctlRuntimeLease, EnterpriseRuntimeLease)):
+            capture_shell_job_receipt(
+                AgentShellJobReceipt.model_validate(
+                    {
+                        "binding_ref": resource.handle,
+                        "job_id": result.job_id,
+                        "status": result.status,
+                        "done": result.done,
+                        "exit_code": result.exit_code,
+                    }
+                )
+            )
 
     def _require_resource(self) -> RuntimeLease:
         lease = self.deps.resources.leases.get(self.config.runtime)

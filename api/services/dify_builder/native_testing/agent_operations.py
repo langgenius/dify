@@ -11,7 +11,13 @@ from dataclasses import dataclass
 from typing import NotRequired, TypedDict
 
 from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
-from dify_agent.protocol.native_testing import AgentEffectIntent, AgentNativeTestRef, AgentOperationKey
+from dify_agent.protocol.native_testing import (
+    AgentEffectIntent,
+    AgentNativeTestRef,
+    AgentOperationKey,
+    AgentShellJobReceipt,
+    AgentShellJobStatus,
+)
 from flask import current_app, g
 from pydantic import Field, JsonValue, StrictBool
 from sqlalchemy import select
@@ -696,6 +702,117 @@ class AgentOperationService:
         return endpoint
 
     @staticmethod
+    def _shell_ack_key(envelope):
+        return "agent-shell-ack:" + canonical_digest(
+            {"operation_id": envelope.permit.operation_id, "attempt_id": envelope.permit.attempt_id}
+        )
+
+    @staticmethod
+    def _shell_ack_payload(*, envelope, endpoint, result_ref, shell_job):
+        # Capture the original selected owner/binding/snapshot, not a later
+        # reconstruction that could attach a running job to another workspace.
+        return {
+            "schema": "agent-shell-ack-v1",
+            "ref": envelope.ref.model_dump(mode="json"),
+            "operation_id": envelope.permit.operation_id,
+            "attempt_id": envelope.permit.attempt_id,
+            "intent_digest": canonical_digest(envelope.intent.model_dump(mode="json")),
+            "result_ref": result_ref,
+            "prepared": endpoint.config.model_dump(mode="json", exclude={"config"}),
+            "shell_job": shell_job.model_dump(mode="json"),
+        }
+
+    def _completed_shell_ack(self, *, envelope, endpoint):
+        ref, intent, permit = api_ref(envelope.ref), api_intent(envelope.intent), api_permit(envelope.permit)
+        result_ref = self.bridge.authorization.validate_completed_config_claim(ref=ref, intent=intent, permit=permit)
+        owned = self.loader.load(ref=ref)
+        with self.loader.session_factory() as session:
+            row = session.scalar(
+                owner_query(NativePayloadObject, ref, owned.tenant_id).where(
+                    NativePayloadObject.kind == "result",
+                    NativePayloadObject.logical_key == self._shell_ack_key(envelope),
+                )
+            )
+            actual_result = session.scalar(
+                owner_query(NativePayloadObject, ref, owned.tenant_id).where(
+                    NativePayloadObject.id == result_ref,
+                    NativePayloadObject.kind == "result",
+                    NativePayloadObject.logical_key == operation_digest(intent.key),
+                )
+            )
+            if row is None or actual_result is None:
+                raise BuilderExecutionPolicyError("native_agent_job_unavailable")
+            receipt = ObjectReceipt.from_payload_object(row)
+        value = self.state_store._read_object(receipt)
+        try:
+            if not isinstance(value, dict):
+                raise ValueError("ACK")
+            job = AgentShellJobReceipt.model_validate(value.get("shell_job"))
+            if (
+                job.done
+                or job.exit_code is not None
+                or job.status not in {"created", "starting", "running"}
+                or job.binding_ref != endpoint.config.workspace.backend_binding_ref
+                or value
+                != self._shell_ack_payload(envelope=envelope, endpoint=endpoint, result_ref=result_ref, shell_job=job)
+            ):
+                raise ValueError("ACK relation")
+        except ValueError:
+            raise BuilderExecutionPolicyError("native_agent_job_unavailable") from None
+        # Encrypted object reads can themselves perform network I/O. Leave no
+        # storage read after the final SQL-only scope/owner/expiry check.
+        current_result = self.bridge.authorization.validate_completed_config_claim(
+            ref=ref, intent=intent, permit=permit
+        )
+        if current_result != result_ref:
+            raise BuilderExecutionPolicyError("native_agent_job_unavailable")
+        return job
+
+    @staticmethod
+    def _read_shell_job(*, binding_ref, job_id):
+        from dify_agent.protocol import ReadExecutionBindingJobRequest
+
+        from clients.agent_backend.factory import create_agent_backend_client
+
+        if not dify_config.AGENT_BACKEND_BASE_URL:
+            raise BuilderExecutionPolicyError("native_agent_job_unavailable")
+        with create_agent_backend_client(
+            base_url=dify_config.AGENT_BACKEND_BASE_URL,
+            api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+        ) as client:
+            return client.read_execution_binding_job_sync(
+                ReadExecutionBindingJobRequest(binding_ref=binding_ref, job_id=job_id)
+            )
+
+    def validate_config_read_shell(self, *, envelope):
+        """Allow pinned config reads under an unsettled claim or a proven live ACK.
+
+        The completed branch grants no dispatch, settlement, lease refresh or
+        other filesystem access. All authority is checked again after status I/O.
+        """
+        try:
+            return self.validate_claimed_shell(envelope=envelope)
+        except BuilderExecutionPolicyError:
+            pass
+        ref, intent = api_ref(envelope.ref), api_intent(envelope.intent)
+        endpoint = self._endpoint(ref)
+        self.revalidate(ref=ref, intent=intent)
+        job = self._completed_shell_ack(envelope=envelope, endpoint=endpoint)
+        try:
+            response = self._read_shell_job(binding_ref=job.binding_ref, job_id=job.job_id)
+            live = AgentShellJobStatus.model_validate(response.model_dump(mode="json"))
+            if live.job_id != job.job_id or live.done or live.exit_code is not None:
+                raise ValueError("not the same live job")
+        except Exception:
+            raise BuilderExecutionPolicyError("native_agent_job_unavailable") from None
+        current = self._endpoint(ref)
+        self.revalidate(ref=ref, intent=intent)
+        checked = self._completed_shell_ack(envelope=envelope, endpoint=current)
+        if current != endpoint or checked != job:
+            raise BuilderExecutionPolicyError("native_agent_job_unavailable")
+        return current
+
+    @staticmethod
     def _model_target(definition):
         from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
         from models.provider_ids import ModelProviderID
@@ -1006,7 +1123,7 @@ class AgentOperationService:
         assert response is not None
         return response
 
-    def store_result(self, *, ref, key, result, native_dispatch=None):
+    def store_result(self, *, ref, key, result, native_dispatch=None, shell_job=None):
         if native_dispatch is not None:
             try:
                 envelope = AgentPhysicalDispatchPayload.model_validate(native_dispatch)
@@ -1014,14 +1131,47 @@ class AgentOperationService:
                 raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch") from None
             if envelope.ref != ref or envelope.intent.key != key:
                 raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
-            self.validate_claimed_shell(envelope=envelope)
+            endpoint = self.validate_claimed_shell(envelope=envelope)
+            if shell_job is not None:
+                try:
+                    shell_job = AgentShellJobReceipt.model_validate(shell_job.model_dump(mode="json"))
+                except (ValueError, AttributeError):
+                    raise BuilderExecutionPolicyError("native_agent_job_unavailable") from None
+                if shell_job.binding_ref != endpoint.config.workspace.backend_binding_ref:
+                    raise BuilderExecutionPolicyError("native_agent_job_unavailable")
             result_ref = self.state_store.store_result(
                 ref=api_ref(ref), key=api_intent(envelope.intent).key, result=result
             )
+            receipt_failed = False
+            try:
+                if shell_job is not None:
+                    native_ref = api_ref(ref)
+                    owned = self.loader.load(ref=native_ref)
+                    receipt = self.state_store.prepare_object(
+                        ref=native_ref,
+                        tenant_id=owned.tenant_id,
+                        kind="result",
+                        logical_key=self._shell_ack_key(envelope),
+                        payload=self._shell_ack_payload(
+                            envelope=envelope, endpoint=endpoint, result_ref=result_ref, shell_job=shell_job
+                        ),
+                    )
+                    # Write once / compare if existing, using the ordinary encrypted
+                    # object acknowledgement; the replayable result stays unwrapped.
+                    with self.loader.locked(ref=native_ref, settlement=True) as (session, _, _):
+                        self.state_store.acknowledge_object(session, receipt)
+            except Exception:
+                # The actual result is already durable. Metadata uncertainty
+                # must not relabel that known ACK unknown or reopen its effect.
+                receipt_failed = True
             self.bridge.authorization.record_outcome(
                 permit=api_permit(envelope.permit), outcome="completed", result_ref=result_ref
             )
+            if receipt_failed:
+                raise BuilderExecutionPolicyError("native_agent_job_unavailable")
             return result_ref
+        if shell_job is not None:
+            raise BuilderExecutionPolicyError("native_agent_job_unavailable")
         native_ref = api_ref(ref)
         self._endpoint(native_ref)
         native_key = OperationKey.model_validate(key.model_dump(mode="json"))

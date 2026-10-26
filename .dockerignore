@@ -13,3 +13,4 @@
 *.md
 !web/README.md
 !api/README.md
+!dify-agent/README.md

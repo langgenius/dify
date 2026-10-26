@@ -42,6 +42,7 @@ from dify_agent.runtime.native_effects import (
     NativeEffectsCapability,
     canonical_effect_json,
     current_native_dispatch,
+    current_shell_job_receipt,
 )
 
 
@@ -69,6 +70,14 @@ class _APIResultStore:
                 key=key,
                 result=result,
                 native_dispatch=envelope.wire() if envelope is not None and shell else None,
+                shell_job=current_shell_job_receipt()
+                if (
+                    envelope is not None
+                    and envelope.ref == ref
+                    and envelope.intent.key == key
+                    and key.occurrence_path[-2] in {"shell_run", "shell_wait", "shell_input", "shell_interrupt"}
+                )
+                else None,
             )
         )
 
