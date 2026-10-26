@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.orm import Session
@@ -13,7 +14,10 @@ from models import Account
 from models.model import App, AppMode, EndUser
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
+from repositories.workflow.definition_repository import workflow_snapshot
 from services.tools.workflow.tool import WorkflowTool
+from services.workflow.contracts import WorkflowSnapshot
+from services.workflow.execution.ports import WorkflowRuntime
 from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 
 
@@ -54,13 +58,14 @@ class _WorkflowQueries:
 @dataclass(frozen=True)
 class _GenerateCall:
     app_model: App
-    workflow: Workflow
+    workflow: WorkflowSnapshot
     user: Account | EndUser
     args: Mapping[str, object]
     invoke_from: InvokeFrom
     streaming: bool
     call_depth: int
     pause_state_config: object | None
+    allow_human_input: bool
 
 
 def test_public_invoke_passes_explicit_session_and_uses_available_workflow_generator(
@@ -70,19 +75,24 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
     workflow = make_workflow(version="published")
     actor = make_account()
     calls: list[_GenerateCall] = []
+    generators: list[WorkflowAppGenerator] = []
+    execution_driver = Mock(name="execution_driver")
+    workflow_runtime: WorkflowRuntime = Mock(spec=WorkflowRuntime, execution_driver=execution_driver)
 
     def generate(
         _generator: WorkflowAppGenerator,
         *,
         app_model: App,
-        workflow: Workflow,
+        workflow: WorkflowSnapshot,
         user: Account | EndUser,
         args: Mapping[str, object],
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
         pause_state_config: object | None,
+        allow_human_input: bool,
     ) -> dict[str, object]:
+        generators.append(_generator)
         calls.append(
             _GenerateCall(
                 app_model=app_model,
@@ -93,6 +103,7 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
                 streaming=streaming,
                 call_depth=call_depth,
                 pause_state_config=pause_state_config,
+                allow_human_input=allow_human_input,
             )
         )
         return {"data": {"outputs": {"answer": "forty-two"}}}
@@ -107,9 +118,9 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
     )
     tool = WorkflowTool(
         workflow_app_id="app-1",
+        workflow_id=workflow.id,
         workflow_as_tool_id="workflow-tool-1",
         version="published",
-        workflow_entities={},
         workflow_call_depth=2,
         entity=ToolEntity(
             identity=ToolIdentity(
@@ -123,6 +134,7 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
         runtime=ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.EXPLORE),
         queries=_WorkflowQueries(app_model=app, workflow_model=workflow, actor_model=actor),
         draft_variable_saver=None,
+        workflow_runtime=workflow_runtime,
     )
 
     with Session() as session:
@@ -137,15 +149,18 @@ def test_public_invoke_passes_explicit_session_and_uses_available_workflow_gener
     assert calls == [
         _GenerateCall(
             app_model=app,
-            workflow=workflow,
+            workflow=workflow_snapshot(workflow),
             user=actor,
             args={"inputs": {"question": "What is six times seven?"}, "files": []},
             invoke_from=InvokeFrom.EXPLORE,
             streaming=False,
             call_depth=3,
             pause_state_config=None,
+            allow_human_input=False,
         )
     ]
+    assert len(generators) == 1
+    assert generators[0]._execution_driver is execution_driver
     assert [message.type for message in messages] == [
         ToolInvokeMessage.MessageType.VARIABLE,
         ToolInvokeMessage.MessageType.TEXT,
