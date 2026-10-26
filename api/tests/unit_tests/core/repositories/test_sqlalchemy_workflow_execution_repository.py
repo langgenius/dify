@@ -253,9 +253,9 @@ class TestSqlalchemyWorkflowExecutionRepositoryCases:
                 exceptions_count=1,
                 created_by_role=_sqlalchemy_workflow_execution_repository_CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC),
                 finished_at=datetime.now(UTC),
             )
+            db_model.created_at = datetime.now(UTC)
             sqlite_session.add(db_model)
             sqlite_session.commit()
             sqlite_session.expunge_all()
@@ -774,7 +774,7 @@ class TestWorkflowControlPersistenceCases:
             tenant_id="tenant-1",
             app_id="app-1",
             workflow_id="workflow-1",
-            type=WorkflowType.WORKFLOW,
+            type=ModelWorkflowType.WORKFLOW,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             version="1",
             status=WorkflowExecutionStatus.STOPPED,
