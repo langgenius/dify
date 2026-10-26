@@ -12,7 +12,7 @@ from flask_restx import Resource
 from pydantic import BaseModel
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.errors import InternalServerError, UnauthorizedError
+from controllers.common.errors import InternalServerError, MessageFeedbackRatingRequiredError, UnauthorizedError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -28,7 +28,6 @@ from controllers.console.explore.error import (
     ConversationNotFoundHTTPError,
     InstalledAppNotFoundHTTPError,
     MessageCursorNotFoundHTTPError,
-    MessageFeedbackRatingRequiredHTTPError,
     MessageNotFoundHTTPError,
     NotChatAppError,
     NotCompletionAppError,
@@ -45,20 +44,27 @@ from libs import helper
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from machinery.context import RequestContext
+from models.enums import FeedbackRating
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
+from services.entities.message_entities import MessageAccount
 from services.errors.app import MoreLikeThisDisabledError
+from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.base import BaseServiceError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
+    FeedbackRatingRequiredError,
     FirstMessageNotExistsError,
+    MessageActorNotFoundError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_generation_service import InstalledAppNotCompletionError
-from services.installed_app_message_service import FeedbackRatingRequiredError, MessageNotChatAppError
-from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
+from services.installed_app_message_service import MessageNotChatAppError
+from services.message_more_like_this_service import (
+    MoreLikeThisConfigNotFoundError,
+    MoreLikeThisNotCompletionError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -83,13 +89,13 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             return view(*args, **kwargs)
         except InstalledAppNotFoundError as error:
             raise InstalledAppNotFoundHTTPError() from error
-        except AppDefinitionUnavailableError as error:
+        except (AppDefinitionUnavailableError, MoreLikeThisConfigNotFoundError, AppModelConfigBrokenError) as error:
             raise AppUnavailableError() from error
-        except (AccountNotFoundError, SuggestedQuestionsActorNotFoundError) as error:
+        except (AccountNotFoundError, MessageActorNotFoundError) as error:
             raise UnauthorizedError("Account no longer exists.") from error
         except MessageNotChatAppError as error:
             raise NotChatAppError() from error
-        except InstalledAppNotCompletionError as error:
+        except MoreLikeThisNotCompletionError as error:
             raise NotCompletionAppError() from error
         except MessageNotExistsError as error:
             raise MessageNotFoundHTTPError() from error
@@ -98,7 +104,7 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except ConversationNotExistsError as error:
             raise ConversationNotFoundHTTPError() from error
         except FeedbackRatingRequiredError as error:
-            raise MessageFeedbackRatingRequiredHTTPError() from error
+            raise MessageFeedbackRatingRequiredError() from error
         except MoreLikeThisDisabledError as error:
             raise AppMoreLikeThisDisabledError() from error
         except SuggestedQuestionsAfterAnswerDisabledError as error:
@@ -150,7 +156,7 @@ class MessageListApi(Resource):
     endpoint="installed_app_message_feedback",
 )
 class MessageFeedbackApi(Resource):
-    @error_responses(MessageFeedbackRatingRequiredHTTPError, MessageNotFoundHTTPError)
+    @error_responses(AppUnavailableError, MessageFeedbackRatingRequiredError, MessageNotFoundHTTPError)
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Feedback submitted successfully", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
@@ -164,11 +170,13 @@ class MessageFeedbackApi(Resource):
         installed_app: InstalledAppRef,
         message_id: UUID,
     ) -> dict[str, object]:
-        application_services().installed_apps.messages.set_feedback(
+        application_services().message_feedbacks.set_feedback(
+            app_id=installed_app.app_id,
+            app_owner_tenant_id=installed_app.app_owner_tenant_id,
+            actor=MessageAccount(account_id=request_context.account_id),
             installed_app=installed_app,
-            account_id=request_context.account_id,
             message_id=str(message_id),
-            rating=payload.rating,
+            rating=FeedbackRating(payload.rating) if payload.rating is not None else None,
             content=payload.content,
         )
         return helper.dump_response(ResultResponse, {"result": "success"})
@@ -202,9 +210,12 @@ class MessageMoreLikeThisApi(Resource):
         installed_app: InstalledAppRef,
         message_id: UUID,
     ) -> Response:
-        response = application_services().installed_apps.generation.generate_more_like_this(
-            installed_app=installed_app,
-            account_id=request_context.account_id,
+        if installed_app.app_mode != "completion":
+            raise NotCompletionAppError()
+        response = application_services().message_more_like_this.generate(
+            app_id=installed_app.app_id,
+            app_owner_tenant_id=installed_app.app_owner_tenant_id,
+            actor=MessageAccount(account_id=request_context.account_id),
             message_id=str(message_id),
             streaming=query.response_mode == "streaming",
         )
@@ -243,7 +254,8 @@ class MessageSuggestedQuestionApi(Resource):
                 app_id=installed_app.app_id,
                 app_owner_tenant_id=installed_app.app_owner_tenant_id,
                 expected_app_mode=installed_app.app_mode,
-                actor=SuggestedQuestionsAccount(account_id=request_context.account_id, invoke_from="explore"),
+                actor=MessageAccount(account_id=request_context.account_id),
+                invoke_from="explore",
                 message_id=str(message_id),
             )
         except (

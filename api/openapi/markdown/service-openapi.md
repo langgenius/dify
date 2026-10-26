@@ -1745,8 +1745,9 @@ Retrieve a paginated list of all feedback submitted for messages in this applica
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | A list of application feedbacks. | **application/json**: [AppFeedbackListResponse](#appfeedbacklistresponse)<br> |
+| 400 | `app_unavailable`: App is no longer available. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /messages/{message_id}/feedbacks
@@ -1771,9 +1772,9 @@ Submit feedback for a message. End users can rate messages as `like` or `dislike
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad request - invalid feedback payload | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `message_feedback_rating_required`: Cannot revoke feedback that does not exist. `app_unavailable`: App is no longer available. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -2024,7 +2025,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
 
-Get next questions suggestions for the current message.
+Get next question suggestions for the current message. If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
 
 #### Parameters
 
@@ -2038,10 +2039,10 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. - `completion_request_error` : Model invocation failed while counting history tokens. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | - `forbidden` : Token scope does not allow access. - `app_not_found` : The token's app no longer exists. - `app_abnormal_status` : App status does not allow API access. - `app_api_disabled` : The app's API service has been disabled. - `workspace_not_found` : The app's workspace no longer exists. - `workspace_archived` : The app's workspace is archived. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | - `not_found` : End user, message, or conversation does not exist. - `agent_version_not_found_error` : Agent config version does not exist. | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -2177,7 +2178,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
 
-Get next questions suggestions for the current message.
+Get next question suggestions for the current message. If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
 
 #### Parameters
 
@@ -2191,10 +2192,10 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `app_unavailable` : App is no longer available. - `completion_request_error` : Model invocation failed while counting history tokens. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | - `forbidden` : Token scope does not allow access. - `app_not_found` : The token's app no longer exists. - `app_abnormal_status` : App status does not allow API access. - `app_api_disabled` : The app's API service has been disabled. - `workspace_not_found` : The app's workspace no longer exists. - `workspace_archived` : The app's workspace is archived. - `app_suggested_questions_after_answer_disabled` : Suggested questions feature is disabled. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | - `not_found` : End user, message, or conversation does not exist. - `agent_version_not_found_error` : Agent config version does not exist. | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -4068,6 +4069,14 @@ Agent has not been published. Please publish the Agent before using the API.
 | tool_input | string |  | No |
 | tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
 
+#### AgentVersionNotFoundError
+
+Agent config version not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentVersionNotFoundError |  | Agent config version not found. |  |
+
 #### Annotation
 
 | Name | Type | Description | Required |
@@ -4132,6 +4141,22 @@ Agent has not been published. Please publish the Agent before using the API.
 | ---- | ---- | ----------- | -------- |
 | AnyJSONValue |  |  |  |
 
+#### AppAbnormalStatusError
+
+The app's status is abnormal.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppAbnormalStatusError |  | The app's status is abnormal. |  |
+
+#### AppApiDisabledError
+
+The app's API service has been disabled.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppApiDisabledError |  | The app's API service has been disabled. |  |
+
 #### AppFeedbackListResponse
 
 | Name | Type | Description | Required |
@@ -4169,6 +4194,22 @@ Agent has not been published. Please publish the Agent before using the API.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object |  | No |
+
+#### AppNotFoundError
+
+The app no longer exists.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppNotFoundError |  | The app no longer exists. |  |
+
+#### AppSuggestedQuestionsAfterAnswerDisabledError
+
+The 'Suggested Questions After Answer' feature is disabled.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppSuggestedQuestionsAfterAnswerDisabledError |  | The 'Suggested Questions After Answer' feature is disabled. |  |
 
 #### AppUnavailableError
 
@@ -7024,6 +7065,14 @@ Agent Knowledge Base is unavailable.
 | rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 | user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | Yes |
 
+#### MessageFeedbackRatingRequiredError
+
+A rating is required when there is no existing feedback to remove.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageFeedbackRatingRequiredError |  | A rating is required when there is no existing feedback to remove. |  |
+
 #### MessageFile
 
 | Name | Type | Description | Required |
@@ -8036,3 +8085,19 @@ Workflow version execution is not available on your current plan. Please upgrade
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | WorkflowVersionExecutionNotAllowedError |  | Workflow version execution is not available on your current plan. Please upgrade to a paid plan. |  |
+
+#### WorkspaceArchivedError
+
+The workspace's status is archived.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkspaceArchivedError |  | The workspace's status is archived. |  |
+
+#### WorkspaceNotFoundError
+
+Tenant does not exist.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkspaceNotFoundError |  | Tenant does not exist. |  |

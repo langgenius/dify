@@ -1,9 +1,7 @@
 'use client'
 import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { AnnotationItemBasic } from '../type'
 import { AlertDialog } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
 import {
   Menu,
   MenuContent,
@@ -12,7 +10,7 @@ import {
   MenuSubmenuTrigger,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
-import { useMutation } from '@tanstack/react-query'
+import { noop, useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,7 +19,7 @@ import { useLocale } from '#i18n'
 import { LanguagesSupported } from '@/i18n/language'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
-import AddAnnotationModal from '../add-annotation-modal'
+import AddAnnotationDialog from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
 import { ClearAllAnnotationsConfirmContent } from '../clear-all-annotations-confirm-modal'
 
@@ -30,7 +28,6 @@ const CSV_HEADER_QA_CN = ['问题', '答案']
 
 type Props = Readonly<{
   appId: string
-  onAdd: (payload: AnnotationItemBasic) => void
   onAdded: () => void
   controlUpdateList: number
 }>
@@ -127,7 +124,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
   )
 }
 
-const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) => {
+const HeaderOptions: FC<Props> = ({ appId, onAdded, controlUpdateList }) => {
   const { t } = useTranslation(['appAnnotation', 'common'])
   const locale = useLocale()
   const [list, setList] = useState<Annotation[]>([])
@@ -165,18 +162,20 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
   const handleExportJsonl = React.useCallback(() => {
     downloadAnnotationJsonl(list, locale)
   }, [list, locale])
-  const [showAddModal, setShowAddModal] = React.useState(false)
 
   return (
     <div className="flex space-x-2">
-      <Button variant="primary" onClick={() => setShowAddModal(true)}>
-        <span aria-hidden className="i-ri-add-line size-4" />
-        <div>{t(($) => $['table.header.addAnnotation'], { ns: 'appAnnotation' })}</div>
-      </Button>
+      <AddAnnotationDialog
+        appId={appId}
+        onAdded={() => {
+          onAdded()
+          void fetchList().catch(noop)
+        }}
+      />
       <Menu modal={false}>
         <MenuTrigger
           aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-          className="mr-0 box-border inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-0 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover"
+          className="me-0 box-border inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-0 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover"
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </MenuTrigger>
@@ -189,14 +188,6 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
           />
         </MenuContent>
       </Menu>
-      {showAddModal && (
-        <AddAnnotationModal
-          isShow={showAddModal}
-          onHide={() => setShowAddModal(false)}
-          onAdd={onAdd}
-        />
-      )}
-
       {showBulkImportModal && (
         <BatchAddModal
           appId={appId}
