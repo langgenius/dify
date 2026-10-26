@@ -17,9 +17,28 @@ from models import Account, App
 if TYPE_CHECKING:
     from dify_agent.layers.execution_context import ApplicationTracingContext
 
-    from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
-    from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+    from core.app.entities.app_invoke_entities import (
+        AdvancedChatAppGenerateEntity,
+        DifyRunContext,
+        WorkflowAppGenerateEntity,
+    )
     from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
+
+
+class AgentAppTracingContext(Protocol):
+    """Tracing-owned view of an Agent App invocation context."""
+
+    @property
+    def dify_context(self) -> DifyRunContext: ...
+
+    @property
+    def agent_id(self) -> str: ...
+
+    @property
+    def conversation_id(self) -> str: ...
+
+    @property
+    def idempotency_key(self) -> str: ...
 
 
 class ApplicationTracingHooks(Protocol):
@@ -29,7 +48,7 @@ class ApplicationTracingHooks(Protocol):
     carry trusted execution context and do not construct services or vendor SDKs.
     """
 
-    def prepare_agent_app(self, context: AgentAppRuntimeBuildContext) -> ApplicationTracingContext | None: ...
+    def prepare_agent_app(self, context: AgentAppTracingContext) -> ApplicationTracingContext | None: ...
 
     def prepare_workflow_agent(
         self, context: WorkflowAgentRuntimeBuildContext, conversation_id: str | None
