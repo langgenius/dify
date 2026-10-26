@@ -452,13 +452,48 @@ export type AvailableModelListResponse = {
   data: Array<ProviderWithModelsResponse>
 }
 
+export type NetworkAccessGroupListResponse = {
+  entitled: boolean
+  groups: Array<NetworkAccessGroupResponse>
+  tenant_id: string
+}
+
+export type NetworkAccessGroupCreatePayload = {
+  allowed_cidrs: Array<string>
+  description?: string
+  name: string
+}
+
+export type NetworkAccessGroupMutationResponse = {
+  group: NetworkAccessGroupResponse
+}
+
+export type NetworkAccessGroupCurrentIpResponse = {
+  client_ip: string
+}
+
+export type NetworkAccessGroupDeleteResponse = {
+  deleted: boolean
+}
+
+export type NetworkAccessGroupUpdatePayload = {
+  allowed_cidrs: Array<string>
+  description?: string
+  expected_version: number
+  name: string
+}
+
+export type NetworkAccessGroupCurrentIpCheckResponse = {
+  allowed: boolean
+  client_ip: string
+  policy_version: number
+}
+
 export type WorkspacePermissionResponse = {
   allow_member_invite: boolean
   allow_owner_transfer: boolean
   workspace_id: string
 }
-
-export type BinaryFileResponse = Blob | File
 
 export type PluginError = ErrorResponse & {
   code: 'plugin_error'
@@ -1215,11 +1250,6 @@ export type WorkflowToolCreatePayload = {
   workflow_app_id: string
 }
 
-export type WorkflowToolHumanInputNotSupportedError = ErrorResponse & {
-  code: 'workflow_tool_human_input_not_supported'
-  status: 400
-}
-
 export type WorkflowToolDeletePayload = {
   workflow_tool_id: string
 }
@@ -1681,6 +1711,22 @@ export type ProviderWithModelsResponse = {
   provider: string
   status: CustomConfigurationStatus
   tenant_id: string
+}
+
+export type NetworkAccessGroupResponse = {
+  allowed_cidrs: Array<string>
+  app_ids: Array<string>
+  apps: Array<NetworkAccessGroupAppResponse>
+  created_at: string
+  description?: string
+  enforcing_count: number
+  id: string
+  name: string
+  tenant_id: string
+  updated_at: string
+  updated_by_account_id?: string | null
+  used_by_count: number
+  version: number
 }
 
 export type PluginAutoUpgradeSettingsPayload = {
@@ -2389,6 +2435,16 @@ export type ProviderModelWithStatusEntity = {
 }
 
 export type CustomConfigurationStatus = 'active' | 'no-configure'
+
+export type NetworkAccessGroupAppResponse = {
+  bound_agent_id?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  mode: string
+  name: string
+}
 
 export type TenantPluginAutoUpgradeStrategySetting = 'disabled' | 'fix_only' | 'latest'
 
@@ -4503,6 +4559,165 @@ export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponses = {
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponse =
   GetWorkspacesCurrentModelsModelTypesByModelTypeResponses[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeResponses]
 
+export type GetWorkspacesCurrentNetworkAccessGroupsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/network-access-groups'
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsError =
+  GetWorkspacesCurrentNetworkAccessGroupsErrors[keyof GetWorkspacesCurrentNetworkAccessGroupsErrors]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsResponses = {
+  200: NetworkAccessGroupListResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsResponse =
+  GetWorkspacesCurrentNetworkAccessGroupsResponses[keyof GetWorkspacesCurrentNetworkAccessGroupsResponses]
+
+export type PostWorkspacesCurrentNetworkAccessGroupsData = {
+  body: NetworkAccessGroupCreatePayload
+  path?: never
+  query?: never
+  url: '/workspaces/current/network-access-groups'
+}
+
+export type PostWorkspacesCurrentNetworkAccessGroupsErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkspacesCurrentNetworkAccessGroupsError =
+  PostWorkspacesCurrentNetworkAccessGroupsErrors[keyof PostWorkspacesCurrentNetworkAccessGroupsErrors]
+
+export type PostWorkspacesCurrentNetworkAccessGroupsResponses = {
+  201: NetworkAccessGroupMutationResponse
+}
+
+export type PostWorkspacesCurrentNetworkAccessGroupsResponse =
+  PostWorkspacesCurrentNetworkAccessGroupsResponses[keyof PostWorkspacesCurrentNetworkAccessGroupsResponses]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsCurrentIpData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/network-access-groups/current-ip'
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsCurrentIpErrors = {
+  403: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsCurrentIpError =
+  GetWorkspacesCurrentNetworkAccessGroupsCurrentIpErrors[keyof GetWorkspacesCurrentNetworkAccessGroupsCurrentIpErrors]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponses = {
+  200: NetworkAccessGroupCurrentIpResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponse =
+  GetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponses[keyof GetWorkspacesCurrentNetworkAccessGroupsCurrentIpResponses]
+
+export type DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdData = {
+  body?: never
+  path: {
+    group_id: string
+  }
+  query: {
+    expected_version: number
+  }
+  url: '/workspaces/current/network-access-groups/{group_id}'
+}
+
+export type DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdError =
+  DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors[keyof DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors]
+
+export type DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses = {
+  200: NetworkAccessGroupDeleteResponse
+}
+
+export type DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses[keyof DeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdData = {
+  body?: never
+  path: {
+    group_id: string
+  }
+  query?: never
+  url: '/workspaces/current/network-access-groups/{group_id}'
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdError =
+  GetWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors[keyof GetWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses = {
+  200: NetworkAccessGroupMutationResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  GetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses[keyof GetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses]
+
+export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdData = {
+  body: NetworkAccessGroupUpdatePayload
+  path: {
+    group_id: string
+  }
+  query?: never
+  url: '/workspaces/current/network-access-groups/{group_id}'
+}
+
+export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors = {
+  default: ErrorResponse
+}
+
+export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdError =
+  PutWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors[keyof PutWorkspacesCurrentNetworkAccessGroupsByGroupIdErrors]
+
+export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses = {
+  200: NetworkAccessGroupMutationResponse
+}
+
+export type PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses[keyof PutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponses]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpData = {
+  body?: never
+  path: {
+    group_id: string
+  }
+  query?: never
+  url: '/workspaces/current/network-access-groups/{group_id}/check-current-ip'
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpError =
+  GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpErrors[keyof GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpErrors]
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponses = {
+  200: NetworkAccessGroupCurrentIpCheckResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponse =
+  GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponses[keyof GetWorkspacesCurrentNetworkAccessGroupsByGroupIdCheckCurrentIpResponses]
+
 export type GetWorkspacesCurrentPermissionData = {
   body?: never
   path?: never
@@ -4543,7 +4758,7 @@ export type GetWorkspacesCurrentPluginAssetError =
   GetWorkspacesCurrentPluginAssetErrors[keyof GetWorkspacesCurrentPluginAssetErrors]
 
 export type GetWorkspacesCurrentPluginAssetResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentPluginAssetResponse =
@@ -4679,7 +4894,7 @@ export type GetWorkspacesCurrentPluginIconError =
   GetWorkspacesCurrentPluginIconErrors[keyof GetWorkspacesCurrentPluginIconErrors]
 
 export type GetWorkspacesCurrentPluginIconResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentPluginIconResponse =
@@ -6518,7 +6733,12 @@ export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleB
 export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/workspace/agents/access-policy'
 }
 
@@ -6608,7 +6828,12 @@ export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBin
 export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/workspace/apps/access-policy'
 }
 
@@ -6701,7 +6926,12 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRol
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/workspace/datasets/access-policy'
 }
 
@@ -6792,7 +7022,9 @@ export type PostWorkspacesCurrentSkillsFilesUploadResponse =
   PostWorkspacesCurrentSkillsFilesUploadResponses[keyof PostWorkspacesCurrentSkillsFilesUploadResponses]
 
 export type PostWorkspacesCurrentSkillsImportData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/current/skills/import'
@@ -7073,7 +7305,7 @@ export type GetWorkspacesCurrentSkillsBySkillIdFilesContentError =
   GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors[keyof GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors]
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentResponse =
@@ -7962,7 +8194,6 @@ export type PostWorkspacesCurrentToolProviderWorkflowCreateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowCreateErrors = {
-  400: WorkflowToolHumanInputNotSupportedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8052,7 +8283,6 @@ export type PostWorkspacesCurrentToolProviderWorkflowUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowUpdateErrors = {
-  400: WorkflowToolHumanInputNotSupportedError | ErrorResponse
   default: ErrorResponse
 }
 

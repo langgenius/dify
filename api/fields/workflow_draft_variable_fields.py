@@ -32,7 +32,7 @@ def _serialize_var_value(variable: WorkflowDraftVariable) -> RecursiveJSONValue:
     return _serialize_segment(value)
 
 
-def _serialize_segment(value: Segment) -> JSONValue:
+def _serialize_segment(value: Segment) -> RecursiveJSONValue:
     # Create a copy to avoid mutating the model's cached deserialized value.
     value = value.model_copy(deep=True)
     # Refresh URL signatures immediately before returning file values to the client.

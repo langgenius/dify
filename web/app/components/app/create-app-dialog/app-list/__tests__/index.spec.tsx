@@ -253,7 +253,7 @@ it('fetches fresh detail by canonical app_id and submits the actual form with an
   )
 })
 
-it('closes the submitted modal immediately and reports detail failure without import or navigation', async () => {
+it('keeps the submitted modal and draft while reporting detail failure without import or navigation', async () => {
   const user = userEvent.setup()
   let rejectDetail: ((reason: Error) => void) | undefined
   request.mockImplementation(
@@ -266,7 +266,8 @@ it('closes the submitted modal immediately and reports detail failure without im
   await openFirst(user)
   await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
   await waitFor(() => expect(request).toHaveBeenCalledOnce())
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  expect(screen.getByRole('textbox', { name: 'app.newApp.name' })).toHaveAttribute('readonly')
   await act(async () => rejectDetail?.(new Error('Unavailable')))
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'))
   expect(request).toHaveBeenCalledOnce()
@@ -300,7 +301,7 @@ it('supports nullable metadata without inventing a name and requires a name befo
   })
   await openFirst(user)
   expect(screen.getByPlaceholderText('app.newApp.appNamePlaceholder')).toHaveValue('')
-  expect(screen.getByRole('button', { name: /common\.operation\.create/ })).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
   expect(request).not.toHaveBeenCalled()
   expect(screen.getByRole('dialog')).toBeInTheDocument()
 })

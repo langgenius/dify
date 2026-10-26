@@ -58,7 +58,7 @@ export default function CreditsExhaustedAlert({
                 deploymentEdition === 'CLOUD' ? (
                   <button
                     type="button"
-                    className="cursor-pointer border-0 bg-transparent p-0 text-left system-xs-medium text-text-accent"
+                    className="cursor-pointer border-0 bg-transparent p-0 text-start system-xs-medium text-text-accent"
                     onClick={() => setPricing('open')}
                   />
                 ) : (

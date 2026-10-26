@@ -71,3 +71,11 @@ class TestIndexApi:
         }
         root_rules = [rule for rule in app.url_map.iter_rules() if rule.rule == "/v1/"]
         assert [rule.endpoint for rule in root_rules] == ["service_api.root"]
+
+    def test_datasource_credentials_route_is_not_registered(self):
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        app.register_blueprint(service_api_bp)
+
+        assert not any(rule.rule == "/v1/datasource-credentials" for rule in app.url_map.iter_rules())
+        assert app.test_client().get("/v1/datasource-credentials").status_code == 404
