@@ -100,3 +100,39 @@ it('does not show a previous annotation response when its request completes late
   await waitFor(() => expect(api.history).toHaveBeenCalledTimes(2))
   expect(screen.queryByText('Old hit')).not.toBeInTheDocument()
 })
+
+it('renders zero scores and loads the requested history page without retaining the previous rows', async () => {
+  api.history.mockImplementation(async ({ query }) => ({
+    ...emptyHistory,
+    page: query?.page ?? 1,
+    total: 11,
+    has_more: query?.page === 1,
+    data:
+      query?.page === 2
+        ? [{ id: 'last-hit', question: 'Last hit', score: null }]
+        : Array.from({ length: 10 }, (_, index) => ({
+            id: `hit-${index}`,
+            question: `Hit ${index}`,
+            match: 'Matched question',
+            response: 'Annotated response',
+            source: 'web_app',
+            score: index / 10,
+            created_at: 1710000000,
+          })),
+  }))
+  const { user } = setup()
+  await user.click(screen.getByRole('button', { name: 'Question a' }))
+  await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.hitHistory' }))
+  const firstHit = await screen.findByRole('row', { name: /^Hit 0 / })
+  expect(within(firstHit).getByRole('cell', { name: '0.00' })).toBeVisible()
+  expect(within(firstHit).getByRole('cell', { name: 'Annotated response' })).toBeVisible()
+  expect(within(firstHit).getByRole('cell', { name: 'Created time' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+  const lastHit = await screen.findByRole('row', { name: /^Last hit / })
+  expect(within(lastHit).getAllByRole('cell', { name: '-' })).toHaveLength(2)
+  expect(screen.queryByRole('row', { name: /^Hit 0 / })).not.toBeInTheDocument()
+  expect(api.history).toHaveBeenLastCalledWith({
+    params: { app_id: 'app-id', annotation_id: 'a' },
+    query: { page: 2, limit: 10 },
+  })
+})
