@@ -1,18 +1,18 @@
 import importlib
 import json
 import sys
-import types
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
 def _build_fake_clickhouse_connect_module():
-    clickhouse_connect = types.ModuleType("clickhouse_connect")
+    clickhouse_connect = FakeModule("clickhouse_connect")
 
     class QueryResult:
         def __init__(self, rows=None, named_rows=None):

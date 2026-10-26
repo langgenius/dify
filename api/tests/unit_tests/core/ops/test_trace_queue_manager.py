@@ -14,6 +14,16 @@ import queue
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
+
+from core.ops.base_trace_instance import bind_application_tracing_hooks
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from tests.unit_tests.config_override import apply_config_overrides
+
+
+@pytest.fixture(autouse=True)
+def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
 
 
 @pytest.fixture
@@ -158,3 +168,37 @@ class TestTraceQueueManagerTelemetryGuard:
             assert called_task is trace_task
             assert trace_queue.empty()
             assert called_task.app_id == "expected-app-id"
+
+
+@pytest.mark.parametrize("enabled_at_start", [False, True])
+def test_application_pipeline_snapshots_switch_without_constructing_sdk(
+    trace_queue_manager_and_task, monkeypatch: pytest.MonkeyPatch, enabled_at_start: bool
+):
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+    trace_queue_manager, trace_task_class, trace_task_name = trace_queue_manager_and_task
+    trace_queue = queue.Queue()
+    calls: list[object] = []
+    current_enabled = enabled_at_start
+
+    def queue_enabled(app_id: object) -> bool:
+        calls.append(app_id)
+        return current_enabled
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "queue_enabled_at_start", staticmethod(queue_enabled))
+    hooks = RuntimeApplicationTracingHooks()
+    app = Flask(__name__)
+    bind_application_tracing_hooks(app, hooks)
+    with (
+        app.app_context(),
+        patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False),
+        patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance") as legacy,
+        patch("core.ops.ops_trace_manager.trace_manager_queue", trace_queue),
+    ):
+        manager = trace_queue_manager(app_id="app-id")
+        current_enabled = not enabled_at_start
+        task = trace_task_class(trace_type=trace_task_name.WORKFLOW_TRACE)
+        manager.add_trace_task(task)
+    legacy.assert_not_called()
+    assert calls == ["app-id"]
+    assert manager.trace_instance is None
+    assert trace_queue.qsize() == int(enabled_at_start)

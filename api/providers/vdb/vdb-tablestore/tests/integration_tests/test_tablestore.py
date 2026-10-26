@@ -33,6 +33,12 @@ class TableStoreVectorTest(AbstractVectorTest):
             ),
         )
 
+    @property
+    def tablestore_vector(self) -> TableStoreVector:
+        """The vector under test, typed as TableStoreVector for its private fields."""
+        assert isinstance(self.vector, TableStoreVector)
+        return self.vector
+
     @override
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="doc_id", value=self.example_doc_id)
@@ -47,9 +53,9 @@ class TableStoreVectorTest(AbstractVectorTest):
             embeddings=[self.example_embedding],
         )
         while True:
-            search_response = self.vector._tablestore_client.search(
-                table_name=self.vector._table_name,
-                index_name=self.vector._index_name,
+            search_response = self.tablestore_vector._tablestore_client.search(
+                table_name=self.tablestore_vector._table_name,
+                index_name=self.tablestore_vector._index_name,
                 search_query=tablestore.SearchQuery(query=tablestore.MatchAllQuery(), get_total_count=True, limit=0),
                 columns_to_get=tablestore.ColumnsToGet(return_type=tablestore.ColumnReturnType.ALL_FROM_INDEX),
             )
@@ -73,7 +79,7 @@ class TableStoreVectorTest(AbstractVectorTest):
         docs = self.vector.search_by_full_text(get_example_text(), document_ids_filter=[self.example_doc_id])
         assert len(docs) == 1
         assert docs[0].metadata["doc_id"] == self.example_doc_id
-        if self.vector._config.normalize_full_text_bm25_score:
+        if self.tablestore_vector._config.normalize_full_text_bm25_score:
             assert docs[0].metadata["score"] == approx(0.1214, abs=1e-3)
         else:
             assert docs[0].metadata.get("score") is None
@@ -82,7 +88,7 @@ class TableStoreVectorTest(AbstractVectorTest):
         docs = self.vector.search_by_full_text(
             get_example_text(), document_ids_filter=[self.example_doc_id], score_threshold=0.5
         )
-        if self.vector._config.normalize_full_text_bm25_score:
+        if self.tablestore_vector._config.normalize_full_text_bm25_score:
             assert len(docs) == 0
         else:
             assert len(docs) == 1

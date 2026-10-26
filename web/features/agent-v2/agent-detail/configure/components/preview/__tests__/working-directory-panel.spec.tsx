@@ -363,6 +363,31 @@ describe('AgentWorkingDirectoryPanel', () => {
     )
   })
 
+  it('loads files only while mounted and starts a fresh directory selection after reopening', async () => {
+    const user = userEvent.setup()
+    const view = renderWorkingDirectoryPanel({ open: false })
+    expect(mocks.sandboxFilesQueryOptions).not.toHaveBeenCalled()
+    view.rerenderPanel({ open: true, source: agentSource })
+    await user.click(
+      await screen.findByRole('tab', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.temporaryFiles',
+      }),
+    )
+    expect(
+      screen.getByRole('tab', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.temporaryFiles',
+      }),
+    ).toHaveAttribute('aria-selected', 'true')
+    view.rerenderPanel({ open: false, source: agentSource })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    view.rerenderPanel({ open: true, source: agentSource })
+    expect(
+      await screen.findByRole('tab', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.persistentFiles',
+      }),
+    ).toHaveAttribute('aria-selected', 'true')
+  })
+
   it('lets keyboard users expand and enter a folder with separate controls', async () => {
     const user = userEvent.setup()
     mocks.sandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => {

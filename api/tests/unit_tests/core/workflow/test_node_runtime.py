@@ -2,7 +2,7 @@ from collections.abc import Iterator, Mapping
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, sentinel
+from unittest.mock import MagicMock, Mock, patch, sentinel
 from uuid import uuid4
 
 import pytest
@@ -411,6 +411,47 @@ def test_dify_prepared_polling_llm_commits_successful_reservation() -> None:
 
     reservation.commit.assert_called_once_with(usage)
     reservation.release.assert_not_called()
+
+
+def test_dify_prepared_polling_llm_releases_reservation_when_success_has_no_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    succeeded_result = LLMPollingResult.model_construct(status=LLMPollingStatus.SUCCEEDED, result=None)
+    polling_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=PluginModelClient(),
+        plugin_service=PluginService,
+    )
+    started_pollings: list[dict[str, object]] = []
+
+    def start_llm_polling(**kwargs: object) -> LLMPollingResult:
+        started_pollings.append(kwargs)
+        return succeeded_result
+
+    monkeypatch.setattr(polling_runtime, "start_llm_polling", start_llm_polling)
+    reservation = sentinel.quota_reservation
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=polling_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    with (
+        patch.object(node_runtime.QuotaManagedModelInstance, "release_quota_safely") as release_quota_safely,
+        pytest.raises(ValueError, match="must include a model result"),
+    ):
+        prepared.start_llm_polling(
+            prompt_messages=[],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            json_schema=None,
+        )
+
+    release_quota_safely.assert_called_once_with(reservation)
+    assert len(started_pollings) == 1
 
 
 def test_dify_prepared_polling_llm_releases_previous_reservation_on_restart() -> None:
@@ -888,6 +929,8 @@ def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_wo
     )
 
     assert handle.raw.tool is runtime_tool
+    assert runtime_tool.runtime.dify_run_context.tenant_id == "tenant-id"
+    assert runtime_tool.runtime.dify_run_context.app_id == "app-id"
     assert "outer_workflow_run_id" not in runtime_tool.runtime.runtime_parameters
     get_runtime.assert_called_once()
 

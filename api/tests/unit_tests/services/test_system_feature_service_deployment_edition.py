@@ -13,7 +13,27 @@ from services.system_feature_service import SystemFeatureService
 
 def test_system_feature_model_requires_deployment_edition() -> None:
     with pytest.raises(ValidationError):
-        SystemFeatureModel.model_validate({})
+        SystemFeatureModel.model_validate({"agent_tracing_api_collection_enabled": False})
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [False, True])
+def test_public_agent_tracing_gate_uses_configured_value_in_every_edition(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    enabled: bool,
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition, OPS_AGENT_TRACE_ENABLED=enabled)
+    monkeypatch.setattr(
+        "services.system_feature_service.EnterpriseService.get_info",
+        staticmethod(lambda: {}),
+    )
+
+    result = SystemFeatureService.get_public_system_features()
+
+    assert result.agent_tracing_api_collection_enabled is enabled
+    assert result.model_dump(mode="json")["agent_tracing_api_collection_enabled"] is enabled
 
 
 @pytest.mark.parametrize(

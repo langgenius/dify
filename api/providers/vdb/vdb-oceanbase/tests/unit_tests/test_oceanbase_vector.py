@@ -2,7 +2,6 @@ import enum
 import importlib
 import json
 import sys
-import types
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -10,12 +9,13 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
 def _build_fake_pyobvector_module():
-    pyobvector = types.ModuleType("pyobvector")
+    pyobvector = FakeModule("pyobvector")
 
     class VECTOR:
         def __init__(self, dim):

@@ -37,7 +37,7 @@ export default function LocaleMenu({
         <span className="truncate">{selectedLanguageName}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" className="max-h-80 w-60 overflow-y-auto">
+      <DropdownMenuContent className="max-h-80 w-60 overflow-y-auto">
         <DropdownMenuRadioGroup<Locale>
           value={locale}
           onValueChange={(value) => {

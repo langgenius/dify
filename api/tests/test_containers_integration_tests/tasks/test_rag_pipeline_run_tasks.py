@@ -1,8 +1,9 @@
 import json
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+from celery.canvas import Signature
 from faker import Faker
 from flask import Flask
 from sqlalchemy.orm import Session
@@ -389,10 +390,8 @@ class TestRagPipelineRunTasks:
         # Set the task key to indicate there are waiting tasks (legacy behavior)
         redis_client.set(legacy_task_key, 1, ex=60 * 60)
 
-        # Mock the Celery group scheduling used by the implementation
-        with patch("tasks.rag_pipeline.rag_pipeline_run_task.group") as mock_group:
-            mock_group.return_value.apply_async = MagicMock()
-
+        # Mock the Celery task publishing used by the implementation
+        with patch.object(Signature, "apply_async", autospec=True) as mock_apply_async:
             # Act: Execute the priority task with new code but legacy queue data
             rag_pipeline_run_task(file_id, tenant.id)
 
@@ -401,11 +400,11 @@ class TestRagPipelineRunTasks:
             mock_file_service["delete_file"].assert_called_once_with(file_id)
             assert mock_pipeline_generator.call_count == 1
 
-            # Verify waiting tasks were processed via group, pull 1 task a time by default
-            assert mock_group.return_value.apply_async.called
+            # Verify waiting tasks were processed via apply_async, pull 1 task a time by default
+            assert mock_apply_async.called
 
             # Verify correct parameters for the first scheduled job signature
-            jobs = mock_group.call_args.args[0] if mock_group.call_args else []
+            jobs = [call.args[0] for call in mock_apply_async.call_args_list]
             first_kwargs = jobs[0].kwargs if jobs else {}
             assert first_kwargs.get("rag_pipeline_invoke_entities_file_id") == legacy_file_ids[0]
             assert first_kwargs.get("tenant_id") == tenant.id
@@ -450,10 +449,8 @@ class TestRagPipelineRunTasks:
         waiting_file_ids = [str(uuid.uuid4()) for _ in range(3)]
         queue.push_tasks(waiting_file_ids)
 
-        # Mock the Celery group scheduling used by the implementation
-        with patch("tasks.rag_pipeline.rag_pipeline_run_task.group") as mock_group:
-            mock_group.return_value.apply_async = MagicMock()
-
+        # Mock the Celery task publishing used by the implementation
+        with patch.object(Signature, "apply_async", autospec=True) as mock_apply_async:
             # Act: Execute the regular task
             rag_pipeline_run_task(file_id, tenant.id)
 
@@ -462,11 +459,11 @@ class TestRagPipelineRunTasks:
             mock_file_service["delete_file"].assert_called_once_with(file_id)
             assert mock_pipeline_generator.call_count == 1
 
-            # Verify waiting tasks were processed via group.apply_async
-            assert mock_group.return_value.apply_async.called
+            # Verify waiting tasks were processed via apply_async
+            assert mock_apply_async.called
 
             # Verify correct parameters for the first scheduled job signature
-            jobs = mock_group.call_args.args[0] if mock_group.call_args else []
+            jobs = [call.args[0] for call in mock_apply_async.call_args_list]
             first_kwargs = jobs[0].kwargs if jobs else {}
             assert first_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_ids[0]
             assert first_kwargs.get("tenant_id") == tenant.id
@@ -564,10 +561,8 @@ class TestRagPipelineRunTasks:
         waiting_file_id = str(uuid.uuid4())
         queue.push_tasks([waiting_file_id])
 
-        # Mock the Celery group scheduling used by the implementation
-        with patch("tasks.rag_pipeline.rag_pipeline_run_task.group") as mock_group:
-            mock_group.return_value.apply_async = MagicMock()
-
+        # Mock the Celery task publishing used by the implementation
+        with patch.object(Signature, "apply_async", autospec=True) as mock_apply_async:
             # Act: Execute the regular task (should not raise exception)
             rag_pipeline_run_task(file_id, tenant.id)
 
@@ -578,10 +573,10 @@ class TestRagPipelineRunTasks:
             assert mock_pipeline_generator.call_count == 1
 
             # Verify waiting task was still processed despite core processing error
-            assert mock_group.return_value.apply_async.called
+            assert mock_apply_async.called
 
             # Verify correct parameters for the first scheduled job signature
-            jobs = mock_group.call_args.args[0] if mock_group.call_args else []
+            jobs = [call.args[0] for call in mock_apply_async.call_args_list]
             first_kwargs = jobs[0].kwargs if jobs else {}
             assert first_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id
             assert first_kwargs.get("tenant_id") == tenant.id
@@ -694,10 +689,8 @@ class TestRagPipelineRunTasks:
         queue1.push_tasks([waiting_file_id1])
         queue2.push_tasks([waiting_file_id2])
 
-        # Mock the Celery group scheduling used by the implementation
-        with patch("tasks.rag_pipeline.rag_pipeline_run_task.group") as mock_group:
-            mock_group.return_value.apply_async = MagicMock()
-
+        # Mock the Celery task publishing used by the implementation
+        with patch.object(Signature, "apply_async", autospec=True) as mock_apply_async:
             # Act: Execute the regular task for tenant1 only
             rag_pipeline_run_task(file_id1, tenant1.id)
 
@@ -706,9 +699,9 @@ class TestRagPipelineRunTasks:
             assert mock_file_service["delete_file"].call_count == 1
             assert mock_pipeline_generator.call_count == 1
 
-            # Verify only tenant1's waiting task was processed (via group)
-            assert mock_group.return_value.apply_async.called
-            jobs = mock_group.call_args.args[0] if mock_group.call_args else []
+            # Verify only tenant1's waiting task was processed (via apply_async)
+            assert mock_apply_async.called
+            jobs = [call.args[0] for call in mock_apply_async.call_args_list]
             first_kwargs = jobs[0].kwargs if jobs else {}
             assert first_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id1
             assert first_kwargs.get("tenant_id") == tenant1.id
@@ -926,10 +919,8 @@ class TestRagPipelineRunTasks:
         waiting_file_id = str(uuid.uuid4())
         queue.push_tasks([waiting_file_id])
 
-        # Mock the Celery group scheduling used by the implementation
-        with patch("tasks.rag_pipeline.rag_pipeline_run_task.group") as mock_group:
-            mock_group.return_value.apply_async = MagicMock()
-
+        # Mock the Celery task publishing used by the implementation
+        with patch.object(Signature, "apply_async", autospec=True) as mock_apply_async:
             # Act & Assert: Execute the regular task (should raise Exception)
             with pytest.raises(Exception, match="File not found"):
                 rag_pipeline_run_task(file_id, tenant.id)
@@ -939,10 +930,10 @@ class TestRagPipelineRunTasks:
             mock_pipeline_generator.assert_not_called()
 
             # Verify waiting task was still processed despite file error
-            assert mock_group.return_value.apply_async.called
+            assert mock_apply_async.called
 
             # Verify correct parameters for the first scheduled job signature
-            jobs = mock_group.call_args.args[0] if mock_group.call_args else []
+            jobs = [call.args[0] for call in mock_apply_async.call_args_list]
             first_kwargs = jobs[0].kwargs if jobs else {}
             assert first_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id
             assert first_kwargs.get("tenant_id") == tenant.id

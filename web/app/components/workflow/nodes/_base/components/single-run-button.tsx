@@ -65,7 +65,7 @@ const SingleRunButton = ({
       <Popover>
         <PopoverTrigger openOnHover render={button} />
         <PopoverContent
-          placement="top"
+          side="top"
           aria-label={actionLabel}
           className="max-w-75 px-3 py-2 system-xs-regular text-text-secondary"
         >

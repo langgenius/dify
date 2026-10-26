@@ -47,7 +47,7 @@ from services.trigger.schedule_service import ScheduleService
 from services.workflow_service import WorkflowService
 from tasks import trigger_processing_tasks
 
-from .conftest import MockCeleryGroup, MockCelerySignature, MockPluginSubscription
+from .conftest import MockPluginSubscription, RecordingScheduleTask
 
 # Test constants
 WEBHOOK_ID_PRODUCTION = "wh1234567890123456789012"
@@ -242,8 +242,6 @@ def test_schedule_poll_dispatches_due_plan(
     db_session_with_containers: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
-    mock_celery_group: MockCeleryGroup,
-    mock_celery_signature: MockCelerySignature,
     monkeypatch: pytest.MonkeyPatch,
     schedule_type: str,
 ) -> None:
@@ -271,14 +269,13 @@ def test_schedule_poll_dispatches_due_plan(
 
     next_time = naive_utc_now() + timedelta(hours=1)
     monkeypatch.setattr(workflow_schedule_task, "calculate_next_run_at", lambda *_args, **_kwargs: next_time)
-    monkeypatch.setattr(workflow_schedule_task, "group", mock_celery_group)
-    monkeypatch.setattr(workflow_schedule_task, "run_schedule_trigger", mock_celery_signature)
+    schedule_task = RecordingScheduleTask()
+    monkeypatch.setattr(workflow_schedule_task, "run_schedule_trigger", schedule_task)
 
     poll_workflow_schedules()
 
-    assert mock_celery_group.collected, f"Should dispatch signatures for due {schedule_type} schedules"
-    scheduled_ids = {sig["schedule_id"] for sig in mock_celery_group.collected}
-    assert plan.id in scheduled_ids
+    assert schedule_task.calls, f"Should dispatch tasks for due {schedule_type} schedules"
+    assert plan.id in {schedule_id for schedule_id, _ in schedule_task.calls}
 
 
 def test_schedule_visual_debug_poll_generates_event(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -2049,7 +2049,8 @@ def test_construct_llm_attributes_dict_branch(trace_instance):
     assert attrs["llm.input_messages.0.message.role"] == "user"
 
 
-def test_api_check_success(trace_instance):
+def test_phoenix_api_check_success(trace_instance):
+    trace_instance.arize_phoenix_config = PhoenixConfig(project="test", endpoint="https://phoenix.test")
     assert trace_instance.api_check() is True
 
 

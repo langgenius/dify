@@ -131,7 +131,7 @@ const ConnectionActions = ({
           if (!payload || !canManageConnection(payload)) return null
           const canEdit = canEditConnection(payload)
           return (
-            <DropdownMenuContent placement="bottom-end" className="w-56 max-w-(--available-width)">
+            <DropdownMenuContent className="w-56 max-w-(--available-width)">
               <DropdownMenuItem
                 className="h-auto min-h-8"
                 disabled={!canEdit}

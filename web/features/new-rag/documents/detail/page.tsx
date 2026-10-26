@@ -1,0 +1,69 @@
+'use client'
+
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
+import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { getHttpErrorStatus } from '@/service/http-error'
+import { DocumentErrorState } from './error-state'
+import { DocumentDetailStateBoundary } from './state/boundary'
+import {
+  documentDetailQueryDataAtom,
+  documentDetailQueryErrorAtom,
+  documentDetailQueryIsPendingAtom,
+  refreshDocumentDetailAtom,
+} from './state/queries'
+import { useDocumentDetailTitle } from './title-sync'
+import { DocumentDetailWorkspace } from './workspace'
+
+function DocumentDetailContent() {
+  const { t } = useTranslation(['knowledgeCitation', 'knowledgeDocuments'])
+  const { t: tCommon } = useTranslation(['common'])
+  const document = useAtomValueRawSync(documentDetailQueryDataAtom)
+  const documentError = useAtomValueRawSync(documentDetailQueryErrorAtom)
+  const documentIsPending = useAtomValueRawSync(documentDetailQueryIsPendingAtom)
+  const refreshDocument = useSetAtom(refreshDocumentDetailAtom)
+  useDocumentDetailTitle()
+  const documentErrorStatus = getHttpErrorStatus(documentError)
+
+  if (documentIsPending)
+    return (
+      <div className="flex min-h-80 min-w-0 flex-1 items-center justify-center">
+        <LoadingPlaceholder />
+        <span className="sr-only">{tCommon(($) => $.loading)}</span>
+      </div>
+    )
+
+  if (documentErrorStatus === 403 || documentErrorStatus === 404)
+    return (
+      <DocumentErrorState
+        description={t(($) => $.documentNotFoundDescription, { ns: 'knowledgeCitation' })}
+        title={t(($) => $.documentNotFoundTitle, { ns: 'knowledgeDocuments' })}
+      />
+    )
+
+  if (!document) {
+    return (
+      <DocumentErrorState
+        description={t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' })}
+        onRetry={() => void refreshDocument()}
+        title={t(($) => $.documentLoadErrorTitle, { ns: 'knowledgeDocuments' })}
+      />
+    )
+  }
+
+  return <DocumentDetailWorkspace />
+}
+
+export function DocumentDetailPage({
+  documentId,
+  knowledgeSpaceId,
+}: {
+  documentId: string
+  knowledgeSpaceId: string
+}) {
+  return (
+    <DocumentDetailStateBoundary documentId={documentId} knowledgeSpaceId={knowledgeSpaceId}>
+      <DocumentDetailContent />
+    </DocumentDetailStateBoundary>
+  )
+}

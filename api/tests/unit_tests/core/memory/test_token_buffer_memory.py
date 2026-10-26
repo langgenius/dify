@@ -1,6 +1,7 @@
 """Comprehensive SQLite-backed tests for token-buffer memory."""
 
 import json
+import re
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -146,6 +147,7 @@ def _persist_message(
     answer_tokens: int = 5,
     created_at: datetime | None = None,
     workflow_run_id: str | None = None,
+    parent_message_id: str | None = None,
 ) -> Message:
     message = Message(
         id=str(uuid4()),
@@ -154,6 +156,7 @@ def _persist_message(
         _inputs={},
         query=query,
         message={},
+        parent_message_id=parent_message_id,
         message_unit_price=Decimal(0),
         answer=answer,
         answer_tokens=answer_tokens,
@@ -374,6 +377,38 @@ class TestGetHistoryPromptMessages:
         assert len(selects) == 4
         assert sum("FROM apps" in sql for sql in selects) == 1
         assert len(result) == 10
+
+    def test_history_query_skips_saved_prompt_column(self, database: Database) -> None:
+        """Message.message stores each turn's full prompt, so history must neither select nor lazy-load it."""
+        mem = self._make_memory(database)
+        base_time = datetime.now(UTC).replace(tzinfo=None)
+        parent_message_id: str | None = None
+        for index in range(3):
+            parent_message_id = _persist_message(
+                database,
+                mem.conversation.id,
+                query=f"query-{index}",
+                answer=f"answer-{index}",
+                created_at=base_time + timedelta(seconds=index),
+                parent_message_id=parent_message_id,
+            ).id
+        # Reload rows from the database instead of reusing fully loaded instances from the identity map.
+        database.session.expunge_all()
+        before = len(database.statements)
+
+        result = mem.get_history_prompt_messages()
+
+        message_selects = [sql for sql, _ in database.statements[before:] if "FROM messages" in sql]
+        assert len(message_selects) == 1
+        assert re.search(r"\bmessages\.message\b", message_selects[0]) is None
+        assert [prompt.content for prompt in result] == [
+            "query-0",
+            "answer-0",
+            "query-1",
+            "answer-1",
+            "query-2",
+            "answer-2",
+        ]
 
     @pytest.mark.parametrize(
         ("token_values", "max_token_limit", "expected_length"),

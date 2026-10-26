@@ -20,6 +20,7 @@ from dify_agent.layers.dify_core_tools import layer as core_tools
 from dify_agent.layers.dify_plugin import llm_layer as llm, tools_layer as plugin_tools
 from dify_agent.layers.execution_context import layer as execution_context
 from dify_agent.layers.knowledge import layer as knowledge
+from dify_agent.layers.knowledge_fs import layer as knowledge_fs
 from dify_agent.layers.output import output_layer as output
 from dify_agent.layers.runtime import layer as runtime
 from dify_agent.layers.shell import layer as shell
@@ -45,6 +46,7 @@ REGISTRY: dict[str, ModuleType] = {
     "tools": plugin_tools,
     "core_tools": core_tools,
     "knowledge": knowledge,
+    "knowledge_fs": knowledge_fs,
     "output": output,
 }
 
@@ -53,6 +55,7 @@ _REFERENCES: dict[ModuleType, dict[str, ModuleType]] = {
     plugin_tools: {"execution_context": execution_context, "shell": shell},
     core_tools: {"execution_context": execution_context},
     knowledge: {"execution_context": execution_context},
+    knowledge_fs: {"execution_context": execution_context, "shell": shell},
     shell: {"runtime": runtime, "execution_context": execution_context},
     config: {"shell": shell},
 }
@@ -108,6 +111,8 @@ def load_modules(
                 )
         if module is runtime and services.runtime_backend_profile is None:
             raise ValueError("Runtime module requires a configured runtime backend")
+        if module is knowledge_fs and services.knowledge_session_store is None:
+            raise ValueError("KnowledgeFS module requires the server-owned shared session store")
         if module is plugin_tools:
             for tool in cast(plugin_tools.Config, cfg).tools:
                 plugin_tools._validate_required_hidden_parameters(tool, tool.parameters)

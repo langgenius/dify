@@ -109,7 +109,7 @@ const ConnectionPicker = ({
         />
       </PopoverTrigger>
       <PopoverContent
-        placement="bottom-start"
+        align="start"
         sideOffset={8}
         className="max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) overflow-y-auto bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >

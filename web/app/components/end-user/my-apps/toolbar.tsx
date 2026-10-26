@@ -60,7 +60,7 @@ export default function MyAppsToolbar({ filter, searchInputRef, onFilterChange }
             {sortLabels[filter.sort]}
           </SelectTrigger>
           <SelectPortal>
-            <SelectPositioner placement="bottom-end">
+            <SelectPositioner side="bottom" align="end">
               <SelectPopup className="w-54 bg-components-panel-bg-blur backdrop-blur-[5px]">
                 <SelectList className="p-2">
                   <SelectItem value="last-used" className="gap-1">

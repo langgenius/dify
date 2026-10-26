@@ -115,6 +115,7 @@ def system_features(
     webapp_auth: bool = False,
 ) -> SystemFeatureModel:
     return SystemFeatureModel(
+        agent_tracing_api_collection_enabled=False,
         deployment_edition=DeploymentEdition.ENTERPRISE,
         license=LicenseStatusModel(status=license_status),
         webapp_auth=WebAppAuthModel(enabled=webapp_auth),

@@ -140,7 +140,9 @@ const ReuseFromNode = ({ nodes = [], value, onChange, onLocate }: ReuseFromNodeP
                 </IconButton>
               }
             />
-            <TooltipContent placement="bottom-end">{locateLabel}</TooltipContent>
+            <TooltipContent side="bottom" align="end">
+              {locateLabel}
+            </TooltipContent>
           </Tooltip>
         </div>
       )}

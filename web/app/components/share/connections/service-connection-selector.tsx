@@ -201,7 +201,8 @@ export default function ServiceConnectionSelector({
         </PopoverTrigger>
         <PopoverContent
           finalFocus={() => (skipReturnFocusRef.current ? false : triggerRef.current)}
-          placement="bottom-end"
+          side="bottom"
+          align="end"
           sideOffset={4}
           aria-label={
             isApiKey

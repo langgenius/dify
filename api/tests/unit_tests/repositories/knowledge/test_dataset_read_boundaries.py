@@ -28,7 +28,7 @@ from models.dataset import (
     ExternalKnowledgeApis,
     ExternalKnowledgeBindings,
 )
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
 from models.tools import ToolFile
 from repositories.knowledge.dataset_read_repository import get_external_api_bindings_batch
@@ -52,10 +52,10 @@ def _document(index: int = 1) -> Document:
         tenant_id="tenant-1",
         dataset_id="dataset-1",
         position=index,
-        data_source_type="upload_file",
+        data_source_type=DataSourceType("upload_file"),
         batch="batch-1",
         name="source.txt",
-        created_from="web",
+        created_from=DocumentCreatedFrom("web"),
         created_by="account-1",
     )
 
@@ -228,7 +228,7 @@ def test_document_metadata_respects_dataset_builtin_flag(sqlite_session: Session
 
 def test_waiting_document_reports_paused_until_resumed() -> None:
     document = _document()
-    document.indexing_status = "waiting"
+    document.indexing_status = IndexingStatus.WAITING
     document.is_paused = True
     assert document.display_status == "paused"
     document.is_paused = False

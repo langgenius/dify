@@ -41,7 +41,7 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, DocumentSegmentSummary
-from models.enums import IndexingStatus, SegmentType
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentType
 from services.api_token_service import CachedApiToken
 from services.knowledge.dataset_service import DocumentService, SegmentService
 from services.knowledge.segments.application import SegmentMutationService
@@ -131,6 +131,30 @@ def _child_chunk() -> ChildChunk:
     return child_chunk
 
 
+def _document(
+    *,
+    document_id: str | None = None,
+    dataset_id: str = "dataset-id",
+    indexing_status: IndexingStatus | str = IndexingStatus.WAITING,
+    enabled: bool = True,
+) -> Document:
+    document = Document(
+        tenant_id="tenant-id",
+        dataset_id=dataset_id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-id",
+        name="document.txt",
+        created_from=DocumentCreatedFrom.API,
+        created_by="account-id",
+        indexing_status=IndexingStatus(indexing_status),
+        enabled=enabled,
+    )
+    if document_id is not None:
+        document.id = document_id
+    return document
+
+
 def _document_for_dataset(
     dataset: Dataset, document_id: str = "doc-id", doc_form: str = IndexStructureType.PARAGRAPH_INDEX
 ) -> Document:
@@ -139,10 +163,10 @@ def _document_for_dataset(
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
         position=1,
-        data_source_type="upload_file",
+        data_source_type=DataSourceType("upload_file"),
         batch="batch-1",
         name="Document",
-        created_from="api",
+        created_from=DocumentCreatedFrom("api"),
         created_by="account-1",
         indexing_status="completed",
         enabled=True,
@@ -396,8 +420,8 @@ class TestSegmentServiceMockedBehavior:
     @pytest.fixture
     def mock_document(self):
         """Create mock document."""
-        document = Document(
-            id=str(uuid.uuid4()),
+        document = _document(
+            document_id=str(uuid.uuid4()),
             dataset_id=str(uuid.uuid4()),
             indexing_status="completed",
             enabled=True,
@@ -562,7 +586,7 @@ class TestChildChunkServiceMockedBehavior:
         result = SegmentService.create_child_chunk(
             content="New chunk content",
             segment=mock_segment,
-            document=Document(),
+            document=_document(),
             dataset=Dataset(),
             session=unbound_session,
             actor_id="account-id",
@@ -635,7 +659,7 @@ class TestChildChunkServiceMockedBehavior:
                 tokens=0,
                 created_by="account-id",
             ),
-            document=Document(),
+            document=_document(),
             dataset=Dataset(),
             session=unbound_session,
             actor_id="account-id",
@@ -649,28 +673,28 @@ class TestDocumentValidation:
 
     def test_document_indexing_status_completed_is_valid(self):
         """Test that completed indexing status is valid."""
-        document = Document(
+        document = _document(
             indexing_status="completed",
         )
         assert document.indexing_status == "completed"
 
     def test_document_indexing_status_indexing_is_invalid(self):
         """Test that indexing status is invalid for segment operations."""
-        document = Document(
+        document = _document(
             indexing_status="indexing",
         )
         assert document.indexing_status != "completed"
 
     def test_document_enabled_true_is_valid(self):
         """Test that enabled=True is valid."""
-        document = Document(
+        document = _document(
             enabled=True,
         )
         assert document.enabled
 
     def test_document_enabled_false_is_invalid(self):
         """Test that enabled=False is invalid for segment operations."""
-        document = Document(
+        document = _document(
             enabled=False,
         )
         assert not document.enabled
@@ -926,7 +950,7 @@ class TestSegmentIndexingRequirements:
     )
     def test_valid_indexing_statuses(self, status):
         """Test valid document indexing statuses."""
-        document = Document(
+        document = _document(
             indexing_status=status,
         )
         assert document.indexing_status in {
@@ -939,7 +963,7 @@ class TestSegmentIndexingRequirements:
 
     def test_completed_status_required_for_segments(self):
         """Test that completed status is required for segment operations."""
-        document = Document(
+        document = _document(
             indexing_status="completed",
             enabled=True,
         )

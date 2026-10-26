@@ -28,7 +28,8 @@ export default function AccountMenu() {
         <span className="min-w-0 grow text-left system-sm-medium wrap-anywhere">{exampleName}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        placement="top-start"
+        side="top"
+        align="start"
         sideOffset={6}
         alignOffset={4}
         className="w-60 max-w-80 overflow-hidden p-0"

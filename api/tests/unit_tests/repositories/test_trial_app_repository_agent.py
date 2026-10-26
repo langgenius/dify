@@ -3,7 +3,14 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.agent import Agent, AgentConfigRevision, AgentConfigRevisionOperation, AgentConfigSnapshot
+from models.agent import (
+    Agent,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+)
 from models.model import App, AppMode, TrialApp
 from repositories.trial_app_repository import TrialAppRepository
 
@@ -41,8 +48,8 @@ def test_agent_trial_requires_a_visible_existing_snapshot(
                     tenant_id=tenant_id,
                     app_id=app_id,
                     name="Agent",
-                    scope="roster",
-                    source="agent_app",
+                    scope=AgentScope.ROSTER,
+                    source=AgentSource.AGENT_APP,
                     active_config_snapshot_id=snapshot_id,
                     active_config_is_published=False,
                 ),

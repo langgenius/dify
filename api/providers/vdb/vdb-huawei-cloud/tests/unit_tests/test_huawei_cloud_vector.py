@@ -1,19 +1,19 @@
 import importlib
 import json
 import sys
-import types
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
 
+from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
 def _build_fake_elasticsearch_modules():
-    elasticsearch = types.ModuleType("elasticsearch")
+    elasticsearch = FakeModule("elasticsearch")
 
     class Elasticsearch:
         def __init__(self, **kwargs):

@@ -1,10 +1,7 @@
-import logging
-import time
 import uuid
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import httpx
 import pytest
 from dify_trace_aliyun.data_exporter.traceclient import (
     INVALID_SPAN_ID,
@@ -19,207 +16,29 @@ from dify_trace_aliyun.data_exporter.traceclient import (
     generate_span_id,
 )
 from dify_trace_aliyun.entities.aliyun_trace_entity import SpanData
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
 
-@pytest.fixture
-def trace_client_factory():
-    """Factory fixture for creating TraceClient instances with automatic cleanup."""
-    clients_to_shutdown = []
-
-    def _factory(**kwargs):
-        client = TraceClient(**kwargs)
-        clients_to_shutdown.append(client)
-        return client
-
-    yield _factory
-
-    # Cleanup: shutdown all created clients
-    for client in clients_to_shutdown:
-        client.shutdown()
-
-
 class TestTraceClient:
-    @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    @patch("dify_trace_aliyun.data_exporter.traceclient.socket.gethostname")
-    def test_init(
-        self, mock_gethostname: MagicMock, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]
-    ):
-        mock_gethostname.return_value = "test-host"
-        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
+    def test_constructor_has_no_background_exporter(self) -> None:
+        client = TraceClient(service_name="test-service", endpoint="https://collector.test")
+        assert client.endpoint == "https://collector.test"
+        assert not hasattr(client, "exporter")
+        assert not hasattr(client, "worker_thread")
+        assert not hasattr(client, "queue")
 
-        assert client.endpoint == "http://test-endpoint"
-        assert client.max_queue_size == 1000
-        assert client.schedule_delay_sec == 5
-        assert client.done is False
-        assert client.worker_thread.is_alive()
-
-        client.shutdown()
-        # pyrefly: ignore [unnecessary-comparison]
-        assert client.done is True
-
-    @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_export(self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]):
-        mock_exporter = mock_exporter_class.return_value
-        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
-        spans = [ReadableSpan(name="test-span")]
-        client.export(spans)
-        mock_exporter.export.assert_called_once_with(spans)
-
-    @patch("dify_trace_aliyun.data_exporter.traceclient.httpx.head")
-    @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_api_check_success(
-        self, mock_exporter_class: MagicMock, mock_head: MagicMock, trace_client_factory: type[TraceClient]
-    ):
-        mock_response = MagicMock()
-        mock_response.status_code = 405
-        mock_head.return_value = mock_response
-
-        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
-        assert client.api_check() is True
-
-    @patch("dify_trace_aliyun.data_exporter.traceclient.httpx.head")
-    @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_api_check_failure_status(
-        self, mock_exporter_class: MagicMock, mock_head: MagicMock, trace_client_factory: type[TraceClient]
-    ):
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_head.return_value = mock_response
-
-        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
-        assert client.api_check() is False
-
-    @patch("dify_trace_aliyun.data_exporter.traceclient.httpx.head")
-    @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_api_check_exception(
-        self, mock_exporter_class: MagicMock, mock_head: MagicMock, trace_client_factory: type[TraceClient]
-    ):
-        mock_head.side_effect = httpx.RequestError("Connection error")
-
-        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
-        with pytest.raises(ValueError, match="AliyunTrace API check failed: Connection error"):
-            client.api_check()
-
-    @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_get_project_url(self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]):
-        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
-        assert client.get_project_url() == "https://arms.console.aliyun.com/#/llm"
-
-    @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_add_span(self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]):
-        client = trace_client_factory(
-            service_name="test-service",
-            endpoint="http://test-endpoint",
-            max_export_batch_size=2,
-        )
-
-        # Test add None
+    def test_add_requires_dispatch(self) -> None:
+        client = TraceClient(service_name="test-service", endpoint="https://collector.test")
         client.add_span(None)
-        assert len(client.queue) == 0
-
-        # Test add valid SpanData
-        span_data = SpanData(
-            name="test-span",
-            trace_id=123,
-            span_id=456,
-            parent_span_id=None,
-            start_time=1000,
-            end_time=2000,
-            status=Status(StatusCode.OK),
-            span_kind=SpanKind.INTERNAL,
-        )
-
-        span = ReadableSpan(name="test-span")
-        client.span_builder.build_span = MagicMock(return_value=span)
-
-        with patch.object(client.condition, "notify") as mock_notify:
-            client.add_span(span_data)
-            assert len(client.queue) == 1
-            mock_notify.assert_not_called()
-
-            client.add_span(span_data)
-            assert len(client.queue) == 2
-            mock_notify.assert_called_once()
-
-    @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_add_span_queue_full(
-        self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient], caplog: pytest.LogCaptureFixture
-    ):
-        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint", max_queue_size=1)
-
-        span_data = SpanData(
-            name="test-span",
-            trace_id=123,
-            span_id=456,
-            parent_span_id=None,
-            start_time=1000,
-            end_time=2000,
-            status=Status(StatusCode.OK),
-            span_kind=SpanKind.INTERNAL,
-        )
-        span = ReadableSpan(name="test-span")
-        client.span_builder.build_span = MagicMock(return_value=span)
-
-        client.add_span(span_data)
-        assert len(client.queue) == 1
-
-        with caplog.at_level(logging.WARNING):
-            client.add_span(span_data)
-            assert len(client.queue) == 1
-            assert "Queue is full, likely spans will be dropped." in caplog.text
-
-    @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_export_batch_error(
-        self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient], caplog: pytest.LogCaptureFixture
-    ):
-        mock_exporter = mock_exporter_class.return_value
-        mock_exporter.export.side_effect = Exception("Export failed")
-
-        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
-        span = ReadableSpan(name="test-span")
-        client.queue.append(span)
-
-        with caplog.at_level(logging.WARNING):
-            client._export_batch()
-            assert "Error exporting spans" in caplog.text
-
-    @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_worker_loop(self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]):
-        # We need to test the wait timeout in _worker
-        # But _worker runs in a thread. Let's mock condition.wait.
-        client = trace_client_factory(
-            service_name="test-service",
-            endpoint="http://test-endpoint",
-            schedule_delay_sec=1,
-        )
-
-        with patch.object(client.condition, "wait") as mock_wait:
-            # Let it run for a bit then shut down
-            time.sleep(0.2)
-            client.shutdown()
-            # mock_wait might have been called
-            assert mock_wait.called or client.done
-
-    @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_shutdown_flushes(self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]):
-        mock_exporter = mock_exporter_class.return_value
-        client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint")
-
-        span = ReadableSpan(name="test-span")
-        client.queue.append(span)
-
-        client.shutdown()
-        # Should have called export twice (once in worker/export_batch, once in shutdown)
-        # or at least once if worker was waiting
-        assert mock_exporter.export.called
-        assert mock_exporter.shutdown.called
+        with pytest.raises(RuntimeError, match="active trace dispatch"):
+            client.add_span(SpanData(name="span", trace_id=123, span_id=456, start_time=1000, end_time=2000))
 
 
 class TestSpanBuilder:
     def test_build_span(self):
-        resource = MagicMock()
+        resource = Resource({"service.name": "test"})
         builder = SpanBuilder(resource)
 
         span_data = SpanData(
@@ -248,7 +67,7 @@ class TestSpanBuilder:
         assert span.attributes == {"attr1": "val1"}
 
     def test_build_span_no_parent(self):
-        resource = MagicMock()
+        resource = Resource({"service.name": "test"})
         builder = SpanBuilder(resource)
 
         span_data = SpanData(

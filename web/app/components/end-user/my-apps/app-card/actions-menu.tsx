@@ -29,7 +29,7 @@ export default function AppActionsMenu({ name, onRemove }: Props) {
           </IconButton>
         }
       />
-      <DropdownMenuContent className="min-w-54.5" placement="bottom-end">
+      <DropdownMenuContent className="min-w-54.5" side="bottom" align="end">
         <DropdownMenuItem onClick={() => onRemove(false)}>
           {t(($) => $['endUser.removeFromList'], { ns: 'app' })}
         </DropdownMenuItem>
