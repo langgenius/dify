@@ -127,18 +127,21 @@ def test_node_binding_resolution_uses_injected_database_through_nested_factories
 
             # Single-node debugging must reach the same injected database,
             # without consulting an installed Flask application container.
+            from repositories.workflow.definition_repository import workflow_snapshot
             from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
-            from tests.unit_tests.model_factories import make_workflow
+            from tests.helpers.unit.model_factories import make_workflow
 
             node_config = {
                 "id": ids["node_id"],
                 "data": {"type": "agent", "version": "2", "title": "Agent", "agent_node_kind": "dify_agent"},
             }
-            workflow = make_workflow(
-                tenant_id=ids["tenant_id"],
-                app_id=ids["app_id"],
-                workflow_id=ids["workflow_id"],
-                graph={"nodes": [node_config], "edges": []},
+            workflow = workflow_snapshot(
+                make_workflow(
+                    tenant_id=ids["tenant_id"],
+                    app_id=ids["app_id"],
+                    workflow_id=ids["workflow_id"],
+                    graph={"nodes": [node_config], "edges": []},
+                )
             )
             monkeypatch.setattr(WorkflowEntry, "_run_node_with_layers", Mock())
             node, _ = WorkflowEntry.single_step_run(
@@ -586,8 +589,12 @@ def test_binding_resolver_uses_pinned_snapshot_for_existing_node_execution(
     last_statement = orm_statements[-1]
     assert isinstance(first_statement, ClauseElement)
     assert isinstance(last_statement, ClauseElement)
-    assert binding.id in first_statement.compile().params.values()
-    assert pinned_snapshot.id in last_statement.compile().params.values()
+    first_params = first_statement.compile().params
+    last_params = last_statement.compile().params
+    assert first_params is not None
+    assert last_params is not None
+    assert binding.id in first_params.values()
+    assert pinned_snapshot.id in last_params.values()
 
 
 @pytest.mark.parametrize("sqlite_session", [RESOLVER_MODELS], indirect=True)

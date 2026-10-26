@@ -22,7 +22,7 @@ from services.workflow.execution.adapters.node_factory import DifyNodeFactory
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow_service import WorkflowService
-from tests.unit_tests.model_factories import make_account, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_workflow
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -95,8 +95,8 @@ def test_debug_generators_use_injected_variable_dependencies(
     def execute(generator: WorkflowAppGenerator, **_kwargs: object) -> dict[str, str]:
         assert generator._runtime is generation._runtime
         assert generator._execution_driver is generation._runtime.execution_driver
-        assert generator._draft_variable_loader == workflow_variables.workflow_loader
-        assert generator._draft_variable_saver == workflow_variables.saver_factory
+        assert generator.draft_variable_loader == workflow_variables.workflow_loader
+        assert generator.draft_variable_saver == workflow_variables.saver_factory
         saver = generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, user, tenant_id=workflow.tenant_id)
         saver(workflow.app_id, "node", BuiltinNodeTypes.CODE, "execution").save(
             process_data=None, outputs={"text": "injected"}

@@ -1,6 +1,6 @@
 [project]
 name = "dify-agent"
-version = "1.17.1"
+version = "1.18.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13,<4.0"
@@ -19,9 +19,10 @@ dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 
 [project.optional-dependencies]
 server = [
+    "pillow>=11.3.0,<13",
     "e2b>=2.55.1,<3.0.0",
     "fastapi==0.136.0",
-    "graphon==0.5.2",
+    "graphon==0.8.0",
     # grpcio is a runtime requirement of the openshell SDK that its wheel
     # does not declare; keep it pinned here until upstream fixes the metadata.
     "grpcio>=1.60.0,<2.0.0",
@@ -64,8 +65,15 @@ line-length = 120
 target-version = "py312"
 include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
 
+[tool.uv]
+# unstructured caps filelock<4; Agent FileLock/WeakFileLock compatibility was verified with 4.2.1.
+# Override the stale upper bound to take the required security fixes.
+# TODO: Remove this override once unstructured permits filelock>=4.2.1.
+override-dependencies = ["filelock==4.2.1"]
+
 [dependency-groups]
 dev = [
+    "fakeredis[lua]>=2.31.0",
     "coverage[toml]>=7.10.7",
     "pyrefly>=1.2.0",
     "pytest>=9.0.3",

@@ -722,6 +722,31 @@ class TestWorkflowServiceCredentialValidation:
             graph={"nodes": nodes, "edges": []},
         )
 
+    def test_validate_publication_checks_knowledge_fs_control_spaces(
+        self,
+        service: WorkflowService,
+        sqlite_engine: Engine,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        app = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
+        workflow = self._make_workflow([])
+
+        with (
+            patch("services.workflow_service.SystemFeatureService.is_plugin_manager_enabled", return_value=False),
+            patch.object(service, "validate_graph_structure"),
+            patch(
+                "services.knowledge_fs.knowledge_retrieval_v2.validation.validate_control_space_references"
+            ) as validate_control_spaces,
+        ):
+            service.validate_publication(app, workflow, credentials=self.credentials)
+
+        validation = validate_control_spaces.call_args.kwargs
+        assert validation["session"].get_bind() is sqlite_engine
+        assert not validation["session"].in_transaction()
+        assert validation["tenant_id"] == app.tenant_id
+        assert validation["graph"] == workflow.graph_dict
+
     # --- _validate_workflow_credentials: tool node (with credential_id) ---
 
     def test_validate_workflow_credentials_should_check_tool_credential_when_credential_id_present(

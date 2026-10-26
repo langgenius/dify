@@ -35,8 +35,8 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
       <div className="relative">
         <PopoverTrigger
           className={cn(
-            'flex h-8 cursor-pointer items-center gap-0 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-3 text-left select-none hover:bg-components-input-bg-hover',
-            !!value.length && 'pr-7',
+            'flex h-8 cursor-pointer items-center gap-0 rounded-lg bg-components-input-bg-normal py-1 ps-3 pe-2 text-start select-none hover:bg-components-input-bg-hover',
+            !!value.length && 'pe-7',
           )}
         >
           <div className="flex min-w-0 items-center p-1">
@@ -54,7 +54,7 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
           <button
             type="button"
             aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
+            className="group/clear absolute inset-e-2 top-1/2 -translate-y-1/2 border-none bg-transparent p-px"
             onClick={() => onChange([])}
           >
             <span
@@ -64,7 +64,7 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
           </button>
         )}
         <PopoverContent
-          placement="bottom-start"
+          align="start"
           sideOffset={4}
           className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >
@@ -77,7 +77,7 @@ const LabelFilter: FC<LabelFilterProps> = ({ value, onChange }) => {
                 <button
                   key={label.name}
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-lg border-none bg-transparent py-1.5 pr-2 pl-3 text-left select-none hover:bg-state-base-hover"
+                  className="flex w-full items-center gap-2 rounded-lg border-none bg-transparent py-1.5 ps-3 pe-2 text-start select-none hover:bg-state-base-hover"
                   onClick={() => selectLabel(label)}
                 >
                   <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>

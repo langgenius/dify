@@ -25,6 +25,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolInvokeError, ToolNotFoundError
+from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
@@ -186,7 +187,7 @@ def _build_tool(
             return_value=create_autospec(DraftVariableSaverFactory, instance=True, spec_set=True)
         ),
         workflow_app_id=workflow_app_id,
-        workflow_entities={},
+        workflow_id="workflow-1",
         workflow_as_tool_id="wf-tool-1",
         version=version,
         workflow_call_depth=1,
@@ -300,6 +301,33 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
     assert exc_info.value.args == ("oops",)
 
 
+def test_workflow_tool_rejects_paused_generator_result(
+    monkeypatch: pytest.MonkeyPatch, sqlite_tool_db: SqliteToolDb, *, workflow_runtime: WorkflowRuntime
+) -> None:
+    tool = _build_tool(workflow_runtime=workflow_runtime)
+    user = _persist_account(sqlite_tool_db)
+    generate, generate_calls = _record_calls(
+        return_value={
+            "data": {
+                "status": WorkflowExecutionStatus.PAUSED,
+                "outputs": {},
+            }
+        }
+    )
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
+    monkeypatch.setattr(
+        "services.workflow.execution.adapters.workflow.app_generator.WorkflowAppGenerator.generate", generate
+    )
+
+    with pytest.raises(ToolInvokeError, match="requires Engine-managed container execution"):
+        list(tool.invoke(session=sqlite_tool_db.caller_session, user_id="test_user", tool_parameters={}))
+
+    assert len(generate_calls) == 1
+
+
 def test_workflow_tool_does_not_use_pause_state_config(
     monkeypatch: pytest.MonkeyPatch, sqlite_tool_db: SqliteToolDb, *, workflow_runtime: WorkflowRuntime
 ) -> None:
@@ -321,8 +349,8 @@ def test_workflow_tool_does_not_use_pause_state_config(
     list(tool.invoke(session=sqlite_tool_db.caller_session, user_id="test_user", tool_parameters={}))
 
     call_kwargs = generate_calls[-1]
-    assert "pause_state_config" in call_kwargs
     assert call_kwargs["pause_state_config"] is None
+    assert call_kwargs["allow_human_input"] is False
 
 
 def test_workflow_tool_passes_parent_trace_context_from_runtime(
@@ -1152,8 +1180,8 @@ def test_nested_workflow_preserves_admitted_end_user_and_resolves_agent_binding(
     from services.workflow.execution.adapters.agent_v2.agent_node import DifyAgentNode
     from services.workflow.execution.adapters.workflow import app_generator as generator_module
     from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
+    from tests.helpers.unit.model_factories import make_app
     from tests.unit_tests.core.workflow.nodes.agent_v2.test_binding_resolver import _agent, _binding, _snapshot
-    from tests.unit_tests.model_factories import make_app
 
     config_overrides(AGENT_BACKEND_USE_FAKE=True)
     account = _persist_account(sqlite_tool_db)

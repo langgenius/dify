@@ -7,7 +7,7 @@ from celery import current_app
 
 from dify_app import DifyApp
 from extensions.ext_celery import init_app
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @pytest.mark.parametrize("enabled", [True, False])

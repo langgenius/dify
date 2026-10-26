@@ -17,7 +17,7 @@ from models.tools import ToolLabelBinding, WorkflowToolProvider
 from repositories.tools.provider_repository import ToolProviderRepository
 from services.tools.tool_manager import ToolManager
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
-from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
 
 
 @pytest.fixture

@@ -4,14 +4,15 @@ from unittest.mock import patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.exceptions import NotFound
 
 import controllers.trigger.webhook as module
-from controllers.common.errors import NotFoundError
+from controllers.common.errors import RequestBodyTooLargeError
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.errors.app import QuotaExceededError
-from tests.unit_tests.model_factories import make_workflow
+from services.trigger.errors import WebhookBodyTooLargeError
+from tests.helpers.unit.model_factories import make_workflow
 
 
 class _RequestStub:
@@ -211,13 +212,26 @@ class TestHandleWebhook:
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=ValueError("missing"))
     def test_value_error_not_found(self, mock_get):
-        with pytest.raises(NotFoundError):
+        response = module.handle_webhook("wh-1")
+        assert response.status_code == 404
+        assert response.data == NotFound().get_body().encode()
+
+    @patch.object(
+        module.WebhookService,
+        "get_webhook_trigger_and_workflow",
+        side_effect=WebhookBodyTooLargeError(
+            "Webhook request too large: 9 bytes exceeds maximum allowed size of 8 bytes"
+        ),
+    )
+    def test_webhook_body_too_large(self, mock_get):
+        with pytest.raises(RequestBodyTooLargeError) as error_info:
             module.handle_webhook("wh-1")
 
-    @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=RequestEntityTooLarge())
-    def test_request_entity_too_large(self, mock_get):
-        with pytest.raises(RequestEntityTooLarge):
-            module.handle_webhook("wh-1")
+        assert error_info.value.data == {
+            "code": "request_entity_too_large",
+            "message": "Webhook request too large: 9 bytes exceeds maximum allowed size of 8 bytes",
+            "status": 413,
+        }
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=Exception("boom"))
     def test_internal_error(self, mock_get):
@@ -291,13 +305,26 @@ class TestHandleWebhookDebug:
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=ValueError("missing"))
     def test_debug_not_found(self, mock_get):
-        with pytest.raises(NotFoundError):
+        response = module.handle_webhook_debug("wh-1")
+        assert response.status_code == 404
+        assert response.data == NotFound().get_body().encode()
+
+    @patch.object(
+        module.WebhookService,
+        "get_webhook_trigger_and_workflow",
+        side_effect=WebhookBodyTooLargeError(
+            "Webhook request too large: 9 bytes exceeds maximum allowed size of 8 bytes"
+        ),
+    )
+    def test_debug_webhook_body_too_large(self, mock_get):
+        with pytest.raises(RequestBodyTooLargeError) as error_info:
             module.handle_webhook_debug("wh-1")
 
-    @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=RequestEntityTooLarge())
-    def test_debug_request_entity_too_large(self, mock_get):
-        with pytest.raises(RequestEntityTooLarge):
-            module.handle_webhook_debug("wh-1")
+        assert error_info.value.data == {
+            "code": "request_entity_too_large",
+            "message": "Webhook request too large: 9 bytes exceeds maximum allowed size of 8 bytes",
+            "status": 413,
+        }
 
     @patch.object(module.WebhookService, "get_webhook_trigger_and_workflow", side_effect=Exception("boom"))
     def test_debug_internal_error(self, mock_get):

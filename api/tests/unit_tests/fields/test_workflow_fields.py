@@ -18,7 +18,7 @@ from models.workflow import WorkflowKind
 from repositories.workflow.definition_repository import workflow_record
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.workflow_ref_service import WorkflowRef
-from tests.unit_tests.model_factories import make_account, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_workflow
 
 
 @pytest.mark.parametrize("snippet", [False, True])

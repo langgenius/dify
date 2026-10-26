@@ -157,7 +157,12 @@ class KnowledgeRetrievalRepository:
 
             case "not contains":
                 escaped_value = escape_like_pattern(str(value))
-                filters.append(json_field.notlike(f"%{escaped_value}%", escape="\\"))
+                filters.append(
+                    or_(
+                        json_field.is_(None),
+                        json_field.notlike(f"%{escaped_value}%", escape="\\"),
+                    )
+                )
 
             case "start with":
                 escaped_value = escape_like_pattern(str(value))
@@ -177,9 +182,11 @@ class KnowledgeRetrievalRepository:
             case "is not" | "≠":
                 match value:
                     case str():
-                        filters.append(json_field != value)
+                        filters.append(or_(json_field.is_(None), json_field != value))
                     case int() | float():
-                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                        filters.append(
+                            or_(json_field.is_(None), DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                        )
 
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
@@ -210,9 +217,10 @@ class KnowledgeRetrievalRepository:
                 if not value_list:
                     # `field in []` is False, `field not in []` is True
                     filters.append(literal(condition == "not in"))
+                elif condition == "in":
+                    filters.append(json_field.in_(value_list))
                 else:
-                    op = json_field.in_ if condition == "in" else json_field.notin_
-                    filters.append(op(value_list))
+                    filters.append(or_(json_field.is_(None), json_field.notin_(value_list)))
             case _:
                 pass
 
@@ -412,6 +420,7 @@ class KnowledgeRetrievalRepository:
                 dataset_ids = [i.segment.dataset_id for i in records]
                 document_ids = [i.segment.document_id for i in records]
                 datasets = retrieval_session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
+
                 documents = get_retrieval_source_documents(
                     tenant_id=request.tenant_id,
                     dataset_ids=available_datasets_ids,
@@ -543,12 +552,13 @@ class KnowledgeRetrievalRepository:
                 if show_retrieve_source:
                     dataset_ids = [record.segment.dataset_id for record in authorized_records]
                     document_ids = [record.segment.document_id for record in authorized_records]
-                    dataset_document_stmt = select(DatasetDocument).where(
-                        DatasetDocument.id.in_(document_ids),
-                        DatasetDocument.enabled.is_(True),
-                        DatasetDocument.archived.is_(False),
+
+                    documents = get_retrieval_source_documents(
+                        tenant_id=tenant_id,
+                        dataset_ids=dataset_ids,
+                        document_ids=document_ids,
+                        session=session,
                     )
-                    documents = session.execute(dataset_document_stmt).scalars().all()  # type: ignore
                     dataset_stmt = select(Dataset).where(
                         Dataset.id.in_(dataset_ids),
                     )

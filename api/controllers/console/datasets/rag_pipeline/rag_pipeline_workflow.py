@@ -196,6 +196,10 @@ class RagPipelineRecommendedPluginsResponse(ResponseModel):
     uninstalled_recommended_plugins: list[dict[str, Any]]
 
 
+class RagPipelinePublishedWorkflowResponse(RootModel[WorkflowResponse | None]):
+    """A null response means the pipeline has no published workflow."""
+
+
 register_schema_models(
     console_ns,
     DraftWorkflowSyncPayload,
@@ -220,6 +224,7 @@ register_response_schema_models(
     RagPipelineDatasourceProviderResponse,
     RagPipelineOpaqueResponse,
     RagPipelinePublishedRunResponse,
+    RagPipelinePublishedWorkflowResponse,
     RagPipelineRecommendedPluginsResponse,
     RagPipelineStepParametersResponse,
     RagPipelineTransformResponse,
@@ -599,7 +604,7 @@ class PublishedRagPipelineApi(Resource):
     @console_ns.response(
         200,
         "Published workflow retrieved successfully, or null if not exist",
-        console_ns.models[WorkflowResponse.__name__],
+        console_ns.models[RagPipelinePublishedWorkflowResponse.__name__],
     )
     @setup_required
     @login_required
@@ -623,7 +628,7 @@ class PublishedRagPipelineApi(Resource):
         if workflow is None:
             return None
 
-        return dump_response(WorkflowResponse, workflow)
+        return dump_response(RagPipelinePublishedWorkflowResponse, workflow)
 
     @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowPublishResponse.__name__])
     @console_account_admission(

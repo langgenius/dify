@@ -6,6 +6,7 @@ from typing import NoReturn, cast
 from flask import current_app, got_request_exception
 from werkzeug.exceptions import HTTPException
 
+from core.logging.context import get_request_id
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
 from services.annotation.errors import AnnotationResourceNotFoundError
@@ -95,6 +96,21 @@ class NoFileUploadedError(BaseHTTPException):
 class NotFoundError(BaseHTTPException):
     error_code = "not_found"
     code = 404
+
+
+class MessageFeedbackRatingRequiredError(BaseHTTPException):
+    error_code = "message_feedback_rating_required"
+    description = "A rating is required when there is no existing feedback to remove."
+    code = HTTPStatus.BAD_REQUEST
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.data = {
+            "code": self.error_code,
+            "message": self.description,
+            "status": self.code,
+            "details": {"request_id": get_request_id()},
+        }
 
 
 class UnauthorizedError(BaseHTTPException):

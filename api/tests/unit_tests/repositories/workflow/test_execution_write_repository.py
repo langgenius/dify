@@ -25,7 +25,7 @@ from repositories.workflow.execution_write_repository import (
     write_debug_lease,
 )
 from tasks import workflow_execution_tasks as storage
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 from tests.unit_tests.workflow_execution import execution_binding
 
 

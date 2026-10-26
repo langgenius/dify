@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from inspect import unwrap
-from unittest.mock import ANY, PropertyMock, patch
+from types import SimpleNamespace
+from unittest.mock import ANY, MagicMock, PropertyMock, patch
+from uuid import UUID
 
 import pytest
 from flask import Flask
@@ -10,8 +12,10 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.common.rbac import RBACResourceScope
 from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline import rag_pipeline as module
+from controllers.console.datasets.rag_pipeline import rag_pipeline_draft_variable as draft_variable_module
 from controllers.console.datasets.rag_pipeline.rag_pipeline import (
     CustomizedPipelineTemplateApi,
     CustomizedPipelineTemplatePayload,
@@ -21,15 +25,27 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline import (
     PipelineTemplateListQuery,
     PublishCustomizedPipelineTemplateApi,
 )
+from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable import (
+    PaginationQuery,
+    RagPipelineEnvironmentVariableCollectionApi,
+    RagPipelineNodeVariableCollectionApi,
+    RagPipelineSystemVariableCollectionApi,
+    RagPipelineVariableApi,
+    RagPipelineVariableCollectionApi,
+    RagPipelineVariableResetApi,
+    WorkflowDraftVariablePatchPayload,
+)
+from controllers.console.wraps import RBACPermission
+from machinery.context import RequestContext
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline, PipelineCustomizedTemplate
 from models.engine import db
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.errors.base import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.model_factories import make_account
 
 
 def _template_item() -> dict[str, object]:
@@ -472,6 +488,187 @@ class TestPublishCustomizedPipelineTemplateApi:
 
         check_permission.assert_not_called()
         publish.assert_not_called()
+
+
+_DRAFT_PIPELINE_ID = UUID("11111111-1111-1111-1111-111111111111")
+
+
+def _draft_variable_context() -> RequestContext:
+    return RequestContext("request-1", None, "account-1", "tenant-1")
+
+
+@pytest.fixture
+def console_workflow_variables(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    service = MagicMock()
+    monkeypatch.setattr(
+        draft_variable_module,
+        "application_services",
+        lambda: SimpleNamespace(console_workflow_variables=service),
+    )
+    monkeypatch.setattr(draft_variable_module, "dump_response", lambda _schema, value: value)
+    return service
+
+
+def _assert_pipeline_owner(call_args: tuple[object, ...], context: RequestContext) -> None:
+    assert call_args[0] == context
+    owner = call_args[1]
+    assert owner.id == str(_DRAFT_PIPELINE_ID)
+    assert owner.kind == "pipeline"
+
+
+def test_rag_draft_variable_routes_require_dataset_edit_permission() -> None:
+    [check] = rbac_checks(RagPipelineVariableApi.get)
+    assert check.locator.scope == RBACResourceScope.DATASET
+    assert check.scene == RBACPermission.DATASET_EDIT
+
+
+class TestRagPipelineDraftVariableApis:
+    def test_list_variables_uses_console_variable_service(
+        self, app: Flask, console_workflow_variables: MagicMock
+    ) -> None:
+        console_workflow_variables.list_variables.return_value = {"items": [], "total": 0}
+        context = _draft_variable_context()
+        api = RagPipelineVariableCollectionApi()
+
+        with app.test_request_context("/?page=2&limit=10"):
+            result = unwrap(api.get)(api, PaginationQuery(page=2, limit=10), context, _DRAFT_PIPELINE_ID)
+
+        assert result == {"items": [], "total": 0}
+        _assert_pipeline_owner(console_workflow_variables.list_variables.call_args.args, context)
+        assert console_workflow_variables.list_variables.call_args.kwargs == {"page": 2, "limit": 10}
+
+    def test_delete_all_variables_uses_console_variable_service(
+        self, app: Flask, console_workflow_variables: MagicMock
+    ) -> None:
+        context = _draft_variable_context()
+        api = RagPipelineVariableCollectionApi()
+
+        with app.test_request_context("/"):
+            response = unwrap(api.delete)(api, context, _DRAFT_PIPELINE_ID)
+
+        assert response.status_code == 204
+        _assert_pipeline_owner(console_workflow_variables.delete_all.call_args.args, context)
+
+    def test_list_node_variables_uses_console_variable_service(
+        self, app: Flask, console_workflow_variables: MagicMock
+    ) -> None:
+        console_workflow_variables.node.return_value = {"items": []}
+        context = _draft_variable_context()
+        api = RagPipelineNodeVariableCollectionApi()
+
+        with app.test_request_context("/"):
+            result = unwrap(api.get)(api, context, _DRAFT_PIPELINE_ID, "node-1")
+
+        assert result == {"items": []}
+        _assert_pipeline_owner(console_workflow_variables.node.call_args.args, context)
+        assert console_workflow_variables.node.call_args.args[2] == "node-1"
+
+    def test_delete_node_variables_uses_console_variable_service(
+        self, app: Flask, console_workflow_variables: MagicMock
+    ) -> None:
+        context = _draft_variable_context()
+        api = RagPipelineNodeVariableCollectionApi()
+
+        with app.test_request_context("/"):
+            response = unwrap(api.delete)(api, context, _DRAFT_PIPELINE_ID, "node-1")
+
+        assert response.status_code == 204
+        _assert_pipeline_owner(console_workflow_variables.delete_node.call_args.args, context)
+        assert console_workflow_variables.delete_node.call_args.args[2] == "node-1"
+
+    def test_get_variable_uses_console_variable_service(
+        self, app: Flask, console_workflow_variables: MagicMock
+    ) -> None:
+        console_workflow_variables.get.return_value = {"id": "variable-1"}
+        context = _draft_variable_context()
+        api = RagPipelineVariableApi()
+        variable_id = UUID("22222222-2222-2222-2222-222222222222")
+
+        with app.test_request_context("/"):
+            result = unwrap(api.get)(api, context, _DRAFT_PIPELINE_ID, variable_id)
+
+        assert result == {"id": "variable-1"}
+        _assert_pipeline_owner(console_workflow_variables.get.call_args.args, context)
+        assert console_workflow_variables.get.call_args.args[2] == str(variable_id)
+
+    def test_patch_variable_uses_console_variable_service(
+        self, app: Flask, console_workflow_variables: MagicMock
+    ) -> None:
+        console_workflow_variables.patch.return_value = {"id": "variable-1", "name": "renamed"}
+        context = _draft_variable_context()
+        api = RagPipelineVariableApi()
+        variable_id = UUID("22222222-2222-2222-2222-222222222222")
+        payload = WorkflowDraftVariablePatchPayload(name="renamed", value="new value")
+
+        with app.test_request_context("/", method="PATCH"):
+            result = unwrap(api.patch)(api, payload, context, _DRAFT_PIPELINE_ID, variable_id)
+
+        assert result == {"id": "variable-1", "name": "renamed"}
+        _assert_pipeline_owner(console_workflow_variables.patch.call_args.args, context)
+        assert console_workflow_variables.patch.call_args.args[2] == str(variable_id)
+        assert console_workflow_variables.patch.call_args.kwargs == {"name": "renamed", "value": "new value"}
+
+    def test_delete_variable_uses_console_variable_service(
+        self, app: Flask, console_workflow_variables: MagicMock
+    ) -> None:
+        context = _draft_variable_context()
+        api = RagPipelineVariableApi()
+        variable_id = UUID("22222222-2222-2222-2222-222222222222")
+
+        with app.test_request_context("/"):
+            response = unwrap(api.delete)(api, context, _DRAFT_PIPELINE_ID, variable_id)
+
+        assert response.status_code == 204
+        _assert_pipeline_owner(console_workflow_variables.delete.call_args.args, context)
+        assert console_workflow_variables.delete.call_args.args[2] == str(variable_id)
+
+    @pytest.mark.parametrize("returned", [{"id": "variable-1"}, None])
+    def test_reset_variable_uses_console_variable_service(
+        self,
+        app: Flask,
+        console_workflow_variables: MagicMock,
+        returned: dict[str, str] | None,
+    ) -> None:
+        console_workflow_variables.reset.return_value = returned
+        context = _draft_variable_context()
+        api = RagPipelineVariableResetApi()
+        variable_id = UUID("22222222-2222-2222-2222-222222222222")
+
+        with app.test_request_context("/"):
+            result = unwrap(api.put)(api, context, _DRAFT_PIPELINE_ID, variable_id)
+
+        if returned is None:
+            assert result.status_code == 204
+        else:
+            assert result == returned
+        _assert_pipeline_owner(console_workflow_variables.reset.call_args.args, context)
+        assert console_workflow_variables.reset.call_args.args[2] == str(variable_id)
+
+    def test_list_system_variables_uses_console_variable_service(
+        self, app: Flask, console_workflow_variables: MagicMock
+    ) -> None:
+        console_workflow_variables.system.return_value = {"items": []}
+        context = _draft_variable_context()
+        api = RagPipelineSystemVariableCollectionApi()
+
+        with app.test_request_context("/"):
+            result = unwrap(api.get)(api, context, _DRAFT_PIPELINE_ID)
+
+        assert result == {"items": []}
+        _assert_pipeline_owner(console_workflow_variables.system.call_args.args, context)
+
+    def test_list_environment_variables_uses_console_variable_service(
+        self, app: Flask, console_workflow_variables: MagicMock
+    ) -> None:
+        console_workflow_variables.environment.return_value = [{"id": "environment-1", "value_type": "integer"}]
+        context = _draft_variable_context()
+        api = RagPipelineEnvironmentVariableCollectionApi()
+
+        with app.test_request_context("/"):
+            result = unwrap(api.get)(api, context, _DRAFT_PIPELINE_ID)
+
+        assert result == {"items": [{"id": "environment-1", "value_type": "integer"}]}
+        _assert_pipeline_owner(console_workflow_variables.environment.call_args.args, context)
 
     def test_post_rejects_legacy_dataset_acl_before_publish(self) -> None:
         api = PublishCustomizedPipelineTemplateApi()

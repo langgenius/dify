@@ -29,6 +29,7 @@ from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 from services.rbac.members import MemberService
 from services.tools.provider_queries import ToolProviders
 from services.tools.tool_engine import ToolEngine
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.chatflow_ports import ChatflowRecords, ConversationVariables
 from services.workflow.execution.contracts import WorkflowRunDriver
 from services.workflow.execution.node_queries import ConversationHistory, DatasourceCredentials, RetrieverAttachments
@@ -223,6 +224,23 @@ if TYPE_CHECKING:
     from services.workflow_service import WorkflowService
 
 
+def _sync_publication_knowledge_spaces(
+    *,
+    session: Session,
+    session_maker: sessionmaker[Session],
+    workflow: WorkflowSnapshot,
+) -> None:
+    """Bind the KnowledgeFS publication effect without reversing repository dependencies."""
+    from repositories.workflow.definition_repository import workflow_from_snapshot
+    from services.agent.knowledge_spaces import sync_workflow_app_knowledge_bindings
+
+    sync_workflow_app_knowledge_bindings(
+        session=session,
+        session_maker=session_maker,
+        workflow=workflow_from_snapshot(workflow),
+    )
+
+
 def build_console_workflow_service(
     *,
     database_client: sessionmaker[Session],
@@ -254,7 +272,10 @@ def build_console_workflow_service(
         session_maker=database_client, runtime=build_workflow_execution_dependencies(database_client)
     )
 
-    definitions = WorkflowDefinitionRepository(session_factory=database_client)
+    definitions = WorkflowDefinitionRepository(
+        session_factory=database_client,
+        publication_knowledge_spaces=_sync_publication_knowledge_spaces,
+    )
     drafts = WorkflowDraftRepository(database_client)
     lifecycle = build_workflow_definition_gateway(database_client, definitions, workflows, drafts=drafts)
     apps = ConsoleAppRepository(session_factory=database_client)
@@ -358,7 +379,11 @@ def build_workflow_drafts(
     from repositories.workflow.draft_repository import WorkflowDraftRepository
     from services.workflow_service import WorkflowService
 
-    definitions = WorkflowDefinitionRepository(session_factory=database_client, import_session=import_session)
+    definitions = WorkflowDefinitionRepository(
+        session_factory=database_client,
+        import_session=import_session,
+        publication_knowledge_spaces=_sync_publication_knowledge_spaces,
+    )
     drafts = WorkflowDraftRepository(database_client, import_session=import_session)
     lifecycle = build_workflow_definition_gateway(
         database_client,

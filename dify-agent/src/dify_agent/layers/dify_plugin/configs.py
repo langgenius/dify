@@ -142,9 +142,13 @@ class DifyPluginToolConfig(BaseModel):
     declaration artifacts. They let the agent runtime validate hidden/default
     inputs and expose the correct LLM-facing schema without re-fetching or
     re-merging daemon declarations at run time.
+
+    ``plugin_unique_identifier`` pins newly prepared tools to their package.
+    ``None`` preserves plugin-ID dispatch for configurations from older APIs.
     """
 
     plugin_id: str
+    plugin_unique_identifier: str | None = Field(default=None, min_length=1)
     provider: str
     tool_name: str
     credential_type: DifyPluginToolCredentialType
