@@ -1494,3 +1494,19 @@ def test_agent_skill_bindings_rejects_invalid_payload(app: Flask, request_contex
 
     assert status == 400
     assert payload["code"] == "invalid_request"
+
+
+def test_skill_import_documents_required_multipart_file() -> None:
+    from flask_restx.swagger import Swagger
+
+    from controllers.console import api
+
+    resource = Swagger(api).serialize_resource(console_ns, WorkspaceSkillImportApi, "/workspaces/current/skills/import")
+    assert resource is not None
+    operation = resource["post"]
+    body = operation["requestBody"]
+    assert body["required"] is True
+    schema = body["content"]["multipart/form-data"]["schema"]
+    assert schema["required"] == ["file"]
+    assert schema["properties"]["file"]["type"] == "string"
+    assert schema["properties"]["file"]["format"] == "binary"

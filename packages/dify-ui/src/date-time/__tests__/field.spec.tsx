@@ -478,9 +478,33 @@ it('validates on leaving the complete picker, not when focus enters its portalle
     .getByRole('listbox', { name: 'Hour' })
     .getByRole('option', { name: '2', exact: true })
     .click()
+  let restoreFocus: FrameRequestCallback | undefined
+  const animationFrame = vi
+    .spyOn(window, 'requestAnimationFrame')
+    .mockImplementationOnce((callback) => {
+      restoreFocus = callback
+      return 0
+    })
+  try {
+    await userEvent.tab({ shift: true })
+    // Let blur timers run while the browser is waiting to render the focus-restoration frame.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(restoreFocus).toBeDefined()
+    expect(validate).not.toHaveBeenCalled()
+    expect(stateOf(screen)).toMatchObject({ touched: false, focused: true })
+  } finally {
+    animationFrame.mockRestore()
+    restoreFocus?.(performance.now())
+  }
+  await expect.element(screen.getByRole('button', { name: 'OK', exact: true })).toHaveFocus()
+  await userEvent.tab()
+  await expect
+    .element(screen.getByRole('listbox', { name: 'Hour' }).getByRole('option', { name: '2' }))
+    .toHaveFocus()
   expect(validate).not.toHaveBeenCalled()
   expect(stateOf(screen)).toMatchObject({ dirty: false, touched: false, focused: true })
-  await screen.getByRole('button', { name: 'Next field' }).click()
+  await screen.getByText('Next field', { exact: true }).click()
+  await expect.element(screen.getByRole('button', { name: 'Next field' })).toHaveFocus()
   expect(validate).toHaveBeenCalledExactlyOnceWith('13:30', { departure: '13:30' })
   await expect.element(screen.getByText('Choose another time.', { exact: true })).toBeVisible()
   const trigger = screen.getByRole('button', { name: /^Departure / })
@@ -857,7 +881,7 @@ it('keeps Clear inside the field focus boundary while dismissing an open popup',
     </Form>,
   )
   await screen.getByRole('button', { name: /^Departure / }).click()
-  await screen.getByRole('button', { name: 'Clear departure' }).click()
+  await screen.getByLabelText('Clear departure', { exact: true }).click()
   await expect.element(screen.getByRole('button', { name: 'Departure', exact: true })).toHaveFocus()
   expect(validate).not.toHaveBeenCalled()
   expect(stateOf(screen)).toMatchObject({ touched: false, focused: true, filled: false })

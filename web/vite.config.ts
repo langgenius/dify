@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import { openapi } from '@dify/openapi-content-mapper/vite'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
@@ -25,9 +26,9 @@ export default defineConfig(({ command, mode, isPreview }) => {
     plugins: lazyPlugins(async () => {
       const { default: react } = await import('@vitejs/plugin-react')
 
-      if (isTest) return [nextStaticImageTestPlugin({ projectRoot }), react()]
+      if (isTest) return [openapi(), nextStaticImageTestPlugin({ projectRoot }), react()]
 
-      if (isStorybook) return [react()]
+      if (isStorybook) return [openapi(), react()]
 
       const [{ default: tailwindcss }, { default: vinext }, { default: Inspect }] =
         await Promise.all([
@@ -44,6 +45,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
           : undefined
 
       return [
+        openapi(),
         i18nAnalysisPlugin({
           adapters: [
             { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },

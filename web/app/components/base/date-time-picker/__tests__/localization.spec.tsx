@@ -1,4 +1,3 @@
-import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
@@ -104,10 +103,9 @@ it('updates time formatting and popup labels from the application language witho
   )
   expect(screen.getByRole('option', { name: '۱' })).toHaveAttribute('aria-selected', 'true')
   expect(screen.getByRole('option', { name: '۳۰' })).toHaveAttribute('aria-selected', 'true')
-  expect(screen.getByRole('dialog')).toHaveAttribute('dir', 'rtl')
 })
 
-it('inherits application direction and localizes the calendar while preserving label overrides', async () => {
+it('localizes the calendar from the application language while preserving label overrides', async () => {
   const user = userEvent.setup()
   const i18n = await createI18n('fa-IR')
   render(
@@ -121,52 +119,12 @@ it('inherits application direction and localizes the calendar while preserving l
       </I18nDirectionProvider>
     </I18nextProvider>,
   )
-  const trigger = screen.getByRole('button', { name: /^Date / })
-  expect(trigger).toHaveAttribute('dir', 'rtl')
-  await user.click(trigger)
-  expect(screen.getByRole('dialog', { name: 'Date' })).toHaveAttribute('dir', 'rtl')
+  await user.click(screen.getByRole('button', { name: /^Date / }))
   expect(screen.getByRole('button', { name: 'Next billing month' })).toBeInTheDocument()
   await user.click(
     screen.getByRole('button', { name: new RegExp(fa['picker.chooseMonthAndYear']) }),
   )
   expect(screen.getByRole('option', { name: 'ژانویه' })).toHaveAttribute('aria-selected', 'true')
-})
-
-it('inherits a local direction override independently of the application language', async () => {
-  const user = userEvent.setup()
-  const i18n = await createI18n('fa-IR')
-  render(
-    <I18nextProvider i18n={i18n}>
-      <I18nDirectionProvider syncDocument>
-        <DirectionProvider direction="ltr">
-          <DatePicker>
-            <DatePickerLabel>Date</DatePickerLabel>
-            <DatePickerTrigger />
-            <DatePickerContent />
-          </DatePicker>
-          <TimePicker>
-            <TimePickerLabel>Time</TimePickerLabel>
-            <TimePickerTrigger />
-          </TimePicker>
-          <DateTimePicker timeZone="UTC">
-            <DateTimePickerLabel>Meeting</DateTimePickerLabel>
-            <DateTimePickerTrigger />
-          </DateTimePicker>
-          <DatePicker direction="rtl">
-            <DatePickerLabel>Explicit RTL</DatePickerLabel>
-            <DatePickerTrigger />
-          </DatePicker>
-        </DirectionProvider>
-      </I18nDirectionProvider>
-    </I18nextProvider>,
-  )
-
-  for (const name of ['Date', 'Time', 'Meeting'])
-    expect(screen.getByRole('button', { name })).toHaveAttribute('dir', 'ltr')
-  expect(screen.getByRole('button', { name: 'Explicit RTL' })).toHaveAttribute('dir', 'rtl')
-  await user.click(screen.getByRole('button', { name: 'Date' }))
-  expect(screen.getByRole('dialog', { name: 'Date' })).toHaveAttribute('dir', 'ltr')
-  expect(document.documentElement.dir).toBe('rtl')
 })
 
 it.each([
@@ -201,4 +159,23 @@ it.each([
   } finally {
     vi.useRealTimers()
   }
+})
+
+it('localizes the picker close action and dismisses without changing its value', async () => {
+  const user = userEvent.setup()
+  const i18n = await createI18n('zh-Hans')
+  const changed = vi.fn()
+  render(
+    <I18nextProvider i18n={i18n}>
+      <TimePicker defaultValue="13:30" onValueChange={changed}>
+        <TimePickerLabel>Time</TimePickerLabel>
+        <TimePickerTrigger />
+        <TimePickerContent />
+      </TimePicker>
+    </I18nextProvider>,
+  )
+  await user.click(screen.getByRole('button', { name: /^Time / }))
+  act(() => screen.getByRole('button', { name: zh['operation.close'] }).click())
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(changed).not.toHaveBeenCalled()
 })

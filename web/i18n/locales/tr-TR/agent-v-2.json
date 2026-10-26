@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Agent bilgi tabanları yükleniyor…",
   "agentDetail.configure.knowledgeFs.rebind": "İçe aktarılan bağlantı: bu Agent bilgi tabanını yeniden seçin veya kullanılabilir bir Agent bilgi tabanıyla değiştirin.",
   "agentDetail.configure.knowledgeFs.retry": "Yeniden dene",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "Bu dağıtımda Agent bilgi tabanından bilgi alma kullanılamıyor. Bir yöneticiden etkinleştirmesini isteyin.",
   "agentDetail.configure.knowledgeFs.select": "En fazla 10 Agent bilgi tabanı seçin",
   "agentDetail.configure.knowledgeFs.title": "Agent bilgi tabanı",
   "agentDetail.configure.knowledgeFs.unavailable": "Bu Agent bilgi tabanı kullanılamıyor veya bu ajanda kullanma izniniz yok.",
