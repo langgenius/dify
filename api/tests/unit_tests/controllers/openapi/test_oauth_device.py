@@ -322,8 +322,8 @@ class TestOauthDeviceHttpCases:
         )
 
     @staticmethod
-    @pytest.mark.parametrize("body", [{"client_id": "difyctl"}, {"client_id": "difyctl", "device_label": 7}])
-    def test_device_code_without_usable_label_passes_none(
+    @pytest.mark.parametrize("body", [{"client_id": "difyctl"}, {"client_id": "difyctl", "device_label": None}])
+    def test_device_code_without_label_passes_none(
         openapi_app: Flask, device_service: Mock, body: dict[str, object]
     ) -> None:
         device_service.start.return_value = DeviceAuthorization(
@@ -339,6 +339,16 @@ class TestOauthDeviceHttpCases:
 
         assert response.status_code == 200
         assert device_service.start.call_args.kwargs["device_label"] is None
+
+    @staticmethod
+    @pytest.mark.parametrize("label", [7, True, ["x"], {"k": "v"}])
+    def test_device_code_non_string_label_is_rejected(openapi_app: Flask, device_service: Mock, label: object) -> None:
+        response = openapi_app.test_client().post(
+            f"{_PREFIX}/code", json={"client_id": "difyctl", "device_label": label}
+        )
+
+        assert response.status_code == 400
+        assert device_service.mock_calls == []
 
     @staticmethod
     def test_device_code_unknown_client_keeps_error_contract(openapi_app: Flask, device_service: Mock) -> None:

@@ -7,7 +7,12 @@ from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi._oauth_input import basic_client_credentials, oauth_feature_required, read_oauth_body
+from controllers.openapi._oauth_input import (
+    InvalidOAuthBodyError,
+    basic_client_credentials,
+    oauth_feature_required,
+    read_oauth_body,
+)
 from services.oauth_token_contracts import (
     GrantType,
     TokenEndpointError,
@@ -134,6 +139,16 @@ def test_unknown_grant_returns_oauth_error_body(app: Flask) -> None:
     assert response.get_json() == {"error": "unsupported_grant_type"}
 
 
+def test_non_string_json_field_is_invalid_request(app: Flask) -> None:
+    _install(app, _Handler(result=_result()))
+
+    response = app.test_client().post(_PATH, json={"grant_type": "authorization_code", "code": 7})
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "invalid_request"}
+    assert response.headers["Cache-Control"] == "no-store"
+
+
 def test_401_sends_basic_challenge_and_other_errors_do_not(app: Flask) -> None:
     _install(app, _Handler(error=TokenEndpointError(TokenErrorCode.INVALID_CLIENT, HTTPStatus.UNAUTHORIZED)))
     unauthorized = app.test_client().post(_PATH, data={"grant_type": GrantType.DEVICE_CODE})
@@ -167,8 +182,12 @@ def test_basic_credentials_take_precedence_and_ip_and_origin_are_passed(app: Fla
 def test_read_oauth_body_and_basic_credentials(app: Flask) -> None:
     with app.test_request_context(method="POST", data={"a": "1", "b": "2"}):
         assert read_oauth_body() == {"a": "1", "b": "2"}
-    with app.test_request_context(method="POST", json={"a": "1", "n": 2, "l": ["x"], "z": None}):
+    with app.test_request_context(method="POST", json={"a": "1", "z": None}):
         assert read_oauth_body() == {"a": "1"}
+    for bad in (2, True, ["x"], {"k": "v"}):
+        with app.test_request_context(method="POST", json={"a": "1", "n": bad}):
+            with pytest.raises(InvalidOAuthBodyError):
+                read_oauth_body()
     with app.test_request_context(method="POST", json=["a"]):
         assert read_oauth_body() == {}
     with app.test_request_context(method="POST", data="{", content_type="application/json"):

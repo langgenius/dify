@@ -10,10 +10,10 @@ from flask_restx import Resource
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import OAuthTokenErrorResponse, OAuthTokenResponse
-from controllers.openapi._oauth_input import basic_client_credentials, read_oauth_body
+from controllers.openapi._oauth_input import InvalidOAuthBodyError, basic_client_credentials, read_oauth_body
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response, extract_remote_ip
-from services.oauth_token_contracts import TokenEndpointError, TokenGrantResult, TokenRequest
+from services.oauth_token_contracts import TokenEndpointError, TokenErrorCode, TokenGrantResult, TokenRequest
 
 BASIC_CHALLENGE = 'Basic realm="dify-openapi"'
 NO_STORE_HEADERS = {"Cache-Control": "no-store", "Pragma": "no-cache"}
@@ -72,6 +72,8 @@ class OAuthTokenApi(Resource):
     def post(self):
         try:
             result = application_services().oauth_token.exchange(_token_request(read_oauth_body()))
+        except InvalidOAuthBodyError:
+            return {"error": TokenErrorCode.INVALID_REQUEST.value}, HTTPStatus.BAD_REQUEST, NO_STORE_HEADERS
         except TokenEndpointError as error:
             headers = dict(NO_STORE_HEADERS)
             if error.status == HTTPStatus.UNAUTHORIZED:

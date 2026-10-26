@@ -8,12 +8,19 @@ from flask import request
 from werkzeug.exceptions import NotFound
 
 
+class InvalidOAuthBodyError(Exception):
+    """A JSON field is neither a string nor null."""
+
+
 def read_oauth_body() -> dict[str, str]:
     if request.is_json:
         body = request.get_json(silent=True)
         if not isinstance(body, dict):
             return {}
-        return {key: value for key, value in body.items() if isinstance(key, str) and isinstance(value, str)}
+        fields = {key: value for key, value in body.items() if value is not None}
+        if not all(isinstance(value, str) for value in fields.values()):
+            raise InvalidOAuthBodyError
+        return fields
     return request.form.to_dict(flat=True)
 
 
