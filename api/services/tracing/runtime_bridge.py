@@ -16,8 +16,8 @@ from dify_agent.layers.execution_context import ApplicationTracingContext
 from configs import dify_config
 
 if TYPE_CHECKING:
-    from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeBuildContext
     from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+    from core.ops.base_trace_instance import AgentAppTracingContext
     from core.ops.entities.trace_entity import BaseTraceInfo
     from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeBuildContext
     from services.tracing.service import ApplicationTracingService
@@ -55,7 +55,7 @@ def _log_failure(stage: str, error: Exception) -> None:
     logger.warning("Application tracing hook skipped: stage=%s error_code=%s", stage, code)
 
 
-def prepare_agent_app(context: AgentAppRuntimeBuildContext) -> ApplicationTracingContext | None:
+def prepare_agent_app(context: AgentAppTracingContext) -> ApplicationTracingContext | None:
     if not dify_config.OPS_AGENT_TRACE_ENABLED:
         return None
     try:
