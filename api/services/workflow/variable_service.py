@@ -7,7 +7,6 @@ from functools import partial
 from typing import Any, Protocol
 
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from graphon.nodes import BuiltinNodeTypes
@@ -16,7 +15,7 @@ from graphon.variables import Segment, StringSegment, VariableBase
 from libs.uuid_utils import uuidv7
 from machinery.context import RequestContext
 from models import Account, App, Conversation, UploadFile, Workflow
-from models.enums import ConversationFromSource, DraftVariableType, ExecutionOffLoadType
+from models.enums import ConversationFromSource, ConversationStatus, DraftVariableType, ExecutionOffLoadType, InvokeFrom
 from models.workflow import (
     WorkflowDraftVariable,
     WorkflowNodeExecutionModel,
@@ -174,11 +173,11 @@ class WorkflowVariableService:
             override_model_configs=None,
             mode=app.mode,
             name="Draft Debugging Conversation",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,
-            status="normal",
+            status=ConversationStatus.NORMAL,
             invoke_from=InvokeFrom.DEBUGGER,
             from_source=ConversationFromSource.CONSOLE,
             from_end_user_id=None,
