@@ -13,7 +13,7 @@ from typing_extensions import TypedDict
 from core.dify_builder.models import Actor
 from runtime_contracts.builder.native.contracts import DispatchPermit
 from runtime_contracts.builder.native.runtime_contracts import NodeJournalState
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.pending_intents import ResolvedPendingIntent
@@ -22,15 +22,15 @@ if TYPE_CHECKING:
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
+    from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import ContinuationCase
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import (
+    from tests.e2e_tests.containers.core.workflow import (
         test_builder_native_continuation as _fixture_types_0,
     )
-    from tests.test_containers_integration_tests.core.workflow import test_builder_restricted_native as _fixture_types_1
+    from tests.e2e_tests.containers.core.workflow import test_builder_restricted_native as _fixture_types_1
 
 
 # Imported aliases register shared pytest fixtures in this module.
@@ -52,20 +52,20 @@ from services.dify_builder.native_testing.agent_operations import (
     AgentToolDispatchOwner,
     admit_confirmed_agent_execution,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import ContinuationCase
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     continuation_case as continuation_case,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     migrated_native_tables as migrated_native_tables,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     native_owner as native_owner,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     no_live as no_live,
 )
 
@@ -470,7 +470,7 @@ class AsyncConfigQuery(TypedDict, closed=True):
     config_version_kind: str
 
 
-@pytest.fixture
+@pytest.fixture(params=["shell_run"])
 def claimed_shell_ack(
     continuation_case: ContinuationCase, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
 ) -> ClaimedShellAck:
@@ -489,7 +489,7 @@ def claimed_shell_ack(
     from services.dify_builder.native_testing.agent_operations import AgentOperationService
 
     case = continuation_case
-    boundary = getattr(request, "param", "shell_run")
+    boundary = request.param
     assert isinstance(boundary, str)
     original_key = operation_digest(case.ledger.intent.key)
     effect = case.ledger.intent.model_copy(
@@ -674,6 +674,7 @@ def test_completed_shell_config_read_refuses_uncertain_or_foreign_authority(
             changed = endpoint.config.model_copy(update={"config_ref": "foreign-after-status"})
             monkeypatch.setattr(service, "_endpoint", lambda _ref: replace(endpoint, config=changed))
         if failure == "unknown":
+            # pyrefly: ignore[bad-argument-type]  # unknown backend status on purpose
             return AgentShellJobStatus.model_construct(job_id="job-one", status="unknown", done=False, exit_code=None)
         return AgentShellJobStatus(
             job_id="other-job" if failure == "wrong-job" else "job-one",
