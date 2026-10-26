@@ -1147,7 +1147,7 @@ class AuthConfig(BaseSettings):
         )
 
     OAUTH_MAX_TOKENS_PER_ACCOUNT: int = Field(
-        description="Max live OAuth sessions per account; issuing one past the cap revokes the oldest. "
+        description="Max live OAuth sessions per account; issuing one past the cap revokes the least recently used. "
         f"Values outside {MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT}-{MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT} are clamped; "
         "a non-integer falls back to the default.",
         ge=MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT,

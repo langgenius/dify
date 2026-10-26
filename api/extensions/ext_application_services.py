@@ -385,7 +385,11 @@ def _build_oauth_device_service(
     accounts: OAuthDeviceAccountQuery,
     workspaces: DeviceWorkspaceQuery,
 ) -> OAuthDeviceApplicationService:
-    token_repository = SQLAlchemyOAuthDeviceTokenRepository(session_factory=database_client, redis=redis)
+    token_repository = SQLAlchemyOAuthDeviceTokenRepository(
+        session_factory=database_client,
+        redis=redis,
+        max_sessions_per_account=dify_config.OAUTH_MAX_TOKENS_PER_ACCOUNT,
+    )
     return OAuthDeviceApplicationService(
         store=DeviceFlowRedis(redis),
         accounts=accounts,

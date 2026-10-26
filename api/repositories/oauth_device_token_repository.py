@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import Row, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
-from libs.uuid_utils import uuidv7
+from models.account import Account
 from models.oauth import OAuthAccessToken
 from services.oauth_device_contracts import (
     OAuthDeviceSession,
@@ -66,18 +66,28 @@ class _TokenRowValues:
 
 
 class SQLAlchemyOAuthDeviceTokenRepository:
-    def __init__(self, *, session_factory: sessionmaker[Session], redis: RedisClientWrapper) -> None:
+    def __init__(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        redis: RedisClientWrapper,
+        max_sessions_per_account: int,
+    ) -> None:
         self._session_factory = session_factory
         self._redis = redis
+        self._max_sessions_per_account = max_sessions_per_account
 
     def rotate_token(self, token: OAuthDeviceTokenWrite) -> OAuthDeviceTokenRotation:
-        # MySQL drops the index's WHERE revoked_at IS NULL, so a revoked row on
-        # the same device key would collide with a new insert. Reuse the row.
-        # None: no row existed, so the rotation inserted one.
-        previous: _TokenRowValues | None = None
+        now = datetime.now(UTC)
+        evicted: Sequence[Row[tuple[str, str | None]]] = ()
         with self._session_factory() as session:
-            record = session.scalar(
-                select(OAuthAccessToken)
+            if token.account_id is not None:
+                # Row locks on token rows cannot stop a concurrent insert, so the
+                # account row serializes this account's logins for the cap check.
+                session.execute(select(Account.id).where(Account.id == token.account_id).with_for_update())
+
+            prior = session.execute(
+                select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
                 .where(
                     OAuthAccessToken.subject_email == token.subject_email,
                     OAuthAccessToken.subject_issuer == token.subject_issuer,
@@ -87,6 +97,22 @@ class SQLAlchemyOAuthDeviceTokenRepository:
                 .order_by(OAuthAccessToken.revoked_at.is_not(None))
                 .limit(1)
                 .with_for_update()
+            ).first()
+            if prior is not None:
+                session.execute(update(OAuthAccessToken).where(OAuthAccessToken.id == prior.id).values(revoked_at=now))
+
+            if token.account_id is not None:
+                evicted = self._evict_over_cap(session, account_id=token.account_id, now=now)
+
+            record = OAuthAccessToken(
+                subject_email=token.subject_email,
+                subject_issuer=token.subject_issuer,
+                account_id=token.account_id,
+                client_id=token.client_id,
+                device_label=token.device_label,
+                prefix=token.prefix,
+                token_hash=token.token_hash,
+                expires_at=token.expires_at,
             )
             if record is None:
                 record = OAuthAccessToken(
@@ -119,25 +145,56 @@ class SQLAlchemyOAuthDeviceTokenRepository:
         replaced = previous if previous is not None and previous.revoked_at is None else None
         rotation = OAuthDeviceTokenRotation(
             token_id=token_id,
-            replaced_token_id=replaced.id if replaced is not None else None,
-            replaced_token_hash=replaced.token_hash if replaced is not None else None,
+            replaced_token_id=str(prior.id) if prior is not None else None,
+            replaced_token_hash=prior.token_hash if prior is not None else None,
+            evicted_token_ids=tuple(str(row.id) for row in evicted),
+            evicted_token_hashes=tuple(row.token_hash for row in evicted if row.token_hash),
         )
-        if rotation.replaced_token_hash:
+        cache_keys = [
+            TOKEN_CACHE_KEY_FMT.format(hash=token_hash)
+            for token_hash in (rotation.replaced_token_hash, *rotation.evicted_token_hashes)
+            if token_hash
+        ]
+        if cache_keys:
             try:
-                self._redis.delete(TOKEN_CACHE_KEY_FMT.format(hash=rotation.replaced_token_hash))
+                self._redis.delete(*cache_keys)
             except Exception:
                 self._rollback_rotation(rotation, new_hash=token.token_hash, previous=previous)
                 raise
         return rotation
 
-    def _rollback_rotation(
+    def _evict_over_cap(
         self,
-        rotation: OAuthDeviceTokenRotation,
+        session: Session,
         *,
-        new_hash: str,
-        previous: _TokenRowValues | None,
-    ) -> None:
-        """Undo a rotation: delete the inserted row, or put a reused row's values back (``previous``)."""
+        account_id: str,
+        now: datetime,
+    ) -> Sequence[Row[tuple[str, str | None]]]:
+        live = session.execute(
+            select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
+            .where(
+                OAuthAccessToken.account_id == account_id,
+                OAuthAccessToken.revoked_at.is_(None),
+                OAuthAccessToken.expires_at > now,
+            )
+            .order_by(
+                func.coalesce(OAuthAccessToken.last_used_at, OAuthAccessToken.created_at).asc(),
+                OAuthAccessToken.id.asc(),
+            )
+        ).all()
+        # The row about to be inserted takes one of the slots.
+        overflow = len(live) + 1 - self._max_sessions_per_account
+        if overflow <= 0:
+            return ()
+
+        evicted = live[:overflow]
+        session.execute(
+            update(OAuthAccessToken).where(OAuthAccessToken.id.in_([row.id for row in evicted])).values(revoked_at=now)
+        )
+        return evicted
+
+    def rollback_rotation(self, rotation: OAuthDeviceTokenRotation) -> bool:
+        new_hash: str | None = None
         with self._session_factory() as session:
             record = session.scalar(
                 select(OAuthAccessToken)
@@ -147,17 +204,42 @@ class SQLAlchemyOAuthDeviceTokenRepository:
                 )
                 .with_for_update()
             )
-            # A later rotation already replaced this token; leave its row alone.
-            if record is not None:
-                if previous is None:
-                    session.delete(record)
-                else:
-                    previous.apply_to(record)
-                session.commit()
+            # A later successful rotation already superseded this token. In
+            # that case restoring its predecessor would create two live rows.
+            if current is None:
+                return False
+
+            new_hash = current.token_hash
+            session.delete(current)
+            session.flush()
+            if rotation.replaced_token_id is not None:
+                predecessor = session.scalar(
+                    select(OAuthAccessToken)
+                    .where(
+                        OAuthAccessToken.id == rotation.replaced_token_id,
+                        OAuthAccessToken.revoked_at.is_not(None),
+                    )
+                    .with_for_update()
+                )
+                if predecessor is None:
+                    raise RuntimeError("OAuth token rotation predecessor could not be restored")
+                predecessor.revoked_at = None
+            if rotation.evicted_token_ids:
+                # A row whose hash was cleared was revoked by the user since; keep it revoked.
+                session.execute(
+                    update(OAuthAccessToken)
+                    .where(
+                        OAuthAccessToken.id.in_(rotation.evicted_token_ids),
+                        OAuthAccessToken.revoked_at.is_not(None),
+                        OAuthAccessToken.token_hash.is_not(None),
+                    )
+                    .values(revoked_at=None)
+                )
+            session.commit()
 
         cache_keys = [
             TOKEN_CACHE_KEY_FMT.format(hash=token_hash)
-            for token_hash in (new_hash, rotation.replaced_token_hash)
+            for token_hash in (new_hash, rotation.replaced_token_hash, *rotation.evicted_token_hashes)
             if token_hash
         ]
         try:
