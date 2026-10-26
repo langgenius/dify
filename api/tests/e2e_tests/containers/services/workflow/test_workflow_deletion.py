@@ -11,6 +11,7 @@ from models.account import Account, Tenant, TenantAccountJoin
 from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
@@ -73,7 +74,7 @@ class TestWorkflowDeletion:
             id=str(uuid4()),
             tenant_id=tenant.id,
             app_id=app.id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version=version,
             graph=json.dumps({"nodes": [], "edges": []}),
             _features=json.dumps({}),

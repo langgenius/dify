@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from models import CreatorUserRole, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from models import CreatorUserRole, WorkflowRun, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.workflow.definition_repository import workflow_snapshot
 from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
 from services.app.generation.input_adapter import AppInputAdapter
@@ -22,7 +23,7 @@ def _workflow_run(*, graph: str | None) -> WorkflowRun:
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType.CHAT,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         graph=graph,
