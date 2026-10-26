@@ -475,9 +475,11 @@ class TestSchemaCases:
         from controllers.common.schema import query_params_from_request
 
         app = Flask(__name__)
-        with app.test_request_context("/?page=bad&limit="):
-            with pytest.raises(ValueError, match="2 validation errors for HelperQueryModel\\\npage"):
-                query_params_from_request(HelperQueryModel, list_fields=("status",))
+        with (
+            app.test_request_context("/?page=bad&limit="),
+            pytest.raises(ValueError, match="2 validation errors for HelperQueryModel\\\npage"),
+        ):
+            query_params_from_request(HelperQueryModel, list_fields=("status",))
 
     @staticmethod
     def test_query_params_from_request_can_use_model_default_for_malformed_defaulted_ints():

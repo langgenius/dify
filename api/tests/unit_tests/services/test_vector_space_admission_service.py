@@ -599,37 +599,42 @@ def test_unavailable_billing_quota_fails_before_embedding_or_reservation(
         patch("services.vector_space_admission_service.BillingService.get_vector_space", return_value=quota),
         patch.object(service, "_get_embedding_dimension") as dimension,
         patch.object(service, "_reserve_projected_usage") as reserve,
+        pytest.raises(VectorSpaceAdmissionUnavailableError, match="Unable to verify vector storage usage"),
     ):
-        with pytest.raises(VectorSpaceAdmissionUnavailableError, match="Unable to verify vector storage usage"):
-            service._ensure_can_write(
-                dataset=_dataset(sqlite_session),
-                document_id="document-1",
-                workload=_workload(),
-                session=sqlite_session,
-            )
+        service._ensure_can_write(
+            dataset=_dataset(sqlite_session),
+            document_id="document-1",
+            workload=_workload(),
+            session=sqlite_session,
+        )
 
     dimension.assert_not_called()
     reserve.assert_not_called()
 
 
 def test_billing_request_failure_is_unavailable() -> None:
-    with patch(
-        "services.vector_space_admission_service.BillingService.get_vector_space", side_effect=RuntimeError("offline")
+    with (
+        patch(
+            "services.vector_space_admission_service.BillingService.get_vector_space",
+            side_effect=RuntimeError("offline"),
+        ),
+        pytest.raises(VectorSpaceAdmissionUnavailableError, match="Unable to verify vector storage usage"),
     ):
-        with pytest.raises(VectorSpaceAdmissionUnavailableError, match="Unable to verify vector storage usage"):
-            VectorSpaceAdmissionService()._get_usage_and_limit_mb("tenant-1")
+        VectorSpaceAdmissionService()._get_usage_and_limit_mb("tenant-1")
 
 
 def test_watermark_failure_is_unavailable() -> None:
-    with patch("services.vector_space_admission_service.redis_client.lock", side_effect=RuntimeError("offline")):
-        with pytest.raises(VectorSpaceAdmissionUnavailableError, match="Unable to reserve estimated vector storage"):
-            VectorSpaceAdmissionService()._reserve_projected_usage(
-                tenant_id="tenant-1",
-                document_id="document-1",
-                current_usage_bytes=0,
-                document_estimate_bytes=1,
-                estimate_limit_bytes=50 * _MEBIBYTE,
-            )
+    with (
+        patch("services.vector_space_admission_service.redis_client.lock", side_effect=RuntimeError("offline")),
+        pytest.raises(VectorSpaceAdmissionUnavailableError, match="Unable to reserve estimated vector storage"),
+    ):
+        VectorSpaceAdmissionService()._reserve_projected_usage(
+            tenant_id="tenant-1",
+            document_id="document-1",
+            current_usage_bytes=0,
+            document_estimate_bytes=1,
+            estimate_limit_bytes=50 * _MEBIBYTE,
+        )
 
 
 def test_watermark_is_isolated_by_tenant() -> None:

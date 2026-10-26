@@ -438,7 +438,7 @@ def test_legacy_dataset_factory_bounds_readiness_wait(environment: _Environment)
         patch.object(legacy, "resolve_tidb_auth_binding", side_effect=service.TidbBindingPendingError()),
         patch.object(legacy.time, "monotonic", side_effect=[0, 901]),
         patch.object(legacy.time, "sleep") as sleep,
+        pytest.raises(service.TidbBindingPendingError),
     ):
-        with pytest.raises(service.TidbBindingPendingError):
-            legacy.TidbOnQdrantVectorFactory().init_vector(dataset, [], _UnusedEmbeddings(), session=None)
+        legacy.TidbOnQdrantVectorFactory().init_vector(dataset, [], _UnusedEmbeddings(), session=None)
     sleep.assert_not_called()

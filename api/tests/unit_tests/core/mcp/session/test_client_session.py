@@ -623,9 +623,8 @@ class TestClientSessionCases:
         t = threading.Thread(target=mock_server, daemon=True)
         t.start()
 
-        with session:
-            with pytest.raises(RuntimeError, match="Unsupported protocol version"):
-                session.initialize()
+        with session, pytest.raises(RuntimeError, match="Unsupported protocol version"):
+            session.initialize()
         t.join(timeout=1)
 
     @staticmethod

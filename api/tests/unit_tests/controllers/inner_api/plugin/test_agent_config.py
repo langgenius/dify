@@ -284,9 +284,9 @@ def test_prompt_rejects_missing_null_or_non_string_text(prompt_body: dict[str, o
             },
         ),
         patch(f"{MODULE}.AgentConfigService") as service,
+        pytest.raises(RelayedHTTPError) as exc_info,
     ):
-        with pytest.raises(RelayedHTTPError) as exc_info:
-            _raw(AgentConfigPromptApi.put)(AgentConfigPromptApi(), "agent-1")
+        _raw(AgentConfigPromptApi.put)(AgentConfigPromptApi(), "agent-1")
     assert exc_info.value.code == 400
     assert exc_info.value.error_code == "invalid_request"
     service.assert_not_called()
