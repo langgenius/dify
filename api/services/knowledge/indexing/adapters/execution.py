@@ -21,6 +21,7 @@ from core.plugin.impl.exc import PluginDaemonError
 from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.embedding.token_counter import calculate_segment_token_counts
+from core.rag.graph.graph_index_service import GraphIndexService
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor import IndexProcessorFactory
 from core.rag.models.document import Document
@@ -165,6 +166,7 @@ class IndexingExecutionAdapter:
                 ]
                 for future in futures:
                     future.result()
+            self._build_graph(document, chunks)
         elif (
             dataset.indexing_technique == IndexTechniqueType.ECONOMY
             and document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
@@ -173,6 +175,21 @@ class IndexingExecutionAdapter:
             # them and incorrectly let the document become completed.
             with ThreadPoolExecutor(max_workers=1) as executor:
                 executor.submit(propagate_context(self._process_chunk), app, document.ref, chunks, True).result()
+
+    def _build_graph(self, document: IndexingDocument, chunks: list[Document]) -> None:
+        """Extract the knowledge graph for chunks whose vectors are now stored.
+
+        The index processors' ``load`` used to do this right after writing
+        vectors; this backend writes vectors itself, so it owns the step too.
+        Extraction finishes its model calls before the session issues any SQL,
+        so no transaction stays open across that I/O. Failures are logged and
+        swallowed by the service, leaving vector retrieval intact.
+        """
+        self.check_paused(document.ref)
+        dataset, _ = self._documents.get_indexing_models(document.ref)
+        with self._session_factory() as session:
+            GraphIndexService.build_for_documents(dataset, chunks, session=session)
+            session.commit()
 
     def _process_chunk(self, app: Flask, ref: DocumentRef, chunks: list[Document], keywords: bool) -> None:
         with app.app_context():

@@ -1,9 +1,10 @@
 import type {
+  DatasetGraphIndexSettingResponse,
   DatasetIconInfoResponse,
   DatasetRetrievalModelResponse,
   DatasetSummaryIndexSettingResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { IconInfo, SummaryIndexSetting } from '@/models/datasets'
+import type { GraphIndexSetting, IconInfo, SummaryIndexSetting } from '@/models/datasets'
 import type { AppIconType, RetrievalConfig } from '@/types/app'
 import {
   ChunkingMode,
@@ -50,6 +51,26 @@ export const toSummaryIndexSetting = ({
   model_name: model_name ?? undefined,
   model_provider_name: model_provider_name ?? undefined,
   summary_prompt: summary_prompt ?? undefined,
+})
+
+/**
+ * The graph settings form state for a stored graph setting. Unset fields stay absent rather than
+ * null, so saving the form never writes a null over a server-side default.
+ */
+export const toGraphIndexSetting = (
+  setting: DatasetGraphIndexSettingResponse,
+): GraphIndexSetting => ({
+  enabled: setting.enabled ?? undefined,
+  model_name: setting.model_name ?? undefined,
+  model_provider_name: setting.model_provider_name ?? undefined,
+  entity_types: setting.entity_types ?? undefined,
+  max_entities_per_chunk: setting.max_entities_per_chunk ?? undefined,
+  extract_prompt: setting.extract_prompt ?? undefined,
+  max_depth: setting.max_depth ?? undefined,
+  max_seed_entities: setting.max_seed_entities ?? undefined,
+  max_neighbors_per_hop: setting.max_neighbors_per_hop ?? undefined,
+  hop_decay: setting.hop_decay ?? undefined,
+  llm_query_fallback: setting.llm_query_fallback ?? undefined,
 })
 
 /**

@@ -114,6 +114,8 @@ const UpgradeSettings = () => {
       setRetrievalConfig={vi.fn()}
       summaryIndexSetting={undefined}
       handleSummaryIndexSettingChange={vi.fn()}
+      graphIndexSetting={undefined}
+      handleGraphIndexSettingChange={vi.fn()}
       showMultiModalTip={false}
     />
   )

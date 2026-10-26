@@ -1,9 +1,9 @@
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { SummaryIndexSetting } from '@/models/datasets'
+import type { GraphIndexSetting, SummaryIndexSetting } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
@@ -77,6 +77,10 @@ describe('IndexingSection', () => {
     enable: false,
   }
 
+  const mockGraphIndexSetting: GraphIndexSetting = {
+    enabled: false,
+  }
+
   const defaultProps: ComponentProps<typeof IndexingSection> = {
     currentDataset: mockDataset,
     indexMethod: IndexingType.QUALIFIED,
@@ -90,6 +94,8 @@ describe('IndexingSection', () => {
     setRetrievalConfig: vi.fn(),
     summaryIndexSetting: mockSummaryIndexSetting,
     handleSummaryIndexSettingChange: vi.fn(),
+    graphIndexSetting: mockGraphIndexSetting,
+    handleGraphIndexSettingChange: vi.fn(),
     showMultiModalTip: false,
   }
 
@@ -140,6 +146,24 @@ describe('IndexingSection', () => {
       ).toBeDisabled()
     },
   )
+
+  it('offers the knowledge graph for built-in datasets and reports toggling it', () => {
+    const handleGraphIndexSettingChange = vi.fn()
+    renderComponent({ handleGraphIndexSettingChange })
+
+    fireEvent.click(screen.getByRole('switch', { name: 'datasetSettings.form.graphIndex.title' }))
+
+    expect(handleGraphIndexSettingChange).toHaveBeenCalledWith({ enabled: true })
+  })
+
+  it('withholds the knowledge graph from external datasets', () => {
+    // An external knowledge base has no documents of its own to extract from.
+    renderComponent({ currentDataset: { ...mockDataset, provider: 'external' } })
+
+    expect(
+      screen.queryByRole('switch', { name: 'datasetSettings.form.graphIndex.title' }),
+    ).not.toBeInTheDocument()
+  })
 
   it('withholds internal retrieval configuration for external datasets', () => {
     renderComponent({ currentDataset: { ...mockDataset, provider: 'external' } })
