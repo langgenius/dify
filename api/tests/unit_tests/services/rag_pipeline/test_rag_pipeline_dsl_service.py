@@ -39,7 +39,7 @@ from services.rag_pipeline.rag_pipeline_dsl_service import (
     RagPipelineDslService,
     RagPipelinePendingData,
 )
-from tests.unit_tests.model_factories import make_account, make_dataset, make_tenant, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_dataset, make_tenant, make_workflow
 
 
 @pytest.fixture

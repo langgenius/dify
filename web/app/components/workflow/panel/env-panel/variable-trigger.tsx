@@ -38,8 +38,8 @@ const VariableTrigger = ({ open, setOpen, env, onClose, onSave }: Props) => {
         }
       />
       <PopoverContent
-        placement="left-start"
-        sideOffset={8}
+        side="left"
+        align="start"
         alignOffset={-104}
         className="border-none bg-transparent shadow-none"
       >

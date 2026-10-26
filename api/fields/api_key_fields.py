@@ -14,8 +14,9 @@ class ApiKeyItem(ResponseModel):
     type: str
     token: str
     # Dataset keys only: the knowledge bases this key is bound to. Empty = the key can
-    # access every dataset in the tenant (default). App keys are always empty.
+    # access every knowledge base in the tenant when both scopes are empty. App keys are always empty.
     dataset_ids: list[str] = []
+    knowledge_space_ids: list[str] = []
     last_used_at: int | None = None
     created_at: int | None = None
 

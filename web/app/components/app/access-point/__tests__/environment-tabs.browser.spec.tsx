@@ -5,6 +5,8 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -37,6 +39,8 @@ vi.mock('@/app/components/app/access-point/deployed-environment-access-points', 
 async function renderAccessPoint(names = ['test-1']) {
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient)
+  seedCurrentWorkspaceQuery(queryClient)
+  seedSystemFeatures(queryClient)
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppDetailFixture({

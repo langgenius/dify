@@ -25,7 +25,7 @@ vi.mock('#i18n', () => ({
   }),
 }))
 
-vi.mock('../../sort-dropdown', () => ({
+vi.mock('../../sort-menu', () => ({
   default: () => <div>sort</div>,
 }))
 

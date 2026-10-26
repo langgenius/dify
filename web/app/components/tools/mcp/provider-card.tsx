@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import OperationDropdown from './detail/operation-dropdown'
+import OperationMenu from './detail/operation-menu'
 
 type Props = Readonly<{
   currentProvider?: ToolWithProvider
@@ -45,7 +45,7 @@ const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Prop
         aria-haspopup="dialog"
         aria-expanded={currentProvider?.id === data.id}
         onClick={handleSelectProvider}
-        className="flex w-full cursor-pointer flex-col rounded-xl text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
+        className="flex w-full cursor-pointer flex-col rounded-xl text-start focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
       >
         <div className="flex shrink-0 items-center gap-3 rounded-t-xl p-4">
           <div className="shrink-0 overflow-hidden rounded-lg border-[0.5px] border-effects-icon-border">
@@ -63,7 +63,7 @@ const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Prop
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1 rounded-b-xl pt-1.5 pr-2.5 pb-2.5 pl-4">
+        <div className="flex items-center gap-1 rounded-b-xl ps-4 pe-2.5 pt-1.5 pb-2.5">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {data.tools.length > 0 && (
               <div className="min-w-0 truncate system-xs-regular text-text-tertiary">
@@ -104,11 +104,11 @@ const MCPCard = ({ currentProvider, data, onEdit, onDelete, handleSelect }: Prop
       {canManageMCP && (
         <div
           className={cn(
-            'absolute top-2.5 right-2.5 z-10 hidden group-focus-within:block group-hover:block',
+            'absolute inset-e-2.5 top-2.5 z-10 hidden group-focus-within:block group-hover:block',
             isOperationShow && 'block',
           )}
         >
-          <OperationDropdown
+          <OperationMenu
             inCard
             onOpenChange={setIsOperationShow}
             onEdit={() => onEdit(data.id)}

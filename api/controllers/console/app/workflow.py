@@ -91,6 +91,7 @@ from libs.external_api import error_responses
 from libs.helper import TimestampField, dump_response, to_timestamp, uuid_value
 from libs.login import login_required
 from models import Account, App
+from models.human_input_entities import FormInputConfig, UserActionConfig
 from models.model import AppMode
 from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
@@ -429,8 +430,13 @@ class WorkflowRestoreResponse(ResponseModel):
     updated_at: int
 
 
-class DefaultBlockConfigsResponse(RootModel[list[dict[str, Any]]]):
-    root: list[dict[str, Any]]
+class DefaultBlockConfigItemResponse(ResponseModel):
+    type: str
+    config: dict[str, Any]
+
+
+class DefaultBlockConfigsResponse(RootModel[list[DefaultBlockConfigItemResponse]]):
+    pass
 
 
 class DefaultBlockConfigResponse(RootModel[dict[str, Any]]):
@@ -442,8 +448,8 @@ class HumanInputFormPreviewResponse(ResponseModel):
     node_id: str
     node_title: str
     form_content: str
-    inputs: list[dict[str, Any]] = Field(default_factory=list)
-    actions: list[dict[str, Any]] = Field(default_factory=list)
+    inputs: list[FormInputConfig] = Field(default_factory=list)
+    actions: list[UserActionConfig] = Field(default_factory=list)
     display_in_ui: bool | None = None
     form_token: str | None = None
     resolved_default_values: dict[str, Any] = Field(default_factory=dict)
@@ -1024,7 +1030,7 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
             inputs=inputs,
             session=db.session(),
         )
-        return jsonable_encoder(preview)
+        return dump_response(HumanInputFormPreviewResponse, preview)
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/run")
@@ -1092,7 +1098,7 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
             inputs=inputs,
             session=db.session(),
         )
-        return jsonable_encoder(preview)
+        return dump_response(HumanInputFormPreviewResponse, preview)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form/run")
