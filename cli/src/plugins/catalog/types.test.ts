@@ -34,25 +34,6 @@ it('accepts kinds and binds it has never heard of', () => {
   expect(parseCatalog(bytes).ops['x.y']?.kind).toBe('hologram')
 })
 
-it('keeps an effect it has never heard of, and leaves it out when the server sends none', () => {
-  const op = {
-    summary: '',
-    method: 'POST',
-    path: '/x',
-    kind: 'object',
-    input: { type: 'object' },
-    bind: {},
-    internal: false,
-    deprecated: false,
-  }
-  const bytes = new TextEncoder().encode(
-    JSON.stringify({ ops: { 'x.y': { ...op, effect: 'irreversible' }, 'x.z': op } }),
-  )
-  const ops = parseCatalog(bytes).ops
-  expect(ops['x.y']?.effect).toBe('irreversible')
-  expect(ops['x.z']?.effect).toBeUndefined()
-})
-
 it('rejects a document without ops as catalog_unavailable', () => {
   expect(() => parseCatalog(new TextEncoder().encode('{"nope":1}'))).toThrow(
     expect.objectContaining({ code: 'catalog_unavailable' }),

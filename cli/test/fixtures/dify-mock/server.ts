@@ -765,10 +765,6 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     return c.json({ result: 'success' })
   })
 
-  app.post('/openapi/v1/apps/:id/tasks/:taskId:stop', (c) => {
-    return c.json({ result: 'success' })
-  })
-
   // Like the server: the submit names the run to follow, stopping at the next pause.
   app.post('/openapi/v1/apps/:id/human-input-forms/:formToken:submit', (c) =>
     c.json({

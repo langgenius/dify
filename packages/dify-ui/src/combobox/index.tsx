@@ -2,7 +2,6 @@
 
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { Placement } from '../internal/placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -15,7 +14,6 @@ import {
   floatingSeparatorClassName,
   positionerClassName,
 } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 type ComboboxActions = BaseCombobox.Root.Actions
@@ -115,7 +113,7 @@ function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTrigg
 }
 
 // The group owns the horizontal padding and the gap, so an icon, the input, and the controls sit in
-// it without margins of their own, like `DropdownMenuInputGroup`. The input keeps a narrow inset so
+// it without margins of their own, like `MenuInputGroup`. The input keeps a narrow inset so
 // its text lands where a standalone `Input` of the same size puts it.
 const comboboxInputGroupVariants = cva(
   [
@@ -219,7 +217,7 @@ const comboboxControlVariants = cva(
 
 type ComboboxClearProps = BaseCombobox.Clear.Props & VariantProps<typeof comboboxControlVariants>
 
-// Same look as `DropdownMenuClear`; change both together.
+// Same look as `MenuClear`; change both together.
 function ComboboxClear({
   className,
   children,
@@ -289,21 +287,16 @@ function ComboboxIcon({ className, children, ...props }: ComboboxIconProps) {
 const ComboboxPortal = BaseCombobox.Portal
 type ComboboxPortalProps = BaseCombobox.Portal.Props
 
-type ComboboxPositionerProps = Omit<BaseCombobox.Positioner.Props, 'side' | 'align'> & {
-  placement?: Placement
-}
+type ComboboxPositionerProps = BaseCombobox.Positioner.Props
 
 function ComboboxPositioner({
   className,
-  placement = 'bottom-start',
+  align = 'start',
   sideOffset = 4,
   ...props
 }: ComboboxPositionerProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
     <BaseCombobox.Positioner
-      side={side}
       align={align}
       sideOffset={sideOffset}
       className={(state) => cn(positionerClassName, resolveClassName(className, state))}
@@ -416,7 +409,7 @@ function ComboboxSeparator({ className, ...props }: ComboboxSeparatorProps) {
 
 type ComboboxEmptyProps = BaseCombobox.Empty.Props
 
-// Same look as `DropdownMenuEmpty`; change both together.
+// Same look as `MenuEmpty`; change both together.
 function ComboboxEmpty({ className, ...props }: ComboboxEmptyProps) {
   return (
     <BaseCombobox.Empty

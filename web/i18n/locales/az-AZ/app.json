@@ -29,6 +29,7 @@
   "appSelector.noParams": "Parametr tələb olunmur",
   "appSelector.params": "Tətbiqin parametrləri",
   "appSelector.placeholder": "Tətbiq seçin...",
+  "appSelector.searchPlaceholder": "Tətbiqləri ada görə axtarın…",
   "chooseAppFile": "Tətbiq paketi və ya DSL faylı seçin",
   "deleteAppConfirmContent": "Tətbiqin silinməsi geri qaytarıla bilməz. İstifadəçilər artıq tətbiqinizə daxil ola bilməyəcək, bütün təlimat konfiqurasiyaları və jurnallar həmişəlik silinəcək.",
   "deleteAppConfirmInputLabel": "Təsdiqləmək üçün aşağıdakı xanaya <appName>{{appName}}</appName> yazın:",
