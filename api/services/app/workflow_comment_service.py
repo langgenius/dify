@@ -167,6 +167,16 @@ class WorkflowCommentStore(Protocol):
     the load. The store applies no thread rules. Membership belongs to the workspace, so the store keeps only
     workspace members among the mentioned users inside the write. Writes return the mention context for
     `notify_user_ids`, limited to workspace members with an email address.
+
+    Concurrency, rule by rule:
+    - Creator-only edits and deletes read `created_by`, which never changes. The comment row lock detects a comment
+      deleted since the load; a reply update that affects no row raises `WorkflowCommentReplyNotFoundError`, and a
+      reply delete that affects no row means the reply is already gone.
+    - Content, positions, and mention lists are last-writer-wins. Saves write only changed values, so concurrent
+      changes to other parts of the thread survive.
+    - Not protected: two competing first resolutions both pass on loaded state, and the last one is kept.
+    - Not protected: newly mentioned users come from loaded state, so concurrent edits can notify a user twice.
+    - Not protected: the membership read inside the write can miss a membership removed concurrently.
     """
 
     def app_exists(self, *, workspace_id: str, app_id: str) -> bool:
