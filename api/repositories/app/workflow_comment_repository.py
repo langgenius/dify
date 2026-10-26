@@ -15,11 +15,12 @@ from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from models.account import Account, TenantAccountJoin
 from models.base import gen_uuidv7_string
-from models.comment import WorkflowComment, WorkflowCommentMention, WorkflowCommentReply
+from models.comment import WorkflowComment, WorkflowCommentMention
+from models.comment import WorkflowCommentReply as WorkflowCommentReplyModel
 from models.enums import AppStatus
 from models.model import App
 from repositories.app.console_visibility import console_visible_condition
-from services.app.workflow_comment_agg import WorkflowCommentAgg, WorkflowCommentReplyAgg
+from services.app.workflow_comment_agg import WorkflowCommentAgg, WorkflowCommentReply
 from services.app.workflow_comment_errors import WorkflowCommentNotFoundError, WorkflowCommentReplyNotFoundError
 from services.app.workflow_comment_service import (
     MentionContext,
@@ -132,7 +133,7 @@ class WorkflowCommentRepository(WorkflowCommentStore):
         with self._session_factory.begin() as session:
             self._lock(session, comment)
             session.execute(delete(WorkflowCommentMention).where(WorkflowCommentMention.comment_id == comment.id))
-            session.execute(delete(WorkflowCommentReply).where(WorkflowCommentReply.comment_id == comment.id))
+            session.execute(delete(WorkflowCommentReplyModel).where(WorkflowCommentReplyModel.comment_id == comment.id))
             session.execute(delete(WorkflowComment).where(WorkflowComment.id == comment.id))
 
     @staticmethod
@@ -164,9 +165,9 @@ class WorkflowCommentRepository(WorkflowCommentStore):
             raise WorkflowCommentNotFoundError
 
     @classmethod
-    def _insert_reply(cls, session: Session, comment: WorkflowCommentAgg, reply: WorkflowCommentReplyAgg) -> None:
+    def _insert_reply(cls, session: Session, comment: WorkflowCommentAgg, reply: WorkflowCommentReply) -> None:
         session.execute(
-            insert(WorkflowCommentReply).values(
+            insert(WorkflowCommentReplyModel).values(
                 id=reply.id,
                 comment_id=comment.id,
                 content=reply.content,
@@ -182,14 +183,14 @@ class WorkflowCommentRepository(WorkflowCommentStore):
         cls,
         session: Session,
         comment: WorkflowCommentAgg,
-        previous: WorkflowCommentReplyAgg,
-        reply: WorkflowCommentReplyAgg,
+        previous: WorkflowCommentReply,
+        reply: WorkflowCommentReply,
     ) -> None:
         result = cast(
             CursorResult,
             session.execute(
-                update(WorkflowCommentReply)
-                .where(WorkflowCommentReply.id == reply.id, WorkflowCommentReply.comment_id == comment.id)
+                update(WorkflowCommentReplyModel)
+                .where(WorkflowCommentReplyModel.id == reply.id, WorkflowCommentReplyModel.comment_id == comment.id)
                 .values(content=reply.content, updated_at=reply.updated_at)
             ),
         )
@@ -206,8 +207,8 @@ class WorkflowCommentRepository(WorkflowCommentStore):
             )
         )
         session.execute(
-            delete(WorkflowCommentReply).where(
-                WorkflowCommentReply.id == reply_id, WorkflowCommentReply.comment_id == comment.id
+            delete(WorkflowCommentReplyModel).where(
+                WorkflowCommentReplyModel.id == reply_id, WorkflowCommentReplyModel.comment_id == comment.id
             )
         )
 
@@ -314,7 +315,7 @@ class WorkflowCommentRepository(WorkflowCommentStore):
             resolved_by=comment.resolved_by,
             mentioned_user_ids=tuple(comment_mentions),
             replies=tuple(
-                WorkflowCommentReplyAgg(
+                WorkflowCommentReply(
                     id=reply.id,
                     content=reply.content,
                     created_by=reply.created_by,

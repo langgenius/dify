@@ -8,7 +8,7 @@ import pytest
 from services.app.workflow_comment_agg import (
     MAX_COMMENT_CONTENT_LENGTH,
     WorkflowCommentAgg,
-    WorkflowCommentReplyAgg,
+    WorkflowCommentReply,
 )
 from services.app.workflow_comment_errors import (
     InvalidMentionedUserIdError,
@@ -194,7 +194,7 @@ def test_add_reply_appends_a_reply_owned_by_the_actor() -> None:
     )
 
     assert [reply.id for reply in comment.replies] == ["reply-1", "reply-2"]
-    assert comment.reply("reply-2") == WorkflowCommentReplyAgg(
+    assert comment.reply("reply-2") == WorkflowCommentReply(
         id="reply-2",
         content="again",
         created_by=CREATOR,

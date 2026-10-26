@@ -28,7 +28,7 @@ MAX_COMMENT_CONTENT_LENGTH = 1000
 
 
 @dataclass(frozen=True, slots=True)
-class WorkflowCommentReplyAgg:
+class WorkflowCommentReply:
     """A reply inside a thread, with the users mentioned in the reply."""
 
     id: str
@@ -56,7 +56,7 @@ class WorkflowCommentAgg:
     resolved_at: datetime | None
     resolved_by: str | None
     mentioned_user_ids: tuple[str, ...]
-    replies: tuple[WorkflowCommentReplyAgg, ...]
+    replies: tuple[WorkflowCommentReply, ...]
 
     @staticmethod
     def check_input(content: str, mentioned_user_ids: Sequence[str] | None) -> None:
@@ -131,7 +131,7 @@ class WorkflowCommentAgg:
             return self
         return replace(self, resolved=True, resolved_at=now, resolved_by=actor_id, updated_at=now)
 
-    def reply(self, reply_id: str) -> WorkflowCommentReplyAgg:
+    def reply(self, reply_id: str) -> WorkflowCommentReply:
         for reply in self.replies:
             if reply.id == reply_id:
                 return reply
@@ -140,7 +140,7 @@ class WorkflowCommentAgg:
     def add_reply(
         self, *, reply_id: str, actor_id: str, content: str, mentioned_user_ids: Sequence[str], now: datetime
     ) -> Self:
-        reply = WorkflowCommentReplyAgg(
+        reply = WorkflowCommentReply(
             id=reply_id,
             content=_checked_content(content),
             created_by=actor_id,
