@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -16,6 +15,7 @@ from core.app.entities.queue_entities import QueueErrorEvent, QueueTextChunkEven
 from graphon.engine.command import AbortCommand
 from models import Tenant
 from models.model import AppMode
+from services.workflow.execution.adapters.workflow.app_queue_manager import WorkflowAppQueueManager
 
 
 class DummyQueueManager(AppQueueManager):
