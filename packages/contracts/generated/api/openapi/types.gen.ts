@@ -397,7 +397,7 @@ export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 
 export type DeviceCodeRequest = {
   client_id: string
-  device_label: string
+  device_label?: string | null
 }
 
 export type DeviceCodeResponse = {
@@ -406,6 +406,7 @@ export type DeviceCodeResponse = {
   interval: number
   user_code: string
   verification_uri: string
+  verification_uri_complete: string
 }
 
 export type DeviceFlowErrorResponse = {

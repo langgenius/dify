@@ -27,6 +27,7 @@ from controllers.openapi._models import (
     DevicePollRequest,
     DeviceTokenResponse,
 )
+from controllers.openapi._oauth_input import read_oauth_body
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response, extract_remote_ip
 from libs.rate_limit import (
@@ -97,7 +98,10 @@ class OAuthDeviceCodeApi(Resource):
     )
     @rate_limit(LIMIT_DEVICE_CODE_PER_IP)
     def post(self):
-        payload = _validate_json(DeviceCodeRequest)
+        try:
+            payload = DeviceCodeRequest.model_validate(read_oauth_body())
+        except ValidationError as error:
+            raise BadRequest(str(error)) from error
         try:
             authorization = application_services().oauth_device.start(
                 client_id=payload.client_id,

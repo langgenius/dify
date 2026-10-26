@@ -264,6 +264,7 @@ class DeviceCodeResponse(BaseModel):
     device_code: str
     user_code: str
     verification_uri: str
+    verification_uri_complete: str
     expires_in: int
     interval: int
 
@@ -435,7 +436,7 @@ class FileUploadPayload(BaseModel):
 
 class DeviceCodeRequest(BaseModel):
     client_id: str
-    device_label: str
+    device_label: str | None = None
 
 
 class DevicePollRequest(BaseModel):

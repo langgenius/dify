@@ -264,6 +264,7 @@ class TestOauthDeviceHttpCases:
             device_code="opaque-code",
             user_code="ABCD-EFGH",
             verification_uri="https://console.example/device",
+            verification_uri_complete="https://console.example/device?user_code=ABCD-EFGH",
             expires_in=900,
             interval=5,
         )
@@ -280,6 +281,7 @@ class TestOauthDeviceHttpCases:
             "device_code": "opaque-code",
             "user_code": "ABCD-EFGH",
             "verification_uri": "https://console.example/device",
+            "verification_uri_complete": "https://console.example/device?user_code=ABCD-EFGH",
             "expires_in": 900,
             "interval": 5,
         }
@@ -289,6 +291,63 @@ class TestOauthDeviceHttpCases:
             created_ip="192.0.2.10",
             request_origin="https://api.example/",
         )
+
+    @staticmethod
+    def test_device_code_accepts_form_body(openapi_app: Flask, device_service: Mock) -> None:
+        device_service.start.return_value = DeviceAuthorization(
+            device_code="opaque-code",
+            user_code="ABCD-EFGH",
+            verification_uri="https://console.example/device",
+            verification_uri_complete="https://console.example/device?user_code=ABCD-EFGH",
+            expires_in=900,
+            interval=5,
+        )
+
+        response = openapi_app.test_client().post(
+            f"{_PREFIX}/code",
+            data={"client_id": "difyctl", "device_label": "laptop"},
+            base_url="https://api.example",
+            environ_overrides={"REMOTE_ADDR": "192.0.2.10"},
+        )
+
+        assert response.status_code == 200
+        assert response.json is not None
+        assert response.json["device_code"] == "opaque-code"
+        assert response.json["verification_uri_complete"] == "https://console.example/device?user_code=ABCD-EFGH"
+        device_service.start.assert_called_once_with(
+            client_id="difyctl",
+            device_label="laptop",
+            created_ip="192.0.2.10",
+            request_origin="https://api.example/",
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("body", [{"client_id": "difyctl"}, {"client_id": "difyctl", "device_label": 7}])
+    def test_device_code_without_usable_label_passes_none(
+        openapi_app: Flask, device_service: Mock, body: dict[str, object]
+    ) -> None:
+        device_service.start.return_value = DeviceAuthorization(
+            device_code="c",
+            user_code="ABCD-EFGH",
+            verification_uri="https://console.example/device",
+            verification_uri_complete="https://console.example/device?user_code=ABCD-EFGH",
+            expires_in=900,
+            interval=5,
+        )
+
+        response = openapi_app.test_client().post(f"{_PREFIX}/code", json=body)
+
+        assert response.status_code == 200
+        assert device_service.start.call_args.kwargs["device_label"] is None
+
+    @staticmethod
+    def test_device_code_unknown_client_keeps_error_contract(openapi_app: Flask, device_service: Mock) -> None:
+        device_service.start.side_effect = UnsupportedClientError
+
+        response = openapi_app.test_client().post(f"{_PREFIX}/code", data={"client_id": "nope"})
+
+        assert response.status_code == 400
+        assert response.json == {"error": "unsupported_client"}
 
     @staticmethod
     @pytest.mark.parametrize("path", ["code", "token", "approve", "deny", "approve-external"])

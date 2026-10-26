@@ -7,6 +7,7 @@ import secrets
 from collections.abc import Sequence
 from hashlib import sha256
 from typing import Protocol
+from urllib.parse import quote
 
 from constants.oauth_bearer import SubjectType
 from machinery.context import RequestContext
@@ -60,6 +61,7 @@ from services.oauth_device_contracts import (
     SlowDownDecision,
     StateNotFoundError,
     UnsupportedClientError,
+    default_device_label,
 )
 
 logger = logging.getLogger(__name__)
@@ -217,19 +219,23 @@ class OAuthDeviceApplicationService:
         self,
         *,
         client_id: str,
-        device_label: str,
+        device_label: str | None,
         created_ip: str,
         request_origin: str,
     ) -> DeviceAuthorization:
         if client_id not in self._settings.known_client_ids:
             raise UnsupportedClientError
 
+        if device_label is None:
+            device_label = default_device_label(client_id)
         device_code, user_code, expires_in = self._store.start(client_id, device_label, created_ip)
         base_url = self._settings.verification_base_url or request_origin
+        verification_uri = f"{base_url.rstrip('/')}/device"
         return DeviceAuthorization(
             device_code=device_code,
             user_code=user_code,
-            verification_uri=f"{base_url.rstrip('/')}/device",
+            verification_uri=verification_uri,
+            verification_uri_complete=f"{verification_uri}?user_code={quote(user_code)}",
             expires_in=expires_in,
             interval=DEFAULT_POLL_INTERVAL_SECONDS,
         )

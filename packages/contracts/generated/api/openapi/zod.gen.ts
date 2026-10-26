@@ -460,7 +460,7 @@ export const zDeploymentEdition = z.enum(['CLOUD', 'COMMUNITY', 'ENTERPRISE'])
  */
 export const zDeviceCodeRequest = z.object({
   client_id: z.string(),
-  device_label: z.string(),
+  device_label: z.string().nullish(),
 })
 
 /**
@@ -472,6 +472,7 @@ export const zDeviceCodeResponse = z.object({
   interval: z.int(),
   user_code: z.string(),
   verification_uri: z.string(),
+  verification_uri_complete: z.string(),
 })
 
 /**
