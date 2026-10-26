@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import queue
-from unittest.mock import MagicMock, patch
+from collections.abc import Callable, Iterator
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -14,7 +15,7 @@ from core.telemetry.events import DraftNodeExecutionTraceEvent, TelemetryContext
 
 
 @pytest.fixture
-def telemetry_test_setup():
+def telemetry_test_setup() -> Iterator[tuple[Callable[..., object], queue.Queue[TraceTask]]]:
     trace_queue: queue.Queue[TraceTask] = queue.Queue()
     with (
         patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
@@ -25,9 +26,14 @@ def telemetry_test_setup():
         yield emit, trace_queue
 
 
+_TelemetrySetup = tuple[Callable[..., object], "queue.Queue[TraceTask]"]
+
+
 class TestTelemetryEmit:
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_emit_enterprise_trace_creates_trace_task(self, mock_ee, telemetry_test_setup):
+    def test_emit_enterprise_trace_creates_trace_task(
+        self, mock_ee: Mock, telemetry_test_setup: _TelemetrySetup
+    ) -> None:
         emit_fn, trace_queue = telemetry_test_setup
 
         event = DraftNodeExecutionTraceEvent(
@@ -47,7 +53,7 @@ class TestTelemetryEmit:
         assert called_task.user_id == "test-user"
         assert called_task.trace_type == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
 
-    def test_emit_enterprise_only_trace_dropped_when_ee_disabled(self, telemetry_test_setup):
+    def test_emit_enterprise_only_trace_dropped_when_ee_disabled(self, telemetry_test_setup: _TelemetrySetup) -> None:
         emit_fn, trace_queue = telemetry_test_setup
 
         event = DraftNodeExecutionTraceEvent(
@@ -64,7 +70,9 @@ class TestTelemetryEmit:
         assert trace_queue.empty()
 
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_emit_passes_name_directly_to_trace_task(self, mock_ee, telemetry_test_setup):
+    def test_emit_passes_name_directly_to_trace_task(
+        self, mock_ee: Mock, telemetry_test_setup: _TelemetrySetup
+    ) -> None:
         emit_fn, trace_queue = telemetry_test_setup
 
         event = DraftNodeExecutionTraceEvent(
@@ -86,7 +94,7 @@ class TestTelemetryEmit:
         assert isinstance(called_task.trace_type, TraceTaskName)
 
     @patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True)
-    def test_emit_with_provided_trace_manager(self, mock_ee, telemetry_test_setup):
+    def test_emit_with_provided_trace_manager(self, mock_ee: Mock, telemetry_test_setup: _TelemetrySetup) -> None:
         emit_fn, trace_queue = telemetry_test_setup
 
         mock_trace_manager = MagicMock()
