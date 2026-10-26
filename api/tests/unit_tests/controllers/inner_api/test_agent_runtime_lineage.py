@@ -20,6 +20,7 @@ from sqlalchemy import Select
 from sqlalchemy.engine import ScalarResult
 
 from controllers.inner_api import bp
+from models.model import AppMode
 from runtime_contracts.builder.native.agent_contracts import (
     AgentNodeAssociation,
     AgentParentNodeRef,
@@ -27,7 +28,7 @@ from runtime_contracts.builder.native.agent_contracts import (
 )
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.agent_operations import AgentOperationService
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.services.dify_builder import native_owner_fixtures as operation_fixtures
 from tests.unit_tests.services.dify_builder.test_agent_preparation_owner import resolved_context
 
@@ -238,7 +239,7 @@ def test_genuine_plugin_and_verified_ordinary_retain_real_knowledge_resource_aut
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
 
-    from tests.unit_tests.controllers.inner_api.test_knowledge_retrieval import _payload
+    from tests.unit_tests.controllers.inner_api.knowledge.test_retrieval import _payload
     from tests.unit_tests.services.dify_builder.test_agent_endpoint_lineage import owner
 
     lineage, _principal, transport, phase = owner(parent=False)
@@ -252,7 +253,12 @@ def test_genuine_plugin_and_verified_ordinary_retain_real_knowledge_resource_aut
     sqlite_session.add_all(
         [
             App(
-                id="app-1", tenant_id=owned_tenant, name="Caller", mode="workflow", enable_site=False, enable_api=False
+                id="app-1",
+                tenant_id=owned_tenant,
+                name="Caller",
+                mode=AppMode.WORKFLOW,
+                enable_site=False,
+                enable_api=False,
             ),
             Dataset(id="dataset-1", tenant_id=owned_tenant, name="Knowledge", created_by="actor"),
         ]

@@ -93,7 +93,7 @@ class GeneratedPlanResponses:
 def generate_draft(monkeypatch: pytest.MonkeyPatch, responses: GeneratedPlanResponses) -> BuildNodesResult:
     config = ModelConfig.model_validate({"provider": "anthropic", "name": "x", "mode": "chat"})
     monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: config)  # noqa: ARG005
-    from tests.unit_tests.core.model_fixtures import make_model_instance
+    from tests.helpers.unit.core.model_fixtures import make_model_instance
 
     model = make_model_instance(provider=config.provider, model=config.name)
     monkeypatch.setattr(model, "invoke_llm", responses.respond)

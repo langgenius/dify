@@ -7,7 +7,7 @@ from core.dify_builder.models import Graph, Inputs
 from core.model_manager import ModelInstance, ModelManager
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from services.dify_builder.agent import model_resolver
-from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_config, make_model_instance
 
 MC = {
     "provider": "openai",

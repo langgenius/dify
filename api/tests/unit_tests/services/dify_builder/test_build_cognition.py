@@ -13,7 +13,7 @@ from core.dify_builder.models import BuildNodesResult, Graph, Inputs
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder.agent import build, resources
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     ACCOUNT_A,
     ACCOUNT_B,

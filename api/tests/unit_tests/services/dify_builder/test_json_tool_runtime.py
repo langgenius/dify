@@ -56,6 +56,11 @@ GRAPH = Path(__file__).resolve().parents[3] / "fixtures/workflow/builder_restric
 EXPECTED = {"content": '{"name":"你好"}', "json_filter": "$.name", "ensure_ascii": False}
 
 
+@dataclass(kw_only=True)
+class PluginManagerStub:
+    plugin_unique_identifier: str | None = None
+
+
 def _installation() -> InstalledJsonParse:
     return InstalledJsonParse(
         tenant_id=TENANT,
@@ -163,8 +168,9 @@ def test_native_plugin_casts_final_boolean_and_preserves_unicode(
     expected = {**EXPECTED, "ensure_ascii": ascii_value}
     seen = []
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **kwargs: object) -> Generator[ToolInvokeMessage]:
+            assert self.plugin_unique_identifier == guarded.plugin_unique_identifier
             seen.append(kwargs["tool_parameters"])
             yield _message("你好")
 
@@ -182,7 +188,7 @@ def test_native_plugin_casts_final_boolean_and_preserves_unicode(
 def test_exact_native_text_is_data_not_status(
     monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, text: str
 ) -> None:
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             yield _message(text)
 
@@ -198,7 +204,7 @@ def test_forbidden_message_closes_transport_before_file_transform(
 ) -> None:
     closed = []
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 yield ToolInvokeMessage(
@@ -221,7 +227,7 @@ def test_text_byte_and_count_limits_close_transport(
 ) -> None:
     closed = []
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 for text in texts:
@@ -247,7 +253,7 @@ def test_aggregate_multibyte_text_limit_is_exact(
 ) -> None:
     closed = []
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 for value in texts:
@@ -278,7 +284,7 @@ def test_invalid_unicode_text_refuses_and_closes_transport(
         message=ToolInvokeMessage.TextMessage.model_construct(text="\ud800"),
     )
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 yield invalid
@@ -296,7 +302,7 @@ def test_invalid_unicode_text_refuses_and_closes_transport(
 def test_final_envelope_mismatch_prevents_native_dispatch(
     monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
 ) -> None:
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             pytest.fail("native transport reached")
             yield _message("never")
@@ -552,7 +558,7 @@ def test_json_native_getter_rejects_incompatible_guard_arguments(
 def test_full_native_text_path_receipt_and_replay(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
     calls = []
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **kwargs: object) -> Generator[ToolInvokeMessage]:
             calls.append(kwargs)
             yield _message("你好")
@@ -605,7 +611,7 @@ def test_prior_handle_and_recorder_failure_never_emit_receipt(
         list(other.invoke(tool_runtime=handle, tool_parameters=EXPECTED, workflow_call_depth=0, provider_name="json"))
     recorder.fail = True
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             yield _message("ok")
 
@@ -626,7 +632,7 @@ def test_post_dispatch_metadata_change_prevents_receipt(monkeypatch: pytest.Monk
             return installed
         return replace(installed, checksum="f" * 64)
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             yield _message("native text")
 
@@ -660,7 +666,7 @@ def test_post_dispatch_runtime_variant_change_prevents_receipt(
             qualification_digest="b3728bbec6b6fcb4c9bd4677fb519994ebd4666c182c542a8acd0c0e5ef89c03",
         )
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             yield _message("native text")
 
@@ -683,7 +689,7 @@ def test_interrupted_stream_closes_native_generator_without_receipt(
 ) -> None:
     closed = []
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 yield _message("first")
@@ -727,7 +733,7 @@ def test_non_text_is_refused_before_native_file_transform(
 
     monkeypatch.setattr(ToolFileMessageTransformer, "transform_tool_invoke_messages", observing_transform)
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             yield ToolInvokeMessage(
                 type=ToolInvokeMessage.MessageType.JSON,
@@ -779,7 +785,7 @@ def test_file_producing_output_refuses_before_all_file_owners(
 
     monkeypatch.setattr(ToolFileMessageTransformer, "transform_tool_invoke_messages", observing_transform)
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             try:
                 if file_output == "image":
@@ -831,7 +837,7 @@ def test_metadata_and_native_dispatch_have_no_active_own_transaction(
         transaction_states.append(sessions[-1].in_transaction())
         return _installation()
 
-    class Manager:
+    class Manager(PluginManagerStub):
         def invoke(self, **_kwargs: object) -> Generator[ToolInvokeMessage]:
             transaction_states.append(sessions[-1].in_transaction())
             yield _message("ok")

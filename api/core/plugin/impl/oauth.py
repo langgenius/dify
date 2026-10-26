@@ -7,6 +7,7 @@ from werkzeug import Request
 from core.dify_builder.real_call_consent import validate_confirmed_dispatch_headers
 from core.plugin.entities.plugin_daemon import PluginOAuthAuthorizationUrlResponse, PluginOAuthCredentialsResponse
 from core.plugin.impl.base import BasePluginClient
+from services.plugin.dispatch_identity import plugin_dispatch_headers
 
 
 class OAuthHandler(BasePluginClient):
@@ -18,6 +19,8 @@ class OAuthHandler(BasePluginClient):
         provider: str,
         redirect_uri: str,
         system_credentials: Mapping[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthAuthorizationUrlResponse:
         try:
             response = self._request_with_plugin_daemon_response_stream(
@@ -32,10 +35,7 @@ class OAuthHandler(BasePluginClient):
                         "system_credentials": system_credentials,
                     },
                 },
-                headers={
-                    "X-Plugin-ID": plugin_id,
-                    "Content-Type": "application/json",
-                },
+                headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
             )
             for resp in response:
                 return resp
@@ -52,6 +52,8 @@ class OAuthHandler(BasePluginClient):
         redirect_uri: str,
         system_credentials: Mapping[str, Any],
         request: Request,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthCredentialsResponse:
         """
         Get credentials from the given request.
@@ -74,10 +76,7 @@ class OAuthHandler(BasePluginClient):
                         "raw_http_request": binascii.hexlify(raw_request_bytes).decode(),
                     },
                 },
-                headers={
-                    "X-Plugin-ID": plugin_id,
-                    "Content-Type": "application/json",
-                },
+                headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
             )
             for resp in response:
                 return resp
@@ -96,6 +95,7 @@ class OAuthHandler(BasePluginClient):
         credentials: Mapping[str, Any],
         *,
         confirmed_dispatch_headers: Mapping[str, str] | None = None,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthCredentialsResponse:
         """Refresh through the native tenant route.
 
@@ -103,10 +103,7 @@ class OAuthHandler(BasePluginClient):
         confirmed Builder refresh supplies exactly the three server-built
         companion headers, validated before any transport.
         """
-        headers = {
-            "X-Plugin-ID": plugin_id,
-            "Content-Type": "application/json",
-        }
+        headers = plugin_dispatch_headers(plugin_id, plugin_unique_identifier)
         if confirmed_dispatch_headers is not None:
             headers.update(validate_confirmed_dispatch_headers(confirmed_dispatch_headers))
         try:

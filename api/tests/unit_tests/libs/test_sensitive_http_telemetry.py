@@ -21,7 +21,7 @@ from dify_app import DifyApp
 from extensions import ext_logging
 from extensions.otel import instrumentation
 from libs import sensitive_http_telemetry as telemetry_module
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.logging_helpers import protect_existing_log_routes
 
 CANARY = "nw4-secret-query-canary"

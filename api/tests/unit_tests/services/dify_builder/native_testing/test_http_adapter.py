@@ -38,7 +38,7 @@ from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
 from services.dify_builder.native_testing.control import NativeApprovalWait, NativePolicyStop
 from services.dify_builder.native_testing.http_adapter import PreparedHttpBinding, PreparedHttpRequest
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal, OperationCursor
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.logging_helpers import protect_existing_log_routes
 from tests.unit_tests.services.dify_builder.native_testing.test_call_adapter import (
     INPUT,
@@ -543,7 +543,7 @@ def test_declared_length_truncated_response_is_unknown(harness: Harness) -> None
 def test_actual_native_http_node_cannot_convert_wait_to_retry_default_or_fail_branch(
     harness: Harness, policy: dict[str, JsonValue]
 ) -> None:
-    from tests.unit_tests.core.workflow.nodes.http_request.test_http_request_node import _build_http_node
+    from tests.e2e_tests.contracts.core.workflow.nodes.http_request.test_http_request_node import _build_http_node
 
     base = _build_http_node()
     data = HttpRequestNodeData.model_validate({**base.node_data.model_dump(), **policy})

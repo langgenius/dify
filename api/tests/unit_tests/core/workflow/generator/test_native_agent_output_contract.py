@@ -181,7 +181,7 @@ def _run_agent_model_responses(responses: list[str]) -> tuple[Graph, MagicMock]:
 
     from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
     from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
-    from tests.unit_tests.core.model_fixtures import make_model_instance
+    from tests.helpers.unit.core.model_fixtures import make_model_instance
 
     results = [
         LLMResult(

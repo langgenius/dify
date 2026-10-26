@@ -36,7 +36,7 @@ from services.dify_builder.application.runner import Env
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.effect_disclosure import disclose
 from services.dify_builder.repository import SqlDifyBuilderRepository
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 GRAPH: Graph = {
     "nodes": [
@@ -125,7 +125,7 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> Generato
             )
         )
         session.add(saved)
-    app = App(id=ids["app"], tenant_id=ids["tenant"], mode="workflow")
+    app = App(id=ids["app"], tenant_id=ids["tenant"], mode=AppMode.WORKFLOW)
     draft = Workflow(
         tenant_id="tenant-1",
         graph=json.dumps(GRAPH),

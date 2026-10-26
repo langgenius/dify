@@ -150,7 +150,7 @@ const ChoiceInteraction = ({
               value={option.id}
               nativeButton
               render={<button type="button" />}
-              className="flex min-h-9 w-full cursor-pointer items-center rounded-[10px] border border-transparent bg-background-section px-3 py-2.5 text-left system-sm-medium text-text-secondary outline-hidden transition-colors hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-state-accent-solid/30 data-checked:bg-util-colors-blue-brand-blue-brand-50 data-checked:text-text-primary data-checked:hover:border-state-accent-solid/30 data-checked:hover:bg-util-colors-blue-brand-blue-brand-50 data-disabled:cursor-not-allowed data-disabled:opacity-50"
+              className="flex min-h-9 w-full cursor-pointer items-center rounded-[10px] border border-transparent bg-background-section px-3 py-2.5 text-start system-sm-medium text-text-secondary outline-hidden transition-colors hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-state-accent-solid/30 data-checked:bg-util-colors-blue-brand-blue-brand-50 data-checked:text-text-primary data-checked:hover:border-state-accent-solid/30 data-checked:hover:bg-util-colors-blue-brand-blue-brand-50 data-disabled:cursor-not-allowed data-disabled:opacity-50"
             >
               <span className="min-w-0">
                 <span className="block">{renderText(option.label)}</span>

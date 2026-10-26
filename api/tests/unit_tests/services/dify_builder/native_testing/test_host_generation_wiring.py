@@ -31,7 +31,7 @@ from graphon.nodes.base.node import Node
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.account import Account
-from models.model import App
+from models.model import App, AppMode
 from models.workflow import Workflow
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
@@ -106,7 +106,7 @@ def generate_fixture(
     monkeypatch.setattr(generator, "_handle_response", lambda **_kwargs: iter_response())
     monkeypatch.setattr(module.WorkflowAppGenerateResponseConverter, "convert", lambda **kwargs: kwargs["response"])
     arguments: _GenerateArguments = {
-        "app_model": App(mode="workflow", tenant_id=case.state.context.tenant_id),
+        "app_model": App(mode=AppMode.WORKFLOW, tenant_id=case.state.context.tenant_id),
         "workflow": Workflow(features="{}"),
         "user": Account(name="Native actor", email="native@example.test"),
         "application_generate_entity": entity,
@@ -279,7 +279,7 @@ def test_entry_installs_actual_host_layer_first_and_disables_raw_observers(monke
     )
     graph = Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
     commands = case.host.wrap_commands(channel=InMemoryChannel())
-    from tests.unit_tests.config_override import apply_config_overrides
+    from tests.helpers.unit.config_override import apply_config_overrides
 
     apply_config_overrides(monkeypatch, DEBUG=True, ENABLE_OTEL=True)
     monkeypatch.setattr(module, "ObservabilityLayer", lambda: pytest.fail("raw OTel observer"))

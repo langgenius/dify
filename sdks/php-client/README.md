@@ -36,6 +36,9 @@ $conversation_id = null; // Start a new conversation.
 
 $difyClient = new DifyClient($apiKey);
 
+// Self-hosted endpoints keep their full path with or without a trailing slash.
+$selfHostedClient = new DifyClient($apiKey, 'https://dify.example.com/dify/v1');
+
 // Create a completion client
 $completionClient = new CompletionClient($apiKey);
 $response = $completionClient->create_completion_message(array("query" => "Who are you?"), "blocking", "user_id");
@@ -94,3 +97,8 @@ Replace 'your-api-key-here' with your actual Dify API key.
 ## License
 
 This SDK is released under the MIT License.
+
+## Tests
+
+After `composer install`, run `php tests/base_url_test.php` from this directory.
+The regression uses Guzzle's mock transport and does not contact an API or model provider.

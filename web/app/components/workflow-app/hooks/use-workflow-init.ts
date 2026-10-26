@@ -1,9 +1,8 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { ORPCError } from '@orpc/client'
-import { CancelledError, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { CancelledError, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
@@ -11,9 +10,8 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { consoleQuery } from '@/service/console'
-import { useWorkflowConfig } from '@/service/use-workflow'
-import { fetchNodesDefaultConfigs, fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { fetchWorkflowDraft } from '@/service/workflow'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
@@ -83,15 +81,13 @@ export const useWorkflowInit = () => {
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
 
-  const handleUpdateWorkflowFileUploadConfig = useCallback(
-    (config: UploadConfig) => {
-      const { setFileUploadConfig } = workflowStore.getState()
-      setFileUploadConfig(config)
-    },
-    [workflowStore],
+  const { data: fileUploadConfigResponse, isLoading: isFileUploadConfigLoading } = useQuery(
+    consoleQuery.files.upload.get.queryOptions({ staleTime: 0 }),
   )
-  const { data: fileUploadConfigResponse, isLoading: isFileUploadConfigLoading } =
-    useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
+  useEffect(() => {
+    if (!fileUploadConfigResponse) return
+    workflowStore.getState().setFileUploadConfig(fileUploadConfigResponse)
+  }, [fileUploadConfigResponse, workflowStore])
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
@@ -162,21 +158,26 @@ export const useWorkflowInit = () => {
             return
           }
 
-          syncWorkflowDraft({
-            url: `/apps/${appDetail.id}/workflows/draft`,
-            params: {
-              graph: initialGraph,
-              force: true,
-              features: {
-                retriever_resource: { enabled: true },
+          consoleClient.apps.byAppId.workflows.draft
+            .post(
+              {
+                params: { app_id: appDetail.id },
+                body: {
+                  graph: initialGraph,
+                  force: true,
+                  features: {
+                    retriever_resource: { enabled: true },
+                  },
+                  conversation_variables: [],
+                },
               },
-              conversation_variables: [],
-            },
-          }).then((res) => {
-            workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-            setSyncWorkflowDraftHash(res.hash)
-            handleGetInitialWorkflowData()
-          })
+              { context: { silent: true } },
+            )
+            .then((res) => {
+              workflowStore.getState().setDraftUpdatedAt(res.updated_at)
+              setSyncWorkflowDraftHash(res.hash)
+              handleGetInitialWorkflowData()
+            })
         }
       }
     }
@@ -202,7 +203,12 @@ export const useWorkflowInit = () => {
     const initialPublishedAt = initialPublication.publishedAt
     const initialLastPublishedHasUserInput = initialPublication.lastPublishedHasUserInput
     const [nodesDefaultConfigsResult, publishedWorkflowResult] = await Promise.allSettled([
-      fetchNodesDefaultConfigs(`/apps/${appDetail.id}/workflows/default-workflow-block-configs`),
+      queryClient.query(
+        consoleQuery.apps.byAppId.workflows.defaultWorkflowBlockConfigs.get.queryOptions({
+          input: { params: { app_id: appDetail.id } },
+          staleTime: 0,
+        }),
+      ),
       queryClient.query(publishedWorkflowQuery),
     ])
 

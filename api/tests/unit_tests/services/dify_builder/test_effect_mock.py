@@ -11,7 +11,7 @@ from graphon.runtime import InitParams, RuntimeState, VariablePool
 from services.dify_builder.effect_mock import MOCKED_PROCESS_KEY, mocked_node_class
 from services.workflow_runtime.agent_node import DifyAgentNode
 from services.workflow_runtime.node_factory import DifyNodeFactory
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _factory(mocked: frozenset[str]) -> DifyNodeFactory:

@@ -28,7 +28,7 @@ from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, 
 from runtime_contracts.builder.execution import TrustedExecutionCompletion
 from services.dify_builder.application import execution_policy as domain
 from services.dify_builder.serde import context_to_dict
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, policy
 
 type Owned = tuple[sessionmaker[Session], Actor, App, Workflow, str, str]
@@ -229,7 +229,13 @@ def owned() -> Iterator[Owned]:
         db.flush()
         db.add(TenantAccountJoin(tenant_id=tenant, account_id=account.id, role=TenantAccountRole.OWNER))
         app = App(
-            id=app_id, tenant_id=tenant, mode="workflow", name="test", tracing=None, enable_site=False, enable_api=False
+            id=app_id,
+            tenant_id=tenant,
+            mode=AppMode.WORKFLOW,
+            name="test",
+            tracing=None,
+            enable_site=False,
+            enable_api=False,
         )
         workflow = Workflow(
             id=workflow_id,

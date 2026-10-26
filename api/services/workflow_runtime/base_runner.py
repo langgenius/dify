@@ -48,6 +48,7 @@ from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormRecord
 from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
+from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReason
@@ -580,9 +581,10 @@ class WorkflowBasedAppRunner:
         published_form_ids: set[str],
     ) -> None:
         """Publish materialized completions supplied by run orchestration."""
+        variable_pool = workflow_entry.graph_engine.runtime_state.variable_pool
         for form_id, reason in pending_forms.items():
             form = forms[form_id]
-            node_id = reason.node_id
+            node_id = resolve_human_input_node_id(node_id=reason.node_id, form_id=form_id, variable_pool=variable_pool)
             node_title = reason.node_title or form.definition.node_title or form.node_id
             if form.status == HumanInputFormStatus.TIMEOUT:
                 self._publish_event(
@@ -647,7 +649,11 @@ class WorkflowBasedAppRunner:
                 self._publish_event(
                     QueueHumanInputFormFilledEvent(
                         form_id=event.id,
-                        node_id=event.node_id,
+                        node_id=resolve_human_input_node_id(
+                            node_id=event.node_id,
+                            form_id=event.id,
+                            variable_pool=workflow_entry.graph_engine.runtime_state.variable_pool,
+                        ),
                         node_type=event.node_type,
                         node_title=event.node_title,
                         rendered_content=event.rendered_content,
@@ -660,7 +666,11 @@ class WorkflowBasedAppRunner:
                 self._publish_event(
                     QueueHumanInputFormTimeoutEvent(
                         form_id=event.id,
-                        node_id=event.node_id,
+                        node_id=resolve_human_input_node_id(
+                            node_id=event.node_id,
+                            form_id=event.id,
+                            variable_pool=workflow_entry.graph_engine.runtime_state.variable_pool,
+                        ),
                         node_type=event.node_type,
                         node_title=event.node_title,
                         expiration_time=event.expiration_time,

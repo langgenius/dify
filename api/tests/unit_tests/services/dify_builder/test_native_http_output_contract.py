@@ -23,7 +23,7 @@ from services.dify_builder.native_http_output_contract import (
 from services.dify_builder.preflight import new_preflight_problems, preflight_errors, vet_intents
 from services.workflow_generation.graph_normalizers import derive_if_else_var_types
 from services.workflow_generation.runner import WorkflowGenerator
-from tests.unit_tests.core.model_fixtures import make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 
 
 def http_graph(operator: str = "is", value: str = "private-expected-value") -> Graph:

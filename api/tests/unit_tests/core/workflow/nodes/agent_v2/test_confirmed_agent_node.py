@@ -49,9 +49,9 @@ from services.dify_builder.native_testing.api_service import NativeTestApiServic
 from services.dify_builder.native_testing.confirmed_agent_commands import ConfirmedAgentCommands
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from services.workflow_runtime.agent_node import DifyAgentNode
-from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import FakeBindingResolver, _node
 from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder.native_testing.test_agent_context import marker
+from tests.unit_tests.services.workflow_runtime.test_agent_node import FakeBindingResolver, _node
 
 
 def _resolved(context: BuilderAgentExecutionContext, *, generation: int = 0) -> ResolvedNativeTestContext:

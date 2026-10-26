@@ -15,7 +15,7 @@ import pytest
 from configs import dify_config
 from extensions.redis_names import serialize_redis_name
 from services.dify_builder import session_lock
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 SESSION_ID = "11111111-1111-1111-1111-111111111111"
 

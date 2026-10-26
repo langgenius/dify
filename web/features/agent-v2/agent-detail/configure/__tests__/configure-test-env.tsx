@@ -98,9 +98,10 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-// Keep the real dynamically imported Chat; compile its dependency graph before timed scenarios.
+// Compile the real lazy Chat and Markdown dependencies before timed interaction scenarios.
 beforeAll(async () => {
   await import('@/app/components/base/chat/chat')
+  await import('@/app/components/base/markdown/streamdown-wrapper')
 })
 
 const agentInput = { params: { agent_id: 'agent-1' } }

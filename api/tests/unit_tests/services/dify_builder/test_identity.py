@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from core.dify_builder.errors import NotFoundError
 from core.dify_builder.models import Actor
 from models.account import Account
-from models.model import App
+from models.model import App, AppMode
 from services.dify_builder.identity import load_app, resolve_account
 
 
@@ -43,7 +43,9 @@ def test_resolve_account_raises_not_found_on_miss(sqlite_session: Session) -> No
 
 def test_load_app_returns_app_on_tenant_match(sqlite_session: Session, mocker: pytest_mock.MockerFixture) -> None:
     session = sqlite_session
-    app = App(id="app-1", tenant_id="tenant-1", name="Draft", mode="workflow", enable_site=False, enable_api=False)
+    app = App(
+        id="app-1", tenant_id="tenant-1", name="Draft", mode=AppMode.WORKFLOW, enable_site=False, enable_api=False
+    )
     session.add(app)
     session.flush()
     get = mocker.spy(session, "get")
@@ -56,7 +58,9 @@ def test_load_app_returns_app_on_tenant_match(sqlite_session: Session, mocker: p
 
 def test_load_app_raises_not_found_on_tenant_mismatch(sqlite_session: Session) -> None:
     session = sqlite_session
-    app = App(id="app-1", tenant_id="other-tenant", name="Draft", mode="workflow", enable_site=False, enable_api=False)
+    app = App(
+        id="app-1", tenant_id="other-tenant", name="Draft", mode=AppMode.WORKFLOW, enable_site=False, enable_api=False
+    )
     session.add(app)
     session.flush()
 

@@ -179,7 +179,19 @@ def resolve_ordinary_tool_credentials(
         tool_provider = ToolProviderID(provider_id)
         provider_name = tool_provider.provider_name
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
-        system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
+        plugin_controller = (
+            provider_controller if isinstance(provider_controller, PluginToolProviderController) else None
+        )
+        system_credentials = BuiltinToolManageService.get_oauth_client(
+            tenant_id, provider_id, provider_controller=plugin_controller
+        )
+        plugin_unique_identifier = (
+            system_credentials.plugin_unique_identifier
+            if system_credentials is not None
+            else plugin_controller.plugin_unique_identifier
+            if plugin_controller is not None
+            else None
+        )
 
         oauth_handler = OAuthHandler()
         try:
@@ -189,7 +201,8 @@ def resolve_ordinary_tool_credentials(
                 plugin_id=tool_provider.plugin_id,
                 provider=provider_name,
                 redirect_uri=redirect_uri,
-                system_credentials=system_credentials or {},
+                system_credentials=dict(system_credentials.credentials) if system_credentials is not None else {},
+                plugin_unique_identifier=plugin_unique_identifier,
                 credentials=decrypted_credentials,
             )
         except Exception as exc:

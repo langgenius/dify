@@ -132,7 +132,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
         <TooltipContent>{checklistLabel}</TooltipContent>
       </Tooltip>
       <PopoverContent
-        placement="bottom-start"
+        align="start"
         sideOffset={12}
         alignOffset={-30}
         className="w-105 rounded-2xl bg-background-default-subtle"

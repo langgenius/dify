@@ -1145,10 +1145,8 @@ class WorkflowGenerator:
             )
             text = response.message.get_text_content() or ""
             requested_max_tokens = model_parameters.get("max_tokens")
-            usage = getattr(response, "usage", None)
-            token_counts = [
-                getattr(usage, field, None) for field in ("prompt_tokens", "completion_tokens", "total_tokens")
-            ]
+            usage = response.usage
+            token_counts = (usage.prompt_tokens, usage.completion_tokens, usage.total_tokens)
             logger.info(
                 "Workflow generator response metadata: stage=%s attempt=%s response_characters=%s "
                 "requested_max_tokens=%s effective_provider_limit=unavailable prompt_tokens=%s "

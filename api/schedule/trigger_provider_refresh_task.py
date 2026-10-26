@@ -2,7 +2,6 @@ import logging
 import math
 from collections.abc import Iterable, Sequence
 
-from celery import group
 from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import Session
@@ -90,17 +89,18 @@ def trigger_provider_refresh() -> None:
                 for (tenant_id, subscription_id), is_locked in zip(subscriptions, acquired, strict=False)
                 if is_locked
             ]
-            result = group(jobs).apply_async()
+            with app.celery.producer_or_acquire() as producer:  # type: ignore
+                for job in jobs:
+                    job.apply_async(producer=producer)
             enqueued = len(jobs)
 
             logger.info(
-                "Trigger refresh page %d/%d: scanned=%d locks_acquired=%d enqueued=%d result=%s",
+                "Trigger refresh page %d/%d: scanned=%d locks_acquired=%d enqueued=%d",
                 page + 1,
                 pages,
                 len(subscriptions),
                 sum(1 for x in acquired if x),
                 enqueued,
-                result,
             )
 
     logger.info("Trigger refresh scan done: due=%d", total_due)

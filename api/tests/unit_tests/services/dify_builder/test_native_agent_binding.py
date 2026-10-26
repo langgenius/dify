@@ -14,8 +14,8 @@ from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationE
 from graphon.node_events import StreamCompletedEvent
 from services.dify_builder.native_testing.agent_binding import AgentBindingSelection
 from tests.builder_agent_fixtures import AgentCase
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import FakeSessionStore
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.unit_tests.services.workflow_runtime.test_agent_node import FakeSessionStore
 
 
 class ResolveSelection(TypedDict, closed=True):
@@ -363,7 +363,7 @@ def test_confirmed_ordinary_agent_rechecks_selection_before_backend(
     from services.enterprise.rbac_service import RBACService
     from services.workflow_runtime import agent_binding as binding_resolver
     from tests.builder_agent_fixtures import add_agent
-    from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import _node
+    from tests.unit_tests.services.workflow_runtime.test_agent_node import _node
 
     case = agent_case
     selected_id, selected_snapshot_id = case.agent.id, case.snapshot.id

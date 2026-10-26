@@ -43,6 +43,7 @@ from core.workflow.node_runtime import (
     DifyToolFileManager,
     DifyToolNodeRuntime,
     build_dify_llm_file_saver,
+    build_knowledge_fs_node_dependencies,
 )
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.plugin_strategy_adapter import (
@@ -58,6 +59,7 @@ from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
+from core.workflow.workflow_tool_node import DifyWorkflowToolNode
 from extensions.application_services.data_sources import build_data_source_credentials
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
@@ -77,6 +79,7 @@ from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.start.start_node import StartNode
+from graphon.nodes.tool.entities import ToolProviderType
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
@@ -107,10 +110,15 @@ from services.dify_builder.restricted_execution import (
 )
 from services.dify_builder.revision import node_config_digest
 from services.dify_builder.template_execution import MAX_OUTPUT_BYTES, BoundedJinja2TemplateRenderer
+from services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter import (
+    KnowledgeFSAutomaticMetadataFilterExtractor,
+)
+from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
 from services.workflow_runtime.agent_binding import WorkflowAgentBindingResolver
 from services.workflow_runtime.agent_node import DifyAgentNode
 
 if TYPE_CHECKING:
+    from core.tools.workflow_as_tool.tool import WorkflowTool
     from graphon.runtime import InitParams, RuntimeState
     from services.workflow_runtime.base_runner import WorkflowRunDriver
 
@@ -159,6 +167,7 @@ def register_nodes() -> None:
     """Import production node modules so they self-register with ``Node``."""
     _import_node_package("graphon.nodes")
     _import_node_package("core.workflow.nodes")
+    _import_node_package("services.knowledge_fs.knowledge_retrieval_v2")
 
 
 def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]]]:
@@ -378,20 +387,29 @@ class DifyNodeFactory(NodeFactory):
         runtime_state: "RuntimeState",
         execution_recorder: BuilderExecutionRecorder | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
+        human_input_run_context: Mapping[str, Any] | DifyRunContext | None = None,
+        use_workflow_tool_containers: bool = True,
+        workflow_tools: dict[str, "WorkflowTool"] | None = None,
     ) -> "DifyNodeFactory":
         """Bridge Dify's explicit init context into the current `graphon` API."""
         return cls(
             init_params=graph_init_context.to_graph_init_params(),
             runtime_state=runtime_state,
+            human_input_run_context=human_input_run_context,
+            use_workflow_tool_containers=use_workflow_tool_containers,
             execution_driver=graph_init_context.execution_driver,
             execution_recorder=execution_recorder,
             native_runtime=native_runtime,
+            workflow_tools=workflow_tools,
         )
 
     def __init__(
         self,
         init_params: "InitParams",
         runtime_state: "RuntimeState",
+        human_input_run_context: Mapping[str, Any] | DifyRunContext | None = None,
+        use_workflow_tool_containers: bool = True,
+        workflow_tools: dict[str, "WorkflowTool"] | None = None,
         execution_driver: "WorkflowRunDriver | None" = None,
         *,
         execution_recorder: BuilderExecutionRecorder | None = None,
@@ -402,7 +420,18 @@ class DifyNodeFactory(NodeFactory):
         self._builder_init_params = init_params
         self.runtime_state = runtime_state
         self._dify_context = self._resolve_dify_context(init_params.run_context)
+        self._use_workflow_tool_containers = use_workflow_tool_containers
         self._execution_driver = execution_driver
+        self.workflow_tools = workflow_tools if workflow_tools is not None else {}
+        self._human_input_run_context = (
+            self._dify_context
+            if human_input_run_context is None
+            else (
+                human_input_run_context
+                if isinstance(human_input_run_context, DifyRunContext)
+                else self._resolve_dify_context(human_input_run_context)
+            )
+        )
         self.execution_recorder = execution_recorder
         self._native_runtime = native_runtime
         if native_runtime is not None and self._dify_context.native_test_ref is None:
@@ -479,7 +508,7 @@ class DifyNodeFactory(NodeFactory):
             conversation_id_getter=self._conversation_id,
         )
         self._human_input_runtime = DifyHumanInputNodeRuntime(
-            self._dify_context,
+            self._human_input_run_context,
             workflow_execution_id_getter=lambda: get_system_text(
                 self.runtime_state.variable_pool,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID,
@@ -487,7 +516,10 @@ class DifyNodeFactory(NodeFactory):
             conversation_id_getter=self._conversation_id,
         )
         self._tool_runtime = DifyToolNodeRuntime(
-            self._dify_context, workflow_id=self.init_params.workflow_id, execution_driver=execution_driver
+            self._dify_context,
+            workflow_id=self.init_params.workflow_id,
+            execution_driver=execution_driver,
+            workflow_tools=self.workflow_tools,
         )
         self._http_request_file_manager = file_manager
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
@@ -613,9 +645,16 @@ class DifyNodeFactory(NodeFactory):
             if self._dify_context.builder_execution is not None or self._native_runtime is not None
             else self.init_params,
             runtime_state=runtime_state,
+            human_input_run_context=self._human_input_run_context,
+            use_workflow_tool_containers=self._use_workflow_tool_containers,
+            workflow_tools=self.workflow_tools,
             execution_driver=self._execution_driver,
             execution_recorder=self.execution_recorder,
-            _request_hmac_key=getattr(self, "_request_hmac_key", None),
+            _request_hmac_key=(
+                self._request_hmac_key
+                if isinstance(self._dify_context.builder_execution, BuilderExecutionContext)
+                else None
+            ),
             native_runtime=self._native_runtime,
         ).with_graph_config(self.init_params.graph_config)
 
@@ -628,6 +667,10 @@ class DifyNodeFactory(NodeFactory):
     @property
     def execution_driver(self) -> "WorkflowRunDriver | None":
         return self._execution_driver
+
+    @property
+    def human_input_run_context(self) -> DifyRunContext:
+        return self._human_input_run_context
 
     @staticmethod
     def _resolve_dify_context(run_context: Mapping[str, Any]) -> DifyRunContext:
@@ -679,7 +722,7 @@ class DifyNodeFactory(NodeFactory):
         adapted_node_config = adapt_node_config_for_graph(node_config)
         node_id, node_data, node_class, resolved_node_data = _validated_node_config(
             adapted_node_config,
-            resolve_node_class=self._resolve_node_class,
+            resolve_node_class=self._resolve_node_class_for_factory,
             validate_resolved_node_data=self._validate_resolved_node_data,
             pre_validate_node_data=self._validate_restricted_raw_config if context is not None else None,
         )
@@ -815,6 +858,13 @@ class DifyNodeFactory(NodeFactory):
                 "runtime": self._tool_runtime,
             },
             BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
+            KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE: lambda: {
+                **build_knowledge_fs_node_dependencies(),
+                "metadata_filter_extractor": KnowledgeFSAutomaticMetadataFilterExtractor(
+                    credentials_provider=self._llm_credentials_provider,
+                    model_factory=self._llm_model_factory,
+                ),
+            },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
@@ -833,7 +883,7 @@ class DifyNodeFactory(NodeFactory):
         adapted_node_config = adapt_node_config_for_graph(node_config)
         node_id, _node_data, node_class, resolved_node_data = _validated_node_config(
             adapted_node_config,
-            resolve_node_class=self._resolve_node_class,
+            resolve_node_class=self._resolve_node_class_for_factory,
             validate_resolved_node_data=self._validate_resolved_node_data,
             pre_validate_node_data=self._validate_confirmed_raw_config,
         )
@@ -856,7 +906,7 @@ class DifyNodeFactory(NodeFactory):
         adapted = adapt_node_config_for_graph(node_config)
         node_id, _node_data, node_class, resolved = _validated_node_config(
             adapted,
-            resolve_node_class=self._resolve_node_class,
+            resolve_node_class=self._resolve_node_class_for_factory,
             validate_resolved_node_data=self._validate_resolved_node_data,
         )
         if node_class is not _CONFIRMED_CLASSES.get(resolved.type) or resolved.version != "1":
@@ -954,7 +1004,7 @@ class DifyNodeFactory(NodeFactory):
             validator(raw_node_config, None)
         node_id, _, node_class, resolved_node_data = _validated_node_config(
             adapt_node_config_for_graph(raw_node_config),
-            resolve_node_class=self._resolve_node_class,
+            resolve_node_class=self._resolve_node_class_for_factory,
             validate_resolved_node_data=self._validate_resolved_node_data,
             # Compatibility adaptation can move wrapped Tool configurations into
             # parameters. Bind the saved raw configuration to the actual resolved
@@ -981,6 +1031,27 @@ class DifyNodeFactory(NodeFactory):
         if callable(validate_node_data):
             return cast("BaseNodeData", validate_node_data(node_data))
         return node_data
+
+    def _resolve_node_class_for_factory(
+        self,
+        *,
+        node_type: NodeType,
+        node_version: str,
+        node_data: BaseNodeData,
+    ) -> type[Node]:
+        if (
+            self._use_workflow_tool_containers
+            and self._dify_context.builder_execution is None
+            and self._native_runtime is None
+            and node_type == BuiltinNodeTypes.TOOL
+            and node_data.model_dump().get("provider_type") == ToolProviderType.WORKFLOW
+        ):
+            return DifyWorkflowToolNode
+        return self._resolve_node_class(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_data,
+        )
 
     @staticmethod
     def _resolve_node_class(

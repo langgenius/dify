@@ -279,7 +279,9 @@ The release verifier implements these assertions as explicit errors with case ID
 def test_wait_does_not_dispatch(sandbox_executor, authorization, http_transport):
     authorization.wait_for_approval()
     with pytest.raises(NativeApprovalWait) as raised:
-        sandbox_executor.execute(language=CodeLanguage.PYTHON3, code="def main(x): return {'y': x + 1}", inputs={"x": 41})
+        sandbox_executor.execute(
+            language=CodeLanguage.PYTHON3, code="def main(x): return {'y': x + 1}", inputs={"x": 41}
+        )
     assert raised.value.disposition == "pause"
     assert http_transport.calls == []
 ```

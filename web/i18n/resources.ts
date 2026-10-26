@@ -72,6 +72,17 @@ export type Resources = GeneratedResources & PluralBaseResources
 export const defaultNS = 'app' as const
 
 export const namespaces = [
+  'knowledgeUpgrade',
+  'knowledgeErrors',
+  'knowledgeSettings',
+  'knowledgeRetrieval',
+  'knowledgeQuality',
+  'knowledgeOverview',
+  'knowledgeTasks',
+  'knowledgeDocuments',
+  'knowledgeSources',
+  'knowledgeCitation',
+  'knowledgeCreate',
   'fileUpload',
   'appGeneration',
   'agentRoster',
@@ -112,6 +123,7 @@ export const namespaces = [
   'explore',
   'layout',
   'login',
+  'knowledgeSpace',
   'oauth',
   'permission',
   'permissionKeys',

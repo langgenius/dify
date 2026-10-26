@@ -164,7 +164,7 @@ export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppC
               <IconButton
                 variant="ghost"
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="absolute top-3 right-3"
+                className="absolute inset-e-3 top-3"
               >
                 <span aria-hidden className="i-ri-close-line size-4" />
               </IconButton>

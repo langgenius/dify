@@ -17,6 +17,7 @@ from typing_extensions import TypedDict
 
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
 from graphon.runtime import InitParams, RuntimeState
+from models import agent as agent_models
 from models.dify_builder_native_tests import NativePayloadObject, NativeTestScope
 from runtime_contracts.builder.execution import (
     BuilderExecutionPolicyError,
@@ -286,7 +287,7 @@ def node_association(
         node_arguments=unused,
     )
     monkeypatch.setattr(bridge, "resolve", lambda _ref: context)
-    from tests.unit_tests.config_override import apply_config_overrides
+    from tests.helpers.unit.config_override import apply_config_overrides
 
     apply_config_overrides(monkeypatch, AGENT_BACKEND_BASE_URL="http://agent.invalid")
     factory = _factory(frozenset())
@@ -433,7 +434,7 @@ def test_actual_flask_service_auth_stops_before_preparation_lookup(
 ) -> None:
     import controllers.inner_api.agent.native_testing as controller
     from controllers.inner_api import bp
-    from tests.unit_tests.config_override import config_overrides_context
+    from tests.helpers.unit.config_override import config_overrides_context
 
     assert hasattr(controller, "AgentNativePrepareRunApi"), "S1 authenticated callback missing"
     calls: list[object] = []
@@ -880,7 +881,7 @@ def test_actual_flask_control_caps_and_validation_before_factory(
 
     import controllers.inner_api.agent.native_testing as controller
     from controllers.inner_api import bp
-    from tests.unit_tests.config_override import config_overrides_context
+    from tests.helpers.unit.config_override import config_overrides_context
     from tests.unit_tests.controllers.inner_api.test_agent_runtime_lineage import (
         encoded,
     )
@@ -933,7 +934,7 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
     from services.dify_builder.native_testing.agent_preparation import (
         AgentPreparationService,
     )
-    from tests.unit_tests.config_override import config_overrides_context
+    from tests.helpers.unit.config_override import config_overrides_context
     from tests.unit_tests.controllers.inner_api.test_agent_runtime_lineage import (
         encoded,
     )
@@ -1123,9 +1124,17 @@ def test_current_published_binding_must_match_graph_outputs_and_routes(
     soul = AgentSoulConfig.model_validate(
         {"model": {"plugin_id": "langgenius/openai", "model_provider": "openai", "model": "test"}}
     )
-    agent = state.Agent(id="agent", tenant_id="tenant", active_config_snapshot_id="pin")
-    snapshot = AgentConfigSnapshot(id="pin", tenant_id="tenant", agent_id="agent", config_snapshot=soul)
+    agent = state.Agent(
+        name="Native Agent",
+        scope=agent_models.AgentScope.ROSTER,
+        source=agent_models.AgentSource.ROSTER,
+        id="agent",
+        tenant_id="tenant",
+        active_config_snapshot_id="pin",
+    )
+    snapshot = AgentConfigSnapshot(version=1, id="pin", tenant_id="tenant", agent_id="agent", config_snapshot=soul)
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
         id="binding",
         tenant_id="tenant",
         app_id="app",
@@ -1134,7 +1143,9 @@ def test_current_published_binding_must_match_graph_outputs_and_routes(
         agent_id="agent",
         current_snapshot_id="pin",
         node_job_config=job,
-        binding_type="foreign" if mutation == "binding-kind" else WorkflowAgentBindingType.ROSTER_AGENT,
+        binding_type=cast(WorkflowAgentBindingType, "foreign")
+        if mutation == "binding-kind"
+        else WorkflowAgentBindingType.ROSTER_AGENT,
     )
 
     loader = operations_service.loader
@@ -1374,6 +1385,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(
     )
     workspace = _ref(allocation)
     snapshot = state.AgentConfigSnapshot(
+        version=1,
         id="pin",
         tenant_id="tenant",
         agent_id="agent",
@@ -1381,6 +1393,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(
         config_snapshot=soul,
     )
     published = state.WorkflowAgentNodeBinding(
+        workflow_version="draft",
         id="published",
         tenant_id="tenant",
         app_id="app",
@@ -1393,7 +1406,14 @@ def test_composed_definition_receipt_survives_initial_claim_io(
     )
     rows = {
         state.AgentConfigSnapshot: snapshot,
-        state.Agent: state.Agent(id="agent", tenant_id="tenant", active_config_snapshot_id="pin"),
+        state.Agent: state.Agent(
+            name="Native Agent",
+            scope=agent_models.AgentScope.ROSTER,
+            source=agent_models.AgentSource.ROSTER,
+            id="agent",
+            tenant_id="tenant",
+            active_config_snapshot_id="pin",
+        ),
         state.AgentHomeSnapshot: state.AgentHomeSnapshot(
             id="home",
             tenant_id="tenant",

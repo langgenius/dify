@@ -18,33 +18,38 @@ instance owned by the app lifespan and injected into each run's runner.
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import cast
 
 import httpx
 from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
-from typing_extensions import cast
 
 from dify_agent.adapters.native_testing.transport import (
     AgentRuntimeHTTPClient,
     AgentRuntimeTransportError,
     LegacyPluginDaemonTransport,
+    current_runtime_identity,
 )
 from dify_agent.agent_stub.server.admission import AgentStubAdmission
-from dify_agent.adapters.native_testing.transport import current_runtime_identity
+from dify_agent.agent_stub.server.knowledge import AgentStubKnowledgeHandler
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.runtime.context import Services
-from dify_agent.runtime.native_continuation import NativeContinuationOwner
 from dify_agent.protocol.native_testing import NativeTestCapabilities
 from dify_agent.runtime.confirmed_continuation import ConfirmedNativeContinuationOwner
+from dify_agent.runtime.context import Services
+from dify_agent.runtime.native_continuation import NativeContinuationOwner
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 from dify_agent.server.auth import create_bearer_token_dependency
 from dify_agent.server.binding_files import BindingFileService
 from dify_agent.server.execution_bindings import ExecutionBindingService
 from dify_agent.server.home_snapshots import HomeSnapshotService
-from dify_agent.server.observability import configure_agent_observability, configure_server_observability
+from dify_agent.server.observability import (
+    configure_agent_observability,
+    configure_application_observability,
+    configure_server_observability,
+)
 from dify_agent.server.routes.binding_files import create_binding_files_router
 from dify_agent.server.routes.e2b_usage import create_e2b_usage_router
 from dify_agent.server.routes.execution_bindings import (
@@ -52,9 +57,10 @@ from dify_agent.server.routes.execution_bindings import (
     create_execution_bindings_router,
 )
 from dify_agent.server.routes.home_snapshots import create_home_snapshots_router
-from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.native_testing import create_native_testing_router
+from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.settings import ServerSettings
+from dify_agent.storage.redis_knowledge_sessions import RedisKnowledgeSessionStore
 from dify_agent.storage.redis_run_store import RedisRunStore
 
 
@@ -71,6 +77,24 @@ def create_app(
         )
     ):
         raise AgentRuntimeTransportError("native_legacy_authority_unqualified")
+    state: dict[str, object] = {}
+
+    def get_knowledge_store() -> RedisKnowledgeSessionStore:
+        return cast(RedisKnowledgeSessionStore, state["knowledge_store"])
+
+    def get_knowledge_http_client() -> httpx.AsyncClient:
+        return cast(httpx.AsyncClient, state["knowledge_http"])
+
+    knowledge_request_handler = (
+        AgentStubKnowledgeHandler(
+            get_store=get_knowledge_store,
+            get_http_client=get_knowledge_http_client,
+            inner_api_url=resolved_settings.inner_api_url,
+            inner_api_key=resolved_settings.inner_api_key or "",
+        )
+        if resolved_settings.inner_api_key
+        else None
+    )
     agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     if agent_stub_token_codec is not None:
@@ -93,7 +117,6 @@ def create_app(
             )
 
         agent_stub_token_factory = issue_agent_stub_token
-    state: dict[str, object] = {}
 
     async def read_active_stub(identity):
         store = state.get("store")
@@ -152,7 +175,9 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         agent_observability = configure_agent_observability(resolved_settings)
+        application_observability = configure_application_observability(resolved_settings)
         _app.state.agent_observability = agent_observability
+        _app.state.application_observability = application_observability
         redis = Redis.from_url(resolved_settings.redis_url)
         plugin_daemon_http_client = create_plugin_daemon_http_client(resolved_settings)
         dify_api_inner_http_client = create_dify_api_inner_http_client(resolved_settings)
@@ -171,6 +196,9 @@ def create_app(
             resolved_native_owner = ConfirmedNativeContinuationOwner(
                 http_client=confirmed_api_http_client, base_url=resolved_settings.inner_api_url
             )
+        knowledge_store = RedisKnowledgeSessionStore(redis, prefix=resolved_settings.redis_prefix)
+        state["knowledge_store"] = knowledge_store
+        state["knowledge_http"] = dify_api_inner_http_client
         store = RedisRunStore(
             redis,
             prefix=resolved_settings.redis_prefix,
@@ -192,6 +220,7 @@ def create_app(
                 shell_redact_patterns=resolved_settings.get_shell_redact_patterns(),
                 agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
                 agent_stub_token_factory=agent_stub_token_factory,
+                knowledge_session_store=knowledge_store,
             ),
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             run_timeout_seconds=resolved_settings.run_timeout_seconds,
@@ -199,6 +228,7 @@ def create_app(
             stream_text_delta_flush_interval_seconds=(resolved_settings.stream_text_delta_flush_interval_ms / 1000),
             stream_text_delta_max_chars=resolved_settings.stream_text_delta_max_chars,
             agent_observability=agent_observability,
+            application_observability=application_observability,
         )
         state["dify_api_http_client"] = dify_api_inner_http_client
         state["confirmed_api_http_client"] = confirmed_api_http_client
@@ -217,6 +247,8 @@ def create_app(
             # Closed last so runs draining above still reach the exporter.
             if agent_observability is not None:
                 await agent_observability.aclose()
+            if application_observability is not None:
+                await application_observability.aclose()
 
     app = FastAPI(title="Dify Agent Run Server", version="0.1.0", lifespan=lifespan)
     app.state.platform_observability = configure_server_observability(app, settings=resolved_settings)
@@ -263,6 +295,7 @@ def create_app(
             admission=stub_admission,
             file_request_handler=agent_stub_file_request_handler,
             config_request_handler=agent_stub_config_request_handler,
+            knowledge_request_handler=knowledge_request_handler,
         )
     )
     return app

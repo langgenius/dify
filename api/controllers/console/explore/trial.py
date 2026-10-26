@@ -83,6 +83,7 @@ from controllers.console.wraps import cloud_edition_billing_resource_check, mode
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
 from core.errors.error import (
     AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
@@ -102,6 +103,7 @@ from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response, to_timestamp, uuid_value
 from libs.stream import close_stream
 from libs.url_utils import normalize_api_base_url
@@ -118,6 +120,7 @@ from services.app_preview_query_service import (
     AppPreviewUnavailableError,
 )
 from services.audio_types import AudioAppRef, AudioUpload
+from services.entities.message_entities import MessageAccount
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -129,11 +132,11 @@ from services.errors.audio import (
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
 from services.errors.message import (
+    MessageActorNotFoundError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.file_service import FileUploadActor
-from services.message_suggested_questions_service import SuggestedQuestionsAccount, SuggestedQuestionsActorNotFoundError
 from services.trial_app_access_service import TrialAppRef
 from services.trial_app_generation_service import (
     TrialAppNotChatError,
@@ -730,6 +733,7 @@ class TrialChatTaskStopApi(Resource):
 )
 class TrialMessageSuggestedQuestionApi(Resource):
     @error_responses(
+        AgentVersionNotFoundHTTPError,
         AppSuggestedQuestionsAfterAnswerDisabledError,
         AppUnavailableError,
         CompletionRequestError,
@@ -750,12 +754,13 @@ class TrialMessageSuggestedQuestionApi(Resource):
                 app_id=trial_app.app_id,
                 app_owner_tenant_id=trial_app.tenant_id,
                 expected_app_mode=trial_app.app_mode,
-                actor=SuggestedQuestionsAccount(account_id=request_context.account_id, invoke_from="explore"),
+                actor=MessageAccount(account_id=request_context.account_id),
+                invoke_from="explore",
                 message_id=str(message_id),
             )
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
-        except SuggestedQuestionsActorNotFoundError as error:
+        except MessageActorNotFoundError as error:
             raise UnauthorizedError("Account no longer exists.") from error
         except MessageNotExistsError as caught_error:
             raise NotFoundError("Message not found") from caught_error
@@ -771,6 +776,8 @@ class TrialMessageSuggestedQuestionApi(Resource):
             raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
             raise CompletionRequestError(e.description) from e
+        except AgentVersionNotFoundError as error:
+            raise AgentVersionNotFoundHTTPError() from error
         except Exception as caught_error:
             logger.exception("internal server error.")
             raise InternalServerError() from caught_error
@@ -871,6 +878,10 @@ class TrialChatTextApi(Resource):
         ProviderQuotaExceededError,
     )
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
+    @console_ns.doc(
+        produces=list(SUPPORTED_TTS_AUDIO_MIME_TYPES),
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: list(SUPPORTED_TTS_AUDIO_MIME_TYPES)},
+    )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @console_account_admission()
     @get_trial_app

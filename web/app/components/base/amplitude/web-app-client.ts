@@ -42,8 +42,7 @@ async function initializeWebAppAmplitude(): Promise<WebAppAmplitudeClient | null
 
     client.init(AMPLITUDE_API_KEY, {
       autocapture: false,
-      defaultTracking: false,
-      fetchRemoteConfig: false,
+      remoteConfig: { fetchRemoteConfig: false },
       flushQueueSize: 1,
       identityStorage: 'none',
       instanceName: 'webapp',

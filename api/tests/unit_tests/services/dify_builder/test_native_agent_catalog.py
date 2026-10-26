@@ -6,16 +6,24 @@ from uuid import uuid4
 import pytest
 import sqlalchemy.orm
 
+from models import agent as agent_models
 from models.agent import Agent, AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
 
 
 def test_projection_is_published_and_output_contract_is_honest() -> None:
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
-    agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Risk reviewer", description="EDITABLE DRAFT SECRET")
+    agent = Agent(
+        scope=agent_models.AgentScope.ROSTER,
+        source=agent_models.AgentSource.ROSTER,
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Risk reviewer",
+        description="EDITABLE DRAFT SECRET",
+    )
     snapshot = AgentConfigSnapshot(
         id=str(uuid4()),
         agent_id=agent.id,
@@ -47,7 +55,13 @@ def test_projection_is_published_and_output_contract_is_honest() -> None:
 def test_projection_rejects_cross_owner_snapshot() -> None:
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
-    agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Reviewer")
+    agent = Agent(
+        scope=agent_models.AgentScope.ROSTER,
+        source=agent_models.AgentSource.ROSTER,
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Reviewer",
+    )
     snapshot = AgentConfigSnapshot(
         id=str(uuid4()), tenant_id=str(uuid4()), agent_id=agent.id, version=1, config_snapshot=AgentSoulConfig()
     )
@@ -59,7 +73,14 @@ def test_projection_rejects_cross_owner_snapshot() -> None:
 def test_public_roster_description_is_an_honest_capability_fallback(summary: None | str) -> None:
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
-    agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Reviewer", description="Public report review")
+    agent = Agent(
+        scope=agent_models.AgentScope.ROSTER,
+        source=agent_models.AgentSource.ROSTER,
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Reviewer",
+        description="Public report review",
+    )
     snapshot = AgentConfigSnapshot(
         id=str(uuid4()),
         tenant_id=agent.tenant_id,
@@ -232,7 +253,13 @@ def test_selected_agent_uses_existing_resource_option_and_fresh_binding(monkeypa
     from services.dify_builder.agent import build, resources
     from services.dify_builder.native_testing.agent_catalog import project_published_agent
 
-    agent = Agent(id=str(uuid4()), tenant_id=str(uuid4()), name="Risk reviewer")
+    agent = Agent(
+        scope=agent_models.AgentScope.ROSTER,
+        source=agent_models.AgentSource.ROSTER,
+        id=str(uuid4()),
+        tenant_id=str(uuid4()),
+        name="Risk reviewer",
+    )
     snapshot = AgentConfigSnapshot(
         id=str(uuid4()),
         tenant_id=agent.tenant_id,

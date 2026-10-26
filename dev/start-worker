@@ -40,6 +40,7 @@ show_help() {
   echo "  triggered_workflow_dispatcher - Trigger dispatcher tasks"
   echo "  trigger_refresh_executor - Trigger refresh tasks"
   echo "  retention               - Retention tasks"
+  echo "  knowledge_fs_lifecycle  - KnowledgeFS provisioning and deletion lifecycle"
 }
 
 # Parse command line arguments
@@ -104,16 +105,25 @@ if [[ -z "${QUEUES}" ]]; then
   # Configure queues based on product edition
   if [[ "${DEPLOYMENT_EDITION:-COMMUNITY}" == "CLOUD" ]]; then
     # Cloud edition: separate queues for dataset and trigger tasks
-    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,dify_builder,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution"
+    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,dify_builder,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
   else
     # Self-hosted editions: dataset and workflow have separate queues
-    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,dify_builder,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution"
+    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,dify_builder,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
   fi
 
   echo "No queues specified, using edition-based defaults: ${QUEUES}"
 else
   echo "Using specified queues: ${QUEUES}"
 fi
+
+case ",${QUEUES}," in
+  *,knowledge_fs_upgrade,*)
+    if [[ "${POOL}" != "prefork" ]]; then
+      echo "KnowledgeFS upgrades require --pool prefork to enforce checkpoint time limits." >&2
+      exit 1
+    fi
+    ;;
+esac
 
 echo "Starting Celery worker with:"
 echo "  Queues: ${QUEUES}"

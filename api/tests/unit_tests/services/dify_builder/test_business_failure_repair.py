@@ -362,7 +362,7 @@ def test_real_fix_prompt_boundary_receives_goal_oracle_and_native_success_kind(
     from core.model_manager import ModelInstance
     from core.workflow.generator.prompts.builder_prompts import TOOL_OUTPUT_SEMANTICS_RULES
     from services.dify_builder.agent import fix
-    from tests.unit_tests.core.model_fixtures import make_model_config
+    from tests.helpers.unit.core.model_fixtures import make_model_config
 
     fixture, agent = case
     turn = prepare(fixture)
@@ -416,7 +416,7 @@ def test_real_llm_builder_proposal_vets_a_current_business_code_repair(
 ) -> None:
     from core.model_manager import ModelInstance
     from services.dify_builder.agent import fix, llm_agent
-    from tests.unit_tests.core.model_fixtures import make_model_config
+    from tests.helpers.unit.core.model_fixtures import make_model_config
 
     fixture, _recording_agent = case
     original = 'def main(orders: str) -> dict:\n    return {"paid_count": 2, "paid_total": 440}'

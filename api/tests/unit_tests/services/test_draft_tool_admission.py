@@ -31,6 +31,7 @@ from graphon.runtime import VariablePool
 from models.account import Account
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import EndUserType, PermissionEnum
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun, WorkflowType
 from services.app_generate_service import AppGenerateService
@@ -580,7 +581,7 @@ def test_published_execution_keeps_normal_credential_delegation(
         session_id="ffffffff-0000-4000-8000-000000000001",
         external_user_id="external-customer-1",
         name="External customer",
-        is_anonymous=False,
+        _is_anonymous=False,
     )
     sqlite_session.add(end_user)
     sqlite_session.commit()
@@ -1081,7 +1082,11 @@ def native_draft_oauth(
             assert method == "POST"
             assert path == "plugin/aaaaaaaa-0000-4000-8000-000000000001/dispatch/oauth/refresh_credentials"
             assert response_type is PluginOAuthCredentialsResponse
-            assert headers == {"X-Plugin-ID": "acme/huddle", "Content-Type": "application/json"}
+            assert headers == {
+                "X-Plugin-ID": "acme/huddle",
+                "Content-Type": "application/json",
+                "X-Plugin-Unique-Identifier": "acme/huddle:0.0.1@" + "0" * 64,
+            }
             assert data["user_id"] == refresh_boundary.credential_owner
             assert data["data"]["provider"] == "huddle"
             assert data["data"]["credentials"] == {
@@ -1464,16 +1469,16 @@ def paused_native_draft(
                 app_id=APP_ID,
                 mode=AppMode.ADVANCED_CHAT,
                 name="Paused draft",
-                inputs={},
+                _inputs={},
                 from_source=ConversationFromSource.CONSOLE,
                 from_account_id=ACCOUNT_A,
-                invoke_from=InvokeFrom.DEBUGGER,
+                invoke_from=ModelInvokeFrom.DEBUGGER,
             )
             message = Message(
                 id="eeeeeeee-0000-4000-8000-000000000004",
                 app_id=APP_ID,
                 conversation_id=conversation_id,
-                inputs={},
+                _inputs={},
                 query="hello",
                 message={"role": "user", "content": "hello"},
                 answer="",
@@ -1482,7 +1487,7 @@ def paused_native_draft(
                 currency="USD",
                 from_source=ConversationFromSource.CONSOLE,
                 from_account_id=ACCOUNT_A,
-                invoke_from=InvokeFrom.DEBUGGER,
+                invoke_from=ModelInvokeFrom.DEBUGGER,
                 workflow_run_id=run_id,
                 app_mode=AppMode.ADVANCED_CHAT,
             )

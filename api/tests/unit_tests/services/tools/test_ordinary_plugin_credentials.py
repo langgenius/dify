@@ -331,7 +331,8 @@ def test_refresh_persists_actual_selected_row(
 
     monkeypatch.setattr(owner.module, "Session", Session)
     monkeypatch.setattr(
-        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client", lambda *_args: {}
+        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
+        lambda *_args, **_kwargs: None,
     )
     refresh = mocker.patch.object(
         OAuthHandler,
@@ -366,7 +367,8 @@ def test_refresh_conflict_refuses_runtime_without_cache_invalidation(
     monkeypatch.setattr(owner.module, "db", persisted_credentials)
     monkeypatch.setattr(owner.module, "Session", Session)
     monkeypatch.setattr(
-        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client", lambda *_args: {}
+        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
+        lambda *_args, **_kwargs: None,
     )
 
     def rotate(**_kwargs: object) -> PluginOAuthCredentialsResponse:
@@ -424,7 +426,8 @@ def test_ordinary_refresh_failure_refuses_without_cache_invalidation(
     owner.row.expires_at = 1
     owner.session.commit()
     monkeypatch.setattr(
-        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client", lambda *_args: {}
+        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
+        lambda *_args, **_kwargs: None,
     )
     refresh = mocker.patch.object(
         OAuthHandler, "refresh_credentials", side_effect=ValueError("synthetic refresh refusal")
@@ -456,7 +459,8 @@ def test_hardcoded_refresh_retains_original_state_across_session_expiration(
     controller = owner.controller
     owner.builtin_lookup.return_value = controller
     monkeypatch.setattr(
-        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client", lambda *_args: {}
+        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
+        lambda *_args, **_kwargs: None,
     )
 
     def rotate(**_kwargs: object) -> PluginOAuthCredentialsResponse:
@@ -589,7 +593,8 @@ def test_refresh_requires_exactly_one_affected_row_before_cache_and_dispatch(
     sessions = iter([read_session(), writer])
     monkeypatch.setattr(owner.module, "Session", lambda *_args: next(sessions))
     monkeypatch.setattr(
-        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client", lambda *_args: {}
+        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
+        lambda *_args, **_kwargs: None,
     )
     refresh = mocker.patch.object(
         OAuthHandler,
@@ -635,7 +640,8 @@ def test_refresh_commit_uncertainty_refuses_cache_invalidation_and_dispatch(
     sessions = iter([read_session(), writer])
     monkeypatch.setattr(owner.module, "Session", lambda *_args: next(sessions))
     monkeypatch.setattr(
-        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client", lambda *_args: {}
+        "services.tools.builtin_tools_manage_service.BuiltinToolManageService.get_oauth_client",
+        lambda *_args, **_kwargs: None,
     )
     refresh = mocker.patch.object(
         OAuthHandler,

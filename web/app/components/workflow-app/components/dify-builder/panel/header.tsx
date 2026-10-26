@@ -23,7 +23,7 @@ export const DifyBuilderPanelHeader = ({
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
 
   return (
-    <header className="relative z-10 flex h-11 shrink-0 items-center gap-2 bg-linear-to-b from-background-neutral-subtle to-transparent pr-3 pl-4.5">
+    <header className="relative z-10 flex h-11 shrink-0 items-center gap-2 bg-linear-to-b from-background-neutral-subtle to-transparent ps-4.5 pe-3">
       <h2
         ref={titleRef}
         tabIndex={-1}
@@ -39,7 +39,7 @@ export const DifyBuilderPanelHeader = ({
             iconSize="large"
             className="size-7 rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-accent-active data-popup-open:text-text-accent"
           />
-          <InfotipContent placement="bottom-end" sideOffset={8} className="w-58">
+          <InfotipContent side="bottom" align="end" sideOffset={8} className="w-58">
             <PopoverTitle className="system-xs-semibold text-text-primary">
               {t(($) => $.helpTitle, { ns: 'difyBuilder' })}
             </PopoverTitle>

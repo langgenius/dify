@@ -154,6 +154,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     )
     from .agent import composer as agent_composer
     from .agent import roster as agent_roster
+    from .agent import tracing as agent_tracing
+    from .agent import tracing_runs as agent_tracing_runs
 
     # Import app controllers
     from .app import (
@@ -231,6 +233,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         saved_message,
         trial,
     )
+    from .knowledge_fs import features as knowledge_fs_features
+    from .knowledge_fs import resources as knowledge_fs_resources
     from .snippets import snippet_workflow, snippet_workflow_draft_variable
     from .socketio import workflow as socketio_workflow
 
@@ -272,6 +276,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         workflow_run_archive,
         agent_composer,
         agent_roster,
+        agent_tracing,
+        agent_tracing_runs,
         advanced_prompt_template,
         agent,
         agent_app_access,
@@ -330,6 +336,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         recommended_app,
         saved_message,
         trial,
+        knowledge_fs_features,
+        knowledge_fs_resources,
         snippet_workflow,
         snippet_workflow_draft_variable,
         socketio_workflow,
@@ -368,6 +376,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     workflow_run_archive,
     agent_composer,
     agent_roster,
+    agent_tracing,
+    agent_tracing_runs,
     advanced_prompt_template,
     agent,
     agent_app_access,
@@ -426,6 +436,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     recommended_app,
     saved_message,
     trial,
+    knowledge_fs_features,
+    knowledge_fs_resources,
     snippet_workflow,
     snippet_workflow_draft_variable,
     socketio_workflow,
@@ -461,6 +473,8 @@ __all__ = [
     "agent_config_inspector",
     "agent_providers",
     "agent_roster",
+    "agent_tracing",
+    "agent_tracing_runs",
     "annotation",
     "api",
     "apikey",
@@ -494,6 +508,8 @@ __all__ = [
     "human_input_form",
     "init_validate",
     "installed_app",
+    "knowledge_fs_features",
+    "knowledge_fs_resources",
     "load_balancing_config",
     "login",
     "mcp_server",

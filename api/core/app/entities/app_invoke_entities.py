@@ -134,6 +134,7 @@ class DifyRunContext(BaseModel):
     app_type: CreditUsageAppType | None = None
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
+    workflow_tool_invocation_id: str | None = None
 
     @field_validator("builder_execution", mode="before")
     @classmethod
@@ -419,6 +420,8 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     workflow_execution_timing: WorkflowExecutionTiming = Field(
         default_factory=WorkflowExecutionTiming, exclude=True, repr=False
     )
+    # Legacy synchronous Tool callers cannot resume a paused execution.
+    allow_human_input: bool = True
 
     class SingleIterationRunEntity(BaseModel):
         """

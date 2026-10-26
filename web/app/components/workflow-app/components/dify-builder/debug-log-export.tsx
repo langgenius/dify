@@ -1,10 +1,5 @@
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { useDifyBuilderInteractionLocale } from './interactions/use-interaction-locale'
@@ -34,8 +29,8 @@ const DebugLogExport = () => {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <IconButton
             size="md"
@@ -47,15 +42,15 @@ const DebugLogExport = () => {
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-44">
-        <DropdownMenuItem onClick={handleExport}>
+      <MenuContent side="bottom" align="end" sideOffset={4} className="w-44">
+        <MenuItem onClick={handleExport}>
           <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
-          <div className="ml-2 system-md-regular text-text-secondary">
+          <div className="ms-2 system-md-regular text-text-secondary">
             {t(($) => $.exportDebugLog, { ns: 'difyBuilder' })}
           </div>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuItem>
+      </MenuContent>
+    </Menu>
   )
 }
 

@@ -8,15 +8,30 @@ scopes. Workspace and Binding retirement remain API-owned.
 """
 
 import asyncio
+import json
+import logging
+import time
 from collections.abc import AsyncIterable, Callable, Mapping
 from dataclasses import dataclass
 from types import ModuleType
 from typing import Protocol, cast, runtime_checkable
 
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from pydantic import JsonValue, TypeAdapter
+from pydantic_ai import DeferredToolRequests, DeferredToolResults, capture_run_messages
+from pydantic_ai.capabilities import AbstractCapability
+from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
+from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
+from pydantic_ai.toolsets import AbstractToolset
+from pydantic_ai.usage import RunUsage, UsageLimits
+
 from dify_agent.layers import history as history_module
 from dify_agent.layers.dify_plugin import llm_layer as llm_module
+from dify_agent.layers.execution_context.configs import ApplicationTracingContext, DifyExecutionContextLayerConfig
 from dify_agent.layers.knowledge import layer as knowledge_module
 from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
+from dify_agent.layers.knowledge_fs import layer as knowledge_fs_module
+from dify_agent.layers.knowledge_fs.history import without_historical_knowledge_evidence
 from dify_agent.layers.output import output_layer as output_module
 from dify_agent.layers.prompt import layer as prompt_module
 from dify_agent.layers.user_prompt import layer as user_prompt_module
@@ -55,21 +70,14 @@ from dify_agent.runtime.native_continuation import (
     NativeContinuation,
     NativePolicyStopped,
 )
-from dify_agent.runtime.observability import AgentObservability
+from dify_agent.runtime.observability import AgentObservability, ApplicationAgentObservability
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
 from dify_agent.runtime_backend import BindingLostError
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from pydantic import JsonValue, TypeAdapter
-from pydantic_ai import DeferredToolRequests, DeferredToolResults, capture_run_messages
-from pydantic_ai.capabilities import AbstractCapability
-from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
-from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
-from pydantic_ai.toolsets import AbstractToolset
-from pydantic_ai.usage import RunUsage, UsageLimits
 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
 _MAX_AGENT_STEPS_PER_RUN = 500
 DEFAULT_AGENT_RUN_TIMEOUT_SECONDS = 60 * 60
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -149,8 +157,10 @@ class AgentRunRunner:
     stream_text_delta_flush_interval_seconds: float
     stream_text_delta_max_chars: int
     agent_observability: AgentObservability | None
+    application_observability: ApplicationAgentObservability | None
     _terminal_session_snapshot: SessionSnapshot | None
     _terminal_usage: AgentRunUsage | None
+    _knowledge_modules: list[knowledge_fs_module.Capability]
 
     def __init__(
         self,
@@ -169,6 +179,7 @@ class AgentRunRunner:
         native_continuation: NativeContinuation | None = None,
         native_capabilities: NativeTestCapabilities = NATIVE_TEST_CAPABILITIES,
         deferred_tool_results: DeferredToolResults | None = None,
+        application_observability: ApplicationAgentObservability | None = None,
     ) -> None:
         if stream_text_delta_flush_interval_seconds <= 0:
             raise ValueError("stream_text_delta_flush_interval_seconds must be positive")
@@ -188,8 +199,10 @@ class AgentRunRunner:
         self.stream_text_delta_flush_interval_seconds = stream_text_delta_flush_interval_seconds
         self.stream_text_delta_max_chars = stream_text_delta_max_chars
         self.agent_observability = agent_observability
+        self.application_observability = application_observability
         self._terminal_session_snapshot = None
         self._terminal_usage = None
+        self._knowledge_modules = []
 
     @property
     def terminal_session_snapshot(self) -> SessionSnapshot | None:
@@ -218,23 +231,43 @@ class AgentRunRunner:
             ]
             if len(gates) != 1 or gates[0].session.continuation is not self.native_continuation:
                 raise NativeTestProtocolUnsupported()
+        execution_context = self._application_execution_context()
+        started_at_ns = time.time_ns()
         if self.is_cancelled():
+            await self._finalize_application_tracing(execution_context, started_at_ns, error=None, cancelled=True)
             return
-        if self.native_continuation is None or self.native_continuation.generation == 0:
-            _ = await emit_run_started(self.sink, run_id=self.run_id)
 
+        failure: BaseException | None = None
+        suspended = False
         try:
             try:
-                outcome = await self._run_agent()
-            except NativeApprovalSuspended as wait:
-                if self.native_continuation is None:
-                    raise
-                if self._terminal_session_snapshot is not None:
-                    self.native_continuation.session_snapshot = self._terminal_session_snapshot
-                outcome = self.native_continuation.capture_wait(wait)
-            if isinstance(outcome, AgentCheckpoint):
-                await self.sink.persist_waiting(run_id=self.run_id, checkpoint=outcome, event=outcome.waiting_event())
-                return
+                if self.native_continuation is None or self.native_continuation.generation == 0:
+                    _ = await emit_run_started(self.sink, run_id=self.run_id)
+                try:
+                    outcome = await self._run_agent()
+                except NativeApprovalSuspended as wait:
+                    if self.native_continuation is None:
+                        raise
+                    if self._terminal_session_snapshot is not None:
+                        self.native_continuation.session_snapshot = self._terminal_session_snapshot
+                    outcome = self.native_continuation.capture_wait(wait)
+                if isinstance(outcome, AgentCheckpoint):
+                    await self.sink.persist_waiting(
+                        run_id=self.run_id, checkpoint=outcome, event=outcome.waiting_event()
+                    )
+                    suspended = True
+                    return
+            except BaseException as exc:
+                failure = exc
+                raise
+            finally:
+                if not suspended:
+                    await self._finalize_application_tracing(
+                        execution_context,
+                        started_at_ns,
+                        error=failure,
+                        cancelled=isinstance(failure, asyncio.CancelledError) or self.is_cancelled(),
+                    )
         except Exception as exc:
             if self.is_cancelled():
                 return
@@ -249,20 +282,59 @@ class AgentRunRunner:
                 usage=self._terminal_usage,
             )
             if finalization.applied:
+                for module in self._knowledge_modules:
+                    await module.publish_investigation(self.services, status="interrupted")
                 raise
             return
 
         if self.is_cancelled():
             return
-        _ = await emit_run_succeeded(
+        finalization = await emit_run_succeeded(
             self.sink,
             run_id=self.run_id,
             output=outcome.output,
             session_snapshot=outcome.session_snapshot,
             usage=outcome.usage,
         )
+        if finalization.applied:
+            answer = (
+                outcome.output if isinstance(outcome.output, str) else json.dumps(outcome.output, ensure_ascii=False)
+            )
+            for module in self._knowledge_modules:
+                await module.publish_investigation(self.services, status="completed", answer=answer)
+
+    def _application_execution_context(self) -> DifyExecutionContextLayerConfig | None:
+        """Resolve valid correlation even if later model/resource setup fails."""
+        if self.application_observability is None:
+            return None
+        try:
+            layers = {layer.name: layer for layer in self.request.composition.layers}
+            llm_config = llm_module.Config.model_validate(layers[DIFY_AGENT_MODEL_LAYER_ID].config)
+            return DifyExecutionContextLayerConfig.model_validate(layers[llm_config.execution_context].config)
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    async def _finalize_application_tracing(
+        self,
+        execution_context: DifyExecutionContextLayerConfig | None,
+        start_time_ns: int,
+        *,
+        error: BaseException | None,
+        cancelled: bool,
+    ) -> None:
+        if execution_context is None or execution_context.tracing is None or self.application_observability is None:
+            return
+        self.application_observability.record_unstarted_invocation(
+            execution_context,
+            start_time_ns=start_time_ns,
+            end_time_ns=time.time_ns(),
+            error=error,
+            cancelled=cancelled,
+        )
+        await self.application_observability.finish_invocation(execution_context.tracing)
 
     async def _run_agent(self) -> RunSuccessOutcome | AgentCheckpoint:
+        application_tracing: ApplicationTracingContext | None = None
         try:
             deps = load_modules(self.request, self.services, self.run_id, registry=self.registry)
             if self.native_continuation is not None:
@@ -277,6 +349,9 @@ class AgentRunRunner:
                     raise NativeTestProtocolUnsupported()
                 deps.native_effects = gates[0].session
             modules = create_modules(deps, registry=self.registry)
+            self._knowledge_modules = [
+                module for module in modules.values() if isinstance(module, knowledge_fs_module.Capability)
+            ]
             model_module = modules[DIFY_AGENT_MODEL_LAYER_ID]
             if not isinstance(model_module, llm_module.Capability):
                 raise ValueError("The llm module must provide native model assembly")
@@ -286,6 +361,9 @@ class AgentRunRunner:
             if history is not None and not isinstance(history, history_module.Capability):
                 raise ValueError("The history slot must provide the history module")
             message_history = history.load_messages(deps) if isinstance(history, history_module.Capability) else None
+            if message_history:
+                # Also strip when knowledge was removed from the new Soul.
+                message_history = without_historical_knowledge_evidence(message_history)
             output = modules.get("output")
             if output is not None and not isinstance(output, output_module.Capability):
                 raise ValueError("The output slot must provide the output module")
@@ -318,15 +396,23 @@ class AgentRunRunner:
                 if self.native_continuation is not None
                 else output_type,
             )
-            if self.agent_observability is not None:
-                from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
-
-                self.agent_observability.instrument(
-                    agent,
-                    execution_context=DifyExecutionContextLayerConfig.model_validate(
-                        deps.layers[llm_config.execution_context]["config"]
-                    ),
-                )
+            execution_context = DifyExecutionContextLayerConfig.model_validate(
+                deps.layers[llm_config.execution_context]["config"]
+            )
+            observability: AgentObservability | None = self.agent_observability
+            if execution_context.tracing is not None and self.application_observability is not None:
+                application_tracing = execution_context.tracing
+                observability = self.application_observability
+            if observability is not None:
+                try:
+                    observability.instrument(agent, execution_context=execution_context)
+                except Exception:
+                    agent.instrument = False
+                    if application_tracing is not None and self.application_observability is not None:
+                        self.application_observability.exporter.mark_incomplete(
+                            (application_tracing.run_id, application_tracing.invocation_id)
+                        )
+                    logger.warning("Agent tracing instrumentation failed; run_id=%s", self.run_id, exc_info=True)
         except (KeyError, TypeError, ValueError) as exc:
             raise AgentRunValidationError(str(exc)) from exc
 

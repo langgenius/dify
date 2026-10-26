@@ -227,6 +227,7 @@ def make_request(
         send_kwargs["follow_redirects"] = kwargs.pop("follow_redirects")
 
     retries = 0
+    last_request_error: httpx.RequestError | None = None
     while retries <= max_retries:
         try:
             # Preserve the user-provided Host header
@@ -240,6 +241,7 @@ def make_request(
                 response = client.send(request, stream=True, **send_kwargs)
             else:
                 response = client.send(request, **send_kwargs)
+            last_request_error = None
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
@@ -280,6 +282,7 @@ def make_request(
                 response.close()
 
         except httpx.RequestError as e:
+            last_request_error = e
             if sensitive_request:
                 logger.warning("Sensitive HTTP request failed on attempt %s", retries + 1)
             else:
@@ -290,7 +293,10 @@ def make_request(
         retries += 1
         if retries <= max_retries:
             time.sleep(BACKOFF_FACTOR * (2 ** (retries - 1)))
-    raise MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
+    error = MaxRetriesExceededError(f"Reached maximum retries ({max_retries}) for URL {url}")
+    if last_request_error is not None:
+        raise error from last_request_error
+    raise error
 
 
 def buffer_response(response: httpx.Response, *, max_response_bytes: int) -> httpx.Response:

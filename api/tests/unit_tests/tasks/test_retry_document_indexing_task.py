@@ -12,7 +12,7 @@ from models.dataset import Dataset, Document
 from models.enums import DatasetRuntimeMode, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.workflow_runtime.pipeline_generator import PipelineGenerator
 from tasks.retry_document_indexing_task import retry_document_indexing_task
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)

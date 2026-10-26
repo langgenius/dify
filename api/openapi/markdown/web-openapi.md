@@ -549,8 +549,9 @@ Submit feedback (like/dislike) for a specific message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `message_feedback_rating_required`: Cannot revoke feedback that does not exist. `app_unavailable`: App is no longer available. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -570,15 +571,15 @@ Generate a new completion similar to an existing message (completion apps only).
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request - Not a completion app or feature disabled | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request - Not a completion app, app unavailable, or model invocation failed | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - Access denied or more-like-this disabled | **application/json**: [AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages/{message_id}/suggested-questions
-Get suggested follow-up questions after a message (chat apps only).
+Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
 
 #### Parameters
 
@@ -591,10 +592,10 @@ Get suggested follow-up questions after a message (chat apps only).
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 400 | Bad Request - Not a chat app or feature disabled | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request - Not a chat app or app unavailable; `completion_request_error` when model invocation fails while counting history tokens. | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Message Not Found or Conversation Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - Access denied or suggested questions disabled | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App, End User, Message, or Conversation Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1019,6 +1020,14 @@ Agent has not been published. Please publish the Agent before using the web app.
 | tool | string |  | No |
 | tool_input | string |  | No |
 | tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
+
+#### AgentVersionNotFoundError
+
+Agent config version not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentVersionNotFoundError |  | Agent config version not found. |  |
 
 #### AnyJSONValue
 
@@ -1510,6 +1519,26 @@ Upload token is invalid or expired.
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
 
+#### KnowledgeFsCitation
+
+Immutable evidence identity; no signed URLs, tokens or storage keys.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| artifact_hash | string |  | Yes |
+| control_space_id | string |  | Yes |
+| document_asset_id | string |  | Yes |
+| document_title | string |  | No |
+| document_version | integer |  | No |
+| end_offset | integer |  | No |
+| id | string |  | Yes |
+| node_id | string |  | Yes |
+| page_number | integer |  | No |
+| parse_artifact_id | string |  | No |
+| section_path | [ string ] |  | No |
+| space_name | string |  | Yes |
+| start_offset | integer |  | No |
+
 #### LicenseStatus
 
 | Name | Type | Description | Required |
@@ -1557,6 +1586,14 @@ The upload token is malformed.
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
 | rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+
+#### MessageFeedbackRatingRequiredError
+
+A rating is required when there is no existing feedback to remove.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageFeedbackRatingRequiredError |  | A rating is required when there is no existing feedback to remove. |  |
 
 #### MessageFile
 
@@ -1811,12 +1848,16 @@ The remote file URL is not allowed.
 | dataset_id | string |  | No |
 | dataset_name | string |  | No |
 | doc_metadata | object |  | No |
+| document_asset_id | string |  | No |
 | document_id | string |  | No |
 | document_name | string |  | No |
+| document_revision | integer |  | No |
+| document_version | integer |  | No |
 | files | [ object ] |  | No |
 | hit_count | integer |  | No |
 | id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
+| knowledge_fs_citation | [KnowledgeFsCitation](#knowledgefscitation) |  | No |
 | message_id | string (uuid) |  | No |
 | page | integer |  | No |
 | position | integer |  | Yes |
@@ -1950,6 +1991,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
 | deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |

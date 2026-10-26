@@ -36,10 +36,10 @@ from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder import dify_port
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.effect_disclosure import disclose
-from tests.unit_tests.core.workflow.nodes.agent_v2.test_agent_node import FakeSessionStore, _node
 from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder import test_confirmed_full_run as full_run_tests
 from tests.unit_tests.services.dify_builder.test_confirmed_full_run import FullRunCase
+from tests.unit_tests.services.workflow_runtime.test_agent_node import FakeSessionStore, _node
 
 harness = full_run_tests.harness
 _bind_native_result = WorkflowServiceDifyPort._bind_run

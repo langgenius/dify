@@ -59,14 +59,14 @@ const ActivityList = ({
   )
 
   return (
-    <ol className="ml-[7px] space-y-1 border-l border-divider-subtle py-1 pl-[19px]">
+    <ol className="ms-[7px] space-y-1 border-s border-divider-subtle py-1 ps-[19px]">
       {roots.map((activity) => {
         const children = childrenByParent.get(activity.id) ?? []
         return (
           <li key={activity.id}>
             <ActivityRow renderText={renderText} activity={activity} />
             {children.length > 0 && (
-              <ol className="mt-1 ml-[7px] space-y-1 border-l border-divider-subtle pl-[19px]">
+              <ol className="ms-[7px] mt-1 space-y-1 border-s border-divider-subtle ps-[19px]">
                 {children.map((child) => (
                   <li key={child.id}>
                     <ActivityRow renderText={renderText} activity={child} />

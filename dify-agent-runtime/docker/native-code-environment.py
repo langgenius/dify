@@ -50,9 +50,7 @@ class Refusal(Exception):
 
 
 def canonical(value):
-    return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
-    ).encode("ascii")
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("ascii")
 
 
 def validate_profile(profile):
@@ -67,7 +65,7 @@ def validate_profile(profile):
         "x86_64",
     }:
         raise Refusal("unsupported_platform")
-    if profile.get("node") != "v24.20.0":
+    if profile.get("node") != "v24.22.1":
         raise Refusal("unsupported_node")
     if profile.get("packages") != PACKAGES:
         raise Refusal("unsupported_packages")
@@ -92,9 +90,7 @@ def _stamp(info):
 
 
 def _trusted(info, directory=False):
-    correct_type = (
-        stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
-    )
+    correct_type = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
     if not correct_type or info.st_uid != 0 or info.st_mode & 0o022:
         raise Refusal("mutable_or_unexpected_origin")
 
@@ -113,9 +109,7 @@ def _root_fd(stamps=None):
             parent = os.fstat(fd)
             if _stamp(parent) != stamps[path or "/"]:
                 raise Refusal("path_chain_changed")
-            child = os.open(
-                name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd
-            )
+            child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
             try:
                 info = os.fstat(child)
                 _trusted(info, directory=True)
@@ -175,10 +169,7 @@ class ContentManifest:
                     )
                     try:
                         self._remember_directory(path, fd)
-                        if (
-                            _stamp(os.stat(name, dir_fd=parent, follow_symlinks=False))
-                            != self.stamps[path]
-                        ):
+                        if _stamp(os.stat(name, dir_fd=parent, follow_symlinks=False)) != self.stamps[path]:
                             raise Refusal("path_chain_changed")
                         self._remember_directory(path.rpartition("/")[0], parent)
                     finally:
@@ -208,15 +199,11 @@ class ContentManifest:
             prefix = ""
             self._remember_directory(prefix, fd)
             for part in parts[:-1]:
-                child = os.open(
-                    part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd
-                )
+                child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
                 try:
                     info = os.fstat(child)
                     self._remember_directory(prefix, fd)
-                    if _stamp(
-                        os.stat(part, dir_fd=fd, follow_symlinks=False)
-                    ) != _stamp(info):
+                    if _stamp(os.stat(part, dir_fd=fd, follow_symlinks=False)) != _stamp(info):
                         raise Refusal("path_chain_changed")
                 except BaseException:
                     os.close(child)
@@ -239,9 +226,7 @@ class ContentManifest:
         self._visit()
         parent, name = self._parent(path)
         try:
-            fd = os.open(
-                name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent
-            )
+            fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
             try:
                 before = os.fstat(fd)
                 _trusted(before)
@@ -266,8 +251,7 @@ class ContentManifest:
                 if (
                     _stamp(before) != _stamp(after)
                     or size != before.st_size
-                    or _stamp(os.stat(name, dir_fd=parent, follow_symlinks=False))
-                    != _stamp(before)
+                    or _stamp(os.stat(name, dir_fd=parent, follow_symlinks=False)) != _stamp(before)
                 ):
                     raise Refusal("content_changed")
                 self.entries[path] = {
@@ -288,9 +272,7 @@ class ContentManifest:
         self._parts(path)
         parent, name = self._parent(path)
         try:
-            fd = os.open(
-                name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent
-            )
+            fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
             try:
                 before = os.fstat(fd)
                 self._remember_directory(path, fd)
@@ -343,9 +325,7 @@ def node_version(binary):
                     remaining = deadline - time.monotonic()
                     if remaining <= 0 or not selector.select(remaining):
                         raise Refusal("node_timeout")
-                    chunk = os.read(
-                        process.stdout.fileno(), NODE_OUTPUT_BYTES + 1 - len(output)
-                    )
+                    chunk = os.read(process.stdout.fileno(), NODE_OUTPUT_BYTES + 1 - len(output))
                     if not chunk:
                         break
                     output.extend(chunk)
@@ -394,7 +374,7 @@ def collect_environment():
         "packages": PACKAGES.copy(),
     }
     # Validate Python/platform before any package discovery/import or child process.
-    validate_profile({**profile, "node": "v24.20.0"})
+    validate_profile({**profile, "node": "v24.22.1"})
     if (
         not sys.flags.isolated
         or sys.prefix != PREFIX
@@ -426,10 +406,7 @@ def collect_environment():
             try:
                 current_fd = _root_fd(current_chain)
                 try:
-                    if (
-                        current_chain != root_chain
-                        or _stamp(os.fstat(fd)) != current_chain[PREFIX]
-                    ):
+                    if current_chain != root_chain or _stamp(os.fstat(fd)) != current_chain[PREFIX]:
                         raise Refusal("path_chain_changed")
                     before.revalidate()
                 finally:
@@ -466,13 +443,7 @@ def collect_environment():
             require_origin(checked(importlib.util.find_spec, name).origin, expected)
             module = checked(importlib.import_module, name)
             require_origin(module.__file__, expected)
-        expected = (
-            PREFIX
-            + "/"
-            + SITE
-            + "/markupsafe/_speedups"
-            + sysconfig.get_config_var("EXT_SUFFIX")
-        )
+        expected = PREFIX + "/" + SITE + "/markupsafe/_speedups" + sysconfig.get_config_var("EXT_SUFFIX")
         spec = checked(importlib.util.find_spec, "markupsafe._speedups")
         require_origin(spec.origin, expected)
         if not isinstance(spec.loader, importlib.machinery.ExtensionFileLoader):

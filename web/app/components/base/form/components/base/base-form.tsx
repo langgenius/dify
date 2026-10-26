@@ -7,7 +7,7 @@ import type {
   SetFieldsParam,
 } from '@/app/components/base/form/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useForm, useStore } from '@tanstack/react-form'
+import { useForm, useSelector } from '@tanstack/react-form'
 import { memo, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useGetFormValues, useGetValidators } from '@/app/components/base/form/hooks'
 import { FormItemValidateStatusEnum } from '@/app/components/base/form/types'
@@ -21,7 +21,7 @@ export type BaseFormProps = {
   disabled?: boolean
   formFromProps?: AnyFormApi
   onChange?: (field: string, value: any) => void
-  onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void
+  onSubmit?: (e: React.SubmitEvent<HTMLFormElement>) => void
   preventDefaultSubmit?: boolean
 } & Pick<
   BaseFieldProps,
@@ -81,7 +81,7 @@ const BaseForm = ({
 
   const [fieldStates, setFieldStates] = useState<Record<string, FieldState>>({})
 
-  const showOnValues = useStore(form.store, (s: any) => {
+  const showOnValues = useSelector(form.store, (s: any) => {
     const result: Record<string, any> = {}
     formSchemas.forEach((schema) => {
       const { show_on } = schema
@@ -192,7 +192,7 @@ const BaseForm = ({
 
   if (!formSchemas?.length) return null
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     if (preventDefaultSubmit) {
       e.preventDefault()
       e.stopPropagation()

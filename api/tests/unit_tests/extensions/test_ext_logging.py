@@ -14,7 +14,7 @@ from libs.sensitive_http_telemetry import (
     assert_sensitive_http_telemetry_ready,
     sensitive_http_telemetry,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.logging_helpers import protect_existing_log_routes
 
 

@@ -15,7 +15,7 @@ from extensions.redis_names import serialize_redis_name
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import copy_text
 from services.dify_builder import progress_snapshot, session_lock
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _snapshot() -> progress_snapshot.ProgressSnapshot:

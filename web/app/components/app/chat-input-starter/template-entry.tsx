@@ -52,7 +52,7 @@ function TemplatePreviewCard({ app, className }: (typeof TEMPLATE_PREVIEW_FIXTUR
   return (
     <div
       className={cn(
-        'absolute w-[241.5px] overflow-hidden rounded-lg border border-components-card-border pb-2 text-left shadow-xs transition-transform duration-200 ease-out motion-reduce:transition-none',
+        'absolute w-[241.5px] overflow-hidden rounded-lg border border-components-card-border pb-2 text-start shadow-xs transition-transform duration-200 ease-out motion-reduce:transition-none',
         className,
       )}
     >
@@ -106,9 +106,9 @@ function TemplatePreviewCard({ app, className }: (typeof TEMPLATE_PREVIEW_FIXTUR
 const templatePreview = (
   <div
     aria-hidden
-    className="pointer-events-none absolute -top-25 right-2.5 bottom-0 hidden w-80 overflow-hidden select-none md:block"
+    className="pointer-events-none absolute inset-e-2.5 -top-25 bottom-0 hidden w-80 overflow-hidden select-none md:block"
   >
-    <div className="absolute top-12.5 left-0 h-40 w-73.75">
+    <div className="absolute inset-s-0 top-12.5 h-40 w-73.75">
       {TEMPLATE_PREVIEW_FIXTURES.map((fixture) => (
         <TemplatePreviewCard key={fixture.app.id} {...fixture} />
       ))}
@@ -130,7 +130,7 @@ export function StarterTemplateEntry({
       <button
         type="button"
         disabled={disabled}
-        className="flex min-h-20 w-full items-start rounded-t-xl bg-background-body p-4 text-left transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-none disabled:pointer-events-none"
+        className="flex min-h-20 w-full items-start rounded-t-xl bg-background-body p-4 text-start transition-colors hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-none disabled:pointer-events-none"
         onClick={onClick}
       >
         <span className="flex flex-col gap-1 md:max-w-70">

@@ -16,6 +16,7 @@ from sqlalchemy.orm import selectinload
 from configs import dify_config
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.entities import WorkflowExecution, WorkflowNodeExecution
@@ -275,7 +276,11 @@ class NativeRepositoryObservation:
         return row
 
     def project_node(self, execution: WorkflowNodeExecution) -> WorkflowNodeExecution:
-        if type(execution) is not WorkflowNodeExecution:
+        if type(execution) not in (WorkflowNodeExecution, DifyWorkflowNodeExecution):
+            self.guard.fail()
+        if isinstance(execution, DifyWorkflowNodeExecution) and (
+            execution.triggered_from_workflow_id is not None or execution.triggered_from_node_execution_id is not None
+        ):
             self.guard.fail()
         context = self._context
         if execution.workflow_execution_id != context.native_run_id or execution.workflow_id != context.workflow_id:
@@ -336,6 +341,8 @@ class NativeRepositoryObservation:
             type(row.title) is not str
             or row.title != row.node_type
             or row.agent_workspace_binding_id is not None
+            or row.triggered_from_workflow_id is not None
+            or row.triggered_from_node_execution_id is not None
             or type(row.triggered_from) is not WorkflowNodeExecutionTriggeredFrom
             or row.triggered_from != WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
         ):

@@ -237,7 +237,7 @@ def test_waiting_binding_retention_has_own_one_minute_schedule(enabled: bool, mo
 
     from dify_app import DifyApp
     from extensions import ext_celery
-    from tests.unit_tests.config_override import config_overrides_context
+    from tests.helpers.unit.config_override import config_overrides_context
 
     monkeypatch.setattr(ext_celery, "setup_workflow_warm_shutdown_handler", lambda: None)
     with (

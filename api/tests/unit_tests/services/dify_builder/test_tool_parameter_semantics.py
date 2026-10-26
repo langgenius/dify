@@ -27,7 +27,7 @@ from graphon.runtime import VariablePool
 from services.dify_builder import graph_ops
 from services.dify_builder.agent import edit, fix
 from services.workflow_generation.runner import WorkflowGenerator
-from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import forbid_secret_and_business_calls
 
 

@@ -253,7 +253,7 @@ def test_selected_model_fenced_json_is_assessed_in_one_attempt(monkeypatch: pyte
     from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
     from services.dify_builder.agent import model_resolver
     from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
-    from tests.unit_tests.core.model_fixtures import make_model_instance
+    from tests.helpers.unit.core.model_fixtures import make_model_instance
 
     calls: list[object] = []
 
@@ -298,7 +298,7 @@ def test_selected_model_malformed_json_is_not_automatically_retried(
     from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
     from services.dify_builder.agent import model_resolver
     from services.dify_builder.code_risk_assessment import assess_code, builder_code_reasoner
-    from tests.unit_tests.core.model_fixtures import make_model_instance
+    from tests.helpers.unit.core.model_fixtures import make_model_instance
 
     calls: list[object] = []
 

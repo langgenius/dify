@@ -20,6 +20,7 @@ import json
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from typing import cast
 from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
@@ -64,8 +65,8 @@ from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.knowledge.dataset_service import DocumentService
 from services.knowledge.entities.knowledge_entities import ProcessRule, RetrievalModel
 from services.knowledge.resource_scope import DatasetRef
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_account, make_upload_file
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_account, make_upload_file
 
 
 def _document_data_source_info() -> dict[str, str]:
@@ -184,7 +185,11 @@ def make_serializable_document(**overrides: object) -> Document:
         "word_count": None,
     }
     attrs.update(overrides)
+    created_at = cast(datetime, attrs.pop("created_at"))
+    updated_at = cast(datetime, attrs.pop("updated_at"))
     document = Document(**attrs)
+    document.created_at = created_at
+    document.updated_at = updated_at
     document.summary_index_status = summary_index_status  # type: ignore[attr-defined]
     return document
 

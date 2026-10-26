@@ -24,6 +24,7 @@ from pydantic import ValidationError
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConfigDownloadSource,
     AgentStubConfigManifestResponse,
+    AgentStubConfigPromptResponse,
     AgentStubConfigPushRequest,
     AgentStubConfigPushResponse,
     AgentStubFileDownloadResponse,
@@ -55,6 +56,10 @@ class AgentStubConfigRequestHandler(Protocol):
     async def update_env(self, *, principal: AgentStubPrincipal, env_text: str) -> dict[str, object]: ...
 
     async def update_note(self, *, principal: AgentStubPrincipal, note: str) -> dict[str, object]: ...
+
+    async def get_prompt(self, *, principal: AgentStubPrincipal) -> AgentStubConfigPromptResponse: ...
+
+    async def update_prompt(self, *, principal: AgentStubPrincipal, prompt: str) -> AgentStubConfigPromptResponse: ...
 
 
 class AgentStubConfigRequestError(RuntimeError):
@@ -227,6 +232,40 @@ class DifyApiAgentStubConfigRequestHandler:
         if not isinstance(payload, dict):
             raise AgentStubConfigRequestError(502, "Dify API config note response is invalid")
         return payload
+
+    async def get_prompt(self, *, principal: AgentStubPrincipal) -> AgentStubConfigPromptResponse:
+        if self.runtime_client is not None and (not self.inner_api_key or principal.runtime is not None):
+            if self.admission is None:
+                raise AgentRuntimeTransportError("agent_stub_admission_missing")
+            self.admission.require(principal)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", principal.execution_context.agent_id or ""):
+                raise AgentRuntimeTransportError("agent_stub_config_path_invalid")
+        execution_context = self._require_config_context(principal.execution_context)
+        payload = await self._get_inner_api_json(
+            f"/inner/api/agent-config/{execution_context.agent_id}/prompt",
+            self._config_query_params(execution_context),
+        )
+        try:
+            return AgentStubConfigPromptResponse.model_validate(payload)
+        except ValidationError as exc:
+            raise AgentStubConfigRequestError(502, "Dify API config prompt response is invalid") from exc
+
+    async def update_prompt(self, *, principal: AgentStubPrincipal, prompt: str) -> AgentStubConfigPromptResponse:
+        if self.runtime_client is not None and (not self.inner_api_key or principal.runtime is not None):
+            if self.admission is None:
+                raise AgentRuntimeTransportError("agent_stub_admission_missing")
+            self.admission.require(principal)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", principal.execution_context.agent_id or ""):
+                raise AgentRuntimeTransportError("agent_stub_config_path_invalid")
+        execution_context = self._require_user_context(self._require_config_context(principal.execution_context))
+        payload = await self._put_inner_api_json(
+            f"/inner/api/agent-config/{execution_context.agent_id}/prompt",
+            {**self._config_query_params(execution_context), "prompt": prompt},
+        )
+        try:
+            return AgentStubConfigPromptResponse.model_validate(payload)
+        except ValidationError as exc:
+            raise AgentStubConfigRequestError(502, "Dify API config prompt response is invalid") from exc
 
     @staticmethod
     def _require_config_context(execution_context: DifyExecutionContextLayerConfig) -> DifyExecutionContextLayerConfig:
