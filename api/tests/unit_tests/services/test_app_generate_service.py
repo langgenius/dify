@@ -126,10 +126,10 @@ def _make_workflow(
                 "edges": [],
             }
         ),
-        features={},
+        _features={},
         created_by=created_by,
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
 
 
