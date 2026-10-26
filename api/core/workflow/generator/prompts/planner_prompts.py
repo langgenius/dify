@@ -150,6 +150,19 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
     Other types have fixed engine outputs; never list those. Name outputs
     after data consumers actually need. For larger workflows, declare the
     producers other nodes actually read.
+17. Coordinate the meaning and representation of those declared outputs in
+    optional ``node_output_contracts``: ``{"<producer id>": {"<declared name>":
+    {"meaning": "...", "representation": "..."}}}``. Use at most 10 producers,
+    6 outputs per producer, 160 characters for meaning and 240 for representation.
+    Choose each published representation once for both producer and consumers,
+    respecting the user's explicit requirements. State units and scale for
+    numeric values, native object/array versus serialized text and root shape,
+    or date/time format and timezone when relevant. Separate internal arithmetic
+    from the published output representation. Omit unavailable semantics rather
+    than inventing them. These declarations coordinate generation; they do not
+    prove semantic correctness. Never declare contracts for ``action: "keep"``
+    producers: their retained config is authoritative. Mark a producer update
+    when its representation must change. Other outputs still follow rule 16.
 
 # Output schema
 
@@ -171,7 +184,12 @@ minimum set of Dify workflow nodes needed to fulfil it, in execution order.
     {"source": "node1", "target": "node2"},
     {"source": "node2", "target": "node3"}
   ],
-  "node_outputs": {"<producer node id>": ["<output name>"]}
+  "node_outputs": {"<producer node id>": ["<output name>"]},
+  "node_output_contracts": {
+    "<producer node id>": {
+      "<output name>": {"meaning": "<data meaning>", "representation": "<published representation>"}
+    }
+  }
 }
 """
 

@@ -96,6 +96,13 @@ class PlannerStartInputDict(TypedDict):
     type: str  # "text-input" | "paragraph" | "number" | "select" | "file" | "file-list"
 
 
+class PlannerOutputContractDict(TypedDict):
+    """Bounded planner intent for a dynamic output, not runtime validation."""
+
+    meaning: str
+    representation: str
+
+
 class PlannerResultDict(TypedDict):
     """Top-level planner response."""
 
@@ -114,6 +121,7 @@ class PlannerResultDict(TypedDict):
     # builds exactly as it did before, with each isolated node builder
     # guessing the names again.
     node_outputs: NotRequired[dict[str, list[str]]]
+    node_output_contracts: NotRequired[dict[str, dict[str, PlannerOutputContractDict]]]
     nodes: list[PlannerNodeDict]
     edges: NotRequired[list[PlannerEdgeDict]]
 
