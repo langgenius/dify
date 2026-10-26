@@ -41,6 +41,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from models.workflow import WorkflowType as _legacy_workflow_task_recovery_WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from services.app_task_service import AppTaskControlService, AppTaskService
@@ -292,7 +293,7 @@ class TestAppTaskServiceCases:
             app_id="app-1",
             workflow_id="workflow-1",
             task_id="11111111-1111-1111-1111-111111111111",
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="1",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             status=WorkflowExecutionStatus.RUNNING,
@@ -592,7 +593,7 @@ class TestAppTaskServiceCases:
             app_id="app-1",
             workflow_id="workflow-1",
             task_id=task_id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="1",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
             status=WorkflowExecutionStatus.RUNNING,
@@ -647,12 +648,12 @@ def _seed_pause(
         status=WorkflowExecutionStatus.PAUSED,
         created_by_role=CreatorUserRole.END_USER,
         created_by="user-1",
-        created_at=datetime(2026, 10, 10),
         elapsed_time=0,
         total_tokens=0,
         total_steps=1,
         exceptions_count=0,
     )
+    run.created_at = datetime(2026, 10, 10)
     pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key=f"pause/{run.id}")
     if pause_id is not None:
         pause.id = pause_id
@@ -1110,12 +1111,12 @@ class TestPausedWorkflowStopCases:
             status=WorkflowExecutionStatus.PAUSED,
             created_by_role=CreatorUserRole.END_USER,
             created_by="user-1",
-            created_at=datetime(2026, 10, 10),
             elapsed_time=1,
             total_tokens=0,
             total_steps=2,
             exceptions_count=0,
         )
+        run.created_at = datetime(2026, 10, 10)
         run.task_id = "11111111-1111-1111-1111-111111111111"
         pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="state")
         sqlite_session.add_all([run, pause])
