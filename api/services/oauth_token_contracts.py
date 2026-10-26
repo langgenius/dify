@@ -1,6 +1,7 @@
 """Contracts shared by the OAuth token endpoint and its services."""
 
 from dataclasses import dataclass
+from datetime import timedelta
 from enum import StrEnum
 from http import HTTPStatus
 from typing import Protocol
@@ -67,4 +68,13 @@ class TokenGrantResult:
 
 
 class OAuthTokenSettings(Protocol):
-    """Token endpoint settings; later tasks add properties."""
+    """Token endpoint settings."""
+
+    @property
+    def authorization_code_enabled(self) -> bool: ...
+
+    @property
+    def auth_code_access_token_lifetime(self) -> timedelta: ...
+
+    @property
+    def authorization_code_ttl(self) -> timedelta: ...

@@ -29,6 +29,14 @@ DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT: Final = 15
 MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT: Final = 1
 MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT: Final = 100
 
+DEFAULT_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 24
+MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 1
+MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: Final = 8760
+
+DEFAULT_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: Final = 600
+MIN_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: Final = 60
+MAX_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: Final = 600
+
 
 def _clamp_int_setting(name: str, value: object, *, default: int, minimum: int, maximum: int) -> int:
     # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
@@ -1164,6 +1172,51 @@ class AuthConfig(BaseSettings):
             default=DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT,
             minimum=MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT,
             maximum=MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT,
+        )
+
+    ENABLE_OAUTH_AUTHORIZATION_CODE: bool = Field(
+        description="Enable the OAuth authorization code + PKCE flow on /openapi/v1/oauth/*.",
+        default=True,
+    )
+
+    OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: int = Field(
+        description="Lifetime in hours of access tokens issued by the authorization code flow. "
+        f"Values outside {MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS}-{MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS} "
+        "are clamped; a non-integer falls back to the default.",
+        ge=MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+        le=MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+        default=DEFAULT_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+    )
+
+    @field_validator("OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS", mode="before")
+    @classmethod
+    def _clamp_oauth_auth_code_access_token_ttl_hours(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS",
+            v,
+            default=DEFAULT_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+            minimum=MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+            maximum=MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS,
+        )
+
+    OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: int = Field(
+        description="Lifetime in seconds of a single-use OAuth authorization code. "
+        f"Values outside {MIN_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS}-{MAX_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS} "
+        "are clamped; a non-integer falls back to the default.",
+        ge=MIN_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
+        le=MAX_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
+        default=DEFAULT_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
+    )
+
+    @field_validator("OAUTH_AUTHORIZATION_CODE_TTL_SECONDS", mode="before")
+    @classmethod
+    def _clamp_oauth_authorization_code_ttl_seconds(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_AUTHORIZATION_CODE_TTL_SECONDS",
+            v,
+            default=DEFAULT_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
+            minimum=MIN_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
+            maximum=MAX_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
         )
 
     OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(

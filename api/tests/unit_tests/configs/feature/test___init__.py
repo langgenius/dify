@@ -40,6 +40,34 @@ def test_oauth_max_tokens_per_account_clamps_or_falls_back_instead_of_failing(co
     assert expected == config.OAUTH_MAX_TOKENS_PER_ACCOUNT
 
 
+def test_oauth_authorization_code_settings_default() -> None:
+    config = _IsolatedAuthConfig()
+
+    assert config.ENABLE_OAUTH_AUTHORIZATION_CODE is True
+    assert config.OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS == 24
+    assert config.OAUTH_AUTHORIZATION_CODE_TTL_SECONDS == 600
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [("48", 48), ("1", 1), ("8760", 8760), ("0", 1), ("-5", 1), ("999999", 8760), ("abc", 24), ("", 24)],
+)
+def test_oauth_auth_code_access_token_ttl_hours_clamps_or_falls_back(configured: str, expected: int) -> None:
+    config = _IsolatedAuthConfig(OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS=configured)
+
+    assert expected == config.OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [("120", 120), ("60", 60), ("600", 600), ("0", 60), ("-5", 60), ("1000", 600), ("abc", 600), ("", 600)],
+)
+def test_oauth_authorization_code_ttl_seconds_clamps_or_falls_back(configured: str, expected: int) -> None:
+    config = _IsolatedAuthConfig(OAUTH_AUTHORIZATION_CODE_TTL_SECONDS=configured)
+
+    assert expected == config.OAUTH_AUTHORIZATION_CODE_TTL_SECONDS
+
+
 class _IsolatedFileUploadConfig(InitSettingsOnly, FileUploadConfig):
     pass
 
