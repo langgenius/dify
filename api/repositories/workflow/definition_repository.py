@@ -712,6 +712,7 @@ def workflow_from_snapshot(snapshot: WorkflowSnapshot) -> Workflow:
 @dataclass
 class _PublicationTransaction:
     session: Session
+    session_maker: sessionmaker[Session]
     app: App
     actor: Account
     draft: WorkflowSnapshot
@@ -728,7 +729,9 @@ class _PublicationTransaction:
         return workflow_snapshot(workflow)
 
     def sync_webhooks(self, node_ids: Sequence[str]) -> None:
-        WorkflowTriggerRepository.sync_webhooks(self.session, self.app, node_ids, remove_stale=True)
+        WorkflowTriggerRepository.sync_webhooks(
+            self.session, self.app, node_ids, created_by=self.actor.id, remove_stale=True
+        )
 
     def sync_plugins(self, relationships: Sequence[Mapping[str, Any]]) -> None:
         WorkflowTriggerRepository.sync_plugins(self.session, self.app, relationships)
@@ -741,6 +744,15 @@ class _PublicationTransaction:
 
     def sync_datasets(self, dataset_ids: set[str]) -> None:
         WorkflowDefinitionStore.sync_dataset_relationships(self.session, self.app, dataset_ids)
+
+    def sync_knowledge_spaces(self, workflow: WorkflowSnapshot) -> None:
+        from services.agent.knowledge_spaces import sync_workflow_app_knowledge_bindings
+
+        sync_workflow_app_knowledge_bindings(
+            session=self.session,
+            session_maker=self.session_maker,
+            workflow=workflow_from_snapshot(workflow),
+        )
 
     def activate(self, workflow: WorkflowSnapshot) -> None:
         WorkflowDefinitionStore.activate(self.session, self.app, workflow.id, self.actor.id)
@@ -842,6 +854,7 @@ class WorkflowDefinitionRepository:
                 raise WorkflowHashNotEqualError()
             yield _PublicationTransaction(
                 session,
+                self._sessions,
                 app,
                 console_app_actor(session, context),
                 workflow_snapshot(current),

@@ -905,7 +905,15 @@ class WebhookService:
         session_factory: sessionmaker[Session] | None = None,
     ) -> None:
         """Allocate draft URLs with the same row lock and persistence used by publication."""
+        if app.created_by is None:
+            raise RuntimeError("App is missing created_by; cannot create webhook trigger")
         node_ids = webhook_node_ids(workflow.graph_dict.get("nodes", []))
         with (session_factory or sessionmaker(db.engine)).begin() as session:
             WorkflowTriggerRepository.lock_app(session, app)
-            WorkflowTriggerRepository.sync_webhooks(session, app, node_ids, remove_stale=remove_stale)
+            WorkflowTriggerRepository.sync_webhooks(
+                session,
+                app,
+                node_ids,
+                created_by=app.created_by,
+                remove_stale=remove_stale,
+            )

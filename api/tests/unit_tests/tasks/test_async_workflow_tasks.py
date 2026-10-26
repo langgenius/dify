@@ -14,7 +14,7 @@ from services.errors.app import WorkflowNotFoundError
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.entities import TriggerData, WorkflowTaskData
 from tasks import async_workflow_tasks
-from tests.unit_tests.model_factories import make_account, make_app, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 
 
 def _session_context(session: MagicMock) -> MagicMock:

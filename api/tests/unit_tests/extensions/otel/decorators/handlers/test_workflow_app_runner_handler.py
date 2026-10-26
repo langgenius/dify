@@ -16,8 +16,8 @@ from extensions.application_services.workflow import WorkflowExecutionDependenci
 from extensions.otel.decorators.handlers.workflow_app_runner_handler import WorkflowAppRunnerHandler
 from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 from services.workflow_run_agg import WorkflowRunAgg
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.services.workflow.test_workflow_run_agg import make_workflow_runner
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.unit_tests.services.test_workflow_run_agg import make_workflow_runner
 
 
 def test_service_driver_emits_workflow_span(

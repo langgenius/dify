@@ -40,6 +40,7 @@ from services.app.console_service import (
     CreatorsPlatformDisabledError,
     InvalidAppExportError,
 )
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
@@ -48,7 +49,6 @@ from services.entities.app_entities import (
     AppPage,
     AppRecord,
     AppReference,
-    AppTraceSettings,
     CopyAppParams,
     CreateAppParams,
     ImportedAppPackage,
@@ -201,11 +201,15 @@ class Transfers:
         context: RequestContext,
         params: AppImportParams,
         *,
-        as_copy: bool = False,
         package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
     ) -> Import:
         assert package is None
-        self.calls.append(("import", context, params, as_copy))
+        self.calls.append(("import", context, params, preserve_agent_bindings))
+        return Import(id="import", status=self.status, app_id=self.copied_id)
+
+    def import_copy(self, context: RequestContext, params: AppImportParams) -> Import:
+        self.calls.append(("copy", context, params))
         return Import(id="import", status=self.status, app_id=self.copied_id)
 
     def export_dsl(self, context: RequestContext, app_id: str, options: AppExportOptions) -> str:
@@ -256,12 +260,10 @@ class Creators:
 
 
 class Tracing:
-    def validate_provider(self, tracing_provider: str) -> None:
-        if tracing_provider != "langfuse":
+    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
+        del context, app_id
+        if settings.tracing_provider not in (None, "langfuse"):
             raise ValueError("Invalid tracing provider")
-
-    def require_provider_available(self, tracing_provider: str) -> None:
-        self.validate_provider(tracing_provider)
 
 
 Ports = tuple[ConsoleAppService, Apps, Access, Transfers, Creators]
@@ -356,10 +358,9 @@ def test_copy_success_requires_materialized_app_and_enriches_permissions(ports: 
     assert transfers.calls == [
         ("dsl", CONTEXT, "app", AppExportOptions(include_secret=True, preserve_agent_bindings=True)),
         (
-            "import",
+            "copy",
             CONTEXT,
             AppImportParams(mode="yaml-content", yaml_content="app: example", **params.model_dump()),
-            True,
         ),
     ]
     transfers.copied_id = None
@@ -466,7 +467,7 @@ def test_trace_update_checks_ownership_and_provider_without_parsing_old_settings
         assert apps.calls == [("get_reference", CONTEXT, "app")]
     else:
         service.set_trace(CONTEXT, "app", settings)
-        assert apps.calls == [("get_reference", CONTEXT, "app"), ("set_trace", CONTEXT, "app", settings)]
+        assert apps.calls == [("get_reference", CONTEXT, "app")]
 
 
 class Lifecycle:
@@ -868,17 +869,8 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
 
     class CopyTransfer(Transfers):
         @override
-        def import_dsl(
-            self,
-            context: RequestContext,
-            params: AppImportParams,
-            *,
-            as_copy: bool = False,
-            package: AppImportPackage | None = None,
-        ) -> Import:
-            assert package is None
+        def import_copy(self, context: RequestContext, params: AppImportParams) -> Import:
             assert params.name is None
-            assert as_copy
             return Import(id="import", status=ImportStatus.COMPLETED, app_id=app.id)
 
     service = ConsoleAppService(

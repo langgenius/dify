@@ -29,7 +29,7 @@ from services.workflow.variable_contracts import (
     DraftVariableView,
     InvalidDraftVariableError,
 )
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 CONTEXT = RequestContext("request", None, "account-1", "tenant-1")
 OWNER_ID = UUID("00000000-0000-0000-0000-000000000001")

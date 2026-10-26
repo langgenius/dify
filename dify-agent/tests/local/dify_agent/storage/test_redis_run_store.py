@@ -103,19 +103,10 @@ class FakeRedis:
                     entries = entries[:count]
                 if entries:
                     response.append((key, entries))
-            if response:
+            if response or block is None:
                 return response
             self.stream_changed.clear()
             await self.stream_changed.wait()
-
-    async def xrange(
-        self, key: str, *, min: str = "-", count: int | None = None
-    ) -> list[tuple[str, dict[str, object]]]:
-        self.commands.append(("xrange", key, min, count))
-        entries = [entry for entry in self.streams.get(key, []) if self._is_after_min(entry[0], min)]
-        if count is not None:
-            return entries[:count]
-        return entries
 
     async def expire(self, key: str, seconds: int) -> bool:
         self.commands.append(("expire", key, seconds))
@@ -126,16 +117,6 @@ class FakeRedis:
         if self.eval_result is None:
             raise AssertionError("test must configure FakeRedis.eval_result")
         return list(self.eval_result)
-
-    @staticmethod
-    def _is_after_min(event_id: str, min_id: str) -> bool:
-        if min_id == "-":
-            return True
-        is_exclusive = min_id.startswith("(")
-        cursor = min_id[1:] if is_exclusive else min_id
-        event_value = FakeRedis._stream_id_value(event_id)
-        cursor_value = FakeRedis._stream_id_value(cursor)
-        return event_value > cursor_value if is_exclusive else event_value >= cursor_value
 
     @staticmethod
     def _stream_id_value(event_id: str) -> tuple[int, int]:
@@ -469,6 +450,72 @@ def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> N
     assert decoded.data.session_snapshot == session_snapshot
 
 
+def test_get_events_pages_strictly_after_cursor_within_limit() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> None:
+        record = await store.create_run()
+        events_key = f"test:runs:{record.run_id}:events"
+        payload = RUN_EVENT_ADAPTER.dump_json(RunStartedEvent(run_id=record.run_id), exclude={"id"}).decode()
+        event_ids = ["1000-0", "1000-1", "1000-2", "1000-10", "1001-0"]
+        redis.streams[events_key] = [(event_id, {"payload": payload}) for event_id in event_ids]
+
+        first = await store.get_events(record.run_id, limit=2)
+        assert [event.id for event in first.events] == event_ids[:2]
+        assert first.next_cursor == "1000-1"
+        assert ("xread", {events_key: "0-0"}, 2, None) in redis.commands
+
+        second = await store.get_events(record.run_id, after=first.next_cursor, limit=2)
+        assert [event.id for event in second.events] == event_ids[2:4]
+        assert second.next_cursor == "1000-10"
+
+        third = await store.get_events(record.run_id, after=second.next_cursor, limit=2)
+        assert [event.id for event in third.events] == event_ids[4:]
+        assert third.next_cursor == "1001-0"
+
+        empty = await asyncio.wait_for(store.get_events(record.run_id, after=third.next_cursor, limit=2), timeout=1)
+        assert empty.events == []
+        assert empty.next_cursor == third.next_cursor
+
+        between = await store.get_events(record.run_id, after="1000-3", limit=2)
+        assert [event.id for event in between.events] == event_ids[3:]
+        assert between.next_cursor == "1001-0"
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("after", ["0-0", "1000-7"])
+def test_get_events_without_stream_returns_empty_page_without_blocking(after: str) -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> None:
+        record = await store.create_run()
+        page = await asyncio.wait_for(store.get_events(record.run_id, after=after, limit=3), timeout=1)
+        assert page.run_id == record.run_id
+        assert page.events == []
+        assert page.next_cursor == after
+        assert ("xread", {f"test:runs:{record.run_id}:events": after}, 3, None) in redis.commands
+
+    asyncio.run(scenario())
+
+
+def test_event_reads_raise_when_run_record_is_missing() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> None:
+        with pytest.raises(RunNotFoundError):
+            _ = await store.get_events("missing")
+        with pytest.raises(RunNotFoundError):
+            _ = await anext(store.iter_events("missing"))
+
+    asyncio.run(scenario())
+
+    assert not any(command[0] in {"xread", "xrange"} for command in redis.commands)
+
+
 @pytest.mark.parametrize("terminal_type", ["run_succeeded", "run_failed", "run_cancelled"])
 def test_iter_events_ends_after_replaying_terminal_event(terminal_type: str) -> None:
     redis = FakeRedis()
@@ -476,7 +523,8 @@ def test_iter_events_ends_after_replaying_terminal_event(terminal_type: str) -> 
 
     async def scenario() -> list[str]:
         record = await store.create_run()
-        _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+        for _ in range(101):
+            _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
         terminal = _terminal_event(terminal_type, record.run_id)
         _ = redis._append_stream_entry(
             f"test:runs:{record.run_id}:events",
@@ -491,8 +539,8 @@ def test_iter_events_ends_after_replaying_terminal_event(terminal_type: str) -> 
 
     event_types = asyncio.run(scenario())
 
-    assert event_types == ["run_started", terminal_type]
-    assert "xread" not in [command[0] for command in redis.commands]
+    assert event_types == ["run_started"] * 101 + [terminal_type]
+    assert not any(command[0] == "xread" and command[3] is not None for command in redis.commands)
 
 
 @pytest.mark.parametrize("terminal_type", ["run_succeeded", "run_failed", "run_cancelled"])
@@ -502,11 +550,13 @@ def test_iter_events_ends_after_live_terminal_event(terminal_type: str) -> None:
 
     async def scenario() -> str:
         record = await store.create_run()
+        started_id = await store.append_event(RunStartedEvent(run_id=record.run_id))
         events = store.iter_events(record.run_id)
+        assert (await anext(events)).id == started_id
         next_event = asyncio.ensure_future(anext(events))
         await asyncio.sleep(0)
         assert not next_event.done()
-        assert "xread" in [command[0] for command in redis.commands]
+        assert ("xread", {f"test:runs:{record.run_id}:events": started_id}, 100, 30_000) in redis.commands
 
         terminal = _terminal_event(terminal_type, record.run_id)
         _ = redis._append_stream_entry(
@@ -519,3 +569,30 @@ def test_iter_events_ends_after_live_terminal_event(terminal_type: str) -> None:
         return event.type
 
     assert asyncio.run(scenario()) == terminal_type
+
+
+@pytest.mark.parametrize("terminal_type", ["run_succeeded", "run_failed", "run_cancelled"])
+def test_iter_events_does_not_replay_terminal_event_at_cursor(terminal_type: str) -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+
+    async def scenario() -> None:
+        record = await store.create_run()
+        events_key = f"test:runs:{record.run_id}:events"
+        terminal = _terminal_event(terminal_type, record.run_id)
+        terminal_id = redis._append_stream_entry(
+            events_key,
+            {"payload": RUN_EVENT_ADAPTER.dump_json(terminal, exclude={"id"}).decode()},
+        )
+        events = store.iter_events(record.run_id, after=terminal_id)
+        next_event = asyncio.ensure_future(anext(events))
+        try:
+            await asyncio.sleep(0)
+            assert not next_event.done()
+            assert ("xread", {events_key: terminal_id}, 100, 30_000) in redis.commands
+        finally:
+            next_event.cancel()
+            await asyncio.gather(next_event, return_exceptions=True)
+            await events.aclose()
+
+    asyncio.run(scenario())

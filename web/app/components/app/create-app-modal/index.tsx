@@ -1,6 +1,6 @@
 'use client'
 
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { AppType } from '@/app/components/apps/app-type'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
@@ -44,7 +44,7 @@ type CreateAppProps = {
   defaultAppMode?: AppType
 }
 
-const CREATE_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const CREATE_APP_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 const shouldExpandBeginnerAppTypes = (appMode?: AppType) => {
   return appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'

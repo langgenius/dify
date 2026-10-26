@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Callable, Generator
+from decimal import Decimal
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -24,7 +25,13 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file_reference import resolve_file_record_id
 from models import Account
 from models.annotation_reply import AnnotationReplies
-from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.enums import (
+    ConversationFromSource,
+    ConversationStatus,
+    CreatorUserRole,
+    MessageFileBelongsTo,
+)
+from models.enums import InvokeFrom as PersistedInvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message
 from services.app.generation.adapters.message_pipeline import EasyUIBasedGenerateTaskPipeline
 from services.app.generation.input_adapter import AppInputAdapter
@@ -148,14 +155,14 @@ class MessageBasedAppGenerator(AppInputAdapter):
                     "model_provider": model_provider,
                     "model_id": model_id,
                     "override_model_configs": json.dumps(override_model_configs) if override_model_configs else None,
-                    "mode": app_config.app_mode.value,
+                    "mode": app_config.app_mode,
                     "name": conversation_name,
-                    "inputs": application_generate_entity.inputs,
+                    "_inputs": application_generate_entity.inputs,
                     "introduction": introduction,
                     "system_instruction": "",
                     "system_instruction_tokens": 0,
-                    "status": "normal",
-                    "invoke_from": application_generate_entity.invoke_from.value,
+                    "status": ConversationStatus.NORMAL,
+                    "invoke_from": PersistedInvokeFrom(application_generate_entity.invoke_from.value),
                     "from_source": from_source,
                     "from_end_user_id": end_user_id,
                     "from_account_id": account_id,
@@ -164,25 +171,25 @@ class MessageBasedAppGenerator(AppInputAdapter):
                     "model_provider": model_provider,
                     "model_id": model_id,
                     "override_model_configs": json.dumps(override_model_configs) if override_model_configs else None,
-                    "inputs": application_generate_entity.inputs,
+                    "_inputs": application_generate_entity.inputs,
                     "query": application_generate_entity.query,
                     "message": "",
                     "message_tokens": 0,
-                    "message_unit_price": 0,
-                    "message_price_unit": 0,
+                    "message_unit_price": Decimal(0),
+                    "message_price_unit": Decimal(0),
                     "answer": "",
                     "answer_tokens": 0,
-                    "answer_unit_price": 0,
-                    "answer_price_unit": 0,
+                    "answer_unit_price": Decimal(0),
+                    "answer_price_unit": Decimal(0),
                     "parent_message_id": (
                         application_generate_entity.parent_message_id
                         if isinstance(application_generate_entity, ConversationAppGenerateEntity)
                         else None
                     ),
                     "provider_response_latency": 0,
-                    "total_price": 0,
+                    "total_price": Decimal(0),
                     "currency": "USD",
-                    "invoke_from": application_generate_entity.invoke_from.value,
+                    "invoke_from": PersistedInvokeFrom(application_generate_entity.invoke_from.value),
                     "from_source": from_source,
                     "from_end_user_id": end_user_id,
                     "from_account_id": account_id,

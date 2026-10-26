@@ -31,7 +31,7 @@ from services.data_migration.import_service import (
     WorkflowPublisher,
 )
 from services.entities.dsl_entities import ImportStatus
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 @dataclass(frozen=True)

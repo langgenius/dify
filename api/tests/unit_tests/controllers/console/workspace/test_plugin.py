@@ -82,9 +82,9 @@ from models.account import (
     TenantPluginDebugPermission,
     TenantPluginInstallPermission,
 )
-from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.controllers.error_body import raised_error
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.controllers.error_body import raised_error
+from tests.helpers.unit.model_factories import make_account
 
 
 def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:

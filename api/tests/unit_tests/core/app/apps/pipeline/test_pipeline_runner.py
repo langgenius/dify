@@ -38,7 +38,7 @@ from services.workflow.execution.adapters.pipeline.pipeline_queue_manager import
 from services.workflow.execution.adapters.pipeline.pipeline_runner import PipelineRunner
 from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
 from services.workflow.execution.ports import WorkflowRuntime
-from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
+from tests.helpers.unit.model_factories import make_dataset, make_document, make_end_user, make_workflow
 
 
 def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeline:

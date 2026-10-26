@@ -27,6 +27,7 @@ from core.trigger.constants import is_trigger_node_type
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
 from core.workflow.nodes.human_input.pause_reason import (
     HumanInputRequired,
 )
@@ -440,7 +441,13 @@ class Workflow(Base):  # bug
 
     @staticmethod
     def _normalize_features_payload(features: dict[str, Any]) -> dict[str, Any]:
-        if features.get("file_upload", {}).get("image", {}).get("enabled", False):
+        file_upload = features.get("file_upload")
+        if not isinstance(file_upload, dict):
+            return features
+        image = file_upload.get("image")
+        if not isinstance(image, dict):
+            return features
+        if image.get("enabled", False):
             image_number_limits = int(features["file_upload"]["image"].get("number_limits", DEFAULT_FILE_NUMBER_LIMITS))
             image_transfer_methods = features["file_upload"]["image"].get(
                 "transfer_methods", ["remote_url", "local_file"]
@@ -930,6 +937,7 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
 
     SINGLE_STEP = "single-step"
     WORKFLOW_RUN = "workflow-run"
+    WORKFLOW_TOOL = "workflow-tool"
     RAG_PIPELINE_RUN = "rag-pipeline-run"
 
 
@@ -983,6 +991,25 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
 
     __tablename__ = "workflow_node_executions"
 
+    @classmethod
+    def workflow_tool_owned_by_app(cls, *, tenant_id: str, app_id: str) -> sa.ColumnElement[bool]:
+        """Match trusted Tool lifecycle ownership, including rows written before it was captured."""
+        document = sa.cast(func.nullif(cls.process_data, ""), sa.JSON().with_variant(sa.Text(), "sqlite"))
+        root_app_id = document[WORKFLOW_TOOL_ROOT_APP_ID_KEY].as_string()
+        return sa.and_(
+            cls.tenant_id == tenant_id,
+            cls.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+            sa.or_(
+                root_app_id == app_id,
+                sa.and_(
+                    root_app_id.is_(None),
+                    cls.workflow_run_id.in_(
+                        select(WorkflowRun.id).where(WorkflowRun.tenant_id == tenant_id, WorkflowRun.app_id == app_id)
+                    ),
+                ),
+            ),
+        )
+
     __table_args__ = (
         PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
         Index(
@@ -1022,6 +1049,8 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         EnumText(WorkflowNodeExecutionTriggeredFrom, length=255)
     )
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
+    triggered_from_workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    triggered_from_node_execution_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     index: Mapped[int] = mapped_column(sa.Integer)
     predecessor_node_id: Mapped[str | None] = mapped_column(String(255))
     node_execution_id: Mapped[str | None] = mapped_column(String(255))
@@ -1136,6 +1165,13 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         offload = self._get_offload_by_type(ExecutionOffLoadType.INPUTS)
         if offload is None:
             return self.inputs_dict
+
+        return self._load_full_content(session, offload.file_id, storage)
+
+    def load_full_outputs(self, session: orm.Session, storage: Storage) -> Mapping[str, Any] | None:
+        offload: WorkflowNodeExecutionOffload | None = self._get_offload_by_type(ExecutionOffLoadType.OUTPUTS)
+        if offload is None:
+            return self.outputs_dict
 
         return self._load_full_content(session, offload.file_id, storage)
 

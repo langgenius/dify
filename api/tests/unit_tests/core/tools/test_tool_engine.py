@@ -31,7 +31,7 @@ from core.tools.errors import (
 )
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from services.tools.tool_engine import ToolEngine
-from tests.unit_tests.model_factories import make_app, make_conversation
+from tests.helpers.unit.model_factories import make_app, make_conversation
 
 
 def _message() -> Message:
@@ -41,7 +41,7 @@ def _message() -> Message:
         model_id="model",
         override_model_configs=None,
         conversation_id=str(uuid4()),
-        inputs={},
+        _inputs={},
         query="query",
         message="",
         message_tokens=0,
