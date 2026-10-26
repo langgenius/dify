@@ -85,6 +85,8 @@ export function AgentKnowledgeRetrieval() {
   }
   useRegisterAgentOrchestrateAddAction('knowledge', addRetrieval)
 
+  if (!enabled) return null
+
   return (
     <>
       <ConfigureSection
@@ -97,15 +99,10 @@ export function AgentKnowledgeRetrieval() {
           <ConfigureSectionAddButton
             ariaLabel={t(($) => $['agentDetail.configure.knowledgeFs.add'])}
             onClick={() => addRetrieval()}
-            disabled={!enabled || readOnly}
+            disabled={readOnly}
           />
         }
       >
-        {!enabled && (
-          <p role="status" className="text-sm text-text-warning">
-            {t(($) => $['agentDetail.configure.knowledgeFs.runtimeUnavailable'])}
-          </p>
-        )}
         {retrievals.length === 0 ? (
           <ConfigureSectionEmpty
             title={t(($) => $['agentDetail.configure.knowledgeRetrieval.empty.title'])}

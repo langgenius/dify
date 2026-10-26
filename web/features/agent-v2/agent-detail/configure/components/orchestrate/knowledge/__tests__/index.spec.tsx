@@ -373,10 +373,11 @@ describe('KnowledgeFS composer interaction', () => {
     expect(snapshot().knowledge.spaces).toHaveLength(1)
   })
 
-  it('disables adding when server configuration is unavailable', () => {
+  it('hides the section when server configuration is unavailable', () => {
     setup([], { enabled: false })
-    expect(screen.getByRole('button', { name: /knowledgeFs.add/ })).toBeDisabled()
-    expect(screen.getByText(/knowledgeFs.runtimeUnavailable/)).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /knowledgeFs.title/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /knowledgeFs.add/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/knowledgeFs.runtimeUnavailable/)).not.toBeInTheDocument()
   })
 
   it('does not offer additions when viewing a historical version', () => {
