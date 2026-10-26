@@ -16,8 +16,8 @@ from services.knowledge_fs.product_dto import (
 from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 from services.knowledge_fs.resource import KnowledgeResourceRef
 from tasks import knowledge_fs_failed_retrieval_tasks as task_module
-from tests.unit_tests.tasks.knowledge_fs_task_fakes import RecordingRetry
-from tests.unit_tests.tasks.task_options import task_options
+from tests.helpers.unit.tasks.knowledge_fs_task_fakes import RecordingRetry
+from tests.helpers.unit.tasks.task_options import task_options
 
 EVENT_ID = "019fac9f-bfb0-75ee-9af5-252ebafbac1e"
 

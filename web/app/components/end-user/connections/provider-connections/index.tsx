@@ -27,7 +27,7 @@ function ConnectionRow({ connection, onRequestRemoval }: ConnectionRowProps) {
 
   return (
     <tr className="h-20">
-      <th scope="row" className="px-2 py-4 pl-4 text-left align-middle">
+      <th scope="row" className="px-2 py-4 ps-4 text-start align-middle">
         <div className="flex min-w-0 items-center gap-2">
           <Avatar size="sm" aria-hidden>
             <AvatarFallback className="bg-components-icon-bg-blue-soft system-sm-semibold text-text-accent">
@@ -50,7 +50,7 @@ function ConnectionRow({ connection, onRequestRemoval }: ConnectionRowProps) {
           ? t(($) => $['endUser.oauthAccount'], { ns: 'app' })
           : t(($) => $['endUser.apiKey'], { ns: 'app' })}
       </td>
-      <td className="px-2 py-4 pr-4 text-right align-middle">
+      <td className="px-2 py-4 pe-4 text-end align-middle">
         <Button
           variant="secondary"
           tone="destructive"
@@ -88,16 +88,16 @@ export default function ProviderConnections({ provider, connections, onRemove }:
           </colgroup>
           <thead className="border-b border-divider-subtle bg-background-gradient-mask-gray">
             <tr className="system-xs-medium leading-4 text-text-tertiary">
-              <th scope="col" className="px-2 py-3 pl-4 text-left font-medium">
+              <th scope="col" className="px-2 py-3 ps-4 text-start font-medium">
                 {t(($) => $['endUser.connection'], { ns: 'app' })}
               </th>
-              <th scope="col" className="px-2 py-3 text-left font-medium">
+              <th scope="col" className="px-2 py-3 text-start font-medium">
                 {t(($) => $['endUser.linkedApps'], { ns: 'app' })}
               </th>
-              <th scope="col" className="px-2 py-3 text-left font-medium">
+              <th scope="col" className="px-2 py-3 text-start font-medium">
                 {t(($) => $['endUser.connectionType'], { ns: 'app' })}
               </th>
-              <th scope="col" className="px-2 py-3 pr-4 text-right font-medium">
+              <th scope="col" className="px-2 py-3 pe-4 text-end font-medium">
                 {t(($) => $['endUser.connectionActions'], { ns: 'app' })}
               </th>
             </tr>

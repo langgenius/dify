@@ -29,6 +29,7 @@
   "appSelector.noParams": "Nie są potrzebne żadne parametry",
   "appSelector.params": "PARAMETRY APLIKACJI",
   "appSelector.placeholder": "Wybierz aplikację...",
+  "appSelector.searchPlaceholder": "Szukaj aplikacji według nazwy…",
   "chooseAppFile": "Wybierz pakiet aplikacji lub plik DSL",
   "deleteAppConfirmContent": "Usunięcie aplikacji jest nieodwracalne. Użytkownicy nie będą mieli już dostępu do twojej aplikacji, a wszystkie konfiguracje monitów i dzienniki zostaną trwale usunięte.",
   "deleteAppConfirmInputLabel": "Aby potwierdzić, wpisz <appName>{{appName}}</appName> w polu poniżej:",

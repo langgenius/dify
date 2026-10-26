@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MAIN_CONTENT_ID, SkipNav } from '@/app/components/main-nav/skip-nav'
+import { MAIN_CONTENT_ID, SkipLink } from '@/app/components/main-nav/skip-link'
 import Header from '@/app/signin/_header'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
@@ -15,7 +15,7 @@ export default function CreateWorkspaceLayout({ children }: { children: ReactNod
 
   return (
     <div className="flex min-h-dvh w-full bg-background-default-burn p-6">
-      <SkipNav>{t(($) => $['navigation.skipToMain'], { ns: 'common' })}</SkipNav>
+      <SkipLink>{t(($) => $['navigation.skipToMain'], { ns: 'common' })}</SkipLink>
       <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-effects-highlight bg-background-default-subtle">
         <Header className="flex-wrap gap-4" />
         <main

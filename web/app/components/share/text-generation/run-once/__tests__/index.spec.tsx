@@ -1,11 +1,13 @@
 import type { InputValueTypes } from '../../types'
+import type { fileUpload } from '@/app/components/base/file-uploader/utils'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useRef, useState } from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { Resolution, TransferMethod } from '@/types/app'
 import RunOnce from '../index'
 
@@ -22,51 +24,55 @@ vi.mock('@/hooks/use-breakpoints', () => {
   }
 })
 
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, onChange }: { value?: string; onChange?: (val: string) => void }) => (
-    <textarea
-      data-testid="code-editor-mock"
-      value={value}
-      onChange={(e) => onChange?.(e.target.value)}
-    />
-  ),
+const upload = vi.hoisted(() => vi.fn<typeof fileUpload>())
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({}),
+  usePathname: () => '/completion/app',
+}))
+vi.mock('@/app/components/base/file-uploader/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/file-uploader/utils')>()),
+  fileUpload: upload,
 }))
 
-vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => ({
-  default: () => <div data-testid="vision-uploader-mock" />,
-}))
+beforeEach(() => {
+  upload.mockImplementation(({ onSuccessCallback }) =>
+    onSuccessCallback({
+      id: 'upload-1',
+      name: 'example.txt',
+      size: 7,
+      mime_type: 'text/plain',
+      extension: 'txt',
+      created_at: 1,
+      created_by: 'account-1',
+      preview_url: null,
+      source_url: '',
+    }),
+  )
+})
 
-const uploadedFile = {
-  id: 'test-file',
+const uploadedFile = expect.objectContaining({
   name: 'example.txt',
-  size: 128,
+  size: 7,
   type: 'text/plain',
   progress: 100,
   transferMethod: TransferMethod.local_file,
   supportFileType: 'document',
   uploadedId: 'upload-1',
-}
-
-vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({
-    value,
-    onChange,
-  }: {
-    value: object[]
-    onChange: (files: object[]) => void
-  }) => (
-    <div data-testid="file-uploader-mock">
-      <button onClick={() => onChange([uploadedFile])}>Upload</button>
-      <span>{value?.length || 0} files</span>
-    </div>
-  ),
-}))
+})
+const getInputs = () =>
+  JSON.parse(screen.getByRole('status', { name: 'Input values' }).textContent!)
 
 const createPromptVariable = (overrides: Partial<PromptVariable>): PromptVariable => ({
   key: 'input',
   name: 'Input',
   type: 'string',
   required: true,
+  config: {
+    allowed_file_types: ['document'],
+    allowed_file_extensions: ['.txt'],
+    allowed_file_upload_methods: [TransferMethod.local_file],
+    number_limits: 2,
+  },
   ...overrides,
 })
 
@@ -126,21 +132,24 @@ const setup = (
     const [inputs, setInputs] = useState<Record<string, InputValueTypes>>({})
     const inputsRef = useRef<Record<string, InputValueTypes>>({})
     return (
-      <RunOnce
-        siteInfo={siteInfo}
-        promptConfig={overrides.promptConfig || basePromptConfig}
-        inputs={inputs}
-        inputsRef={inputsRef}
-        onInputsChange={(updated) => {
-          inputsRef.current = updated
-          setInputs(updated)
-          onInputsChange(updated)
-        }}
-        onSend={onSend}
-        visionConfig={overrides.visionConfig || baseVisionConfig}
-        onVisionFilesChange={onVisionFilesChange}
-        runControl={overrides.runControl ?? null}
-      />
+      <>
+        <output aria-label="Input values">{JSON.stringify(inputs)}</output>
+        <RunOnce
+          siteInfo={siteInfo}
+          promptConfig={overrides.promptConfig || basePromptConfig}
+          inputs={inputs}
+          inputsRef={inputsRef}
+          onInputsChange={(updated) => {
+            inputsRef.current = updated
+            setInputs(updated)
+            onInputsChange(updated)
+          }}
+          onSend={() => onSend(inputsRef.current)}
+          visionConfig={overrides.visionConfig || baseVisionConfig}
+          onVisionFilesChange={onVisionFilesChange}
+          runControl={overrides.runControl ?? null}
+        />
+      </>
     )
   }
 
@@ -192,8 +201,7 @@ describe('RunOnce', () => {
 
     await user.click(screen.getByRole('checkbox', { name: 'Checkbox Input' }))
 
-    const latest = onInputsChange.mock.calls[onInputsChange.mock.calls.length - 1]![0]
-    expect(latest).toEqual({
+    expect(getInputs()).toEqual({
       textInput: 'new text',
       paragraphInput: 'paragraph value',
       numberInput: '99',
@@ -211,7 +219,7 @@ describe('RunOnce', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
-    expect(onInputsChange).toHaveBeenCalledWith({
+    expect(getInputs()).toEqual({
       textInput: '',
       paragraphInput: '',
       numberInput: '',
@@ -226,7 +234,12 @@ describe('RunOnce', () => {
       expect(onInputsChange).toHaveBeenCalled()
     })
     await user.click(screen.getByRole('button', { name: 'share.generation.run' }))
-    expect(onSend).toHaveBeenCalledTimes(1)
+    expect(onSend).toHaveBeenCalledExactlyOnceWith({
+      textInput: 'default text',
+      paragraphInput: 'paragraph default',
+      numberInput: 42,
+      checkboxInput: false,
+    })
   })
 
   it('should display stop controls when runControl is provided', async () => {
@@ -288,7 +301,8 @@ describe('RunOnce', () => {
       })
       await user.click(screen.getByRole('combobox', { name: 'Select Input' }))
       await user.click(screen.getByRole('option', { name: 'Option B' }))
-      expect(onInputsChange).toHaveBeenLastCalledWith({ selectInput: 'Option B' })
+      expect(getInputs()).toEqual({ selectInput: 'Option B' })
+      expect(screen.getByRole('combobox', { name: 'Select Input' })).toHaveTextContent('Option B')
     })
   })
 
@@ -314,8 +328,12 @@ describe('RunOnce', () => {
           fileInput: undefined,
         })
       })
-      await user.click(screen.getByRole('button', { name: 'Upload' }))
-      expect(onInputsChange).toHaveBeenLastCalledWith({ fileInput: uploadedFile })
+      await user.upload(
+        document.querySelector<HTMLInputElement>('input[type="file"]')!,
+        new File(['example'], 'example.txt', { type: 'text/plain' }),
+      )
+      expect(await screen.findByText('example.txt')).toBeInTheDocument()
+      await waitFor(() => expect(getInputs()).toEqual({ fileInput: uploadedFile }))
     })
 
     it('should render file uploader for file-list input', async () => {
@@ -339,8 +357,12 @@ describe('RunOnce', () => {
           fileListInput: [],
         })
       })
-      await user.click(screen.getByRole('button', { name: 'Upload' }))
-      expect(onInputsChange).toHaveBeenLastCalledWith({ fileListInput: [uploadedFile] })
+      await user.upload(
+        document.querySelector<HTMLInputElement>('input[type="file"]')!,
+        new File(['example'], 'example.txt', { type: 'text/plain' }),
+      )
+      expect(await screen.findByText('example.txt')).toBeInTheDocument()
+      await waitFor(() => expect(getInputs()).toEqual({ fileListInput: [uploadedFile] }))
     })
   })
 
@@ -366,12 +388,12 @@ describe('RunOnce', () => {
       })
       onInputsChange.mockClear()
 
-      const codeEditor = screen.getByTestId('code-editor-mock')
+      const codeEditor = screen.getByTestId('monaco-editor')
       await user.click(codeEditor)
       await user.paste('{"key": "value"}')
 
       await waitFor(() => {
-        expect(onInputsChange).toHaveBeenCalledWith({
+        expect(getInputs()).toEqual({
           jsonInput: '{"key": "value"}',
         })
       })

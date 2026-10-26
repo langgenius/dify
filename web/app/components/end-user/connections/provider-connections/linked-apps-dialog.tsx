@@ -30,7 +30,7 @@ function LinkedAppItem({ app }: { app: LinkedApp }) {
         href={app.href}
         aria-labelledby={nameId}
         aria-describedby={descriptionId}
-        className="-ml-2 flex h-full items-center gap-3 rounded-md py-3 pl-2 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
+        className="-ms-2 flex h-full items-center gap-3 rounded-md py-3 ps-2 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
       >
         <AppIcon
           size="small"
@@ -76,7 +76,7 @@ export default function LinkedAppsDialog({ connection, connectionLabelId }: Prop
         </DialogHeader>
         <DialogBody className="max-h-94">
           {connection.apps.length > 0 ? (
-            <ul className="-ml-2 pl-2">
+            <ul className="-ms-2 ps-2">
               {connection.apps.map((app) => (
                 <LinkedAppItem key={app.id} app={app} />
               ))}

@@ -29,6 +29,7 @@
   "appSelector.noParams": "ไม่จําเป็นต้องใช้พารามิเตอร์",
   "appSelector.params": "พารามิเตอร์แอพ",
   "appSelector.placeholder": "เลือกแอป...",
+  "appSelector.searchPlaceholder": "ค้นหาแอปตามชื่อ…",
   "chooseAppFile": "เลือกแพ็กเกจแอปหรือไฟล์ DSL",
   "deleteAppConfirmContent": "การลบโปรเจกนั้นไม่สามารถย้อนกลับได้ ผู้ใช้จะไม่สามารถเข้าถึงโปรเจกต์ของคุณอีกต่อไป และการกําหนดค่าต่างๆและบันทึกทั้งหมดจะถูกลบอย่างถาวร",
   "deleteAppConfirmInputLabel": "หากต้องการยืนยัน พิมพ์ <appName>{{appName}}</appName> ในช่องด้านล่าง:",

@@ -148,7 +148,7 @@ export function ApiKeyForm({
         >
           <FieldLabel>
             {apiKeyLabel}
-            <span aria-hidden="true" className="ml-1 text-text-destructive-secondary">
+            <span aria-hidden="true" className="ms-1 text-text-destructive-secondary">
               *
             </span>
           </FieldLabel>

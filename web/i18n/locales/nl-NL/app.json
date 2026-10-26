@@ -29,6 +29,7 @@
   "appSelector.noParams": "No parameters needed",
   "appSelector.params": "APP PARAMETERS",
   "appSelector.placeholder": "Select an app...",
+  "appSelector.searchPlaceholder": "Apps zoeken op naam…",
   "chooseAppFile": "Kies een app-pakket of DSL-bestand",
   "deleteAppConfirmContent": "Deleting the app is irreversible. Users will no longer be able to access your app, and all prompt configurations and logs will be permanently deleted.",
   "deleteAppConfirmInputLabel": "To confirm, type <appName>{{appName}}</appName> in the box below:",

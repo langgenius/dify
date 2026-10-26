@@ -77,7 +77,7 @@ const ConnectionPicker = ({
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
         disabled={disabled}
-        className="flex h-13 w-full cursor-pointer items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-1 py-1.5 text-left hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
+        className="flex h-13 w-full cursor-pointer items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-1 py-1.5 text-start hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
       >
         <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
           <Avatar size="xs" className="border-[0.5px] border-divider-regular">
@@ -105,7 +105,7 @@ const ConnectionPicker = ({
         )}
         <span
           aria-hidden
-          className="mr-1 i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary"
+          className="me-1 i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary"
         />
       </PopoverTrigger>
       <PopoverContent
@@ -142,7 +142,7 @@ const ConnectionPicker = ({
                           <div
                             key={option.id}
                             className={cn(
-                              'flex min-h-12.5 items-center rounded-lg pr-2 hover:bg-state-base-hover',
+                              'flex min-h-12.5 items-center rounded-lg pe-2 hover:bg-state-base-hover',
                               isSelected && 'bg-background-section-burn',
                             )}
                           >
@@ -150,7 +150,7 @@ const ConnectionPicker = ({
                               variant="ghost"
                               aria-pressed={isSelected}
                               // Match the connection row's 8px spacing rather than a compact action label.
-                              className="h-auto min-w-0 grow justify-start gap-2 p-2 text-left hover:bg-transparent"
+                              className="h-auto min-w-0 grow justify-start gap-2 p-2 text-start hover:bg-transparent"
                               disabled={option.disabled}
                               onClick={() => onSelect(option.id)}
                             >

@@ -3,7 +3,7 @@ import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
+import { NodeActionsMenu } from '@/app/components/workflow/node-actions-menu'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
 import { useSingleRunAuthorization } from '../../../hooks/use-single-run-authorization'
@@ -58,7 +58,7 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
             }}
           />
         )}
-        <NodeActionsDropdown id={id} data={data} />
+        <NodeActionsMenu id={id} data={data} />
       </div>
     </div>
   )

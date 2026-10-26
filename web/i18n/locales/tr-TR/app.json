@@ -29,6 +29,7 @@
   "appSelector.noParams": "Parametre gerekmez",
   "appSelector.params": "UYGULAMA PARAMETRELERI",
   "appSelector.placeholder": "Bir uygulama seçin...",
+  "appSelector.searchPlaceholder": "Uygulamaları ada göre ara…",
   "chooseAppFile": "Bir uygulama paketi veya DSL dosyası seçin",
   "deleteAppConfirmContent": "Uygulamanın silinmesi geri alınamaz. Kullanıcılar artık uygulamanıza erişemeyecek ve tüm prompt yapılandırmaları ile loglar kalıcı olarak silinecektir.",
   "deleteAppConfirmInputLabel": "Onaylamak için aşağıdaki kutuya <appName>{{appName}}</appName> yazın:",

@@ -5,13 +5,8 @@ import type { ApiKeyValues } from './api-key-dialog'
 import type { RequiredConnectionService } from './required-services'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -72,8 +67,8 @@ function AccountActions({
   if (!onRemove && !canReconnect) return null
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <IconButton
             size="md"
@@ -87,17 +82,14 @@ function AccountActions({
           </IconButton>
         }
       />
-      <DropdownMenuContent className="w-50 max-w-(--available-width)" finalFocus={returnFocus}>
+      <MenuContent className="w-50 max-w-(--available-width)" align="end" finalFocus={returnFocus}>
         {canReconnect && (
-          <DropdownMenuItem
-            disabled={disabled}
-            onClick={() => onReconnect?.(serviceId, connection.id)}
-          >
+          <MenuItem disabled={disabled} onClick={() => onReconnect?.(serviceId, connection.id)}>
             {t(($) => $['connections.accounts.reconnect'], { ns: 'share' })}
-          </DropdownMenuItem>
+          </MenuItem>
         )}
         {onRemove && (
-          <DropdownMenuItem
+          <MenuItem
             variant="destructive"
             disabled={disabled}
             onClick={() => onRemove(serviceId, connection.id)}
@@ -105,10 +97,10 @@ function AccountActions({
             {connection.method === 'api-key'
               ? t(($) => $['connections.apiKeys.remove'], { ns: 'share' })
               : t(($) => $['connections.accounts.remove'], { ns: 'share' })}
-          </DropdownMenuItem>
+          </MenuItem>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 

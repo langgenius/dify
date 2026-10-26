@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MAIN_CONTENT_ID, SkipNav } from '@/app/components/main-nav/skip-nav'
+import { MAIN_CONTENT_ID, SkipLink } from '@/app/components/main-nav/skip-link'
 import Sidebar from './sidebar'
 
 export default function EndUserLayout({ children }: { children: ReactNode }) {
@@ -10,7 +10,7 @@ export default function EndUserLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background-body md:flex-row">
-      <SkipNav>{t(($) => $['navigation.skipToMain'], { ns: 'common' })}</SkipNav>
+      <SkipLink>{t(($) => $['navigation.skipToMain'], { ns: 'common' })}</SkipLink>
       <Sidebar />
       <main
         id={MAIN_CONTENT_ID}

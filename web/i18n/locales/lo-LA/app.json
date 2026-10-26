@@ -29,6 +29,7 @@
   "appSelector.noParams": "ບໍ່ຕ້ອງມີພາຣາມີເຕີ",
   "appSelector.params": "ພາຣາມີເຕີຂອງແອັບ",
   "appSelector.placeholder": "ເລືອກແອັບ...",
+  "appSelector.searchPlaceholder": "ຄົ້ນຫາແອັບຕາມຊື່…",
   "chooseAppFile": "ເລືອກແພັກເກດແອັບ ຫຼື ໄຟລ໌ DSL",
   "deleteAppConfirmContent": "ການລຶບແອັບບໍ່ສາມາດກັບຄືນມາໄດ້. ຜູ້ໃຊ້ຈະບໍ່ສາມາດເຂົ້າເຖິງແອັບຂອງທ່ານໄດ້ອີກຕໍ່ໄປ, ແລະ ການຕັ້ງຄ່າ prompt ລວມທັງບັນທຶກທັງໝົດຈະຖືກລຶບຖາວອນ.",
   "deleteAppConfirmInputLabel": "ເພື່ອຢືນຢັນ, ໃຫ້ພິມ <appName>{{appName}}</appName> ໃນຫ້ອງລຸ່ມນີ້:",

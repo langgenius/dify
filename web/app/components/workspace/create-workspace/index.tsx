@@ -42,7 +42,7 @@ export default function CreateWorkspace() {
             {t(($) => $['workspace.create.name'], { ns: 'common' })}
             <span
               aria-hidden="true"
-              className="ml-1 system-xs-regular text-text-destructive-secondary"
+              className="ms-1 system-xs-regular text-text-destructive-secondary"
             >
               *
             </span>

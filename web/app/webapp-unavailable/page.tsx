@@ -66,6 +66,7 @@ export default async function UnavailableWebAppDocument() {
   return (
     <AppNotAccessible
       account={profile ? { name: profile.name, avatar_url: profile.avatar_url } : undefined}
+      syncDocument
       clientIp={requestHeaders.get(APP_UNAVAILABLE_IP_HEADER) ?? undefined}
       initialLocale={locale}
       initialResources={{

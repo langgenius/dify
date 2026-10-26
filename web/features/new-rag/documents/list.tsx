@@ -30,7 +30,7 @@ import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availabili
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { newKnowledgeDocumentDetailPath } from '../routes'
-import { DocumentActionsDropdown } from './actions-dropdown'
+import { DocumentActionsMenu } from './actions-menu'
 import { DocumentBulkActionsToolbar } from './bulk/toolbar'
 import { DocumentPermissionRecoveryBulkRegion } from './permission-recovery/recovery-boundary'
 import {
@@ -320,18 +320,29 @@ function DocumentUpdatedCell({ updatedAt }: { updatedAt: string }) {
   )
 }
 
-const DocumentRow = memo(({ document }: { document: LogicalDocument }) => (
-  <tr className="h-12 border-t border-divider-subtle">
-    <DocumentSelectionCell document={document} />
-    <DocumentTitleCell document={document} />
-    <DocumentSourceCell documentId={document.id} />
-    <DocumentStatusCell documentId={document.id} />
-    <DocumentUpdatedCell updatedAt={document.updatedAt} />
-    <td className="w-10 align-middle">
-      <DocumentActionsDropdown document={document} />
-    </td>
-  </tr>
-))
+const DocumentRow = memo(
+  ({
+    document,
+    onRemove,
+  }: {
+    document: LogicalDocument
+    onRemove: (row: HTMLTableRowElement | null) => void
+  }) => {
+    const rowRef = useRef<HTMLTableRowElement>(null)
+    return (
+      <tr ref={rowRef} className="h-12 border-t border-divider-subtle">
+        <DocumentSelectionCell document={document} />
+        <DocumentTitleCell document={document} />
+        <DocumentSourceCell documentId={document.id} />
+        <DocumentStatusCell documentId={document.id} />
+        <DocumentUpdatedCell updatedAt={document.updatedAt} />
+        <td className="w-10 align-middle">
+          <DocumentActionsMenu document={document} onRemove={() => onRemove(rowRef.current)} />
+        </td>
+      </tr>
+    )
+  },
+)
 
 export function DocumentsEmpty() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
@@ -508,7 +519,11 @@ function DocumentsTableHeader() {
   )
 }
 
-function DocumentsTable() {
+function DocumentsTable({
+  onRemove,
+}: {
+  onRemove: (documentId: string, row: HTMLTableRowElement | null) => void
+}) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const { documents, resultsIncomplete, sourcesPending, documentSnapshotPending } =
@@ -574,7 +589,11 @@ function DocumentsTable() {
           <DocumentsTableHeader />
           <tbody>
             {visibleDocuments.map((document) => (
-              <DocumentRow key={document.id} document={document} />
+              <DocumentRow
+                key={document.id}
+                document={document}
+                onRemove={(row) => onRemove(document.id, row)}
+              />
             ))}
           </tbody>
         </table>
@@ -669,14 +688,18 @@ function DocumentsTable() {
   )
 }
 
-export function DocumentsList() {
+export function DocumentsList({
+  onRemove,
+}: {
+  onRemove: (documentId: string, row: HTMLTableRowElement | null) => void
+}) {
   const { t } = useTranslation(['knowledgeDocuments'])
 
   return (
     <>
       <div className="min-w-0">
         <DocumentsToolbar />
-        <DocumentsTable />
+        <DocumentsTable onRemove={onRemove} />
       </div>
       <p className="flex min-h-4 items-center gap-1.5 system-xs-regular text-text-tertiary">
         <span aria-hidden className="i-ri-information-2-line size-3.5" />

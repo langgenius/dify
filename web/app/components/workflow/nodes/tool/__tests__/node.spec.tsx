@@ -1,23 +1,15 @@
 import type { ToolNodeType } from '../types'
+import type { Node as WorkflowNode } from '@/app/components/workflow/types'
 import { act, screen } from '@testing-library/react'
 import { createAppUserAuthDraft } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
 import { CollectionType } from '@/app/components/tools/types'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowFlowComponent as renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import Node from '../node'
-
-const mockUseNodePluginInstallation = vi.hoisted(() => vi.fn())
-const mockUseCurrentToolCollection = vi.hoisted(() => vi.fn())
-
-vi.mock('../../../hooks/use-node-plugin-installation', () => ({
-  useNodePluginInstallation: mockUseNodePluginInstallation,
-}))
-
-vi.mock('../hooks/use-current-tool-collection', () => ({
-  __esModule: true,
-  default: mockUseCurrentToolCollection,
-}))
 
 const createNodeData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => ({
   title: 'Google Search',
@@ -33,88 +25,74 @@ const createNodeData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => 
   ...overrides,
 })
 
+function renderTool(
+  data: ToolNodeType,
+  {
+    authorized = true,
+    nodes = [],
+    providerIds = [data.provider_id],
+  }: { authorized?: boolean; nodes?: WorkflowNode[]; providerIds?: string[] } = {},
+) {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: providerIds.map((id) =>
+      createToolProviderFixture({
+        id,
+        name: id,
+        allow_delete: true,
+        is_team_authorization: authorized,
+      }),
+    ),
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  return renderWorkflowFlowComponent(<Node id="tool-node-1" data={data} />, { queryClient, nodes })
+}
+
 describe('ToolNode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseNodePluginInstallation.mockReturnValue({
-      isChecking: false,
-      isMissing: false,
-      uniqueIdentifier: undefined,
-      canInstall: false,
-      onInstallSuccess: vi.fn(),
-      shouldDim: false,
-    })
-    mockUseCurrentToolCollection.mockReturnValue({
-      currentTools: [],
-      currCollection: undefined,
-    })
-  })
-
-  describe('Authorization Warning', () => {
-    it('should keep configuration rows visible when the authorization warning is shown', () => {
-      mockUseCurrentToolCollection.mockReturnValue({
-        currentTools: [],
-        currCollection: {
-          allow_delete: true,
-          is_team_authorization: false,
-        },
-      })
-
-      renderWorkflowComponent(
-        <Node
-          id="tool-node-1"
-          data={createNodeData({
-            tool_configurations: {
-              region: { value: 'us' },
-            },
-          })}
-        />,
-      )
-
-      expect(screen.getByText('region')).toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
-    })
-  })
-
-  it('should render multi-select configuration values', () => {
-    renderWorkflowComponent(
-      <Node
-        id="tool-node-1"
-        data={createNodeData({
-          tool_configurations: {
-            formats: { type: 'constant', value: ['png', 'svg'] },
-          },
-        })}
-      />,
+  it('keeps configuration rows visible for a provider that requires authorization', () => {
+    renderTool(
+      createNodeData({
+        tool_configurations: { region: { value: 'us' } },
+      }),
+      { authorized: false },
     )
 
-    expect(screen.getByTitle('png, svg')).toHaveTextContent('png, svg')
+    expect(screen.getByText('region')).toBeInTheDocument()
+    expect(screen.getByText('us')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
+  })
+
+  it('renders multi-select configuration values', () => {
+    renderTool(
+      createNodeData({
+        tool_configurations: { formats: { type: 'constant', value: ['png', 'svg'] } },
+      }),
+    )
+
+    expect(screen.getByText('png, svg')).toBeInTheDocument()
   })
 
   it('updates App user errors on the canvas immediately as the draft changes', () => {
-    mockUseCurrentToolCollection.mockReturnValue({
-      currentTools: [],
-      currCollection: {
-        allow_delete: true,
-        is_team_authorization: false,
-      },
-    })
     const data = createNodeData()
-    const { store } = renderWorkflowComponent(<Node id="tool-node-1" data={data} />)
+    const { store } = renderTool(data, { authorized: false })
     expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
     const draft = createAppUserAuthDraft()
     act(() => {
-      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google', data.provider_id, draft)
       store
         .getState()
-        .setNodeAuthorizationTab('tool-node-1', 'google', data.provider_id, 'app-user-auth')
+        .setNodeAppUserAuthDraft('tool-node-1', 'google_search', data.provider_id, draft)
+      store
+        .getState()
+        .setNodeAuthorizationTab('tool-node-1', 'google_search', data.provider_id, 'app-user-auth')
     })
     expect(screen.getByText('plugin.auth.appUser.clientRequired')).toBeInTheDocument()
     expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
     expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
 
     act(() => {
-      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google', data.provider_id, {
+      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google_search', data.provider_id, {
         ...draft,
         oauthEnabled: false,
       })
@@ -123,7 +101,7 @@ describe('ToolNode', () => {
     expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
 
     act(() => {
-      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google', data.provider_id, {
+      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google_search', data.provider_id, {
         ...draft,
         oauthEnabled: false,
         description: 'Find repositories',
@@ -133,7 +111,7 @@ describe('ToolNode', () => {
     expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
 
     act(() => {
-      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google', data.provider_id, {
+      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google_search', data.provider_id, {
         ...draft,
         oauthEnabled: false,
         apiKeyEnabled: false,
@@ -147,7 +125,7 @@ describe('ToolNode', () => {
     act(() => {
       store
         .getState()
-        .setNodeAuthorizationTab('tool-node-1', 'google', data.provider_id, 'workspace-auth')
+        .setNodeAuthorizationTab('tool-node-1', 'google_search', data.provider_id, 'workspace-auth')
     })
     expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
     expect(screen.queryByText('plugin.auth.appUser.selectMethod')).not.toBeInTheDocument()
@@ -155,27 +133,23 @@ describe('ToolNode', () => {
   })
 
   it('does not show errors for a different provider', () => {
-    mockUseCurrentToolCollection.mockReturnValue({
-      currentTools: [],
-      currCollection: {
-        allow_delete: true,
-        is_team_authorization: false,
-      },
-    })
     const data = createNodeData()
-    const { store, rerender } = renderWorkflowComponent(<Node id="tool-node-1" data={data} />)
+    const { store, rerender } = renderTool(data, {
+      authorized: false,
+      providerIds: [data.provider_id, 'github'],
+    })
     act(() => {
       store
         .getState()
         .setNodeAppUserAuthDraft(
           'tool-node-1',
-          'google',
+          'google_search',
           data.provider_id,
           createAppUserAuthDraft(),
         )
       store
         .getState()
-        .setNodeAuthorizationTab('tool-node-1', 'google', data.provider_id, 'app-user-auth')
+        .setNodeAuthorizationTab('tool-node-1', 'google_search', data.provider_id, 'app-user-auth')
     })
     expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
     rerender(<Node id="tool-node-1" data={createNodeData({ provider_id: 'github' })} />)
@@ -185,17 +159,14 @@ describe('ToolNode', () => {
 })
 
 it('inherits live App user errors through multiple Reuse sources and restores Workspace checks at the terminal', () => {
-  mockUseCurrentToolCollection.mockReturnValue({
-    currentTools: [],
-    currCollection: { name: 'google', allow_delete: true, is_team_authorization: false },
-  })
   const data = createNodeData()
   const source = createNode({
     id: 'auth-source',
     data: createNodeData({ tool_name: 'another-tool' }),
   })
   const middle = createNode({ id: 'middle', data: createNodeData() })
-  const { store } = renderWorkflowComponent(<Node id="tool-node-1" data={data} />, {
+  const { store } = renderTool(data, {
+    authorized: false,
     nodes: [source, middle],
   })
   act(() => {
@@ -203,24 +174,26 @@ it('inherits live App user errors through multiple Reuse sources and restores Wo
       ['tool-node-1', middle],
       ['middle', source],
     ] as const) {
-      store.getState().setNodeReuseFromNode(id, 'google', data.provider_id, {
+      store.getState().setNodeReuseFromNode(id, 'google_search', data.provider_id, {
         id: target.id,
         title: target.data.title,
       })
-      store.getState().setNodeAuthorizationTab(id, 'google', data.provider_id, 'reuse-from-node')
+      store
+        .getState()
+        .setNodeAuthorizationTab(id, 'google_search', data.provider_id, 'reuse-from-node')
     }
-    store.getState().setNodeAppUserAuthDraft('auth-source', 'google', data.provider_id, {
+    store.getState().setNodeAppUserAuthDraft('auth-source', 'google_search', data.provider_id, {
       ...createAppUserAuthDraft({ canOAuth: false, canApiKey: true }),
       description: '',
     })
     store
       .getState()
-      .setNodeAuthorizationTab('auth-source', 'google', data.provider_id, 'app-user-auth')
+      .setNodeAuthorizationTab('auth-source', 'google_search', data.provider_id, 'app-user-auth')
   })
   expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeVisible()
   expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
   act(() => {
-    store.getState().setNodeAppUserAuthDraft('auth-source', 'google', data.provider_id, {
+    store.getState().setNodeAppUserAuthDraft('auth-source', 'google_search', data.provider_id, {
       ...createAppUserAuthDraft({ canOAuth: false, canApiKey: true }),
       description: 'Find repositories',
     })
@@ -230,26 +203,22 @@ it('inherits live App user errors through multiple Reuse sources and restores Wo
   act(() =>
     store
       .getState()
-      .setNodeAuthorizationTab('auth-source', 'google', data.provider_id, 'workspace-auth'),
+      .setNodeAuthorizationTab('auth-source', 'google_search', data.provider_id, 'workspace-auth'),
   )
   expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeVisible()
 })
 
 it('shows the invalid Reuse reference on the canvas instead of a Workspace authorization error', () => {
-  mockUseCurrentToolCollection.mockReturnValue({
-    currentTools: [],
-    currCollection: { name: 'google', allow_delete: true, is_team_authorization: false },
-  })
   const data = createNodeData()
-  const { store } = renderWorkflowComponent(<Node id="tool-node-1" data={data} />)
+  const { store } = renderTool(data, { authorized: false })
   act(() => {
-    store.getState().setNodeReuseFromNode('tool-node-1', 'google', data.provider_id, {
+    store.getState().setNodeReuseFromNode('tool-node-1', 'google_search', data.provider_id, {
       id: 'removed',
       title: 'Removed source',
     })
     store
       .getState()
-      .setNodeAuthorizationTab('tool-node-1', 'google', data.provider_id, 'reuse-from-node')
+      .setNodeAuthorizationTab('tool-node-1', 'google_search', data.provider_id, 'reuse-from-node')
   })
   expect(screen.getByText('workflow.panel.selectReuseNode')).toBeVisible()
   expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()

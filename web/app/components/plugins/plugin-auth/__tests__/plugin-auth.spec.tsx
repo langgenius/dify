@@ -1,200 +1,172 @@
 import type { BuiltinProviderOAuthClientSchemaResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { AppUserAuthDraft, AuthorizationTab } from '../app-user-auth/draft'
 import type { Credential } from '../types'
-import { screen, waitFor, within } from '@testing-library/react'
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { consoleQuery } from '@/service/console'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render as renderWithoutUrlState } from '@/test/console/render'
-import { createNuqsTestRenderer } from '@/test/nuqs-testing'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import PluginAuth from '../plugin-auth'
 import { AuthCategory, CredentialTypeEnum } from '../types'
 
-const mockUsePluginAuth = vi.fn()
-const mockConsoleState = vi.hoisted(() => ({
-  workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
-}))
+const requests = vi.hoisted(() => ({ credentials: vi.fn() }))
 const mockConsoleCall = vi.hoisted(() => vi.fn())
-const mockOAuthClientMutations = vi.hoisted(() => ({
-  save: vi.fn(),
-  remove: vi.fn(),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get: requests.credentials,
 }))
-
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
     call: (...args: unknown[]) => mockConsoleCall(...args),
   },
 }))
 
-vi.mock('../hooks/use-plugin-auth', () => ({
-  usePluginAuth: (...args: unknown[]) => mockUsePluginAuth(...args),
-}))
-
-vi.mock('../hooks/use-credential', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../hooks/use-credential')>()
-  return {
-    ...actual,
-    useSetPluginOAuthCustomClientHook: () => ({ mutateAsync: mockOAuthClientMutations.save }),
-    useDeletePluginOAuthCustomClientHook: () => ({ mutateAsync: mockOAuthClientMutations.remove }),
-  }
-})
-
-vi.mock('../authorized', () => ({
-  default: ({
-    pluginPayload,
-    renderTrigger,
-  }: {
-    pluginPayload: { provider: string }
-    renderTrigger?: (open?: boolean) => ReactNode
-  }) =>
-    renderTrigger ? (
-      renderTrigger(false)
-    ) : (
-      <div data-testid="authorized">
-        Authorized:
-        {pluginPayload.provider}
-      </div>
-    ),
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
-  }))
-})
-
-const onUrlUpdate = vi.fn()
-const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
-
-const defaultPayload = {
-  category: AuthCategory.tool,
-  provider: 'test-provider',
-}
-
+const defaultPayload = { category: AuthCategory.tool, provider: 'test-provider' }
 const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
   id: '1',
-  name: 'key',
-  is_default: true,
-  provider: 'test-provider',
+  name: 'Production key',
+  provider: defaultPayload.provider,
   credential_type: CredentialTypeEnum.API_KEY,
-  credentials: { api_key: 'sk********1234' },
+  is_default: true,
+  credentials: { api_key: 'masked-secret' },
   ...overrides,
 })
-
-const createConnectionQueryWrapper = () => {
-  const { queryClient, wrapper } = createConsoleQueryWrapper()
-  queryClient.setQueryData(
-    consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get.queryKey(
-      {
-        input: {
-          params: {
-            provider: defaultPayload.provider,
-            credential_type: CredentialTypeEnum.API_KEY,
-          },
-        },
-      },
-    ),
-    [{ name: 'api_key', type: 'secret-input', required: true, multiple: false }],
-  )
-  return wrapper
+type CredentialInfo = {
+  credentials: Credential[]
+  supported_credential_types: CredentialTypeEnum[]
+  allow_custom_token: boolean
+  is_oauth_custom_client_enabled: boolean
 }
+const credentialInfo = (overrides: Partial<CredentialInfo> = {}): CredentialInfo => ({
+  credentials: [],
+  supported_credential_types: [CredentialTypeEnum.API_KEY],
+  allow_custom_token: true,
+  is_oauth_custom_client_enabled: false,
+  ...overrides,
+})
+const onUrlUpdate = vi.fn()
+let workspacePermissionKeys: string[]
+const renderAuth = (
+  ui: ReactElement = <PluginAuth pluginPayload={defaultPayload} />,
+  options: ConsoleQueryTestOptions = {},
+) =>
+  renderWithConsoleQuery(<NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>{ui}</NuqsTestingAdapter>, {
+    workspacePermissionKeys,
+    systemFeatures: { rbac_enabled: true },
+    ...options,
+  })
+
+beforeEach(() => {
+  workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
+  requests.credentials.mockResolvedValue(credentialInfo())
+  mockConsoleCall.mockImplementation(async (path: string[]) => {
+    if (path.includes('clientSchema')) {
+      return {
+        schema: [],
+        is_oauth_custom_client_enabled: false,
+        is_system_oauth_params_exists: true,
+        client_params: {},
+        redirect_uri: 'https://example.com/oauth/callback',
+      }
+    }
+    return [{ name: 'api_key', type: 'secret-input', required: true, multiple: false }]
+  })
+})
 
 describe('PluginAuth', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockOAuthClientMutations.save.mockResolvedValue({ result: 'success' })
-    mockOAuthClientMutations.remove.mockResolvedValue({ result: 'success' })
-    mockConsoleCall.mockImplementation(async (path: string[]) => {
-      if (path.includes('clientSchema')) {
-        return {
-          schema: [],
-          is_oauth_custom_client_enabled: false,
-          is_system_oauth_params_exists: true,
-          client_params: {},
-          redirect_uri: 'https://example.com/oauth/callback',
-        }
-      }
-      return [{ name: 'api_key', type: 'secret-input', required: true, multiple: false }]
-    })
-    mockConsoleState.workspacePermissionKeys = [
-      'credential.use',
-      'credential.create',
-      'credential.manage',
-    ]
-  })
-
-  it('renders Authorize component when not authorized', () => {
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    render(<PluginAuth pluginPayload={defaultPayload} />)
-    expect(mockUsePluginAuth).toHaveBeenCalledWith(defaultPayload, true, undefined)
-    expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeEnabled()
+  it('offers API authorization when the provider has no saved credentials', async () => {
+    renderAuth()
+    expect(await screen.findByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeEnabled()
+    expect(requests.credentials).toHaveBeenCalledWith(
+      '/workspaces/current/tool-provider/builtin/test-provider/credential/info',
+    )
     expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /plugin.auth.authorization$/ }),
+    ).not.toBeInTheDocument()
   })
 
-  it('offers a retry instead of treating a failed connection request as an empty list', async () => {
+  it('opens the saved credentials when the provider is authorized', async () => {
     const user = userEvent.setup()
-    const onRetry = vi.fn()
-    const onAuthorizationItemClick = vi.fn()
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: false,
-      credentials: [],
-      loadError: { onRetry },
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-    render(<PluginAuth pluginPayload={defaultPayload} nodeAuth={{ onAuthorizationItemClick }} />, {
-      wrapper: createConnectionQueryWrapper(),
-    })
+    requests.credentials.mockResolvedValue(credentialInfo({ credentials: [createCredential()] }))
+    renderAuth()
+    const trigger = await screen.findByRole('button', { name: /1.*plugin.auth.authorization/ })
+    expect(screen.queryByRole('button', { name: 'plugin.auth.useApiAuth' })).not.toBeInTheDocument()
+    await user.click(trigger)
+    expect(await screen.findByText('Production key')).toBeVisible()
+  })
 
-    await user.click(screen.getByRole('button', { name: /^plugin.auth.workspaceDefault/ }))
-    expect(screen.getByRole('status')).toHaveTextContent('plugin.auth.connection.loadError')
-    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(onRetry).toHaveBeenCalledOnce()
+  it('retries a failed connection request and displays the recovered connections', async () => {
+    const user = userEvent.setup()
+    const onAuthorizationItemClick = vi.fn()
+    requests.credentials.mockRejectedValueOnce(new Error('Connection request failed'))
+    requests.credentials.mockResolvedValue(credentialInfo({ credentials: [createCredential()] }))
+    renderAuth(
+      <PluginAuth pluginPayload={defaultPayload} nodeAuth={{ onAuthorizationItemClick }} />,
+    )
+    await user.click(await screen.findByRole('button', { name: /^plugin.auth.workspaceDefault/ }))
+    const picker = within(await screen.findByRole('dialog', { name: 'plugin.auth.authorization' }))
+    expect(picker.getByRole('status')).toHaveTextContent('plugin.auth.connection.loadError')
+    await user.click(picker.getByRole('button', { name: 'common.operation.retry' }))
+    expect(await picker.findByRole('button', { name: /^Production key/ })).toBeVisible()
+    expect(picker.queryByRole('status')).not.toBeInTheDocument()
+    expect(requests.credentials).toHaveBeenCalledTimes(2)
     expect(onAuthorizationItemClick).not.toHaveBeenCalled()
   })
 
-  it('renders Authorized component when authorized without node auth configuration', () => {
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: true,
-      canOAuth: true,
-      canApiKey: true,
-      credentials: [createCredential()],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
+  it('keeps App user test connections independent when Workspace authorization becomes available', async () => {
+    const user = userEvent.setup()
+    const onAuthorizationItemClick = vi.fn()
+    const { queryClient } = renderAuth(
+      <PluginAuth
+        pluginPayload={defaultPayload}
+        nodeAuth={{ onAuthorizationItemClick, credentialId: '2' }}
+        showAuthorizationTabs
+      />,
+    )
+    const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
+    await waitFor(() => expect(appUserTab).toBeEnabled())
+    await user.click(appUserTab)
+    const testConnection = within(
+      screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
+    )
+    expect(testConnection.getByRole('button', { name: /^API key test connection/ })).toBeVisible()
+    requests.credentials.mockResolvedValue(
+      credentialInfo({
+        credentials: [
+          createCredential({ name: 'Workspace API key' }),
+          createCredential({ id: '2', name: 'Selected API key', is_default: false }),
+        ],
+      }),
+    )
+    await act(async () => {
+      await queryClient.invalidateQueries()
     })
-
-    render(<PluginAuth pluginPayload={defaultPayload} />)
-    expect(screen.getByTestId('authorized')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'plugin.auth.useApiAuth' })).not.toBeInTheDocument()
+    expect(testConnection.getByRole('button', { name: /^API key test connection/ })).toBeVisible()
+    expect(
+      testConnection.queryByRole('button', { name: /Selected API key/ }),
+    ).not.toBeInTheDocument()
+    expect(onAuthorizationItemClick).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
+    expect(await screen.findByRole('button', { name: /Selected API key/ })).toBeVisible()
+    expect(requests.credentials).toHaveBeenLastCalledWith(
+      '/workspaces/current/tool-provider/builtin/test-provider/credential/info?include_credential_ids=2',
+    )
   })
 
   it('requests provider schemas only after entering App user from Reuse', async () => {
     const user = userEvent.setup()
     const pluginPayload = { ...defaultPayload, provider: 'drive-provider' }
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: true,
-      isLoading: false,
-      canOAuth: true,
-      canApiKey: true,
-      credentials: [createCredential({ provider: pluginPayload.provider })],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
+    requests.credentials.mockResolvedValue(
+      credentialInfo({
+        supported_credential_types: [CredentialTypeEnum.OAUTH2, CredentialTypeEnum.API_KEY],
+        credentials: [createCredential({ provider: pluginPayload.provider })],
+        allow_custom_token: true,
+      }),
+    )
     const ControlledPluginAuth = () => {
       const [tab, setTab] = useState<AuthorizationTab>('reuse-from-node')
       return (
@@ -207,7 +179,7 @@ describe('PluginAuth', () => {
         />
       )
     }
-    render(<ControlledPluginAuth />, { wrapper: createConsoleQueryWrapper().wrapper })
+    renderAuth(<ControlledPluginAuth />)
     expect(screen.getByRole('tabpanel', { name: 'plugin.auth.reuseFromNode' })).toBeVisible()
     const schemaRequests = () =>
       mockConsoleCall.mock.calls.filter(
@@ -216,6 +188,9 @@ describe('PluginAuth', () => {
       )
     expect(schemaRequests()).toEqual([])
 
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })).toBeEnabled(),
+    )
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' }))
 
     expect(screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })).toBeVisible()
@@ -242,90 +217,22 @@ describe('PluginAuth', () => {
     )
   })
 
-  it('keeps mock test connections independent when Workspace authorization becomes available', async () => {
-    const user = userEvent.setup()
-    const onAuthorizationItemClick = vi.fn()
-    const authorization = {
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    }
-    mockUsePluginAuth.mockReturnValue(authorization)
-    const { rerender } = render(
-      <PluginAuth
-        pluginPayload={defaultPayload}
-        nodeAuth={{ onAuthorizationItemClick, credentialId: '2' }}
-        showAuthorizationTabs
-      />,
-      { wrapper: createConnectionQueryWrapper() },
-    )
-    await user.click(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' }))
-    const testConnection = within(
-      screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
-    )
-    const mockConnection = testConnection.getByRole('button', {
-      name: /^API key test connection/,
-    })
-    expect(mockConnection).toBeVisible()
-    expect(mockConnection).toHaveTextContent('•••• 7A2F')
-    expect(
-      testConnection.getByText('plugin.auth.appUser.testConnectionApiKeyDescription'),
-    ).toBeVisible()
-    expect(
-      testConnection.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
-    ).not.toBeInTheDocument()
-
-    mockUsePluginAuth.mockReturnValue({
-      ...authorization,
-      isAuthorized: true,
-      credentials: [
-        createCredential({ name: 'Workspace API key' }),
-        createCredential({ id: '2', name: 'Selected API key', is_default: false }),
-      ],
-    })
-    rerender(
-      <PluginAuth
-        pluginPayload={defaultPayload}
-        nodeAuth={{ onAuthorizationItemClick, credentialId: '2' }}
-        showAuthorizationTabs
-      />,
-    )
-    expect(
-      testConnection.getByRole('button', {
-        name: /^API key test connection/,
-      }),
-    ).toBeVisible()
-    expect(
-      testConnection.queryByRole('button', { name: /Selected API key/ }),
-    ).not.toBeInTheDocument()
-    expect(onAuthorizationItemClick).not.toHaveBeenCalled()
-
-    await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
-    expect(screen.getByRole('button', { name: /Selected API key/ })).toBeVisible()
-    expect(mockUsePluginAuth).toHaveBeenLastCalledWith(defaultPayload, true, ['2'])
-  })
-
   it('keeps authorization tabs visible for authorized nodes', async () => {
     const user = userEvent.setup()
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: true,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [createCredential()],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
+    requests.credentials.mockResolvedValue(
+      credentialInfo({
+        supported_credential_types: [CredentialTypeEnum.API_KEY],
+        credentials: [createCredential()],
+        allow_custom_token: true,
+      }),
+    )
 
-    render(
+    renderAuth(
       <PluginAuth
         pluginPayload={defaultPayload}
         nodeAuth={{ onAuthorizationItemClick: vi.fn() }}
         showAuthorizationTabs
       />,
-      { wrapper: createConnectionQueryWrapper() },
     )
 
     expect(screen.getByRole('heading', { name: 'plugin.auth.authorization' })).toBeVisible()
@@ -334,9 +241,9 @@ describe('PluginAuth', () => {
     const reuseTab = screen.getByRole('tab', { name: 'plugin.auth.reuseFromNode' })
     const workspacePanel = screen.getByRole('tabpanel', { name: 'plugin.auth.workspaceAuth' })
     expect(workspaceTab).toHaveAttribute('aria-selected', 'true')
-    expect(within(workspacePanel).getByRole('button', { name: /key/ })).toBeVisible()
-    expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
+    expect(await within(workspacePanel).findByRole('button', { name: /key/ })).toBeVisible()
 
+    await waitFor(() => expect(appUserTab).toBeEnabled())
     await user.click(appUserTab)
 
     const appUserPanel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
@@ -383,26 +290,23 @@ describe('PluginAuth', () => {
 
   it('applies Workspace creation permission without restricting mock test connections or exposing controls in Reuse', async () => {
     const user = userEvent.setup()
-    mockConsoleState.workspacePermissionKeys = ['credential.use']
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
+    workspacePermissionKeys = ['credential.use']
+    requests.credentials.mockResolvedValue(
+      credentialInfo({
+        supported_credential_types: [CredentialTypeEnum.API_KEY],
+        credentials: [],
+        allow_custom_token: true,
+      }),
+    )
 
-    render(<PluginAuth pluginPayload={defaultPayload} showAuthorizationTabs />, {
-      wrapper: createConnectionQueryWrapper(),
-    })
+    renderAuth(<PluginAuth pluginPayload={defaultPayload} showAuthorizationTabs />)
 
     expect(screen.getByRole('heading', { name: 'plugin.auth.authorization' })).toBeVisible()
     const workspaceTab = screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' })
     expect(workspaceTab).toHaveAttribute('aria-selected', 'true')
     const workspacePanel = screen.getByRole('tabpanel', { name: 'plugin.auth.workspaceAuth' })
     expect(
-      within(workspacePanel).getByRole('button', { name: 'plugin.auth.useApiAuth' }),
+      await within(workspacePanel).findByRole('button', { name: 'plugin.auth.useApiAuth' }),
     ).toBeDisabled()
     expect(within(workspacePanel).getByText('plugin.auth.permissionHint.title')).toBeVisible()
 
@@ -468,18 +372,16 @@ describe('PluginAuth', () => {
   it('selects mock test connections without changing Workspace selection or losing App user drafts', async () => {
     const user = userEvent.setup()
     const onAuthorizationItemClick = vi.fn()
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: true,
-      isLoading: false,
-      canOAuth: true,
-      canApiKey: true,
-      credentials: [
-        createCredential({ name: 'Workspace connection' }),
-        createCredential({ id: '2', name: 'Personal connection', is_default: false }),
-      ],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
+    requests.credentials.mockResolvedValue(
+      credentialInfo({
+        supported_credential_types: [CredentialTypeEnum.OAUTH2, CredentialTypeEnum.API_KEY],
+        credentials: [
+          createCredential({ name: 'Workspace connection' }),
+          createCredential({ id: '2', name: 'Personal connection', is_default: false }),
+        ],
+        allow_custom_token: true,
+      }),
+    )
     const AppUserDraftHarness = () => {
       const [draft, setDraft] = useState<AppUserAuthDraft>({
         oauthEnabled: true,
@@ -495,8 +397,11 @@ describe('PluginAuth', () => {
         />
       )
     }
-    render(<AppUserDraftHarness />, { wrapper: createConnectionQueryWrapper() })
-    expect(screen.getByRole('button', { name: /^Personal connection/ })).toBeVisible()
+    renderAuth(<AppUserDraftHarness />)
+    expect(await screen.findByRole('button', { name: /^Personal connection/ })).toBeVisible()
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })).toBeEnabled(),
+    )
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' }))
     const appUserPanel = within(screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' }))
     const description = appUserPanel.getByRole('textbox', {
@@ -544,7 +449,10 @@ describe('PluginAuth', () => {
     expect(apiKey).toBeChecked()
 
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
-    expect(screen.getByRole('button', { name: /^Personal connection/ })).toBeVisible()
+    expect(await screen.findByRole('button', { name: /^Personal connection/ })).toBeVisible()
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })).toBeEnabled(),
+    )
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' }))
     expect(
       testConnection.getByRole('button', {
@@ -562,23 +470,23 @@ describe('PluginAuth', () => {
   it('allows mock connection selection without Workspace permissions while Workspace rows stay disabled', async () => {
     const user = userEvent.setup()
     const onAuthorizationItemClick = vi.fn()
-    mockConsoleState.workspacePermissionKeys = []
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: true,
-      isLoading: false,
-      canOAuth: true,
-      canApiKey: true,
-      credentials: [createCredential({ name: 'Workspace connection' })],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-    render(
+    workspacePermissionKeys = []
+    requests.credentials.mockResolvedValue(
+      credentialInfo({
+        supported_credential_types: [CredentialTypeEnum.OAUTH2, CredentialTypeEnum.API_KEY],
+        credentials: [createCredential({ name: 'Workspace connection' })],
+        allow_custom_token: true,
+      }),
+    )
+    renderAuth(
       <PluginAuth
         pluginPayload={defaultPayload}
         nodeAuth={{ onAuthorizationItemClick }}
         showAuthorizationTabs
       />,
-      { wrapper: createConnectionQueryWrapper() },
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })).toBeEnabled(),
     )
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' }))
     const testConnection = within(
@@ -643,38 +551,36 @@ describe('PluginAuth', () => {
     }
     mockConsoleCall.mockImplementation(async (path: string[]) => {
       if (path.includes('clientSchema')) return structuredClone(oauthClient)
+      if (path.includes('customClient') && path.at(-1) === 'post') {
+        oauthClient = {
+          ...oauthClient,
+          is_oauth_custom_client_enabled: true,
+          client_params: { client_id: 'drive-client', client_secret: '[__HIDDEN__]' },
+        }
+        return { result: 'success' }
+      }
+      if (path.includes('customClient') && path.at(-1) === 'delete') {
+        oauthClient = {
+          ...oauthClient,
+          is_oauth_custom_client_enabled: false,
+          client_params: {},
+        }
+        return { result: 'success' }
+      }
       return []
     })
-    mockOAuthClientMutations.save.mockImplementation(async () => {
-      oauthClient = {
-        ...oauthClient,
-        is_oauth_custom_client_enabled: true,
-        client_params: { client_id: 'drive-client', client_secret: '[__HIDDEN__]' },
-      }
-      return { result: 'success' }
-    })
-    mockOAuthClientMutations.remove.mockImplementation(async () => {
-      oauthClient = {
-        ...oauthClient,
-        is_oauth_custom_client_enabled: false,
-        client_params: {},
-      }
-      return { result: 'success' }
-    })
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: true,
-      isLoading: false,
-      canOAuth: true,
-      canApiKey: false,
-      credentials: [
-        createCredential({
-          name: 'Workspace Drive connection',
-          credential_type: CredentialTypeEnum.OAUTH2,
-        }),
-      ],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
+    requests.credentials.mockResolvedValue(
+      credentialInfo({
+        supported_credential_types: [CredentialTypeEnum.OAUTH2],
+        credentials: [
+          createCredential({
+            name: 'Workspace Drive connection',
+            credential_type: CredentialTypeEnum.OAUTH2,
+          }),
+        ],
+        allow_custom_token: true,
+      }),
+    )
     const AppUserDraftHarness = () => {
       const [draft, setDraft] = useState<AppUserAuthDraft>()
       return (
@@ -692,8 +598,9 @@ describe('PluginAuth', () => {
         />
       )
     }
-    render(<AppUserDraftHarness />, { wrapper: createConnectionQueryWrapper() })
+    renderAuth(<AppUserDraftHarness />)
     const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
+    await waitFor(() => expect(appUserTab).toBeEnabled())
     await user.click(appUserTab)
     let panel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
     expect(within(panel).queryByRole('checkbox')).not.toBeInTheDocument()
@@ -722,10 +629,26 @@ describe('PluginAuth', () => {
     )
     await user.click(within(dialog).getByRole('button', { name: 'plugin.auth.saveOnly' }))
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
-    expect(mockOAuthClientMutations.save).toHaveBeenCalledExactlyOnceWith({
-      client_params: { client_id: 'drive-client', client_secret: 'drive-secret' },
-      enable_oauth_custom_client: true,
-    })
+    expect(mockConsoleCall).toHaveBeenCalledWith(
+      [
+        'workspaces',
+        'current',
+        'toolProvider',
+        'builtin',
+        'byProvider',
+        'oauth',
+        'customClient',
+        'post',
+      ],
+      {
+        params: { provider: defaultPayload.provider },
+        body: {
+          client_params: { client_id: 'drive-client', client_secret: 'drive-secret' },
+          enable_oauth_custom_client: true,
+        },
+      },
+      expect.anything(),
+    )
     expect(
       await within(panel).findByRole('button', { name: 'plugin.auth.appUser.customClient' }),
     ).toBeVisible()
@@ -757,6 +680,7 @@ describe('PluginAuth', () => {
     )
     await waitFor(() => expect(workspaceSettings).not.toBeInTheDocument())
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.reuseFromNode' }))
+    await waitFor(() => expect(appUserTab).toBeEnabled())
     await user.click(appUserTab)
 
     panel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
@@ -775,7 +699,20 @@ describe('PluginAuth', () => {
     )
     await user.click(within(reopened).getByRole('button', { name: 'common.operation.remove' }))
     await waitFor(() => expect(reopened).not.toBeInTheDocument())
-    expect(mockOAuthClientMutations.remove).toHaveBeenCalledExactlyOnceWith()
+    expect(mockConsoleCall).toHaveBeenCalledWith(
+      [
+        'workspaces',
+        'current',
+        'toolProvider',
+        'builtin',
+        'byProvider',
+        'oauth',
+        'customClient',
+        'delete',
+      ],
+      { params: { provider: defaultPayload.provider } },
+      expect.anything(),
+    )
     const configureAfterRemove = await within(panel).findByRole('button', {
       name: 'plugin.auth.common.configureClient',
     })
@@ -818,15 +755,13 @@ describe('PluginAuth', () => {
   it('initializes a controlled App user auth draft from supported methods when first selected', async () => {
     const user = userEvent.setup()
     const onDraftChange = vi.fn()
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: true,
-      isLoading: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [createCredential()],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
+    requests.credentials.mockResolvedValue(
+      credentialInfo({
+        supported_credential_types: [CredentialTypeEnum.API_KEY],
+        credentials: [createCredential()],
+        allow_custom_token: true,
+      }),
+    )
     const ControlledPluginAuth = () => {
       const [draft, setDraft] = useState<AppUserAuthDraft>()
       const [tab, setTab] = useState<AuthorizationTab>('workspace-auth')
@@ -846,9 +781,10 @@ describe('PluginAuth', () => {
         />
       )
     }
-    render(<ControlledPluginAuth />, { wrapper: createConnectionQueryWrapper() })
+    renderAuth(<ControlledPluginAuth />)
     expect(onDraftChange).not.toHaveBeenCalled()
     const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
+    await waitFor(() => expect(appUserTab).toBeEnabled())
     await user.click(appUserTab)
 
     expect(appUserTab).toHaveAttribute('aria-selected', 'true')
@@ -874,6 +810,7 @@ describe('PluginAuth', () => {
     ).not.toBeInTheDocument()
     const changeCount = onDraftChange.mock.calls.length
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
+    await waitFor(() => expect(appUserTab).toBeEnabled())
     await user.click(appUserTab)
 
     expect(onDraftChange).toHaveBeenCalledTimes(changeCount)
@@ -890,15 +827,13 @@ describe('PluginAuth', () => {
   it('preserves controlled methods and description when provider client status synchronizes', async () => {
     const user = userEvent.setup()
     const onDraftChange = vi.fn()
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: true,
-      isLoading: false,
-      canOAuth: true,
-      canApiKey: true,
-      credentials: [createCredential()],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
+    requests.credentials.mockResolvedValue(
+      credentialInfo({
+        supported_credential_types: [CredentialTypeEnum.OAUTH2, CredentialTypeEnum.API_KEY],
+        credentials: [createCredential()],
+        allow_custom_token: true,
+      }),
+    )
     const ControlledPluginAuth = () => {
       const [draft, setDraft] = useState<AppUserAuthDraft>({
         oauthEnabled: false,
@@ -919,8 +854,9 @@ describe('PluginAuth', () => {
         />
       )
     }
-    render(<ControlledPluginAuth />, { wrapper: createConnectionQueryWrapper() })
+    renderAuth(<ControlledPluginAuth />)
     const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
+    await waitFor(() => expect(appUserTab).toBeEnabled())
     await user.click(appUserTab)
 
     await waitFor(() =>
@@ -945,6 +881,7 @@ describe('PluginAuth', () => {
     ).toHaveValue('Existing connection description')
 
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.reuseFromNode' }))
+    await waitFor(() => expect(appUserTab).toBeEnabled())
     await user.click(appUserTab)
 
     expect(onDraftChange).toHaveBeenCalledTimes(1)
@@ -958,72 +895,32 @@ describe('PluginAuth', () => {
     ).toHaveValue('Existing connection description')
   })
 
-  it('passes pluginPayload.provider to usePluginAuth', () => {
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: false,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    render(<PluginAuth pluginPayload={defaultPayload} />)
-    expect(mockUsePluginAuth).toHaveBeenCalledWith(defaultPayload, true, undefined)
-  })
-
   it('disables authorization without credential.create and links to members settings', async () => {
     const user = userEvent.setup()
-    mockConsoleState.workspacePermissionKeys = ['credential.use']
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    render(<PluginAuth pluginPayload={defaultPayload} />)
-
-    expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeDisabled()
-    expect(screen.getByText('plugin.auth.permissionHint.title')).toBeInTheDocument()
-    expect(screen.getByText('plugin.auth.permissionHint.description')).toBeInTheDocument()
+    renderAuth(undefined, { workspacePermissionKeys: ['credential.use'] })
+    expect(await screen.findByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeDisabled()
+    expect(screen.getByText('plugin.auth.permissionHint.title')).toBeVisible()
+    expect(screen.getByText('plugin.auth.permissionHint.description')).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }))
     await waitFor(() =>
       expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('members'),
     )
   })
 
-  it('does not render permission hint for datasource authorization', () => {
-    mockConsoleState.workspacePermissionKeys = ['credential.use']
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: false,
-    })
-
-    render(<PluginAuth pluginPayload={{ ...defaultPayload, category: AuthCategory.datasource }} />)
-
+  it('does not offer tool credential permissions for a datasource', () => {
+    renderAuth(
+      <PluginAuth pluginPayload={{ ...defaultPayload, category: AuthCategory.datasource }} />,
+      { workspacePermissionKeys: ['credential.use'] },
+    )
     expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'plugin.auth.useApiAuth' })).not.toBeInTheDocument()
+    expect(requests.credentials).not.toHaveBeenCalled()
   })
 
-  it('does not render permission hint when custom credentials are unavailable', () => {
-    mockConsoleState.workspacePermissionKeys = ['credential.use']
-    mockUsePluginAuth.mockReturnValue({
-      isAuthorized: false,
-      canOAuth: false,
-      canApiKey: true,
-      credentials: [],
-      invalidPluginCredentialInfo: vi.fn(),
-      notAllowCustomCredential: true,
-    })
-
-    render(<PluginAuth pluginPayload={defaultPayload} />)
-
+  it('disables custom credentials without a permission hint when the provider forbids them', async () => {
+    requests.credentials.mockResolvedValue(credentialInfo({ allow_custom_token: false }))
+    renderAuth(undefined, { workspacePermissionKeys: ['credential.use'] })
+    expect(await screen.findByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeDisabled()
     expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
   })
 })

@@ -26,7 +26,7 @@ from models.enums import CreatorUserRole, DataSourceType
 from models.knowledge_fs import KnowledgeFSUpgradeFileLease, KnowledgeFSUpgradeJob
 from models.model import UploadFile
 from tasks.clean_document_task import clean_document_task
-from tests.unit_tests.model_factories import make_document
+from tests.helpers.unit.model_factories import make_document
 
 SQLITE_MODELS = (
     Dataset,

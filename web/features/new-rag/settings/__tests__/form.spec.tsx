@@ -959,6 +959,22 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
   })
 
+  it('keeps a failed deletion inline and retries with the same confirmed name', async () => {
+    const user = userEvent.setup()
+    serviceMock.deleteSpace.mockRejectedValueOnce(new Error('network error'))
+    await renderForm()
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(within(dialog).getByRole('textbox')).toHaveValue('Camera Technical Spec')
+    expect(routerMock.replace).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent'))
+    expect(serviceMock.deleteSpace).toHaveBeenCalledTimes(2)
+  })
+
   it('keeps the deletion dialog modal until the pending deletion settles', async () => {
     const user = userEvent.setup()
     let finishDeletion = () => {}

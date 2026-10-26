@@ -3,13 +3,13 @@ import type { CredentialPermission } from '@/models/permission'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -42,8 +42,8 @@ const PermissionSelectorView = ({
   const selectedPermissionLabel = isOnlyMe ? onlyMeLabel : allTeamMembersLabel
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         aria-label={`${permissionLabel}: ${selectedPermissionLabel}`}
         disabled={disabled}
         className={cn(
@@ -78,14 +78,14 @@ const PermissionSelectorView = ({
           aria-hidden="true"
           className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-data-disabled/permission-trigger:text-components-input-text-placeholder! group-data-popup-open/permission-trigger:text-text-secondary"
         />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-(--anchor-width) max-w-(--available-width)">
-        <DropdownMenuRadioGroup<CredentialPermission>
+      </MenuTrigger>
+      <MenuContent align="start" className="w-(--anchor-width) max-w-(--available-width)">
+        <MenuRadioGroup<CredentialPermission>
           value={permission}
           onValueChange={onChange}
           aria-label={permissionLabel}
         >
-          <DropdownMenuRadioItem<CredentialPermission>
+          <MenuRadioItem<CredentialPermission>
             aria-label={onlyMeLabel}
             value={PermissionLevel.onlyMe}
             closeOnClick
@@ -98,9 +98,9 @@ const PermissionSelectorView = ({
             <div className="min-w-0 grow px-1 system-md-regular text-text-secondary">
               {onlyMeLabel}
             </div>
-            <DropdownMenuRadioItemIndicator />
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem<CredentialPermission>
+            <MenuRadioItemIndicator />
+          </MenuRadioItem>
+          <MenuRadioItem<CredentialPermission>
             value={PermissionLevel.allTeamMembers}
             closeOnClick
             className="touch-manipulation"
@@ -111,11 +111,11 @@ const PermissionSelectorView = ({
             <div className="min-w-0 grow px-1 system-md-regular text-text-secondary">
               {allTeamMembersLabel}
             </div>
-            <DropdownMenuRadioItemIndicator />
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <MenuRadioItemIndicator />
+          </MenuRadioItem>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

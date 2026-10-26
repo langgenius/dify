@@ -1,12 +1,12 @@
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 
@@ -41,9 +41,9 @@ export function Sort<const Field extends string | number>({
 
   return (
     <div className="inline-flex w-fit max-w-full min-w-0 items-center gap-px">
-      <DropdownMenu>
+      <Menu>
         <div className="relative min-w-0 flex-1">
-          <DropdownMenuTrigger className="flex min-h-8 w-full min-w-0 items-center rounded-s-lg border-none bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt">
+          <MenuTrigger className="flex min-h-8 w-full min-w-0 items-center rounded-s-lg border-none bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt">
             <span className="flex min-w-0 items-center gap-0.5 px-1">
               <span className="system-sm-regular text-text-secondary">
                 {t(($) => $['sorting.sortBy'], { ns: 'common' })}
@@ -56,30 +56,30 @@ export function Sort<const Field extends string | number>({
               aria-hidden
               className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary forced-colors:text-[ButtonText] forced-colors:forced-color-adjust-none"
             />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="relative w-60 p-0">
-            <DropdownMenuRadioGroup<Field>
+          </MenuTrigger>
+          <MenuContent align="start" className="relative w-60 p-0">
+            <MenuRadioGroup<Field>
               value={value.field}
               onValueChange={(field) => onValueChange({ field, order: value.order })}
-              className="max-h-72 overflow-auto p-1"
+              className="max-h-72 scroll-py-1 overflow-auto py-1"
             >
               {items.map((item) => (
-                <DropdownMenuRadioItem
+                <MenuRadioItem
                   key={item.value}
                   value={item.value}
                   closeOnClick
-                  className="mx-0 h-auto min-h-8 gap-2 py-1.5"
+                  className="h-auto min-h-8 gap-2 py-1.5"
                 >
                   <div className="min-w-0 grow system-sm-medium wrap-anywhere text-text-secondary">
                     {item.name}
                   </div>
-                  <DropdownMenuRadioItemIndicator className="text-util-colors-blue-light-blue-light-600 forced-colors:text-[CanvasText] forced-colors:forced-color-adjust-none" />
-                </DropdownMenuRadioItem>
+                  <MenuRadioItemIndicator className="text-util-colors-blue-light-blue-light-600 forced-colors:text-[CanvasText] forced-colors:forced-color-adjust-none" />
+                </MenuRadioItem>
               ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
+            </MenuRadioGroup>
+          </MenuContent>
         </div>
-      </DropdownMenu>
+      </Menu>
       <Tooltip>
         <TooltipTrigger
           render={

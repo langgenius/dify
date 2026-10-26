@@ -16,7 +16,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
-import { NodeActionsDropdown } from '../index'
+import { NodeActionsMenu } from '../index'
 
 // Node metadata comes from the per-app block registry, which has its own suite.
 vi.mock('../../hooks/use-nodes-meta-data', async (importOriginal) => {
@@ -83,7 +83,7 @@ const renderComponent = (
   })
   return renderWorkflowFlowComponent(
     <>
-      <NodeActionsDropdown
+      <NodeActionsMenu
         id="node-1"
         data={data}
         triggerClassName="node-actions-trigger"
@@ -108,7 +108,7 @@ const renderComponent = (
   )
 }
 
-describe('NodeActionsDropdown', () => {
+describe('NodeActionsMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseNodeMetaData.mockReturnValue({

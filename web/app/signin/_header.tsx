@@ -8,6 +8,7 @@ import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
+import { useRouter } from '@/next/navigation'
 import LocaleMenu from './_locale-menu'
 
 const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector'), {
@@ -17,6 +18,7 @@ const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector
 
 const Header = ({ className, compact = false }: { className?: string; compact?: boolean }) => {
   const locale = useLocale()
+  const router = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   return (
@@ -35,8 +37,9 @@ const Header = ({ className, compact = false }: { className?: string; compact?: 
           compact={compact}
           value={locale}
           items={languages.filter((item) => item.supported)}
-          onChange={(value) => {
-            setLocaleOnClient(value, false)
+          onChange={async (value) => {
+            await setLocaleOnClient(value)
+            router.refresh()
           }}
         />
         {!compact && <Separator decorative orientation="vertical" className="mx-0 ml-2 h-4" />}

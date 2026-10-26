@@ -1,7 +1,15 @@
 import type { ModelProvider } from '../../declarations'
+import { zProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { useQuery } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  createProviderSummaryFixture,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import {
   ConfigurationMethodEnum,
@@ -11,25 +19,20 @@ import {
 } from '../../declarations'
 import CredentialPanel from '../credential-panel'
 
-const {
-  mockToastNotify,
-  mockUpdateModelList,
-  mockUpdateModelProviders,
-  mockTrialCredits,
-  mockChangePriorityFn,
-} = vi.hoisted(() => ({
-  mockToastNotify: vi.fn(),
-  mockUpdateModelList: vi.fn(),
-  mockUpdateModelProviders: vi.fn(),
-  mockTrialCredits: {
-    credits: 100,
-    totalCredits: 10_000,
-    isExhausted: false,
-    isLoading: false,
-    nextCreditResetDate: undefined,
-  },
-  mockChangePriorityFn: vi.fn().mockResolvedValue({ result: 'success' }),
-}))
+const { mockToastNotify, mockTrialCredits, getProviders, getModels, mockChangePriorityFn } =
+  vi.hoisted(() => ({
+    mockToastNotify: vi.fn(),
+    getProviders: vi.fn(),
+    getModels: vi.fn(),
+    mockTrialCredits: {
+      credits: 100,
+      totalCredits: 10_000,
+      isExhausted: false,
+      isLoading: false,
+      nextCreditResetDate: undefined,
+    },
+    mockChangePriorityFn: vi.fn().mockResolvedValue({ result: 'success' }),
+  }))
 
 vi.mock('@/app/notifications', () => ({
   default: { notify: mockToastNotify },
@@ -47,17 +50,13 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.summary.get': getProviders,
+      'workspaces.current.models.modelTypes.byModelType.get': getModels,
       'workspaces.current.modelProviders.byProvider.preferredProviderType.post': (input) =>
         mockChangePriorityFn(input),
     }),
   }
 })
-
-vi.mock('../../hooks', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../hooks')>()),
-  useUpdateModelList: () => mockUpdateModelList,
-  useUpdateModelProviders: () => mockUpdateModelProviders,
-}))
 
 vi.mock('../use-trial-credits', () => ({
   useTrialCredits: () => mockTrialCredits,
@@ -93,17 +92,73 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
     ...overrides,
   }) as unknown as ModelProvider
 
-const renderWithQueryClient = (provider: ModelProvider) => {
-  return renderWithConsoleQuery(<CredentialPanel provider={provider} />, {
-    systemFeatures: { deployment_edition: 'CLOUD' },
-    trialModels: ['langgenius/openai/openai'],
-    workspacePermissionKeys: ['credential.use'],
+const providerName = 'langgenius/openai/openai'
+const providerCatalog = (priority: 'system' | 'custom') => ({
+  data: [
+    createProviderSummaryFixture({ provider: providerName, preferred_provider_type: priority }),
+  ],
+  plugins: {},
+})
+const modelCatalog = (name: string) => ({
+  data: [
+    createModelCatalogFixture({
+      provider: providerName,
+      models: [createCatalogModelFixture({ model: name, label: { en_US: name } })],
+    }),
+  ],
+})
+const modelQueryOptions = () =>
+  consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+    input: { params: { model_type: 'llm' } },
   })
+function CatalogConsumer() {
+  const { data: providers } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions(),
+  )
+  const { data: models } = useQuery(modelQueryOptions())
+  return (
+    <>
+      <output aria-label="Provider priority">
+        {providers?.data.find((item) => item.provider === providerName)?.preferred_provider_type}
+      </output>
+      <output aria-label="Available models">
+        {models?.data
+          .flatMap((provider) => provider.models.map((model) => model.label.en_US))
+          .join(', ')}
+      </output>
+    </>
+  )
+}
+const renderWithQueryClient = (provider: ModelProvider, observeCatalog = false) => {
+  const queryClient = createConsoleQueryClient()
+  if (observeCatalog) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
+      providerCatalog('system'),
+    )
+    queryClient.setQueryData(modelQueryOptions().queryKey, {
+      data: modelCatalog('Trial model').data.map((item) => zProviderWithModelsResponse.parse(item)),
+    })
+  }
+  return renderWithConsoleQuery(
+    <>
+      <CredentialPanel provider={provider} />
+      {observeCatalog && <CatalogConsumer />}
+    </>,
+    {
+      queryClient,
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      trialModels: [providerName],
+      workspacePermissionKeys: ['credential.use'],
+    },
+  )
 }
 
 describe('CredentialPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    getProviders.mockResolvedValue(providerCatalog('custom'))
+    getModels.mockResolvedValue(modelCatalog('API key model'))
     mockChangePriorityFn.mockReset().mockResolvedValue({ result: 'success' })
     Object.assign(mockTrialCredits, {
       credits: 100,
@@ -248,7 +303,7 @@ describe('CredentialPanel', () => {
     const user = userEvent.setup()
     const request = createDeferred<{ result: string }>()
     mockChangePriorityFn.mockReturnValueOnce(request.promise)
-    renderWithQueryClient(createProvider())
+    renderWithQueryClient(createProvider(), true)
     await user.click(screen.getByRole('button', { name: 'common.operation.config' }))
     const apiKey = screen.getByRole('button', { name: /apiKeyOption/ })
     await user.click(apiKey)
@@ -257,17 +312,26 @@ describe('CredentialPanel', () => {
       body: { preferred_provider_type: 'custom' },
     })
     expect(apiKey).toBeDisabled()
-    expect(mockUpdateModelProviders).not.toHaveBeenCalled()
+    expect(screen.getByRole('status', { name: 'Provider priority' })).toHaveTextContent('system')
+    expect(screen.getByRole('status', { name: 'Available models' })).toHaveTextContent(
+      'Trial model',
+    )
     await act(async () => request.resolve({ result: 'success' }))
     await waitFor(() => expect(apiKey).toBeEnabled())
-    expect(mockUpdateModelProviders).toHaveBeenCalledTimes(1)
-    expect(mockUpdateModelList).toHaveBeenCalledExactlyOnceWith('llm')
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'Provider priority' })).toHaveTextContent('custom'),
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'Available models' })).toHaveTextContent(
+        'API key model',
+      ),
+    )
   })
 
   it('reports a failed priority change without refreshing and allows retry', async () => {
     const user = userEvent.setup()
     mockChangePriorityFn.mockRejectedValueOnce(new Error('Unavailable'))
-    renderWithQueryClient(createProvider())
+    renderWithQueryClient(createProvider(), true)
     await user.click(screen.getByRole('button', { name: 'common.operation.config' }))
     const apiKey = screen.getByRole('button', { name: /apiKeyOption/ })
     await user.click(apiKey)
@@ -278,10 +342,19 @@ describe('CredentialPanel', () => {
       }),
     )
     expect(apiKey).toBeEnabled()
-    expect(mockUpdateModelProviders).not.toHaveBeenCalled()
-    expect(mockUpdateModelList).not.toHaveBeenCalled()
+    expect(screen.getByRole('status', { name: 'Provider priority' })).toHaveTextContent('system')
+    expect(screen.getByRole('status', { name: 'Available models' })).toHaveTextContent(
+      'Trial model',
+    )
     await user.click(apiKey)
-    await waitFor(() => expect(mockUpdateModelProviders).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'Provider priority' })).toHaveTextContent('custom'),
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'Available models' })).toHaveTextContent(
+        'API key model',
+      ),
+    )
     expect(mockChangePriorityFn).toHaveBeenCalledTimes(2)
   })
 })

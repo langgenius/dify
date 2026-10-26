@@ -3,8 +3,8 @@ import type { Credential, PluginPayload } from '../types'
 import type { ConnectionActionsDataSource } from './connection-actions'
 import type { ConnectionPickerLoadError, ConnectionPickerOption } from './connection-picker'
 import { Button } from '@langgenius/dify-ui/button'
-import { createDropdownMenuHandle } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { createMenuHandle } from '@langgenius/dify-ui/menu'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PermissionLevel } from '@/models/permission'
@@ -49,7 +49,7 @@ export type ConnectionSelectorDataSource = {
 const ConnectionSelector = ({ dataSource }: { dataSource: ConnectionSelectorDataSource }) => {
   const { t } = useTranslation(['common', 'plugin', 'datasetSettings'])
   const [open, setOpen] = useState(false)
-  const [connectionActionsHandle] = useState(() => createDropdownMenuHandle<Credential>())
+  const [connectionActionsHandle] = useState(() => createMenuHandle<Credential>())
   const [apiKeySession, setApiKeySession] = useState(0)
   const [apiKeyOpen, setApiKeyOpen] = useState(false)
   const { credentials, workspaceDefault } = dataSource
@@ -170,7 +170,7 @@ const ConnectionSelector = ({ dataSource }: { dataSource: ConnectionSelectorData
             <div className="flex min-w-0 flex-1">
               <Button
                 variant="primary"
-                className="h-8 min-w-0 flex-1 rounded-r-none"
+                className="h-8 min-w-0 flex-1 rounded-e-none"
                 disabled={!dataSource.allowCustom || dataSource.oauthDisabled}
                 onClick={addOAuth}
               >
@@ -183,7 +183,7 @@ const ConnectionSelector = ({ dataSource }: { dataSource: ConnectionSelectorData
               <IconButton
                 variant="primary"
                 size="lg"
-                className="shrink-0 rounded-l-none"
+                className="shrink-0 rounded-s-none"
                 disabled={!dataSource.allowCustom || dataSource.oauthDisabled}
                 aria-label={t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
                 onClick={openOAuthClientSettings}

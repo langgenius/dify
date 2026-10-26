@@ -16,7 +16,7 @@ from repositories.sqlalchemy_knowledge_fs_lifecycle_outbox_repository import (
     SQLAlchemyKnowledgeFSLifecycleOutboxRepository,
 )
 from services.knowledge_fs.observability import KnowledgeFSLifecycleTaskMetric
-from tests.unit_tests.tasks.knowledge_fs_task_fakes import RecordingKnowledgeFSMetrics
+from tests.helpers.unit.tasks.knowledge_fs_task_fakes import RecordingKnowledgeFSMetrics
 
 
 def _outbox(control_space: KnowledgeFSControlSpace) -> KnowledgeFSLifecycleOutbox:

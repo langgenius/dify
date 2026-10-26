@@ -51,8 +51,8 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
 )
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
 
 
 @pytest.fixture(autouse=True)
@@ -118,12 +118,14 @@ class CapturingPluginLayerBuilder:
         # threaded through from ``DifyRunContext.invoke_from`` rather than
         # hard-coded to a placeholder like ``VALIDATION``.
         self.last_invoke_from: InvokeFrom | None = None
+        self.knowledge_fs_spaces = ()
 
-    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from):
+    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from, knowledge_fs_spaces=()):
         assert tenant_id == "tenant-1"
         assert app_id == "app-1"
         assert user_id == "user-1"
         self.last_invoke_from = invoke_from
+        self.knowledge_fs_spaces = knowledge_fs_spaces
         if not tools.dify_tools:
             return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
         return SimpleNamespace(
@@ -149,7 +151,7 @@ class CapturingPluginLayerBuilder:
 
 
 class FakeCoreLayerBuilder:
-    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from):
+    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from, knowledge_fs_spaces=()):
         assert tenant_id == "tenant-1"
         assert app_id == "app-1"
         assert user_id == "user-1"
@@ -1002,7 +1004,12 @@ def test_build_runs_classic_and_agent_knowledge_together(monkeypatch: pytest.Mon
                         "id": "new",
                         "name": "New Docs",
                         "control_space_id": "00000000-0000-4000-8000-000000000001",
-                    }
+                    },
+                    {
+                        "id": "other",
+                        "name": "Other Docs",
+                        "control_space_id": "00000000-0000-4000-8000-000000000002",
+                    },
                 ],
             }
         }
@@ -1015,11 +1022,15 @@ def test_build_runs_classic_and_agent_knowledge_together(monkeypatch: pytest.Mon
         config_snapshot=soul,
     )
 
-    result = WorkflowAgentRuntimeRequestBuilder().build(replace(context, snapshot=snapshot))
+    tool_builder = CapturingPluginLayerBuilder()
+    result = WorkflowAgentRuntimeRequestBuilder(dify_tools_builder=tool_builder).build(
+        replace(context, snapshot=snapshot)
+    )
 
     layers = {layer.name: layer for layer in result.request.composition.layers}
     assert layers["knowledge"].config["sets"][0]["id"] == "classic"
     assert layers["knowledge_fs"].config["spaces"][0]["id"] == "new"
+    assert [space.id for space in tool_builder.knowledge_fs_spaces] == ["new", "other"]
     assert result.metadata["runtime_support"]["reserved_status"]["knowledge"] == (
         "supported_by_legacy_retrieval_and_knowledge_fs_cli"
     )

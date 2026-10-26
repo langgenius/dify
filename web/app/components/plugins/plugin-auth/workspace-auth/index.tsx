@@ -97,7 +97,7 @@ const WorkspaceAuth = ({
               <div className="mt-1.5">
                 <button
                   type="button"
-                  className="-ml-1.5 rounded-md px-1.5 py-0.5 system-xs-medium text-text-accent hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  className="-ms-1.5 rounded-md px-1.5 py-0.5 system-xs-medium text-text-accent hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={() => setSettingsDestination('members')}
                 >
                   {t(($) => $['auth.permissionHint.action'], { ns: 'plugin' })}

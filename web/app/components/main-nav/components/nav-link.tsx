@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import type { MainNavItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useStudioListHref } from '@/features/studio-list-navigation'
+import { useStudioListHref } from '@/app/components/apps/list-navigation-state'
 import Link from '@/next/link'
 
 const NavIcon = ({ icon, className }: { icon: string; className?: string }) => (
@@ -22,6 +22,7 @@ const NavLink = ({ item, pathname, children, href }: MainNavLinkProps & { href: 
   return (
     <Link
       href={href}
+      scroll={false}
       aria-current={activated ? 'page' : undefined}
       title={item.label}
       className={cn(

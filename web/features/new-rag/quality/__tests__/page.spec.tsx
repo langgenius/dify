@@ -1265,7 +1265,7 @@ describe('QualityPage', () => {
     expect(importButton).toBeEnabled()
   })
 
-  it('locks the CSV selection while an import is in flight', async () => {
+  it('locks the CSV selection during import and starts fresh after closing the result', async () => {
     const importResult = deferred<{ active_count: number; draft_count: number; items: [] }>()
     serviceMock.bulkImport.mockReturnValue(importResult.promise)
     const user = userEvent.setup()
@@ -1301,6 +1301,28 @@ describe('QualityPage', () => {
     expect(
       await screen.findByText('knowledgeQuality.qualityPage.importComplete'),
     ).toBeInTheDocument()
+
+    await user.click(
+      within(screen.getByRole('dialog'))
+        .getAllByRole('button', {
+          name: 'knowledgeQuality.qualityPage.closeDialog',
+        })
+        .at(-1)!,
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }))
+
+    const reopened = within(screen.getByRole('dialog'))
+    expect(
+      reopened.queryByText('knowledgeQuality.qualityPage.importComplete'),
+    ).not.toBeInTheDocument()
+    expect(reopened.queryByText('first.csv')).not.toBeInTheDocument()
+    expect(
+      reopened.getByLabelText('knowledgeQuality.qualityPage.chooseCsv', { selector: 'input' }),
+    ).toBeEnabled()
+    expect(
+      reopened.getByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }),
+    ).toBeDisabled()
   })
 
   it('freezes the golden-question draft while a save is pending', async () => {

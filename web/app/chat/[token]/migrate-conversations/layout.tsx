@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MAIN_CONTENT_ID, SkipNav } from '@/app/components/main-nav/skip-nav'
+import { MAIN_CONTENT_ID, SkipLink } from '@/app/components/main-nav/skip-link'
 import Header from '@/app/signin/_header'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
@@ -15,9 +15,9 @@ export default function MigrateConversationsLayout({ children }: { children: Rea
 
   return (
     <div className="flex min-h-dvh w-full bg-background-default-burn p-1">
-      <SkipNav>{t(($) => $['navigation.skipToMain'], { ns: 'common' })}</SkipNav>
+      <SkipLink>{t(($) => $['navigation.skipToMain'], { ns: 'common' })}</SkipLink>
       <div className="flex min-w-0 flex-1 flex-col rounded-lg border border-effects-highlight bg-background-default-subtle">
-        <Header compact className="flex-wrap gap-2 pt-4 pr-3 pb-3 pl-6" />
+        <Header compact className="flex-wrap gap-2 ps-6 pe-3 pt-4 pb-3" />
         <main
           id={MAIN_CONTENT_ID}
           tabIndex={-1}

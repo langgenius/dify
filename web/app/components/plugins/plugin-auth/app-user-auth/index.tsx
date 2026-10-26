@@ -144,7 +144,7 @@ const AppUserAuth = ({
             ? t(($) => $['auth.appUser.defaultClient'], { ns: 'plugin' })
             : t(($) => $['auth.appUser.customClient'], { ns: 'plugin' })}
         </span>
-        <span className="flex h-full shrink-0 items-center border-l border-components-panel-bg px-2">
+        <span className="flex h-full shrink-0 items-center border-s border-components-panel-bg px-2">
           <span aria-hidden className="i-ri-equalizer-2-line size-4" />
         </span>
       </Button>
@@ -226,7 +226,7 @@ const AppUserAuth = ({
                 />
                 {t(($) => $['auth.appUser.oauth'], { ns: 'plugin' })}
               </FieldLabel>
-              <div className="space-y-2 pl-7">
+              <div className="space-y-2 ps-7">
                 <p id={oauthDescriptionId} className="body-xs-regular text-text-tertiary">
                   {client && providerName
                     ? t(($) => $['auth.appUser.oauthDescriptionWithProvider'], {
@@ -256,7 +256,7 @@ const AppUserAuth = ({
                 {t(($) => $['auth.connection.apiKey'], { ns: 'plugin' })}
               </FieldLabel>
               {apiKeyEnabled && (
-                <p id={apiKeyDescriptionId} className="pl-7 body-xs-regular text-text-tertiary">
+                <p id={apiKeyDescriptionId} className="ps-7 body-xs-regular text-text-tertiary">
                   {t(($) => $['auth.appUser.apiKeyDescription'], { ns: 'plugin' })}
                 </p>
               )}

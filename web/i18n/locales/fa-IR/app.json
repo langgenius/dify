@@ -29,6 +29,7 @@
   "appSelector.noParams": "بدون پارامتر مورد نیاز است",
   "appSelector.params": "پارامترهای برنامه",
   "appSelector.placeholder": "برنامه ای را انتخاب کنید...",
+  "appSelector.searchPlaceholder": "جستجوی برنامه‌ها بر اساس نام…",
   "chooseAppFile": "بستهٔ برنامه یا فایل DSL را انتخاب کنید",
   "deleteAppConfirmContent": "حذف برنامه غیرقابل برگشت است. کاربران دیگر قادر به دسترسی به برنامه شما نخواهند بود و تمام تنظیمات و گزارشات درخواست‌ها به صورت دائم حذف خواهند شد.",
   "deleteAppConfirmInputLabel": "برای تأیید، <appName>{{appName}}</appName> را در کادر زیر تایپ کنید:",

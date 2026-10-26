@@ -1,12 +1,7 @@
 'use client'
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 
 type Props = {
@@ -17,8 +12,8 @@ type Props = {
 export default function AppActionsMenu({ name, onRemove }: Props) {
   const { t } = useTranslation(['app'])
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <IconButton
             size="md"
@@ -29,14 +24,14 @@ export default function AppActionsMenu({ name, onRemove }: Props) {
           </IconButton>
         }
       />
-      <DropdownMenuContent className="min-w-54.5" side="bottom" align="end">
-        <DropdownMenuItem onClick={() => onRemove(false)}>
+      <MenuContent className="min-w-54.5" side="bottom" align="end">
+        <MenuItem onClick={() => onRemove(false)}>
           {t(($) => $['endUser.removeFromList'], { ns: 'app' })}
-        </DropdownMenuItem>
-        <DropdownMenuItem variant="destructive" onClick={() => onRemove(true)}>
+        </MenuItem>
+        <MenuItem variant="destructive" onClick={() => onRemove(true)}>
           {t(($) => $['endUser.removeAndDeleteChats'], { ns: 'app' })}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuItem>
+      </MenuContent>
+    </Menu>
   )
 }

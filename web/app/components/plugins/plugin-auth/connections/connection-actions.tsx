@@ -1,4 +1,4 @@
-import type { DropdownMenuHandle } from '@langgenius/dify-ui/dropdown-menu'
+import type { MenuHandle } from '@langgenius/dify-ui/menu'
 import type { ApiKeyModalDataSource } from '../authorize/api-key-modal'
 import type { Credential, PluginPayload } from '../types'
 import type { EditConnectionDataSource } from './edit-connection-modal'
@@ -13,13 +13,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,7 +31,7 @@ export type ConnectionActionsDataSource = {
 }
 
 type ConnectionActionsTriggerProps = {
-  handle: DropdownMenuHandle<Credential>
+  handle: MenuHandle<Credential>
   credential: Credential
   dataSource: Pick<ConnectionActionsDataSource, 'canManageConnection'>
 }
@@ -50,7 +45,7 @@ export const ConnectionActionsTrigger = ({
   if (!dataSource.canManageConnection(credential)) return null
 
   return (
-    <DropdownMenuTrigger
+    <MenuTrigger
       handle={handle}
       payload={credential}
       render={
@@ -66,7 +61,7 @@ export const ConnectionActionsTrigger = ({
 }
 
 type ConnectionActionsProps = {
-  handle: DropdownMenuHandle<Credential>
+  handle: MenuHandle<Credential>
   pluginPayload?: PluginPayload
   providerName?: string
   onAction: () => void
@@ -126,13 +121,13 @@ const ConnectionActions = ({
 
   return (
     <>
-      <DropdownMenu handle={handle}>
+      <Menu handle={handle}>
         {({ payload }) => {
           if (!payload || !canManageConnection(payload)) return null
           const canEdit = canEditConnection(payload)
           return (
-            <DropdownMenuContent className="w-56 max-w-(--available-width)">
-              <DropdownMenuItem
+            <MenuContent align="end" className="w-56 max-w-(--available-width)">
+              <MenuItem
                 className="h-auto min-h-8"
                 disabled={!canEdit}
                 onClick={() => editConnection(payload)}
@@ -140,11 +135,11 @@ const ConnectionActions = ({
                 <span className="px-1 py-0.5 system-md-regular">
                   {t(($) => $['auth.connection.edit'], { ns: 'plugin' })}
                 </span>
-              </DropdownMenuItem>
+              </MenuItem>
               {payload.credential_type === CredentialTypeEnum.OAUTH2 ? (
                 <Tooltip>
                   <TooltipTrigger render={<div />}>
-                    <DropdownMenuItem
+                    <MenuItem
                       className="h-auto min-h-8"
                       disabled
                       aria-description={t(($) => $['auth.connection.reauthorizeUnavailable'], {
@@ -154,14 +149,14 @@ const ConnectionActions = ({
                       <span className="px-1 py-0.5 system-md-regular">
                         {t(($) => $['auth.connection.reauthorize'], { ns: 'plugin' })}
                       </span>
-                    </DropdownMenuItem>
+                    </MenuItem>
                   </TooltipTrigger>
                   <TooltipContent role="tooltip">
                     {t(($) => $['auth.connection.reauthorizeUnavailable'], { ns: 'plugin' })}
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <DropdownMenuItem
+                <MenuItem
                   className="h-auto min-h-8"
                   disabled={!canEdit}
                   onClick={() => replaceApiKey(payload)}
@@ -169,9 +164,9 @@ const ConnectionActions = ({
                   <span className="px-1 py-0.5 system-md-regular">
                     {t(($) => $['auth.connection.replaceApiKey'], { ns: 'plugin' })}
                   </span>
-                </DropdownMenuItem>
+                </MenuItem>
               )}
-              <DropdownMenuItem
+              <MenuItem
                 className="h-auto min-h-8"
                 variant="destructive"
                 onClick={() => requestRemoval(payload)}
@@ -179,11 +174,11 @@ const ConnectionActions = ({
                 <span className="px-1 py-0.5 system-md-regular">
                   {t(($) => $['operation.remove'], { ns: 'common' })}
                 </span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+              </MenuItem>
+            </MenuContent>
           )
         }}
-      </DropdownMenu>
+      </Menu>
       {editingCredential && (
         <EditConnectionModal
           key={editingCredential.id}

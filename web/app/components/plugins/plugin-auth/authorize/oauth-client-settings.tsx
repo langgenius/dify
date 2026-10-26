@@ -164,7 +164,7 @@ const OAuthClientSettings = ({
         !hasSystemClient && 'mb-4',
       )}
     >
-      <div className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
+      <div className="me-3 flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
         <span aria-hidden className="i-ri-information-2-fill size-5 text-text-accent" />
       </div>
       <div className="min-w-0 grow">

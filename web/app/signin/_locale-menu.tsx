@@ -1,13 +1,13 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 
 type LocaleMenuItem<T extends string> = {
   value: T
@@ -31,10 +31,10 @@ export default function LocaleMenu<T extends string>({
 
   return (
     <div className={cn(!compact && 'w-56', 'text-right')}>
-      <DropdownMenu>
+      <Menu>
         <div className="relative inline-block text-left">
           <div>
-            <DropdownMenuTrigger
+            <MenuTrigger
               render={
                 compact ? (
                   <Button
@@ -57,28 +57,25 @@ export default function LocaleMenu<T extends string>({
               />
               {selectedItem?.name}
               {compact && <span className="i-ri-arrow-down-s-line size-4" aria-hidden="true" />}
-            </DropdownMenuTrigger>
+            </MenuTrigger>
           </div>
         </div>
-        <DropdownMenuContent sideOffset={8} className="w-50">
-          <DropdownMenuRadioGroup<T>
-            value={value}
-            onValueChange={(nextValue) => onChange?.(nextValue)}
-          >
+        <MenuContent align={compact ? 'end' : undefined} sideOffset={8} className="w-50">
+          <MenuRadioGroup<T> value={value} onValueChange={(nextValue) => onChange?.(nextValue)}>
             {items.map((item) => (
-              <DropdownMenuRadioItem<T>
+              <MenuRadioItem<T>
                 key={item.value}
                 value={item.value}
                 closeOnClick
                 className="px-3 py-2 text-sm text-text-secondary"
               >
                 <span className="grow truncate">{item.name}</span>
-                <DropdownMenuRadioItemIndicator />
-              </DropdownMenuRadioItem>
+                <MenuRadioItemIndicator />
+              </MenuRadioItem>
             ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </MenuRadioGroup>
+        </MenuContent>
+      </Menu>
     </div>
   )
 }

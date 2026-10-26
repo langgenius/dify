@@ -29,6 +29,7 @@
   "appSelector.noParams": "Parametri niso potrebni",
   "appSelector.params": "PARAMETRI APLIKACIJE",
   "appSelector.placeholder": "Izberite aplikacijo ...",
+  "appSelector.searchPlaceholder": "Iskanje aplikacij po imenu…",
   "chooseAppFile": "Izberite paket aplikacije ali datoteko DSL",
   "deleteAppConfirmContent": "Brisanje aplikacije je nepopravljivo. Uporabniki ne bodo več imeli dostopa do vaše aplikacije, vse konfiguracije in dnevniki pa bodo trajno izbrisani.",
   "deleteAppConfirmInputLabel": "Za potrditev vnesite <appName>{{appName}}</appName> v polje spodaj:",

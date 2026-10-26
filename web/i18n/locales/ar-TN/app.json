@@ -29,6 +29,7 @@
   "appSelector.noParams": "لا توجد معلمات مطلوبة",
   "appSelector.params": "معلمات التطبيق",
   "appSelector.placeholder": "اختر تطبيقًا...",
+  "appSelector.searchPlaceholder": "البحث عن التطبيقات بالاسم…",
   "chooseAppFile": "اختر حزمة تطبيق أو ملف DSL",
   "deleteAppConfirmContent": "حذف التطبيق لا رجعة فيه. لن يتمكن المستخدمون من الوصول إلى تطبيقك بعد الآن، وسيتم حذف جميع تكوينات المطالبة والسجلات بشكل دائم.",
   "deleteAppConfirmInputLabel": "للتأكيد، اكتب <appName>{{appName}}</appName> في المربع أدناه:",

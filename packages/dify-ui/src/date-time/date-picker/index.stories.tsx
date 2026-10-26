@@ -232,7 +232,7 @@ export const RTL: Story = {
     docs: {
       description: {
         story:
-          'DirectionProvider supplies interaction direction; dir sets the surrounding HTML direction. The picker carries direction into its portaled popup. Calendar dates use the Arabic locale; action labels retain the English defaults.',
+          'DirectionProvider supplies interaction direction; dir sets the surrounding HTML direction. For a local RTL region, set dir on the wrapper and on the portaled content; global direction is inherited from <html dir>. Calendar dates use the Arabic locale; action labels retain the English defaults.',
       },
     },
   },
@@ -242,7 +242,7 @@ export const RTL: Story = {
         <DatePicker locale={arTN} defaultValue="2025-01-15">
           <DatePickerLabel className="sr-only">Start date</DatePickerLabel>
           <DatePickerTrigger />
-          <DatePickerContent />
+          <DatePickerContent dir="rtl" />
         </DatePicker>
       </DirectionProvider>
     </div>
@@ -251,8 +251,7 @@ export const RTL: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const trigger = within(canvasElement).getByRole('button', { name: /^Start date / })
     await userEvent.click(trigger)
-    const dialog = await body.findByRole('dialog', { name: 'Start date' })
-    await expect(dialog).toHaveAttribute('dir', 'rtl')
+    await body.findByRole('dialog', { name: 'Start date' })
     await waitFor(() =>
       expect(body.getByRole('button', { name: /^الأربعاء، 15 جانفي 2025/ })).toHaveFocus(),
     )

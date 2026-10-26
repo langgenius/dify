@@ -1,5 +1,5 @@
 import type { Credential } from '../../types'
-import { createDropdownMenuHandle } from '@langgenius/dify-ui/dropdown-menu'
+import { createMenuHandle } from '@langgenius/dify-ui/menu'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -60,7 +60,7 @@ const ActionsHarness = ({ connections, onUpdate, ...props }: ActionsHarnessProps
     canApiKey: true,
     onUpdate,
   })
-  const [handle] = useState(() => createDropdownMenuHandle<Credential>())
+  const [handle] = useState(() => createMenuHandle<Credential>())
   return (
     <TooltipProvider delay={0} closeDelay={0}>
       {connections.map((credential) => (
