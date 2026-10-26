@@ -32,7 +32,10 @@ def _scripts() -> ScriptDirectory:
 
 def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
     scripts = _scripts()
-    assert scripts.get_heads() == ["e7c2a9f4b603"]
+    heads = scripts.get_heads()
+    assert len(heads) == 1
+    ancestors = {revision.revision for revision in scripts.iterate_revisions(heads[0], "base")}
+    assert "e7c2a9f4b603" in ancestors
     merged = scripts.get_revision("e7c2a9f4b603")
     assert merged is not None
     assert isinstance(merged.down_revision, tuple)
