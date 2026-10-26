@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import partial
@@ -11,6 +12,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from flask.ctx import RequestContext
 from redis import Redis
 from werkzeug.exceptions import TooManyRequests, Unauthorized
 
@@ -152,6 +154,13 @@ class _FakeZsetRedis:
             del entries[member]
         return len(stale)
 
+    def register_script(self, script: str) -> Callable[..., object]:
+        raise NotImplementedError(script)
+
+    def zrem(self, name: str, *values: str) -> int:
+        entries = self.zsets.get(name, {})
+        return sum(entries.pop(value, None) is not None for value in values)
+
     def zcard(self, name: str) -> int:
         return len(self.zsets.get(name, {}))
 
@@ -162,7 +171,9 @@ class _FakeZsetRedis:
 @pytest.fixture
 def fake_redis(monkeypatch: pytest.MonkeyPatch) -> _FakeZsetRedis:
     fake = _FakeZsetRedis()
-    monkeypatch.setattr(rate_limit_module, "RateLimiter", partial(RateLimiter, redis_client=fake))
+    monkeypatch.setattr(
+        rate_limit_module, "RateLimiter", partial(RateLimiter, redis_client=cast(_RateLimiterRedisClient, fake))
+    )
     return fake
 
 
@@ -173,7 +184,7 @@ def app() -> Flask:
     return flask_app
 
 
-def _ip_request(app: Flask, ip: str = "203.0.113.7"):
+def _ip_request(app: Flask, ip: str = "203.0.113.7") -> RequestContext:
     return app.test_request_context("/", environ_base={"REMOTE_ADDR": ip})
 
 
