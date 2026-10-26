@@ -12,13 +12,7 @@ node connectors/workbuddy/package.ts difyctl            # newest stable tag
 node connectors/workbuddy/package.ts difyctl --tag 1.18.0
 ```
 
-The zip is written to `connectors/workbuddy/build/<connector>.zip`. The script prints the tag it used.
-
-## Run the tests
-
-```sh
-node --test connectors/workbuddy/lib.test.ts
-```
+The zip is written to `connectors/workbuddy/build/<connector>.zip`. The script prints the tag it used; check it is the release you expect.
 
 ## Notes
 
