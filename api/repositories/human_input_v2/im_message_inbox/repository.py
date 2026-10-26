@@ -17,7 +17,7 @@ from core.human_input_v2.im_message_inbox.contracts import (
 )
 from core.human_input_v2.shared import IntegrationId
 from libs.uuid_utils import uuidv7
-from models.human_input_v2 import IMMessageInbox
+from models.human_input_v2 import IMMessageEvent
 
 from .mappers import event_record, inbox_record_from_model
 
@@ -46,10 +46,9 @@ class SQLAlchemyIMMessageInboxRepository:
         validate_inbox_event(event)
         if event.event_id is not None:
             existing_id = self._session.scalar(
-                select(IMMessageInbox.id).where(
-                    IMMessageInbox.provider == event.provider,
-                    IMMessageInbox.provider_tenant_id == event.provider_tenant_id,
-                    IMMessageInbox.provider_event_id == event.event_id,
+                select(IMMessageEvent.id).where(
+                    IMMessageEvent.provider == event.provider,
+                    IMMessageEvent.event_id == event.event_id,
                 )
             )
             if existing_id is not None:
@@ -68,12 +67,12 @@ class SQLAlchemyIMMessageInboxRepository:
         return InboxAcceptance(record_id, AcceptanceKind.NEW)
 
     def get(self, record_id: IMInboxRecordId) -> IMInboxRecord | None:
-        record = self._session.get(IMMessageInbox, str(record_id))
+        record = self._session.get(IMMessageEvent, str(record_id))
         return inbox_record_from_model(record) if record is not None else None
 
     def mark_processed(self, record_id: IMInboxRecordId, *, processed_at: datetime) -> None:
         record = self._session.scalar(
-            select(IMMessageInbox).where(IMMessageInbox.id == str(record_id)).with_for_update()
+            select(IMMessageEvent).where(IMMessageEvent.id == str(record_id)).with_for_update()
         )
         if record is None:
             raise InboxPersistenceError("IM callback record does not exist")

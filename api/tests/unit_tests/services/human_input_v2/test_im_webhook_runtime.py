@@ -38,7 +38,7 @@ from models.human_input_v2 import (
     HumanInputPlatformContactWorkspaceEntry,
     IMCallbackVerificationEvent,
     IMIdentityRawPayload,
-    IMMessageInbox,
+    IMMessageEvent,
 )
 from models.workflow import WorkflowPause, WorkflowRun
 from repositories.human_input_v2.delivery_repository import (
@@ -106,6 +106,7 @@ def approval(context: Context, monkeypatch: pytest.MonkeyPatch, binding_scope: s
         import_module("migrations.versions.2026_08_02_1000-f1a2b3c4d5e6_add_im_message_inbox").upgrade()
         import_module("migrations.versions.2026_08_15_1200-d4e6f8a1b2c3_add_im_event_ingress_kind").upgrade()
         import_module("migrations.versions.2026_10_23_1200-b9e3f5a7c1d4_add_im_inbox_request_ip").upgrade()
+        import_module("migrations.versions.2026_10_26_1200-f4a6c8e0b2d5_rename_im_message_inbox_to_event").upgrade()
     node = HumanInputNodeData.model_validate(
         {
             "title": "Review",
@@ -264,7 +265,7 @@ def test_url_verification_returns_provider_response_without_persisting_or_publis
     assert response.get_json() == {"challenge": "url-verification-challenge"}
     assert published == []
     with context.sessions() as session:
-        assert session.scalar(sa.select(sa.func.count()).select_from(IMMessageInbox)) == 0
+        assert session.scalar(sa.select(sa.func.count()).select_from(IMMessageEvent)) == 0
 
 
 def test_signed_callback_is_committed_before_ack_then_submitted_by_worker(context, approval, callback_app, monkeypatch):
@@ -287,14 +288,14 @@ def test_signed_callback_is_committed_before_ack_then_submitted_by_worker(contex
     response = app.test_client().post(_PATH, data=body, headers=_headers(body))
     assert response.status_code == 200
     with context.sessions() as session:
-        inbox = session.get_one(IMMessageInbox, published[0])
+        inbox = session.get_one(IMMessageEvent, published[0])
         assert inbox.processed_at is None
         assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
     with app.app_context():
         process_im_message_inbox_record.run(published[0])
         process_im_message_inbox_record.run(published[0])
     with context.sessions() as session:
-        assert session.get_one(IMMessageInbox, published[0]).processed_at is not None
+        assert session.get_one(IMMessageEvent, published[0]).processed_at is not None
     assert resumed == [context.execution.workflow_run_id]
 
 
@@ -306,7 +307,7 @@ def test_invalid_signature_or_old_request_cannot_enter_inbox(context, callback_a
     assert response.status_code == 401
     assert published == []
     with context.sessions() as session:
-        assert session.scalar(sa.select(sa.func.count()).select_from(IMMessageInbox)) == 0
+        assert session.scalar(sa.select(sa.func.count()).select_from(IMMessageEvent)) == 0
 
 
 @pytest.mark.parametrize(("user_id", "token"), [("another-user", _TOKEN), (_USER, "unknown-token")])
@@ -319,7 +320,7 @@ def test_authenticated_callback_cannot_submit_another_recipient(context, approva
         process_im_message_inbox_record.run(published[0])
     with context.sessions() as session:
         assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
-        assert session.get_one(IMMessageInbox, published[0]).processed_at is not None
+        assert session.get_one(IMMessageEvent, published[0]).processed_at is not None
 
 
 def test_oversized_callback_and_unknown_route_fail_before_acceptance(callback_app, monkeypatch):
@@ -356,12 +357,12 @@ def test_worker_redelivery_repairs_resume_publication_without_resubmitting(
     with context.sessions() as session:
         committed_at = session.get_one(HumanInputForm, form_id).submitted_at
         assert committed_at is not None
-        assert session.get_one(IMMessageInbox, published[0]).processed_at is None
+        assert session.get_one(IMMessageEvent, published[0]).processed_at is None
     with app.app_context():
         process_im_message_inbox_record.run(published[0])
     with context.sessions() as session:
         assert session.get_one(HumanInputForm, form_id).submitted_at == committed_at
-        assert session.get_one(IMMessageInbox, published[0]).processed_at is not None
+        assert session.get_one(IMMessageEvent, published[0]).processed_at is not None
     assert "sensitive-broker-detail" not in caplog.text
 
 
@@ -394,7 +395,7 @@ def test_worker_rechecks_current_channel_ownership(
         process_im_message_inbox_record.run(published[0])
     with context.sessions() as session:
         assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
-        assert session.get_one(IMMessageInbox, published[0]).processed_at is not None
+        assert session.get_one(IMMessageEvent, published[0]).processed_at is not None
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
     assert expected_reason in caplog.text
     assert f"channel_id={channel_id}" in caplog.text
@@ -519,7 +520,7 @@ def test_worker_rejects_revoked_im_authorization(
         assert form.selected_action_id is None
         assert form.raw_submission_inputs is None
         assert session.get_one(WorkflowRun, form.workflow_run_id).status == WorkflowExecutionStatus.PAUSED
-        assert session.get_one(IMMessageInbox, published[0]).processed_at is not None
+        assert session.get_one(IMMessageEvent, published[0]).processed_at is not None
         audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
         assert audit.tenant_id == context.execution.tenant_id
         assert audit.form_id == form_id
