@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
 import zipfile
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Mapping
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, Mock
@@ -215,8 +216,15 @@ def _account(tenant_id: str = "tenant-2") -> Account:
     return make_account(tenant=make_tenant(tenant_id=tenant_id))
 
 
-def _import(session: Session, content: bytes, *, app_id: str | None = None, account: Account | None = None) -> Import:
-    prepared = AppPackageService().read_package(io.BytesIO(content))
+def _import(
+    session: Session,
+    content: bytes,
+    *,
+    app_id: str | None = None,
+    account: Account | None = None,
+    preserve_agent_bindings: bool = False,
+) -> Import:
+    prepared = AppPackageService().read_package(io.BytesIO(content), accept_roster_references=preserve_agent_bindings)
     assert prepared is not None
     with prepared:
         result = AppDslService(session).import_app(
@@ -225,6 +233,7 @@ def _import(session: Session, content: bytes, *, app_id: str | None = None, acco
             yaml_content=prepared.dsl,
             app_id=app_id,
             package=prepared,
+            preserve_agent_bindings=preserve_agent_bindings,
         )
     if result.status == ImportStatus.FAILED:
         session.rollback()
@@ -250,6 +259,72 @@ def _rewrite(
         for name, payload in members.items():
             archive.writestr(name, payload)
     return output.getvalue()
+
+
+def _add_roster_node(session: Session, app: App, *, graph_binding: Mapping[str, object] | None = None) -> Agent:
+    workflow = session.get(Workflow, "workflow-1")
+    assert workflow is not None
+    graph = workflow.graph_dict
+    data: dict[str, object] = {"type": "agent", "version": "2", "title": "Roster", "agent_node_kind": "dify_agent"}
+    if graph_binding is not None:
+        data["agent_binding"] = dict(graph_binding)
+    graph["nodes"].append({"id": "node-3", "data": data})
+    workflow.graph = json.dumps(graph)
+    agent = Agent(
+        id="roster-agent-1",
+        tenant_id=app.tenant_id,
+        name="Roster",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.ROSTER,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="roster-snapshot-1",
+        created_by="account-1",
+    )
+    snapshot = AgentConfigSnapshot(
+        id="roster-snapshot-1",
+        tenant_id=app.tenant_id,
+        agent_id=agent.id,
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "Roster"}}),
+        created_by="account-1",
+    )
+    binding = WorkflowAgentNodeBinding(
+        tenant_id=app.tenant_id,
+        app_id=app.id,
+        workflow_id=workflow.id,
+        workflow_version=workflow.version,
+        node_id="node-3",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id=agent.id,
+        current_snapshot_id=snapshot.id,
+        node_job_config={"workflow_prompt": "Roster job"},
+        created_by="account-1",
+    )
+    session.add_all([agent, snapshot, binding])
+    session.commit()
+    return agent
+
+
+def _read_export(content: bytes) -> tuple[dict[str, object], dict[str, object]]:
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        return yaml.safe_load(archive.read("app.yaml")), yaml.safe_load(archive.read("manifest.yaml"))
+
+
+def _node_data(data: dict[str, object], node_id: str = "node-3") -> dict[str, object]:
+    workflow = cast(dict[str, dict[str, list[dict[str, object]]]], data["workflow"])
+    return next(cast(dict[str, object], node["data"]) for node in workflow["graph"]["nodes"] if node["id"] == node_id)
+
+
+def _roster_export(session: Session, storage: _MemoryStorage) -> bytes:
+    app = _source(session, storage)
+    _add_roster_node(session, app)
+    with AppPackageService().export_app(app_model=app, preserve_agent_bindings=True) as exported:
+        return exported.archive.read()
+
+
+def _bindings_by_node(session: Session, app_id: str | None) -> dict[str, WorkflowAgentNodeBinding]:
+    rows = session.scalars(select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.app_id == app_id))
+    return {row.node_id: row for row in rows}
 
 
 class TestWorkflowPackageServiceCases:
@@ -547,6 +622,140 @@ class TestWorkflowPackageServiceCases:
         assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS, result.error
         assert any(warning.code == "agent_file_omitted" for warning in result.warnings)
 
+    @staticmethod
+    def test_reader_keeps_legacy_packaged_roster_nodes(sqlite_session: Session, storage: _MemoryStorage) -> None:
+        app = _source(sqlite_session, storage)
+        with AppPackageService().export_app(app_model=app) as exported:
+            content = exported.archive.read()
+
+        def mutate(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
+            cast(dict[str, object], _node_data(data, "node-1")["agent_binding"])["binding_type"] = "roster_agent"
+
+        legacy = _rewrite(content, mutate)
+        prepared = AppPackageService().read_package(io.BytesIO(legacy), accept_roster_references=True)
+        assert prepared is not None
+        prepared.close()
+
+    @staticmethod
+    def test_package_export_keeps_roster_references(sqlite_session: Session, storage: _MemoryStorage) -> None:
+        app = _source(sqlite_session, storage)
+        _add_roster_node(sqlite_session, app)
+        with AppPackageService().export_app(app_model=app, preserve_agent_bindings=True) as exported:
+            data, manifest = _read_export(exported.archive.read())
+        node = _node_data(data)
+        assert node["agent_binding"] == {
+            "binding_type": "roster_agent",
+            "agent_id": "roster-agent-1",
+            "current_snapshot_id": "roster-snapshot-1",
+        }
+        assert node["agent_task"] == "Roster job"
+        assert (
+            set(cast(dict[str, object], manifest["agent_resources"]))
+            == set(cast(dict[str, object], data["agent_packages"]))
+            == {"agent_1", "agent_2"}
+        )
+
+    @staticmethod
+    @pytest.mark.usefixtures("storage")
+    def test_roster_only_package_export_passes_self_check(sqlite_session: Session) -> None:
+        app = make_app(mode=AppMode.WORKFLOW, name="Roster Only")
+        workflow = make_workflow(
+            workflow_id="workflow-1",
+            app_id=app.id,
+            graph={"nodes": [], "edges": []},
+            workflow_type=WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+        )
+        sqlite_session.add_all([app, workflow])
+        sqlite_session.commit()
+        _add_roster_node(sqlite_session, app)
+        with AppPackageService().export_app(app_model=app, preserve_agent_bindings=True) as exported:
+            data, manifest = _read_export(exported.archive.read())
+        assert not manifest.get("agent_resources")
+        assert cast(dict[str, object], _node_data(data)["agent_binding"])["agent_id"] == "roster-agent-1"
+
+    @staticmethod
+    def test_published_export_projects_the_exported_versions_bindings(
+        sqlite_session: Session, storage: _MemoryStorage
+    ) -> None:
+        app = _source(sqlite_session, storage, published=True)
+        _add_roster_node(sqlite_session, app, graph_binding={"binding_type": "roster_agent", "agent_id": "stale-agent"})
+        with AppPackageService().export_app(
+            app_model=app, workflow_id="workflow-1", preserve_agent_bindings=True
+        ) as exported:
+            content = exported.archive.read()
+        data, _manifest = _read_export(content)
+        node = _node_data(data)
+        assert cast(dict[str, object], node["agent_binding"])["agent_id"] == "roster-agent-1"
+        assert node["agent_task"] == "Roster job"
+        result = _import(sqlite_session, content, account=_account("tenant-1"), preserve_agent_bindings=True)
+        assert result.status == ImportStatus.COMPLETED, result.error
+        roster = sqlite_session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.app_id == result.app_id,
+                WorkflowAgentNodeBinding.node_id == "node-3",
+            )
+        ).one()
+        assert (roster.binding_type, roster.agent_id) == (WorkflowAgentBindingType.ROSTER_AGENT, "roster-agent-1")
+        assert roster.node_job_config_dict["workflow_prompt"] == "Roster job"
+
+    @staticmethod
+    def test_overwrite_with_mixed_graph_keeps_roster_link(
+        sqlite_session: Session, storage: _MemoryStorage, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned", lambda **_kwargs: None
+        )
+        content = _roster_export(sqlite_session, storage)
+        account = _account("tenant-1")
+        original = _import(sqlite_session, content, account=account, preserve_agent_bindings=True)
+        updated = _import(
+            sqlite_session, content, app_id=original.app_id, account=account, preserve_agent_bindings=True
+        )
+        assert updated.status == ImportStatus.COMPLETED, updated.error
+        rows = _bindings_by_node(sqlite_session, original.app_id)
+        assert rows["node-3"].binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+        assert rows["node-3"].agent_id == "roster-agent-1"
+        assert rows["node-3"].node_job_config_dict["workflow_prompt"] == "Roster job"
+        assert {rows["node-1"].binding_type, rows["node-2"].binding_type} == {WorkflowAgentBindingType.INLINE_AGENT}
+
+    @staticmethod
+    def test_unresolvable_roster_reference_fails_the_import(sqlite_session: Session, storage: _MemoryStorage) -> None:
+        content = _roster_export(sqlite_session, storage)
+
+        def mutate(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
+            cast(dict[str, object], _node_data(data)["agent_binding"])["agent_id"] = "missing-agent"
+
+        result = _import(
+            sqlite_session, _rewrite(content, mutate), account=_account("tenant-1"), preserve_agent_bindings=True
+        )
+        assert result.status == ImportStatus.FAILED
+        assert "roster agent" in (result.error or "")
+
+    @staticmethod
+    def test_confirm_keeps_roster_link(
+        sqlite_session: Session, storage: _MemoryStorage, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        content = _roster_export(sqlite_session, storage)
+
+        def mutate(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
+            data["version"] = "99.0.0"
+
+        pending: dict[str, str] = {}
+        monkeypatch.setattr(
+            "services.app_dsl_service.redis_client.setex", lambda key, _ttl, value: pending.__setitem__(key, value)
+        )
+        monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending.get)
+        monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending.pop)
+        account = _account("tenant-1")
+        result = _import(sqlite_session, _rewrite(content, mutate), account=account, preserve_agent_bindings=True)
+        assert result.status == ImportStatus.PENDING
+        confirmed = AppDslService(sqlite_session).confirm_import(import_id=result.id, account=account)
+        assert confirmed.status in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}, confirmed.error
+        row = _bindings_by_node(sqlite_session, confirmed.app_id)["node-3"]
+        assert row.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+        assert row.agent_id == "roster-agent-1"
+
 
 """Ordinary App packages preserve DSLs and enforce container integrity."""
 
@@ -571,6 +780,26 @@ def _dsl_with_size(size: int) -> str:
     header = "kind: app\napp:\n  mode: workflow\n  description: "
     padding = size - len(header.encode("utf-8"))
     return header + "\U0001f600" * (padding // 4) + "a" * (padding % 4)
+
+
+def _roster_archive(binding: dict[str, object], agent_job: dict[str, object] | None = None) -> io.BytesIO:
+    node_data = {
+        "type": "agent",
+        "version": "2",
+        "title": "Roster",
+        "agent_node_kind": "dify_agent",
+        "agent_binding": binding,
+        "agent_job": agent_job or {"workflow_prompt": "Roster job"},
+    }
+    dsl = yaml.safe_dump(
+        {
+            "kind": "app",
+            "app": {"mode": "workflow", "name": "Roster"},
+            "workflow": {"graph": {"nodes": [{"id": "node-1", "data": node_data}], "edges": []}},
+        }
+    )
+    with AppPackageService().export(dsl=dsl, name="Roster") as package:
+        return io.BytesIO(package.archive.read())
 
 
 class TestAppPackageServiceCases:
@@ -657,6 +886,39 @@ class TestAppPackageServiceCases:
         source = _archive(dsl)
         with pytest.raises(RosterAgentPackageTooLargeError):
             AppPackageService().read_package(source)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("binding", "agent_job"),
+        [
+            pytest.param({"binding_type": "roster_agent"}, None, id="agent-id-missing"),
+            pytest.param({"binding_type": "roster_agent", "agent_id": ""}, None, id="agent-id-empty"),
+            pytest.param(
+                {"binding_type": "roster_agent", "agent_id": "a", "package_ref": "agent_1"},
+                None,
+                id="package-ref-extra",
+            ),
+            pytest.param(
+                {"binding_type": "roster_agent", "agent_id": "a"},
+                {"declared_outputs": "not-a-list"},
+                id="invalid-agent-job",
+            ),
+        ],
+    )
+    def test_roster_only_package_rejects_bad_references_when_accepted(
+        binding: dict[str, object], agent_job: dict[str, object] | None
+    ) -> None:
+        with pytest.raises(InvalidRosterAgentPackageError, match="Agent references are invalid"):
+            AppPackageService().read_package(_roster_archive(binding, agent_job), accept_roster_references=True)
+
+    @staticmethod
+    def test_non_workflow_package_is_accepted_when_roster_references_accepted() -> None:
+        dsl = yaml.safe_dump({"kind": "app", "app": {"mode": "chat", "name": "Chat"}})
+        with AppPackageService().export(dsl=dsl, name="Chat") as package:
+            prepared = AppPackageService().read_package(package.archive, accept_roster_references=True)
+        assert prepared is not None
+        assert prepared.agents == {}
+        prepared.close()
 
 
 """Packaged image icons travel with Apps and receive destination-owned file ids."""
