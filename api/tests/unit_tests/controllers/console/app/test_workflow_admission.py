@@ -23,8 +23,8 @@ from services.app.console_service import ConsoleAppService
 from services.entities.app_entities import AppReference
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow.console_service import ConsoleWorkflowService
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account
 
 APP_ID = UUID("11111111-1111-1111-1111-111111111111")
 

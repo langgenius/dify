@@ -11,6 +11,7 @@ from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsL
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.snapshot import SessionSnapshot
+from flask import Flask
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
@@ -20,10 +21,18 @@ from clients.agent_backend import (
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.workflow.file_reference import build_file_reference
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
-from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
@@ -35,14 +44,22 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
 )
 from models.tool_runtime_contracts import WorkflowToolQueries
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.workflow.execution.adapters.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from services.workflow.execution.adapters.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
     WorkflowAgentRuntimeRequestBuildError,
+    build_knowledge_layer_config,
     build_shell_layer_config,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
+
+
+@pytest.fixture(autouse=True)
+def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
 
 
 def _workflow_queries() -> WorkflowToolQueries:
@@ -107,12 +124,14 @@ class CapturingPluginLayerBuilder:
         # threaded through from ``DifyRunContext.invoke_from`` rather than
         # hard-coded to a placeholder like ``VALIDATION``.
         self.last_invoke_from: InvokeFrom | None = None
+        self.knowledge_fs_spaces = ()
 
-    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from):
+    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from, knowledge_fs_spaces=()):
         assert tenant_id == "tenant-1"
         assert app_id == "app-1"
         assert user_id == "user-1"
         self.last_invoke_from = invoke_from
+        self.knowledge_fs_spaces = knowledge_fs_spaces
         if not tools.dify_tools:
             return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
         return SimpleNamespace(
@@ -138,7 +157,7 @@ class CapturingPluginLayerBuilder:
 
 
 class FakeCoreLayerBuilder:
-    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from):
+    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from, knowledge_fs_spaces=()):
         assert tenant_id == "tenant-1"
         assert app_id == "app-1"
         assert user_id == "user-1"
@@ -176,7 +195,7 @@ class FakeVariablePool:
 
 
 def _context() -> WorkflowAgentRuntimeBuildContext:
-    agent = Agent(id="agent-1", tenant_id="tenant-1", name="Agent")
+    agent = Agent(scope=AgentScope.ROSTER, source=AgentSource.ROSTER, id="agent-1", tenant_id="tenant-1", name="Agent")
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
         tenant_id="tenant-1",
@@ -193,6 +212,8 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
         ),
     )
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -215,6 +236,7 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
             user_id="user-1",
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            trace_session_id="trace-session-1",
         ),
         workflow_id="workflow-1",
         workflow_run_id="run-1",
@@ -227,6 +249,46 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
         binding_id="binding-1",
         backend_binding_ref="binding-ref-1",
     )
+
+
+@pytest.mark.parametrize("preview", [False, True])
+def test_builder_passes_inline_or_preview_context_to_application_tracing(
+    monkeypatch: pytest.MonkeyPatch, tool_providers, preview: bool
+):
+    from uuid import uuid4
+
+    from dify_agent.layers.execution_context import ApplicationTracingContext, DifyExecutionContextLayerConfig
+
+    tracing = ApplicationTracingContext(
+        run_id=uuid4(),
+        invocation_id=uuid4(),
+        trace_id="1" * 32,
+        parent_span_id="2" * 16,
+        session_id="session",
+        capture_content=False,
+    )
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+    context = replace(_context(), workflow_run_id=None if preview else "run-1", attempt=2)
+    calls: list[tuple[WorkflowAgentRuntimeBuildContext, str | None]] = []
+
+    def prepare(value: WorkflowAgentRuntimeBuildContext, conversation_id: str | None) -> ApplicationTracingContext:
+        calls.append((value, conversation_id))
+        return tracing
+
+    monkeypatch.setattr(RuntimeApplicationTracingHooks, "prepare_workflow_agent", staticmethod(prepare))
+    hooks = RuntimeApplicationTracingHooks()
+    app = Flask(__name__)
+    bind_application_tracing_hooks(app, hooks)
+
+    with app.app_context():
+        result = WorkflowAgentRuntimeRequestBuilder(
+            dify_tools_builder=WorkflowAgentDifyToolsBuilder(
+                tool_providers=tool_providers, workflow_queries=_workflow_queries()
+            )
+        ).build(context)
+    layer = next(item for item in result.request.composition.layers if item.name == DIFY_EXECUTION_CONTEXT_LAYER_ID)
+    assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
+    assert calls == [(context, None)]
 
 
 def _request_layers(result) -> dict[str, dict[str, object]]:
@@ -424,6 +486,8 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
         ),
     )
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -746,6 +810,7 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: p
     # quotas / rate limits / audit tags to the real call site instead of a
     # hard-coded ``VALIDATION`` placeholder.
     assert dify_tools_builder.last_invoke_from == context.dify_context.invoke_from
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["trace_id"] == "trace-session-1"
 
 
 def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config(tool_providers):
@@ -953,6 +1018,67 @@ def test_build_knowledge_layer_maps_disabled_score_threshold_to_zero(tool_provid
     knowledge_layer = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "knowledge")
     assert knowledge_layer["config"]["sets"][0]["retrieval"]["score_threshold"] == 0.0
 
+    legacy = build_knowledge_layer_config(AgentSoulConfig.model_validate(snapshot.config_snapshot_dict))
+    assert legacy is not None
+    assert legacy.model_dump(mode="json")["sets"][0]["retrieval"]["score_threshold"] == 0.0
+
+
+def test_build_runs_classic_and_agent_knowledge_together(monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
+    monkeypatch.setattr(
+        "services.agent.knowledge_runtime_config.DifyModelFactory",
+        RecordingModelFactory(schema=llm_schema(features=[])),
+    )
+    context = _context()
+    soul = AgentSoulConfig.model_validate(context.snapshot.config_snapshot_dict)
+    soul.knowledge = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "classic",
+                        "name": "Classic Docs",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 3},
+                    }
+                ],
+                "spaces": [
+                    {
+                        "id": "new",
+                        "name": "New Docs",
+                        "control_space_id": "00000000-0000-4000-8000-000000000001",
+                    },
+                    {
+                        "id": "other",
+                        "name": "Other Docs",
+                        "control_space_id": "00000000-0000-4000-8000-000000000002",
+                    },
+                ],
+            }
+        }
+    ).knowledge
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=soul,
+    )
+
+    tool_builder = CapturingPluginLayerBuilder()
+    result = WorkflowAgentRuntimeRequestBuilder(dify_tools_builder=tool_builder).build(
+        replace(context, snapshot=snapshot)
+    )
+
+    layers = {layer.name: layer for layer in result.request.composition.layers}
+    assert layers["knowledge"].config["sets"][0]["id"] == "classic"
+    assert layers["knowledge_fs"].config["spaces"][0]["id"] == "new"
+    assert [space.id for space in tool_builder.knowledge_fs_spaces] == ["new", "other"]
+    assert result.metadata["runtime_support"]["reserved_status"]["knowledge"] == (
+        "supported_by_legacy_retrieval_and_knowledge_fs_cli"
+    )
+
 
 def test_build_skips_knowledge_layer_when_agent_soul_has_no_sets(tool_providers):
     context = _context()
@@ -1020,6 +1146,8 @@ def test_requires_agent_soul_model_config(tool_providers):
 def test_missing_previous_node_output_fails_request_build(tool_providers):
     context = _context()
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -1048,6 +1176,8 @@ def test_missing_previous_node_output_fails_request_build(tool_providers):
 def test_invalid_previous_node_output_ref_fails_request_build(tool_providers):
     context = _context()
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -1076,6 +1206,8 @@ def test_invalid_previous_node_output_ref_fails_request_build(tool_providers):
 def test_empty_declared_outputs_omits_structured_output_layer(tool_providers):
     context = _context()
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -1099,6 +1231,8 @@ def test_empty_declared_outputs_omits_structured_output_layer(tool_providers):
 def test_array_output_emits_typed_items_per_array_item(tool_providers):
     context = _context()
     binding = WorkflowAgentNodeBinding(
+        workflow_version="draft",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         id="binding-1",
         tenant_id="tenant-1",
         app_id="app-1",
@@ -1774,7 +1908,7 @@ def test_feature_manifest_marks_knowledge_supported_without_warning_when_configu
     manifest = build_runtime_feature_manifest(soul)
     assert "knowledge" in manifest["supported"]
     assert "knowledge" not in manifest["reserved"]
-    assert manifest["reserved_status"]["knowledge"] == "supported_by_knowledge_layer"
+    assert manifest["reserved_status"]["knowledge"] == "supported_by_legacy_retrieval"
     assert all("knowledge" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
 
 

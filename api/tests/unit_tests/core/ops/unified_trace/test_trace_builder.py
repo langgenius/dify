@@ -1,3 +1,5 @@
+import importlib as _test_importlib
+import json
 from copy import deepcopy
 from datetime import datetime, timedelta
 from types import SimpleNamespace
@@ -6,6 +8,8 @@ from unittest.mock import MagicMock
 from uuid import UUID
 
 import pytest
+import requests
+from sqlalchemy.orm import Session
 
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
@@ -24,6 +28,140 @@ from core.ops.unified_trace.trace_builder import (
     WorkflowExecutionLike,
     resolve_session_id,
 )
+from extensions.ext_database import db
+from models import Account
+from models.enums import CreatorUserRole
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+
+"""External traces retain the caller's Tool contract without source workflow internals."""
+
+
+exported_spans = _test_importlib.import_module(
+    "tests.unit_tests.providers.trace.trace-mlflow.src.dify_trace_mlflow.test_mlflow_trace"
+).exported_spans
+
+
+class TestWorkflowToolExportBoundaryCases:
+    import importlib as _test_importlib
+
+    transport = _test_importlib.import_module(
+        "tests.unit_tests.providers.trace.trace-mlflow.src.dify_trace_mlflow.test_mlflow_trace"
+    ).transport
+
+    transport = staticmethod(transport)
+
+    @staticmethod
+    @pytest.mark.parametrize("exporter", ["canonical", "mlflow"])
+    def test_external_workflow_trace_omits_source_internals(
+        exporter: str,
+        sqlite_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        transport: list[requests.PreparedRequest],
+    ) -> None:
+        started_at = datetime(2025, 1, 1)
+        public_inputs = {"query": "public tool input"}
+        public_outputs = {"answer": "public tool output"}
+        for index, (execution_id, app_id, origin) in enumerate(
+            [
+                ("outer-tool", "caller-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
+                ("source-llm", "source-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+                ("recursive-llm", "caller-app", WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL),
+            ]
+        ):
+            is_outer = execution_id == "outer-tool"
+            sqlite_session.add(
+                WorkflowNodeExecutionModel(
+                    id=execution_id,
+                    tenant_id="tenant-1",
+                    app_id=app_id,
+                    workflow_id=f"{app_id}-workflow",
+                    workflow_run_id="run-1",
+                    triggered_from_workflow_id=None if is_outer else "caller-app-workflow",
+                    triggered_from_node_execution_id=None if is_outer else "outer-tool",
+                    triggered_from=origin,
+                    index=index,
+                    node_execution_id=execution_id,
+                    node_id=execution_id,
+                    node_type="tool" if is_outer else "llm",
+                    title=execution_id,
+                    inputs=json.dumps(public_inputs if is_outer else {"secret": "private source input"}),
+                    outputs=json.dumps(public_outputs if is_outer else {"text": "private source output"}),
+                    process_data=json.dumps(
+                        {}
+                        if is_outer
+                        else {
+                            "prompts": [{"role": "system", "text": "private source prompt"}],
+                            "workflow_tool_root_app_id": "caller-app",
+                        }
+                    ),
+                    status="succeeded",
+                    elapsed_time=1,
+                    created_at=started_at,
+                    created_by_role=CreatorUserRole.ACCOUNT,
+                    created_by="account-1",
+                )
+            )
+        sqlite_session.commit()
+        info = WorkflowTraceInfo(
+            tenant_id="tenant-1",
+            workflow_id="caller-workflow",
+            workflow_run_id="run-1",
+            workflow_run_elapsed_time=1,
+            workflow_run_status="succeeded",
+            workflow_run_inputs={},
+            workflow_run_outputs={},
+            workflow_run_version="1",
+            total_tokens=0,
+            file_list=[],
+            query="",
+            metadata={"app_id": "caller-app"},
+            start_time=started_at,
+            end_time=started_at,
+        )
+        monkeypatch.setattr(type(db), "engine", property(lambda _: sqlite_session.get_bind()))
+        monkeypatch.setattr(db, "session", sqlite_session)
+        if exporter == "canonical":
+            account = Account(name="Caller maintainer", email="caller@example.com")
+            account.id = "account-1"
+            trace = CanonicalTraceBuilder(RepositoryWorkflowExecutionLoader(lambda _: account)).build(info)
+            assert trace is not None
+            assert len(trace.spans) == 2
+            payload = trace.model_dump_json()
+            tool = next(span for span in trace.spans if span.id == "outer-tool")
+            assert tool.inputs == public_inputs
+            assert tool.outputs == public_outputs
+        else:
+            from dify_trace_mlflow.config import MLflowConfig
+            from dify_trace_mlflow.mlflow_trace import MLflowDataTrace
+            from mlflow.entities import Span
+            from mlflow.tracing.trace_manager import InMemoryTraceManager
+
+            monkeypatch.setattr(InMemoryTraceManager, "_instance", InMemoryTraceManager())
+            # OSS owns a private synchronous SDK pipeline. Inspect its real wire spans
+            # instead of replacing the unrelated process-wide MLflow tracer.
+            instance = MLflowDataTrace(
+                MLflowConfig(tracking_uri="https://workflow-boundary.example", experiment_id="0")
+            )
+            try:
+                instance.trace(info)
+                spans = [Span.from_otel_proto(span) for span in exported_spans(transport)]
+                assert len(spans) == 2
+                payload = json.dumps([span.to_dict() for span in spans])
+                tool = next(span for span in spans if span.name == "outer-tool")
+                assert tool.inputs == public_inputs
+                assert tool.outputs == public_outputs
+                assert transport
+                assert {request.url for request in transport} <= {
+                    "https://workflow-boundary.example/version",
+                    "https://workflow-boundary.example/api/3.0/mlflow/traces",
+                    "https://workflow-boundary.example/v1/traces",
+                }
+            finally:
+                instance._provider.shutdown()
+        assert "private source" not in payload
+        assert "source-llm" not in payload
+        assert "recursive-llm" not in payload
+        assert "workflow_tool_root_app_id" not in payload
 
 
 def make_workflow_trace_info(**overrides: object) -> WorkflowTraceInfo:
@@ -45,47 +183,6 @@ def make_workflow_trace_info(**overrides: object) -> WorkflowTraceInfo:
     }
     values.update(overrides)
     return WorkflowTraceInfo.model_validate(values)
-
-
-def test_custom_session_id_wins_over_conversation_id() -> None:
-    info = make_workflow_trace_info(
-        conversation_id="conversation-1",
-        metadata={"trace_session_id": "customer-session"},
-    )
-
-    assert resolve_session_id(info) == "customer-session"
-
-
-def test_workflow_session_falls_back_to_conversation_then_run() -> None:
-    assert resolve_session_id(make_workflow_trace_info(conversation_id="conversation-1")) == "conversation-1"
-    assert resolve_session_id(make_workflow_trace_info()) == "run-1"
-
-
-def test_nested_workflow_session_falls_back_to_parent_workflow() -> None:
-    info = make_workflow_trace_info(
-        metadata={
-            "parent_trace_context": {
-                "parent_workflow_run_id": "parent-run",
-                "parent_node_execution_id": "parent-node-execution",
-            }
-        }
-    )
-
-    assert resolve_session_id(info) == "parent-run"
-
-
-def test_message_session_falls_back_to_message_conversation() -> None:
-    info = MessageTraceInfo(
-        conversation_model="chat",
-        message_tokens=0,
-        answer_tokens=0,
-        total_tokens=0,
-        conversation_mode="chat",
-        message_data=SimpleNamespace(conversation_id="conversation-1", created_at=datetime(2025, 1, 1)),
-        metadata={},
-    )
-
-    assert resolve_session_id(info) == "conversation-1"
 
 
 def node_execution(**overrides: object) -> WorkflowExecutionLike:
@@ -140,99 +237,6 @@ CHATFLOW_INPUTS: dict[str, object] = {
 }
 
 
-def test_chatflow_message_uses_query_while_workflow_keeps_complete_inputs() -> None:
-    builder = CanonicalTraceBuilder(lambda _info: [])
-
-    trace = builder.build(
-        workflow_info(
-            message_id="message-1",
-            query="hi",
-            workflow_run_inputs=CHATFLOW_INPUTS,
-        )
-    )
-
-    assert trace is not None
-    spans = {span.id: span for span in trace.spans}
-    assert trace.root_span_id == "message-1"
-    assert [span.id for span in trace.spans[:2]] == ["message-1", "run-1"]
-    assert spans["message-1"].name == "chatflow_run-1"
-    assert spans["message-1"].inputs == "hi"
-    assert spans["message-1"].metadata["trace_entity_type"] == "message"
-    assert spans["message-1"].publishes_parent_context is True
-    assert spans["run-1"].name == "workflow_run-1"
-    assert spans["run-1"].parent_id == "message-1"
-    assert spans["run-1"].inputs == CHATFLOW_INPUTS
-
-
-def test_chatflow_message_falls_back_to_complete_inputs_for_empty_query() -> None:
-    builder = CanonicalTraceBuilder(lambda _info: [])
-
-    trace = builder.build(
-        workflow_info(
-            message_id="message-1",
-            query="",
-            workflow_run_inputs=CHATFLOW_INPUTS,
-        )
-    )
-
-    assert trace is not None
-    assert trace.spans[0].inputs == CHATFLOW_INPUTS
-
-
-def test_workflow_without_message_keeps_complete_inputs_on_root() -> None:
-    builder = CanonicalTraceBuilder(lambda _info: [])
-
-    trace = builder.build(workflow_info(query="hi", workflow_run_inputs=CHATFLOW_INPUTS))
-
-    assert trace is not None
-    assert trace.root_span_id == "run-1"
-    assert trace.spans[0].inputs == CHATFLOW_INPUTS
-
-
-def test_build_workflow_trace_is_parent_first_and_uses_wrappers() -> None:
-    container = node_execution(id="iteration-exec", node_id="iteration", node_type="iteration", title="Items")
-    child = node_execution(
-        id="llm-exec",
-        node_id="llm",
-        node_type="llm",
-        title="Summarize",
-        iteration_id="iteration",
-        iteration_index=0,
-        process_data={
-            "prompts": [{"role": "user", "text": "hello"}],
-            "model_provider": "openai",
-            "model_name": "gpt-4",
-            "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-        },
-    )
-    loader = MagicMock(return_value=[child, container])
-    builder = CanonicalTraceBuilder(loader)
-
-    trace = builder.build(workflow_info())
-
-    assert trace is not None
-    assert [span.id for span in trace.spans] == [
-        "run-1",
-        "iteration-exec",
-        "iteration:iteration-exec:0",
-        "llm-exec",
-    ]
-    spans = {span.id: span for span in trace.spans}
-    assert spans["llm-exec"].parent_id == "iteration:iteration-exec:0"
-    assert spans["llm-exec"].kind is CanonicalSpanKind.LLM
-    assert spans["llm-exec"].metadata["total_tokens"] == 30
-    loader.assert_called_once()
-
-
-def test_workflow_tool_is_marked_as_nested_workflow_parent() -> None:
-    builder = CanonicalTraceBuilder(lambda _info: [node_execution(id="tool-exec")])
-
-    trace = builder.build(workflow_info())
-
-    assert trace is not None
-    assert trace.spans[-1].can_parent_workflow is True
-
-
 def retry_attempt(retry_index: object, **overrides: object) -> dict[str, object]:
     values: dict[str, object] = {
         "retry_index": retry_index,
@@ -249,225 +253,6 @@ def retry_attempt(retry_index: object, **overrides: object) -> dict[str, object]
     return values
 
 
-def test_node_metadata_contains_compact_retry_summary_and_skips_malformed_entries() -> None:
-    history = [
-        retry_attempt(1),
-        "malformed",
-        retry_attempt(True),
-        retry_attempt(2, error="attempt 2 timed out", elapsed_time=2.5),
-        retry_attempt(3),
-    ]
-    builder = CanonicalTraceBuilder(lambda _info: [node_execution(process_data={"__dify_retry_history": history})])
-
-    trace = builder.build(workflow_info())
-
-    assert trace is not None
-    metadata = trace.spans[-1].metadata
-    assert metadata["retry_count"] == 3
-    assert metadata["retry_attempts"] == [
-        {
-            "retry_index": 1,
-            "error": "attempt 1 failed",
-            "elapsed_time": 1.0,
-            "created_at": 1_700_000_000,
-            "finished_at": 1_700_000_001,
-        },
-        {
-            "retry_index": 2,
-            "error": "attempt 2 timed out",
-            "elapsed_time": 2.5,
-            "created_at": 1_700_000_000,
-            "finished_at": 1_700_000_001,
-        },
-        {
-            "retry_index": 3,
-            "error": "attempt 3 failed",
-            "elapsed_time": 3.0,
-            "created_at": 1_700_000_000,
-            "finished_at": 1_700_000_001,
-        },
-    ]
-    assert all("inputs" not in attempt for attempt in metadata["retry_attempts"])
-    assert all("process_data" not in attempt for attempt in metadata["retry_attempts"])
-    assert all("outputs" not in attempt for attempt in metadata["retry_attempts"])
-    assert all("execution_metadata" not in attempt for attempt in metadata["retry_attempts"])
-
-
-def test_node_without_retry_history_has_no_retry_metadata() -> None:
-    builder = CanonicalTraceBuilder(lambda _info: [node_execution()])
-
-    trace = builder.build(workflow_info())
-
-    assert trace is not None
-    assert "retry_count" not in trace.spans[-1].metadata
-    assert "retry_attempts" not in trace.spans[-1].metadata
-
-
-def test_failed_node_preserves_error_without_mutating_trace_metadata() -> None:
-    metadata = {"app_id": "app-1", "custom": {"nested": True}}
-    original = deepcopy(metadata)
-    builder = CanonicalTraceBuilder(
-        lambda _info: [node_execution(status="failed", error="boom", metadata={"attempt": 1})]
-    )
-
-    trace = builder.build(workflow_info(metadata=metadata))
-
-    assert trace is not None
-    assert trace.spans[-1].status is CanonicalSpanStatus.ERROR
-    assert trace.spans[-1].error == "boom"
-    assert metadata == original
-
-
-def test_nested_workflow_exposes_typed_external_parent() -> None:
-    builder = CanonicalTraceBuilder(lambda _info: [])
-    info = workflow_info(
-        metadata={
-            "app_id": "app-1",
-            "parent_trace_context": {
-                "parent_workflow_run_id": "outer-run",
-                "parent_node_execution_id": "outer-tool",
-            },
-        }
-    )
-
-    trace = builder.build(info)
-
-    assert trace is not None
-    assert trace.external_parent is not None
-    assert trace.external_parent.parent_node_execution_id == "outer-tool"
-
-
-def test_repository_loader_scopes_repository_to_trace(monkeypatch: pytest.MonkeyPatch) -> None:
-    repository = MagicMock()
-    repository.get_by_workflow_execution.return_value = [node_execution()]
-    factory = MagicMock()
-    factory.create_workflow_node_execution_repository.return_value = repository
-    monkeypatch.setattr("core.ops.unified_trace.trace_builder.DifyCoreRepositoryFactory", factory)
-    monkeypatch.setattr("core.ops.unified_trace.trace_builder.db", MagicMock(engine="engine"))
-    account = MagicMock()
-    get_account = MagicMock(return_value=account)
-    loader = RepositoryWorkflowExecutionLoader(get_account)
-    info = workflow_info()
-
-    result = loader(info)
-
-    assert len(result) == 1
-    get_account.assert_called_once_with("app-1")
-    factory.create_workflow_node_execution_repository.assert_called_once()
-    call = factory.create_workflow_node_execution_repository.call_args.kwargs
-    assert call["tenant_id"] == "tenant-1"
-    assert call["app_id"] == "app-1"
-    repository.get_by_workflow_execution.assert_called_once_with(workflow_execution_id="run-1")
-
-
-def test_message_trace_does_not_load_workflow_executions() -> None:
-    loader = MagicMock()
-    builder = CanonicalTraceBuilder(loader)
-    info = MessageTraceInfo(
-        conversation_model="chat",
-        message_tokens=2,
-        answer_tokens=3,
-        total_tokens=5,
-        conversation_mode="chat",
-        message_id="message-1",
-        message_data=SimpleNamespace(
-            id="message-1",
-            conversation_id="conversation-1",
-            answer="hello",
-            created_at=datetime(2025, 1, 1),
-            updated_at=datetime(2025, 1, 1, 0, 0, 1),
-        ),
-        inputs="hi",
-        metadata={},
-    )
-
-    trace = builder.build(info)
-
-    assert trace is not None
-    assert trace.root_span_id == "message-1"
-    assert [span.name for span in trace.spans] == ["message", "llm"]
-    assert trace.spans[0].outputs == "hello"
-    assert trace.spans[0].metadata["trace_entity_type"] == "message"
-    assert trace.spans[0].publishes_parent_context is True
-    assert trace.spans[1].parent_id == "message-1"
-    assert trace.spans[1].kind is CanonicalSpanKind.LLM
-    assert trace.spans[1].metadata["total_tokens"] == 5
-    loader.assert_not_called()
-
-
-def test_generate_name_uses_message_parent_and_conversation_session() -> None:
-    builder = CanonicalTraceBuilder(lambda _info: [])
-    info = GenerateNameTraceInfo(
-        tenant_id="tenant-1",
-        conversation_id="conversation-1",
-        message_id="message-1",
-        inputs="title prompt",
-        outputs="title",
-        metadata={},
-    )
-
-    trace = builder.build(info)
-
-    assert trace is not None
-    assert trace.trace_id == "message-1"
-    assert trace.session_id == "conversation-1"
-    assert trace.required_parent_context_id == "message-1"
-    assert trace.spans[0].parent_id is None
-
-
-@pytest.mark.parametrize(
-    "info",
-    [
-        ModerationTraceInfo(
-            message_id="message-1",
-            message_data=SimpleNamespace(id="message-1"),
-            flagged=False,
-            action="direct_output",
-            preset_response="",
-            query="hello",
-            metadata={},
-        ),
-        SuggestedQuestionTraceInfo(
-            message_id="message-1",
-            message_data=SimpleNamespace(id="message-1"),
-            total_tokens=1,
-            suggested_question=["next"],
-            level="info",
-            metadata={},
-        ),
-        DatasetRetrievalTraceInfo(
-            message_id="message-1",
-            message_data=SimpleNamespace(id="message-1"),
-            documents=[],
-            metadata={},
-        ),
-        ToolTraceInfo(
-            message_id="message-1",
-            tool_name="search",
-            tool_inputs={},
-            tool_outputs="done",
-            tool_config={},
-            time_cost=0.1,
-            tool_parameters={},
-            metadata={},
-        ),
-        GenerateNameTraceInfo(
-            tenant_id="tenant-1",
-            conversation_id="conversation-1",
-            message_id="message-1",
-            metadata={},
-        ),
-    ],
-)
-def test_standalone_message_child_uses_explicit_required_parent(info: BaseTraceInfo) -> None:
-    trace = CanonicalTraceBuilder(lambda _info: []).build(info)
-
-    assert trace is not None
-    assert trace.spans[0].parent_id is None
-    assert trace.required_parent_context_id == "message-1"
-    assert_fragment_is_parent_first(trace)
-
-
 def assert_fragment_is_parent_first(trace: CanonicalTrace) -> None:
     seen: set[str] = set()
     ids = [span.id for span in trace.spans]
@@ -481,56 +266,411 @@ def assert_fragment_is_parent_first(trace: CanonicalTrace) -> None:
         seen.add(span.id)
 
 
-def test_generate_name_without_message_remains_root_in_conversation_session() -> None:
-    builder = CanonicalTraceBuilder(lambda _info: [])
-    info = GenerateNameTraceInfo(
-        tenant_id="tenant-1",
-        conversation_id="conversation-1",
-        inputs="title prompt",
-        outputs="title",
-        metadata={},
+class TestTraceBuilderCases:
+    @staticmethod
+    def test_custom_session_id_wins_over_conversation_id() -> None:
+        info = make_workflow_trace_info(
+            conversation_id="conversation-1",
+            metadata={"trace_session_id": "customer-session"},
+        )
+
+        assert resolve_session_id(info) == "customer-session"
+
+    @staticmethod
+    def test_workflow_session_falls_back_to_conversation_then_run() -> None:
+        assert resolve_session_id(make_workflow_trace_info(conversation_id="conversation-1")) == "conversation-1"
+        assert resolve_session_id(make_workflow_trace_info()) == "run-1"
+
+    @staticmethod
+    def test_nested_workflow_session_falls_back_to_parent_workflow() -> None:
+        info = make_workflow_trace_info(
+            metadata={
+                "parent_trace_context": {
+                    "parent_workflow_run_id": "parent-run",
+                    "parent_node_execution_id": "parent-node-execution",
+                }
+            }
+        )
+
+        assert resolve_session_id(info) == "parent-run"
+
+    @staticmethod
+    def test_message_session_falls_back_to_message_conversation() -> None:
+        info = MessageTraceInfo(
+            conversation_model="chat",
+            message_tokens=0,
+            answer_tokens=0,
+            total_tokens=0,
+            conversation_mode="chat",
+            message_data=SimpleNamespace(conversation_id="conversation-1", created_at=datetime(2025, 1, 1)),
+            metadata={},
+        )
+
+        assert resolve_session_id(info) == "conversation-1"
+
+    @staticmethod
+    def test_chatflow_message_uses_query_while_workflow_keeps_complete_inputs() -> None:
+        builder = CanonicalTraceBuilder(lambda _info: [])
+
+        trace = builder.build(
+            workflow_info(
+                message_id="message-1",
+                query="hi",
+                workflow_run_inputs=CHATFLOW_INPUTS,
+            )
+        )
+
+        assert trace is not None
+        spans = {span.id: span for span in trace.spans}
+        assert trace.root_span_id == "message-1"
+        assert [span.id for span in trace.spans[:2]] == ["message-1", "run-1"]
+        assert spans["message-1"].name == "chatflow_run-1"
+        assert spans["message-1"].inputs == "hi"
+        assert spans["message-1"].metadata["trace_entity_type"] == "message"
+        assert spans["message-1"].publishes_parent_context is True
+        assert spans["run-1"].name == "workflow_run-1"
+        assert spans["run-1"].parent_id == "message-1"
+        assert spans["run-1"].inputs == CHATFLOW_INPUTS
+
+    @staticmethod
+    def test_chatflow_message_falls_back_to_complete_inputs_for_empty_query() -> None:
+        builder = CanonicalTraceBuilder(lambda _info: [])
+
+        trace = builder.build(
+            workflow_info(
+                message_id="message-1",
+                query="",
+                workflow_run_inputs=CHATFLOW_INPUTS,
+            )
+        )
+
+        assert trace is not None
+        assert trace.spans[0].inputs == CHATFLOW_INPUTS
+
+    @staticmethod
+    def test_workflow_without_message_keeps_complete_inputs_on_root() -> None:
+        builder = CanonicalTraceBuilder(lambda _info: [])
+
+        trace = builder.build(workflow_info(query="hi", workflow_run_inputs=CHATFLOW_INPUTS))
+
+        assert trace is not None
+        assert trace.root_span_id == "run-1"
+        assert trace.spans[0].inputs == CHATFLOW_INPUTS
+
+    @staticmethod
+    def test_build_workflow_trace_is_parent_first_and_uses_wrappers() -> None:
+        container = node_execution(id="iteration-exec", node_id="iteration", node_type="iteration", title="Items")
+        child = node_execution(
+            id="llm-exec",
+            node_id="llm",
+            node_type="llm",
+            title="Summarize",
+            iteration_id="iteration",
+            iteration_index=0,
+            process_data={
+                "prompts": [{"role": "user", "text": "hello"}],
+                "model_provider": "openai",
+                "model_name": "gpt-4",
+                "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+            },
+        )
+        loader = MagicMock(return_value=[child, container])
+        builder = CanonicalTraceBuilder(loader)
+
+        trace = builder.build(workflow_info())
+
+        assert trace is not None
+        assert [span.id for span in trace.spans] == [
+            "run-1",
+            "iteration-exec",
+            "iteration:iteration-exec:0",
+            "llm-exec",
+        ]
+        spans = {span.id: span for span in trace.spans}
+        assert spans["llm-exec"].parent_id == "iteration:iteration-exec:0"
+        assert spans["llm-exec"].kind is CanonicalSpanKind.LLM
+        assert spans["llm-exec"].metadata["total_tokens"] == 30
+        loader.assert_called_once()
+
+    @staticmethod
+    def test_workflow_tool_is_marked_as_nested_workflow_parent() -> None:
+        builder = CanonicalTraceBuilder(lambda _info: [node_execution(id="tool-exec")])
+
+        trace = builder.build(workflow_info())
+
+        assert trace is not None
+        assert trace.spans[-1].can_parent_workflow is True
+
+    @staticmethod
+    def test_node_metadata_contains_compact_retry_summary_and_skips_malformed_entries() -> None:
+        history = [
+            retry_attempt(1),
+            "malformed",
+            retry_attempt(True),
+            retry_attempt(2, error="attempt 2 timed out", elapsed_time=2.5),
+            retry_attempt(3),
+        ]
+        builder = CanonicalTraceBuilder(lambda _info: [node_execution(process_data={"__dify_retry_history": history})])
+
+        trace = builder.build(workflow_info())
+
+        assert trace is not None
+        metadata = trace.spans[-1].metadata
+        assert metadata["retry_count"] == 3
+        assert metadata["retry_attempts"] == [
+            {
+                "retry_index": 1,
+                "error": "attempt 1 failed",
+                "elapsed_time": 1.0,
+                "created_at": 1_700_000_000,
+                "finished_at": 1_700_000_001,
+            },
+            {
+                "retry_index": 2,
+                "error": "attempt 2 timed out",
+                "elapsed_time": 2.5,
+                "created_at": 1_700_000_000,
+                "finished_at": 1_700_000_001,
+            },
+            {
+                "retry_index": 3,
+                "error": "attempt 3 failed",
+                "elapsed_time": 3.0,
+                "created_at": 1_700_000_000,
+                "finished_at": 1_700_000_001,
+            },
+        ]
+        assert all("inputs" not in attempt for attempt in metadata["retry_attempts"])
+        assert all("process_data" not in attempt for attempt in metadata["retry_attempts"])
+        assert all("outputs" not in attempt for attempt in metadata["retry_attempts"])
+        assert all("execution_metadata" not in attempt for attempt in metadata["retry_attempts"])
+
+    @staticmethod
+    def test_node_without_retry_history_has_no_retry_metadata() -> None:
+        builder = CanonicalTraceBuilder(lambda _info: [node_execution()])
+
+        trace = builder.build(workflow_info())
+
+        assert trace is not None
+        assert "retry_count" not in trace.spans[-1].metadata
+        assert "retry_attempts" not in trace.spans[-1].metadata
+
+    @staticmethod
+    def test_failed_node_preserves_error_without_mutating_trace_metadata() -> None:
+        metadata = {"app_id": "app-1", "custom": {"nested": True}}
+        original = deepcopy(metadata)
+        builder = CanonicalTraceBuilder(
+            lambda _info: [node_execution(status="failed", error="boom", metadata={"attempt": 1})]
+        )
+
+        trace = builder.build(workflow_info(metadata=metadata))
+
+        assert trace is not None
+        assert trace.spans[-1].status is CanonicalSpanStatus.ERROR
+        assert trace.spans[-1].error == "boom"
+        assert metadata == original
+
+    @staticmethod
+    def test_nested_workflow_exposes_typed_external_parent() -> None:
+        builder = CanonicalTraceBuilder(lambda _info: [])
+        info = workflow_info(
+            metadata={
+                "app_id": "app-1",
+                "parent_trace_context": {
+                    "parent_workflow_run_id": "outer-run",
+                    "parent_node_execution_id": "outer-tool",
+                },
+            }
+        )
+
+        trace = builder.build(info)
+
+        assert trace is not None
+        assert trace.external_parent is not None
+        assert trace.external_parent.parent_node_execution_id == "outer-tool"
+
+    @staticmethod
+    def test_repository_loader_scopes_repository_to_trace(monkeypatch: pytest.MonkeyPatch) -> None:
+        repository = MagicMock()
+        repository.get_by_workflow_execution.return_value = [node_execution()]
+        factory = MagicMock()
+        factory.create_workflow_node_execution_repository.return_value = repository
+        monkeypatch.setattr("core.ops.unified_trace.trace_builder.DifyCoreRepositoryFactory", factory)
+        monkeypatch.setattr("core.ops.unified_trace.trace_builder.db", MagicMock(engine="engine"))
+        account = MagicMock()
+        get_account = MagicMock(return_value=account)
+        loader = RepositoryWorkflowExecutionLoader(get_account)
+        info = workflow_info()
+
+        result = loader(info)
+
+        assert len(result) == 1
+        get_account.assert_called_once_with("app-1")
+        factory.create_workflow_node_execution_repository.assert_called_once()
+        call = factory.create_workflow_node_execution_repository.call_args.kwargs
+        assert call["tenant_id"] == "tenant-1"
+        assert call["app_id"] == "app-1"
+        repository.get_by_workflow_execution.assert_called_once_with(workflow_execution_id="run-1")
+
+    @staticmethod
+    def test_message_trace_does_not_load_workflow_executions() -> None:
+        loader = MagicMock()
+        builder = CanonicalTraceBuilder(loader)
+        info = MessageTraceInfo(
+            conversation_model="chat",
+            message_tokens=2,
+            answer_tokens=3,
+            total_tokens=5,
+            conversation_mode="chat",
+            message_id="message-1",
+            message_data=SimpleNamespace(
+                id="message-1",
+                conversation_id="conversation-1",
+                answer="hello",
+                created_at=datetime(2025, 1, 1),
+                updated_at=datetime(2025, 1, 1, 0, 0, 1),
+            ),
+            inputs="hi",
+            metadata={},
+        )
+
+        trace = builder.build(info)
+
+        assert trace is not None
+        assert trace.root_span_id == "message-1"
+        assert [span.name for span in trace.spans] == ["message", "llm"]
+        assert trace.spans[0].outputs == "hello"
+        assert trace.spans[0].metadata["trace_entity_type"] == "message"
+        assert trace.spans[0].publishes_parent_context is True
+        assert trace.spans[1].parent_id == "message-1"
+        assert trace.spans[1].kind is CanonicalSpanKind.LLM
+        assert trace.spans[1].metadata["total_tokens"] == 5
+        loader.assert_not_called()
+
+    @staticmethod
+    def test_generate_name_uses_message_parent_and_conversation_session() -> None:
+        builder = CanonicalTraceBuilder(lambda _info: [])
+        info = GenerateNameTraceInfo(
+            tenant_id="tenant-1",
+            conversation_id="conversation-1",
+            message_id="message-1",
+            inputs="title prompt",
+            outputs="title",
+            metadata={},
+        )
+
+        trace = builder.build(info)
+
+        assert trace is not None
+        assert trace.trace_id == "message-1"
+        assert trace.session_id == "conversation-1"
+        assert trace.required_parent_context_id == "message-1"
+        assert trace.spans[0].parent_id is None
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "info",
+        [
+            ModerationTraceInfo(
+                message_id="message-1",
+                message_data=SimpleNamespace(id="message-1"),
+                flagged=False,
+                action="direct_output",
+                preset_response="",
+                query="hello",
+                metadata={},
+            ),
+            SuggestedQuestionTraceInfo(
+                message_id="message-1",
+                message_data=SimpleNamespace(id="message-1"),
+                total_tokens=1,
+                suggested_question=["next"],
+                level="info",
+                metadata={},
+            ),
+            DatasetRetrievalTraceInfo(
+                message_id="message-1",
+                message_data=SimpleNamespace(id="message-1"),
+                documents=[],
+                metadata={},
+            ),
+            ToolTraceInfo(
+                message_id="message-1",
+                tool_name="search",
+                tool_inputs={},
+                tool_outputs="done",
+                tool_config={},
+                time_cost=0.1,
+                tool_parameters={},
+                metadata={},
+            ),
+            GenerateNameTraceInfo(
+                tenant_id="tenant-1",
+                conversation_id="conversation-1",
+                message_id="message-1",
+                metadata={},
+            ),
+        ],
     )
+    def test_standalone_message_child_uses_explicit_required_parent(info: BaseTraceInfo) -> None:
+        trace = CanonicalTraceBuilder(lambda _info: []).build(info)
 
-    trace = builder.build(info)
+        assert trace is not None
+        assert trace.spans[0].parent_id is None
+        assert trace.required_parent_context_id == "message-1"
+        assert_fragment_is_parent_first(trace)
 
-    assert trace is not None
-    assert trace.session_id == "conversation-1"
-    assert trace.required_parent_context_id is None
-    assert trace.spans[0].parent_id is None
+    @staticmethod
+    def test_generate_name_without_message_remains_root_in_conversation_session() -> None:
+        builder = CanonicalTraceBuilder(lambda _info: [])
+        info = GenerateNameTraceInfo(
+            tenant_id="tenant-1",
+            conversation_id="conversation-1",
+            inputs="title prompt",
+            outputs="title",
+            metadata={},
+        )
 
+        trace = builder.build(info)
 
-def test_standalone_trace_reuses_persisted_operation_id() -> None:
-    builder = CanonicalTraceBuilder(lambda _info: [])
-    info = GenerateNameTraceInfo(
-        tenant_id="tenant-1",
-        conversation_id="conversation-1",
-        inputs="title prompt",
-        outputs="title",
-        operation_id="00000000-0000-0000-0000-000000000099",
-        metadata={},
-    )
+        assert trace is not None
+        assert trace.session_id == "conversation-1"
+        assert trace.required_parent_context_id is None
+        assert trace.spans[0].parent_id is None
 
-    first = builder.build(info)
-    second = builder.build(info)
+    @staticmethod
+    def test_standalone_trace_reuses_persisted_operation_id() -> None:
+        builder = CanonicalTraceBuilder(lambda _info: [])
+        info = GenerateNameTraceInfo(
+            tenant_id="tenant-1",
+            conversation_id="conversation-1",
+            inputs="title prompt",
+            outputs="title",
+            operation_id="00000000-0000-0000-0000-000000000099",
+            metadata={},
+        )
 
-    assert first is not None
-    assert second is not None
-    assert first.root_span_id == "00000000-0000-0000-0000-000000000099"
-    assert second.root_span_id == first.root_span_id
+        first = builder.build(info)
+        second = builder.build(info)
 
+        assert first is not None
+        assert second is not None
+        assert first.root_span_id == "00000000-0000-0000-0000-000000000099"
+        assert second.root_span_id == first.root_span_id
 
-def test_standalone_trace_accepts_legacy_payload_without_operation_id() -> None:
-    info = GenerateNameTraceInfo.model_validate(
-        {
-            "tenant_id": "tenant-1",
-            "conversation_id": "conversation-1",
-            "inputs": "title prompt",
-            "outputs": "title",
-            "metadata": {},
-        }
-    )
+    @staticmethod
+    def test_standalone_trace_accepts_legacy_payload_without_operation_id() -> None:
+        info = GenerateNameTraceInfo.model_validate(
+            {
+                "tenant_id": "tenant-1",
+                "conversation_id": "conversation-1",
+                "inputs": "title prompt",
+                "outputs": "title",
+                "metadata": {},
+            }
+        )
 
-    trace = CanonicalTraceBuilder(lambda _info: []).build(info)
+        trace = CanonicalTraceBuilder(lambda _info: []).build(info)
 
-    assert trace is not None
-    assert UUID(trace.root_span_id)
+        assert trace is not None
+        assert UUID(trace.root_span_id)

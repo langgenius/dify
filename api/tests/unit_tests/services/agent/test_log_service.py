@@ -37,7 +37,7 @@ from models.tools import ApiToolProvider, ToolFile
 from services.agent.log_contracts import AgentLogAppNotFoundError, AgentLogConfigurationError, AgentLogNotFoundError
 from services.agent.log_service import AgentLogService
 from services.workflow.variable_contracts import WorkflowExecutionVariables
-from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message, make_upload_file
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message, make_upload_file
 
 CONTEXT = RequestContext("request", None, "viewer", "tenant")
 

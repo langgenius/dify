@@ -22,19 +22,18 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/service/base', () => ({
-  get: vi.fn(async () => {
-    if (!mocks.profileLoggedIn) throw createHttpError(new Response(null, { status: 401 }))
-    return new Response(
-      JSON.stringify({
+  request: async (url: string, ...args: unknown[]) => {
+    if (url.endsWith('/account/profile')) {
+      if (!mocks.profileLoggedIn) throw createHttpError(new Response(null, { status: 401 }))
+      return jsonResponse({
         avatar_url: null,
         email: 'user@example.com',
         name: 'Test User',
-      }),
-      { status: 200 },
-    )
-  }),
+      })
+    }
+    return mocks.request(url, ...args)
+  },
   post: vi.fn(),
-  request: (...args: unknown[]) => mocks.request(...args),
   sseGeneratorPost: vi.fn(),
 }))
 

@@ -17,8 +17,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
+from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool_manager import ToolManager as LegacyToolManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
@@ -66,6 +68,7 @@ from repositories.account_activation_repository import SQLAlchemyAccountActivati
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.agent.runtime_repository import WorkflowAgentBindingResolver
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
+from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
@@ -83,6 +86,8 @@ from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.message_repository import MessageRepository
+from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
@@ -113,6 +118,7 @@ from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.workflow_contracts import WorkflowAgentBindingStore
+from services.agent_tracing_config_service import AgentTracingConfigService
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
@@ -153,9 +159,20 @@ from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.knowledge.api_key_service import DatasetApiKeyService
+from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
+from services.knowledge_fs.workflow_runtime import build_knowledge_fs_node_dependencies
+from services.message_feedback_service import MessageFeedbackService
 from services.message_file_preview_service import MessageFilePreviewService
-from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
-from services.message_suggested_questions_service import MessageSuggestedQuestions
+from services.message_more_like_this_generator import MessageMoreLikeThisGenerator
+from services.message_more_like_this_service import MessageMoreLikeThisService
+from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
+from services.message_suggested_questions_queries import SuggestedQuestionsQuery
+from services.message_suggested_questions_service import MessageSuggestedQuestions, MessageSuggestedQuestionsService
+from services.network_access_group_gateway import (
+    BillingNetworkAccessGroupEntitlementGateway,
+    NetworkAccessGroupGateway,
+)
+from services.network_access_group_service import NetworkAccessGroupService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.oauth_device_adapters import (
@@ -199,6 +216,8 @@ from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
+from services.tools.tool_manager import ToolManager
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_authentication_adapters import (
@@ -301,6 +320,7 @@ class ApplicationServices:
     conversation_variables: ConversationVariableQuery
     app_statistics: AppStatisticQuery
     app_tracing_configs: AppTracingConfigService
+    agent_tracing_configs: AgentTracingConfigService
     billing_portal: BillingPortalService
     compliance_downloads: ComplianceDownloadService
     data_sources: DataSourceServices
@@ -316,8 +336,10 @@ class ApplicationServices:
     file_grants: FileGrantService
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
+    message_feedbacks: MessageFeedbackService
     message_file_previews: MessageFilePreviewService
     message_suggested_questions: MessageSuggestedQuestions
+    message_more_like_this: MessageMoreLikeThisService
     plugin_file_uploads: PluginFileUploadService
     tool_file_downloads: ToolFileDownloadService
     upload_file_delivery: UploadFileDeliveryService
@@ -326,6 +348,7 @@ class ApplicationServices:
     init_validation: InitValidationService
     installed_apps: InstalledAppServices
     notifications: NotificationService
+    network_access_groups: NetworkAccessGroupService
     step_by_step_tour: StepByStepTourService
     recommended_app_queries: RecommendedAppQueryService
     recommended_app_packages: RecommendedAppPackageService
@@ -487,6 +510,10 @@ def build_application_services(
         apps=console_apps,
         datasets=dataset_dependencies.datasets,
     )
+    tracing_configs = AppTracingConfigService(
+        configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
+        provider=OpsTraceManagerGateway(),
+    )
     apps = build_app_services(
         database_client=database_client,
         oauth=oauth_server,
@@ -495,6 +522,7 @@ def build_application_services(
         workflow_queries=tools.workflow_queries,
         repository=console_apps,
         rbac_members=rbac.members,
+        tracing_configs=tracing_configs,
     )
     tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
     workflow_variables = build_workflow_variable_service(database_client=database_client)
@@ -553,6 +581,12 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
     )
+    messages = MessageRepository(session_factory=database_client)
+    suggested_questions = SuggestedQuestionsQuery(
+        session_factory=database_client,
+        repository=messages,
+    )
+
     return ApplicationServices(
         tools=tools,
         human_input_debug=build_human_input_debug_service(database_client=database_client),
@@ -598,9 +632,11 @@ def build_application_services(
         ),
         resource_access_tokens=build_resource_access_token_service(database_client=database_client),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
-        app_tracing_configs=AppTracingConfigService(
-            configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
-            provider=OpsTraceManagerGateway(),
+        app_tracing_configs=tracing_configs,
+        agent_tracing_configs=AgentTracingConfigService(
+            owners=AgentAppRepository(session_factory=database_client),
+            settings=apps.console,
+            configs=tracing_configs,
         ),
         billing_portal=BillingPortalService(
             accounts=accounts,
@@ -687,11 +723,19 @@ def build_application_services(
             files=file_service,
             remote_files=remote_file_service,
         ),
+        message_feedbacks=MessageFeedbackService(repository=messages),
         message_file_previews=MessageFilePreviewService(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
             storage=storage,
         ),
-        message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=database_client),
+        message_more_like_this=MessageMoreLikeThisService(
+            repository=messages,
+            generator=MessageMoreLikeThisGenerator(session_factory=database_client),
+        ),
+        message_suggested_questions=MessageSuggestedQuestionsService(
+            queries=suggested_questions,
+            generator=SuggestedQuestionsGenerator(),
+        ),
         plugin_file_uploads=PluginFileUploadService(
             owners=SQLAlchemyPluginFileUploadOwnerRepository(session_factory=database_client),
             files=ToolFilePluginUploadGateway(tool_files=ToolFileManager()),
@@ -715,6 +759,16 @@ def build_application_services(
         ),
         notifications=NotificationService(
             notifications=BillingNotificationGateway(),
+        ),
+        network_access_groups=NetworkAccessGroupService(
+            control_plane=NetworkAccessGroupGateway(
+                base_url=dify_config.NETWORK_ACCESS_API_URL,
+                fallback_base_url=BillingService.base_url,
+                secret_key=BillingService.secret_key,
+            ),
+            apps=SQLAlchemyNetworkAccessGroupAppRepository(session_factory=database_client),
+            memberships=workspace_repository,
+            entitlement=BillingNetworkAccessGroupEntitlementGateway(),
         ),
         step_by_step_tour=StepByStepTourService(
             accounts=accounts,
@@ -785,6 +839,10 @@ def build_application_services(
 def init_app(app: Flask) -> None:
     from extensions.ext_login import bind_account_loader
 
+    app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
+    ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+    # Legacy workflow execution and saved trace extras still resolve providers here.
+    LegacyToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
     services = build_application_services(
         database_client=get_session_maker(),
         deployment_edition=dify_config.DEPLOYMENT_EDITION,
@@ -792,6 +850,7 @@ def init_app(app: Flask) -> None:
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
+    bind_application_tracing_hooks(app, RuntimeApplicationTracingHooks())
     bind_account_loader(app, services.accounts.identity.load_user)
 
 

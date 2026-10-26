@@ -19,8 +19,8 @@ from models.snippet import CustomizedSnippet
 from models.workflow import Workflow
 from repositories.workflow.definition_repository import workflow_record, workflow_snapshot
 from services.workflow.contracts import WorkflowRecord
-from tests.unit_tests.controllers.error_body import raised_error
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.controllers.error_body import raised_error
+from tests.helpers.unit.model_factories import make_account
 
 
 def _account(account_id: str = "account-1") -> Account:

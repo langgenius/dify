@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 from unittest.mock import create_autospec
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -19,8 +20,10 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
-from models.agent_config_entities import AgentSoulToolsConfig
+from core.tools.plugin_tool.tool import PluginTool
+from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulToolsConfig
 from models.tool_runtime_contracts import WorkflowToolQueries
+from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
 from services.tools.tool_manager import ToolManager
 from services.workflow.execution.adapters.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolsBuilder,
@@ -78,18 +81,26 @@ class FakeRuntimeProvider:
         return self.tool
 
 
-class FakeTool(Tool):
-    def tool_provider_type(self):
+class FakeTool(PluginTool):
+    plugin_unique_identifier = "langgenius/search:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+    def __init__(self, entity: ToolEntity, runtime: ToolRuntime) -> None:
+        super().__init__(entity, runtime, runtime.tenant_id, "icon.svg", self.plugin_unique_identifier)
+
+    @override
+    def tool_provider_type(self) -> ToolProviderType:
         raise NotImplementedError
 
+    @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage]:
+    ) -> Generator[ToolInvokeMessage]:
         raise NotImplementedError
 
 
@@ -696,6 +707,159 @@ def test_rejects_missing_required_runtime_parameter(tool_providers):
 
     with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, tools)
+
+    assert exc_info.value.error_code == "agent_tool_runtime_parameter_missing"
+
+
+@pytest.mark.parametrize("tool_name", ["create_research_task", None])
+def test_research_tool_uses_sole_bound_agent_knowledge_space(tool_providers, tool_name: str | None) -> None:
+    tool = KnowledgeFSProvider().get_tool("create_research_task")
+    assert tool is not None
+    runtime_provider = FakeRuntimeProvider(tool)
+    builder = WorkflowAgentDifyToolsBuilder(
+        tool_providers=tool_providers,
+        workflow_queries=_workflow_queries(),
+        tool_runtime_provider=runtime_provider,
+        provider_tools_lister=lambda **_kwargs: ["create_research_task"],
+    )
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "knowledge_fs",
+                    "provider_type": "builtin",
+                    "tool_name": tool_name,
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        tools=tools,
+        invoke_from=InvokeFrom.DEBUGGER,
+        knowledge_fs_spaces=(
+            AgentKnowledgeSpaceConfig(
+                id="docs",
+                control_space_id="00000000-0000-4000-8000-000000000001",
+                name="Docs",
+            ),
+        ),
+    )
+
+    assert result.core_tools is not None
+    assert len(result.core_tools.tools) == 1
+    prepared = result.core_tools.tools[0]
+    resource = {"kind": "knowledge_fs", "control_space_id": "00000000-0000-4000-8000-000000000001"}
+    assert runtime_provider.last_agent_tool is not None
+    assert runtime_provider.last_agent_tool.tool_parameters["resource"] == resource
+    assert prepared.runtime_parameters["resource"] == resource
+    assert prepared.name == "create_research_task"
+    assert prepared.tool_name == "create_research_task"
+    assert "resource" not in prepared.parameters_json_schema["properties"]
+
+
+@pytest.mark.parametrize("tool_name", ["create_research_task", None])
+def test_research_tool_exposes_one_choice_per_bound_agent_knowledge_space(
+    tool_providers, tool_name: str | None
+) -> None:
+    tool = KnowledgeFSProvider().get_tool("create_research_task")
+    assert tool is not None
+    builder = WorkflowAgentDifyToolsBuilder(
+        tool_providers=tool_providers,
+        workflow_queries=_workflow_queries(),
+        tool_runtime_provider=FakeRuntimeProvider(tool),
+        provider_tools_lister=lambda **_kwargs: ["create_research_task"],
+    )
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "knowledge_fs",
+                    "provider_type": "builtin",
+                    "tool_name": tool_name,
+                    "credential_type": "unauthorized",
+                    "runtime_parameters": {"resource": "untrusted-selection"},
+                }
+            ]
+        }
+    )
+    spaces = (
+        AgentKnowledgeSpaceConfig(
+            id="product",
+            control_space_id="00000000-0000-4000-8000-000000000001",
+            name="Product Docs",
+            description="Product specifications and guides",
+        ),
+        AgentKnowledgeSpaceConfig(
+            id="support",
+            control_space_id="00000000-0000-4000-8000-000000000002",
+            name="Support Docs",
+        ),
+    )
+
+    result = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        tools=tools,
+        invoke_from=InvokeFrom.DEBUGGER,
+        knowledge_fs_spaces=spaces,
+    )
+
+    assert result.core_tools is not None
+    assert [prepared.name for prepared in result.core_tools.tools] == [
+        "create_research_task_1",
+        "create_research_task_2",
+    ]
+    assert [prepared.tool_name for prepared in result.core_tools.tools] == [
+        "create_research_task",
+        "create_research_task",
+    ]
+    for prepared, space in zip(result.core_tools.tools, spaces, strict=True):
+        assert prepared.runtime_parameters["resource"] == {
+            "kind": "knowledge_fs",
+            "control_space_id": space.control_space_id,
+        }
+        assert space.name in prepared.description
+        assert space.id in prepared.description
+        if space.description:
+            assert space.description in prepared.description
+        assert "resource" not in prepared.parameters_json_schema["properties"]
+
+
+def test_research_tool_without_single_bound_space_still_requires_resource(tool_providers) -> None:
+    tool = KnowledgeFSProvider().get_tool("create_research_task")
+    assert tool is not None
+    builder = WorkflowAgentDifyToolsBuilder(
+        tool_providers=tool_providers,
+        workflow_queries=_workflow_queries(),
+        tool_runtime_provider=FakeRuntimeProvider(tool),
+    )
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "knowledge_fs",
+                    "provider_type": "builtin",
+                    "tool_name": "create_research_task",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
+        builder.build_layers(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            user_id="user-1",
+            tools=tools,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
 
     assert exc_info.value.error_code == "agent_tool_runtime_parameter_missing"
 

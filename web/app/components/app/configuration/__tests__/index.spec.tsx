@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import Configuration from '../index'
 import { toast } from '../toast'
 
@@ -23,7 +23,7 @@ describe('Configuration', () => {
   it('routes configuration notifications to their own viewport', async () => {
     render(
       <>
-        <AppToastHost />
+        <AppToaster />
         <Configuration />
       </>,
     )

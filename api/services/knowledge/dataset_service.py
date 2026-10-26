@@ -49,6 +49,7 @@ from models.dataset import (
     DocumentSegment,
     ExternalKnowledgeBindings,
     Pipeline,
+    build_built_in_field_values,
 )
 from models.enums import (
     DatasetRuntimeMode,
@@ -157,7 +158,7 @@ class DatasetService:
         tag_ids=None,
         include_all=False,
         accessible_dataset_ids: list[str] | None = None,
-        include_own_datasets: bool = False,
+        creator_ids: list[str] | None = None,
         *,
         tags: TagTargetQuery,
     ):
@@ -166,7 +167,7 @@ class DatasetService:
 
         if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
-            if include_own_datasets and user:
+            if user:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             query = query.where(accessible_filter)
 
@@ -235,6 +236,9 @@ class DatasetService:
             escaped_search = helper.escape_like_pattern(search)
             query = query.where(Dataset.name.ilike(f"%{escaped_search}%", escape="\\"))
 
+        if creator_ids:
+            query = query.where(Dataset.created_by.in_(creator_ids))
+
         # Check if tag_ids is not empty to avoid WHERE false condition
         if tag_ids and len(tag_ids) > 0:
             if tenant_id is not None:
@@ -278,7 +282,6 @@ class DatasetService:
         tenant_id: str,
         user=None,
         accessible_dataset_ids: list[str] | None = None,
-        include_own_datasets: bool = False,
         *,
         session: Session,
     ):
@@ -290,7 +293,7 @@ class DatasetService:
             ids,
             session=session,
             accessible_dataset_ids=accessible_dataset_ids if dify_config.RBAC_ENABLED else None,
-            maintainer_id=user.id if include_own_datasets and user else None,
+            maintainer_id=user.id if user else None,
         )
         return datasets, len(datasets)
 
@@ -1777,22 +1780,27 @@ class DocumentService:
 
     @staticmethod
     def delete_document(document, session: Session):
-        # trigger document_was_deleted signal
         file_id = None
         if document.data_source_type == DataSourceType.UPLOAD_FILE:
             if document.data_source_info:
                 data_source_info = document.data_source_info_dict
                 if data_source_info and "upload_file_id" in data_source_info:
                     file_id = data_source_info["upload_file_id"]
-        document_was_deleted.send(
-            document.id,
-            dataset_id=document.dataset_id,
-            doc_form=document.doc_form,
-            file_id=file_id,
-        )
+        # Read everything cleanup needs before the row is deleted and expired.
+        document_id, dataset_id, doc_form = document.id, document.dataset_id, document.doc_form
 
         session.delete(document)
         session.commit()
+
+        # Dispatch cleanup only after the deletion commits, as bulk deletion does. An
+        # in-flight indexing run either sees the document gone and discards what it
+        # wrote, or finished writing before the commit, so cleanup still finds it.
+        document_was_deleted.send(
+            document_id,
+            dataset_id=dataset_id,
+            doc_form=doc_form,
+            file_id=file_id,
+        )
 
     @staticmethod
     def delete_documents(
@@ -1980,7 +1988,7 @@ class DocumentService:
         knowledge_config: KnowledgeConfig,
         account: Account | Any,
         dataset_process_rule: DatasetProcessRule | None = None,
-        created_from: str = DocumentCreatedFrom.WEB,
+        created_from: DocumentCreatedFrom = DocumentCreatedFrom.WEB,
         *,
         session: Session,
     ) -> tuple[list[Document], str]:
@@ -2247,7 +2255,7 @@ class DocumentService:
                     if knowledge_config.duplicate and document:
                         document.dataset_process_rule_id = dataset_process_rule.id
                         document.updated_at = naive_utc_now()
-                        document.created_from = created_from
+                        document.created_from = DocumentCreatedFrom(created_from)
                         document.doc_form = IndexStructureType(knowledge_config.doc_form)
                         document.doc_language = knowledge_config.doc_language
                         document.data_source_info = json.dumps(data_source_info)
@@ -2294,6 +2302,8 @@ class DocumentService:
                 )
                 if documents:
                     for document in documents:
+                        if document.data_source_info is None:
+                            raise ValueError("Notion document data source information is missing.")
                         data_source_info = json.loads(document.data_source_info)
                         exist_page_ids.append(data_source_info["notion_page_id"])
                         exist_document[data_source_info["notion_page_id"]] = document.id
@@ -2695,32 +2705,33 @@ class DocumentService:
         if dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True:
             need_summary = True
 
+        document_data_source_type: DataSourceType = DataSourceType(data_source_type)
+        document_created_from: DocumentCreatedFrom = DocumentCreatedFrom(created_from)
+        document_form_type: IndexStructureType = IndexStructureType(document_form)
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=position,
-            data_source_type=data_source_type,
+            data_source_type=document_data_source_type,
             data_source_info=json.dumps(data_source_info),
             dataset_process_rule_id=process_rule_id,
             batch=batch,
             name=name,
-            created_from=created_from,
+            created_from=document_created_from,
             created_by=account.id,
-            doc_form=document_form,
+            doc_form=document_form_type,
             doc_language=document_language,
             need_summary=need_summary,
         )
-        doc_metadata = {}
         if dataset.built_in_field_enabled:
-            doc_metadata = {
-                BuiltInField.document_name: name,
-                BuiltInField.uploader: account.name,
-                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.source: data_source_type,
-            }
-        if doc_metadata:
-            document.doc_metadata = doc_metadata
+            now = naive_utc_now()
+            document.doc_metadata = build_built_in_field_values(
+                document_name=name,
+                uploader=account.name,
+                upload_date=now,
+                last_update_date=now,
+                data_source_type=data_source_type,
+            )
         return document
 
     @staticmethod
@@ -2860,7 +2871,10 @@ class DocumentService:
                             "only_main_content": website_info.only_main_content,
                             "mode": "crawl",
                         }
-            document.data_source_type = document_data.data_source.info_list.data_source_type
+            updated_data_source_type: DataSourceType = DataSourceType(
+                document_data.data_source.info_list.data_source_type
+            )
+            document.data_source_type = updated_data_source_type
             document.data_source_info = json.dumps(data_source_info)
             document.name = file_name
 
@@ -2875,8 +2889,10 @@ class DocumentService:
         document.cleaning_completed_at = None
         document.splitting_completed_at = None
         document.updated_at = naive_utc_now()
-        document.created_from = created_from
-        document.doc_form = IndexStructureType(document_data.doc_form)
+        updated_created_from: DocumentCreatedFrom = DocumentCreatedFrom(created_from)
+        updated_doc_form: IndexStructureType = IndexStructureType(document_data.doc_form)
+        document.created_from = updated_created_from
+        document.doc_form = updated_doc_form
         session.add(document)
         session.commit()
         # update document segment

@@ -9,7 +9,7 @@ from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchem
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models.workflow import WorkflowRun, WorkflowRunTriggeredFrom
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 def test_delayed_start_write_does_not_revive_a_completed_execution(

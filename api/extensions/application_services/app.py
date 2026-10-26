@@ -15,6 +15,7 @@ from repositories.app.dsl_import_repository import DslImportRepository
 from repositories.app.enterprise_app_repository import EnterpriseAppRepository
 from repositories.app.export_repository import AppExportRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.trigger.app_repository import SQLAlchemyAppTriggerRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
@@ -30,11 +31,12 @@ from services.app.import_service import AppImportService
 from services.app.query_service import AppDiscoveryService
 from services.app_dsl_service import AppDslService
 from services.app_package_service import AppPackageService
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
+from services.app_tracing_config_service import AppTracingConfigService
 from services.oauth_server_service import OAuthServerService
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.tools.provider_queries import ToolProviders
+from services.trigger.app_trigger_store import AppTriggerStore
 from services.workflow.dsl_import import DslImportService
 
 
@@ -46,6 +48,7 @@ class AppServices:
     discovery: AppDiscoveryService
     console: ConsoleAppService
     enterprise: EnterpriseAppService
+    triggers: AppTriggerStore
 
 
 def build_app_services(
@@ -57,6 +60,7 @@ def build_app_services(
     recommended_packages: RecommendedAppPackageService,
     repository: ConsoleAppRepository,
     rbac_members: MemberService,
+    tracing_configs: AppTracingConfigService,
 ) -> AppServices:
     transfers = AppTransferGateway(
         session_factory=database_client,
@@ -82,10 +86,10 @@ def build_app_services(
             access=EnterpriseConsoleAppAccess(members=rbac_members),
             transfers=transfers,
             creators=CreatorsPlatformGateway(oauth=oauth),
-            tracing=OpsTraceManagerGateway(),
             lifecycle=AppLifecycleGateway(
                 session_factory=database_client, tool_providers=tool_providers, workflow_queries=workflow_queries
             ),
+            tracing=tracing_configs,
         ),
         enterprise=EnterpriseAppService(
             apps=EnterpriseAppRepository(
@@ -96,6 +100,7 @@ def build_app_services(
             workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker=database_client),
             now=naive_utc_now,
         ),
+        triggers=SQLAlchemyAppTriggerRepository(session_factory=database_client),
     )
 
 

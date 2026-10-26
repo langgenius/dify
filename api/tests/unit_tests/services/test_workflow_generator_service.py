@@ -37,7 +37,7 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from services.tools.tool_manager import ToolManager
 from services.workflow.generation.runner import WorkflowGenerator
 from services.workflow_generator_service import WorkflowGeneratorService
-from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 TENANT_ID = "t-1"
 PROVIDER = "langgenius/openai/openai"

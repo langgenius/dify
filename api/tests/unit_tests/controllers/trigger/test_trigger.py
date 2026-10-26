@@ -4,7 +4,6 @@ from unittest.mock import patch
 import pytest
 
 import controllers.trigger.trigger as module
-from controllers.common.errors import NotFoundError
 
 
 @pytest.fixture(autouse=True)
@@ -23,8 +22,9 @@ INVALID_UUID = "not-a-uuid"
 
 class TestTriggerEndpoint:
     def test_invalid_uuid(self):
-        with pytest.raises(NotFoundError):
-            module.trigger_endpoint(INVALID_UUID)
+        response = module.trigger_endpoint(INVALID_UUID)
+        assert response.status_code == 404
+        assert response.data == b'{"error":"Endpoint not found"}'
 
     @patch.object(module.TriggerService, "process_endpoint")
     @patch.object(module.TriggerSubscriptionBuilderService, "process_builder_validation_endpoint")
@@ -53,10 +53,9 @@ class TestTriggerEndpoint:
         mock_trigger.return_value = None
         mock_builder.return_value = None
 
-        response, status = module.trigger_endpoint(VALID_UUID)
-
-        assert status == 404
-        assert response["error"] == "Endpoint not found"
+        response = module.trigger_endpoint(VALID_UUID)
+        assert response.status_code == 404
+        assert response.data == b'{"error":"Endpoint not found"}'
 
     @patch.object(module.TriggerService, "process_endpoint", side_effect=ValueError("bad input"))
     def test_value_error(self, mock_trigger):

@@ -18,7 +18,7 @@ from services.rag_pipeline.publication_contracts import EmbeddingModel
 from services.rag_pipeline.publication_gateway import PipelinePublicationModelGateway
 from services.rag_pipeline.publication_service import PipelinePublicationService
 from services.workflow.contracts import WorkflowSnapshot
-from tests.unit_tests.model_factories import make_dataset, make_workflow
+from tests.helpers.unit.model_factories import make_dataset, make_workflow
 
 CONTEXT = RequestContext("publish", None, "account-1", "tenant-1")
 

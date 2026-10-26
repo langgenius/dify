@@ -263,7 +263,7 @@ const QueryInput = ({
       )}
     >
       <div className="flex h-full flex-col overflow-hidden rounded-[10px] bg-background-section-burn">
-        <div className="relative flex shrink-0 items-center justify-between p-1.5 pb-1 pl-3">
+        <div className="relative flex shrink-0 items-center justify-between p-1.5 ps-3 pb-1">
           <label
             htmlFor={textareaId}
             className="system-sm-semibold-uppercase text-text-secondary"

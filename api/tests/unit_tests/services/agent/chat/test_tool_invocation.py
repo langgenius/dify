@@ -27,7 +27,7 @@ from models.model import Message
 from services.agent.chat.cot_runner import CotAgentRunner
 from services.agent.chat.ports import AgentToolInvoker
 from services.app.generation.ports import AgentMessageRecords, MessageFileWriter
-from tests.unit_tests.model_factories import make_message
+from tests.helpers.unit.model_factories import make_message
 
 
 class _TrackingSession(Session):

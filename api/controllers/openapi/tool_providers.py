@@ -53,11 +53,11 @@ from core.tools.entities.api_entities import (
 )
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.tool_manager import ToolManager
 from extensions.ext_application_services import application_services
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.tools.mcp_tools_manage_service import MCPToolManageService
+from services.tools.tool_manager import ToolManager
 
 _PROVIDER_EXAMPLE: Final = "langgenius/tavily/tavily"
 _ToolProviderController = BuiltinToolProviderController | PluginToolProviderController

@@ -1,6 +1,7 @@
 import contextlib
 import json
 from dataclasses import replace
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, create_autospec
 
@@ -15,6 +16,7 @@ from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from graphon.variable_loader import VariableLoader
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DataSourceType, EndUserType
@@ -160,7 +162,7 @@ def _persist_worker_records(session: Session) -> None:
         type=EndUserType.BROWSER,
         session_id="session",
         name="User",
-        is_anonymous=True,
+        _is_anonymous=True,
     )
     session.add_all([workflow, end_user])
     session.commit()
@@ -606,7 +608,10 @@ def test_handle_response_value_error_triggers_generate_task_stopped(generator, m
         )
 
 
-def test_build_document_sets_metadata_for_builtin_fields():
+def test_build_document_sets_metadata_for_builtin_fields(monkeypatch: pytest.MonkeyPatch):
+    created_at = datetime(2026, 10, 16, 8, 0, 0)
+    monkeypatch.setattr("services.rag_pipeline.document_preparation.naive_utc_now", lambda: created_at)
+
     document = prepare_pipeline_document(
         built_in_field_enabled=True,
         datasource_type=DatasourceProviderType.LOCAL_FILE,
@@ -615,7 +620,13 @@ def test_build_document_sets_metadata_for_builtin_fields():
     )
 
     assert document.name == "file"
-    assert document.doc_metadata
+    assert document.doc_metadata == {
+        BuiltInField.document_name: "file",
+        BuiltInField.uploader: "User",
+        BuiltInField.upload_date: 1792137600,
+        BuiltInField.last_update_date: 1792137600,
+        BuiltInField.source: "file_upload",
+    }
 
 
 def test_build_document_supports_online_drive_datasource_type():

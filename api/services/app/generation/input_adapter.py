@@ -37,9 +37,9 @@ class AppInputAdapter:  # noqa: B903
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
         workflow_runtime: WorkflowRuntime | None = None,
     ) -> None:
-        self._draft_variable_loader = draft_variable_loader
-        self._draft_variable_saver = draft_variable_saver
-        self._workflow_runtime = workflow_runtime
+        self.draft_variable_loader = draft_variable_loader
+        self.draft_variable_saver = draft_variable_saver
+        self.workflow_runtime = workflow_runtime
 
     @staticmethod
     def _bind_file_access_scope(
@@ -258,9 +258,9 @@ class AppInputAdapter:  # noqa: B903
         if invoke_from == InvokeFrom.DEBUGGER:
             assert isinstance(account, Account)
 
-            if self._draft_variable_saver is None:
+            if self.draft_variable_saver is None:
                 raise ValueError("Draft variable saver is required for debugging")
-            return self._draft_variable_saver(tenant_id, account)
+            return self.draft_variable_saver(tenant_id, account)
         else:
 
             def draft_var_saver_factory(

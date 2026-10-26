@@ -6,7 +6,7 @@ from typing import Protocol
 from configs import dify_config
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDatasourceProviderEntity
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
 from core.plugin.plugin_service import PluginService
@@ -19,6 +19,7 @@ from services.data_source.credential_gateway import (
     RefreshedDatasourceCredential,
 )
 from services.data_source.entities.credential import DatasourceCredentialRecord, DatasourceOAuthClientConfigRecord
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 
 class DatasourceOAuthClientConfigReader(Protocol):
@@ -32,7 +33,7 @@ class DatasourceOAuthClientConfigReader(Protocol):
 
 
 class DatasourceOAuthClientResolver(Protocol):
-    def resolve(self, *, workspace_id: str, provider_id: DatasourceProviderID) -> dict[str, object]: ...
+    def resolve(self, *, workspace_id: str, provider_id: DatasourceProviderID) -> PluginOAuthClientConfig: ...
 
 
 class PluginDatasourceCredentialCodec:
@@ -74,9 +75,16 @@ def transform_secret_fields(
 
 
 def datasource_secret_variables(
-    manager: PluginDatasourceManager, workspace_id: str, provider_id: str, credential_type: CredentialType
+    manager: PluginDatasourceManager,
+    workspace_id: str,
+    provider_id: str,
+    credential_type: CredentialType,
+    *,
+    provider_declaration: PluginDatasourceProviderEntity | None = None,
 ) -> tuple[str, ...]:
-    provider = manager.fetch_datasource_provider(tenant_id=workspace_id, provider_id=provider_id)
+    provider = provider_declaration or manager.fetch_datasource_provider(
+        tenant_id=workspace_id, provider_id=provider_id
+    )
     if credential_type == CredentialType.API_KEY:
         schemas = provider.declaration.credentials_schema
     elif credential_type == CredentialType.OAUTH2:
@@ -100,7 +108,7 @@ class PluginDatasourceOAuthClientResolver:
         self._configs = configs
         self._provider_manager = provider_manager
 
-    def resolve(self, *, workspace_id: str, provider_id: DatasourceProviderID) -> dict[str, object]:
+    def resolve(self, *, workspace_id: str, provider_id: DatasourceProviderID) -> PluginOAuthClientConfig:
         config = self._configs.get_oauth_client_config(
             workspace_id=workspace_id,
             provider=provider_id.provider_name,
@@ -117,11 +125,13 @@ def resolve_datasource_oauth_client(
     workspace_id: str,
     provider_id: DatasourceProviderID,
     provider_manager: PluginDatasourceManager,
-) -> dict[str, object]:
-    provider = provider_manager.fetch_datasource_provider(
+    provider_declaration: PluginDatasourceProviderEntity | None = None,
+) -> PluginOAuthClientConfig:
+    provider = provider_declaration or provider_manager.fetch_datasource_provider(
         tenant_id=workspace_id,
         provider_id=str(provider_id),
     )
+    plugin_unique_identifier = provider.plugin_unique_identifier
     if config.encrypted_tenant_params is not None:
         oauth_schema = provider.declaration.oauth_schema
         if oauth_schema is None:
@@ -131,12 +141,14 @@ def resolve_datasource_oauth_client(
             config=[item.to_basic_provider_config() for item in oauth_schema.client_schema],
             cache=NoOpProviderCredentialCache(),
         )
-        return dict(credential_encrypter.decrypt(dict(config.encrypted_tenant_params)))
+        return PluginOAuthClientConfig(
+            plugin_unique_identifier, dict(credential_encrypter.decrypt(dict(config.encrypted_tenant_params)))
+        )
 
     if config.system_credentials is not None and PluginService.is_plugin_verified(
-        workspace_id, provider.plugin_unique_identifier
+        workspace_id, plugin_unique_identifier
     ):
-        return dict(config.system_credentials)
+        return PluginOAuthClientConfig(plugin_unique_identifier, dict(config.system_credentials))
     raise DatasourceCredentialError(f"OAuth client is not configured for {provider_id}")
 
 
@@ -182,7 +194,7 @@ def refresh_datasource_credential(
     workspace_id: str,
     actor_id: str,
     provider_id: DatasourceProviderID,
-    system_credentials: Mapping[str, object],
+    system_credentials: PluginOAuthClientConfig,
     credentials: Mapping[str, object],
 ) -> RefreshedDatasourceCredential:
     refreshed = handler.refresh_credentials(
@@ -191,7 +203,8 @@ def refresh_datasource_credential(
         plugin_id=provider_id.plugin_id,
         provider=provider_id.provider_name,
         redirect_uri=f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback",
-        system_credentials=dict(system_credentials),
+        system_credentials=dict(system_credentials.credentials),
+        plugin_unique_identifier=system_credentials.plugin_unique_identifier,
         credentials=dict(credentials),
     )
     return RefreshedDatasourceCredential(credentials=dict(refreshed.credentials), expires_at=refreshed.expires_at)

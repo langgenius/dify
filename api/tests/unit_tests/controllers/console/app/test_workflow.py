@@ -91,10 +91,8 @@ def test_sync_invalid_input_does_not_dispatch(
                 invoke(controller.DraftWorkflowApi, controller.DraftWorkflowApi.post)
             assert error.value.code == status
         else:
-            assert invoke(controller.DraftWorkflowApi, controller.DraftWorkflowApi.post) == (
-                {"message": "Invalid JSON data"},
-                status,
-            )
+            with pytest.raises(InvalidArgumentError, match="Invalid JSON data"):
+                invoke(controller.DraftWorkflowApi, controller.DraftWorkflowApi.post)
     workflows.sync.assert_not_called()
 
 
@@ -286,15 +284,13 @@ def test_convert_delegates_permissions_result(workflows: Mock) -> None:
 
 
 def test_update_empty_payload_does_not_dispatch(workflows: Mock) -> None:
-    assert invoke(
-        controller.WorkflowByIdApi,
-        controller.WorkflowByIdApi.patch,
-        controller.WorkflowUpdatePayload(),
-        workflow_id="version",
-    ) == (
-        {"message": "No valid fields to update"},
-        400,
-    )
+    with pytest.raises(InvalidArgumentError, match="No valid fields to update"):
+        invoke(
+            controller.WorkflowByIdApi,
+            controller.WorkflowByIdApi.patch,
+            controller.WorkflowUpdatePayload(),
+            workflow_id="version",
+        )
     workflows.update.assert_not_called()
 
 

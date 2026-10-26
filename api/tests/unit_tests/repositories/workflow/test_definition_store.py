@@ -29,7 +29,7 @@ from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.workflow.contracts import WorkflowOwner
 from services.workflow_ref_service import WorkflowRef
-from tests.unit_tests.model_factories import make_tenant
+from tests.helpers.unit.model_factories import make_tenant
 from tests.unit_tests.services.test_workflow_service import TestWorkflowAssociatedDataFactory
 
 

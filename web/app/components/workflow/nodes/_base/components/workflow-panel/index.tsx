@@ -38,7 +38,7 @@ import {
   editorResourceAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
+import { NodeActionsMenu } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useSetWorkflowNodePanelWidth } from '@/app/components/workflow/persistence/local-storage-options'
 import { useLogs } from '@/app/components/workflow/run/hooks'
@@ -685,7 +685,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                 </Tooltip>
               )}
               <HelpLink nodeType={nodeMetaType} />
-              <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
+              <NodeActionsMenu id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <IconButton
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
