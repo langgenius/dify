@@ -15,7 +15,7 @@ from enum import StrEnum
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
-from flask import request, session
+from flask import request
 from werkzeug.exceptions import TooManyRequests, Unauthorized
 
 from configs import dify_config
@@ -24,7 +24,7 @@ from libs.helper import RateLimiter, extract_remote_ip
 
 class RateLimitScope(StrEnum):
     IP = "ip"
-    SESSION = "session"
+    CONSOLE_ACCOUNT = "console_account"
     ACCOUNT = "account"
     SUBJECT_EMAIL = "subject_email"
     TOKEN_ID = "token_id"
@@ -51,7 +51,7 @@ LIMIT_DEVICE_FLOW_APPROVE = RateLimit(
     name="device_flow_approve",
     limit=dify_config.DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR,
     window=timedelta(hours=1),
-    scopes=(RateLimitScope.SESSION,),
+    scopes=(RateLimitScope.CONSOLE_ACCOUNT,),
 )
 LIMIT_LOOKUP_PUBLIC = RateLimit(
     name="lookup_public", limit=60, window=timedelta(minutes=5), scopes=(RateLimitScope.IP,)
@@ -74,8 +74,13 @@ def _ip_key() -> str:
     return f"ip:{ip}"
 
 
-def _session_key() -> str:
-    return f"session:{session.get('_id', 'anon')}"
+def _console_account_key() -> str:
+    from libs.login import current_account_with_tenant_optional
+
+    account, _ = current_account_with_tenant_optional()
+    if not account:
+        raise Unauthorized("rate_limit_identity_missing")
+    return f"console_account:{account.id}"
 
 
 def _account_key() -> str:
@@ -107,7 +112,7 @@ def _token_id_key() -> str:
 
 _SCOPE_KEYS: Mapping[RateLimitScope, Callable[[], str]] = {
     RateLimitScope.IP: _ip_key,
-    RateLimitScope.SESSION: _session_key,
+    RateLimitScope.CONSOLE_ACCOUNT: _console_account_key,
     RateLimitScope.ACCOUNT: _account_key,
     RateLimitScope.SUBJECT_EMAIL: _subject_email_key,
     RateLimitScope.TOKEN_ID: _token_id_key,

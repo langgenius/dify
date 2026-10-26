@@ -1,5 +1,6 @@
 import builtins
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from http.cookies import SimpleCookie
 from types import SimpleNamespace
@@ -250,6 +251,7 @@ class TestOauthDeviceHttpCases:
         monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
         monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: account_with_tenant)
         monkeypatch.setattr(flask_admission, "current_account_with_tenant", lambda: account_with_tenant)
+        monkeypatch.setattr("libs.login.current_account_with_tenant_optional", lambda: (account, "workspace-1"))
         monkeypatch.setattr(RateLimiter, "is_rate_limited", lambda *_args: False)
         monkeypatch.setattr(RateLimiter, "increment_rate_limit", lambda *_args: None)
         return service
@@ -584,3 +586,128 @@ class TestOauthDeviceHttpCases:
         assert message in response.get_data(as_text=True)
         assert "Set-Cookie" not in response.headers
         assert "signed-grant" not in response.get_data(as_text=True)
+
+
+@dataclass
+class _FakeRateLimitStore:
+    hits: dict[str, int] = field(default_factory=dict)
+
+
+@pytest.mark.usefixtures("device_service", "rate_limit_store")
+class TestDeviceDecisionRateLimitCases:
+    @staticmethod
+    @pytest.fixture
+    def current_account(monkeypatch: pytest.MonkeyPatch) -> dict[str, str | None]:
+        holder: dict[str, str | None] = {"id": "account-1"}
+
+        def resolve() -> tuple[Account | None, str | None]:
+            if holder["id"] is None:
+                return None, None
+            account = Account(name="Ada", email="ada@example.com", status=AccountStatus.ACTIVE)
+            account.id = holder["id"]
+            return account, "workspace-1"
+
+        monkeypatch.setattr("libs.login.current_account_with_tenant_optional", resolve)
+        return holder
+
+    @staticmethod
+    @pytest.fixture
+    def rate_limit_store(monkeypatch: pytest.MonkeyPatch) -> _FakeRateLimitStore:
+        store = _FakeRateLimitStore()
+        monkeypatch.setattr(
+            RateLimiter,
+            "is_rate_limited",
+            lambda self, key: store.hits.get(f"{self.prefix}:{key}", 0) >= self.max_attempts,
+        )
+
+        def record(self: RateLimiter, key: str) -> None:
+            store.hits[f"{self.prefix}:{key}"] = store.hits.get(f"{self.prefix}:{key}", 0) + 1
+
+        monkeypatch.setattr(RateLimiter, "increment_rate_limit", record)
+        return store
+
+    @staticmethod
+    @pytest.fixture
+    def device_service(
+        openapi_app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        current_account: dict[str, str | None],
+    ) -> Mock:
+        service = create_autospec(OAuthDeviceApplicationService, instance=True)
+        service.approve.return_value = DeviceMutation(status="approved")
+        service.deny.return_value = DeviceMutation(status="denied")
+        openapi_app.extensions["application_services"] = SimpleNamespace(
+            oauth_device=service,
+            feature_queries=SimpleNamespace(has_valid_enterprise_license=lambda: True),
+        )
+
+        def admitted() -> AccountWithTenant:
+            account = Account(name="Ada", email="ada@example.com", status=AccountStatus.ACTIVE)
+            account.id = current_account["id"] or "missing"
+            return AccountWithTenant(account, "workspace-1")
+
+        config_overrides(
+            LOGIN_DISABLED=True,
+            ENABLE_OAUTH_BEARER=True,
+            CONSOLE_API_URL="https://api.example",
+            CONSOLE_WEB_URL="https://console.example",
+        )
+        monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
+        monkeypatch.setattr(wraps, "current_account_with_tenant", admitted)
+        monkeypatch.setattr(flask_admission, "current_account_with_tenant", admitted)
+        return service
+
+    @staticmethod
+    def _post(app: Flask, path: str, user_code: str = "ABCD-EFGH"):
+        return app.test_client().post(f"{_PREFIX}/{path}", json={"user_code": user_code})
+
+    @staticmethod
+    def test_eleventh_approve_is_limited_but_other_account_succeeds(
+        openapi_app: Flask, current_account: dict[str, str | None]
+    ) -> None:
+        for _ in range(10):
+            assert TestDeviceDecisionRateLimitCases._post(openapi_app, "approve").status_code == 200
+
+        assert TestDeviceDecisionRateLimitCases._post(openapi_app, "approve").status_code == 429
+
+        current_account["id"] = "account-2"
+        assert TestDeviceDecisionRateLimitCases._post(openapi_app, "approve").status_code == 200
+
+    @staticmethod
+    def test_deny_shares_the_account_bucket_with_approve(
+        openapi_app: Flask, current_account: dict[str, str | None]
+    ) -> None:
+        for _ in range(10):
+            assert TestDeviceDecisionRateLimitCases._post(openapi_app, "approve").status_code == 200
+
+        assert TestDeviceDecisionRateLimitCases._post(openapi_app, "deny").status_code == 429
+
+        current_account["id"] = "account-2"
+        assert TestDeviceDecisionRateLimitCases._post(openapi_app, "deny").status_code == 200
+
+    @staticmethod
+    @pytest.mark.parametrize("path", ["approve", "deny"])
+    def test_unresolvable_account_is_unauthorized_without_redis_write(
+        openapi_app: Flask,
+        device_service: Mock,
+        current_account: dict[str, str | None],
+        rate_limit_store: _FakeRateLimitStore,
+        path: str,
+    ) -> None:
+        current_account["id"] = None
+
+        assert TestDeviceDecisionRateLimitCases._post(openapi_app, path).status_code == 401
+        assert rate_limit_store.hits == {}
+        assert device_service.mock_calls == []
+
+    @staticmethod
+    def test_failed_approve_still_counts(
+        openapi_app: Flask, device_service: Mock, rate_limit_store: _FakeRateLimitStore
+    ) -> None:
+        device_service.approve.side_effect = ExpiredOrUnknownError()
+
+        response = TestDeviceDecisionRateLimitCases._post(openapi_app, "approve", user_code="NOPE-NOPE")
+
+        assert response.status_code == 404
+        assert list(rate_limit_store.hits.values()) == [1]

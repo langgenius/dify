@@ -20,6 +20,7 @@ from libs.oauth_bearer import AuthContext, TokenType, _auth_ctx_var
 from libs.rate_limit import (
     LIMIT_BEARER_PER_TOKEN,
     LIMIT_DEVICE_CODE_PER_IP,
+    LIMIT_DEVICE_FLOW_APPROVE,
     LIMIT_LOOKUP_PUBLIC,
     RateLimit,
     RateLimitScope,
@@ -251,3 +252,55 @@ def test_scope_without_identity_fails_closed(app: Flask, fake_redis: _FakeZsetRe
             _auth_ctx_var.reset(token)
 
     assert fake_redis.writes == 0
+
+
+@dataclass
+class _FakeConsoleAccount:
+    id: str
+
+
+def _as_console_account(monkeypatch: pytest.MonkeyPatch, account_id: str | None) -> None:
+    account = _FakeConsoleAccount(id=account_id) if account_id else None
+    monkeypatch.setattr("libs.login.current_account_with_tenant_optional", lambda: (account, None))
+
+
+def test_console_account_scope_keys_differ_per_account(
+    app: Flask, fake_redis: _FakeZsetRedis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with app.test_request_context("/"):
+        _as_console_account(monkeypatch, "account-1")
+        _hit(LIMIT_DEVICE_FLOW_APPROVE)
+        _as_console_account(monkeypatch, "account-2")
+        _hit(LIMIT_DEVICE_FLOW_APPROVE)
+
+    prefix = limiter_prefix(LIMIT_DEVICE_FLOW_APPROVE)
+    assert set(fake_redis.zsets) == {f"{prefix}:console_account:account-1", f"{prefix}:console_account:account-2"}
+
+
+@pytest.mark.usefixtures("fake_redis")
+def test_console_account_scope_limits_each_account_separately(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    with app.test_request_context("/"):
+        _as_console_account(monkeypatch, "account-1")
+        for _ in range(LIMIT_DEVICE_FLOW_APPROVE.limit):
+            _hit(LIMIT_DEVICE_FLOW_APPROVE)
+        with pytest.raises(TooManyRequests):
+            _hit(LIMIT_DEVICE_FLOW_APPROVE)
+
+        _as_console_account(monkeypatch, "account-2")
+        _hit(LIMIT_DEVICE_FLOW_APPROVE)
+
+
+def test_console_account_scope_without_account_fails_closed(
+    app: Flask, fake_redis: _FakeZsetRedis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _as_console_account(monkeypatch, None)
+    with app.test_request_context("/"):
+        with pytest.raises(Unauthorized):
+            _hit(LIMIT_DEVICE_FLOW_APPROVE)
+
+    assert fake_redis.writes == 0
+
+
+def test_session_scope_is_gone() -> None:
+    assert "session" not in {scope.value for scope in RateLimitScope}
+    assert RateLimitScope.CONSOLE_ACCOUNT.value == "console_account"
