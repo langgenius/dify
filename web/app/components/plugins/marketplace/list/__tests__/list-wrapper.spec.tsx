@@ -32,8 +32,8 @@ vi.mock('#i18n', async () => {
   }
 })
 
-vi.mock('../../sort-dropdown', () => ({
-  default: () => <div data-testid="sort-dropdown">sort</div>,
+vi.mock('../../sort-menu', () => ({
+  default: () => <div data-testid="sort-menu">sort</div>,
 }))
 
 vi.mock('../index', () => ({
@@ -74,7 +74,7 @@ describe('ListWrapper', () => {
     renderListWrapper(<ListWrapper />)
 
     expect(screen.getByRole('status')).toHaveTextContent('1 plugins found')
-    expect(screen.getByTestId('sort-dropdown')).toBeInTheDocument()
+    expect(screen.getByTestId('sort-menu')).toBeInTheDocument()
   })
 
   it('keeps the status owner mounted through pagination and reports the total result count', () => {

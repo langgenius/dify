@@ -1,4 +1,5 @@
-from collections.abc import Mapping
+import types
+from collections.abc import Callable, Mapping
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, sentinel
 
@@ -6,13 +7,20 @@ import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import (
+    DIFY_RUN_CONTEXT_KEY,
+    DifyRunContext,
+    InvokeFrom,
+    UserFrom,
+    build_dify_run_context,
+)
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
 from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
 from core.workflow.llm_node import DifyLLMNode
+from core.workflow.node_factory import DifyNodeFactory, get_node_type_classes_mapping
 from core.workflow.node_runtime import DifyPreparedLLM
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
@@ -22,27 +30,258 @@ from graphon.graph.validation import GraphValidationError
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from graphon.nodes.base.node import Node
 from graphon.nodes.code.entities import CodeLanguage
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.variable_assigner.v1.node import (
+    VariableAssignerNode as VariableAssignerV1,
+)
+from graphon.nodes.variable_assigner.v2.node import (
+    VariableAssignerNode as VariableAssignerV2,
+)
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
-from tests.unit_tests.core.model_fixtures import make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
-@pytest.fixture
-def memory_session_maker(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> sessionmaker[Session]:
-    """Bind node memory lookup to an explicit SQLite session factory."""
+class DummyNode:
+    def __init__(self, *, node_id, data, init_params, runtime_state, **kwargs):
+        self.id = node_id
+        self.data = data
+        self.init_params = init_params
+        self.runtime_state = runtime_state
+        self.kwargs = kwargs
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[Conversation.__table__])
-    session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(node_factory.session_factory, "create_session", session_maker)
-    return session_maker
+
+class DummyCodeNode(DummyNode):
+    @classmethod
+    def default_code_providers(cls):
+        return ()
+
+
+class DummyTemplateTransformNode(DummyNode):
+    pass
+
+
+class DummyHttpRequestNode(DummyNode):
+    pass
+
+
+class DummyKnowledgeRetrievalNode(DummyNode):
+    pass
+
+
+class DummyDocumentExtractorNode(DummyNode):
+    pass
+
+
+class TestNodeFactoryCases:
+    class TestDifyNodeFactory:
+        @pytest.fixture(autouse=True)
+        def _node_config(self, config_overrides: Callable[..., None]) -> None:
+            config_overrides(
+                CODE_MAX_STRING_LENGTH=10,
+                CODE_MAX_NUMBER=10,
+                CODE_MIN_NUMBER=-10,
+                CODE_MAX_PRECISION=4,
+                CODE_MAX_DEPTH=2,
+                CODE_MAX_NUMBER_ARRAY_LENGTH=2,
+                CODE_MAX_STRING_ARRAY_LENGTH=2,
+                CODE_MAX_OBJECT_ARRAY_LENGTH=2,
+                TEMPLATE_TRANSFORM_MAX_LENGTH=100,
+                UNSTRUCTURED_API_URL="http://u",
+                UNSTRUCTURED_API_KEY="key",
+            )
+
+        @staticmethod
+        def _stub_node_resolution(monkeypatch: pytest.MonkeyPatch, node_class):
+            monkeypatch.setattr(
+                "core.workflow.node_factory.resolve_workflow_node_class",
+                lambda **_kwargs: node_class,
+            )
+
+        def _factory(self):
+            run_context = build_dify_run_context(
+                tenant_id="tenant",
+                app_id="app",
+                user_id="user",
+                user_from=UserFrom.END_USER,
+                invoke_from=InvokeFrom.WEB_APP,
+            )
+
+            return DifyNodeFactory(
+                init_params=SimpleNamespace(run_context=run_context),
+                runtime_state=SimpleNamespace(),
+            )
+
+        def test_create_node_unknown_type(self):
+            factory = self._factory()
+
+            with pytest.raises(ValueError, match="No class mapping found for node type: unknown"):
+                factory.create_node({"id": "node-1", "data": {"type": "unknown"}})
+
+        def test_create_node_missing_mapping(self, monkeypatch: pytest.MonkeyPatch):
+            factory = self._factory()
+            monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", lambda: {})
+
+            with pytest.raises(ValueError, match="No class mapping found for node type: start"):
+                factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
+
+        def test_create_node_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch):
+            factory = self._factory()
+            monkeypatch.setattr(
+                "core.workflow.node_factory.get_node_type_classes_mapping",
+                lambda: {BuiltinNodeTypes.START: {"1": None}},
+            )
+            monkeypatch.setattr("core.workflow.node_factory.LATEST_VERSION", "latest")
+
+            with pytest.raises(ValueError, match="No latest version class found for node type: start"):
+                factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
+
+        def test_create_node_selects_versioned_class(self, monkeypatch: pytest.MonkeyPatch):
+            factory = self._factory()
+            selected_versions: list[tuple[str, str]] = []
+
+            class DummyNodeV2(DummyNode):
+                pass
+
+            def _get_mapping():
+                selected_versions.append(("snapshot", "called"))
+                return {BuiltinNodeTypes.START: {"1": DummyNode, "2": DummyNodeV2}}
+
+            monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", _get_mapping)
+
+            node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START, "version": "2"}})
+
+            assert isinstance(node, DummyNodeV2)
+            assert node.id == "node-1"
+            assert selected_versions == [("snapshot", "called")]
+
+        def test_create_node_code_branch(self, monkeypatch: pytest.MonkeyPatch):
+            factory = self._factory()
+            self._stub_node_resolution(monkeypatch, DummyCodeNode)
+
+            node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.CODE}})
+
+            assert isinstance(node, DummyCodeNode)
+            assert node.id == "node-1"
+
+        def test_create_node_template_transform_branch(self, monkeypatch: pytest.MonkeyPatch):
+            factory = self._factory()
+            self._stub_node_resolution(monkeypatch, DummyTemplateTransformNode)
+
+            node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.TEMPLATE_TRANSFORM}})
+
+            assert isinstance(node, DummyTemplateTransformNode)
+            assert "jinja2_template_renderer" in node.kwargs
+
+        def test_create_node_http_request_branch(self, monkeypatch: pytest.MonkeyPatch):
+            factory = self._factory()
+            self._stub_node_resolution(monkeypatch, DummyHttpRequestNode)
+
+            node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.HTTP_REQUEST}})
+
+            assert isinstance(node, DummyHttpRequestNode)
+            assert "http_request_config" in node.kwargs
+
+        def test_create_node_knowledge_retrieval_branch(self, monkeypatch: pytest.MonkeyPatch):
+            factory = self._factory()
+            self._stub_node_resolution(monkeypatch, DummyKnowledgeRetrievalNode)
+
+            node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL}})
+
+            assert isinstance(node, DummyKnowledgeRetrievalNode)
+            assert node.kwargs == {}
+
+        def test_create_node_document_extractor_branch(self, monkeypatch: pytest.MonkeyPatch):
+            factory = self._factory()
+            self._stub_node_resolution(monkeypatch, DummyDocumentExtractorNode)
+
+            node = factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.DOCUMENT_EXTRACTOR}})
+
+            assert isinstance(node, DummyDocumentExtractorNode)
+            assert "unstructured_api_config" in node.kwargs
+
+
+# Import concrete nodes we will assert on (numeric version path)
+
+
+class TestGetNodeTypeClassesMappingCases:
+    @staticmethod
+    def test_variable_assigner_latest_prefers_highest_numeric_version():
+        # Act
+        mapping: Mapping[NodeType, Mapping[str, type[Node]]] = get_node_type_classes_mapping()
+
+        # Assert basic presence
+        assert BuiltinNodeTypes.VARIABLE_ASSIGNER in mapping
+        va_versions = mapping[BuiltinNodeTypes.VARIABLE_ASSIGNER]
+
+        # Both concrete versions must be present
+        assert va_versions.get("1") is VariableAssignerV1
+        assert va_versions.get("2") is VariableAssignerV2
+
+        # And latest should point to numerically-highest version ("2")
+        assert va_versions.get("latest") is VariableAssignerV2
+
+    @staticmethod
+    def test_latest_prefers_highest_numeric_version():
+        # Arrange: define two ephemeral subclasses with numeric versions under a NodeType
+        # that has no concrete implementations in production to avoid interference.
+        class _Version1(Node[BaseNodeData]):  # type: ignore[misc]
+            node_type = BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR
+
+            def init_node_data(self, data):
+                pass
+
+            def _run(self):
+                raise NotImplementedError
+
+            @classmethod
+            def version(cls) -> str:
+                return "1"
+
+            def _get_error_strategy(self):
+                return None
+
+            def _get_retry_config(self):
+                return types.SimpleNamespace()  # not used
+
+            def _get_title(self) -> str:
+                return "version1"
+
+            def _get_description(self):
+                return None
+
+            def _get_default_value_dict(self):
+                return {}
+
+            def get_base_node_data(self):
+                return types.SimpleNamespace(title="version1")
+
+        class _Version2(_Version1):  # type: ignore[misc]
+            @classmethod
+            def version(cls) -> str:
+                return "2"
+
+            def _get_title(self) -> str:
+                return "version2"
+
+        # Act: build a fresh mapping (it should now see our ephemeral subclasses)
+        mapping: Mapping[NodeType, Mapping[str, type[Node]]] = get_node_type_classes_mapping()
+
+        # Assert: both numeric versions exist for this NodeType; 'latest' points to the higher numeric version
+        assert BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR in mapping
+        legacy_versions = mapping[BuiltinNodeTypes.LEGACY_VARIABLE_AGGREGATOR]
+
+        assert legacy_versions.get("1") is _Version1
+        assert legacy_versions.get("2") is _Version2
+        assert legacy_versions.get("latest") is _Version2
 
 
 def _persist_conversation(session_maker: sessionmaker[Session]) -> None:
@@ -113,1188 +352,1202 @@ class _ModelInstanceStub:
         return self._model_schema
 
 
-class TestResolveWorkflowNodeClass:
-    def test_matching_version_uses_registry_mapping(self, monkeypatch) -> None:
-        document_extractor_class = sentinel.document_extractor_class
-        latest_node_class = sentinel.latest_document_extractor_class
-        monkeypatch.setattr(
-            node_factory,
-            "get_node_type_classes_mapping",
-            lambda: {
-                BuiltinNodeTypes.DOCUMENT_EXTRACTOR: {
-                    "1": document_extractor_class,
-                    node_factory.LATEST_VERSION: latest_node_class,
-                }
-            },
+class TestNodeFactoryCasesWorkflow:
+    @staticmethod
+    @pytest.fixture
+    def memory_session_maker(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> sessionmaker[Session]:
+        """Bind node memory lookup to an explicit SQLite session factory."""
+
+        TypeBase.metadata.create_all(sqlite_engine, tables=[Conversation.__table__])
+        session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
+        monkeypatch.setattr(node_factory.session_factory, "create_session", session_maker)
+        return session_maker
+
+    class TestResolveWorkflowNodeClass:
+        def test_matching_version_uses_registry_mapping(self, monkeypatch) -> None:
+            document_extractor_class = sentinel.document_extractor_class
+            latest_node_class = sentinel.latest_document_extractor_class
+            monkeypatch.setattr(
+                node_factory,
+                "get_node_type_classes_mapping",
+                lambda: {
+                    BuiltinNodeTypes.DOCUMENT_EXTRACTOR: {
+                        "1": document_extractor_class,
+                        node_factory.LATEST_VERSION: latest_node_class,
+                    }
+                },
+            )
+
+            resolved = node_factory.resolve_workflow_node_class(
+                node_type=BuiltinNodeTypes.DOCUMENT_EXTRACTOR,
+                node_version="1",
+            )
+
+            assert resolved is document_extractor_class
+
+        def test_document_extractor_latest_falls_back_to_registry_mapping(self, monkeypatch) -> None:
+            latest_node_class = sentinel.latest_document_extractor_class
+            monkeypatch.setattr(
+                node_factory,
+                "get_node_type_classes_mapping",
+                lambda: {BuiltinNodeTypes.DOCUMENT_EXTRACTOR: {node_factory.LATEST_VERSION: latest_node_class}},
+            )
+
+            resolved = node_factory.resolve_workflow_node_class(
+                node_type=BuiltinNodeTypes.DOCUMENT_EXTRACTOR,
+                node_version=node_factory.LATEST_VERSION,
+            )
+
+            assert resolved is latest_node_class
+
+    class TestFetchMemory:
+        @pytest.mark.parametrize(
+            ("conversation_id", "memory_config"),
+            [
+                (None, object()),
+                ("conversation-id", None),
+            ],
         )
+        def test_returns_none_when_memory_or_conversation_is_missing(self, conversation_id, memory_config):
+            result = node_factory.fetch_memory(
+                conversation_id=conversation_id,
+                app_id="app-id",
+                node_data_memory=memory_config,
+                model_instance=sentinel.model_instance,
+            )
 
-        resolved = node_factory.resolve_workflow_node_class(
-            node_type=BuiltinNodeTypes.DOCUMENT_EXTRACTOR,
-            node_version="1",
-        )
+            assert result is None
 
-        assert resolved is document_extractor_class
+        def test_returns_none_when_conversation_does_not_exist(self, memory_session_maker: sessionmaker[Session]):
+            result = node_factory.fetch_memory(
+                conversation_id="conversation-id",
+                app_id="app-id",
+                node_data_memory=object(),
+                model_instance=sentinel.model_instance,
+            )
 
-    def test_document_extractor_latest_falls_back_to_registry_mapping(self, monkeypatch) -> None:
-        latest_node_class = sentinel.latest_document_extractor_class
-        monkeypatch.setattr(
-            node_factory,
-            "get_node_type_classes_mapping",
-            lambda: {BuiltinNodeTypes.DOCUMENT_EXTRACTOR: {node_factory.LATEST_VERSION: latest_node_class}},
-        )
+            assert result is None
 
-        resolved = node_factory.resolve_workflow_node_class(
-            node_type=BuiltinNodeTypes.DOCUMENT_EXTRACTOR,
-            node_version=node_factory.LATEST_VERSION,
-        )
+        def test_builds_token_buffer_memory_for_existing_conversation(
+            self, monkeypatch: pytest.MonkeyPatch, memory_session_maker: sessionmaker[Session]
+        ):
+            memory = sentinel.memory
+            _persist_conversation(memory_session_maker)
+            token_buffer_memory = MagicMock(return_value=memory)
+            monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
 
-        assert resolved is latest_node_class
+            result = node_factory.fetch_memory(
+                conversation_id="conversation-id",
+                app_id="app-id",
+                node_data_memory=object(),
+                model_instance=sentinel.model_instance,
+            )
 
+            assert result is memory
+            loaded_conversation = token_buffer_memory.call_args.kwargs["conversation"]
+            assert isinstance(loaded_conversation, Conversation)
+            assert loaded_conversation.id == "conversation-id"
+            assert token_buffer_memory.call_args.kwargs["model_instance"] is sentinel.model_instance
 
-class TestFetchMemory:
+        def test_uses_configured_session_factory_without_flask_app_context(
+            self, monkeypatch: pytest.MonkeyPatch, memory_session_maker: sessionmaker[Session]
+        ):
+            class RaisingDB:
+                @property
+                def engine(self):
+                    raise RuntimeError("Working outside of application context.")
+
+            token_buffer_memory = MagicMock(return_value=sentinel.memory)
+            _persist_conversation(memory_session_maker)
+            monkeypatch.setattr(node_factory, "db", RaisingDB(), raising=False)
+            monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
+
+            result = node_factory.fetch_memory(
+                conversation_id="conversation-id",
+                app_id="app-id",
+                node_data_memory=object(),
+                model_instance=sentinel.model_instance,
+            )
+
+            assert result is sentinel.memory
+
+    class TestDifyGraphInitContext:
+        def test_to_graph_init_params_preserves_explicit_values(self):
+            run_context = {
+                DIFY_RUN_CONTEXT_KEY: DifyRunContext(
+                    tenant_id="tenant-id",
+                    app_id="app-id",
+                    user_id="user-id",
+                    user_from=UserFrom.ACCOUNT,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                ),
+                "extra": "value",
+            }
+            graph_config = {"nodes": [], "edges": []}
+            graph_init_context = node_factory.DifyGraphInitContext(
+                workflow_id="workflow-id",
+                graph_config=graph_config,
+                run_context=run_context,
+                call_depth=2,
+            )
+
+            result = graph_init_context.to_graph_init_params()
+
+            assert result.workflow_id == "workflow-id"
+            assert result.graph_config == graph_config
+            assert result.run_context == run_context
+            assert result.call_depth == 2
+
+    @staticmethod
     @pytest.mark.parametrize(
-        ("conversation_id", "memory_config"),
-        [
-            (None, object()),
-            ("conversation-id", None),
-        ],
+        "invalid_kind",
+        [None, "CYCLE", "MISSING_NODE", "INVALID_EDGE", "DUPLICATE_NODE_ID", "DUPLICATE_EDGE_ID"],
     )
-    def test_returns_none_when_memory_or_conversation_is_missing(self, conversation_id, memory_config):
-        result = node_factory.fetch_memory(
-            conversation_id=conversation_id,
-            app_id="app-id",
-            node_data_memory=memory_config,
-            model_instance=sentinel.model_instance,
+    def test_graph_validation_with_dify_node_factory(invalid_kind, monkeypatch):
+        graph_config = {
+            "nodes": [
+                {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                *[
+                    {
+                        "id": node_id,
+                        "data": {"type": "template-transform", "title": node_id, "template": node_id, "variables": []},
+                    }
+                    for node_id in ("left", "right")
+                ],
+                {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+            ],
+            "edges": [
+                {"id": f"{source}-{target}", "source": source, "target": target}
+                for source, target in (("start", "left"), ("start", "right"), ("left", "end"), ("right", "end"))
+            ],
+        }
+        match invalid_kind:
+            case "CYCLE":
+                graph_config["edges"].append({"source": "end", "target": "left"})
+            case "MISSING_NODE":
+                graph_config["edges"][0]["target"] = "missing"
+            case "INVALID_EDGE":
+                graph_config["edges"][0]["sourceHandle"] = None
+            case "DUPLICATE_NODE_ID":
+                graph_config["nodes"].append(graph_config["nodes"][0])
+            case "DUPLICATE_EDGE_ID":
+                graph_config["edges"].append(graph_config["edges"][0])
+
+        factory = node_factory.DifyNodeFactory(
+            build_test_graph_init_params(graph_config=graph_config),
+            RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id="workflow"),
         )
+        if invalid_kind is None:
+            graph = Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
+            assert set(graph.nodes) == {"start", "left", "right", "end"}
+            assert len(graph.edges) == 4
+        else:
 
-        assert result is None
+            def reject_node_creation(*_args, **_kwargs):
+                pytest.fail("Invalid graphs must fail before node construction")
 
-    def test_returns_none_when_conversation_does_not_exist(self, memory_session_maker: sessionmaker[Session]):
-        result = node_factory.fetch_memory(
-            conversation_id="conversation-id",
-            app_id="app-id",
-            node_data_memory=object(),
-            model_instance=sentinel.model_instance,
-        )
+            monkeypatch.setattr(node_factory.DifyNodeFactory, "create_node", reject_node_creation)
+            with pytest.raises(GraphValidationError) as error:
+                Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
+            assert [issue.code for issue in error.value.issues] == [invalid_kind]
 
-        assert result is None
+    class TestDefaultWorkflowCodeExecutor:
+        def test_execute_delegates_to_code_executor(self, monkeypatch: pytest.MonkeyPatch):
+            executor = node_factory.DefaultWorkflowCodeExecutor()
+            execute_workflow_code_template = MagicMock(return_value={"answer": "ok"})
+            monkeypatch.setattr(
+                node_factory.CodeExecutor,
+                "execute_workflow_code_template",
+                execute_workflow_code_template,
+            )
 
-    def test_builds_token_buffer_memory_for_existing_conversation(
-        self, monkeypatch: pytest.MonkeyPatch, memory_session_maker: sessionmaker[Session]
-    ):
-        memory = sentinel.memory
-        _persist_conversation(memory_session_maker)
-        token_buffer_memory = MagicMock(return_value=memory)
-        monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
+            result = executor.execute(
+                language=CodeLanguage.PYTHON3,
+                code="print('ok')",
+                inputs={"name": "workflow"},
+            )
 
-        result = node_factory.fetch_memory(
-            conversation_id="conversation-id",
-            app_id="app-id",
-            node_data_memory=object(),
-            model_instance=sentinel.model_instance,
-        )
+            assert result == {"answer": "ok"}
+            execute_workflow_code_template.assert_called_once_with(
+                language=CodeLanguage.PYTHON3,
+                code="print('ok')",
+                inputs={"name": "workflow"},
+            )
 
-        assert result is memory
-        loaded_conversation = token_buffer_memory.call_args.kwargs["conversation"]
-        assert isinstance(loaded_conversation, Conversation)
-        assert loaded_conversation.id == "conversation-id"
-        assert token_buffer_memory.call_args.kwargs["model_instance"] is sentinel.model_instance
+        def test_is_execution_error_checks_code_execution_error_type(self):
+            executor = node_factory.DefaultWorkflowCodeExecutor()
 
-    def test_uses_configured_session_factory_without_flask_app_context(
-        self, monkeypatch: pytest.MonkeyPatch, memory_session_maker: sessionmaker[Session]
-    ):
-        class RaisingDB:
-            @property
-            def engine(self):
-                raise RuntimeError("Working outside of application context.")
+            assert executor.is_execution_error(node_factory.CodeExecutionError("boom")) is True
+            assert executor.is_execution_error(RuntimeError("boom")) is False
 
-        token_buffer_memory = MagicMock(return_value=sentinel.memory)
-        _persist_conversation(memory_session_maker)
-        monkeypatch.setattr(node_factory, "db", RaisingDB(), raising=False)
-        monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
+    class TestCodeExecutorJinja2TemplateRenderer:
+        def test_render_template_delegates_to_code_executor(self, monkeypatch: pytest.MonkeyPatch):
+            renderer = workflow_template_rendering.CodeExecutorJinja2TemplateRenderer()
+            execute_workflow_code_template = MagicMock(return_value={"result": "Hello workflow"})
+            monkeypatch.setattr(
+                workflow_template_rendering.CodeExecutor,
+                "execute_workflow_code_template",
+                execute_workflow_code_template,
+            )
 
-        result = node_factory.fetch_memory(
-            conversation_id="conversation-id",
-            app_id="app-id",
-            node_data_memory=object(),
-            model_instance=sentinel.model_instance,
-        )
+            result = renderer.render_template("Hello {{ name }}", {"name": "workflow"})
 
-        assert result is sentinel.memory
+            assert result == "Hello workflow"
+            execute_workflow_code_template.assert_called_once_with(
+                language=CodeLanguage.JINJA2,
+                code="Hello {{ name }}",
+                inputs={"name": "workflow"},
+            )
 
+        def test_render_template_wraps_code_execution_errors(self, monkeypatch: pytest.MonkeyPatch):
+            renderer = workflow_template_rendering.CodeExecutorJinja2TemplateRenderer()
+            monkeypatch.setattr(
+                workflow_template_rendering.CodeExecutor,
+                "execute_workflow_code_template",
+                MagicMock(side_effect=workflow_template_rendering.CodeExecutionError("sandbox failed")),
+            )
 
-class TestDifyGraphInitContext:
-    def test_to_graph_init_params_preserves_explicit_values(self):
-        run_context = {
-            DIFY_RUN_CONTEXT_KEY: DifyRunContext(
+            with pytest.raises(workflow_template_rendering.TemplateRenderError, match="sandbox failed"):
+                renderer.render_template("{{ broken }}", {})
+
+    class TestDifyNodeFactoryResolveContext:
+        def test_requires_reserved_context_key(self):
+            with pytest.raises(ValueError, match=DIFY_RUN_CONTEXT_KEY):
+                node_factory.DifyNodeFactory._resolve_dify_context({})
+
+        def test_returns_existing_dify_context(self):
+            dify_context = DifyRunContext(
                 tenant_id="tenant-id",
                 app_id="app-id",
                 user_id="user-id",
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
-            ),
-            "extra": "value",
-        }
-        graph_config = {"nodes": [], "edges": []}
-        graph_init_context = node_factory.DifyGraphInitContext(
-            workflow_id="workflow-id",
-            graph_config=graph_config,
-            run_context=run_context,
-            call_depth=2,
-        )
+            )
 
-        result = graph_init_context.to_graph_init_params()
+            result = node_factory.DifyNodeFactory._resolve_dify_context({DIFY_RUN_CONTEXT_KEY: dify_context})
 
-        assert result.workflow_id == "workflow-id"
-        assert result.graph_config == graph_config
-        assert result.run_context == run_context
-        assert result.call_depth == 2
+            assert result is dify_context
 
-
-@pytest.mark.parametrize(
-    "invalid_kind",
-    [None, "CYCLE", "MISSING_NODE", "INVALID_EDGE", "DUPLICATE_NODE_ID", "DUPLICATE_EDGE_ID"],
-)
-def test_graph_validation_with_dify_node_factory(invalid_kind, monkeypatch):
-    graph_config = {
-        "nodes": [
-            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
-            *[
-                {
-                    "id": node_id,
-                    "data": {"type": "template-transform", "title": node_id, "template": node_id, "variables": []},
+        def test_validates_mapping_context(self):
+            raw_context = {
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "tenant-id",
+                    "app_id": "app-id",
+                    "user_id": "user-id",
+                    "user_from": UserFrom.ACCOUNT,
+                    "invoke_from": InvokeFrom.DEBUGGER,
                 }
-                for node_id in ("left", "right")
-            ],
-            {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
-        ],
-        "edges": [
-            {"id": f"{source}-{target}", "source": source, "target": target}
-            for source, target in (("start", "left"), ("start", "right"), ("left", "end"), ("right", "end"))
-        ],
-    }
-    match invalid_kind:
-        case "CYCLE":
-            graph_config["edges"].append({"source": "end", "target": "left"})
-        case "MISSING_NODE":
-            graph_config["edges"][0]["target"] = "missing"
-        case "INVALID_EDGE":
-            graph_config["edges"][0]["sourceHandle"] = None
-        case "DUPLICATE_NODE_ID":
-            graph_config["nodes"].append(graph_config["nodes"][0])
-        case "DUPLICATE_EDGE_ID":
-            graph_config["edges"].append(graph_config["edges"][0])
-
-    factory = node_factory.DifyNodeFactory(
-        build_test_graph_init_params(graph_config=graph_config),
-        RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id="workflow"),
-    )
-    if invalid_kind is None:
-        graph = Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
-        assert set(graph.nodes) == {"start", "left", "right", "end"}
-        assert len(graph.edges) == 4
-    else:
-
-        def reject_node_creation(*_args, **_kwargs):
-            pytest.fail("Invalid graphs must fail before node construction")
-
-        monkeypatch.setattr(node_factory.DifyNodeFactory, "create_node", reject_node_creation)
-        with pytest.raises(GraphValidationError) as error:
-            Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
-        assert [issue.code for issue in error.value.issues] == [invalid_kind]
-
-
-class TestDefaultWorkflowCodeExecutor:
-    def test_execute_delegates_to_code_executor(self, monkeypatch: pytest.MonkeyPatch):
-        executor = node_factory.DefaultWorkflowCodeExecutor()
-        execute_workflow_code_template = MagicMock(return_value={"answer": "ok"})
-        monkeypatch.setattr(
-            node_factory.CodeExecutor,
-            "execute_workflow_code_template",
-            execute_workflow_code_template,
-        )
-
-        result = executor.execute(
-            language=CodeLanguage.PYTHON3,
-            code="print('ok')",
-            inputs={"name": "workflow"},
-        )
-
-        assert result == {"answer": "ok"}
-        execute_workflow_code_template.assert_called_once_with(
-            language=CodeLanguage.PYTHON3,
-            code="print('ok')",
-            inputs={"name": "workflow"},
-        )
-
-    def test_is_execution_error_checks_code_execution_error_type(self):
-        executor = node_factory.DefaultWorkflowCodeExecutor()
-
-        assert executor.is_execution_error(node_factory.CodeExecutionError("boom")) is True
-        assert executor.is_execution_error(RuntimeError("boom")) is False
-
-
-class TestCodeExecutorJinja2TemplateRenderer:
-    def test_render_template_delegates_to_code_executor(self, monkeypatch: pytest.MonkeyPatch):
-        renderer = workflow_template_rendering.CodeExecutorJinja2TemplateRenderer()
-        execute_workflow_code_template = MagicMock(return_value={"result": "Hello workflow"})
-        monkeypatch.setattr(
-            workflow_template_rendering.CodeExecutor,
-            "execute_workflow_code_template",
-            execute_workflow_code_template,
-        )
-
-        result = renderer.render_template("Hello {{ name }}", {"name": "workflow"})
-
-        assert result == "Hello workflow"
-        execute_workflow_code_template.assert_called_once_with(
-            language=CodeLanguage.JINJA2,
-            code="Hello {{ name }}",
-            inputs={"name": "workflow"},
-        )
-
-    def test_render_template_wraps_code_execution_errors(self, monkeypatch: pytest.MonkeyPatch):
-        renderer = workflow_template_rendering.CodeExecutorJinja2TemplateRenderer()
-        monkeypatch.setattr(
-            workflow_template_rendering.CodeExecutor,
-            "execute_workflow_code_template",
-            MagicMock(side_effect=workflow_template_rendering.CodeExecutionError("sandbox failed")),
-        )
-
-        with pytest.raises(workflow_template_rendering.TemplateRenderError, match="sandbox failed"):
-            renderer.render_template("{{ broken }}", {})
-
-
-class TestDifyNodeFactoryResolveContext:
-    def test_requires_reserved_context_key(self):
-        with pytest.raises(ValueError, match=DIFY_RUN_CONTEXT_KEY):
-            node_factory.DifyNodeFactory._resolve_dify_context({})
-
-    def test_returns_existing_dify_context(self):
-        dify_context = DifyRunContext(
-            tenant_id="tenant-id",
-            app_id="app-id",
-            user_id="user-id",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
-        )
-
-        result = node_factory.DifyNodeFactory._resolve_dify_context({DIFY_RUN_CONTEXT_KEY: dify_context})
-
-        assert result is dify_context
-
-    def test_validates_mapping_context(self):
-        raw_context = {
-            DIFY_RUN_CONTEXT_KEY: {
-                "tenant_id": "tenant-id",
-                "app_id": "app-id",
-                "user_id": "user-id",
-                "user_from": UserFrom.ACCOUNT,
-                "invoke_from": InvokeFrom.DEBUGGER,
             }
-        }
 
-        result = node_factory.DifyNodeFactory._resolve_dify_context(raw_context)
+            result = node_factory.DifyNodeFactory._resolve_dify_context(raw_context)
 
-        assert isinstance(result, DifyRunContext)
-        assert result.tenant_id == "tenant-id"
+            assert isinstance(result, DifyRunContext)
+            assert result.tenant_id == "tenant-id"
 
+    class TestDifyNodeFactoryCreateNode:
+        @pytest.fixture
+        def factory(self):
+            factory = object.__new__(node_factory.DifyNodeFactory)
+            factory.init_params = sentinel.init_params
+            factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
+            factory._dify_context = SimpleNamespace(
+                tenant_id="tenant-id",
+                app_id="app-id",
+                user_id="user-id",
+                invoke_from=InvokeFrom.DEBUGGER,
+                app_type=None,
+                created_by=None,
+            )
+            factory._use_workflow_tool_containers = True
+            factory._code_executor = sentinel.code_executor
+            factory._code_limits = sentinel.code_limits
+            factory._jinja2_template_renderer = sentinel.jinja2_template_renderer
+            factory._template_transform_max_output_length = 2048
+            factory._http_request_http_client = sentinel.http_client
+            factory._remote_file_http_client = sentinel.remote_file_http_client
+            factory._bound_tool_file_manager_factory = MagicMock(return_value=sentinel.tool_file_manager)
+            factory._file_reference_factory = sentinel.file_reference_factory
+            factory._prompt_message_serializer = sentinel.prompt_message_serializer
+            factory._retriever_attachment_loader = sentinel.retriever_attachment_loader
+            factory._llm_file_saver = sentinel.llm_file_saver
+            factory._human_input_runtime = sentinel.human_input_runtime
+            factory._tool_runtime = sentinel.tool_runtime
+            factory._http_request_file_manager = sentinel.file_manager
+            factory._document_extractor_unstructured_api_config = sentinel.unstructured_api_config
+            factory._http_request_config = sentinel.http_request_config
+            factory._llm_credentials_provider = sentinel.credentials_provider
+            factory._llm_model_factory = sentinel.model_factory
+            factory._build_retriever_attachment_loader = MagicMock(return_value=sentinel.retriever_attachment_loader)
+            return factory
 
-class TestDifyNodeFactoryCreateNode:
-    @pytest.fixture
-    def factory(self):
-        factory = object.__new__(node_factory.DifyNodeFactory)
-        factory.init_params = sentinel.init_params
-        factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
-        factory._dify_context = SimpleNamespace(
-            tenant_id="tenant-id",
-            app_id="app-id",
-            user_id="user-id",
-            invoke_from=InvokeFrom.DEBUGGER,
-            app_type=None,
-            created_by=None,
-        )
-        factory._use_workflow_tool_containers = True
-        factory._code_executor = sentinel.code_executor
-        factory._code_limits = sentinel.code_limits
-        factory._jinja2_template_renderer = sentinel.jinja2_template_renderer
-        factory._template_transform_max_output_length = 2048
-        factory._http_request_http_client = sentinel.http_client
-        factory._remote_file_http_client = sentinel.remote_file_http_client
-        factory._bound_tool_file_manager_factory = MagicMock(return_value=sentinel.tool_file_manager)
-        factory._file_reference_factory = sentinel.file_reference_factory
-        factory._prompt_message_serializer = sentinel.prompt_message_serializer
-        factory._retriever_attachment_loader = sentinel.retriever_attachment_loader
-        factory._llm_file_saver = sentinel.llm_file_saver
-        factory._human_input_runtime = sentinel.human_input_runtime
-        factory._tool_runtime = sentinel.tool_runtime
-        factory._http_request_file_manager = sentinel.file_manager
-        factory._document_extractor_unstructured_api_config = sentinel.unstructured_api_config
-        factory._http_request_config = sentinel.http_request_config
-        factory._llm_credentials_provider = sentinel.credentials_provider
-        factory._llm_model_factory = sentinel.model_factory
-        factory._build_retriever_attachment_loader = MagicMock(return_value=sentinel.retriever_attachment_loader)
-        return factory
+        def test_rejects_unknown_node_type(self, factory):
+            with pytest.raises(ValueError, match="No class mapping found for node type: missing"):
+                factory.create_node({"id": "node-id", "data": {"type": "missing"}})
 
-    def test_rejects_unknown_node_type(self, factory):
-        with pytest.raises(ValueError, match="No class mapping found for node type: missing"):
-            factory.create_node({"id": "node-id", "data": {"type": "missing"}})
-
-    def test_validate_node_resolves_schema_without_constructing_node(self, monkeypatch: pytest.MonkeyPatch, factory):
-        constructor = _node_constructor(return_value=sentinel.node)
-        constructor.execution_type = NodeExecutionType.BRANCH
-        monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
-
-        execution_type = factory.validate_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
-
-        assert execution_type == NodeExecutionType.BRANCH
-        constructor.validate_node_data.assert_called_once()
-        constructor.assert_not_called()
-
-    def test_validate_node_rejects_invalid_human_input_delivery_config(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        factory,
-    ):
-        constructor = _node_constructor(return_value=sentinel.node)
-        monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
-
-        with pytest.raises(
-            ValueError,
-            match=r"(?s)0\.email\.config\.subject.*valid string.*0\.email\.config\.body.*valid string",
+        def test_validate_node_resolves_schema_without_constructing_node(
+            self, monkeypatch: pytest.MonkeyPatch, factory
         ):
-            factory.validate_node(
+            constructor = _node_constructor(return_value=sentinel.node)
+            constructor.execution_type = NodeExecutionType.BRANCH
+            monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
+
+            execution_type = factory.validate_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
+
+            assert execution_type == NodeExecutionType.BRANCH
+            constructor.validate_node_data.assert_called_once()
+            constructor.assert_not_called()
+
+        def test_validate_node_rejects_invalid_human_input_delivery_config(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            factory,
+        ):
+            constructor = _node_constructor(return_value=sentinel.node)
+            monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
+
+            with pytest.raises(
+                ValueError,
+                match=r"(?s)0\.email\.config\.subject.*valid string.*0\.email\.config\.body.*valid string",
+            ):
+                factory.validate_node(
+                    {
+                        "id": "human-input",
+                        "data": {
+                            "type": BuiltinNodeTypes.HUMAN_INPUT,
+                            "delivery_methods": [
+                                {
+                                    "type": "email",
+                                    "config": {
+                                        "recipients": {"items": []},
+                                        "subject": 123,
+                                        "body": [],
+                                    },
+                                }
+                            ],
+                        },
+                    }
+                )
+
+            constructor.assert_not_called()
+
+        def test_rejects_missing_class_mapping(self, monkeypatch: pytest.MonkeyPatch, factory):
+            monkeypatch.setattr(
+                factory,
+                "_resolve_node_class",
+                MagicMock(side_effect=ValueError("No class mapping found for node type: start")),
+            )
+
+            with pytest.raises(ValueError, match="No class mapping found for node type: start"):
+                factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
+
+        def test_rejects_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch, factory):
+            monkeypatch.setattr(
+                factory,
+                "_resolve_node_class",
+                MagicMock(side_effect=ValueError("No latest version class found for node type: start")),
+            )
+
+            with pytest.raises(ValueError, match="No latest version class found for node type: start"):
+                factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
+
+        def test_uses_version_specific_class_when_available(self, monkeypatch: pytest.MonkeyPatch, factory):
+            matched_node = sentinel.matched_node
+            latest_node_class = _node_constructor(return_value=sentinel.latest_node)
+            matched_node_class = _node_constructor(return_value=matched_node)
+            monkeypatch.setattr(
+                factory,
+                "_resolve_node_class",
+                MagicMock(return_value=matched_node_class),
+            )
+
+            result = factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START, "version": "9"}})
+
+            assert result is matched_node
+            matched_node_class.assert_called_once()
+            kwargs = matched_node_class.call_args.kwargs
+            assert kwargs["node_id"] == "node-id"
+            _assert_constructor_node_data(
+                kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9"
+            )
+            assert kwargs["init_params"] is sentinel.init_params
+            assert kwargs["runtime_state"] is factory.runtime_state
+            latest_node_class.assert_not_called()
+
+        def test_falls_back_to_latest_class_when_version_specific_mapping_is_missing(
+            self, monkeypatch: pytest.MonkeyPatch, factory
+        ):
+            latest_node = sentinel.latest_node
+            latest_node_class = _node_constructor(return_value=latest_node)
+            monkeypatch.setattr(
+                factory,
+                "_resolve_node_class",
+                MagicMock(return_value=latest_node_class),
+            )
+
+            result = factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START, "version": "9"}})
+
+            assert result is latest_node
+            latest_node_class.assert_called_once()
+            kwargs = latest_node_class.call_args.kwargs
+            assert kwargs["node_id"] == "node-id"
+            _assert_constructor_node_data(
+                kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9"
+            )
+            assert kwargs["init_params"] is sentinel.init_params
+            assert kwargs["runtime_state"] is factory.runtime_state
+
+        @pytest.mark.parametrize(
+            ("node_type", "constructor_name"),
+            [
+                (BuiltinNodeTypes.CODE, "CodeNode"),
+                (BuiltinNodeTypes.TEMPLATE_TRANSFORM, "TemplateTransformNode"),
+                (BuiltinNodeTypes.HTTP_REQUEST, "HttpRequestNode"),
+                (BuiltinNodeTypes.HUMAN_INPUT, "HumanInputNode"),
+                (BuiltinNodeTypes.TOOL, "ToolNode"),
+                (KNOWLEDGE_INDEX_NODE_TYPE, "KnowledgeIndexNode"),
+                (BuiltinNodeTypes.DATASOURCE, "DatasourceNode"),
+                (BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, "KnowledgeRetrievalNode"),
+                (BuiltinNodeTypes.DOCUMENT_EXTRACTOR, "DocumentExtractorNode"),
+            ],
+        )
+        def test_creates_specialized_nodes(self, monkeypatch: pytest.MonkeyPatch, factory, node_type, constructor_name):
+            created_node = object()
+            constructor = _node_constructor(return_value=created_node)
+            constructor._mock_name = constructor_name
+            monkeypatch.setattr(
+                factory,
+                "_resolve_node_class",
+                MagicMock(return_value=constructor),
+            )
+
+            if constructor_name == "HumanInputNode":
+                factory._build_human_input_callback = MagicMock(return_value=sentinel.hitl_callback)
+
+            node_config = {"id": "node-id", "data": {"type": node_type}}
+            result = factory.create_node(node_config)
+
+            assert result is created_node
+            kwargs = constructor.call_args.kwargs
+            assert kwargs["node_id"] == "node-id"
+            _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=node_type)
+            assert kwargs["init_params"] is sentinel.init_params
+            assert kwargs["runtime_state"] is factory.runtime_state
+
+            if constructor_name == "CodeNode":
+                assert kwargs["code_executor"] is sentinel.code_executor
+                assert kwargs["code_limits"] is sentinel.code_limits
+            elif constructor_name == "TemplateTransformNode":
+                assert kwargs["jinja2_template_renderer"] is sentinel.jinja2_template_renderer
+                assert kwargs["max_output_length"] == 2048
+            elif constructor_name == "HttpRequestNode":
+                assert kwargs["http_request_config"] is sentinel.http_request_config
+                assert kwargs["http_client"] is sentinel.http_client
+                assert kwargs["tool_file_manager_factory"] is factory._bound_tool_file_manager_factory
+                assert kwargs["file_manager"] is sentinel.file_manager
+                assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
+                factory._bound_tool_file_manager_factory.assert_not_called()
+            elif constructor_name == "HumanInputNode":
+                assert kwargs["hitl_callback"] is sentinel.hitl_callback
+                factory._build_human_input_callback.assert_called_once()
+            elif constructor_name == "ToolNode":
+                assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
+                assert kwargs["runtime"] is sentinel.tool_runtime
+                factory._bound_tool_file_manager_factory.assert_called_once_with()
+            elif constructor_name == "DocumentExtractorNode":
+                assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
+                assert kwargs["http_client"] is sentinel.remote_file_http_client
+
+        def test_human_input_node_receives_built_hitl_callback(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            factory,
+        ) -> None:
+            created_node = object()
+            constructor = _node_constructor(return_value=created_node)
+            factory._build_human_input_callback = MagicMock(return_value=sentinel.hitl_callback)
+            monkeypatch.setattr(
+                factory,
+                "_resolve_node_class",
+                MagicMock(return_value=constructor),
+            )
+
+            result = factory.create_node({"id": "human-node", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT}})
+
+            assert result is created_node
+            kwargs = constructor.call_args.kwargs
+            assert kwargs["hitl_callback"] is sentinel.hitl_callback
+            factory._build_human_input_callback.assert_called_once()
+
+        def test_tool_node_receives_tool_file_manager(self, monkeypatch: pytest.MonkeyPatch, factory) -> None:
+            created_node = object()
+            constructor = _node_constructor(return_value=created_node)
+            factory._bound_tool_file_manager_factory = MagicMock(return_value=sentinel.tool_file_manager)
+            monkeypatch.setattr(
+                factory,
+                "_resolve_node_class",
+                MagicMock(return_value=constructor),
+            )
+
+            result = factory.create_node({"id": "tool-node", "data": {"type": BuiltinNodeTypes.TOOL}})
+
+            assert result is created_node
+            kwargs = constructor.call_args.kwargs
+            assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
+            assert kwargs["runtime"] is sentinel.tool_runtime
+            assert "tool_file_manager_factory" not in kwargs
+            factory._bound_tool_file_manager_factory.assert_called_once_with()
+
+        def test_build_llm_compatible_node_init_kwargs_preserves_structured_output_switch(self, factory):
+            node_data = LLMNodeData.model_validate(
                 {
-                    "id": "human-input",
-                    "data": {
-                        "type": BuiltinNodeTypes.HUMAN_INPUT,
-                        "delivery_methods": [
-                            {
-                                "type": "email",
-                                "config": {
-                                    "recipients": {"items": []},
-                                    "subject": 123,
-                                    "body": [],
-                                },
-                            }
-                        ],
+                    "type": BuiltinNodeTypes.LLM,
+                    "title": "LLM",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                    "structured_output_enabled": True,
+                    "structured_output": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {"type": {"type": "string"}},
+                            "required": ["type"],
+                        }
                     },
                 }
             )
+            wrapped_model_instance = DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-4"))
+            memory = sentinel.memory
+            factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
+            factory._build_memory_for_llm_node = MagicMock(return_value=memory)
+            with patch.object(
+                factory, "_wrap_model_instance_for_node", return_value=wrapped_model_instance
+            ) as wrap_model:
+                kwargs = factory._build_llm_compatible_node_init_kwargs(
+                    node_class=sentinel.node_class,
+                    node_data=node_data,
+                    wrap_model_instance=True,
+                    include_http_client=True,
+                    include_llm_file_saver=True,
+                    include_prompt_message_serializer=True,
+                    include_retriever_attachment_loader=True,
+                    include_jinja2_template_renderer=True,
+                )
 
-        constructor.assert_not_called()
+            assert node_data.structured_output_switch_on is True
+            assert node_data.structured_output_enabled is True
+            factory._build_model_instance_for_llm_node.assert_called_once_with(node_data)
+            factory._build_memory_for_llm_node.assert_called_once_with(
+                node_data=node_data,
+                model_instance=sentinel.model_instance,
+            )
+            wrap_model.assert_called_once_with(
+                node_data=node_data,
+                model_instance=sentinel.model_instance,
+                request_metadata={"app_id": "app-id"},
+            )
+            assert kwargs["model_instance"] is wrapped_model_instance
+            assert kwargs["polling_finalizer"] == wrapped_model_instance.finalize_llm_polling
 
-    def test_rejects_missing_class_mapping(self, monkeypatch: pytest.MonkeyPatch, factory):
-        monkeypatch.setattr(
-            factory,
-            "_resolve_node_class",
-            MagicMock(side_effect=ValueError("No class mapping found for node type: start")),
-        )
+        def test_resolve_llm_model_reference_uses_shared_model_and_parameters(self, factory):
+            node_data = LLMNodeData.model_validate(
+                {
+                    "type": BuiltinNodeTypes.LLM,
+                    "title": "LLM",
+                    "model": {
+                        "provider": "old-provider",
+                        "name": "old-model",
+                        "mode": "chat",
+                        "completion_params": {"temperature": 0.2},
+                    },
+                    "model_selector": ["env", "for_summarize"],
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                }
+            )
+            factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
+                value={
+                    "provider": "new-provider",
+                    "name": "new-model",
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.8},
+                }
+            )
 
-        with pytest.raises(ValueError, match="No class mapping found for node type: start"):
-            factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
+            result = factory._resolve_llm_model_reference(node_data)
 
-    def test_rejects_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch, factory):
-        monkeypatch.setattr(
-            factory,
-            "_resolve_node_class",
-            MagicMock(side_effect=ValueError("No latest version class found for node type: start")),
-        )
+            assert result.model.provider == "new-provider"
+            assert result.model.name == "new-model"
+            assert result.model.mode == node_data.model.mode
+            assert result.model.completion_params == {"temperature": 0.8}
+            factory.runtime_state.variable_pool.get.assert_called_once_with(("env", "for_summarize"))
 
-        with pytest.raises(ValueError, match="No latest version class found for node type: start"):
-            factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
+        def test_resolve_llm_model_reference_keeps_node_parameters_for_legacy_variable(self, factory):
+            node_data = LLMNodeData.model_validate(
+                {
+                    "type": BuiltinNodeTypes.LLM,
+                    "title": "LLM",
+                    "model": {
+                        "provider": "old-provider",
+                        "name": "old-model",
+                        "mode": "chat",
+                        "completion_params": {"temperature": 0.2},
+                    },
+                    "model_selector": ["env", "for_summarize"],
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                }
+            )
+            factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
+                value={"provider": "new-provider", "name": "new-model", "mode": "chat"}
+            )
 
-    def test_uses_version_specific_class_when_available(self, monkeypatch: pytest.MonkeyPatch, factory):
-        matched_node = sentinel.matched_node
-        latest_node_class = _node_constructor(return_value=sentinel.latest_node)
-        matched_node_class = _node_constructor(return_value=matched_node)
-        monkeypatch.setattr(
-            factory,
-            "_resolve_node_class",
-            MagicMock(return_value=matched_node_class),
-        )
+            result = factory._resolve_llm_model_reference(node_data)
 
-        result = factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START, "version": "9"}})
+            assert result.model.completion_params == {"temperature": 0.2}
 
-        assert result is matched_node
-        matched_node_class.assert_called_once()
-        kwargs = matched_node_class.call_args.kwargs
-        assert kwargs["node_id"] == "node-id"
-        _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
-        assert kwargs["init_params"] is sentinel.init_params
-        assert kwargs["runtime_state"] is factory.runtime_state
-        latest_node_class.assert_not_called()
+        def test_resolve_llm_model_reference_rejects_mode_mismatch(self, factory):
+            node_data = LLMNodeData.model_validate(
+                {
+                    "type": BuiltinNodeTypes.LLM,
+                    "title": "LLM",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                    "model_selector": ["env", "shared_model"],
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                }
+            )
+            factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
+                value={"provider": "provider", "name": "model", "mode": "completion"}
+            )
 
-    def test_falls_back_to_latest_class_when_version_specific_mapping_is_missing(
-        self, monkeypatch: pytest.MonkeyPatch, factory
-    ):
-        latest_node = sentinel.latest_node
-        latest_node_class = _node_constructor(return_value=latest_node)
-        monkeypatch.setattr(
-            factory,
-            "_resolve_node_class",
-            MagicMock(return_value=latest_node_class),
-        )
+            with pytest.raises(ValueError, match="uses mode 'completion'.*uses mode 'chat'"):
+                factory._resolve_llm_model_reference(node_data)
 
-        result = factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START, "version": "9"}})
+        def test_resolve_llm_model_reference_rejects_missing_variable(self, factory):
+            node_data = LLMNodeData.model_validate(
+                {
+                    "type": BuiltinNodeTypes.LLM,
+                    "title": "LLM",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                    "model_selector": ["env", "shared_model"],
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                }
+            )
+            factory.runtime_state.variable_pool.get.return_value = None
 
-        assert result is latest_node
-        latest_node_class.assert_called_once()
-        kwargs = latest_node_class.call_args.kwargs
-        assert kwargs["node_id"] == "node-id"
-        _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
-        assert kwargs["init_params"] is sentinel.init_params
-        assert kwargs["runtime_state"] is factory.runtime_state
+            with pytest.raises(ValueError, match="shared_model.*not found"):
+                factory._resolve_llm_model_reference(node_data)
 
-    @pytest.mark.parametrize(
-        ("node_type", "constructor_name"),
-        [
-            (BuiltinNodeTypes.CODE, "CodeNode"),
-            (BuiltinNodeTypes.TEMPLATE_TRANSFORM, "TemplateTransformNode"),
-            (BuiltinNodeTypes.HTTP_REQUEST, "HttpRequestNode"),
-            (BuiltinNodeTypes.HUMAN_INPUT, "HumanInputNode"),
-            (BuiltinNodeTypes.TOOL, "ToolNode"),
-            (KNOWLEDGE_INDEX_NODE_TYPE, "KnowledgeIndexNode"),
-            (BuiltinNodeTypes.DATASOURCE, "DatasourceNode"),
-            (BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL, "KnowledgeRetrievalNode"),
-            (BuiltinNodeTypes.DOCUMENT_EXTRACTOR, "DocumentExtractorNode"),
-        ],
-    )
-    def test_creates_specialized_nodes(self, monkeypatch: pytest.MonkeyPatch, factory, node_type, constructor_name):
-        created_node = object()
-        constructor = _node_constructor(return_value=created_node)
-        constructor._mock_name = constructor_name
-        monkeypatch.setattr(
-            factory,
-            "_resolve_node_class",
-            MagicMock(return_value=constructor),
-        )
+        def test_resolve_llm_model_reference_keeps_static_model_for_legacy_non_environment_selector(self, factory):
+            node_data = LLMNodeData.model_validate(
+                {
+                    "type": BuiltinNodeTypes.LLM,
+                    "title": "LLM",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                    "model_selector": ["conversation", "shared_model"],
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                }
+            )
 
-        if constructor_name == "HumanInputNode":
-            factory._build_human_input_callback = MagicMock(return_value=sentinel.hitl_callback)
+            result = factory._resolve_llm_model_reference(node_data)
 
-        node_config = {"id": "node-id", "data": {"type": node_type}}
-        result = factory.create_node(node_config)
+            assert result is node_data
+            factory.runtime_state.variable_pool.get.assert_not_called()
 
-        assert result is created_node
-        kwargs = constructor.call_args.kwargs
-        assert kwargs["node_id"] == "node-id"
-        _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=node_type)
-        assert kwargs["init_params"] is sentinel.init_params
-        assert kwargs["runtime_state"] is factory.runtime_state
+        def test_build_llm_compatible_node_init_kwargs_uses_polling_wrapper_for_polling_llm_node(self, factory):
+            node_data = LLMNodeData.model_validate(
+                {
+                    "type": BuiltinNodeTypes.LLM,
+                    "title": "LLM",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                }
+            )
+            plugin_runtime = PluginModelRuntime(
+                tenant_id="tenant-id",
+                user_id="user-id",
+                client=PluginModelClient(),
+                plugin_service=PluginService,
+            )
+            model_instance = _ModelInstanceStub(
+                model_runtime=plugin_runtime,
+                model_schema=_build_llm_model_schema(features=[ModelFeature.POLLING]),
+            )
+            factory._build_model_instance_for_llm_node = MagicMock(return_value=model_instance)
+            factory._build_memory_for_llm_node = MagicMock(return_value=sentinel.memory)
 
-        if constructor_name == "CodeNode":
-            assert kwargs["code_executor"] is sentinel.code_executor
-            assert kwargs["code_limits"] is sentinel.code_limits
-        elif constructor_name == "TemplateTransformNode":
-            assert kwargs["jinja2_template_renderer"] is sentinel.jinja2_template_renderer
-            assert kwargs["max_output_length"] == 2048
-        elif constructor_name == "HttpRequestNode":
-            assert kwargs["http_request_config"] is sentinel.http_request_config
-            assert kwargs["http_client"] is sentinel.http_client
-            assert kwargs["tool_file_manager_factory"] is factory._bound_tool_file_manager_factory
-            assert kwargs["file_manager"] is sentinel.file_manager
-            assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
-            factory._bound_tool_file_manager_factory.assert_not_called()
-        elif constructor_name == "HumanInputNode":
-            assert kwargs["hitl_callback"] is sentinel.hitl_callback
-            factory._build_human_input_callback.assert_called_once()
-        elif constructor_name == "ToolNode":
-            assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
-            assert kwargs["runtime"] is sentinel.tool_runtime
-            factory._bound_tool_file_manager_factory.assert_called_once_with()
-        elif constructor_name == "DocumentExtractorNode":
-            assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
-            assert kwargs["http_client"] is sentinel.remote_file_http_client
-
-    def test_human_input_node_receives_built_hitl_callback(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        factory,
-    ) -> None:
-        created_node = object()
-        constructor = _node_constructor(return_value=created_node)
-        factory._build_human_input_callback = MagicMock(return_value=sentinel.hitl_callback)
-        monkeypatch.setattr(
-            factory,
-            "_resolve_node_class",
-            MagicMock(return_value=constructor),
-        )
-
-        result = factory.create_node({"id": "human-node", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT}})
-
-        assert result is created_node
-        kwargs = constructor.call_args.kwargs
-        assert kwargs["hitl_callback"] is sentinel.hitl_callback
-        factory._build_human_input_callback.assert_called_once()
-
-    def test_tool_node_receives_tool_file_manager(self, monkeypatch: pytest.MonkeyPatch, factory) -> None:
-        created_node = object()
-        constructor = _node_constructor(return_value=created_node)
-        factory._bound_tool_file_manager_factory = MagicMock(return_value=sentinel.tool_file_manager)
-        monkeypatch.setattr(
-            factory,
-            "_resolve_node_class",
-            MagicMock(return_value=constructor),
-        )
-
-        result = factory.create_node({"id": "tool-node", "data": {"type": BuiltinNodeTypes.TOOL}})
-
-        assert result is created_node
-        kwargs = constructor.call_args.kwargs
-        assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
-        assert kwargs["runtime"] is sentinel.tool_runtime
-        assert "tool_file_manager_factory" not in kwargs
-        factory._bound_tool_file_manager_factory.assert_called_once_with()
-
-    def test_build_llm_compatible_node_init_kwargs_preserves_structured_output_switch(self, factory):
-        node_data = LLMNodeData.model_validate(
-            {
-                "type": BuiltinNodeTypes.LLM,
-                "title": "LLM",
-                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
-                "prompt_template": [{"role": "system", "text": "x"}],
-                "context": {"enabled": False, "variable_selector": []},
-                "vision": {"enabled": False},
-                "structured_output_enabled": True,
-                "structured_output": {
-                    "schema": {
-                        "type": "object",
-                        "properties": {"type": {"type": "string"}},
-                        "required": ["type"],
-                    }
-                },
-            }
-        )
-        wrapped_model_instance = DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-4"))
-        memory = sentinel.memory
-        factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
-        factory._build_memory_for_llm_node = MagicMock(return_value=memory)
-        with patch.object(factory, "_wrap_model_instance_for_node", return_value=wrapped_model_instance) as wrap_model:
             kwargs = factory._build_llm_compatible_node_init_kwargs(
                 node_class=sentinel.node_class,
                 node_data=node_data,
                 wrap_model_instance=True,
-                include_http_client=True,
-                include_llm_file_saver=True,
-                include_prompt_message_serializer=True,
-                include_retriever_attachment_loader=True,
-                include_jinja2_template_renderer=True,
+                include_http_client=False,
+                include_llm_file_saver=False,
+                include_prompt_message_serializer=False,
+                include_retriever_attachment_loader=False,
+                include_jinja2_template_renderer=False,
             )
 
-        assert node_data.structured_output_switch_on is True
-        assert node_data.structured_output_enabled is True
-        factory._build_model_instance_for_llm_node.assert_called_once_with(node_data)
-        factory._build_memory_for_llm_node.assert_called_once_with(
-            node_data=node_data,
-            model_instance=sentinel.model_instance,
+            assert isinstance(kwargs["model_instance"], LLMPollingCapableProtocol)
+
+        @pytest.mark.parametrize(
+            "node_type", [BuiltinNodeTypes.QUESTION_CLASSIFIER, BuiltinNodeTypes.PARAMETER_EXTRACTOR]
         )
-        wrap_model.assert_called_once_with(
-            node_data=node_data,
-            model_instance=sentinel.model_instance,
-            request_metadata={"app_id": "app-id"},
-        )
-        assert kwargs["model_instance"] is wrapped_model_instance
-        assert kwargs["polling_finalizer"] == wrapped_model_instance.finalize_llm_polling
+        def test_wrap_model_instance_keeps_non_llm_graph_nodes_on_plain_wrapper(self, node_type):
+            plugin_runtime = PluginModelRuntime(
+                tenant_id="tenant-id",
+                user_id="user-id",
+                client=PluginModelClient(),
+                plugin_service=PluginService,
+            )
+            model_instance = _ModelInstanceStub(
+                model_runtime=plugin_runtime,
+                model_schema=_build_llm_model_schema(features=[ModelFeature.POLLING]),
+            )
 
-    def test_resolve_llm_model_reference_uses_shared_model_and_parameters(self, factory):
-        node_data = LLMNodeData.model_validate(
-            {
-                "type": BuiltinNodeTypes.LLM,
-                "title": "LLM",
-                "model": {
-                    "provider": "old-provider",
-                    "name": "old-model",
-                    "mode": "chat",
-                    "completion_params": {"temperature": 0.2},
-                },
-                "model_selector": ["env", "for_summarize"],
-                "prompt_template": [{"role": "system", "text": "x"}],
-                "context": {"enabled": False, "variable_selector": []},
-                "vision": {"enabled": False},
-            }
-        )
-        factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
-            value={
-                "provider": "new-provider",
-                "name": "new-model",
-                "mode": "chat",
-                "completion_params": {"temperature": 0.8},
-            }
-        )
+            wrapped = node_factory.DifyNodeFactory._wrap_model_instance_for_node(
+                node_data=SimpleNamespace(type=node_type),
+                model_instance=model_instance,
+            )
 
-        result = factory._resolve_llm_model_reference(node_data)
+            assert type(wrapped) is DifyPreparedLLM
+            assert not isinstance(wrapped, LLMPollingCapableProtocol)
 
-        assert result.model.provider == "new-provider"
-        assert result.model.name == "new-model"
-        assert result.model.mode == node_data.model.mode
-        assert result.model.completion_params == {"temperature": 0.8}
-        factory.runtime_state.variable_pool.get.assert_called_once_with(("env", "for_summarize"))
+        def test_create_node_passes_canonical_llm_data_to_constructor(self, monkeypatch, factory):
+            created_node = object()
+            constructor = _node_constructor(return_value=created_node)
+            constructor.validate_node_data.side_effect = lambda node_data: LLMNodeData.model_validate(
+                node_data.model_dump(mode="python") if isinstance(node_data, BaseNodeData) else node_data
+            )
+            monkeypatch.setattr(factory, "_resolve_node_class", lambda **_kwargs: constructor)
+            monkeypatch.setattr(factory, "_build_llm_compatible_node_init_kwargs", MagicMock(return_value={}))
 
-    def test_resolve_llm_model_reference_keeps_node_parameters_for_legacy_variable(self, factory):
-        node_data = LLMNodeData.model_validate(
-            {
-                "type": BuiltinNodeTypes.LLM,
-                "title": "LLM",
-                "model": {
-                    "provider": "old-provider",
-                    "name": "old-model",
-                    "mode": "chat",
-                    "completion_params": {"temperature": 0.2},
-                },
-                "model_selector": ["env", "for_summarize"],
-                "prompt_template": [{"role": "system", "text": "x"}],
-                "context": {"enabled": False, "variable_selector": []},
-                "vision": {"enabled": False},
-            }
-        )
-        factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
-            value={"provider": "new-provider", "name": "new-model", "mode": "chat"}
-        )
-
-        result = factory._resolve_llm_model_reference(node_data)
-
-        assert result.model.completion_params == {"temperature": 0.2}
-
-    def test_resolve_llm_model_reference_rejects_mode_mismatch(self, factory):
-        node_data = LLMNodeData.model_validate(
-            {
-                "type": BuiltinNodeTypes.LLM,
-                "title": "LLM",
-                "model": {"provider": "provider", "name": "model", "mode": "chat"},
-                "model_selector": ["env", "shared_model"],
-                "prompt_template": [{"role": "system", "text": "x"}],
-                "context": {"enabled": False, "variable_selector": []},
-                "vision": {"enabled": False},
-            }
-        )
-        factory.runtime_state.variable_pool.get.return_value = ObjectSegment(
-            value={"provider": "provider", "name": "model", "mode": "completion"}
-        )
-
-        with pytest.raises(ValueError, match="uses mode 'completion'.*uses mode 'chat'"):
-            factory._resolve_llm_model_reference(node_data)
-
-    def test_resolve_llm_model_reference_rejects_missing_variable(self, factory):
-        node_data = LLMNodeData.model_validate(
-            {
-                "type": BuiltinNodeTypes.LLM,
-                "title": "LLM",
-                "model": {"provider": "provider", "name": "model", "mode": "chat"},
-                "model_selector": ["env", "shared_model"],
-                "prompt_template": [{"role": "system", "text": "x"}],
-                "context": {"enabled": False, "variable_selector": []},
-                "vision": {"enabled": False},
-            }
-        )
-        factory.runtime_state.variable_pool.get.return_value = None
-
-        with pytest.raises(ValueError, match="shared_model.*not found"):
-            factory._resolve_llm_model_reference(node_data)
-
-    def test_resolve_llm_model_reference_keeps_static_model_for_legacy_non_environment_selector(self, factory):
-        node_data = LLMNodeData.model_validate(
-            {
-                "type": BuiltinNodeTypes.LLM,
-                "title": "LLM",
-                "model": {"provider": "provider", "name": "model", "mode": "chat"},
-                "model_selector": ["conversation", "shared_model"],
-                "prompt_template": [{"role": "system", "text": "x"}],
-                "context": {"enabled": False, "variable_selector": []},
-                "vision": {"enabled": False},
-            }
-        )
-
-        result = factory._resolve_llm_model_reference(node_data)
-
-        assert result is node_data
-        factory.runtime_state.variable_pool.get.assert_not_called()
-
-    def test_build_llm_compatible_node_init_kwargs_uses_polling_wrapper_for_polling_llm_node(self, factory):
-        node_data = LLMNodeData.model_validate(
-            {
-                "type": BuiltinNodeTypes.LLM,
-                "title": "LLM",
-                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
-                "prompt_template": [{"role": "system", "text": "x"}],
-                "context": {"enabled": False, "variable_selector": []},
-                "vision": {"enabled": False},
-            }
-        )
-        plugin_runtime = PluginModelRuntime(
-            tenant_id="tenant-id",
-            user_id="user-id",
-            client=PluginModelClient(),
-            plugin_service=PluginService,
-        )
-        model_instance = _ModelInstanceStub(
-            model_runtime=plugin_runtime,
-            model_schema=_build_llm_model_schema(features=[ModelFeature.POLLING]),
-        )
-        factory._build_model_instance_for_llm_node = MagicMock(return_value=model_instance)
-        factory._build_memory_for_llm_node = MagicMock(return_value=sentinel.memory)
-
-        kwargs = factory._build_llm_compatible_node_init_kwargs(
-            node_class=sentinel.node_class,
-            node_data=node_data,
-            wrap_model_instance=True,
-            include_http_client=False,
-            include_llm_file_saver=False,
-            include_prompt_message_serializer=False,
-            include_retriever_attachment_loader=False,
-            include_jinja2_template_renderer=False,
-        )
-
-        assert isinstance(kwargs["model_instance"], LLMPollingCapableProtocol)
-
-    @pytest.mark.parametrize("node_type", [BuiltinNodeTypes.QUESTION_CLASSIFIER, BuiltinNodeTypes.PARAMETER_EXTRACTOR])
-    def test_wrap_model_instance_keeps_non_llm_graph_nodes_on_plain_wrapper(self, node_type):
-        plugin_runtime = PluginModelRuntime(
-            tenant_id="tenant-id",
-            user_id="user-id",
-            client=PluginModelClient(),
-            plugin_service=PluginService,
-        )
-        model_instance = _ModelInstanceStub(
-            model_runtime=plugin_runtime,
-            model_schema=_build_llm_model_schema(features=[ModelFeature.POLLING]),
-        )
-
-        wrapped = node_factory.DifyNodeFactory._wrap_model_instance_for_node(
-            node_data=SimpleNamespace(type=node_type),
-            model_instance=model_instance,
-        )
-
-        assert type(wrapped) is DifyPreparedLLM
-        assert not isinstance(wrapped, LLMPollingCapableProtocol)
-
-    def test_create_node_passes_canonical_llm_data_to_constructor(self, monkeypatch, factory):
-        created_node = object()
-        constructor = _node_constructor(return_value=created_node)
-        constructor.validate_node_data.side_effect = lambda node_data: LLMNodeData.model_validate(
-            node_data.model_dump(mode="python") if isinstance(node_data, BaseNodeData) else node_data
-        )
-        monkeypatch.setattr(factory, "_resolve_node_class", lambda **_kwargs: constructor)
-        monkeypatch.setattr(factory, "_build_llm_compatible_node_init_kwargs", MagicMock(return_value={}))
-
-        node_config = {
-            "id": "llm-node-id",
-            "data": {
-                "type": BuiltinNodeTypes.LLM,
-                "title": "LLM",
-                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
-                "prompt_template": [{"role": "system", "text": "x"}],
-                "context": {"enabled": False, "variable_selector": []},
-                "vision": {"enabled": False},
-                "structured_output_enabled": True,
-                "structured_output": {
-                    "schema": {
-                        "type": "object",
-                        "properties": {"type": {"type": "string"}},
-                        "required": ["type"],
-                    }
-                },
-            },
-        }
-
-        factory.create_node(node_config)
-
-        data = constructor.call_args.kwargs["data"]
-        assert isinstance(data, Mapping)
-        assert data["structured_output_switch_on"] is True
-        assert "structured_output_enabled" not in data
-        assert LLMNodeData.model_validate(data).structured_output_enabled is True
-
-    def test_create_node_preserves_structured_output_switch_after_graphon_constructor(self, monkeypatch, factory):
-        factory.init_params = SimpleNamespace(
-            workflow_id="workflow-id",
-            graph_config={},
-            run_context={},
-            call_depth=0,
-        )
-        monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=LLMNode))
-        monkeypatch.setattr(
-            factory,
-            "_build_llm_compatible_node_init_kwargs",
-            MagicMock(
-                return_value={
-                    "model_instance": sentinel.model_instance,
-                    "llm_file_saver": sentinel.llm_file_saver,
-                    "prompt_message_serializer": sentinel.prompt_message_serializer,
-                }
-            ),
-        )
-
-        node_config = {
-            "id": "llm-node-id",
-            "data": {
-                "type": BuiltinNodeTypes.LLM,
-                "title": "LLM",
-                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
-                "prompt_template": [{"role": "system", "text": "x"}],
-                "context": {"enabled": False, "variable_selector": []},
-                "vision": {"enabled": False},
-                "structured_output_enabled": True,
-                "structured_output": {
-                    "schema": {
-                        "type": "object",
-                        "properties": {"type": {"type": "string"}},
-                        "required": ["type"],
-                    }
-                },
-            },
-        }
-
-        node = factory.create_node(node_config)
-
-        assert node.node_data.structured_output_switch_on is True
-        assert node.node_data.structured_output_enabled is True
-
-    def test_create_node_uses_dify_llm_node_for_persisted_version_one(self, monkeypatch, factory):
-        factory.init_params = SimpleNamespace(
-            workflow_id="workflow-id",
-            graph_config={},
-            run_context={},
-            call_depth=0,
-        )
-        monkeypatch.setattr(
-            factory,
-            "_build_llm_compatible_node_init_kwargs",
-            MagicMock(
-                return_value={
-                    "model_instance": sentinel.model_instance,
-                    "llm_file_saver": sentinel.llm_file_saver,
-                    "prompt_message_serializer": sentinel.prompt_message_serializer,
-                    "polling_finalizer": MagicMock(),
-                }
-            ),
-        )
-
-        node = factory.create_node(
-            {
+            node_config = {
                 "id": "llm-node-id",
                 "data": {
                     "type": BuiltinNodeTypes.LLM,
-                    "version": "1",
                     "title": "LLM",
-                    "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                    "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
                     "prompt_template": [{"role": "system", "text": "x"}],
                     "context": {"enabled": False, "variable_selector": []},
                     "vision": {"enabled": False},
+                    "structured_output_enabled": True,
+                    "structured_output": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {"type": {"type": "string"}},
+                            "required": ["type"],
+                        }
+                    },
                 },
             }
-        )
 
-        assert isinstance(node, DifyLLMNode)
-        assert node.version() == "1"
+            factory.create_node(node_config)
 
-    @pytest.mark.parametrize(
-        ("node_type", "constructor_name", "expected_extra_kwargs"),
-        [
-            (
-                BuiltinNodeTypes.LLM,
-                "LLMNode",
-                {
-                    "http_client": sentinel.remote_file_http_client,
-                    "llm_file_saver": sentinel.llm_file_saver,
-                    "prompt_message_serializer": sentinel.prompt_message_serializer,
-                    "retriever_attachment_loader": sentinel.retriever_attachment_loader,
-                    "jinja2_template_renderer": sentinel.jinja2_template_renderer,
+            data = constructor.call_args.kwargs["data"]
+            assert isinstance(data, Mapping)
+            assert data["structured_output_switch_on"] is True
+            assert "structured_output_enabled" not in data
+            assert LLMNodeData.model_validate(data).structured_output_enabled is True
+
+        def test_create_node_preserves_structured_output_switch_after_graphon_constructor(self, monkeypatch, factory):
+            factory.init_params = SimpleNamespace(
+                workflow_id="workflow-id",
+                graph_config={},
+                run_context={},
+                call_depth=0,
+            )
+            monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=LLMNode))
+            monkeypatch.setattr(
+                factory,
+                "_build_llm_compatible_node_init_kwargs",
+                MagicMock(
+                    return_value={
+                        "model_instance": sentinel.model_instance,
+                        "llm_file_saver": sentinel.llm_file_saver,
+                        "prompt_message_serializer": sentinel.prompt_message_serializer,
+                    }
+                ),
+            )
+
+            node_config = {
+                "id": "llm-node-id",
+                "data": {
+                    "type": BuiltinNodeTypes.LLM,
+                    "title": "LLM",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": False, "variable_selector": []},
+                    "vision": {"enabled": False},
+                    "structured_output_enabled": True,
+                    "structured_output": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {"type": {"type": "string"}},
+                            "required": ["type"],
+                        }
+                    },
                 },
-            ),
-            (
-                BuiltinNodeTypes.QUESTION_CLASSIFIER,
-                "QuestionClassifierNode",
+            }
+
+            node = factory.create_node(node_config)
+
+            assert node.node_data.structured_output_switch_on is True
+            assert node.node_data.structured_output_enabled is True
+
+        def test_create_node_uses_dify_llm_node_for_persisted_version_one(self, monkeypatch, factory):
+            factory.init_params = SimpleNamespace(
+                workflow_id="workflow-id",
+                graph_config={},
+                run_context={},
+                call_depth=0,
+            )
+            monkeypatch.setattr(
+                factory,
+                "_build_llm_compatible_node_init_kwargs",
+                MagicMock(
+                    return_value={
+                        "model_instance": sentinel.model_instance,
+                        "llm_file_saver": sentinel.llm_file_saver,
+                        "prompt_message_serializer": sentinel.prompt_message_serializer,
+                        "polling_finalizer": MagicMock(),
+                    }
+                ),
+            )
+
+            node = factory.create_node(
                 {
-                    "http_client": sentinel.remote_file_http_client,
-                    "llm_file_saver": sentinel.llm_file_saver,
-                    "prompt_message_serializer": sentinel.prompt_message_serializer,
-                    "template_renderer": sentinel.jinja2_template_renderer,
-                },
-            ),
-            (
-                BuiltinNodeTypes.PARAMETER_EXTRACTOR,
-                "ParameterExtractorNode",
-                {
-                    "prompt_message_serializer": sentinel.prompt_message_serializer,
-                },
-            ),
-        ],
-    )
-    def test_creates_model_backed_nodes(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        factory,
-        node_type,
-        constructor_name,
-        expected_extra_kwargs,
-    ):
-        created_node = object()
-        constructor = _node_constructor(return_value=created_node)
-        constructor._mock_name = constructor_name
-        monkeypatch.setattr(
-            factory,
-            "_resolve_node_class",
-            lambda **_kwargs: constructor,
-        )
-        llm_init_kwargs = {
-            "credentials_provider": sentinel.credentials_provider,
-            "model_factory": sentinel.model_factory,
-            "model_instance": sentinel.model_instance,
-            "memory": sentinel.memory,
-            **expected_extra_kwargs,
-        }
-        build_llm_init_kwargs = MagicMock(return_value=llm_init_kwargs)
-        factory._build_llm_compatible_node_init_kwargs = build_llm_init_kwargs
+                    "id": "llm-node-id",
+                    "data": {
+                        "type": BuiltinNodeTypes.LLM,
+                        "version": "1",
+                        "title": "LLM",
+                        "model": {"provider": "provider", "name": "model", "mode": "chat"},
+                        "prompt_template": [{"role": "system", "text": "x"}],
+                        "context": {"enabled": False, "variable_selector": []},
+                        "vision": {"enabled": False},
+                    },
+                }
+            )
 
-        node_config = {"id": "node-id", "data": {"type": node_type}}
-        result = factory.create_node(node_config)
+            assert isinstance(node, DifyLLMNode)
+            assert node.version() == "1"
 
-        assert result is created_node
-        build_llm_init_kwargs.assert_called_once()
-        helper_kwargs = build_llm_init_kwargs.call_args.kwargs
-        assert helper_kwargs["node_class"] is constructor
-        assert isinstance(helper_kwargs["node_data"], BaseNodeData)
-        assert helper_kwargs["node_data"].type == node_type
-        assert helper_kwargs["wrap_model_instance"] is True
-        assert helper_kwargs["include_http_client"] is (node_type != BuiltinNodeTypes.PARAMETER_EXTRACTOR)
-        assert helper_kwargs["include_llm_file_saver"] is (node_type != BuiltinNodeTypes.PARAMETER_EXTRACTOR)
-        assert helper_kwargs["include_prompt_message_serializer"] is True
-        assert helper_kwargs["include_retriever_attachment_loader"] is (node_type == BuiltinNodeTypes.LLM)
-        assert helper_kwargs["include_jinja2_template_renderer"] is (node_type == BuiltinNodeTypes.LLM)
-
-        constructor_kwargs = constructor.call_args.kwargs
-        assert constructor_kwargs["node_id"] == "node-id"
-        _assert_constructor_node_data(constructor_kwargs["data"], node_id="node-id", node_type=node_type)
-        assert constructor_kwargs["init_params"] is sentinel.init_params
-        assert constructor_kwargs["runtime_state"] is factory.runtime_state
-        assert constructor_kwargs["credentials_provider"] is sentinel.credentials_provider
-        assert constructor_kwargs["model_factory"] is sentinel.model_factory
-        assert constructor_kwargs["model_instance"] is sentinel.model_instance
-        assert constructor_kwargs["memory"] is sentinel.memory
-        for key, value in expected_extra_kwargs.items():
-            assert constructor_kwargs[key] is value
-
-    def test_parameter_extractor_init_does_not_require_retriever_context(self, factory):
-        node_data = ParameterExtractorNodeData.model_validate(
-            {
-                "type": BuiltinNodeTypes.PARAMETER_EXTRACTOR,
-                "title": "Parameter Extractor",
-                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
-                "query": ["sys", "query"],
-                "parameters": [
+        @pytest.mark.parametrize(
+            ("node_type", "constructor_name", "expected_extra_kwargs"),
+            [
+                (
+                    BuiltinNodeTypes.LLM,
+                    "LLMNode",
                     {
-                        "name": "topic",
-                        "type": "string",
-                        "description": "Topic",
-                        "required": True,
-                    }
-                ],
-                "reasoning_mode": "prompt",
+                        "http_client": sentinel.remote_file_http_client,
+                        "llm_file_saver": sentinel.llm_file_saver,
+                        "prompt_message_serializer": sentinel.prompt_message_serializer,
+                        "retriever_attachment_loader": sentinel.retriever_attachment_loader,
+                        "jinja2_template_renderer": sentinel.jinja2_template_renderer,
+                    },
+                ),
+                (
+                    BuiltinNodeTypes.QUESTION_CLASSIFIER,
+                    "QuestionClassifierNode",
+                    {
+                        "http_client": sentinel.remote_file_http_client,
+                        "llm_file_saver": sentinel.llm_file_saver,
+                        "prompt_message_serializer": sentinel.prompt_message_serializer,
+                        "template_renderer": sentinel.jinja2_template_renderer,
+                    },
+                ),
+                (
+                    BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+                    "ParameterExtractorNode",
+                    {
+                        "prompt_message_serializer": sentinel.prompt_message_serializer,
+                    },
+                ),
+            ],
+        )
+        def test_creates_model_backed_nodes(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            factory,
+            node_type,
+            constructor_name,
+            expected_extra_kwargs,
+        ):
+            created_node = object()
+            constructor = _node_constructor(return_value=created_node)
+            constructor._mock_name = constructor_name
+            monkeypatch.setattr(
+                factory,
+                "_resolve_node_class",
+                lambda **_kwargs: constructor,
+            )
+            llm_init_kwargs = {
+                "credentials_provider": sentinel.credentials_provider,
+                "model_factory": sentinel.model_factory,
+                "model_instance": sentinel.model_instance,
+                "memory": sentinel.memory,
+                **expected_extra_kwargs,
             }
-        )
-        factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
-        factory._build_memory_for_llm_node = MagicMock(return_value=sentinel.memory)
-        factory._build_retriever_attachment_loader = MagicMock(side_effect=AssertionError("unexpected loader build"))
+            build_llm_init_kwargs = MagicMock(return_value=llm_init_kwargs)
+            factory._build_llm_compatible_node_init_kwargs = build_llm_init_kwargs
 
-        kwargs = factory._build_llm_compatible_node_init_kwargs(
-            node_class=sentinel.node_class,
-            node_data=node_data,
-            wrap_model_instance=True,
-            include_http_client=False,
-            include_llm_file_saver=False,
-            include_prompt_message_serializer=True,
-            include_retriever_attachment_loader=False,
-            include_jinja2_template_renderer=False,
-        )
+            node_config = {"id": "node-id", "data": {"type": node_type}}
+            result = factory.create_node(node_config)
 
-        assert "retriever_attachment_loader" not in kwargs
-        assert kwargs["prompt_message_serializer"] is sentinel.prompt_message_serializer
-        factory._build_retriever_attachment_loader.assert_not_called()
+            assert result is created_node
+            build_llm_init_kwargs.assert_called_once()
+            helper_kwargs = build_llm_init_kwargs.call_args.kwargs
+            assert helper_kwargs["node_class"] is constructor
+            assert isinstance(helper_kwargs["node_data"], BaseNodeData)
+            assert helper_kwargs["node_data"].type == node_type
+            assert helper_kwargs["wrap_model_instance"] is True
+            assert helper_kwargs["include_http_client"] is (node_type != BuiltinNodeTypes.PARAMETER_EXTRACTOR)
+            assert helper_kwargs["include_llm_file_saver"] is (node_type != BuiltinNodeTypes.PARAMETER_EXTRACTOR)
+            assert helper_kwargs["include_prompt_message_serializer"] is True
+            assert helper_kwargs["include_retriever_attachment_loader"] is (node_type == BuiltinNodeTypes.LLM)
+            assert helper_kwargs["include_jinja2_template_renderer"] is (node_type == BuiltinNodeTypes.LLM)
 
+            constructor_kwargs = constructor.call_args.kwargs
+            assert constructor_kwargs["node_id"] == "node-id"
+            _assert_constructor_node_data(constructor_kwargs["data"], node_id="node-id", node_type=node_type)
+            assert constructor_kwargs["init_params"] is sentinel.init_params
+            assert constructor_kwargs["runtime_state"] is factory.runtime_state
+            assert constructor_kwargs["credentials_provider"] is sentinel.credentials_provider
+            assert constructor_kwargs["model_factory"] is sentinel.model_factory
+            assert constructor_kwargs["model_instance"] is sentinel.model_instance
+            assert constructor_kwargs["memory"] is sentinel.memory
+            for key, value in expected_extra_kwargs.items():
+                assert constructor_kwargs[key] is value
 
-class TestDifyNodeFactoryRetrieverAttachmentAccess:
-    @pytest.fixture
-    def factory(self):
-        factory = object.__new__(node_factory.DifyNodeFactory)
-        factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
-        return factory
-
-    def test_retriever_attachment_loader_is_typed_for_llm_node_data_only(self):
-        annotations = node_factory.DifyNodeFactory._build_retriever_attachment_loader.__annotations__
-
-        assert annotations["node_data"] is LLMNodeData
-
-    def test_build_retriever_attachment_loader_uses_llm_context_selector(self, factory):
-        factory._file_reference_factory = sentinel.file_reference_factory
-        factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
-            value=[
+        def test_parameter_extractor_init_does_not_require_retriever_context(self, factory):
+            node_data = ParameterExtractorNodeData.model_validate(
                 {
-                    "metadata": {
-                        "_source": "knowledge",
-                        "segment_id": "allowed-segment",
-                    }
+                    "type": BuiltinNodeTypes.PARAMETER_EXTRACTOR,
+                    "title": "Parameter Extractor",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                    "query": ["sys", "query"],
+                    "parameters": [
+                        {
+                            "name": "topic",
+                            "type": "string",
+                            "description": "Topic",
+                            "required": True,
+                        }
+                    ],
+                    "reasoning_mode": "prompt",
                 }
-            ]
-        )
-        node_data = LLMNodeData.model_validate(
-            {
-                "type": BuiltinNodeTypes.LLM,
-                "title": "LLM",
-                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
-                "prompt_template": [{"role": "system", "text": "x"}],
-                "context": {"enabled": True, "variable_selector": ["knowledge-node", "result"]},
-                "vision": {"enabled": False},
-            }
-        )
+            )
+            factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
+            factory._build_memory_for_llm_node = MagicMock(return_value=sentinel.memory)
+            factory._build_retriever_attachment_loader = MagicMock(
+                side_effect=AssertionError("unexpected loader build")
+            )
 
-        loader = factory._build_retriever_attachment_loader(node_data)
+            kwargs = factory._build_llm_compatible_node_init_kwargs(
+                node_class=sentinel.node_class,
+                node_data=node_data,
+                wrap_model_instance=True,
+                include_http_client=False,
+                include_llm_file_saver=False,
+                include_prompt_message_serializer=True,
+                include_retriever_attachment_loader=False,
+                include_jinja2_template_renderer=False,
+            )
 
-        assert loader._segment_access_checker is not None
-        assert loader._segment_access_checker("allowed-segment") is True
-        factory.runtime_state.variable_pool.get.assert_called_once_with(["knowledge-node", "result"])
+            assert "retriever_attachment_loader" not in kwargs
+            assert kwargs["prompt_message_serializer"] is sentinel.prompt_message_serializer
+            factory._build_retriever_attachment_loader.assert_not_called()
 
-    def test_checker_rejects_missing_context_selector_without_reading_variable_pool(self, factory):
-        checker = factory._build_retriever_segment_access_checker(None)
+    class TestDifyNodeFactoryRetrieverAttachmentAccess:
+        @pytest.fixture
+        def factory(self):
+            factory = object.__new__(node_factory.DifyNodeFactory)
+            factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
+            return factory
 
-        assert checker("segment-id") is False
-        factory.runtime_state.variable_pool.get.assert_not_called()
+        def test_retriever_attachment_loader_is_typed_for_llm_node_data_only(self):
+            annotations = node_factory.DifyNodeFactory._build_retriever_attachment_loader.__annotations__
 
-    def test_checker_rejects_non_knowledge_context_items(self, factory):
-        factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment.model_construct(
-            value=[
-                "plain-text",
-                {"metadata": "not-a-mapping"},
-            ]
-        )
+            assert annotations["node_data"] is LLMNodeData
 
-        checker = factory._build_retriever_segment_access_checker(["knowledge-node", "result"])
-
-        assert checker("segment-id") is False
-
-    def test_checker_rejects_non_array_context_value(self, factory):
-        factory.runtime_state.variable_pool.get.return_value = StringSegment(value="not knowledge context")
-
-        checker = factory._build_retriever_segment_access_checker(["knowledge-node", "result"])
-
-        assert checker("segment-id") is False
-
-    def test_checker_allows_only_segments_from_selected_knowledge_context(self, factory):
-        factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
-            value=[
+        def test_build_retriever_attachment_loader_uses_llm_context_selector(self, factory):
+            factory._file_reference_factory = sentinel.file_reference_factory
+            factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
+                value=[
+                    {
+                        "metadata": {
+                            "_source": "knowledge",
+                            "segment_id": "allowed-segment",
+                        }
+                    }
+                ]
+            )
+            node_data = LLMNodeData.model_validate(
                 {
-                    "metadata": {
-                        "_source": "knowledge",
-                        "segment_id": "allowed-segment",
-                    }
+                    "type": BuiltinNodeTypes.LLM,
+                    "title": "LLM",
+                    "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                    "prompt_template": [{"role": "system", "text": "x"}],
+                    "context": {"enabled": True, "variable_selector": ["knowledge-node", "result"]},
+                    "vision": {"enabled": False},
                 }
-            ]
-        )
+            )
 
-        checker = factory._build_retriever_segment_access_checker(["knowledge-node", "result"])
+            loader = factory._build_retriever_attachment_loader(node_data)
 
-        assert checker("allowed-segment") is True
-        assert checker("other-segment") is False
-        factory.runtime_state.variable_pool.get.assert_any_call(["knowledge-node", "result"])
+            assert loader._segment_access_checker is not None
+            assert loader._segment_access_checker("allowed-segment") is True
+            factory.runtime_state.variable_pool.get.assert_called_once_with(["knowledge-node", "result"])
 
+        def test_checker_rejects_missing_context_selector_without_reading_variable_pool(self, factory):
+            checker = factory._build_retriever_segment_access_checker(None)
 
-class TestDifyNodeFactoryModelInstance:
-    @pytest.fixture
-    def factory(self):
-        factory = object.__new__(node_factory.DifyNodeFactory)
-        factory._llm_credentials_provider = sentinel.credentials_provider
-        factory._llm_model_factory = sentinel.model_factory
-        return factory
+            assert checker("segment-id") is False
+            factory.runtime_state.variable_pool.get.assert_not_called()
 
-    def test_delegates_to_fetch_model_config(self, monkeypatch: pytest.MonkeyPatch, factory):
-        node_data_model = SimpleNamespace(
-            provider="provider",
-            name="model",
-            mode="chat",
-            completion_params={"temperature": 0.3, "stop": ["Human:"]},
-        )
-        node_data = SimpleNamespace(model=node_data_model)
-        model_type_instance = MagicMock()
-        model_instance = SimpleNamespace(
-            model_type_instance=model_type_instance,
-            parameters={"temperature": 0.3},
-            stop=("Human:",),
-        )
-        fetch_model_config = MagicMock(return_value=(model_instance, sentinel.model_config))
-        monkeypatch.setattr(node_factory, "fetch_model_config", fetch_model_config)
+        def test_checker_rejects_non_knowledge_context_items(self, factory):
+            factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment.model_construct(
+                value=[
+                    "plain-text",
+                    {"metadata": "not-a-mapping"},
+                ]
+            )
 
-        result = factory._build_model_instance_for_llm_node(node_data)
+            checker = factory._build_retriever_segment_access_checker(["knowledge-node", "result"])
 
-        assert result is model_instance
-        assert result.parameters == {"temperature": 0.3}
-        assert result.stop == ("Human:",)
-        assert result.model_type_instance is model_type_instance
-        fetch_model_config.assert_called_once_with(
-            node_data_model=node_data_model,
-            credentials_provider=sentinel.credentials_provider,
-            model_factory=sentinel.model_factory,
-        )
+            assert checker("segment-id") is False
 
-    def test_propagates_fetch_model_config_errors(self, monkeypatch: pytest.MonkeyPatch, factory):
-        fetch_model_config = MagicMock(side_effect=ValueError("broken model config"))
-        monkeypatch.setattr(node_factory, "fetch_model_config", fetch_model_config)
+        def test_checker_rejects_non_array_context_value(self, factory):
+            factory.runtime_state.variable_pool.get.return_value = StringSegment(value="not knowledge context")
 
-        with pytest.raises(ValueError, match="broken model config"):
-            factory._build_model_instance_for_llm_node(SimpleNamespace(model=sentinel.node_data_model))
+            checker = factory._build_retriever_segment_access_checker(["knowledge-node", "result"])
 
+            assert checker("segment-id") is False
 
-class TestDifyNodeFactoryMemory:
-    @pytest.fixture
-    def factory(self):
-        factory = object.__new__(node_factory.DifyNodeFactory)
-        factory._dify_context = SimpleNamespace(app_id="app-id")
-        factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
-        return factory
+        def test_checker_allows_only_segments_from_selected_knowledge_context(self, factory):
+            factory.runtime_state.variable_pool.get.return_value = ArrayObjectSegment(
+                value=[
+                    {
+                        "metadata": {
+                            "_source": "knowledge",
+                            "segment_id": "allowed-segment",
+                        }
+                    }
+                ]
+            )
 
-    def test_returns_none_when_memory_is_not_configured(self, factory):
-        result = factory._build_memory_for_llm_node(
-            node_data=SimpleNamespace(memory=None),
-            model_instance=sentinel.model_instance,
-        )
+            checker = factory._build_retriever_segment_access_checker(["knowledge-node", "result"])
 
-        assert result is None
-        factory.runtime_state.variable_pool.get.assert_not_called()
+            assert checker("allowed-segment") is True
+            assert checker("other-segment") is False
+            factory.runtime_state.variable_pool.get.assert_any_call(["knowledge-node", "result"])
 
-    def test_uses_string_segment_conversation_id(self, monkeypatch: pytest.MonkeyPatch, factory):
-        memory_config = sentinel.memory_config
-        factory.runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
-        fetch_memory = MagicMock(return_value=sentinel.memory)
-        monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
+    class TestDifyNodeFactoryModelInstance:
+        @pytest.fixture
+        def factory(self):
+            factory = object.__new__(node_factory.DifyNodeFactory)
+            factory._llm_credentials_provider = sentinel.credentials_provider
+            factory._llm_model_factory = sentinel.model_factory
+            return factory
 
-        result = factory._build_memory_for_llm_node(
-            node_data=SimpleNamespace(memory=memory_config),
-            model_instance=sentinel.model_instance,
-        )
+        def test_delegates_to_fetch_model_config(self, monkeypatch: pytest.MonkeyPatch, factory):
+            node_data_model = SimpleNamespace(
+                provider="provider",
+                name="model",
+                mode="chat",
+                completion_params={"temperature": 0.3, "stop": ["Human:"]},
+            )
+            node_data = SimpleNamespace(model=node_data_model)
+            model_type_instance = MagicMock()
+            model_instance = SimpleNamespace(
+                model_type_instance=model_type_instance,
+                parameters={"temperature": 0.3},
+                stop=("Human:",),
+            )
+            fetch_model_config = MagicMock(return_value=(model_instance, sentinel.model_config))
+            monkeypatch.setattr(node_factory, "fetch_model_config", fetch_model_config)
 
-        assert result is sentinel.memory
-        factory.runtime_state.variable_pool.get.assert_called_once_with(("sys", "conversation_id"))
-        fetch_memory.assert_called_once_with(
-            conversation_id="conversation-id",
-            app_id="app-id",
-            node_data_memory=memory_config,
-            model_instance=sentinel.model_instance,
-        )
+            result = factory._build_model_instance_for_llm_node(node_data)
 
-    def test_ignores_non_string_segment_conversation_ids(self, monkeypatch: pytest.MonkeyPatch, factory):
-        memory_config = sentinel.memory_config
-        factory.runtime_state.variable_pool.get.return_value = sentinel.segment
-        fetch_memory = MagicMock(return_value=sentinel.memory)
-        monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
+            assert result is model_instance
+            assert result.parameters == {"temperature": 0.3}
+            assert result.stop == ("Human:",)
+            assert result.model_type_instance is model_type_instance
+            fetch_model_config.assert_called_once_with(
+                node_data_model=node_data_model,
+                credentials_provider=sentinel.credentials_provider,
+                model_factory=sentinel.model_factory,
+            )
 
-        result = factory._build_memory_for_llm_node(
-            node_data=SimpleNamespace(memory=memory_config),
-            model_instance=sentinel.model_instance,
-        )
+        def test_propagates_fetch_model_config_errors(self, monkeypatch: pytest.MonkeyPatch, factory):
+            fetch_model_config = MagicMock(side_effect=ValueError("broken model config"))
+            monkeypatch.setattr(node_factory, "fetch_model_config", fetch_model_config)
 
-        assert result is sentinel.memory
-        fetch_memory.assert_called_once_with(
-            conversation_id=None,
-            app_id="app-id",
-            node_data_memory=memory_config,
-            model_instance=sentinel.model_instance,
-        )
+            with pytest.raises(ValueError, match="broken model config"):
+                factory._build_model_instance_for_llm_node(SimpleNamespace(model=sentinel.node_data_model))
+
+    class TestDifyNodeFactoryMemory:
+        @pytest.fixture
+        def factory(self):
+            factory = object.__new__(node_factory.DifyNodeFactory)
+            factory._dify_context = SimpleNamespace(app_id="app-id")
+            factory.runtime_state = SimpleNamespace(variable_pool=MagicMock())
+            return factory
+
+        def test_returns_none_when_memory_is_not_configured(self, factory):
+            result = factory._build_memory_for_llm_node(
+                node_data=SimpleNamespace(memory=None),
+                model_instance=sentinel.model_instance,
+            )
+
+            assert result is None
+            factory.runtime_state.variable_pool.get.assert_not_called()
+
+        def test_uses_string_segment_conversation_id(self, monkeypatch: pytest.MonkeyPatch, factory):
+            memory_config = sentinel.memory_config
+            factory.runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
+            fetch_memory = MagicMock(return_value=sentinel.memory)
+            monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
+
+            result = factory._build_memory_for_llm_node(
+                node_data=SimpleNamespace(memory=memory_config),
+                model_instance=sentinel.model_instance,
+            )
+
+            assert result is sentinel.memory
+            factory.runtime_state.variable_pool.get.assert_called_once_with(("sys", "conversation_id"))
+            fetch_memory.assert_called_once_with(
+                conversation_id="conversation-id",
+                app_id="app-id",
+                node_data_memory=memory_config,
+                model_instance=sentinel.model_instance,
+            )
+
+        def test_ignores_non_string_segment_conversation_ids(self, monkeypatch: pytest.MonkeyPatch, factory):
+            memory_config = sentinel.memory_config
+            factory.runtime_state.variable_pool.get.return_value = sentinel.segment
+            fetch_memory = MagicMock(return_value=sentinel.memory)
+            monkeypatch.setattr(node_factory, "fetch_memory", fetch_memory)
+
+            result = factory._build_memory_for_llm_node(
+                node_data=SimpleNamespace(memory=memory_config),
+                model_instance=sentinel.model_instance,
+            )
+
+            assert result is sentinel.memory
+            fetch_memory.assert_called_once_with(
+                conversation_id=None,
+                app_id="app-id",
+                node_data_memory=memory_config,
+                model_instance=sentinel.model_instance,
+            )

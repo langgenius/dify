@@ -17,7 +17,7 @@ from services.knowledge_fs.control_space_lifecycle import (
     KnowledgeFSSpaceRegistrationConflictError,
     KnowledgeFSWorkspaceDeletionBlockedError,
 )
-from tests.unit_tests.tasks.knowledge_fs_task_fakes import RecordingKnowledgeFSMetrics
+from tests.helpers.unit.tasks.knowledge_fs_task_fakes import RecordingKnowledgeFSMetrics
 
 
 @pytest.fixture

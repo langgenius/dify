@@ -11,12 +11,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { AgentPreviewChatController } from '@/features/agent-v2/agent-detail/configure/components/preview/chat-conversation'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
@@ -734,8 +729,8 @@ function WorkflowInlineAgentConfigureMoreAction({
   if (!canCreateAgents) return null
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger
+    <Menu modal={false}>
+      <MenuTrigger
         render={
           <button
             type="button"
@@ -746,16 +741,16 @@ function WorkflowInlineAgentConfigureMoreAction({
           </button>
         }
       />
-      <DropdownMenuContent className="w-max min-w-44">
-        <DropdownMenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
+      <MenuContent align="end" className="w-max min-w-44">
+        <MenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
           <span
             aria-hidden
             className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary"
           />
           <span>{t(($) => $['roster.saveToRoster'], { ns: 'agentRoster' })}</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuItem>
+      </MenuContent>
+    </Menu>
   )
 }
 

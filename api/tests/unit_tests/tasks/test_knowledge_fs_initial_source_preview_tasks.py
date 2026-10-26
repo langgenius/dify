@@ -13,7 +13,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSInitialSourcePreviewResponse,
 )
 from tasks.knowledge_fs_initial_source_preview_tasks import run_knowledge_fs_initial_source_preview
-from tests.unit_tests.tasks.task_options import task_options
+from tests.helpers.unit.tasks.task_options import task_options
 
 _JOB_KEY = {"tenant_id": "tenant-1", "account_id": "account-1", "job_id": "job-1"}
 

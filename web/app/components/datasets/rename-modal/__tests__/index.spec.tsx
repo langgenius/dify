@@ -105,10 +105,10 @@ describe('RenameDatasetModal', () => {
     })
 
   const defaultProps = {
-    show: true,
+    open: true,
     dataset: createMockDataset(),
     onSuccess: vi.fn(),
-    onClose: vi.fn(),
+    onOpenChange: vi.fn(),
   }
 
   beforeEach(() => {
@@ -116,18 +116,11 @@ describe('RenameDatasetModal', () => {
     mockUpdateDatasetSetting.mockResolvedValue(createMockDataset())
   })
 
-  describe('Rendering', () => {
-    it('should render a named dialog when show is true', () => {
-      render(<RenameDatasetModal {...defaultProps} show={true} />)
-      expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
-    })
-  })
-
   describe('User Interactions', () => {
-    it('should call onClose when cancel button is clicked', async () => {
+    it('should call onOpenChange when cancel button is clicked', async () => {
       const user = userEvent.setup()
       const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
+      render(<RenameDatasetModal {...defaultProps} onOpenChange={handleClose} />)
 
       const cancelButton = screen.getByText('common.operation.cancel')
       await user.click(cancelButton)
@@ -135,20 +128,20 @@ describe('RenameDatasetModal', () => {
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClose when close icon is clicked', async () => {
+    it('should call onOpenChange when close icon is clicked', async () => {
       const user = userEvent.setup()
       const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
+      render(<RenameDatasetModal {...defaultProps} onOpenChange={handleClose} />)
 
       await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClose when Escape is pressed', async () => {
+    it('should call onOpenChange when Escape is pressed', async () => {
       const user = userEvent.setup()
       const handleClose = vi.fn()
-      render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
+      render(<RenameDatasetModal {...defaultProps} onOpenChange={handleClose} />)
 
       await user.keyboard('{Escape}')
 
@@ -206,7 +199,7 @@ describe('RenameDatasetModal', () => {
         })
       })
       expect(defaultProps.onSuccess).toHaveBeenCalledOnce()
-      expect(defaultProps.onClose).toHaveBeenCalledOnce()
+      expect(defaultProps.onOpenChange).toHaveBeenCalledOnce()
     })
 
     it('should include external knowledge IDs when present', async () => {
@@ -307,7 +300,7 @@ describe('RenameDatasetModal', () => {
       await waitFor(() => {
         expect(mockToast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
       })
-      expect(defaultProps.onClose).not.toHaveBeenCalled()
+      expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
       expect(defaultProps.onSuccess).not.toHaveBeenCalled()
       expect(screen.getByRole('dialog', { name: 'datasetSettings.title' })).toBeInTheDocument()
       await user.click(saveButton)
@@ -470,19 +463,6 @@ describe('RenameDatasetModal', () => {
       await act(async () => {
         resolvePromise!(createMockDataset())
       })
-    })
-  })
-
-  describe('Component Re-rendering', () => {
-    it('should handle show prop toggle', () => {
-      const { rerender } = render(<RenameDatasetModal {...defaultProps} show={true} />)
-
-      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
-
-      rerender(<RenameDatasetModal {...defaultProps} show={false} />)
-
-      // Modal visibility is controlled by Modal component's isShow prop
-      // The modal content may still be in DOM but hidden
     })
   })
 })

@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuItem,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuCheckboxItem,
+  MenuItem,
+  MenuPopup,
+  MenuPortal,
+  MenuPositioner,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Fragment, memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -184,16 +184,16 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
             />
           </button>
         </TipPopup>
-        <DropdownMenu open={open} onOpenChange={setOpen}>
-          <DropdownMenuTrigger
+        <Menu open={open} onOpenChange={setOpen}>
+          <MenuTrigger
             disabled={getWorkflowReadOnly()}
             className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary"
           >
             {Number.parseFloat(`${zoom * 100}`).toFixed(0)}%
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuPositioner side="top" align="start" alignOffset={-2}>
-              <DropdownMenuPopup
+          </MenuTrigger>
+          <MenuPortal>
+            <MenuPositioner sideOffset={4} side="top" align="start" alignOffset={-2}>
+              <MenuPopup
                 onKeyDown={(event) => {
                   if (workflowReadOnly) return
                   handleWorkflowMenuKeyDown(event, [
@@ -206,11 +206,11 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                 <div className="w-48 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
                   {zoomOptions.map((options, groupIndex) => (
                     <Fragment key={options[0]!.key}>
-                      {groupIndex !== 0 && <DropdownMenuSeparator className="my-0" />}
+                      {groupIndex !== 0 && <MenuSeparator className="my-0" />}
                       <div className="p-1">
                         {options.map((option) =>
                           'checked' in option ? (
-                            <DropdownMenuCheckboxItem
+                            <MenuCheckboxItem
                               key={option.key}
                               className="gap-2 px-3 py-1.5 system-md-regular text-text-secondary"
                               checked={option.checked}
@@ -227,9 +227,9 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                                 }
                               />
                               <span>{option.text}</span>
-                            </DropdownMenuCheckboxItem>
+                            </MenuCheckboxItem>
                           ) : (
-                            <DropdownMenuItem
+                            <MenuItem
                               key={option.key}
                               className="justify-between px-3 py-1.5 system-md-regular text-text-secondary"
                               onClick={() => selectZoom(option.key)}
@@ -257,17 +257,17 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
                                   <ShortcutKbd shortcut="workflow.zoom-to-100" />
                                 )}
                               </div>
-                            </DropdownMenuItem>
+                            </MenuItem>
                           ),
                         )}
                       </div>
                     </Fragment>
                   ))}
                 </div>
-              </DropdownMenuPopup>
-            </DropdownMenuPositioner>
-          </DropdownMenuPortal>
-        </DropdownMenu>
+              </MenuPopup>
+            </MenuPositioner>
+          </MenuPortal>
+        </Menu>
         <TipPopup
           title={t(($) => $['operator.zoomIn'], { ns: 'workflow' })}
           shortcut="workflow.zoom-in"

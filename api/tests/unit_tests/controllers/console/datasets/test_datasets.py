@@ -68,7 +68,7 @@ from services.knowledge.indexing.estimate import (
     UnsupportedEstimateSourceError,
 )
 from services.knowledge_fs.product_dto import KnowledgeFSUpgradeDiscoveryResponse
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 CONTEXT = RequestContext("request-1", None, "account-1", "tenant-1")
 DATASET_ID = UUID(int=1)

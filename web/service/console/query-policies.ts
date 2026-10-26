@@ -4,6 +4,8 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { DatasetListResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { KnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
@@ -1692,10 +1694,104 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            delete: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  context.client.setQueriesData(
+                    { queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'query' }) },
+                    (list: KnowledgeFsSpaceListResponse | undefined) => {
+                      if (
+                        !list?.data.some(
+                          item => item.control_space_id === variables.params.control_space_id,
+                        )
+                      ) return list
+                      return {
+                        ...list,
+                        data: list.data.filter(
+                          item => item.control_space_id !== variables.params.control_space_id,
+                        ),
+                      }
+                    },
+                  )
+                  context.client.setQueriesData(
+                    { queryKey: consoleQuery.knowledgeFs.spaces.get.key({ type: 'infinite' }) },
+                    (list: InfiniteData<KnowledgeFsSpaceListResponse, unknown> | undefined) => {
+                      if (
+                        !list?.pages.some(page =>
+                          page.data.some(
+                            item => item.control_space_id === variables.params.control_space_id,
+                          ),
+                        )
+                      ) return list
+                      return {
+                        ...list,
+                        pages: list.pages.map(page => ({
+                          ...page,
+                          data: page.data.filter(
+                            item => item.control_space_id !== variables.params.control_space_id,
+                          ),
+                        })),
+                      }
+                    },
+                  )
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
+                  })
+                },
+              },
+            },
+          },
+        },
+      },
       datasets: {
         // Process rules are read once to describe a running import.
         processRule: { get: { queryOptions: { refetchOnWindowFocus: false } } },
         byDatasetId: {
+          delete: {
+            mutationOptions: {
+              onSuccess: (_data, variables, _result, context) => {
+                context.client.setQueriesData(
+                  { queryKey: consoleQuery.datasets.get.key({ type: 'query' }) },
+                  (list: DatasetListResponse | undefined) => {
+                    if (!list?.data.some(item => item.id === variables.params.dataset_id)) return list
+                    const total = Math.max(0, list.total - 1)
+                    return {
+                      ...list,
+                      data: list.data.filter(item => item.id !== variables.params.dataset_id),
+                      total,
+                      has_more: list.page * list.limit < total,
+                    }
+                  },
+                )
+                context.client.setQueriesData(
+                  { queryKey: consoleQuery.datasets.get.key({ type: 'infinite' }) },
+                  (list: InfiniteData<DatasetListResponse, unknown> | undefined) => {
+                    if (
+                      !list?.pages.some(page =>
+                        page.data.some(item => item.id === variables.params.dataset_id),
+                      )
+                    ) return list
+                    return {
+                      ...list,
+                      pages: list.pages.map(page => {
+                        const total = Math.max(0, page.total - 1)
+                        return {
+                          ...page,
+                          data: page.data.filter(item => item.id !== variables.params.dataset_id),
+                          total,
+                          has_more: page.page * page.limit < total,
+                        }
+                      }),
+                    }
+                  },
+                )
+                void context.client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+              },
+            },
+          },
           evaluation: {
             put: {
               mutationOptions: {

@@ -53,6 +53,9 @@ vi.mock('../index', () => ({
   MainNav: ({ className }: { className?: string }) => (
     <aside className={className} data-testid="main-nav">
       MainNav
+      <a href="/apps">Apps</a>
+      <a href="/agents">Agents</a>
+      <a href="/integrations/model-provider">Integrations</a>
     </aside>
   ),
 }))
@@ -70,6 +73,29 @@ describe('MainNavLayout', () => {
       isCurrentWorkspaceDatasetOperator: false,
     }
     ;(isAgentV2Enabled as Mock).mockReturnValue(true)
+  })
+
+  it.each([
+    { from: '/apps', to: '/agents', name: 'Agents' },
+    { from: '/agents', to: '/apps', name: 'Apps' },
+    { from: '/apps', to: '/integrations/model-provider', name: 'Integrations' },
+    { from: '/integrations/model-provider', to: '/apps', name: 'Apps' },
+    { from: '/datasets/create', to: '/apps', name: 'Apps' },
+  ])('preserves navigation focus from $from to $to', async ({ from, to, name }) => {
+    const user = userEvent.setup()
+    vi.mocked(usePathname).mockReturnValue(from)
+    const renderLayout = () => (
+      <MainNavLayout initialDetailSidebarMode="expand">
+        <div>content</div>
+      </MainNavLayout>
+    )
+    const { rerender } = render(renderLayout())
+
+    await user.click(screen.getByRole('link', { name }))
+    vi.mocked(usePathname).mockReturnValue(to)
+    rerender(renderLayout())
+
+    expect(screen.getByRole('link', { name })).toHaveFocus()
   })
 
   it('uses the request preference in server-rendered sidebar markup', () => {

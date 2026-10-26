@@ -761,7 +761,7 @@ class PersonalAccessTokenService:
             if not resource_refs.issubset(available):
                 raise PersonalAccessTokenAccessDeniedError("Selected resource is unavailable.")
         if not runner_refs:
-            return ()
+            return tuple(validated)
         selected = {
             (resource.resource_type, resource.resource_id): resource
             for resource in self._deployments.snapshot(account_id).resources

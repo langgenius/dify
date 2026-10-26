@@ -1,12 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -112,7 +106,7 @@ type ActionMenuItemProps = {
 function ActionMenuItem({ item, onClick, isDestructive = false }: ActionMenuItemProps) {
   const { t } = useTranslation(['billing'])
   return (
-    <DropdownMenuItem
+    <MenuItem
       disabled={item.disabled}
       variant={isDestructive ? 'destructive' : 'default'}
       className={cn(
@@ -169,7 +163,7 @@ function ActionMenuItem({ item, onClick, isDestructive = false }: ActionMenuItem
           </span>
         </PremiumBadge>
       )}
-    </DropdownMenuItem>
+    </MenuItem>
   )
 }
 
@@ -187,8 +181,8 @@ function ActionMenu(props: ActionMenuProps) {
   }
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger
+    <Menu open={open} onOpenChange={setOpen}>
+      <MenuTrigger
         ref={triggerRef}
         className="absolute top-1 right-1 z-10 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
         render={
@@ -202,18 +196,21 @@ function ActionMenu(props: ActionMenuProps) {
           </IconButton>
         }
       />
-      <DropdownMenuContent className="w-max max-w-[calc(100vw-24px)] min-w-46 shadow-shadow-shadow-5">
+      <MenuContent
+        align="end"
+        className="w-max max-w-[calc(100vw-24px)] min-w-46 shadow-shadow-shadow-5"
+      >
         {options.map((option) => (
           <ActionMenuItem key={option.key} item={option} onClick={handleAction} />
         ))}
         {isShowDelete && (
           <>
-            <DropdownMenuSeparator />
+            <MenuSeparator />
             <ActionMenuItem item={deleteOperation} isDestructive onClick={handleAction} />
           </>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }
 

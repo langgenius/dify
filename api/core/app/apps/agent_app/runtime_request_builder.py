@@ -60,7 +60,7 @@ from core.workflow.nodes.agent_v2.tool_snapshot import (
 )
 from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
-from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
+from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
 from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import expand_prompt_mentions
@@ -135,6 +135,7 @@ class AgentAppRuntimeRequestBuilder:
                 user_id=context.dify_context.user_id,
                 tools=agent_soul.tools,
                 invoke_from=context.dify_context.invoke_from,
+                knowledge_fs_spaces=tuple(agent_soul.knowledge.spaces),
             )
         except WorkflowAgentDifyToolsBuildError as error:
             raise AgentAppRuntimeRequestBuildError(error.error_code, str(error)) from error
@@ -280,6 +281,7 @@ class AgentAppRuntimeRequestBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...],
     ) -> WorkflowAgentToolLayers:
         # Production Agent App runs intentionally keep existing plugin configs
         # on the direct `dify.plugin.tools` route. This builder emits plugin
@@ -290,6 +292,7 @@ class AgentAppRuntimeRequestBuilder:
             user_id=user_id,
             tools=tools,
             invoke_from=invoke_from,
+            knowledge_fs_spaces=knowledge_fs_spaces,
         )
 
     @staticmethod

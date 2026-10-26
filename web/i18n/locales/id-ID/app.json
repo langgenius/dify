@@ -29,6 +29,7 @@
   "appSelector.noParams": "Tidak perlu parameter",
   "appSelector.params": "PARAMETER APLIKASI",
   "appSelector.placeholder": "Pilih aplikasi...",
+  "appSelector.searchPlaceholder": "Cari aplikasi berdasarkan nama…",
   "chooseAppFile": "Pilih paket aplikasi atau file DSL",
   "deleteAppConfirmContent": "Menghapus aplikasi tidak dapat diubah. Pengguna tidak akan dapat lagi mengakses aplikasi Anda, dan semua konfigurasi prompt serta log akan dihapus secara permanen.",
   "deleteAppConfirmInputLabel": "Untuk konfirmasi, ketik <appName>{{appName}}</appName> di kotak di bawah ini:",

@@ -7,7 +7,7 @@ import pytest
 from celery.exceptions import Retry
 
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStartResponse
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 class _TaskWithQueue(Protocol):

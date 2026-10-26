@@ -32,15 +32,18 @@ const api = vi.hoisted(() => ({
   marketplace: vi.fn<typeof marketplaceClient.searchAdvanced>(),
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
   push: vi.fn(),
+  refresh: vi.fn(),
+  setLocale: vi.fn<(locale: string) => Promise<void>>(),
   agentEnabled: true,
   pathname: '/',
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useRouter: () => ({ push: api.push }),
+  useRouter: () => ({ push: api.push, refresh: api.refresh }),
   usePathname: () => api.pathname,
   useParams: () => ({}),
 }))
+vi.mock('@/i18n/client', () => ({ setLocaleOnClient: api.setLocale }))
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => api.agentEnabled,
 }))
@@ -169,12 +172,38 @@ beforeEach(() => {
   api.marketplace.mockReset().mockResolvedValue({ data: { plugins: [], total: 0 } })
   api.install.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
   api.push.mockReset()
+  api.refresh.mockReset()
+  api.setLocale.mockReset().mockResolvedValue(undefined)
   api.agentEnabled = true
   api.pathname = '/'
 })
 afterEach(() => {
   vi.restoreAllMocks()
   act(() => toast.dismiss())
+})
+
+it('switches language through the command palette before refreshing the current route', async () => {
+  const languageChange = createDeferred()
+  api.setLocale.mockReturnValueOnce(languageChange.promise)
+  const { user } = setup()
+  await user.type(await openSearch(), '/language fa-IR')
+  await user.click(await screen.findByRole('option', { name: /Farsi \(Iran\)/ }))
+  expect(api.setLocale).toHaveBeenCalledExactlyOnceWith('fa-IR')
+  expect(api.refresh).not.toHaveBeenCalled()
+  await act(async () => languageChange.resolve())
+  await waitFor(() => expect(api.refresh).toHaveBeenCalledOnce())
+  expect(api.push).not.toHaveBeenCalled()
+})
+
+it('does not refresh when a language command fails', async () => {
+  api.setLocale.mockRejectedValueOnce(new Error('Language resources unavailable'))
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const { user } = setup()
+  await user.type(await openSearch(), '/language fa-IR')
+  await user.click(await screen.findByRole('option', { name: /Farsi \(Iran\)/ }))
+  await screen.findByText('common.api.actionFailed')
+  expect(api.refresh).not.toHaveBeenCalled()
+  expect(api.push).not.toHaveBeenCalled()
 })
 
 describe('search shortcut ownership', () => {
