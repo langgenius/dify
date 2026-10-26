@@ -19,7 +19,6 @@ _PROJECT_MODULES = (
     "api/core/human_input_v2/im_integration/records.py",
     _PLANNER_MODULE,
     "api/core/human_input_v2/im_integration/sync_records.py",
-    "api/migrations/versions/2026_07_25_1100-6d9f2b4c5e7a_add_human_input_v2_im_control_plane.py",
     "api/models/human_input_v2.py",
     "api/repositories/human_input_v2/im_binding_repository.py",
     "api/repositories/human_input_v2/im_identity_repository.py",
