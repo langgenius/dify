@@ -43,6 +43,7 @@ from tests.helpers.unit.model_factories import make_app
 
 @pytest.fixture
 def invalid_provider_tenant(
+    _empty_model_provider_daemon: None,
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
 ) -> Iterator[str]:

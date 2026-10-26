@@ -94,6 +94,7 @@ class _Harness:
 
 @pytest.fixture
 def harness(
+    _empty_model_provider_daemon: None,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     sqlite_session_factory: sessionmaker[Session],

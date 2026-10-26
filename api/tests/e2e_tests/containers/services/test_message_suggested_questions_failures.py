@@ -126,6 +126,7 @@ def scenario(db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatc
     ProviderCredentialsCache(tenant.id, provider.id, ProviderCredentialsCacheType.PROVIDER).set(credentials)
     redis_client.setex(f"tenant:{tenant.id}:model_load_balancing_enabled", 60, "False")
     runtime = create_plugin_model_runtime(tenant_id=tenant.id)
+    runtime.bind_provider_schema(declaration)
     schema_key = runtime._get_schema_cache_key(
         provider=_PROVIDER, model_type=ModelType.LLM, model=_MODEL, credentials=credentials
     )
@@ -178,7 +179,7 @@ def test_unavailable_configured_and_default_models_return_none(scenario: _Scenar
         assert generate is None
 
 
-def test_default_model_creation_does_not_commit_caller_changes(scenario: _Scenario) -> None:
+def test_missing_default_model_does_not_create_one_or_commit_caller_changes(scenario: _Scenario) -> None:
     db.session.execute(delete(TenantDefaultModel).where(TenantDefaultModel.tenant_id == scenario.context.tenant_id))
     db.session.commit()
     app = db.session.get(App, scenario.context.app_id)
@@ -191,15 +192,14 @@ def test_default_model_creation_does_not_commit_caller_changes(scenario: _Scenar
         with SuggestedQuestionsGenerator().prepare(
             context=scenario.context, instruction_prompt=None, model_config=None
         ) as generate:
-            assert generate is not None
+            assert generate is None
             assert db.session() is not caller
             assert not db.session().in_transaction()
             with Session(db.engine) as verification:
                 default = verification.scalar(
                     select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == scenario.context.tenant_id)
                 )
-                assert default is not None
-                assert default.model_name == _MODEL
+                assert default is None
                 assert verification.scalar(select(App.name).where(App.id == app.id)) == original_name
         assert db.session() is caller
         assert app in caller.dirty

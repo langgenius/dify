@@ -77,6 +77,7 @@ class _Harness:
 
 @pytest.fixture
 def harness(
+    _empty_model_provider_daemon: None,
     config_overrides: Callable[..., None],
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
