@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Agent-Wissensdatenbanken werden geladen…",
   "agentDetail.configure.knowledgeFs.rebind": "Importierte Verknüpfung: Wählen Sie diese Agent-Wissensdatenbank erneut aus oder ersetzen Sie sie durch eine verfügbare Agent-Wissensdatenbank.",
   "agentDetail.configure.knowledgeFs.retry": "Erneut versuchen",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "Der Abruf aus Agent-Wissensdatenbanken ist in dieser Bereitstellung nicht verfügbar. Bitten Sie einen Administrator, ihn zu aktivieren.",
   "agentDetail.configure.knowledgeFs.select": "Bis zu 10 Agent-Wissensdatenbanken auswählen",
   "agentDetail.configure.knowledgeFs.title": "Agent-Wissensdatenbank",
   "agentDetail.configure.knowledgeFs.unavailable": "Diese Agent-Wissensdatenbank ist nicht verfügbar oder Sie dürfen sie in diesem Agenten nicht verwenden.",
