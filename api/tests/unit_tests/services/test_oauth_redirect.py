@@ -14,7 +14,7 @@ from services.oauth_redirect import is_valid_redirect_uri
         "http://localhost:3000/callback",
     ],
 )
-def test_accepts_valid_redirects(uri):
+def test_accepts_valid_redirects(uri: str) -> None:
     assert is_valid_redirect_uri(uri) is True
 
 
@@ -34,5 +34,5 @@ def test_accepts_valid_redirects(uri):
         "https://exa mple.com/cb",
     ],
 )
-def test_rejects_invalid_redirects(uri):
+def test_rejects_invalid_redirects(uri: str) -> None:
     assert is_valid_redirect_uri(uri) is False
