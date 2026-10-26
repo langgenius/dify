@@ -39,9 +39,7 @@ class DifyCoreToolConfig(BaseModel):
     def uses_plugin_parameters(self) -> bool:
         """Match the existing API builder's installed-plugin declaration shape."""
         parts = self.provider_id.split("/")
-        return self.provider_type == "plugin" or (
-            self.provider_type == "builtin" and len(parts) == 3 and all(parts)
-        )
+        return self.provider_type == "plugin" or (self.provider_type == "builtin" and len(parts) == 3 and all(parts))
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
