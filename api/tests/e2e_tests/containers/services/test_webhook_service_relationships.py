@@ -18,6 +18,7 @@ from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
 from models.model import App, EndUser
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.errors.app import QuotaExceededError
 from services.trigger.webhook_service import WebhookService
 
@@ -138,13 +139,13 @@ class WebhookServiceRelationshipFactory:
         workflow = Workflow(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             graph=json.dumps(graph),
-            features=json.dumps({}),
+            _features=json.dumps({}),
             created_by=account.id,
             updated_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
             version=version,
         )
         db_session_with_containers.add(workflow)
