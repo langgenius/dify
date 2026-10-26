@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_valid
 
 from shellctl.shared.schemas import NativeScopeSpec
 
+from dify_agent.protocol.native_testing import ID, AgentShellJobStatus, NativeDTO
+
 
 class CreateExecutionBindingRequest(BaseModel):
     tenant_id: str = Field(min_length=1)
@@ -73,4 +75,15 @@ __all__ = [
     "DestroyExecutionBindingRequest",
     "KeepAliveExecutionBindingRequest",
     "KeepAliveExecutionBindingResponse",
+    "ReadExecutionBindingJobRequest",
+    "ReadExecutionBindingJobResponse",
 ]
+
+
+class ReadExecutionBindingJobRequest(NativeDTO):
+    binding_ref: ID
+    job_id: ID
+
+
+class ReadExecutionBindingJobResponse(AgentShellJobStatus):
+    pass

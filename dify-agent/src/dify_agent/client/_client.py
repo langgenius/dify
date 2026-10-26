@@ -44,6 +44,8 @@ from dify_agent.protocol import (
     DestroyExecutionBindingRequest,
     KeepAliveExecutionBindingRequest,
     KeepAliveExecutionBindingResponse,
+    ReadExecutionBindingJobRequest,
+    ReadExecutionBindingJobResponse,
     HomeSnapshotResponse,
     RunCancelledEvent,
     RunEvent,
@@ -747,6 +749,18 @@ class Client:
     def create_execution_binding_sync(self, request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
         response = self._post_sync_json("create_execution_binding_sync", "/execution-bindings", request)
         return _parse_model_response(response, CreateExecutionBindingResponse)
+
+    async def read_execution_binding_job(
+        self, request: ReadExecutionBindingJobRequest
+    ) -> ReadExecutionBindingJobResponse:
+        response = await self._post_async_json("read_execution_binding_job", "/execution-bindings/job-status", request)
+        return _parse_model_response(response, ReadExecutionBindingJobResponse)
+
+    def read_execution_binding_job_sync(
+        self, request: ReadExecutionBindingJobRequest
+    ) -> ReadExecutionBindingJobResponse:
+        response = self._post_sync_json("read_execution_binding_job_sync", "/execution-bindings/job-status", request)
+        return _parse_model_response(response, ReadExecutionBindingJobResponse)
 
     async def keep_alive_execution_binding(
         self, request: KeepAliveExecutionBindingRequest

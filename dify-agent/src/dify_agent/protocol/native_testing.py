@@ -126,11 +126,32 @@ class AgentPrepareIntentPayload(NativeDTO):
     parameters: FiniteJSON
 
 
+class AgentShellJobStatus(NativeDTO):
+    """Structured runtime evidence, separate from the replayable model result."""
+
+    job_id: ID
+    status: Literal["created", "starting", "running", "exited", "terminated", "failed", "lost"]
+    done: Annotated[bool, Field(strict=True)]
+    exit_code: Annotated[int, Field(strict=True)] | None
+
+    @model_validator(mode="after")
+    def coherent_status(self):
+        terminal = self.status in {"exited", "terminated", "failed", "lost"}
+        if self.done != terminal or (not self.done and self.exit_code is not None):
+            raise ValueError("inconsistent shell job status")
+        return self
+
+
+class AgentShellJobReceipt(AgentShellJobStatus):
+    binding_ref: ID
+
+
 class AgentStoreResultPayload(NativeDTO):
     ref: AgentNativeTestRef
     key: AgentOperationKey
     result: FiniteJSON
     native_dispatch: dict[str, JsonValue] | None = None
+    shell_job: AgentShellJobReceipt | None = None
 
 
 class AgentStoredResultResponse(NativeDTO):

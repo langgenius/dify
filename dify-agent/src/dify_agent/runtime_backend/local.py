@@ -17,7 +17,7 @@ from typing import cast
 import httpx2 as httpx
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
-from dify_agent.adapters.shell.shellctl import ShellctlClientFactory, ShellctlClientProtocol
+from dify_agent.adapters.shell.shellctl import ShellctlClientFactory, ShellctlClientProtocol, ShellctlJobStatus
 from dify_agent.runtime_backend.errors import (
     BindingAcquireError,
     BindingCreateError,
@@ -199,6 +199,16 @@ class LocalExecutionBindingBackend:
             raise
         finally:
             await _close_best_effort(lease, resource_ref=binding_ref)
+
+    async def read_job_status(self, binding_ref: str, job_id: str) -> ShellctlJobStatus:
+        """Read only; do not acquire, validate paths, refresh, or release a Binding."""
+        if binding_ref.startswith("native:"):
+            raise BindingAcquireError("binding_job_status_unsupported")
+        lease = self._lease(binding_ref)
+        try:
+            return await lease.client.status(job_id)
+        finally:
+            await lease.close()
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
         identity = native_binding_identity(binding_ref)
