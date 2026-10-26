@@ -3,7 +3,7 @@
 import type { KnowledgeFsUploadPhase } from '../upload/knowledge-fs-upload'
 import type { DocumentUploadIssue } from '../upload/policy'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useId, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createRequestId } from '../request-id'
 import { DocumentUploadFileList } from '../upload/file-list'
@@ -59,8 +59,13 @@ export function CreateUploadQueue({
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
   const inputId = useId()
+  const dropzoneRef = useRef<HTMLLabelElement>(null)
   const [dragging, setDragging] = useState(false)
   const validUploadCount = uploads.filter(({ issue }) => !issue).length
+
+  useLayoutEffect(() => {
+    dropzoneRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [])
 
   const addFiles = (files: File[]) => {
     if (!disabled && files.length) onChange(mergeFiles(uploads, files, fileSizeLimitMb))
@@ -82,9 +87,10 @@ export function CreateUploadQueue({
         }}
       />
       <label
+        ref={dropzoneRef}
         htmlFor={inputId}
         className={cn(
-          'flex min-h-16 flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-divider-regular bg-background-section px-4 py-2 text-center outline-hidden transition-colors motion-reduce:transition-none',
+          'flex min-h-16 scroll-mb-4 flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-divider-regular bg-background-section px-4 py-2 text-center outline-hidden transition-colors motion-reduce:transition-none',
           'peer-focus-visible:ring-2 peer-focus-visible:ring-state-accent-solid',
           disabled
             ? 'cursor-not-allowed opacity-60'
