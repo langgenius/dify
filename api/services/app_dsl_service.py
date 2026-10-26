@@ -144,6 +144,7 @@ class PendingData(PendingImportOwner):
     icon_background: str | None = None
     app_id: str | None = None
     draft_hash: str | None = None
+    preserve_agent_bindings: bool = False
     warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
@@ -364,6 +365,7 @@ class AppDslService:
                     icon_background=icon_background,
                     app_id=app_id,
                     draft_hash=draft_hash,
+                    preserve_agent_bindings=preserve_agent_bindings,
                     warnings=self._warnings,
                 )
                 redis_client.setex(
@@ -515,6 +517,7 @@ class AppDslService:
                 icon_background=pending_data.icon_background,
                 allow_premium_site_settings=allow_premium_site_settings,
                 draft_hash=pending_data.draft_hash,
+                preserve_agent_bindings=pending_data.preserve_agent_bindings,
             )
 
             # Delete import info from Redis
@@ -1054,7 +1057,9 @@ class AppDslService:
         reference_nodes: dict[str, dict[str, Any]] = {}
         if preserve_agent_bindings:
             graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-                session=session, draft_workflow=workflow
+                session=session,
+                draft_workflow=workflow,
+                binding_version=workflow.version,
             )
             agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
             for binding in cls._workflow_agent_bindings(workflow=workflow, session=session):

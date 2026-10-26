@@ -134,9 +134,11 @@ class AppTransfers(Protocol):
         context: RequestContext,
         params: AppImportParams,
         *,
-        as_copy: bool = False,
         package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
     ) -> Import: ...
+
+    def import_copy(self, context: RequestContext, params: AppImportParams) -> Import: ...
 
     def confirm_import(self, context: RequestContext, import_id: str) -> tuple[Import, bool]: ...
 
@@ -413,10 +415,8 @@ class ConsoleAppService:
         dsl = self._transfers.export_dsl(
             context, app_id, AppExportOptions(include_secret=True, preserve_agent_bindings=True)
         )
-        result = self._transfers.import_dsl(
-            context,
-            AppImportParams(mode="yaml-content", yaml_content=dsl, **params.model_dump()),
-            as_copy=True,
+        result = self._transfers.import_copy(
+            context, AppImportParams(mode="yaml-content", yaml_content=dsl, **params.model_dump())
         )
         if result.status in {ImportStatus.FAILED, ImportStatus.PENDING}:
             return result, None

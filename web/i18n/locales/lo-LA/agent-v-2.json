@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "ກຳລັງໂຫຼດຖານຄວາມຮູ້ Agent…",
   "agentDetail.configure.knowledgeFs.rebind": "ການເຊື່ອມໂຍງທີ່ນຳເຂົ້າ: ເລືອກຖານຄວາມຮູ້ Agent ນີ້ອີກຄັ້ງ ຫຼືປ່ຽນເປັນຖານຄວາມຮູ້ Agent ທີ່ພ້ອມໃຊ້.",
   "agentDetail.configure.knowledgeFs.retry": "ລອງອີກຄັ້ງ",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "ການຄົ້ນຄືນຈາກຖານຄວາມຮູ້ Agent ບໍ່ພ້ອມໃຊ້ໃນລະບົບນີ້. ຂໍໃຫ້ຜູ້ດູແລລະບົບເປີດໃຊ້ງານ.",
   "agentDetail.configure.knowledgeFs.select": "ເລືອກໄດ້ສູງສຸດ 10 ຖານຄວາມຮູ້ Agent",
   "agentDetail.configure.knowledgeFs.title": "ຖານຄວາມຮູ້ Agent",
   "agentDetail.configure.knowledgeFs.unavailable": "ຖານຄວາມຮູ້ Agent ນີ້ບໍ່ພ້ອມໃຊ້ ຫຼືທ່ານບໍ່ມີສິດໃຊ້ມັນໃນ Agent ນີ້.",
