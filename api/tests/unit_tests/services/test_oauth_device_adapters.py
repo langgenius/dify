@@ -6,7 +6,7 @@ import pytest
 
 from extensions.ext_redis import RedisClientWrapper
 from libs import jws
-from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL
+from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL, limiter_prefix
 from services.oauth_device_adapters import (
     DifyConfigOAuthDeviceSettings,
     EnterpriseDeviceSSOService,
@@ -33,6 +33,19 @@ class _FailingEnterpriseService(EnterpriseDeviceSSOService):
     def initiate_device_flow_sso(self, signed_state: str) -> Mapping[str, object] | None:
         _ = signed_state
         raise RuntimeError("enterprise unavailable")
+
+
+@dataclass
+class _ZsetRedis:
+    zsets: dict[str, dict[object, object]] = field(default_factory=dict)
+
+    def zadd(self, name: str, mapping: dict[object, object]) -> int:
+        self.zsets.setdefault(name, {}).update(mapping)
+        return len(mapping)
+
+    def expire(self, name: str, time: int) -> bool:
+        _ = (name, time)
+        return True
 
 
 @dataclass
@@ -146,9 +159,19 @@ def test_settings_adapter_owns_oauth_device_configuration(config_overrides: Call
 def test_external_approval_limiter_owns_rate_limit_policy() -> None:
     limiter = RedisExternalApprovalLimiter(redis=RedisClientWrapper())
 
-    assert limiter._rate_limiter.prefix == "rl:subject_email"
+    assert limiter._rate_limiter.prefix == limiter_prefix(LIMIT_APPROVE_EXT_PER_EMAIL)
     assert limiter._rate_limiter.max_attempts == LIMIT_APPROVE_EXT_PER_EMAIL.limit
     assert limiter._rate_limiter.time_window == int(LIMIT_APPROVE_EXT_PER_EMAIL.window.total_seconds())
+
+
+def test_external_approval_limiter_uses_named_prefix() -> None:
+    redis = _ZsetRedis()
+    limiter = RedisExternalApprovalLimiter(redis=redis)  # type: ignore[arg-type]
+
+    limiter.record("alice@example.com")
+
+    assert redis.zsets
+    assert all(key.startswith("rl:approve_ext_per_email:") for key in redis.zsets)
 
 
 def test_approval_nonce_release_only_removes_matching_reservation(config_overrides: Callable[..., None]) -> None:

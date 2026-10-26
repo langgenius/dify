@@ -229,9 +229,10 @@ def _authenticates_for_real(
         rate_limit_module,
         "LIMIT_BEARER_PER_TOKEN",
         rate_limit_module.RateLimit(
-            0,
-            rate_limit_module.LIMIT_BEARER_PER_TOKEN.window,
-            rate_limit_module.LIMIT_BEARER_PER_TOKEN.scopes,
+            name=rate_limit_module.LIMIT_BEARER_PER_TOKEN.name,
+            limit=0,
+            window=rate_limit_module.LIMIT_BEARER_PER_TOKEN.window,
+            scopes=rate_limit_module.LIMIT_BEARER_PER_TOKEN.scopes,
         ),
     )
     authenticator = BearerAuthenticator({token_type: resolver})

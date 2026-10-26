@@ -8,7 +8,7 @@ response shape isn't generic 429.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
@@ -16,7 +16,7 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from flask import request, session
-from werkzeug.exceptions import TooManyRequests
+from werkzeug.exceptions import TooManyRequests, Unauthorized
 
 from configs import dify_config
 from libs.helper import RateLimiter, extract_remote_ip
@@ -30,71 +30,101 @@ class RateLimitScope(StrEnum):
     TOKEN_ID = "token_id"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class RateLimit:
+    name: str
     limit: int
     window: timedelta
     scopes: tuple[RateLimitScope, ...]
 
 
-LIMIT_DEVICE_CODE_PER_IP = RateLimit(60, timedelta(hours=1), (RateLimitScope.IP,))
-LIMIT_SSO_INITIATE_PER_IP = RateLimit(60, timedelta(hours=1), (RateLimitScope.IP,))
-LIMIT_APPROVE_EXT_PER_EMAIL = RateLimit(10, timedelta(hours=1), (RateLimitScope.SUBJECT_EMAIL,))
+LIMIT_DEVICE_CODE_PER_IP = RateLimit(
+    name="device_code_per_ip", limit=60, window=timedelta(hours=1), scopes=(RateLimitScope.IP,)
+)
+LIMIT_SSO_INITIATE_PER_IP = RateLimit(
+    name="sso_initiate_per_ip", limit=60, window=timedelta(hours=1), scopes=(RateLimitScope.IP,)
+)
+LIMIT_APPROVE_EXT_PER_EMAIL = RateLimit(
+    name="approve_ext_per_email", limit=10, window=timedelta(hours=1), scopes=(RateLimitScope.SUBJECT_EMAIL,)
+)
 LIMIT_DEVICE_FLOW_APPROVE = RateLimit(
+    name="device_flow_approve",
     limit=dify_config.DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR,
     window=timedelta(hours=1),
     scopes=(RateLimitScope.SESSION,),
 )
-LIMIT_LOOKUP_PUBLIC = RateLimit(60, timedelta(minutes=5), (RateLimitScope.IP,))
-LIMIT_ME_PER_ACCOUNT = RateLimit(60, timedelta(minutes=1), (RateLimitScope.ACCOUNT,))
-LIMIT_ME_PER_EMAIL = RateLimit(60, timedelta(minutes=1), (RateLimitScope.SUBJECT_EMAIL,))
+LIMIT_LOOKUP_PUBLIC = RateLimit(
+    name="lookup_public", limit=60, window=timedelta(minutes=5), scopes=(RateLimitScope.IP,)
+)
+LIMIT_ME_PER_ACCOUNT = RateLimit(
+    name="me_per_account", limit=60, window=timedelta(minutes=1), scopes=(RateLimitScope.ACCOUNT,)
+)
 LIMIT_BEARER_PER_TOKEN = RateLimit(
+    name="bearer_per_token",
     limit=dify_config.OPENAPI_RATE_LIMIT_PER_TOKEN,
     window=timedelta(minutes=1),
     scopes=(RateLimitScope.TOKEN_ID,),  # bucket key composed by caller from sha256(token)
 )
 
 
-def _one_key(scope: RateLimitScope) -> str:
-    match scope:
-        case RateLimitScope.IP:
-            return f"ip:{extract_remote_ip(request) or 'unknown'}"
-        case RateLimitScope.SESSION:
-            return f"session:{session.get('_id', 'anon')}"
-        case RateLimitScope.ACCOUNT:
-            from libs.oauth_bearer import try_get_auth_ctx
+def _ip_key() -> str:
+    ip = extract_remote_ip(request)
+    if not ip:
+        raise Unauthorized("rate_limit_identity_missing")
+    return f"ip:{ip}"
 
-            ctx = try_get_auth_ctx()
-            if ctx and ctx.account_id:
-                return f"account:{ctx.account_id}"
-            return "account:anon"
-        case RateLimitScope.SUBJECT_EMAIL:
-            from libs.oauth_bearer import try_get_auth_ctx
 
-            ctx = try_get_auth_ctx()
-            if ctx and ctx.subject_email:
-                return f"subject:{ctx.subject_email}"
-            return "subject:anon"
-        case RateLimitScope.TOKEN_ID:
-            from libs.oauth_bearer import try_get_auth_ctx
+def _session_key() -> str:
+    return f"session:{session.get('_id', 'anon')}"
 
-            ctx = try_get_auth_ctx()
-            if ctx and ctx.token_id:
-                return f"token:{ctx.token_id}"
-            return "token:anon"
+
+def _account_key() -> str:
+    from libs.oauth_bearer import try_get_auth_ctx
+
+    ctx = try_get_auth_ctx()
+    if not ctx or not ctx.account_id:
+        raise Unauthorized("rate_limit_identity_missing")
+    return f"account:{ctx.account_id}"
+
+
+def _subject_email_key() -> str:
+    from libs.oauth_bearer import try_get_auth_ctx
+
+    ctx = try_get_auth_ctx()
+    if not ctx or not ctx.subject_email:
+        raise Unauthorized("rate_limit_identity_missing")
+    return f"subject:{ctx.subject_email}"
+
+
+def _token_id_key() -> str:
+    from libs.oauth_bearer import try_get_auth_ctx
+
+    ctx = try_get_auth_ctx()
+    if not ctx or not ctx.token_id:
+        raise Unauthorized("rate_limit_identity_missing")
+    return f"token:{ctx.token_id}"
+
+
+_SCOPE_KEYS: Mapping[RateLimitScope, Callable[[], str]] = {
+    RateLimitScope.IP: _ip_key,
+    RateLimitScope.SESSION: _session_key,
+    RateLimitScope.ACCOUNT: _account_key,
+    RateLimitScope.SUBJECT_EMAIL: _subject_email_key,
+    RateLimitScope.TOKEN_ID: _token_id_key,
+}
 
 
 def _composite_key(scopes: tuple[RateLimitScope, ...]) -> str:
-    return "|".join(_one_key(s) for s in scopes)
+    return "|".join(_SCOPE_KEYS[s]() for s in scopes)
 
 
-def _limiter_prefix(scopes: tuple[RateLimitScope, ...]) -> str:
-    return "rl:" + "+".join(s.value for s in scopes)
+def limiter_prefix(spec: RateLimit) -> str:
+    return f"rl:{spec.name}:" + "+".join(s.value for s in spec.scopes)
 
 
 def _build_limiter(spec: RateLimit) -> RateLimiter:
     return RateLimiter(
-        prefix=_limiter_prefix(spec.scopes),
+        prefix=limiter_prefix(spec),
         max_attempts=spec.limit,
         time_window=int(spec.window.total_seconds()),
     )

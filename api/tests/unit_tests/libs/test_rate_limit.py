@@ -2,20 +2,31 @@
 
 from __future__ import annotations
 
+import uuid
+from dataclasses import dataclass, field
 from datetime import timedelta
+from functools import partial
 from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from redis import Redis
+from werkzeug.exceptions import TooManyRequests, Unauthorized
 
+from libs import rate_limit as rate_limit_module
 from libs.helper import RateLimiter, _RateLimiterRedisClient
+from libs.oauth_bearer import AuthContext, TokenType, _auth_ctx_var
 from libs.rate_limit import (
     LIMIT_BEARER_PER_TOKEN,
+    LIMIT_DEVICE_CODE_PER_IP,
+    LIMIT_LOOKUP_PUBLIC,
     RateLimit,
     RateLimitScope,
     _BearerRateLimited,
     enforce_bearer_rate_limit,
+    limiter_prefix,
+    rate_limit,
 )
 
 
@@ -117,7 +128,126 @@ def test_enforce_bearer_rate_limit_disabled_when_limit_is_zero(
     # 0 disables the limit — short-circuit before building/consulting a limiter.
     monkeypatch.setattr(
         "libs.rate_limit.LIMIT_BEARER_PER_TOKEN",
-        RateLimit(limit=0, window=timedelta(minutes=1), scopes=(RateLimitScope.TOKEN_ID,)),
+        RateLimit(name="bearer_per_token", limit=0, window=timedelta(minutes=1), scopes=(RateLimitScope.TOKEN_ID,)),
     )
     enforce_bearer_rate_limit("hash-1")
     mock_build.assert_not_called()
+
+
+@dataclass
+class _FakeZsetRedis:
+    zsets: dict[str, dict[str, float]] = field(default_factory=dict)
+    writes: int = 0
+
+    def zadd(self, name: str, mapping: dict[str, float]) -> int:
+        self.writes += 1
+        self.zsets.setdefault(name, {}).update(mapping)
+        return len(mapping)
+
+    def zremrangebyscore(self, name: str, _min: str | float, max: str | float) -> int:
+        entries = self.zsets.get(name, {})
+        stale = [member for member, score in entries.items() if score <= float(max)]
+        for member in stale:
+            del entries[member]
+        return len(stale)
+
+    def zcard(self, name: str) -> int:
+        return len(self.zsets.get(name, {}))
+
+    def expire(self, _name: str, _time: int) -> bool:
+        return True
+
+
+@pytest.fixture
+def fake_redis(monkeypatch: pytest.MonkeyPatch) -> _FakeZsetRedis:
+    fake = _FakeZsetRedis()
+    monkeypatch.setattr(rate_limit_module, "RateLimiter", partial(RateLimiter, redis_client=fake))
+    return fake
+
+
+@pytest.fixture
+def app() -> Flask:
+    flask_app = Flask(__name__)
+    flask_app.secret_key = "test"
+    return flask_app
+
+
+def _ip_request(app: Flask, ip: str = "203.0.113.7"):
+    return app.test_request_context("/", environ_base={"REMOTE_ADDR": ip})
+
+
+def _hit(spec: RateLimit) -> None:
+    rate_limit(spec)(lambda: None)()
+
+
+def test_limits_with_same_scope_use_different_keys(app: Flask, fake_redis: _FakeZsetRedis) -> None:
+    with _ip_request(app):
+        _hit(LIMIT_DEVICE_CODE_PER_IP)
+        _hit(LIMIT_LOOKUP_PUBLIC)
+
+    assert len(fake_redis.zsets) == 2
+    assert limiter_prefix(LIMIT_DEVICE_CODE_PER_IP) != limiter_prefix(LIMIT_LOOKUP_PUBLIC)
+    assert {key.split(":ip:")[0] for key in fake_redis.zsets} == {
+        limiter_prefix(LIMIT_DEVICE_CODE_PER_IP).removesuffix(":ip"),
+        limiter_prefix(LIMIT_LOOKUP_PUBLIC).removesuffix(":ip"),
+    }
+
+
+@pytest.mark.usefixtures("fake_redis")
+def test_lookup_calls_do_not_trim_device_code_entries(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("libs.helper.time.time", lambda: 1_000_000)
+    with _ip_request(app):
+        for _ in range(LIMIT_DEVICE_CODE_PER_IP.limit):
+            _hit(LIMIT_DEVICE_CODE_PER_IP)
+
+        # Past the lookup window (5 min) but inside the device-code window (1 h).
+        monkeypatch.setattr("libs.helper.time.time", lambda: 1_000_000 + 600)
+        _hit(LIMIT_LOOKUP_PUBLIC)
+
+        with pytest.raises(TooManyRequests):
+            _hit(LIMIT_DEVICE_CODE_PER_IP)
+
+
+def test_every_limit_name_is_unique() -> None:
+    limits = [value for value in vars(rate_limit_module).values() if isinstance(value, RateLimit)]
+    names = [spec.name for spec in limits]
+
+    assert limits
+    assert len(names) == len(set(names))
+
+
+def test_limiter_prefix_supports_empty_scopes() -> None:
+    spec = RateLimit(name="manual", limit=1, window=timedelta(minutes=1), scopes=())
+
+    assert limiter_prefix(spec) == "rl:manual:"
+
+
+def _ctx() -> AuthContext:
+    return AuthContext(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        subject_email=None,
+        subject_issuer=None,
+        account_id=None,
+        client_id=None,
+        token_id=uuid.uuid4(),
+        expires_at=None,
+    )
+
+
+@pytest.mark.parametrize(
+    "scope",
+    [RateLimitScope.IP, RateLimitScope.ACCOUNT, RateLimitScope.SUBJECT_EMAIL, RateLimitScope.TOKEN_ID],
+)
+def test_scope_without_identity_fails_closed(app: Flask, fake_redis: _FakeZsetRedis, scope: RateLimitScope) -> None:
+    spec = RateLimit(name="no_identity", limit=5, window=timedelta(minutes=1), scopes=(scope,))
+    ctx = _ctx() if scope in {RateLimitScope.ACCOUNT, RateLimitScope.SUBJECT_EMAIL} else None
+    token = _auth_ctx_var.set(ctx) if ctx else None
+    try:
+        with app.test_request_context("/"):
+            with pytest.raises(Unauthorized):
+                _hit(spec)
+    finally:
+        if token:
+            _auth_ctx_var.reset(token)
+
+    assert fake_redis.writes == 0

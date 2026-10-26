@@ -21,7 +21,7 @@ from libs.device_flow_security import (
 )
 from libs.helper import RateLimiter
 from libs.oauth_bearer import sha256_hex
-from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL
+from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL, limiter_prefix
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_application_service import (
     ExternalApprovalLimiter,
@@ -293,7 +293,7 @@ class EnterpriseOAuthDeviceSSOGateway(OAuthDeviceSSOGateway):
 class RedisExternalApprovalLimiter(ExternalApprovalLimiter):
     def __init__(self, *, redis: RedisClientWrapper) -> None:
         self._rate_limiter = RateLimiter(
-            prefix="rl:subject_email",
+            prefix=limiter_prefix(LIMIT_APPROVE_EXT_PER_EMAIL),
             max_attempts=LIMIT_APPROVE_EXT_PER_EMAIL.limit,
             time_window=int(LIMIT_APPROVE_EXT_PER_EMAIL.window.total_seconds()),
             redis_client=redis,
