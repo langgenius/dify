@@ -1,5 +1,4 @@
 from collections.abc import Generator
-from typing import cast
 
 from core.app.apps.pipeline.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.entities.task_entities import (
@@ -38,7 +37,8 @@ def test_convert_blocking_full_and_simple_response() -> None:
     assert full == simple
     assert isinstance(full, dict)
     assert full["workflow_run_id"] == "run"
-    full_data = cast("dict[str, object]", full["data"])
+    full_data = full["data"]
+    assert isinstance(full_data, dict)
     assert full_data["status"] == WorkflowExecutionStatus.SUCCEEDED
 
 
@@ -111,9 +111,11 @@ def test_convert_stream_simple_response_node_ignore_details() -> None:
 
     assert isinstance(result[0], dict)
     assert result[0]["event"] == "node_started"
-    start_data = cast("dict[str, object]", result[0]["data"])
+    start_data = result[0]["data"]
+    assert isinstance(start_data, dict)
     assert start_data["inputs"] is None
     assert isinstance(result[1], dict)
     assert result[1]["event"] == "node_finished"
-    finish_data = cast("dict[str, object]", result[1]["data"])
+    finish_data = result[1]["data"]
+    assert isinstance(finish_data, dict)
     assert finish_data["inputs"] is None
