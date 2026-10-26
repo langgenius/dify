@@ -22,7 +22,7 @@ async function javascript(directory) {
 }
 
 for (const bundler of ['turbopack', 'webpack']) {
-  test(`Next ${bundler}: full console JSON imports bind transport and prune unused operations`, async () => {
+  test(`Next ${bundler}: Console and Marketplace imports keep separate transports and prune unused operations`, async () => {
     const consoleSpec = JSON.parse(
       await readFile(
         join(repository, 'packages/contracts/openapi/console-client-openapi.json'),
@@ -42,15 +42,17 @@ for (const bundler of ['turbopack', 'webpack']) {
         join(dir, 'next.config.mjs'),
         `
 const loader = { loader: '@dify/openapi-content-mapper/loader', options: { runtime: ${JSON.stringify(relative(specDir, join(dir, 'runtime.js')))}, sidecars: ${JSON.stringify(relative(specDir, join(dir, 'spec.openapi')))} } };
+const marketplaceLoader = { loader: '@dify/openapi-content-mapper/loader', options: { runtime: ${JSON.stringify(relative(specDir, join(dir, 'marketplace-runtime.js')))}, sidecars: ${JSON.stringify(relative(specDir, join(dir, 'marketplace.openapi')))} } };
+const namespaceLoader = { loader: '@dify/openapi-content-mapper/loader' };
 export default {
-  experimental: { cpus: 2 },
-  turbopack: { root: ${JSON.stringify(repository)}, rules: { '*spec.json': { loaders: [loader], as: '*.js' }, '*openapi-namespace.js': { loaders: [loader], as: '*.js' } } },
-  webpack(config) { config.module.rules.push({ test: /(?:spec\\.json|openapi-namespace\\.js)$/, type: 'javascript/auto', use: [loader] }); return config; },
+  experimental: { cpus: 1 },
+  turbopack: { root: ${JSON.stringify(repository)}, rules: { '*console-spec.json': { loaders: [loader], as: '*.js' }, '*marketplace-spec.json': { loaders: [marketplaceLoader], as: '*.js' }, '*openapi-namespace.js': { loaders: [namespaceLoader], as: '*.js' } } },
+  webpack(config) { config.module.rules.push({ test: /console-spec\\.json$/, type: 'javascript/auto', use: [loader] }, { test: /marketplace-spec\\.json$/, type: 'javascript/auto', use: [marketplaceLoader] }, { test: /openapi-namespace\\.js$/, type: 'javascript/auto', use: [namespaceLoader] }); return config; },
 };
 `,
       )
       await writeFile(
-        join(specDir, 'spec.json'),
+        join(specDir, 'console-spec.json'),
         JSON.stringify({
           ...consoleSpec,
           info: { title: 'SCHEMA_METADATA_MUST_DISAPPEAR', version: '1' },
@@ -62,7 +64,38 @@ export default {
           },
         }),
       )
-      await symlink(join(specDir, 'spec.json'), join(dir, 'spec.openapi'))
+      await symlink(join(specDir, 'console-spec.json'), join(dir, 'spec.openapi'))
+      await writeFile(
+        join(specDir, 'marketplace-spec.json'),
+        JSON.stringify({
+          openapi: '3.1.0',
+          info: { title: 'Independent document', version: '1' },
+          paths: {
+            '/templates/{templateId}': {
+              get: {
+                'x-client-path': ['templateDetail'],
+                parameters: [
+                  { name: 'templateId', in: 'path', required: true, schema: { type: 'string' } },
+                ],
+                responses: { 200: { description: 'OK' } },
+              },
+            },
+            '/template-collections': { get: { responses: { 200: { description: 'Unused' } } } },
+          },
+        }),
+      )
+      await symlink(join(specDir, 'marketplace-spec.json'), join(dir, 'marketplace.openapi'))
+      await writeFile(
+        join(dir, 'marketplace.openapi.queries.ts'),
+        "const policy = { queryOptions: { staleTime: 3131 } }; export { policy as 'GET /templates/{templateId}' };",
+      )
+      await writeFile(
+        join(dir, 'marketplace-runtime.js'),
+        `
+import { createClient } from '@dify/openapi-content-mapper';
+export default { queryKeyPrefix: ['marketplace'], createClient: () => createClient({ baseUrl: 'https://marketplace.test', fetch: async url => Response.json({ value: String(url) }) }) };
+`,
+      )
       const policy = `const selected = { queryOptions: { staleTime: 4242 } }; const unused = { queryOptions: { meta: { marker: 'UNUSED_POLICY_MUST_DISAPPEAR' } } }; export { selected as 'GET /knowledge-fs/spaces/{control_space_id}/metadata', unused as 'GET /UNUSED_ENDPOINT_MUST_DISAPPEAR' };`
       const errors = `const selected = { CONFLICT: { status: 409 } }; const unused = { UNUSED: { status: 400, message: 'UNUSED_ERROR_MUST_DISAPPEAR' } }; export { selected as 'GET /knowledge-fs/spaces/{control_space_id}/metadata', unused as 'GET /UNUSED_ENDPOINT_MUST_DISAPPEAR' };`
       await writeFile(join(dir, 'spec.openapi.queries.ts'), policy)
@@ -87,8 +120,9 @@ export default {
         `
 'use client';
 import { api, query } from '../spec.openapi';
+import { api as marketplace, query as marketplaceQuery } from '../marketplace.openapi';
 export default function Button() {
-  return <button onClick={() => api.${alias}({ params: { control_space_id: 'space-1' } }, { context: { user: 'client' } })}>{JSON.stringify(query.${alias}.key())}</button>;
+  return <><button onClick={() => marketplace.templateDetail({ params: { templateId: 'template-1' } })}>{JSON.stringify(marketplaceQuery.templateDetail.key())}</button><button onClick={() => api.${alias}({ params: { control_space_id: 'space-1' } }, { context: { user: 'client' } })}>{JSON.stringify(query.${alias}.key())}</button></>;
 }
 `,
       )
@@ -96,12 +130,15 @@ export default function Button() {
         join(dir, 'app/page.jsx'),
         `
 import { api, query } from '../spec.openapi';
+import { api as marketplace, query as marketplaceQuery } from '../marketplace.openapi';
 import Button from './button';
 export default async function Page() {
+  const market = await marketplace.templateDetail({ params: { templateId: 'template-1' } });
+  const marketOptions = marketplaceQuery.templateDetail.queryOptions({ input: { params: { templateId: 'template-1' } } });
   const response = await api.${alias}({ params: { control_space_id: 'space-1' } }, { context: { user: 'server' } });
   const defined = await api.${alias}({ params: { control_space_id: 'space-1' } }, { context: { user: 'conflict' } }).catch(error => error.defined);
   const options = query.${alias}.queryOptions({ input: { params: { control_space_id: 'space-1' } } });
-  return <><p>{response.value}</p><p>defined-error:{String(defined)};stale:{options.staleTime}</p><Button /></>;
+  return <><p>{market.value};market-stale:{marketOptions.staleTime}</p><p>{response.value}</p><p>defined-error:{String(defined)};stale:{options.staleTime}</p><Button /></>;
 }
 `,
       )
@@ -110,8 +147,8 @@ export default async function Page() {
         env: {
           ...process.env,
           NEXT_TELEMETRY_DISABLED: '1',
-          NODE_OPTIONS: '--max-old-space-size=2048',
-          RAYON_NUM_THREADS: '2',
+          NODE_OPTIONS: '--max-old-space-size=1024',
+          RAYON_NUM_THREADS: '1',
         },
         encoding: 'utf8',
         timeout: 120_000,
@@ -124,9 +161,16 @@ export default async function Page() {
       assert(html.includes('bound'))
       assert(html.replaceAll(/<!--.*?-->/g, '').includes('defined-error:true;stale:4242'))
       assert(html.includes('4242'))
+      assert(
+        html
+          .replaceAll(/<!--.*?-->/g, '')
+          .includes('https://marketplace.test/templates/template-1;market-stale:3131'),
+      )
+      assert(html.includes('marketplace'))
       const client = await javascript(join(dir, '.next/static/chunks'))
       assert(client.includes('/knowledge-fs/spaces/'))
       assert(!client.includes('/datasets'))
+      assert(!client.includes('/template-collections'))
       assert(!client.includes('UNUSED_ENDPOINT_MUST_DISAPPEAR'))
       assert(!client.includes('SCHEMA_METADATA_MUST_DISAPPEAR'))
       assert(!client.includes('UNUSED_POLICY_MUST_DISAPPEAR'))

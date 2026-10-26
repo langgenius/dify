@@ -268,21 +268,26 @@ export default {
   turbopack: {
     rules: {
       '*pets.json': { loaders: [loader], as: '*.js' },
-      '*openapi-namespace.js': { loaders: [loader], as: '*.js' },
+      '*openapi-namespace.js': { loaders: ['@dify/openapi-content-mapper/loader'], as: '*.js' },
     },
   },
   webpack(config) {
     config.module.rules.push({
-      test: /(?:pets\.json|openapi-namespace\.js)$/,
+      test: /pets\.json$/,
       type: 'javascript/auto',
       use: [loader],
+    })
+    config.module.rules.push({
+      test: /openapi-namespace\.js$/,
+      type: 'javascript/auto',
+      use: ['@dify/openapi-content-mapper/loader'],
     })
     return config
   },
 }
 ```
 
-Merge these rules into existing configuration. Match the resolved JSON filename for symlinks; match the actual `.openapi` or YAML filename for regular files. Apply the loader to `openapi-namespace.js` too. Omit `options.runtime` to discover `<resolved specification filename>.config.ts`. Set `options.sidecars` to the logical document path (relative to the resolved specification) when its `.queries.ts` and `.errors.ts` files live beside a symlink. Without this option they are discovered beside the resolved specification. Next.js runtime options do not change compiler context discovery, which uses the imported document's adjacent sidecar.
+Merge these rules into existing configuration. Match the resolved JSON filename for symlinks; match the actual `.openapi` or YAML filename for regular files. Apply the loader to `openapi-namespace.js` too, without document-specific options. Each document carries its own runtime and sidecar bindings into its child namespaces, so multiple documents can use different transports in one build. Omit `options.runtime` to discover `<resolved specification filename>.config.ts`. Set `options.sidecars` to the logical document path (relative to the resolved specification) when its `.queries.ts` and `.errors.ts` files live beside a symlink. Without this option they are discovered beside the resolved specification. Next.js runtime options do not change compiler context discovery, which uses the imported document's adjacent sidecar.
 
 The loader uses a tiny shared resource for child namespaces so the full specification is not copied into every bundler module. Adapters use internal subpaths (`runtime`, `query-runtime`, `namespace`, `mapper`); application code should use the root, `vite`, `loader` and `register` entry points.
 

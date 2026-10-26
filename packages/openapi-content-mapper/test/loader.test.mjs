@@ -34,6 +34,7 @@ test('loader namespaces use a tiny resource and invalidate when the source docum
       {
         ...context,
         resourcePath: namespacePath,
+        getOptions: () => ({}),
         resourceQuery: rootModule.slice(rootModule.indexOf('?')),
       },
       '',
@@ -50,6 +51,7 @@ test('loader namespaces use a tiny resource and invalidate when the source docum
     const namespaceContext = {
       ...context,
       resourcePath: namespacePath,
+      getOptions: () => ({}),
       resourceQuery: `?${query}`,
     }
     const before = loader.call(namespaceContext, '')

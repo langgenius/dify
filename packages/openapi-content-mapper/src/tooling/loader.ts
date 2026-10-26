@@ -28,7 +28,9 @@ export default function openapiLoader(this: LoaderContext): string {
   const document = query.get('openapi-document')
   const fileName = document ?? this.resourcePath
   this.addDependency(fileName)
-  const { runtime, sidecars: logicalDocument } = this.getOptions()
+  const options = this.getOptions()
+  const runtime = query.get('openapi-runtime') ?? options.runtime
+  const logicalDocument = query.get('openapi-sidecars') ?? options.sidecars
   const sidecarFileName = logicalDocument ? resolve(dirname(fileName), logicalDocument) : fileName
   const config = runtime ? resolve(dirname(fileName), runtime) : runtimeConfigFile(fileName)
   if (config) this.addDependency(config)
@@ -36,7 +38,12 @@ export default function openapiLoader(this: LoaderContext): string {
     ? `./${relative(dirname(this.resourcePath), config).replaceAll('\\', '/')}`
     : undefined
   const namespaceResource = `./${relative(dirname(this.resourcePath), namespaceFile).replaceAll('\\', '/')}`
-  const namespace = `${namespaceResource}?openapi-document=${encodeURIComponent(fileName)}`
+  // Carry document-specific bindings through the shared namespace resource. A single
+  // loader rule can then serve documents with independent transports and policies.
+  const bindings = new URLSearchParams({ 'openapi-document': fileName })
+  if (config) bindings.set('openapi-runtime', config)
+  if (logicalDocument) bindings.set('openapi-sidecars', sidecarFileName)
+  const namespace = `${namespaceResource}?${bindings}`
   // Documents can live in a workspace package that has no SDK dependency.
   // Resolve the API and query namespaces from the SDK resource.
   if (!document) return `export * from ${JSON.stringify(namespace)};\n`

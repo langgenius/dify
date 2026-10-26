@@ -7,7 +7,7 @@ Initial experimental release. Requires TypeScript 7.1.0-beta for native content 
 - Import OpenAPI 3.0/3.1 YAML or JSON-backed `.openapi` documents with inferred request and response types.
 - Export only `api` and `query`, with statically tree-shakable namespaces and typed document context.
 - Support explicit `x-client-path` operation names without changing HTTP serialization or per-operation sidecars.
-- Integrate with Vite, Next.js Turbopack/Webpack and Node module hooks.
+- Integrate with Vite, Next.js Turbopack/Webpack and Node module hooks, preserving independent document transports and sidecars.
 - Support local schema references, recursive types, JSON, explicit multipart alternatives, binary bodies and raw SSE responses.
 - Preserve JSON wire strings for binary-formatted response fields and require explicit media selection for non-default alternatives.
 - Resolve API/query types lazily, omit redundant schema representations and cache serialized mapper results across compiler processes, with invalidation for document, implementation and sidecar changes.
