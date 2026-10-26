@@ -55,6 +55,7 @@ describe('WorkflowBody', () => {
           humanInputFormDataList: [createHumanInputFormFixture()],
           humanInputFilledFormDataList: [
             {
+              form_id: 'filled-form-1',
               node_id: 'filled-1',
               node_title: 'Human Input',
               rendered_content: '',

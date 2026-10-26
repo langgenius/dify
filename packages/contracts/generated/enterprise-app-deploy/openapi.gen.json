@@ -1,0 +1,1846 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Dify enterprise-app-deploy Console",
+    "version": "1"
+  },
+  "paths": {
+    "/enterprise/app-deploy/apps/{app_id}/environments": {
+      "get": {
+        "tags": [
+          "ConsoleDeploymentService"
+        ],
+        "operationId": "ConsoleDeploymentService_ListAppEnvironments",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListAppEnvironmentsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "deploymentService",
+          "listAppEnvironments"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/api": {
+      "get": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_GetEnvironmentAPI",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentAPI"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "getEnvironmentApi"
+        ]
+      },
+      "patch": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_UpdateEnvironmentAPI",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentAPIUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentAPI"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "updateEnvironmentApi"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/api-keys": {
+      "get": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_ListEnvironmentApiKeys",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListEnvironmentApiKeysResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "listEnvironmentApiKeys"
+        ]
+      },
+      "post": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_CreateEnvironmentApiKey",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentApiKey"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "createEnvironmentApiKey"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/api-keys/{api_key_id}": {
+      "delete": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_DeleteEnvironmentApiKey",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api_key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeleteEnvironmentApiKeyResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "deleteEnvironmentApiKey"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/server": {
+      "get": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_GetEnvironmentMCPServer",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentMCPServer"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "getEnvironmentMcpServer"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/site": {
+      "get": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_GetEnvironmentSite",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentSite"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "getEnvironmentSite"
+        ]
+      },
+      "patch": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_UpdateEnvironmentSite",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentSiteUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentSite"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "updateEnvironmentSite"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/site/access-token-reset": {
+      "post": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_ResetEnvironmentSiteAccessToken",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentSite"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "resetEnvironmentSiteAccessToken"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/triggers": {
+      "get": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_ListEnvironmentTriggers",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListEnvironmentTriggersResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "listEnvironmentTriggers"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/webapp/access-mode": {
+      "post": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_UpdateEnvironmentWebAppAccessMode",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentWebAppAccessModeUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentSite"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "updateEnvironmentWebAppAccessMode"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/environments/{environment_id}/webapp/subjects": {
+      "get": {
+        "tags": [
+          "ConsoleAccessService"
+        ],
+        "operationId": "ConsoleAccessService_GetEnvironmentWebAppSubjects",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.GetEnvironmentWebAppSubjectsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "accessService",
+          "getEnvironmentWebAppSubjects"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/workflows/environment-deployments": {
+      "get": {
+        "tags": [
+          "ConsoleDeploymentService"
+        ],
+        "operationId": "ConsoleDeploymentService_ListEnvironmentDeployments",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.ListEnvironmentDeploymentsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "deploymentService",
+          "listEnvironmentDeployments"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/workflows/environment-deployments/{environment_id}": {
+      "get": {
+        "tags": [
+          "ConsoleDeploymentService"
+        ],
+        "operationId": "ConsoleDeploymentService_GetEnvironmentDeployment",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.GetEnvironmentDeploymentResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "deploymentService",
+          "getEnvironmentDeployment"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment-options": {
+      "get": {
+        "tags": [
+          "ConsoleDeploymentService"
+        ],
+        "operationId": "ConsoleDeploymentService_GetWorkflowDeploymentOptions",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.GetWorkflowDeploymentOptionsResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "deploymentService",
+          "getWorkflowDeploymentOptions"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment:deploy": {
+      "post": {
+        "tags": [
+          "ConsoleDeploymentService"
+        ],
+        "operationId": "ConsoleDeploymentService_DeployWorkflow",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowDeploymentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeployWorkflowResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "deploymentService",
+          "deployWorkflow"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment:undeploy": {
+      "post": {
+        "tags": [
+          "ConsoleDeploymentService"
+        ],
+        "operationId": "ConsoleDeploymentService_UndeployWorkflow",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UndeployWorkflowResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "deploymentService",
+          "undeployWorkflow"
+        ]
+      }
+    },
+    "/enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}:precheck": {
+      "get": {
+        "tags": [
+          "ConsoleDeploymentService"
+        ],
+        "operationId": "ConsoleDeploymentService_PrecheckWorkflowDeployment",
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.PrecheckWorkflowDeploymentResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-client-path": [
+          "enterprise",
+          "appDeploy",
+          "deploymentService",
+          "precheckWorkflowDeployment"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "dify.enterprise.api.appdeploy.v1.ListAppEnvironmentsResponse": {
+        "required": [
+          "data"
+        ],
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.AppEnvironment"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.AppEnvironment": {
+        "required": [
+          "id",
+          "display_name",
+          "description",
+          "status",
+          "in_use"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EnvironmentStatus"
+          },
+          "in_use": {
+            "type": "boolean"
+          }
+        }
+      },
+      "EnvironmentStatus": {
+        "format": "enum",
+        "enum": [
+          "ENVIRONMENT_STATUS_UNSPECIFIED",
+          "ENVIRONMENT_STATUS_PENDING",
+          "ENVIRONMENT_STATUS_READY",
+          "ENVIRONMENT_STATUS_FAILED",
+          "ENVIRONMENT_STATUS_DELETING"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentAPI": {
+        "required": [
+          "enabled",
+          "base_url",
+          "api_key_count"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "base_url": {
+            "type": "string"
+          },
+          "api_key_count": {
+            "type": "integer",
+            "format": "uint32"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentAPIUpdate": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ListEnvironmentApiKeysResponse": {
+        "required": [
+          "data"
+        ],
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentApiKey"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentApiKey": {
+        "required": [
+          "id",
+          "type",
+          "token",
+          "created_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "last_used_at": {
+            "type": "number",
+            "format": "double"
+          },
+          "created_at": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeleteEnvironmentApiKeyResponse": {
+        "type": "object",
+        "properties": {}
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentMCPServer": {
+        "type": "object",
+        "properties": {}
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentSite": {
+        "required": [
+          "enabled",
+          "code",
+          "app_base_url",
+          "access_mode"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "app_base_url": {
+            "type": "string"
+          },
+          "access_mode": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentSiteUpdate": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ListEnvironmentTriggersResponse": {
+        "required": [
+          "data"
+        ],
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentTrigger"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentTrigger": {
+        "type": "object",
+        "properties": {}
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentWebAppAccessModeUpdate": {
+        "required": [
+          "access_mode"
+        ],
+        "type": "object",
+        "properties": {
+          "access_mode": {
+            "type": "string"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentWebAppSubject"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentWebAppSubject": {
+        "type": "object",
+        "properties": {
+          "subject_id": {
+            "type": "string"
+          },
+          "subject_type": {
+            "type": "string"
+          },
+          "account_data": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentWebAppSubject_AccountData"
+          },
+          "group_data": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentWebAppSubject_GroupData"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentWebAppSubject_AccountData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentWebAppSubject_GroupData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "group_size": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.GetEnvironmentWebAppSubjectsResponse": {
+        "required": [
+          "subjects"
+        ],
+        "type": "object",
+        "properties": {
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentWebAppSubject"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.ListEnvironmentDeploymentsResponse": {
+        "required": [
+          "environment_deployments"
+        ],
+        "type": "object",
+        "properties": {
+          "environment_deployments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentDeployment"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentDeployment": {
+        "required": [
+          "environment",
+          "access"
+        ],
+        "type": "object",
+        "properties": {
+          "environment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeploymentEnvironment"
+          },
+          "deployment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentDeploymentState"
+          },
+          "access": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentAccess"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeploymentEnvironment": {
+        "required": [
+          "id",
+          "display_name",
+          "status",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EnvironmentStatus"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentDeploymentState": {
+        "required": [
+          "runtimeState"
+        ],
+        "type": "object",
+        "properties": {
+          "runtimeState": {
+            "$ref": "#/components/schemas/RuntimeState"
+          },
+          "current_version": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowVersion"
+          },
+          "versions_behind": {
+            "type": "integer",
+            "format": "uint32"
+          },
+          "deployed_at": {
+            "type": "number",
+            "format": "double"
+          },
+          "deployed_by": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Operator"
+          },
+          "latest_operation": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentDeploymentOperation"
+          }
+        }
+      },
+      "RuntimeState": {
+        "format": "enum",
+        "enum": [
+          "RUNTIME_STATE_UNSPECIFIED",
+          "RUNTIME_STATE_UNDEPLOYED",
+          "RUNTIME_STATE_RUNNING",
+          "RUNTIME_STATE_STARTING",
+          "RUNTIME_STATE_STOPPING",
+          "RUNTIME_STATE_ERROR",
+          "RUNTIME_STATE_UNKNOWN"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.WorkflowVersion": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "marked_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "marked_comment": {
+            "type": "string"
+          },
+          "version_number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "number",
+            "format": "double"
+          },
+          "created_by": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.SimpleAccount"
+          },
+          "dsl_hash": {
+            "type": "string",
+            "description": "dsl_hash tells two versions apart when they share a name."
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.SimpleAccount": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "description": "SimpleAccount mirrors the account shape Dify's console API returns, so a\n client can render an account the same way whichever API it came from."
+      },
+      "dify.enterprise.api.appdeploy.v1.Operator": {
+        "required": [
+          "type",
+          "id",
+          "display_name"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/OperatorType"
+          },
+          "id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          }
+        }
+      },
+      "OperatorType": {
+        "format": "enum",
+        "enum": [
+          "OPERATOR_TYPE_UNSPECIFIED",
+          "OPERATOR_TYPE_END_USER",
+          "OPERATOR_TYPE_ACCOUNT",
+          "OPERATOR_TYPE_SERVICE_ACCOUNT",
+          "OPERATOR_TYPE_SYSTEM",
+          "OPERATOR_TYPE_DASHBOARD_ACCOUNT"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentDeploymentOperation": {
+        "required": [
+          "id",
+          "type",
+          "status",
+          "operator",
+          "activity_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DeploymentOperationType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeploymentOperationStatus"
+          },
+          "target_version": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowVersion"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.Operator"
+          },
+          "activity_at": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "DeploymentOperationType": {
+        "format": "enum",
+        "enum": [
+          "DEPLOYMENT_OPERATION_TYPE_UNSPECIFIED",
+          "DEPLOYMENT_OPERATION_TYPE_DEPLOY",
+          "DEPLOYMENT_OPERATION_TYPE_UNDEPLOY"
+        ],
+        "type": "string"
+      },
+      "DeploymentOperationStatus": {
+        "format": "enum",
+        "enum": [
+          "DEPLOYMENT_OPERATION_STATUS_UNSPECIFIED",
+          "DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS",
+          "DEPLOYMENT_OPERATION_STATUS_SUCCEEDED",
+          "DEPLOYMENT_OPERATION_STATUS_FAILED"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentAccess": {
+        "required": [
+          "enable_site",
+          "enable_api"
+        ],
+        "type": "object",
+        "properties": {
+          "enable_site": {
+            "type": "boolean"
+          },
+          "enable_api": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.GetEnvironmentDeploymentResponse": {
+        "required": [
+          "environment_deployment"
+        ],
+        "type": "object",
+        "properties": {
+          "environment_deployment": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentDeployment"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.GetWorkflowDeploymentOptionsResponse": {
+        "required": [
+          "environment_variable_groups",
+          "credential_slots"
+        ],
+        "type": "object",
+        "properties": {
+          "environment_variable_groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentVariableGroup"
+            }
+          },
+          "credential_slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CredentialSlot"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentVariableGroup": {
+        "required": [
+          "environment_variable_slots"
+        ],
+        "type": "object",
+        "properties": {
+          "from_app": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowReference"
+          },
+          "from_workflow_as_tool": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowAsToolSource"
+          },
+          "environment_variable_slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentVariableSlot"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.WorkflowReference": {
+        "required": [
+          "app_id",
+          "workflow_id",
+          "name",
+          "icon",
+          "icon_background",
+          "icon_type"
+        ],
+        "type": "object",
+        "properties": {
+          "app_id": {
+            "type": "string"
+          },
+          "workflow_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "icon_background": {
+            "type": "string"
+          },
+          "icon_type": {
+            "type": "string"
+          },
+          "icon_url": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.WorkflowAsToolSource": {
+        "required": [
+          "workflow",
+          "paths"
+        ],
+        "type": "object",
+        "properties": {
+          "workflow": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowReference"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowPath"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.WorkflowPath": {
+        "required": [
+          "workflows"
+        ],
+        "type": "object",
+        "properties": {
+          "workflows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowReference"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentVariableSlot": {
+        "required": [
+          "key",
+          "value_type",
+          "description",
+          "has_configured_value",
+          "has_last_deployed_value"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value_type": {
+            "$ref": "#/components/schemas/EnvVarValueType"
+          },
+          "description": {
+            "type": "string"
+          },
+          "has_configured_value": {
+            "type": "boolean"
+          },
+          "has_last_deployed_value": {
+            "type": "boolean"
+          },
+          "configured_value": {
+            "$ref": "#/components/schemas/google.protobuf.Value"
+          },
+          "last_deployed_value": {
+            "$ref": "#/components/schemas/google.protobuf.Value"
+          }
+        }
+      },
+      "EnvVarValueType": {
+        "format": "enum",
+        "enum": [
+          "ENV_VAR_VALUE_TYPE_UNSPECIFIED",
+          "ENV_VAR_VALUE_TYPE_STRING",
+          "ENV_VAR_VALUE_TYPE_NUMBER",
+          "ENV_VAR_VALUE_TYPE_SECRET",
+          "ENV_VAR_VALUE_TYPE_LLM"
+        ],
+        "type": "string"
+      },
+      "google.protobuf.Value": {
+        "description": "Represents a dynamically typed value which can be either null, a number, a string, a boolean, a recursive struct value, or a list of values."
+      },
+      "dify.enterprise.api.appdeploy.v1.CredentialSlot": {
+        "required": [
+          "provider_id",
+          "category",
+          "candidates"
+        ],
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/PluginCategory"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CredentialCandidate"
+            }
+          },
+          "last_deployed_credential_id": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "icon_dark": {
+            "type": "string"
+          },
+          "workflow_as_tool_dependency": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowAsToolDependency"
+          }
+        }
+      },
+      "PluginCategory": {
+        "format": "enum",
+        "enum": [
+          "PLUGIN_CATEGORY_UNSPECIFIED",
+          "PLUGIN_CATEGORY_MODEL",
+          "PLUGIN_CATEGORY_TOOL"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.CredentialCandidate": {
+        "required": [
+          "credential_id",
+          "provider_id",
+          "category",
+          "display_name",
+          "from_enterprise"
+        ],
+        "type": "object",
+        "properties": {
+          "credential_id": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/PluginCategory"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "from_enterprise": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.WorkflowAsToolDependency": {
+        "required": [
+          "paths"
+        ],
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowPath"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.WorkflowDeploymentInput": {
+        "required": [
+          "environment_variable_groups"
+        ],
+        "type": "object",
+        "properties": {
+          "environment_variable_groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowEnvironmentVariableInputGroup"
+            }
+          },
+          "credentials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.CredentialSelectionInput"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.WorkflowEnvironmentVariableInputGroup": {
+        "required": [
+          "workflow_id",
+          "environment_variables"
+        ],
+        "type": "object",
+        "properties": {
+          "workflow_id": {
+            "type": "string"
+          },
+          "environment_variables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentVariableInput"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentVariableInput": {
+        "required": [
+          "key",
+          "value_source"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value_source": {
+            "$ref": "#/components/schemas/EnvVarValueSource"
+          },
+          "value": {
+            "$ref": "#/components/schemas/google.protobuf.Value"
+          }
+        }
+      },
+      "EnvVarValueSource": {
+        "format": "enum",
+        "enum": [
+          "ENV_VAR_VALUE_SOURCE_UNSPECIFIED",
+          "ENV_VAR_VALUE_SOURCE_CONFIGURED",
+          "ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED",
+          "ENV_VAR_VALUE_SOURCE_CUSTOM"
+        ],
+        "type": "string"
+      },
+      "dify.enterprise.api.appdeploy.v1.CredentialSelectionInput": {
+        "required": [
+          "provider_id",
+          "category",
+          "credential_id"
+        ],
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/PluginCategory"
+          },
+          "credential_id": {
+            "type": "string"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeployWorkflowResponse": {
+        "required": [
+          "operation"
+        ],
+        "type": "object",
+        "properties": {
+          "operation": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeploymentOperationReceipt"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.DeploymentOperationReceipt": {
+        "required": [
+          "id",
+          "type",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/DeploymentOperationType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeploymentOperationStatus"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UndeployWorkflowResponse": {
+        "required": [
+          "operation"
+        ],
+        "type": "object",
+        "properties": {
+          "operation": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.DeploymentOperationReceipt"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.PrecheckWorkflowDeploymentResponse": {
+        "required": [
+          "unsupported_nodes"
+        ],
+        "type": "object",
+        "properties": {
+          "unsupported_nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UnsupportedNode"
+            }
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UnsupportedNode": {
+        "required": [
+          "id",
+          "type",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.UnsupportedNodeProvider"
+          },
+          "workflow_as_tool_dependency": {
+            "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.WorkflowAsToolDependency"
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.UnsupportedNodeProvider": {
+        "required": [
+          "plugin_id",
+          "provider_id",
+          "provider_type",
+          "provider_name"
+        ],
+        "type": "object",
+        "properties": {
+          "plugin_id": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "provider_type": {
+            "type": "string"
+          },
+          "provider_name": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

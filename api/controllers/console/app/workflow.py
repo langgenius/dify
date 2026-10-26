@@ -51,6 +51,7 @@ from libs import helper
 from libs.external_api import error_responses
 from libs.helper import TimestampField, dump_response, uuid_value
 from machinery.context import RequestContext
+from models.human_input_entities import FormInputConfig, UserActionConfig
 from models.model import AppMode
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
@@ -260,8 +261,8 @@ class HumanInputFormPreviewResponse(ResponseModel):
     node_id: str
     node_title: str
     form_content: str
-    inputs: list[dict[str, Any]] = Field(default_factory=list)
-    actions: list[dict[str, Any]] = Field(default_factory=list)
+    inputs: list[FormInputConfig] = Field(default_factory=list)
+    actions: list[UserActionConfig] = Field(default_factory=list)
     display_in_ui: bool | None = None
     form_token: str | None = None
     resolved_default_values: dict[str, Any] = Field(default_factory=dict)
@@ -622,9 +623,10 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
     @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT, modes=(AppMode.ADVANCED_CHAT,))
     @model_validate(HumanInputFormPreviewPayload)
     def post(self, args: HumanInputFormPreviewPayload, request_context: RequestContext, app_id: UUID, node_id: str):
-        return jsonable_encoder(
-            application_services().human_input_debug.preview_form(request_context, str(app_id), node_id, args.inputs)
+        preview = application_services().human_input_debug.preview_form(
+            request_context, str(app_id), node_id, args.inputs
         )
+        return dump_response(HumanInputFormPreviewResponse, preview)
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/run")
@@ -665,9 +667,10 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
     @console_workflow_admission(permission=RBACPermission.APP_VIEW_LAYOUT, modes=(AppMode.WORKFLOW,))
     @model_validate(HumanInputFormPreviewPayload)
     def post(self, args: HumanInputFormPreviewPayload, request_context: RequestContext, app_id: UUID, node_id: str):
-        return jsonable_encoder(
-            application_services().human_input_debug.preview_form(request_context, str(app_id), node_id, args.inputs)
+        preview = application_services().human_input_debug.preview_form(
+            request_context, str(app_id), node_id, args.inputs
         )
+        return dump_response(HumanInputFormPreviewResponse, preview)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form/run")

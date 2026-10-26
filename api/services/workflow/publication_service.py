@@ -61,6 +61,7 @@ def publish_workflow[BindingStore](
     agent_service.validate_prepared_publication(draft_workflow=transaction.draft, prepared=agents)
     workflow = transaction.create_version(marked_name=marked_name, marked_comment=marked_comment)
     agent_service.copy_agent_node_bindings_to_published(draft_workflow=transaction.draft, published_workflow=workflow)
+    transaction.sync_knowledge_spaces(workflow)
     if configuration.has_trigger_runtime:
         transaction.sync_webhooks(configuration.webhook_nodes)
         transaction.sync_plugins(configuration.plugins)

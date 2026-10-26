@@ -17,7 +17,7 @@ from models.dataset import Dataset, Whitelist
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.vector import VectorConfiguration
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _dataset(**overrides) -> Dataset:

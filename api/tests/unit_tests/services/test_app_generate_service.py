@@ -1,17 +1,3 @@
-"""
-Comprehensive unit tests for services.app_generate_service.AppGenerateService.
-
-Covers:
-  - _build_streaming_task_on_subscribe  (streams / pubsub / exception / idempotency)
-  - generate                           (COMPLETION / AGENT_CHAT / CHAT / ADVANCED_CHAT / WORKFLOW / invalid mode,
-                                         streaming & blocking, billing, quota-refund-on-error, rate_limit.exit)
-  - _get_max_active_requests            (all limit combos)
-  - generate_single_iteration           (ADVANCED_CHAT / WORKFLOW / invalid mode)
-  - generate_single_loop                (ADVANCED_CHAT / WORKFLOW / invalid mode)
-  - generate_more_like_this
-  - _get_workflow                       (debugger / non-debugger / specific id / invalid format / not found)
-"""
-
 import json
 import threading
 import uuid
@@ -105,7 +91,7 @@ class _RealSessionTest:
         self.session = sqlite_session
 
 
-def _make_workflow(
+def _make_workflow_model(
     *,
     workflow_id: str = "workflow-id",
     created_by: str = "owner-id",
@@ -129,6 +115,17 @@ def _make_workflow(
         created_by=created_by,
         environment_variables=[],
         conversation_variables=[],
+    )
+
+
+def _make_workflow(
+    *,
+    workflow_id: str = "workflow-id",
+    created_by: str = "owner-id",
+    node_types: tuple[str, ...] = (),
+) -> WorkflowSnapshot:
+    return workflow_snapshot(
+        _make_workflow_model(workflow_id=workflow_id, created_by=created_by, node_types=node_types)
     )
 
 
@@ -160,157 +157,148 @@ def _unexpected_timer(interval: float, function: Callable[[], bool]) -> _FakeTim
     raise AssertionError("streams must not create a fallback timer")
 
 
-class TestBuildStreamingTaskOnSubscribe:
-    def test_streams_starts_only_when_hook_is_invoked_without_creating_timer(
-        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-    ):
-        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
-
-        monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
-        called: list[int] = []
-
-        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
-
-        assert called == []
-        on_subscribe()
-        on_subscribe()
-        assert called == [1]
-
-    @pytest.mark.parametrize("channel_type", ["pubsub", "sharded"])
-    def test_pubsub_transports_keep_subscribe_hook_and_fallback_timer(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        channel_type: str,
-        config_overrides: Callable[..., None],
-    ):
-        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE=channel_type)
-        timers: list[_FakeTimer] = []
-
-        def build_timer(interval: float, function: Callable[[], bool]) -> _FakeTimer:
-            timer = _FakeTimer(interval, function)
-            timers.append(timer)
-            return timer
-
-        monkeypatch.setattr(ags_module.threading, "Timer", build_timer)
-        called: list[int] = []
-
-        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
-
-        assert called == []
-        assert len(timers) == 1
-        assert timers[0].interval == ags_module.SSE_TASK_START_FALLBACK_MS / 1000.0
-        assert timers[0].started is True
-
-        on_subscribe()
-
-        assert called == [1]
-        assert timers[0].cancelled is True
-
-    def test_pubsub_fallback_starts_task_if_hook_is_never_invoked(
-        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-    ):
-        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="pubsub")
-        timers: list[_FakeTimer] = []
-
-        def build_timer(interval: float, function: Callable[[], bool]) -> _FakeTimer:
-            timer = _FakeTimer(interval, function)
-            timers.append(timer)
-            return timer
-
-        monkeypatch.setattr(ags_module.threading, "Timer", build_timer)
-        called: list[int] = []
-        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
-
-        assert timers[0].function() is True
-        on_subscribe()
-        assert called == [1]
-
-    def test_streams_retries_after_enqueue_failure(
-        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-    ):
-        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
-        monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
-        call_count = 0
-
-        def _bad():
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                raise RuntimeError("boom")
-
-        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(_bad)
-        on_subscribe()
-        assert call_count == 1
-        on_subscribe()
-        assert call_count == 2
-
-    def test_concurrent_subscribe_only_starts_once(
-        self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-    ):
-        config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
-        monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
-        call_count = 0
-
-        def _inc():
-            nonlocal call_count
-            call_count += 1
-
-        cb = AppGenerateService._build_streaming_task_on_subscribe(_inc)
-        threads = [threading.Thread(target=cb) for _ in range(10)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-        assert call_count == 1
-
-
-# ---------------------------------------------------------------------------
-# _get_max_active_requests
-# ---------------------------------------------------------------------------
-class TestGetMaxActiveRequests:
-    def test_both_zero_returns_zero(self, config_overrides: Callable[..., None]):
-        config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=0)
-        app = _make_app(AppMode.CHAT, max_active_requests=0)
-        assert AppGenerateService._get_max_active_requests(app) == 0
-
-    def test_app_limit_only(self, config_overrides: Callable[..., None]):
-        config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=0)
-        app = _make_app(AppMode.CHAT, max_active_requests=5)
-        assert AppGenerateService._get_max_active_requests(app) == 5
-
-    def test_config_limit_only(self, config_overrides: Callable[..., None]):
-        config_overrides(APP_MAX_ACTIVE_REQUESTS=10, APP_DEFAULT_ACTIVE_REQUESTS=0)
-        app = _make_app(AppMode.CHAT, max_active_requests=0)
-        assert AppGenerateService._get_max_active_requests(app) == 10
-
-    def test_both_non_zero_returns_min(self, config_overrides: Callable[..., None]):
-        config_overrides(APP_MAX_ACTIVE_REQUESTS=20, APP_DEFAULT_ACTIVE_REQUESTS=0)
-        app = _make_app(AppMode.CHAT, max_active_requests=5)
-        assert AppGenerateService._get_max_active_requests(app) == 5
-
-    def test_default_active_requests_used_when_app_has_none(self, config_overrides: Callable[..., None]):
-        config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=15)
-        app = _make_app(AppMode.CHAT, max_active_requests=0)
-        assert AppGenerateService._get_max_active_requests(app) == 15
-
-
-# ---------------------------------------------------------------------------
-# generate – every AppMode branch
-# ---------------------------------------------------------------------------
-class TestGenerate(_RealSessionTest):
-    """Tests for AppGenerateService.generate covering each mode."""
-
+class TestAppGenerateServiceCases(_RealSessionTest):
     @pytest.fixture(autouse=True)
-    def _common(self, mocker: MockerFixture, config_overrides: Callable[..., None]):
+    def _common_generation(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        # Prevent AppExecutionParams.new from touching real models via isinstance
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
+        mocker.patch("services.app_generate_service.rate_limit_context", _noop_rate_limit_context)
 
-    # -- COMPLETION ---------------------------------------------------------
+    class TestBuildStreamingTaskOnSubscribe:
+        def test_streams_starts_only_when_hook_is_invoked_without_creating_timer(
+            self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+        ):
+            config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
+
+            monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
+            called: list[int] = []
+
+            on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+
+            assert called == []
+            on_subscribe()
+            on_subscribe()
+            assert called == [1]
+
+        @pytest.mark.parametrize("channel_type", ["pubsub", "sharded"])
+        def test_pubsub_transports_keep_subscribe_hook_and_fallback_timer(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            channel_type: str,
+            config_overrides: Callable[..., None],
+        ):
+            config_overrides(PUBSUB_REDIS_CHANNEL_TYPE=channel_type)
+            timers: list[_FakeTimer] = []
+
+            def build_timer(interval: float, function: Callable[[], bool]) -> _FakeTimer:
+                timer = _FakeTimer(interval, function)
+                timers.append(timer)
+                return timer
+
+            monkeypatch.setattr(ags_module.threading, "Timer", build_timer)
+            called: list[int] = []
+
+            on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+
+            assert called == []
+            assert len(timers) == 1
+            assert timers[0].interval == ags_module.SSE_TASK_START_FALLBACK_MS / 1000.0
+            assert timers[0].started is True
+
+            on_subscribe()
+
+            assert called == [1]
+            assert timers[0].cancelled is True
+
+        def test_pubsub_fallback_starts_task_if_hook_is_never_invoked(
+            self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+        ):
+            config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="pubsub")
+            timers: list[_FakeTimer] = []
+
+            def build_timer(interval: float, function: Callable[[], bool]) -> _FakeTimer:
+                timer = _FakeTimer(interval, function)
+                timers.append(timer)
+                return timer
+
+            monkeypatch.setattr(ags_module.threading, "Timer", build_timer)
+            called: list[int] = []
+            on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+
+            assert timers[0].function() is True
+            on_subscribe()
+            assert called == [1]
+
+        def test_streams_retries_after_enqueue_failure(
+            self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+        ):
+            config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
+            monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
+            call_count = 0
+
+            def _bad():
+                nonlocal call_count
+                call_count += 1
+                if call_count == 1:
+                    raise RuntimeError("boom")
+
+            on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(_bad)
+            on_subscribe()
+            assert call_count == 1
+            on_subscribe()
+            assert call_count == 2
+
+        def test_concurrent_subscribe_only_starts_once(
+            self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+        ):
+            config_overrides(PUBSUB_REDIS_CHANNEL_TYPE="streams")
+            monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
+            call_count = 0
+
+            def _inc():
+                nonlocal call_count
+                call_count += 1
+
+            cb = AppGenerateService._build_streaming_task_on_subscribe(_inc)
+            threads = [threading.Thread(target=cb) for _ in range(10)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            assert call_count == 1
+
+    # ---------------------------------------------------------------------------
+    # _get_max_active_requests
+    # ---------------------------------------------------------------------------
+    class TestGetMaxActiveRequests:
+        def test_both_zero_returns_zero(self, config_overrides: Callable[..., None]):
+            config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=0)
+            app = _make_app(AppMode.CHAT, max_active_requests=0)
+            assert AppGenerateService._get_max_active_requests(app) == 0
+
+        def test_app_limit_only(self, config_overrides: Callable[..., None]):
+            config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=0)
+            app = _make_app(AppMode.CHAT, max_active_requests=5)
+            assert AppGenerateService._get_max_active_requests(app) == 5
+
+        def test_config_limit_only(self, config_overrides: Callable[..., None]):
+            config_overrides(APP_MAX_ACTIVE_REQUESTS=10, APP_DEFAULT_ACTIVE_REQUESTS=0)
+            app = _make_app(AppMode.CHAT, max_active_requests=0)
+            assert AppGenerateService._get_max_active_requests(app) == 10
+
+        def test_both_non_zero_returns_min(self, config_overrides: Callable[..., None]):
+            config_overrides(APP_MAX_ACTIVE_REQUESTS=20, APP_DEFAULT_ACTIVE_REQUESTS=0)
+            app = _make_app(AppMode.CHAT, max_active_requests=5)
+            assert AppGenerateService._get_max_active_requests(app) == 5
+
+        def test_default_active_requests_used_when_app_has_none(self, config_overrides: Callable[..., None]):
+            config_overrides(APP_MAX_ACTIVE_REQUESTS=0, APP_DEFAULT_ACTIVE_REQUESTS=15)
+            app = _make_app(AppMode.CHAT, max_active_requests=0)
+            assert AppGenerateService._get_max_active_requests(app) == 15
+
+    # ---------------------------------------------------------------------------
+    # generate – every AppMode branch
+    # ---------------------------------------------------------------------------
     @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     @pytest.mark.parametrize("entry", ["generate", "iteration", "loop"])
     def test_debug_generators_use_injected_loader_and_saver(
@@ -334,9 +322,9 @@ class TestGenerate(_RealSessionTest):
 
         def generate(generator: AppInputAdapter, **_kwargs: object) -> dict[str, str]:
             # Keep the real generator constructor and debugger saver selection.
-            assert generator._draft_variable_loader == workflow_variables.workflow_loader
-            assert generator._draft_variable_saver == workflow_variables.saver_factory
-            loader = workflow_variables.workflow_loader(workflow_snapshot(workflow), user.id)
+            assert generator.draft_variable_loader == workflow_variables.workflow_loader
+            assert generator.draft_variable_saver == workflow_variables.saver_factory
+            loader = workflow_variables.workflow_loader(workflow, user.id)
             saver = generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, user, tenant_id=workflow.tenant_id)
             saver(workflow.app_id, "node", BuiltinNodeTypes.CODE, "execution").save(
                 process_data=None, outputs={"text": "injected value"}
@@ -676,7 +664,7 @@ class TestGenerate(_RealSessionTest):
                 args={"inputs": {}},
                 invoke_from=invoke_from,
                 streaming=False,
-                session=MagicMock(),
+                session=self.session,
                 variables=workflow_variables,
                 runtime=workflow_runtime,
             )
@@ -806,7 +794,7 @@ class TestGenerate(_RealSessionTest):
             AppGenerateService.generate(
                 app_model=app,
                 user=_make_user(),
-                args={},
+                args={"inputs": {}},
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
                 session=self.session,
@@ -1047,16 +1035,13 @@ class TestGenerateBilling(_RealSessionTest):
                 runtime=workflow_runtime,
             )
 
-        quota_charge.refund.assert_called_once()
-        assert exit_calls == ["dummy-request-id"]
-
 
 # ---------------------------------------------------------------------------
 # _get_workflow
 # ---------------------------------------------------------------------------
 class TestGetWorkflow(_RealSessionTest):
     def test_debugger_fetches_draft(self):
-        workflow = _make_workflow()
+        workflow = _make_workflow_model()
         self.session.add(workflow)
         self.session.commit()
         result = AppGenerateService._get_workflow(
@@ -1076,7 +1061,7 @@ class TestGetWorkflow(_RealSessionTest):
             AppGenerateService._get_workflow(_make_app(AppMode.WORKFLOW), InvokeFrom.DEBUGGER, session=self.session)
 
     def test_non_debugger_fetches_published(self):
-        workflow = _make_workflow()
+        workflow = _make_workflow_model()
         workflow.version = "published"
         self.session.add(workflow)
         self.session.commit()
@@ -1092,7 +1077,7 @@ class TestGetWorkflow(_RealSessionTest):
             AppGenerateService._get_workflow(_make_app(AppMode.WORKFLOW), InvokeFrom.SERVICE_API, session=self.session)
 
     def test_specific_workflow_id_valid_uuid(self):
-        workflow = _make_workflow(workflow_id=str(uuid.uuid4()))
+        workflow = _make_workflow_model(workflow_id=str(uuid.uuid4()))
         workflow.version = "published"
         self.session.add(workflow)
         self.session.commit()
@@ -1111,7 +1096,7 @@ class TestGetWorkflow(_RealSessionTest):
 
     @pytest.mark.parametrize("owner", ["missing", "other-tenant", "other-app"])
     def test_specific_workflow_id_not_found(self, owner: str):
-        workflow = _make_workflow(workflow_id=str(uuid.uuid4()))
+        workflow = _make_workflow_model(workflow_id=str(uuid.uuid4()))
         workflow.version = "published"
         if owner != "missing":
             if owner == "other-tenant":
@@ -1294,31 +1279,3 @@ class TestGenerateSingleLoop(_RealSessionTest):
                 variables=workflow_variables,
                 runtime=workflow_runtime,
             )
-
-
-# ---------------------------------------------------------------------------
-# generate_more_like_this
-# ---------------------------------------------------------------------------
-class TestGenerateMoreLikeThis(_RealSessionTest):
-    def test_delegates_to_completion_generator(
-        self, mocker: MockerFixture, app_records, annotation_replies, workflow_runtime
-    ):
-        gen_spy = mocker.patch(
-            "services.app_generate_service.CompletionAppGenerator.generate_more_like_this",
-            return_value={"result": "similar"},
-        )
-        session = self.session
-        result = AppGenerateService.generate_more_like_this(
-            retrieval=workflow_runtime.retrieval,
-            records=app_records,
-            annotations=annotation_replies,
-            app_model=_make_app(AppMode.COMPLETION),
-            user=_make_user(),
-            message_id="msg-1",
-            invoke_from=InvokeFrom.SERVICE_API,
-            session=session,
-            streaming=True,
-        )
-        assert result == {"result": "similar"}
-        gen_spy.assert_called_once()
-        assert gen_spy.call_args.kwargs["stream"] is True

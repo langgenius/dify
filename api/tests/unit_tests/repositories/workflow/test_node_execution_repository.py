@@ -7,7 +7,7 @@ from models.account import TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.workflow.node_execution_repository import WorkflowNodeExecutionRepository
-from tests.unit_tests.model_factories import make_account, make_end_user, make_tenant
+from tests.helpers.unit.model_factories import make_account, make_end_user, make_tenant
 
 
 @pytest.mark.parametrize("tenant_id", ["tenant-1", "other-tenant"])

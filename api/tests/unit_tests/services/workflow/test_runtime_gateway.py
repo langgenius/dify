@@ -66,8 +66,8 @@ from services.workflow.variable_contracts import WorkflowExecutionVariables
 from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 from services.workflow.variable_service import WorkflowVariableService
 from services.workflow_service import WorkflowService
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
 from tests.unit_tests.workflow_execution import debug_lease, set_debug_deadline
 
 CONTEXT = RequestContext("request", None, "account-1", "tenant-1")

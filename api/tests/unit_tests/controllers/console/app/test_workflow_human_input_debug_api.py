@@ -35,11 +35,24 @@ def test_preview_forwards_inputs(
         controller.AdvancedChatDraftHumanInputFormPreviewApi | controller.WorkflowDraftHumanInputFormPreviewApi
     ],
 ) -> None:
-    payload = {"form_id": "human", "form_content": "Hello"}
+    payload = {
+        "form_id": "human",
+        "node_id": "human",
+        "node_title": "Human input",
+        "form_content": "Hello",
+        "inputs": [{"type": "paragraph", "output_variable_name": "topic", "default": None}],
+        "actions": [{"id": "continue", "title": "Continue", "button_style": "default"}],
+        "resolved_default_values": {"topic": ""},
+    }
     workflows.preview_form.return_value = payload
     args = controller.HumanInputFormPreviewPayload(inputs={"topic": "tech"})
     with app.test_request_context(method="POST"):
-        assert invoke(resource, resource.post, args, node_id="human") == payload
+        assert invoke(resource, resource.post, args, node_id="human") == {
+            **payload,
+            "display_in_ui": None,
+            "form_token": None,
+            "expiration_time": None,
+        }
     workflows.preview_form.assert_called_once_with(CONTEXT, str(APP_ID), "human", {"topic": "tech"})
 
 

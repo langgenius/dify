@@ -1,0 +1,16 @@
+{
+  "command": ["node", "packages/contracts/scripts/compose-console-openapi.mjs"],
+  "cwd": "../../../..",
+  "inputs": [
+    "api/**/*.py",
+    "api/pyproject.toml",
+    "api/uv.lock",
+    "packages/contracts/scripts/compose-console-openapi.mjs",
+    "packages/contracts/generated/enterprise/openapi.gen.json",
+    "packages/contracts/generated/enterprise-app-deploy/openapi.gen.json"
+  ],
+  "env": ["UV_PROJECT_ENVIRONMENT"],
+  "exclude": ["api/tests/**"],
+  "optionalInputs": [".env"],
+  "timeoutMs": 90000
+}

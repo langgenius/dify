@@ -25,13 +25,13 @@ const useWebAppBrand = () => {
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(() => Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploading, setUploading] = useState(false)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const customConfigQuery = useQuery(consoleQuery.workspaces.customConfig.get.queryOptions())
   const { data: customConfig } = customConfigQuery
   const updateCustomConfigMutation = useMutation(
     consoleQuery.workspaces.customConfig.post.mutationOptions(),
   )
-  const uploading = uploadProgress > 0 && uploadProgress < 100
   const webappLogo = customConfig?.replace_webapp_logo || ''
   const webappBrandRemoved = customConfig?.remove_webapp_brand ?? undefined
   const canManageCustomBrand = hasPermission(workspacePermissionKeys, 'customization.manage')
@@ -49,13 +49,15 @@ const useWebAppBrand = () => {
     })
   }
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (uploadDisabled) return
+    if (uploadDisabled || uploading) return
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > MAX_LOGO_FILE_SIZE) {
       toast.error(t(($) => $['imageUploader.uploadFromComputerLimit'], { ns: 'common', size: 5 }))
       return
     }
+    setUploadProgress(0)
+    setUploading(true)
     imageUpload(
       {
         file,
@@ -63,6 +65,7 @@ const useWebAppBrand = () => {
         onSuccessCallback: (res) => {
           setUploadProgress(100)
           setFileId(res.id)
+          setUploading(false)
         },
         onErrorCallback: (error) => {
           const errorMessage = getImageUploadErrorMessage(
@@ -72,6 +75,7 @@ const useWebAppBrand = () => {
           )
           toast.error(errorMessage)
           setUploadProgress(-1)
+          setUploading(false)
         },
       },
       false,

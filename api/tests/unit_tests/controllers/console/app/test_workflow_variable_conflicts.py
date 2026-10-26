@@ -25,7 +25,7 @@ from services.errors.app import WorkflowHashNotEqualError
 from services.workflow.console_variable_service import ConsoleWorkflowVariableService
 from services.workflow.contracts import WorkflowOwner
 from services.workflow.variable_contracts import DraftVariableContext
-from tests.unit_tests.model_factories import make_account, make_app, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 
 
 @pytest.mark.parametrize("concurrent_writes", [1, 2, 3])

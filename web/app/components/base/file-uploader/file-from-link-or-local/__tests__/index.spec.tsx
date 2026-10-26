@@ -4,15 +4,13 @@ import type { FileUpload } from '@/app/components/base/features/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { TransferMethod } from '@/types/app'
 import { FileContextProvider } from '../../store'
 import FileFromLinkOrLocal from '../index'
 
-const uploadRemoteFileInfo = vi.hoisted(() => vi.fn())
-vi.mock('@/service/common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/common')>()),
-  uploadRemoteFileInfo,
-}))
+const request = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
+vi.mock('@/service/base', () => ({ request }))
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/apps' }))
 
 const config: FileUpload = {
@@ -37,20 +35,23 @@ const setup = async (
         {...props}
       />
     </FileContextProvider>,
+    { wrapper: createConsoleQueryWrapper().wrapper },
   )
   await user.click(screen.getByRole('button', { name: 'Open uploads' }))
   return { user, onChange }
 }
 
 beforeEach(() => {
-  uploadRemoteFileInfo.mockReset()
-  uploadRemoteFileInfo.mockResolvedValue({
-    id: 'uploaded-file',
-    name: 'report.pdf',
-    mime_type: 'application/pdf',
-    size: 10,
-    url: 'https://example.com/report.pdf',
-  })
+  request.mockReset()
+  request.mockImplementation(async () =>
+    Response.json({
+      id: 'uploaded-file',
+      name: 'report.pdf',
+      mime_type: 'application/pdf',
+      size: 10,
+      url: 'https://example.com/report.pdf',
+    }),
+  )
 })
 
 it.each([
@@ -71,12 +72,15 @@ it('rejects an invalid link, clears the error on editing, and persists a valid u
   await user.type(input, 'invalid-url')
   await user.click(submit)
   expect(screen.getByText(/pasteFileLinkInvalid/)).toBeInTheDocument()
-  expect(uploadRemoteFileInfo).not.toHaveBeenCalled()
+  expect(request).not.toHaveBeenCalled()
   await user.clear(input)
   await user.type(input, 'https://example.com/report.pdf')
   expect(screen.queryByText(/pasteFileLinkInvalid/)).not.toBeInTheDocument()
   await user.click(submit)
-  expect(uploadRemoteFileInfo).toHaveBeenCalledWith('https://example.com/report.pdf', false)
+  await waitFor(() => expect(request).toHaveBeenCalled())
+  expect(await request.mock.calls[0]?.[2]?.request?.json()).toEqual({
+    url: 'https://example.com/report.pdf',
+  })
   await waitFor(() =>
     expect(onChange).toHaveBeenLastCalledWith([
       expect.objectContaining({

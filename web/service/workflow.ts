@@ -8,51 +8,17 @@ import type {
   ConversationVariable,
   EnvironmentVariable,
 } from '@/app/components/workflow/types'
-import type { CommonResponse } from '@/models/common'
-import type {
-  ConversationVariableResponse,
-  FetchWorkflowDraftResponse,
-  HumanInputFormData,
-  NodesDefaultConfigsResponse,
-  VarInInspect,
-} from '@/types/workflow'
+import type { FetchWorkflowDraftResponse, VarInInspect } from '@/types/workflow'
 import { consoleClient } from '@/service/console'
-import { get, post } from './base'
+import { get } from './base'
 
 export type EnvironmentVariablePatch = {
   environmentVariables: EnvironmentVariable[]
   deletedEnvironmentVariableIds: string[]
 }
 
-type EnvironmentVariablePatchPayload = {
-  environment_variables: EnvironmentVariable[]
-  deleted_environment_variable_ids: string[]
-}
-
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
-}
-
-export const syncWorkflowDraft = ({
-  url,
-  params,
-}: {
-  url: string
-  params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'conversation_variables'> &
-    Partial<Pick<FetchWorkflowDraftResponse, 'environment_variables'>> & {
-      environment_variable_patch?: EnvironmentVariablePatchPayload
-      force?: boolean
-    }
-}) => {
-  return post<CommonResponse & { updated_at: number; hash: string }>(
-    url,
-    { body: params },
-    { silent: true },
-  )
-}
-
-export const fetchNodesDefaultConfigs = (url: string) => {
-  return get<NodesDefaultConfigsResponse>(url)
 }
 
 export const singleNodeRun = (
@@ -79,10 +45,6 @@ export const singleNodeRun = (
   }
 }
 
-export const stopWorkflowRun = (url: string) => {
-  return post<CommonResponse>(url)
-}
-
 export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}) => {
   return consoleClient.apps.byAppId.workflows.defaultWorkflowBlockConfigs.byBlockType.get({
     params: { app_id: appId, block_type: blockType },
@@ -97,16 +59,6 @@ export const fetchPipelineNodeDefault = (pipelineId: string, blockType: BlockEnu
       query: { q: JSON.stringify(query) },
     },
   )
-}
-
-export const fetchCurrentValueOfConversationVariable = ({
-  url,
-  params,
-}: {
-  url: string
-  params: { conversation_id: string }
-}) => {
-  return get<ConversationVariableResponse>(url, { params })
 }
 
 const fetchAllInspectVarsOnePage = (resource: EditorResource, page: number) => {
@@ -224,24 +176,4 @@ export const submitHumanInputForm = (
     params: { form_token: token },
     body: data,
   })
-}
-
-export const fetchHumanInputNodeStepRunForm = (
-  url: string,
-  data: {
-    inputs: Record<string, unknown>
-  },
-) => {
-  return post<HumanInputFormData>(`${url}/preview`, { body: data })
-}
-
-export const submitHumanInputNodeStepRunForm = (
-  url: string,
-  data: {
-    inputs: Record<string, unknown> | undefined
-    form_inputs: Record<string, unknown> | undefined
-    action: string
-  },
-) => {
-  return post<CommonResponse>(`${url}/run`, { body: data })
 }

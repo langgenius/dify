@@ -23,6 +23,7 @@ from graphon.engine_events import (
 from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes
 from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
+from graphon.variables.segments import StringSegment
 from models.human_input_contracts import HumanInputFormRecord
 from services.human_input.ports import HumanInputFormReader
 
@@ -139,13 +140,24 @@ def build_human_input_pause_reason(
     *, reason: HitlRequired, record: HumanInputFormRecord, variable_pool: ReadOnlyVariablePool | None
 ) -> HumanInputRequired:
     """Format a materialized form without reading its repository."""
+    form_id = record.form_id
     definition = record.definition
     return HumanInputRequired(
-        form_id=record.form_id,
+        form_id=form_id,
         form_content=record.rendered_content,
         inputs=resolve_variable_select_input_options(definition.inputs, variable_pool=variable_pool),
         actions=list(definition.user_actions),
-        node_id=reason.node_id,
+        node_id=resolve_human_input_node_id(node_id=reason.node_id, form_id=form_id, variable_pool=variable_pool),
         node_title=reason.node_title or definition.node_title or record.node_id,
         resolved_default_values=dict(definition.default_values),
     )
+
+
+def human_input_container_selector(form_id: str) -> tuple[str, str]:
+    return ("__dify_workflow_tool_hitl__", form_id)
+
+
+def resolve_human_input_node_id(*, node_id: str, form_id: str, variable_pool: ReadOnlyVariablePool | None) -> str:
+    """Project form ownership onto the visible graph without changing engine identity."""
+    container = variable_pool.get(human_input_container_selector(form_id)) if variable_pool is not None else None
+    return container.value if isinstance(container, StringSegment) else node_id

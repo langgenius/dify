@@ -30,7 +30,7 @@ from models.enums import ConversationFromSource
 from models.model import App, Conversation, Message, MessageFile, UploadFile
 from models.oauth import DatasourceProvider
 from services.workflow.execution.adapters.node_factory import DifyNodeFactory
-from tests.unit_tests.model_factories import (
+from tests.helpers.unit.model_factories import (
     make_app,
     make_conversation,
     make_dataset,

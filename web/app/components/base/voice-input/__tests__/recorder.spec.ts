@@ -1,3 +1,4 @@
+import { Quality } from 'mediabunny'
 import { createDeferred } from '@/test/deferred'
 import { startVoiceRecorder } from '../recorder'
 
@@ -15,7 +16,8 @@ vi.mock('@mediabunny/mp3-encoder', () => ({
   registerMp3Encoder: mediaMocks.registerMp3Encoder,
 }))
 
-vi.mock('mediabunny', () => ({
+vi.mock('mediabunny', async (importOriginal) => ({
+  Quality: (await importOriginal<typeof import('mediabunny')>()).Quality,
   AudioBufferSource: class MockAudioBufferSource {
     constructor(config: unknown) {
       mediaMocks.audioSourceConfig = config
@@ -190,7 +192,7 @@ describe('startVoiceRecorder', () => {
       })
       expect(mediaMocks.registerMp3Encoder).toHaveBeenCalledTimes(1)
       expect(mediaMocks.audioSourceConfig).toEqual({
-        bitrate: 128_000,
+        quality: new Quality({ bitrate: 128_000 }),
         codec: 'mp3',
         transform: {
           numberOfChannels: 1,

@@ -53,7 +53,6 @@ ignore_imports =
     core.rag.summary_index.summary_index -> tasks.generate_summary_index_task
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
     core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
-    # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.workspace_retirement_layer -> tasks.collect_agent_resources_task
@@ -128,6 +127,21 @@ forbidden_modules =
     services.billing_service
     services.feature_service
     services.workspace.gateways
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:network-access-group-service-boundary]
+name = Network access group application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.network_access_group_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
     sqlalchemy
     werkzeug
 
@@ -940,7 +954,7 @@ forbidden_modules =
     werkzeug
 
 [importlinter:contract:message-suggested-questions-boundary]
-name = Message suggested questions port is framework and persistence neutral
+name = Message suggested questions use case is framework and persistence neutral
 type = forbidden
 source_modules =
     services.message_suggested_questions_service
@@ -951,6 +965,45 @@ forbidden_modules =
     models
     repositories
     services.message_service
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:message-suggested-questions-legacy-boundary]
+name = Suggested questions do not return to the legacy message or generation service
+type = forbidden
+source_modules =
+    services.message_suggested_questions_service
+    services.message_suggested_questions_queries
+    services.message_suggested_questions_generator
+    repositories.message_repository
+forbidden_modules =
+    services.message_service
+    services.app_generate_service
+allow_indirect_imports = True
+
+[importlinter:contract:message-suggested-questions-persistence-boundary]
+name = Suggested questions persistence does not call concrete configuration services
+type = forbidden
+source_modules =
+    repositories.message_repository
+forbidden_modules =
+    services.conversation_service
+    services.workflow_service
+    services.agent.runtime_config_service
+    services.agent.roster_service
+allow_indirect_imports = True
+
+[importlinter:contract:message-more-like-this-boundary]
+name = More-like-this policy is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.message_more_like_this_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
     sqlalchemy
     werkzeug
 
@@ -1096,6 +1149,35 @@ forbidden_modules =
     repositories
 # models.model / models.workflow lazily import repositories.factory (legacy debt),
 # so only direct imports are checked here.
+allow_indirect_imports = True
+
+[importlinter:contract:app-trigger-store-boundary]
+name = App trigger management contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.trigger.app_trigger_store
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:console-app-trigger-controller-boundary]
+name = Console app trigger controller reaches persistence only through the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.workflow_trigger
+forbidden_modules =
+    extensions.ext_database
+    models.model
+    models.trigger
+    repositories
+    sqlalchemy
+# The composition root wires repositories, so only direct imports are checked here.
 allow_indirect_imports = True
 
 [importlinter:contract:app-audio-boundary]

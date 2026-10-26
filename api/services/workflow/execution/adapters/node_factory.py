@@ -35,6 +35,7 @@ from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
+from core.workflow.workflow_tool_node import DifyWorkflowToolNode
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
@@ -51,10 +52,15 @@ from graphon.nodes.http_request import build_http_request_config
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.tool.entities import ToolProviderType
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models import Account
 from models.agent_runtime_contracts import WorkflowAgentRuntimeBindings
 from models.human_input_entities import HumanInputNodeData as DifyHumanInputNodeData
+from services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter import (
+    KnowledgeFSAutomaticMetadataFilterExtractor,
+)
+from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
 from services.workflow.execution.adapters.agent_message_transformer import AgentMessageTransformer
 from services.workflow.execution.adapters.agent_runtime import AgentRuntimeSupport
 from services.workflow.execution.adapters.agent_v2.agent_node import DifyAgentNode
@@ -71,11 +77,13 @@ from services.workflow.execution.adapters.node_runtime import (
     DifyToolFileManager,
     DifyToolNodeRuntime,
     build_dify_llm_file_saver,
+    build_knowledge_fs_node_dependencies,
 )
 from services.workflow.execution.ports import WorkflowRuntime
 
 if TYPE_CHECKING:
     from graphon.runtime import InitParams, RuntimeState
+    from services.tools.workflow.tool import WorkflowTool
 
 LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
@@ -128,6 +136,7 @@ def register_nodes() -> None:
         "services.workflow.execution.adapters.trigger_webhook",
     ):
         importlib.import_module(module_name)
+    _import_node_package("services.knowledge_fs.knowledge_retrieval_v2")
 
 
 def _adapter_node_classes() -> tuple[type[Node], ...]:
@@ -321,6 +330,9 @@ class DifyNodeFactory(NodeFactory):
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
         agent_binding_resolver: WorkflowAgentRuntimeBindings | None = None,
         workflow_runtime: WorkflowRuntime | None = None,
+        human_input_run_context: Mapping[str, Any] | DifyRunContext | None = None,
+        use_workflow_tool_containers: bool = True,
+        workflow_tools: dict[str, "WorkflowTool"] | None = None,
     ) -> "DifyNodeFactory":
         """Bridge Dify's explicit init context into the current `graphon` API."""
         return cls(
@@ -329,6 +341,9 @@ class DifyNodeFactory(NodeFactory):
             draft_variable_saver=draft_variable_saver,
             agent_binding_resolver=agent_binding_resolver,
             workflow_runtime=workflow_runtime,
+            human_input_run_context=human_input_run_context,
+            use_workflow_tool_containers=use_workflow_tool_containers,
+            workflow_tools=workflow_tools,
         )
 
     def __init__(
@@ -339,6 +354,9 @@ class DifyNodeFactory(NodeFactory):
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
         agent_binding_resolver: WorkflowAgentRuntimeBindings | None = None,
         workflow_runtime: WorkflowRuntime | None = None,
+        human_input_run_context: Mapping[str, Any] | DifyRunContext | None = None,
+        use_workflow_tool_containers: bool = True,
+        workflow_tools: dict[str, "WorkflowTool"] | None = None,
     ) -> None:
         self.init_params = init_params
         self.runtime_state = runtime_state
@@ -347,6 +365,16 @@ class DifyNodeFactory(NodeFactory):
         self._agent_binding_resolver = agent_binding_resolver
         self._workflow_runtime = workflow_runtime
         self._dify_context = self._resolve_dify_context(init_params.run_context)
+        self._use_workflow_tool_containers = use_workflow_tool_containers
+        self._human_input_run_context = (
+            self._dify_context
+            if human_input_run_context is None
+            else (
+                human_input_run_context
+                if isinstance(human_input_run_context, DifyRunContext)
+                else self._resolve_dify_context(human_input_run_context)
+            )
+        )
         self._code_executor: CodeExecutorProtocol = DefaultWorkflowCodeExecutor()
         self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -376,10 +404,12 @@ class DifyNodeFactory(NodeFactory):
             http_client=self._remote_file_http_client,
             conversation_id_getter=self._conversation_id,
         )
+        self.workflow_tools = workflow_tools if workflow_tools is not None else {}
         self._tool_runtime = DifyToolNodeRuntime(
             self._dify_context,
             draft_variable_saver=draft_variable_saver,
             workflow_runtime=workflow_runtime,
+            workflow_tools=self.workflow_tools,
         )
         self._http_request_file_manager = file_manager
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
@@ -415,6 +445,9 @@ class DifyNodeFactory(NodeFactory):
             draft_variable_saver=self._draft_variable_saver,
             agent_binding_resolver=self._agent_binding_resolver,
             workflow_runtime=self._workflow_runtime,
+            human_input_run_context=self._human_input_run_context,
+            use_workflow_tool_containers=self._use_workflow_tool_containers,
+            workflow_tools=self.workflow_tools,
         )
 
     @override
@@ -434,6 +467,22 @@ class DifyNodeFactory(NodeFactory):
 
     def _conversation_id(self) -> str | None:
         return get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+
+    @property
+    def human_input_run_context(self) -> DifyRunContext:
+        return self._human_input_run_context
+
+    @property
+    def draft_variable_saver(self) -> Callable[[str, Account], DraftVariableSaverFactory] | None:
+        return self._draft_variable_saver
+
+    @property
+    def agent_binding_resolver(self) -> WorkflowAgentRuntimeBindings | None:
+        return self._agent_binding_resolver
+
+    @property
+    def workflow_runtime(self) -> WorkflowRuntime | None:
+        return self._workflow_runtime
 
     @override
     def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
@@ -518,6 +567,13 @@ class DifyNodeFactory(NodeFactory):
                 "runtime": self._tool_runtime,
             },
             BuiltinNodeTypes.AGENT: lambda: self._build_agent_node_init_kwargs(node_class=node_class),
+            KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE: lambda: {
+                **build_knowledge_fs_node_dependencies(),
+                "metadata_filter_extractor": KnowledgeFSAutomaticMetadataFilterExtractor(
+                    credentials_provider=self._llm_credentials_provider,
+                    model_factory=self._llm_model_factory,
+                ),
+            },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
@@ -545,7 +601,7 @@ class DifyNodeFactory(NodeFactory):
         adapted_node_config = adapt_node_config_for_graph(node_config)
         typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
         node_data = typed_node_config["data"]
-        node_class = self._resolve_node_class(
+        node_class = self._resolve_node_class_for_factory(
             node_type=node_data.type,
             node_version=str(node_data.version),
             node_data=node_data,
@@ -559,6 +615,25 @@ class DifyNodeFactory(NodeFactory):
         Re-validate the permissive graph payload with the concrete NodeData model declared by the resolved node class.
         """
         return node_class.validate_node_data(node_data)
+
+    def _resolve_node_class_for_factory(
+        self,
+        *,
+        node_type: NodeType,
+        node_version: str,
+        node_data: BaseNodeData,
+    ) -> type[Node]:
+        if (
+            self._use_workflow_tool_containers
+            and node_type == BuiltinNodeTypes.TOOL
+            and node_data.model_dump().get("provider_type") == ToolProviderType.WORKFLOW
+        ):
+            return DifyWorkflowToolNode
+        return self._resolve_node_class(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_data,
+        )
 
     @staticmethod
     def _resolve_node_class(
@@ -653,7 +728,7 @@ class DifyNodeFactory(NodeFactory):
         if self._workflow_runtime is None:
             raise ValueError("Workflow execution dependencies are required for Human Input nodes")
         runtime = DifyHumanInputNodeRuntime(
-            self._dify_context,
+            self._human_input_run_context,
             forms=self._workflow_runtime.human_forms,
             workflow_execution_id_getter=lambda: get_system_text(
                 self.runtime_state.variable_pool,
