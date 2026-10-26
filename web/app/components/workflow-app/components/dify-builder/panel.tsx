@@ -97,7 +97,7 @@ const DifyBuilderPanelContent = () => {
   return (
     <aside
       aria-label={t(($) => $.panelTitle, { ns: 'difyBuilder' })}
-      className="flex h-full w-100 shrink-0 bg-background-body py-1 pr-1"
+      className="flex h-full w-100 shrink-0 bg-background-body py-1 pe-1"
     >
       <div className="relative flex min-w-0 grow flex-col overflow-hidden rounded-xl shadow-xl inset-ring-[0.5px] inset-ring-components-panel-border">
         <DifyBuilderPanelBackground />

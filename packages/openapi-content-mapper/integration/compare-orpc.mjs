@@ -251,6 +251,17 @@ try {
         )
       }
       if (report.matched[row].traits.responseMedia.includes('text/event-stream')) {
+        check(row, 'sdkOutputRawStream', `Ext<NO${row},ReadableStream<Uint8Array>>`)
+        check(
+          row,
+          'orpcOutputEventIterator',
+          `Ext<OO${row},AsyncIterator<unknown,unknown,unknown>>`,
+        )
+        check(
+          row,
+          'orpcWireOutputEventIterator',
+          `Ext<WireOutput<typeof proc${row}>,AsyncIterator<unknown,unknown,unknown>>`,
+        )
         check(
           row,
           'nonStreamSdkToOrpc',
@@ -377,17 +388,19 @@ try {
         ? 'compatible'
         : c.normalizedVoidSdkToOrpc && c.normalizedVoidOrpcToSdk
           ? 'void-vs-undefined'
-          : c.nonStreamSdkToOrpc && c.nonStreamOrpcToSdk
-            ? 'raw-stream-vs-string'
-            : c.nonStreamWireSdkToOrpc && c.nonStreamWireOrpcToSdk
-              ? 'raw-stream-and-parsed-defaults'
-              : c.wireOutputSdkToOrpc && c.wireOutputOrpcToSdk
-                ? 'parsed-vs-wire-output'
-                : row.traits.jsonBinaryResponse && c.sdkOutputString && c.orpcOutputBlob
-                  ? 'json-binary-vs-blob'
-                  : row.traits.opaqueResponse && c.sdkOutputUnknown
-                    ? 'undocumented-output'
-                    : 'schema-difference'
+          : c.sdkOutputRawStream && c.orpcOutputEventIterator && c.orpcWireOutputEventIterator
+            ? 'raw-stream-vs-event-iterator'
+            : c.nonStreamSdkToOrpc && c.nonStreamOrpcToSdk
+              ? 'raw-stream-vs-string'
+              : c.nonStreamWireSdkToOrpc && c.nonStreamWireOrpcToSdk
+                ? 'raw-stream-and-parsed-defaults'
+                : c.wireOutputSdkToOrpc && c.wireOutputOrpcToSdk
+                  ? 'parsed-vs-wire-output'
+                  : row.traits.jsonBinaryResponse && c.sdkOutputString && c.orpcOutputBlob
+                    ? 'json-binary-vs-blob'
+                    : row.traits.opaqueResponse && c.sdkOutputUnknown
+                      ? 'undocumented-output'
+                      : 'schema-difference'
   }
   // Produce real assignability diagnostics for differences that remain after the
   // explicit representation checks. These are evidence, not inferred labels.
@@ -499,6 +512,8 @@ try {
     'parsed-vs-wire-output',
     'undocumented-output',
     'raw-stream-vs-string',
+    // The native SDK preserves SSE bytes; oRPC decodes typed events from the same route.
+    'raw-stream-vs-event-iterator',
     'raw-stream-and-parsed-defaults',
     'json-binary-vs-blob',
   ])

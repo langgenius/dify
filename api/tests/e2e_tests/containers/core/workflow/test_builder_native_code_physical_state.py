@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.orm.state import InstanceState
 
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -36,21 +36,21 @@ if TYPE_CHECKING:
         EffectIntent,
         OperationKey,
     )
-    from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
         PhysicalCodeCase,
     )
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import (
+    from tests.e2e_tests.containers.core.workflow import (
         test_builder_native_effect_ledger as _fixture_types_0,
     )
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import (
+    from tests.e2e_tests.containers.core.workflow import (
         test_builder_native_effect_ledger as _fixture_types_0,
     )
 
@@ -99,27 +99,27 @@ from services.dify_builder.native_testing.sandbox.contracts import (
 from services.dify_builder.native_testing.sandbox.repository import (
     NativeCodePhysicalRepository,
 )
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     CodeDispatchIdentity,
     PhysicalCodeArguments,
     PhysicalCodeCase,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_dispatch_claims import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_dispatch_claims import (
     migrated_dispatch_claims as migrated_dispatch_claims,  # noqa: PLC0414 - pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     _migration,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     ledger_case as ledger_case,  # noqa: PLC0414 - pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414 - pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     native_owner as native_owner,  # noqa: PLC0414 - pytest fixture
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     no_live as no_live,  # noqa: PLC0414 - pytest fixture
 )
 
@@ -148,9 +148,13 @@ def physical_migration(migrated_dispatch_claims: None, flask_app_with_containers
             migration = _migration(MIGRATION)
             assert migration.down_revision == "e59b7d32a6c1"
             config = Config()
-            config.set_main_option("script_location", str(Path(__file__).parents[4] / "migrations"))
+            config.set_main_option("script_location", str(Path(__file__).parents[5] / "migrations"))
             scripts = ScriptDirectory.from_config(config)
-            assert scripts.get_heads() == ["e832a94f210b"]
+            assert scripts.get_heads() == ["db7f42c9a801"]
+            final_merge = scripts.get_revision("db7f42c9a801")
+            assert final_merge is not None
+            assert isinstance(final_merge.down_revision, tuple)
+            assert set(final_merge.down_revision) == {"e832a94f210b", "b9d3f7a5c102"}
             coordination = scripts.get_revision("e832a94f210b")
             assert coordination is not None
             assert coordination.down_revision == "d41e6b8c2a75"
@@ -159,7 +163,7 @@ def physical_migration(migrated_dispatch_claims: None, flask_app_with_containers
             assert merge.down_revision == ("c6f4a90d8b31", "7d2b9c4e61a8")
             for current in ("base", "c6f4a90d8b31", "7d2b9c4e61a8"):
                 planned = scripts._upgrade_revs("head", current)
-                assert planned[-1].revision.revision == "e832a94f210b"
+                assert planned[-1].revision.revision == "db7f42c9a801"
             steps = list(scripts.iterate_revisions("7d2b9c4e61a8", "e59b7d32a6c1"))
             assert [step.revision for step in steps] == ["7d2b9c4e61a8"]
             for step in reversed(steps):
