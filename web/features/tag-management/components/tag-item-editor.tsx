@@ -1,4 +1,5 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
+import type { RefObject } from 'react'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -13,7 +14,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
@@ -21,9 +22,11 @@ import { consoleQuery } from '@/service/console'
 type TagItemEditorProps = {
   tag: Tag
   onTagsChange?: () => void
+  finalFocus?: RefObject<HTMLElement | null>
 }
-export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
+export const TagItemEditor = ({ tag, onTagsChange, finalFocus }: TagItemEditorProps) => {
   const { t } = useTranslation(['common'])
+  const removeButtonRef = useRef<HTMLButtonElement>(null)
   const updateTagMutation = useMutation(consoleQuery.tags.byTagId.patch.mutationOptions())
   const deleteTagMutation = useMutation(consoleQuery.tags.byTagId.delete.mutationOptions())
   const [isEditing, setIsEditing] = useState(false)
@@ -71,6 +74,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       },
       {
         onSuccess: () => {
+          setShowRemoveModal(false)
           onTagsChange?.()
         },
         onError: () => {
@@ -116,6 +120,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
             </button>
             <button
               type="button"
+              ref={removeButtonRef}
               aria-label={`${t(($) => $['operation.remove'], { ns: 'common' })} ${tag.name}`}
               className="group/remove shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={() => {
@@ -148,9 +153,27 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       </div>
       <AlertDialog
         open={showRemoveModal}
-        onOpenChange={(open) => !open && setShowRemoveModal(false)}
+        onOpenChange={(open, details) => {
+          if (!open && deleteTagMutation.isPending) {
+            details.cancel()
+            return
+          }
+          setShowRemoveModal(open)
+        }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          finalFocus={() => {
+            // Success can close the dialog before the cache removes this row.
+            if (
+              (deleteTagMutation.isPending || deleteTagMutation.isSuccess) &&
+              finalFocus?.current?.isConnected
+            )
+              return finalFocus.current
+            if (removeButtonRef.current?.isConnected) return removeButtonRef.current
+            if (finalFocus?.current?.isConnected) return finalFocus.current
+            return true
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>
               {`${t(($) => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
@@ -160,14 +183,12 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={deleteTagMutation.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              onClick={() => {
-                handleRemove()
-                setShowRemoveModal(false)
-              }}
+              loading={deleteTagMutation.isPending}
+              onClick={() => removeTag(tag.id)}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>

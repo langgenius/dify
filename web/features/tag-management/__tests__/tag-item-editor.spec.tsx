@@ -1,5 +1,5 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import { act, render as renderComponent, screen, waitFor } from '@testing-library/react'
+import { act, render as renderComponent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
@@ -75,9 +75,9 @@ const i18n = {
 const render = (ui: Parameters<typeof renderComponent>[0]) =>
   renderComponent(ui, { wrapper: createQueryClientWrapper(createTestQueryClient()) })
 
-const renderManagementModal = () =>
+const renderManagementModal = (bindingCount = '') =>
   renderWithTags(<TagManagementModal type="app" show onClose={vi.fn()} />, [
-    { ...baseTag, binding_count: '' },
+    { ...baseTag, binding_count: bindingCount },
     { ...baseTag, id: 'tag-2', name: 'Backend', binding_count: '' },
   ])
 
@@ -187,6 +187,74 @@ describe('TagItemEditor', () => {
 
   // Remove behavior for direct delete and confirm modal paths.
   describe('Remove Flow', () => {
+    it('submits a bound tag once immediately and blocks dismissal until deletion succeeds', async () => {
+      let finishDelete!: () => void
+      const deletion = new Promise<void>((resolve) => {
+        finishDelete = resolve
+      })
+      tagMocks.deleteTag.mockReturnValueOnce(deletion)
+      const user = userEvent.setup()
+
+      try {
+        renderManagementModal('3')
+        await user.click(screen.getByRole('button', { name: i18n.removeTag }))
+        const dialog = screen.getByRole('alertdialog')
+        const confirm = within(dialog).getByRole('button', { name: 'common.operation.confirm' })
+        const cancel = within(dialog).getByRole('button', { name: 'common.operation.cancel' })
+
+        expect(dialog).toBeVisible()
+        await user.dblClick(confirm)
+        expect(tagMocks.deleteTag).toHaveBeenCalledExactlyOnceWith({ params: { tag_id: 'tag-1' } })
+        expect(confirm).toHaveAttribute('aria-disabled', 'true')
+        expect(cancel).toBeDisabled()
+        await user.keyboard('{Enter}{Enter}')
+        await user.click(cancel)
+        await user.keyboard('{Escape}')
+        expect(dialog).toBeVisible()
+        expect(tagMocks.deleteTag).toHaveBeenCalledOnce()
+
+        await act(async () => {
+          finishDelete()
+        })
+        await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+        expect(screen.queryByText('Frontend')).not.toBeInTheDocument()
+        expect(screen.getByText('Backend')).toBeInTheDocument()
+        await waitFor(() =>
+          expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true),
+        )
+      } finally {
+        await act(async () => finishDelete())
+      }
+    })
+
+    it('keeps failed bound tag deletion open for a retry that removes only the target tag', async () => {
+      tagMocks.deleteTag.mockRejectedValueOnce(new Error('delete failed'))
+      const user = userEvent.setup()
+      renderManagementModal('3')
+
+      await user.click(screen.getByRole('button', { name: i18n.removeTag }))
+      const dialog = screen.getByRole('alertdialog')
+      const confirm = within(dialog).getByRole('button', { name: 'common.operation.confirm' })
+      expect(dialog).toBeVisible()
+      await user.click(confirm)
+      await waitFor(() =>
+        expect(tagMocks.api.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully'),
+      )
+
+      expect(dialog).toBeVisible()
+      expect(confirm).not.toHaveAttribute('aria-disabled', 'true')
+      expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeEnabled()
+      expect(screen.getByText('Frontend')).toBeInTheDocument()
+      expect(screen.getByText('Backend')).toBeInTheDocument()
+      expect(confirm).toHaveFocus()
+      await user.keyboard('{Enter}')
+
+      await waitFor(() => expect(tagMocks.deleteTag).toHaveBeenCalledTimes(2))
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(screen.queryByText('Frontend')).not.toBeInTheDocument()
+      expect(screen.getByText('Backend')).toBeInTheDocument()
+    })
+
     it('removes an unbound tag from the list without a success toast', async () => {
       const user = userEvent.setup()
       renderManagementModal()
@@ -272,6 +340,7 @@ describe('TagItemEditor', () => {
       await waitFor(() => {
         expect(screen.queryByText('common.tag.delete "Frontend"')).not.toBeInTheDocument()
       })
+      await waitFor(() => expect(removeButton).toHaveFocus())
     })
 
     it('should notify error and keep tag when delete request fails', async () => {
