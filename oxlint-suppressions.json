@@ -1743,17 +1743,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/prompt-editor/plugins/component-picker-block/variable-option.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/context-block/component.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 7
@@ -3061,12 +3050,12 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-dropdown/compliance.tsx": {
+  "web/app/components/header/account-menu/compliance.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
     }
   },
-  "web/app/components/header/account-dropdown/workplace-selector/index.tsx": {
+  "web/app/components/header/account-menu/workplace-selector/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
     }
@@ -3357,7 +3346,7 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/marketplace/sort-dropdown/index.tsx": {
+  "web/app/components/plugins/marketplace/sort-menu/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
     }
@@ -3594,7 +3583,7 @@
       "count": 4
     }
   },
-  "web/app/components/plugins/plugin-page/install-plugin-dropdown.tsx": {
+  "web/app/components/plugins/plugin-page/install-plugin-menu.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
@@ -5734,11 +5723,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/trigger-schedule/__tests__/panel.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/trigger-schedule/components/next-execution-times.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
@@ -6753,9 +6737,9 @@
       "count": 5
     }
   },
-  "web/features/agent-v2/roster/components/agent-workflow-references-dropdown.tsx": {
+  "web/features/agent-v2/roster/components/agent-workflow-references-menu.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
+      "count": 1
     }
   },
   "web/features/agent-v2/template-preview/grid-background.tsx": {
@@ -6838,7 +6822,7 @@
       "count": 1
     }
   },
-  "web/features/new-rag/documents/actions-dropdown.tsx": {
+  "web/features/new-rag/documents/actions-menu.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }

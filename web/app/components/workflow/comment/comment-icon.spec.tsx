@@ -1,46 +1,26 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { CommentIcon } from './comment-icon'
 
-type Position = { x: number; y: number }
-
-let mockUserId = 'user-1'
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: {
-    id: 'user-1',
-    name: 'User',
-    avatar_url: 'avatar',
-  },
-}))
-
-const mockFlowToScreenPosition = vi.fn((position: Position) => position)
-const mockScreenToFlowPosition = vi.fn((position: Position) => position)
-
-const render = (ui: ReactElement) => {
+const render = (ui: ReactElement, userId = 'user-1') => {
   const { queryClient } = createConsoleQueryWrapper({
-    accountProfile: { ...mockConsoleState.userProfile, id: mockUserId },
+    accountProfile: { id: userId, name: 'User', avatar_url: 'avatar' },
   })
-  return renderWorkflowComponent(ui, { queryClient })
+  return renderWorkflowFlowComponent(ui, {
+    queryClient,
+    reactFlowProps: {
+      proOptions: { hideAttribution: true },
+      fitView: false,
+      defaultViewport: { x: 50, y: 30, zoom: 2 },
+    },
+  })
 }
-
-vi.mock('reactflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('reactflow')>()),
-  useReactFlow: () => ({
-    flowToScreenPosition: mockFlowToScreenPosition,
-    screenToFlowPosition: mockScreenToFlowPosition,
-  }),
-  useViewport: () => ({
-    x: 0,
-    y: 0,
-    zoom: 1,
-  }),
-}))
 
 const createComment = (overrides: Partial<WorkflowCommentBasic> = {}): WorkflowCommentBasic => ({
   id: 'comment-1',
@@ -64,11 +44,6 @@ const createComment = (overrides: Partial<WorkflowCommentBasic> = {}): WorkflowC
 })
 
 describe('CommentIcon', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUserId = 'user-1'
-  })
-
   it('opens with the keyboard and moves an authored comment in canvas coordinates', async () => {
     const user = userEvent.setup()
     const onClick = vi.fn()
@@ -108,7 +83,6 @@ describe('CommentIcon', () => {
 
   it("allows opening another author's comment but does not move it with arrow keys", async () => {
     const user = userEvent.setup()
-    mockUserId = 'user-2'
     const onClick = vi.fn()
     const onPositionUpdate = vi.fn()
     render(
@@ -117,6 +91,7 @@ describe('CommentIcon', () => {
         onClick={onClick}
         onPositionUpdate={onPositionUpdate}
       />,
+      'user-2',
     )
     await user.tab()
     await user.keyboard('{ArrowRight}{Enter}')
@@ -124,29 +99,24 @@ describe('CommentIcon', () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
-  it('toggles preview on hover when inactive', () => {
+  it('toggles preview on hover when inactive', async () => {
+    const user = userEvent.setup()
     const comment = createComment()
-    const { container } = render(
-      <CommentIcon comment={comment} onClick={vi.fn()} isActive={false} />,
-    )
-    const marker = container.querySelector('[data-role="comment-marker"]') as HTMLElement
-    const hoverTarget = marker.firstElementChild as HTMLElement
-
-    fireEvent.mouseEnter(hoverTarget)
+    render(<CommentIcon comment={comment} onClick={vi.fn()} isActive={false} />)
+    const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
+    await user.hover(within(marker).getByRole('img', { name: 'Alice' }))
     expect(screen.getByText('Hello')).toBeInTheDocument()
 
-    fireEvent.mouseLeave(hoverTarget)
+    await user.unhover(within(marker).getByRole('img', { name: 'Alice' }))
     expect(screen.queryByText('Hello')).not.toBeInTheDocument()
   })
 
-  it('calls onPositionUpdate after dragging by author', () => {
+  it('converts pointer movement through the zoomed canvas before saving the authored position', () => {
     const comment = createComment({ position_x: 0, position_y: 0 })
     const onClick = vi.fn()
     const onPositionUpdate = vi.fn()
-    const { container } = render(
-      <CommentIcon comment={comment} onClick={onClick} onPositionUpdate={onPositionUpdate} />,
-    )
-    const marker = container.querySelector('[data-role="comment-marker"]') as HTMLElement
+    render(<CommentIcon comment={comment} onClick={onClick} onPositionUpdate={onPositionUpdate} />)
+    const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
 
     fireEvent.pointerDown(marker, {
       pointerId: 1,
@@ -165,32 +135,17 @@ describe('CommentIcon', () => {
       clientY: 110,
     })
 
-    expect(mockScreenToFlowPosition).toHaveBeenCalledWith({ x: 10, y: 10 })
-    expect(onPositionUpdate).toHaveBeenCalledWith({ x: 10, y: 10 })
+    expect(onPositionUpdate).toHaveBeenCalledExactlyOnceWith({ x: 5, y: 5 })
     expect(onClick).not.toHaveBeenCalled()
   })
 
-  it('calls onClick for non-author clicks', () => {
-    mockUserId = 'user-2'
-    const comment = createComment()
+  it('opens another author’s comment with a click', async () => {
+    const user = userEvent.setup()
     const onClick = vi.fn()
-    const { container } = render(
-      <CommentIcon comment={comment} onClick={onClick} isActive={false} />,
-    )
-    const marker = container.querySelector('[data-role="comment-marker"]') as HTMLElement
+    render(<CommentIcon comment={createComment()} onClick={onClick} isActive={false} />, 'user-2')
 
-    fireEvent.pointerDown(marker, {
-      pointerId: 1,
-      button: 0,
-      clientX: 50,
-      clientY: 60,
-    })
-    fireEvent.pointerUp(marker, {
-      pointerId: 1,
-      clientX: 50,
-      clientY: 60,
-    })
+    await user.click(screen.getByRole('button', { name: /workflow.keyboard.openComment/ }))
 
-    expect(onClick).toHaveBeenCalledTimes(1)
+    expect(onClick).toHaveBeenCalledExactlyOnceWith()
   })
 })
