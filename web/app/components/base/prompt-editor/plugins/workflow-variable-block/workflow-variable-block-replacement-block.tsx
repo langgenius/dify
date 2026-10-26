@@ -3,7 +3,7 @@ import type { WorkflowVariableBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { $applyNodeReplacement } from 'lexical'
-import { memo, useCallback, useEffect } from 'react'
+import { memo, useCallback, useEffect, useEffectEvent } from 'react'
 import { VAR_REGEX as REGEX, resetReg } from '@/config'
 import { decoratorTransform } from '../../utils'
 import { CustomTextNode } from '../custom-text/node'
@@ -55,18 +55,19 @@ const WorkflowVariableBlockReplacementBlock = ({
     }
   }, [])
 
-  const transformListener = useCallback(
-    (textNode: CustomTextNode) => {
-      resetReg()
-      return decoratorTransform(textNode, getMatch, createWorkflowVariableBlockNode)
-    },
-    [createWorkflowVariableBlockNode, getMatch],
-  )
+  const transformListener = useEffectEvent((textNode: CustomTextNode) => {
+    resetReg()
+    return decoratorTransform(textNode, getMatch, createWorkflowVariableBlockNode)
+  })
 
   useEffect(() => {
     resetReg()
-    return mergeRegister(editor.registerNodeTransform(CustomTextNode, transformListener))
-  }, [editor, transformListener])
+    // Re-registering marks existing text dirty and can restore a blurred editor's selection.
+    // Keep the registration stable while reading the latest variable metadata in the transform.
+    return mergeRegister(
+      editor.registerNodeTransform(CustomTextNode, (textNode) => transformListener(textNode)),
+    )
+  }, [editor])
 
   return null
 }
