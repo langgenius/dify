@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
+import { NodeActionsMenu } from '@/app/components/workflow/node-actions-menu'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
@@ -73,7 +73,7 @@ const NodeControl: FC<NodeControlProps> = ({ id, data, pluginInstallLocked }) =>
             )}
           </button>
         )}
-        <NodeActionsDropdown id={id} data={data} />
+        <NodeActionsMenu id={id} data={data} />
       </div>
     </div>
   )

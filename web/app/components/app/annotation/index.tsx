@@ -3,14 +3,13 @@
 import type { Annotation, AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { QueryParam } from './filter'
-import type { AnnotationItemBasic } from './type'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiEqualizer2Line } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
+import { noop, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -115,21 +114,10 @@ const Annotation: FC<Props> = (props) => {
     fetchList(currPage + 1)
   }, [currPage, limit, debouncedQueryParams])
 
-  const handleAdd = async (payload: AnnotationItemBasic) => {
-    await consoleClient.apps.byAppId.annotations.post({
-      params: { app_id: appDetail.id },
-      body: payload,
-    })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-    fetchList()
-    setControlUpdateList(Date.now())
-  }
-
   const handleRemove = async (id: string) => {
     await consoleClient.apps.byAppId.annotations.byAnnotationId.delete({
       params: { app_id: appDetail.id, annotation_id: id },
     })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -140,7 +128,6 @@ const Annotation: FC<Props> = (props) => {
         params: { app_id: appDetail.id },
         query: { annotation_id: selectedIds },
       })
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       fetchList()
       setControlUpdateList(Date.now())
       setSelectedIds([])
@@ -161,7 +148,6 @@ const Annotation: FC<Props> = (props) => {
       params: { app_id: appDetail.id, annotation_id: currItem.id },
       body: { question, answer },
     })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -185,8 +171,8 @@ const Annotation: FC<Props> = (props) => {
               <>
                 <div
                   className={cn(
-                    !annotationConfig?.enabled && 'pr-2',
-                    'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2',
+                    !annotationConfig?.enabled && 'pe-2',
+                    'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur ps-2',
                   )}
                 >
                   <span
@@ -223,8 +209,8 @@ const Annotation: FC<Props> = (props) => {
                     }}
                   ></Switch>
                   {annotationConfig?.enabled && (
-                    <div className="flex items-center pr-1 pl-1.5">
-                      <div className="mr-1 h-3.5 w-px shrink-0 bg-divider-subtle"></div>
+                    <div className="flex items-center ps-1.5 pe-1">
+                      <div className="me-1 h-3.5 w-px shrink-0 bg-divider-subtle"></div>
                       <IconButton
                         aria-label={t(($) => $['initSetup.configTitle'], {
                           ns: 'appAnnotation',
@@ -246,9 +232,8 @@ const Annotation: FC<Props> = (props) => {
             <HeaderOpts
               appId={appDetail.id}
               controlUpdateList={controlUpdateList}
-              onAdd={handleAdd}
               onAdded={() => {
-                fetchList()
+                void fetchList().catch(noop)
               }}
             />
           </div>

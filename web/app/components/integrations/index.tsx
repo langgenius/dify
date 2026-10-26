@@ -108,7 +108,7 @@ const DescriptionWithLearnMore = ({ children, href, label }: DescriptionWithLear
         rel="noopener noreferrer"
       >
         {label}
-        <span aria-hidden className="i-ri-external-link-line size-3" />
+        <span aria-hidden className="i-ri-external-link-line size-3 [&:dir(rtl)]:-scale-x-100" />
       </Link>
     </span>
   )

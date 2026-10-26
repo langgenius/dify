@@ -1,4 +1,4 @@
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { Item as TypeSelectItem } from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import type {
   FormInputItem,
@@ -31,7 +31,7 @@ import { InputVarType, VarType } from '@/app/components/workflow/types'
 import PrePopulate from './pre-populate'
 import TypeSwitch from './type-switch'
 
-const SAVE_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const SAVE_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 const i18nPrefix = 'nodes.humanInput.insertInputField'
 

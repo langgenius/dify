@@ -82,3 +82,30 @@ it.each([
   await c.set('http.timeout', '5000')
   expect(readFileSync(file, 'utf8')).toBe('http:\n  timeout: 5000\n')
 })
+
+it('reads the latest file, not the one it saw first', async () => {
+  const c = await load()
+  expect(await c.get('http.timeout')).toBe(30_000)
+  writeFileSync(file, 'http:\n  timeout: 7000\n')
+  expect(await c.get('http.timeout')).toBe(7000)
+})
+
+it('lets separate processes set and unset in parallel', async () => {
+  const [a, b] = await Promise.all([load(), load()])
+  await Promise.all([
+    a.set('http.timeout', '5000'),
+    b.unset('http.timeout'),
+    b.set('http.timeout', '6000'),
+  ])
+  expect([5000, 6000, 30_000]).toContain(await a.get('http.timeout'))
+  expect(readFileSync(file, 'utf8')).toMatch(/^http:\n {2}timeout: \d+\n$/)
+})
+
+it('reports a bad value once across reads and a set', async () => {
+  writeFileSync(file, 'http:\n  timeout: fast\n')
+  const c = await load()
+  await c.get('http.timeout')
+  await c.get()
+  await c.set('http.timeout', '5000')
+  expect(streams.errBuf()).toBe(`${file}: ignoring the invalid value of http.timeout\n`)
+})

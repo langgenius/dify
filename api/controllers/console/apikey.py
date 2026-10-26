@@ -27,7 +27,7 @@ from services.auth.api_key_contracts import (
     ApiKeyResourceNotFoundError,
 )
 from services.errors.base import NoPermissionError
-from services.knowledge.api_key_service import UnknownDatasetIdsError
+from services.knowledge.api_key_service import UnknownDatasetIdsError, UnknownKnowledgeSpaceIdsError
 
 API_KEY_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
 API_KEY_DELETE_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
@@ -42,7 +42,7 @@ def api_key_errors() -> Generator[None]:
         yield
     except (ApiKeyResourceNotFoundError, ApiKeyNotFoundError) as error:
         raise NotFound(str(error)) from error
-    except UnknownDatasetIdsError as error:
+    except (UnknownDatasetIdsError, UnknownKnowledgeSpaceIdsError) as error:
         raise BadRequest(str(error)) from error
     except NoPermissionError as error:
         raise Forbidden(str(error)) from error

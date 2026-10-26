@@ -42,6 +42,11 @@ export type AgentThought = {
   tool_labels: AnyJsonValue
 }
 
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
 export type AnyJsonValue = unknown
 
 export type AppAccessModeQuery = {
@@ -414,6 +419,22 @@ export type JsonValueType = unknown
 
 export type JsonValue = unknown
 
+export type KnowledgeFsCitation = {
+  artifact_hash: string
+  control_space_id: string
+  document_asset_id: string
+  document_title?: string | null
+  document_version?: number | null
+  end_offset?: number | null
+  id: string
+  node_id: string
+  page_number?: number | null
+  parse_artifact_id?: string | null
+  section_path?: Array<string>
+  space_name: string
+  start_offset?: number | null
+}
+
 export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
 
 export type LicenseStatusModel = {
@@ -443,6 +464,11 @@ export type MalformedUploadTokenError = ErrorResponse & {
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
+}
+
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
 }
 
 export type MessageFile = {
@@ -928,14 +954,18 @@ export type RetrieverResource = {
   doc_metadata?: {
     [key: string]: JsonValueType
   } | null
+  document_asset_id?: string | null
   document_id?: string | null
   document_name?: string | null
+  document_revision?: number | null
+  document_version?: number | null
   files?: Array<{
     [key: string]: JsonValueType
   }> | null
   hit_count?: number | null
   id?: string
   index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
   message_id?: string
   page?: number | null
   position: number
@@ -1041,6 +1071,7 @@ export type SuggestedQuestionsResponse = {
 }
 
 export type SystemFeatureModel = {
+  agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
   deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
@@ -1875,6 +1906,8 @@ export type GetLoginStatusData = {
 
 export type GetLoginStatusErrors = {
   401: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
   default: ErrorResponse
 }
 
@@ -1945,8 +1978,9 @@ export type PostMessagesByMessageIdFeedbacksData = {
 }
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
-  400: ErrorResponse
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   401: ErrorResponse
+  403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
@@ -1975,6 +2009,7 @@ export type GetMessagesByMessageIdMoreLikeThisData = {
 
 export type GetMessagesByMessageIdMoreLikeThisErrors = {
   400:
+    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotCompletionAppError
@@ -2009,6 +2044,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsData = {
 
 export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
   400:
+    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
@@ -2017,7 +2053,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
     | ErrorResponse
   401: ErrorResponse
   403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
-  404: ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
