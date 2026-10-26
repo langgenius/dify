@@ -309,7 +309,9 @@ def test_verified_upgrade_inherits_selections_and_returns_current_revision(
         assert stored is not None
         assert stored.access.oauth_client is not None
         assert stored.access.oauth_client.plugin_unique_identifier == original
-        harness.base.service.delete_connection(harness.base.context, connection.id)
+        harness.base.service.delete_connection(
+            harness.base.context, connection.id, connection_revision=harness.base.connection_revision
+        )
         assert harness.base.auth.revocation_artifacts == [original]
 
 

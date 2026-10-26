@@ -245,6 +245,17 @@ export const zEmailCodeLoginVerifyPayload = z.object({
 })
 
 /**
+ * EndUserConnectionDisconnectPayload
+ */
+export const zEndUserConnectionDisconnectPayload = z.object({
+  connection_revision: z
+    .string()
+    .max(262144)
+    .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)
+    .nullish(),
+})
+
+/**
  * EndUserConnectionListQuery
  */
 export const zEndUserConnectionListQuery = z.object({
@@ -285,6 +296,16 @@ export const zEndUserConnectionPreflightPayload = z.object({
 })
 
 /**
+ * EndUserConnectionReauthorizePayload
+ */
+export const zEndUserConnectionReauthorizePayload = z.object({
+  connection_revision: z
+    .string()
+    .max(262144)
+    .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/),
+})
+
+/**
  * EndUserConnectionResponse
  */
 export const zEndUserConnectionResponse = z.object({
@@ -314,6 +335,16 @@ export const zEndUserConnectionListResponse = z.object({
   data: z.array(zEndUserConnectionResponse),
   has_more: z.boolean(),
   next_cursor: z.string().nullable(),
+})
+
+/**
+ * EndUserConnectionRevisionResponse
+ */
+export const zEndUserConnectionRevisionResponse = z.object({
+  connection_revision: z
+    .string()
+    .max(262144)
+    .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/),
 })
 
 /**
@@ -850,6 +881,11 @@ export const zEndUserConnectionCreatePayload = z.object({
  * EndUserConnectionUpdatePayload
  */
 export const zEndUserConnectionUpdatePayload = z.object({
+  connection_revision: z
+    .string()
+    .max(262144)
+    .regex(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)
+    .optional(),
   credentials: z.record(z.string(), zJsonValue).optional(),
   name: z.string().min(1).max(100).optional(),
 })
@@ -2393,6 +2429,8 @@ export const zPostConnectionsPreflightBody = zEndUserConnectionPreflightPayload
  */
 export const zPostConnectionsPreflightResponse = zEndUserConnectionPreflightResponse
 
+export const zDeleteConnectionsByConnectionIdBody = zEndUserConnectionDisconnectPayload
+
 export const zDeleteConnectionsByConnectionIdPath = z.object({
   connection_id: z.uuid(),
 })
@@ -2422,6 +2460,8 @@ export const zPatchConnectionsByConnectionIdPath = z.object({
  */
 export const zPatchConnectionsByConnectionIdResponse = zEndUserConnectionResponse
 
+export const zPostConnectionsByConnectionIdReauthorizeBody = zEndUserConnectionReauthorizePayload
+
 export const zPostConnectionsByConnectionIdReauthorizePath = z.object({
   connection_id: z.uuid(),
 })
@@ -2430,6 +2470,15 @@ export const zPostConnectionsByConnectionIdReauthorizePath = z.object({
  * OAuth reauthorization URL
  */
 export const zPostConnectionsByConnectionIdReauthorizeResponse = zEndUserConnectionOAuthResponse
+
+export const zGetConnectionsByConnectionIdRevisionPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * Current Provider revision
+ */
+export const zGetConnectionsByConnectionIdRevisionResponse = zEndUserConnectionRevisionResponse
 
 export const zGetConversationsQuery = z.object({
   last_id: z.string().optional(),

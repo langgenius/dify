@@ -81,9 +81,11 @@ def test_update_distinguishes_omission_and_full_replacement() -> None:
     rename = UpdateConnectionInput(name="Renamed")
     assert rename.credentials is None
     assert rename.model_fields_set == {"name"}
-    replacement = UpdateConnectionInput(credentials={"api_key": "secret-sentinel"})
+    replacement = UpdateConnectionInput(
+        credentials={"api_key": "secret-sentinel"}, connection_revision="e30.e30." + "B" * 43
+    )
     assert replacement.name is None
-    assert replacement.model_fields_set == {"credentials"}
+    assert replacement.model_fields_set == {"credentials", "connection_revision"}
     assert "secret-sentinel" not in repr(replacement)
 
 

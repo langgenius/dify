@@ -31,6 +31,7 @@ from services.end_user_connection_oauth_adapters import (
     RedisConnectionOAuthAttempts,
     RedisOAuthRefreshSingleFlight,
 )
+from services.end_user_connection_revision_adapters import PluginConnectionProviderRevisions
 from services.end_user_connections.contracts import ConnectionOAuthStart, ConnectionSummary, StartConnectionOAuthInput
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
@@ -266,6 +267,7 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
     )
     attempts = RedisConnectionOAuthAttempts()
     service = OAuthConnectionService(
+        revisions=PluginConnectionProviderRevisions(providers=providers),
         store=base.repository,
         targets=PublishedConnectionTargetResolver(workflows=base.repository, providers=providers),
         gateway=gateway,
@@ -273,6 +275,7 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
         cipher=base.cipher,
     )
     base.service = ConnectionService(
+        revisions=PluginConnectionProviderRevisions(providers=providers),
         store=base.repository,
         targets=PublishedConnectionTargetResolver(workflows=base.repository, providers=providers),
         credentials=providers,

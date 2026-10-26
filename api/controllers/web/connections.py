@@ -33,13 +33,16 @@ from libs.helper import dump_response
 from models.model import App, EndUser
 from services.end_user_connection_identity import connection_context_from_web_passport
 from services.end_user_connections.contracts import (
+    ConnectionDisconnectInput,
     ConnectionInput,
+    ConnectionRevisionView,
     ConnectionSummary,
     CreateApiKeyConnectionInput,
     ListConnectionsInput,
     UpdateConnectionInput,
 )
 from services.end_user_connections.errors import ConnectionError
+from services.end_user_connections.revision import ConnectionRevision
 from services.errors.conversation import ConversationNotExistsError
 
 
@@ -107,7 +110,15 @@ def _omit_schema_default(schema: dict[str, Any]) -> None:
 
 
 class EndUserConnectionUpdatePayload(UpdateConnectionInput):
-    model_config = ConfigDict(json_schema_extra={"minProperties": 1})
+    model_config = ConfigDict(
+        json_schema_extra={"minProperties": 1, "dependentRequired": {"credentials": ["connection_revision"]}}
+    )
+
+    connection_revision: ConnectionRevision | SkipJsonSchema[None] = Field(
+        default=None,
+        json_schema_extra=_omit_schema_default,
+        description="Provider revision required when replacing credentials.",
+    )
 
     name: str | SkipJsonSchema[None] = Field(
         default=None, min_length=1, max_length=100, json_schema_extra=_omit_schema_default
@@ -115,6 +126,14 @@ class EndUserConnectionUpdatePayload(UpdateConnectionInput):
     credentials: dict[str, JsonValue] | SkipJsonSchema[None] = Field(
         default=None, min_length=1, repr=False, json_schema_extra=_omit_schema_default
     )
+
+
+class EndUserConnectionDisconnectPayload(ConnectionDisconnectInput):
+    pass
+
+
+class EndUserConnectionRevisionResponse(ConnectionRevisionView, ResponseModel):
+    pass
 
 
 class EndUserConnectionListQuery(ListConnectionsInput):
@@ -128,9 +147,15 @@ class EndUserConnectionListResponse(ResponseModel):
 
 
 register_schema_models(
-    web_ns, EndUserConnectionCreatePayload, EndUserConnectionUpdatePayload, EndUserConnectionListQuery
+    web_ns,
+    EndUserConnectionCreatePayload,
+    EndUserConnectionUpdatePayload,
+    EndUserConnectionListQuery,
+    EndUserConnectionDisconnectPayload,
 )
-register_response_schema_models(web_ns, EndUserConnectionResponse, EndUserConnectionListResponse)
+register_response_schema_models(
+    web_ns, EndUserConnectionResponse, EndUserConnectionListResponse, EndUserConnectionRevisionResponse
+)
 
 
 @web_ns.route("/connections")
@@ -190,6 +215,7 @@ class EndUserConnectionApi(WebApiResource):
         ConnectionConfigurationHTTPError,
         ConnectionNotFoundHTTPError,
         ConnectionConflictHTTPError,
+        ConnectionRevisionChangedHTTPError,
         ConnectionCredentialsHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,
@@ -207,10 +233,13 @@ class EndUserConnectionApi(WebApiResource):
 
     @web_ns.doc(
         description=(
-            "Disconnect locally and remove live selections. Best-effort OAuth revocation targets only the original "
-            "plugin artifact and Client configuration; unavailable artifacts never fall back to the installed version."
+            "Disconnect locally and remove live selections. Supply connection_revision to enable best-effort OAuth "
+            "revocation against the original plugin artifact and Client; omit it for local-only Disconnect. "
+            "Invalid consent or unavailable artifacts never undo local deletion or fall back to installed versions."
         )
     )
+    @web_ns.expect(web_ns.models[EndUserConnectionDisconnectPayload.__name__])
+    @web_ns.doc(params={"payload": {"required": False}})
     @web_ns.response(204, "Connection deleted")
     @error_responses(
         ConnectionLoginRequiredError,
@@ -221,7 +250,34 @@ class EndUserConnectionApi(WebApiResource):
     def delete(self, app_model: App, end_user: EndUser, connection_id: UUID):
         try:
             context = connection_context_from_web_passport(app=app_model, end_user=end_user)
-            application_services().end_user_connections.delete_connection(context, str(connection_id))
+            payload = EndUserConnectionDisconnectPayload.model_validate(
+                (web_ns.payload if request.get_data() else None) or {}
+            )
+            application_services().end_user_connections.delete_connection(
+                context, str(connection_id), connection_revision=payload.connection_revision
+            )
+        except ValidationError:
+            raise ValueError("Invalid connection disconnect payload.") from None
         except ConnectionError as error:
             _raise_error(error)
         return "", 204
+
+
+@web_ns.route("/connections/<uuid:connection_id>/revision")
+class EndUserConnectionRevisionApi(WebApiResource):
+    @web_ns.response(200, "Current Provider revision", web_ns.models[EndUserConnectionRevisionResponse.__name__])
+    @web_ns.doc(description="Read a Provider revision for an owned Connection, independently of published tool nodes.")
+    @error_responses(
+        ConnectionLoginRequiredError,
+        ConnectionNotFoundHTTPError,
+        ConnectionConfigurationHTTPError,
+        ConnectionCheckUnavailableHTTPError,
+    )
+    def get(self, app_model: App, end_user: EndUser, connection_id: UUID):
+        try:
+            result = application_services().end_user_connections.get_connection_revision(
+                connection_context_from_web_passport(app=app_model, end_user=end_user), str(connection_id)
+            )
+        except ConnectionError as error:
+            _raise_error(error)
+        return dump_response(EndUserConnectionRevisionResponse, result), 200, {"Cache-Control": "no-store"}

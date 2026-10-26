@@ -99,7 +99,7 @@ class OAuthConnectionLifecycleService:
         return expiration is not None and expiration <= datetime.now(UTC).replace(tzinfo=None)
 
     def _resolve(
-        self, context: WebConnectionContext, record: StoredConnection
+        self, context: WebConnectionContext, record: StoredConnection, *, plugin_unique_identifier: str
     ) -> tuple[ResolvedOAuthClient, dict[str, Any]]:
         connection_mutation_guard(context, record.access)
         if record.access.credential_status == ConnectionCredentialStatus.RECONNECT_REQUIRED:
@@ -108,6 +108,8 @@ class OAuthConnectionLifecycleService:
         if reference is None:
             raise ConnectionReauthorizationRequiredError()
         client = self._gateway.resolve_client(context.tenant_id, record.access.provider, reference.source)
+        if client.plugin_unique_identifier != plugin_unique_identifier:
+            raise ConnectionRevisionChangedError()
         if not reference.same_credentials(client.snapshot.reference) or reference.plugin_unique_identifier is None:
             raise ConnectionReauthorizationRequiredError()
         if (
@@ -121,23 +123,36 @@ class OAuthConnectionLifecycleService:
     def _reports_expired(result: CredentialCheckResult) -> bool:
         return result.status == "invalid" and result.reason_code == "credential_expired"
 
-    def check(self, context: WebConnectionContext, record: StoredConnection) -> ConnectionCheckOutcome:
+    def check(
+        self, context: WebConnectionContext, record: StoredConnection, *, plugin_unique_identifier: str
+    ) -> ConnectionCheckOutcome:
         if self._expired(record):
-            return self._refresh_once(context, record, force_refresh=False)
-        client, credentials = self._resolve(context, record)
+            return self._refresh_once(
+                context, record, force_refresh=False, plugin_unique_identifier=plugin_unique_identifier
+            )
+        client, credentials = self._resolve(context, record, plugin_unique_identifier=plugin_unique_identifier)
         result = self._gateway.check(context, record.access.provider, client, credentials)
         if self._reports_expired(result):
-            return self._refresh_once(context, record, force_refresh=True)
+            return self._refresh_once(
+                context, record, force_refresh=True, plugin_unique_identifier=plugin_unique_identifier
+            )
         outcome = self._persist(context, record, client, result, refreshed=None, lease=None)
         return ConnectionCheckOutcome(view=outcome.view, revision=outcome.revision)
 
     def _refresh_once(
-        self, context: WebConnectionContext, record: StoredConnection, *, force_refresh: bool
+        self,
+        context: WebConnectionContext,
+        record: StoredConnection,
+        *,
+        force_refresh: bool,
+        plugin_unique_identifier: str,
     ) -> ConnectionCheckOutcome:
         guard = connection_mutation_guard(context, record.access)
         result = self._refreshes.run(
             guard,
-            lambda lease: self._refresh_and_check(context, record, lease, force_refresh=force_refresh),
+            lambda lease: self._refresh_and_check(
+                context, record, lease, force_refresh=force_refresh, plugin_unique_identifier=plugin_unique_identifier
+            ),
         )
         if result.view.connection_id != guard.connection_id:
             raise ConnectionConflictError()
@@ -168,11 +183,12 @@ class OAuthConnectionLifecycleService:
         lease: OAuthRefreshLease,
         *,
         force_refresh: bool,
+        plugin_unique_identifier: str,
     ) -> OAuthRefreshResult:
         record = self._store.find(context, previous.access.id)
         if record is None:
             raise ConnectionNotFoundError()
-        client, credentials = self._resolve(context, record)
+        client, credentials = self._resolve(context, record, plugin_unique_identifier=plugin_unique_identifier)
         refresh_required = self._expired(record) or (
             force_refresh and record.access.revision == previous.access.revision
         )

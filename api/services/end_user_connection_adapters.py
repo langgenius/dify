@@ -30,6 +30,7 @@ from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
     ConnectionInvalidCredentialsError,
+    ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
 )
 from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig, check_tool_credentials
@@ -100,8 +101,17 @@ class PluginApiKeyCredentialGateway:
     def is_plugin_trusted(self, tenant_id: str, identifier: str) -> bool:
         return PluginService.is_plugin_verified(tenant_id, identifier)
 
-    def validate_format(self, tenant_id: str, provider: str, credentials: Mapping[str, Any]) -> dict[str, Any]:
+    def validate_format(
+        self,
+        tenant_id: str,
+        provider: str,
+        credentials: Mapping[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> dict[str, Any]:
         controller = self.provider(tenant_id, provider)
+        if plugin_unique_identifier is not None and controller.plugin_unique_identifier != plugin_unique_identifier:
+            raise ConnectionRevisionChangedError()
         if CredentialType.API_KEY not in controller.get_supported_credential_types():
             raise ConnectionConfigurationError()
         normalized = deepcopy(dict(credentials))
@@ -125,9 +135,16 @@ class PluginApiKeyCredentialGateway:
         return normalized
 
     def check(
-        self, context: WebConnectionContext, provider: str, credentials: Mapping[str, Any]
+        self,
+        context: WebConnectionContext,
+        provider: str,
+        credentials: Mapping[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> CredentialCheckResult:
         controller = self.provider(context.tenant_id, provider)
+        if plugin_unique_identifier is not None and controller.plugin_unique_identifier != plugin_unique_identifier:
+            raise ConnectionRevisionChangedError()
         canonical = str(ToolProviderID(controller.entity.identity.name))
         try:
             return self._auth.check_provider_credentials(

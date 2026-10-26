@@ -8,6 +8,7 @@ import jwt
 from pydantic import ValidationError
 
 from configs import dify_config
+from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionRevisionChangedError
 from services.end_user_connections.revision import (
     ConnectionContractSnapshot,
@@ -93,3 +94,48 @@ class PluginConnectionRevisions:
         ):
             return canonical
         raise ConnectionRevisionChangedError(previous=previous, current=current, current_revision=canonical)
+
+
+class PluginConnectionProviderRevisions:
+    """Admit owned-Connection operations independently of published authorization nodes."""
+
+    def __init__(self, *, providers: PluginIdentifiers) -> None:
+        self._providers = providers
+
+    @staticmethod
+    def _snapshot(context: WebConnectionContext, provider: ProviderContractSnapshot) -> ConnectionContractSnapshot:
+        return ConnectionContractSnapshot(
+            tenant_id=context.tenant_id, app_id=context.app_id, providers=(provider,), requirements=()
+        )
+
+    def _current(self, context: WebConnectionContext, provider: str) -> ProviderContractSnapshot:
+        return ProviderContractSnapshot(
+            provider=provider,
+            plugin_unique_identifier=self._providers.plugin_unique_identifier(context.tenant_id, provider),
+        )
+
+    def resolve(self, context: WebConnectionContext, provider: str) -> str:
+        return ConnectionRevisionCodec.encode(self._snapshot(context, self._current(context, provider)))
+
+    def reference(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
+        snapshot = ConnectionRevisionCodec.decode(revision)
+        if snapshot.tenant_id != context.tenant_id or snapshot.app_id != context.app_id:
+            raise ConnectionRevisionChangedError()
+        references = tuple(item for item in snapshot.providers if item.provider == provider)
+        if len(references) != 1:
+            raise ConnectionRevisionChangedError()
+        return references[0]
+
+    def require(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
+        previous = self.reference(context, provider, revision)
+        current = self._current(context, provider)
+        if previous == current or self._providers.is_plugin_trusted(
+            context.tenant_id, current.plugin_unique_identifier
+        ):
+            return current
+        current_snapshot = self._snapshot(context, current)
+        raise ConnectionRevisionChangedError(
+            previous=self._snapshot(context, previous),
+            current=current_snapshot,
+            current_revision=ConnectionRevisionCodec.encode(current_snapshot),
+        )

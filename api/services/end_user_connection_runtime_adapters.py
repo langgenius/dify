@@ -135,7 +135,7 @@ def get_tool_runtime(
             from extensions.ext_application_services import application_services
 
             resolved = application_services().end_user_connection_runtime.resolve(
-                identity, connection=record, target=target
+                identity, connection=record, target=target, connection_revision=context.connection_revision
             )
             revisions.require(identity.tenant_id, identity.app_id, graph, context.connection_revision)
             tool = provider.get_tool(spec.tool_name).fork_tool_runtime(

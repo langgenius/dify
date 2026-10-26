@@ -32,6 +32,7 @@ from services.end_user_connections.policy import (
     require_owned_connection,
     require_personal_connection_access,
 )
+from services.end_user_connections.revision import ConnectionProviderRevisions
 
 
 @dataclass(frozen=True)
@@ -73,6 +74,8 @@ class ConnectionOAuthAttempt:
     target_workflow_id: str | None
     name: str | None
     guard: ConnectionMutationGuard | None
+    # Legacy reauthorization attempts without consent must restart before dispatch.
+    connection_revision: str | None = None
 
 
 @dataclass(frozen=True)
@@ -131,12 +134,14 @@ class OAuthConnectionService:
         gateway: ConnectionOAuthGateway,
         attempts: ConnectionOAuthAttempts,
         cipher: ConnectionCipher,
+        revisions: ConnectionProviderRevisions,
     ) -> None:
         self._store = store
         self._targets = targets
         self._gateway = gateway
         self._attempts = attempts
         self._cipher = cipher
+        self._revisions = revisions
 
     def start_oauth(
         self, context: WebConnectionContext, command: StartConnectionOAuthInput, *, callback_url: str
@@ -162,14 +167,16 @@ class OAuthConnectionService:
             target_workflow_id=target.workflow_id,
             name=command.name,
             guard=None,
+            connection_revision=command.connection_revision,
         )
 
     def reauthorize_oauth(
-        self, context: WebConnectionContext, connection_id: str, *, callback_url: str
+        self, context: WebConnectionContext, connection_id: str, *, callback_url: str, connection_revision: str
     ) -> ConnectionOAuthStart:
         record = self._load(context, connection_id)
         reference = record.access.oauth_client
         assert reference is not None
+        self._revisions.require(context, record.access.provider, connection_revision)
         client = self._gateway.resolve_client(context.tenant_id, record.access.provider, reference.source)
         return self._start(
             context,
@@ -180,6 +187,7 @@ class OAuthConnectionService:
             target_workflow_id=None,
             name=None,
             guard=connection_mutation_guard(context, record.access),
+            connection_revision=connection_revision,
         )
 
     def _start(
@@ -193,8 +201,13 @@ class OAuthConnectionService:
         target_workflow_id: str | None,
         name: str | None,
         guard: ConnectionMutationGuard | None,
+        connection_revision: str,
     ) -> ConnectionOAuthStart:
+        admitted = self._revisions.require(context, provider, connection_revision)
+        if client.plugin_unique_identifier != admitted.plugin_unique_identifier:
+            raise ConnectionRevisionChangedError()
         url = self._gateway.authorization_url(context, provider, client)
+        self._revisions.require(context, provider, connection_revision)
         parsed = urlsplit(url)
         states = parse_qs(parsed.query).get("state", [])
         if parsed.scheme not in {"https", "http"} or not parsed.netloc or len(states) != 1 or not states[0]:
@@ -209,6 +222,7 @@ class OAuthConnectionService:
             target_workflow_id=target_workflow_id,
             name=name,
             guard=guard,
+            connection_revision=connection_revision,
         )
         return ConnectionOAuthStart(authorization_url=url, context_id=self._attempts.save(attempt))
 
@@ -255,7 +269,16 @@ class OAuthConnectionService:
                 credential_type=ConnectionCredentialType.OAUTH2,
                 target=replace(target, oauth_client=attempt.client.reference),
             )
+        revision = attempt.connection_revision
+        if revision is None:
+            # Creation attempts already carried their graph contract before this field existed.
+            if attempt.target is None:
+                raise ConnectionRevisionChangedError()
+            revision = attempt.target.connection_revision
+        admitted = self._revisions.require(context, attempt.provider, revision)
         client = self._gateway.resolve_client(context.tenant_id, attempt.provider, attempt.client.reference.source)
+        if client.plugin_unique_identifier != admitted.plugin_unique_identifier:
+            raise ConnectionRevisionChangedError()
         if not attempt.client.reference.same_credentials(client.snapshot.reference):
             raise ConnectionReauthorizationRequiredError()
         if client.snapshot != attempt.client:
@@ -265,6 +288,7 @@ class OAuthConnectionService:
         grant = self._gateway.exchange(context, attempt.provider, client, query_string)
         if not grant.credentials:
             raise ConnectionOAuthError()
+        self._revisions.require(context, attempt.provider, revision)
         if attempt.target is not None:
             target = self._targets.resolve(context, attempt.target)
             attempt = replace(attempt, target_workflow_id=target.workflow_id)

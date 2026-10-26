@@ -144,6 +144,7 @@ def test_reauthorize_keeps_id_without_requiring_published_node(client: FlaskClie
         f"/api/connections/{connection.id}/reauthorize",
         headers={"X-App-Code": harness.app_code},
         base_url="https://web-api.example",
+        json={"connection_revision": harness.base.connection_revision},
     )
     assert response.status_code == 200
     result = client.get(f"https://web-api.example/api/connections/oauth/{PROVIDER}/callback?{callback_query(response)}")
@@ -184,7 +185,9 @@ def test_oauth_preflight_refresh_and_delete(client: FlaskClient, harness: OAuthH
     harness.base.auth.revoke_result = OAuthRevokeResult(
         status="temporarily_unavailable", reason_code="provider_unavailable", retryable=True
     )
-    deleted = client.delete(f"/api/connections/{connection.id}")
+    deleted = client.delete(
+        f"/api/connections/{connection.id}", json={"connection_revision": harness.base.connection_revision}
+    )
     assert deleted.status_code == 204
     assert deleted.data == b""
     assert client.get(f"/api/connections/{connection.id}").status_code == 404
@@ -211,7 +214,12 @@ def test_oauth_client_change_requires_reconnection_in_preflight(
     assert response.status_code == 200
     assert response.get_json()["ready"] is False
     assert response.get_json()["connections"][0]["status"] == "reconnect_required"
-    assert client.delete(f"/api/connections/{connection.id}").status_code == 204
+    assert (
+        client.delete(
+            f"/api/connections/{connection.id}", json={"connection_revision": harness.base.connection_revision}
+        ).status_code
+        == 204
+    )
 
 
 def test_refresh_timeout_is_a_check_result_without_invalidating_connection(
@@ -266,13 +274,54 @@ def test_guest_oauth_rechecks_policy_before_exchanging_and_persisting_credential
         assert stored is not None
         assert stored.account_id is None
         assert stored.end_user_id == harness.base.context.end_user_id
-    renewed = client.post(f"/api/connections/{connection_id}/reauthorize", base_url="https://web-api.example")
+    renewed = client.post(
+        f"/api/connections/{connection_id}/reauthorize",
+        base_url="https://web-api.example",
+        json={"connection_revision": harness.base.connection_revision},
+    )
     assert renewed.status_code == 200
     config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
-    denied = client.post(f"/api/connections/{connection_id}/reauthorize", base_url="https://web-api.example")
+    denied = client.post(
+        f"/api/connections/{connection_id}/reauthorize",
+        base_url="https://web-api.example",
+        json={"connection_revision": harness.base.connection_revision},
+    )
     assert denied.status_code == 401
     completed = client.get(
         f"https://web-api.example/api/connections/oauth/{PROVIDER}/callback?{callback_query(renewed)}"
     )
     assert completed.status_code == 401
     assert harness.handler.exchanges == 1
+
+
+@pytest.mark.parametrize("revision", [None, "stale"])
+def test_reauthorization_requires_revision_before_plugin_dispatch(
+    client: FlaskClient, harness: OAuthHarness, revision: str | None
+) -> None:
+    connection = harness.finish(harness.start())
+    old_revision = harness.base.connection_revision
+    harness.providers.controller.plugin_unique_identifier = "vendor/calendar:2.0.0@" + "b" * 64
+    harness.handler.requested_artifacts.clear()
+    payload: dict[str, str] = {"connection_revision": old_revision} if revision is not None else {}
+    response = client.post(f"/api/connections/{connection.id}/reauthorize", json=payload)
+    assert response.status_code == (400 if revision is None else 409)
+    assert harness.handler.requested_artifacts == []
+    assert harness.handler.exchanges == 1
+
+
+@pytest.mark.parametrize("revision", [None, "forged", "original"])
+def test_disconnect_requires_signed_provider_consent_only_for_remote_revoke(
+    client: FlaskClient, harness: OAuthHarness, revision: str | None
+) -> None:
+    connection = harness.finish(harness.start())
+    original = harness.providers.controller.plugin_unique_identifier
+    payload = {}
+    if revision is not None:
+        payload["connection_revision"] = (
+            harness.base.connection_revision if revision == "original" else "e30.e30." + "A" * 43
+        )
+    harness.providers.controller.plugin_unique_identifier = "vendor/calendar:9.0.0@" + "f" * 64
+    response = client.delete(f"/api/connections/{connection.id}", json=payload)
+    assert response.status_code == 204
+    assert harness.base.repository.find(harness.base.context, connection.id) is None
+    assert harness.base.auth.revocation_artifacts == ([original] if revision == "original" else [])

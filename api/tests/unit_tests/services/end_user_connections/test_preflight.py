@@ -381,8 +381,8 @@ def test_replacement_after_check_completion_cannot_reuse_old_validation(
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     original = harness.base.service.check_connection_result
 
-    def check(context: WebConnectionContext, connection_id: str) -> ConnectionCheckOutcome:
-        outcome = original(context, connection_id)
+    def check(context: WebConnectionContext, connection_id: str, *, connection_revision: str) -> ConnectionCheckOutcome:
+        outcome = original(context, connection_id, connection_revision=connection_revision)
         with harness.base.sessions.begin() as session:
             session.execute(
                 sa.update(EndUserConnection)

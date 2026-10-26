@@ -28,7 +28,11 @@ from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
 from services.end_user_connection_identity import connection_context_from_web_passport
-from services.end_user_connections.contracts import ConnectionOAuthStart, StartConnectionOAuthInput
+from services.end_user_connections.contracts import (
+    ConnectionContractInput,
+    ConnectionOAuthStart,
+    StartConnectionOAuthInput,
+)
 from services.end_user_connections.errors import ConnectionError
 from services.plugin.oauth_service import OAuthProxyService
 
@@ -37,11 +41,15 @@ class EndUserConnectionOAuthPayload(StartConnectionOAuthInput):
     pass
 
 
+class EndUserConnectionReauthorizePayload(ConnectionContractInput):
+    pass
+
+
 class EndUserConnectionOAuthResponse(ResponseModel):
     authorization_url: str
 
 
-register_schema_models(web_ns, EndUserConnectionOAuthPayload)
+register_schema_models(web_ns, EndUserConnectionOAuthPayload, EndUserConnectionReauthorizePayload)
 register_response_schema_models(web_ns, EndUserConnectionOAuthResponse)
 
 
@@ -91,10 +99,12 @@ class EndUserConnectionOAuthApi(WebApiResource):
 
 @web_ns.route("/connections/<uuid:connection_id>/reauthorize")
 class EndUserConnectionReauthorizeApi(WebApiResource):
+    @web_ns.expect(web_ns.models[EndUserConnectionReauthorizePayload.__name__])
     @web_ns.response(200, "OAuth reauthorization URL", web_ns.models[EndUserConnectionOAuthResponse.__name__])
     @error_responses(
         ConnectionLoginRequiredError,
         ConnectionConfigurationHTTPError,
+        ConnectionRevisionChangedHTTPError,
         ConnectionNotFoundHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,
@@ -103,11 +113,15 @@ class EndUserConnectionReauthorizeApi(WebApiResource):
     )
     def post(self, app_model: App, end_user: EndUser, connection_id: UUID):
         try:
+            payload = EndUserConnectionReauthorizePayload.model_validate(web_ns.payload or {})
             result = application_services().end_user_connection_oauth.reauthorize_oauth(
                 connection_context_from_web_passport(app=app_model, end_user=end_user),
                 str(connection_id),
+                connection_revision=payload.connection_revision,
                 callback_url=request.url_root.rstrip("/") + "/api/connections/oauth",
             )
+        except ValidationError:
+            raise ValueError("Invalid connection reauthorization payload.") from None
         except ConnectionError as error:
             raise_connection_error(error)
         # response-contract:ignore cookie-bearing Flask response

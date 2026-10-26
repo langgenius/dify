@@ -117,7 +117,10 @@ def test_workspace_client_changes_clear_all_live_choices_and_require_reauthoriza
     assert harness.base.auth.revocations == []
     if change == "secret":
         started = harness.service.reauthorize_oauth(
-            harness.base.context, one.id, callback_url="https://web.example/callback"
+            harness.base.context,
+            one.id,
+            callback_url="https://web.example/callback",
+            connection_revision=harness.base.connection_revision,
         )
         assert harness.finish(started).id == one.id
         current = harness.base.repository.find(harness.base.context, one.id)
@@ -156,7 +159,9 @@ def test_credential_fingerprint_blocks_out_of_band_secret_changes_without_plugin
             )
     harness.base.auth.calls.clear()
     with pytest.raises(ConnectionReauthorizationRequiredError):
-        harness.base.service.check_connection(harness.base.context, connection.id)
+        harness.base.service.check_connection(
+            harness.base.context, connection.id, connection_revision=harness.base.connection_revision
+        )
     assert harness.base.auth.calls == []
     assert harness.handler.refreshes == []
 

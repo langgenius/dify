@@ -130,7 +130,7 @@ class ConnectionPreflightService:
         oauth_providers = frozenset(
             record.provider for record in records.values() if record.credential_type == ConnectionCredentialType.OAUTH2
         )
-        workflow_id, _, requirements = self._requirements.resolve(
+        workflow_id, accepted_revision, requirements = self._requirements.resolve(
             context,
             workflow_id,
             conversation_id,
@@ -162,7 +162,9 @@ class ConnectionPreflightService:
             if record.id in snapshots or record.id in unavailable:
                 continue
             try:
-                outcome = self._checks.check_connection_result(context, record.id)
+                outcome = self._checks.check_connection_result(
+                    context, record.id, connection_revision=accepted_revision
+                )
             except ConnectionNotFoundError:
                 raise ConnectionConflictError() from None
             except ConnectionCheckUnavailableError:

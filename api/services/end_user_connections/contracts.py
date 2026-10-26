@@ -29,7 +29,10 @@ class ConnectionInput(BaseModel):
 
 class ConnectionContractInput(ConnectionInput):
     connection_revision: ConnectionRevision = Field(
-        description="Opaque revision of Web App authorization requirements and installed plugin artifacts.",
+        description=(
+            "Opaque revision issued for the current Web App. Use App parameters for tool-node operations "
+            "or the owned Connection revision endpoint for Provider management."
+        ),
     )
 
 
@@ -52,10 +55,13 @@ class UpdateConnectionInput(ConnectionInput):
     placeholders. OAuth credentials can change only through the OAuth lifecycle.
     """
 
+    connection_revision: ConnectionRevision | None = Field(
+        default=None, description="Provider revision required when replacing credentials."
+    )
     name: str | None = Field(default=None, min_length=1, max_length=100)
     credentials: dict[str, JsonValue] | None = Field(default=None, min_length=1, repr=False)
 
-    @field_validator("name", "credentials", mode="before")
+    @field_validator("name", "credentials", "connection_revision", mode="before")
     @classmethod
     def reject_explicit_null(cls, value: Any) -> Any:
         if value is None:
@@ -64,9 +70,26 @@ class UpdateConnectionInput(ConnectionInput):
 
     @model_validator(mode="after")
     def require_change(self) -> Self:
-        if not self.model_fields_set:
+        if not self.model_fields_set.intersection({"name", "credentials"}):
             raise ValueError("At least one change is required.")
+        if self.credentials is not None and self.connection_revision is None:
+            raise ValueError("Connection revision is required when replacing credentials.")
         return self
+
+
+class ConnectionDisconnectInput(ConnectionInput):
+    connection_revision: ConnectionRevision | None = Field(
+        default=None,
+        description="Signed Provider revision for best-effort OAuth revocation. Omit for local-only Disconnect.",
+    )
+
+
+class ConnectionRevisionView(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    connection_revision: ConnectionRevision = Field(
+        description="Provider revision scoped to this Web App, for operations on the owned Connection."
+    )
 
 
 class StartConnectionOAuthInput(ConnectionTargetInput):
@@ -132,7 +155,9 @@ class ConnectionCheckOutcome:
 
 
 class ConnectionCredentialChecks(Protocol):
-    def check_connection_result(self, context: WebConnectionContext, connection_id: str) -> ConnectionCheckOutcome: ...
+    def check_connection_result(
+        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
+    ) -> ConnectionCheckOutcome: ...
 
 
 class NodeConnectionState(BaseModel):
@@ -200,6 +225,8 @@ class ConnectionManagement(Protocol):
 
     def get_connection(self, context: WebConnectionContext, connection_id: str) -> ConnectionSummary: ...
 
+    def get_connection_revision(self, context: WebConnectionContext, connection_id: str) -> ConnectionRevisionView: ...
+
     def create_api_key(self, context: WebConnectionContext, command: CreateApiKeyConnectionInput) -> ConnectionSummary:
         """Validate schema and target, check credentials, encrypt, then persist.
 
@@ -221,15 +248,20 @@ class ConnectionManagement(Protocol):
         """
         ...
 
-    def delete_connection(self, context: WebConnectionContext, connection_id: str) -> None:
+    def delete_connection(
+        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str | None = None
+    ) -> None:
         """Remove the resource and live selections; retain historical Run references.
 
         Best-effort OAuth revocation uses only the artifact recorded for the grant.
-        Missing artifacts and remote failures never undo the local Disconnect.
+        A valid signed Provider revision enables best-effort revocation. Without
+        one, deletion is local-only. Remote failures never undo local Disconnect.
         """
         ...
 
-    def check_connection(self, context: WebConnectionContext, connection_id: str) -> ConnectionCheckView:
+    def check_connection(
+        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
+    ) -> ConnectionCheckView:
         """Refresh expired OAuth server-side before checking when possible.
 
         Unsupported and temporarily unavailable checks never persist invalidity.
@@ -243,7 +275,9 @@ class ConnectionManagement(Protocol):
         """Use the resolved workspace/platform Client and existing short-lived context."""
         ...
 
-    def reauthorize_oauth(self, context: WebConnectionContext, connection_id: str) -> ConnectionOAuthStart:
+    def reauthorize_oauth(
+        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
+    ) -> ConnectionOAuthStart:
         """Keep the Connection ID; pin owner/revision/Provider/Client in server context.
 
         A callback revalidates these references before writing. Failed authorization

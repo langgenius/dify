@@ -46,11 +46,15 @@ def test_api_key_crud_and_metadata_queries_never_expose_or_decrypt_secrets(harne
     renamed = service.update_connection(context, connection.id, UpdateConnectionInput(name="Renamed"))
     assert renamed.name == "Renamed"
     assert len(harness.auth.calls) == 1
-    service.update_connection(context, connection.id, UpdateConnectionInput(credentials={"api_key": "replacement"}))
-    checked = service.check_connection(context, connection.id)
+    service.update_connection(
+        context,
+        connection.id,
+        UpdateConnectionInput(credentials={"api_key": "replacement"}, connection_revision=harness.connection_revision),
+    )
+    checked = service.check_connection(context, connection.id, connection_revision=harness.connection_revision)
     assert checked.check.status == "valid"
     assert harness.auth.calls[-1][3] == {"api_key": "replacement"}
-    service.delete_connection(context, connection.id)
+    service.delete_connection(context, connection.id, connection_revision=harness.connection_revision)
     with pytest.raises(ConnectionNotFoundError):
         service.get_connection(context, connection.id)
 
@@ -69,7 +73,11 @@ def test_rejected_create_or_update_does_not_store_or_replace_credentials(
         harness.service.create_api_key(harness.context, harness.command("rejected-secret"))
     with pytest.raises(error):
         harness.service.update_connection(
-            harness.context, original.id, UpdateConnectionInput(credentials={"api_key": "rejected-secret"})
+            harness.context,
+            original.id,
+            UpdateConnectionInput(
+                credentials={"api_key": "rejected-secret"}, connection_revision=harness.connection_revision
+            ),
         )
     after = harness.repository.find(harness.context, original.id)
     assert after == before
@@ -106,7 +114,9 @@ def test_check_updates_only_definitive_status_without_touching_activity(
     harness.auth.result = CredentialCheckResult.model_validate(
         {"status": status, "reason_code": None, "retryable": False, "checked_at": 1}
     )
-    result = harness.service.check_connection(harness.context, connection.id)
+    result = harness.service.check_connection(
+        harness.context, connection.id, connection_revision=harness.connection_revision
+    )
     assert result.credential_status == (
         ConnectionCredentialStatus.INVALID if status == "invalid" else ConnectionCredentialStatus.CONNECTED
     )
@@ -136,7 +146,9 @@ def test_in_flight_check_cannot_overwrite_concurrent_mutation(harness: Connectio
     harness.auth.on_check = mutate
     harness.auth.result = CredentialCheckResult(status="invalid", reason_code=None, retryable=False, checked_at=1)
     with pytest.raises(ConnectionConflictError):
-        harness.service.check_connection(harness.context, connection.id)
+        harness.service.check_connection(
+            harness.context, connection.id, connection_revision=harness.connection_revision
+        )
 
 
 @pytest.mark.parametrize("change", ["workflow", "identity"])
@@ -206,7 +218,7 @@ def test_deleting_api_key_cascades_live_selections_only(harness: ConnectionHarne
                 connection_id=connection.id,
             )
         )
-    harness.service.delete_connection(harness.context, connection.id)
+    harness.service.delete_connection(harness.context, connection.id, connection_revision=harness.connection_revision)
     with harness.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(AppConnection)) == 0
         assert session.scalar(sa.select(sa.func.count()).select_from(SessionConnection)) == 0

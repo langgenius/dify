@@ -8,6 +8,8 @@ from typing import Annotated, Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from services.end_user_connections.entities import WebConnectionContext
+
 ConnectionRevision = Annotated[
     str, Field(pattern=r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$", max_length=262144)
 ]
@@ -56,3 +58,13 @@ class ConnectionContractSnapshot(BaseModel):
 
 class ConnectionRevisions(Protocol):
     def resolve(self, tenant_id: str, app_id: str, graph: Mapping[str, Any]) -> str: ...
+
+
+class ConnectionProviderRevisions(Protocol):
+    def resolve(self, context: WebConnectionContext, provider: str) -> str: ...
+
+    def require(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot: ...
+
+    def reference(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
+        """Validate a signed Provider reference without requiring its current installation."""
+        ...

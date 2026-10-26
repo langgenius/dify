@@ -189,7 +189,7 @@ def test_initial_configuration_is_atomic_and_existing_worker_does_not_save(
     second = base.service.create_api_key(base.context, base.command("b"))
     entity = generate_entity(harness, first.id)
     if deleted:
-        base.service.delete_connection(base.context, first.id)
+        base.service.delete_connection(base.context, first.id, connection_revision=base.connection_revision)
     with harness.sessions() as session:
         if deleted:
             with pytest.raises(ConnectionConflictError):

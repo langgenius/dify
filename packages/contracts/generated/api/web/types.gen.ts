@@ -312,6 +312,10 @@ export type EndUserConnectionCreatePayload = {
   node_id: string
 }
 
+export type EndUserConnectionDisconnectPayload = {
+  connection_revision?: string | null
+}
+
 export type EndUserConnectionListQuery = {
   cursor?: string | null
   limit?: number
@@ -348,6 +352,10 @@ export type EndUserConnectionPreflightResponse = {
   readonly ready: boolean
 }
 
+export type EndUserConnectionReauthorizePayload = {
+  connection_revision: string
+}
+
 export type EndUserConnectionResponse = {
   account_label: string | null
   created_at: number
@@ -361,7 +369,12 @@ export type EndUserConnectionResponse = {
   updated_at: number
 }
 
+export type EndUserConnectionRevisionResponse = {
+  connection_revision: string
+}
+
 export type EndUserConnectionUpdatePayload = {
+  connection_revision?: string
   credentials?: {
     [key: string]: JsonValue
   }
@@ -1820,7 +1833,7 @@ export type PostConnectionsPreflightResponse =
   PostConnectionsPreflightResponses[keyof PostConnectionsPreflightResponses]
 
 export type DeleteConnectionsByConnectionIdData = {
-  body?: never
+  body?: EndUserConnectionDisconnectPayload
   path: {
     connection_id: string
   }
@@ -1885,7 +1898,7 @@ export type PatchConnectionsByConnectionIdErrors = {
   400: ConnectionConfigurationInvalidError | ConnectionCredentialsInvalidError | ErrorResponse
   401: EndUserLoginRequiredError | ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionConflictError | ErrorResponse
+  409: ConnectionConflictError | ConnectionRevisionChangedError | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1901,7 +1914,7 @@ export type PatchConnectionsByConnectionIdResponse =
   PatchConnectionsByConnectionIdResponses[keyof PatchConnectionsByConnectionIdResponses]
 
 export type PostConnectionsByConnectionIdReauthorizeData = {
-  body?: never
+  body: EndUserConnectionReauthorizePayload
   path: {
     connection_id: string
   }
@@ -1913,7 +1926,7 @@ export type PostConnectionsByConnectionIdReauthorizeErrors = {
   400: ConnectionConfigurationInvalidError | ConnectionOauthFailedError | ErrorResponse
   401: EndUserLoginRequiredError | ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionReauthorizationRequiredError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | ConnectionRevisionChangedError | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1927,6 +1940,33 @@ export type PostConnectionsByConnectionIdReauthorizeResponses = {
 
 export type PostConnectionsByConnectionIdReauthorizeResponse =
   PostConnectionsByConnectionIdReauthorizeResponses[keyof PostConnectionsByConnectionIdReauthorizeResponses]
+
+export type GetConnectionsByConnectionIdRevisionData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}/revision'
+}
+
+export type GetConnectionsByConnectionIdRevisionErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  503: CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsByConnectionIdRevisionError =
+  GetConnectionsByConnectionIdRevisionErrors[keyof GetConnectionsByConnectionIdRevisionErrors]
+
+export type GetConnectionsByConnectionIdRevisionResponses = {
+  200: EndUserConnectionRevisionResponse
+}
+
+export type GetConnectionsByConnectionIdRevisionResponse =
+  GetConnectionsByConnectionIdRevisionResponses[keyof GetConnectionsByConnectionIdRevisionResponses]
 
 export type GetConversationsData = {
   body?: never

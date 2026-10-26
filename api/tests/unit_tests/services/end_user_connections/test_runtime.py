@@ -122,7 +122,11 @@ def test_personal_tool_injects_selected_current_credentials_without_workspace_fa
     assert "selected-secret" not in repr(tool.runtime)
     assert "connection_id" not in tool.runtime.model_dump()
     harness.base.service.update_connection(
-        harness.base.context, selected.id, UpdateConnectionInput(credentials={"api_key": "replacement-secret"})
+        harness.base.context,
+        selected.id,
+        UpdateConnectionInput(
+            credentials={"api_key": "replacement-secret"}, connection_revision=harness.base.connection_revision
+        ),
     )
     second = loader.get_runtime(
         node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None
@@ -441,7 +445,9 @@ def test_deleted_connection_uses_normal_tool_node_failure(harness: OAuthHarness)
     )
     node = factory.create_node({"id": "tool-1", "data": node_data()})
     node.bind_execution_id("node-execution")
-    harness.base.service.delete_connection(harness.base.context, selected.id)
+    harness.base.service.delete_connection(
+        harness.base.context, selected.id, connection_revision=harness.base.connection_revision
+    )
     events = list(node._run())
     assert len(events) == 1
     assert isinstance(events[0], StreamCompletedEvent)

@@ -29,7 +29,7 @@ from models.workflow import Workflow, WorkflowType
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway, PublishedConnectionTargetResolver
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway, RedisOAuthRefreshSingleFlight
-from services.end_user_connection_revision_adapters import PluginConnectionRevisions
+from services.end_user_connection_revision_adapters import PluginConnectionProviderRevisions, PluginConnectionRevisions
 from services.end_user_connections.contracts import CreateApiKeyConnectionInput
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionConfigurationError
@@ -247,6 +247,7 @@ def make_harness(sessions: sessionmaker[Session]) -> ConnectionHarness:
     cipher = TestCipher()
     gateway = TestProviders(auth, plugin_provider(tenant_id))
     service = ConnectionService(
+        revisions=PluginConnectionProviderRevisions(providers=gateway),
         store=repository,
         targets=PublishedConnectionTargetResolver(workflows=repository, providers=gateway),
         credentials=gateway,
