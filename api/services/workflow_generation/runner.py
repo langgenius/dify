@@ -72,6 +72,7 @@ from core.workflow.generator.tool_catalogue import (
 from core.workflow.generator.types import (
     GraphDict,
     GraphViewportDict,
+    PlannerOutputContractDict,
     PlannerResultDict,
     WorkflowGenerateErrorCode,
     WorkflowGenerateErrorDict,
@@ -116,6 +117,7 @@ from services.dify_builder.native_http_output_contract import (
     snapshot_http_plan_context,
 )
 from services.workflow_generation import graph_normalizers
+from services.workflow_generation.output_contracts import format_output_contracts_section, normalize_output_contracts
 from services.workflow_generator_response import parse_workflow_generator_response
 
 logger = logging.getLogger(__name__)
@@ -786,6 +788,7 @@ class WorkflowGenerator:
         # parsed — an omitted or unusable value yields ``{}`` and every
         # builder prompt is exactly the one it was before this key existed.
         node_outputs = _parse_node_outputs(plan.get("node_outputs"), plan_nodes)
+        node_output_contracts = normalize_output_contracts(plan.get("node_output_contracts"), node_outputs, plan_nodes)
 
         # First event the stream sees: the high-level plan, before the slower
         # builder call. Non-streaming callers ignore it.
@@ -811,6 +814,7 @@ class WorkflowGenerator:
                 tool_catalogue_entries=full_tool_catalogue_entries,
                 start_inputs=start_inputs,
                 node_outputs=node_outputs,
+                node_output_contracts=node_output_contracts,
                 current_graph=current_graph,
             )
 
@@ -1289,6 +1293,7 @@ class WorkflowGenerator:
         node_outputs: dict[str, list[str]],
         current_graph: dict[str, Any] | None,
         reply_language: str | None = None,
+        node_output_contracts: dict[str, dict[str, PlannerOutputContractDict]] | None = None,
     ) -> GraphDict:
         """Build changed node configs concurrently and expand them into a graph.
 
@@ -1349,6 +1354,7 @@ class WorkflowGenerator:
                         tool_catalogue_entries=tool_catalogue_entries,
                         start_inputs=start_inputs,
                         node_outputs=node_outputs,
+                        node_output_contracts=node_output_contracts,
                         node_types=node_types,
                         existing_node=existing_by_id.get(str(node.get("id"))),
                         http_contract_context=http_contract_context,
@@ -1400,6 +1406,7 @@ class WorkflowGenerator:
         http_contract_context: HttpPlanContext | None = None,
         constant_contract_context: ConstantPlanContext | None = None,
         reply_language: str | None = None,
+        node_output_contracts: dict[str, dict[str, PlannerOutputContractDict]] | None = None,
     ) -> dict[str, Any]:
         """Generate only the semantic config for one normalized plan node."""
         node_id = str(target_node.get("id") or "")
@@ -1464,7 +1471,10 @@ class WorkflowGenerator:
             # Stripped for the same reason ``node_types`` is: the declaration's
             # keys are stripped, so a padded plan id must still find its own
             # entry instead of silently losing its producer instruction.
-            node_outputs_section=format_node_outputs_section(node_outputs, node_id.strip(), node_types),
+            node_outputs_section=(
+                format_node_outputs_section(node_outputs, node_id.strip(), node_types)
+                + format_output_contracts_section(node_output_contracts, node_types)
+            ),
             plan_json=plan_json,
         )
         stage = f"Builder {node_id}"

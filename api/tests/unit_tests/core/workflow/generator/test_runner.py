@@ -1541,6 +1541,62 @@ class TestPlanDeclaredNodeOutputs:
                 # flat -- that is the name it has to put in its schema.
                 assert "'headline'" not in prompt.replace("'structured_output.headline'", "")
 
+    def test_output_representations_reach_both_builders_without_changing_runtime_data(self):
+        plan = json.loads(self._planner(node_outputs=self._DECLARED))
+        plan["node_output_contracts"] = {
+            "node2": {"slides_json": {"meaning": "Slides", "representation": "JSON text containing an array"}},
+            "node3": {"headline": {"meaning": "Heading", "representation": "Plain text"}},
+        }
+        result, prompts = self._generate(json.dumps(plan))
+        baseline, baseline_prompts = self._generate(self._planner(node_outputs=self._DECLARED))
+
+        assert result == baseline
+        assert set(prompts) == set(baseline_prompts) == {"node1", "node2", "node3", "node4"}
+        assert "JSON text containing an array" in prompts["node2"]
+        assert "JSON text containing an array" in prompts["node4"]
+        assert "node3.structured_output.headline" in prompts["node4"]
+        assert "node3.headline" not in prompts["node4"]
+        assert "node_output_contracts" not in prompts["node4"]
+
+    @pytest.mark.parametrize(
+        "metadata",
+        [None, "seconds", {"node2": {"unknown": {"meaning": "Duration", "representation": "Seconds"}}}],
+    )
+    def test_unusable_representation_metadata_preserves_names_only_prompts(self, metadata):
+        plan = json.loads(self._planner(node_outputs=self._DECLARED))
+        plan["node_output_contracts"] = metadata
+        assert self._generate(json.dumps(plan)) == self._generate(self._planner(node_outputs=self._DECLARED))
+
+    def test_representation_contracts_preserve_parallel_call_count_and_public_events(self, monkeypatch):
+        apply_config_overrides(monkeypatch, WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS=4)
+        plan = json.loads(self._planner(node_outputs=self._DECLARED))
+        graph = json.loads(self._graph())
+        for planned, node in zip(plan["nodes"], graph["nodes"], strict=True):
+            planned["id"] = node["id"]
+        plan["edges"] = [{"source": edge["source"], "target": edge["target"]} for edge in graph["edges"]]
+        plan["node_output_contracts"] = {
+            "node2": {"slides_json": {"meaning": "Slides", "representation": "JSON text containing an array"}}
+        }
+        model = _ParallelBuilderModel(plan, {node["id"]: node["data"] for node in graph["nodes"]}, barrier_parties=4)
+        events = list(
+            WorkflowGenerator.generate_workflow_graph_stream(
+                model_instance=model,
+                model_parameters={},
+                provider="openai",
+                model_name="gpt-4o",
+                model_mode="chat",
+                mode="workflow",
+                instruction="Build a deck from a topic",
+            )
+        )
+        assert model.planner_calls == 1
+        assert model.builder_calls == model.max_active_builders == 4
+        assert [event for event, _ in events] == ["plan", "result"]
+        assert events[-1][1]["error"] == ""
+        assert "JSON text containing an array" in str(model.messages_by_node["node4"][0][-1].content)
+        assert "node_output_contracts" not in json.dumps(events)
+        assert "JSON text containing an array" not in json.dumps(events)
+
     def test_a_plan_without_the_key_renders_byte_identical_prompts(self):
         """Fail-open, byte for byte: a declared run's prompts differ from a
         plain run's by exactly the rendered section — nothing else — so the
