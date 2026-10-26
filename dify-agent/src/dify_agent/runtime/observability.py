@@ -103,9 +103,12 @@ class _IsolatedTracer(Tracer):
         parent = get_current_span(context)
         if not parent.get_span_context().is_valid:
             return context
-        if isinstance(parent, ReadableSpan):
+        # Logfire's ReadableSpan wrapper can delegate to a NonRecordingSpan,
+        # which propagates a valid context but has no SDK resource.
+        resource = getattr(parent, "resource", None) if isinstance(parent, ReadableSpan) else None
+        if resource is not None:
             instance_id = self.client.resource_attributes.get("service.instance.id")
-            if instance_id is not None and parent.resource.attributes.get("service.instance.id") == instance_id:
+            if instance_id is not None and resource.attributes.get("service.instance.id") == instance_id:
                 return context
         elif self.preserve_external_parent:
             return context

@@ -1,14 +1,14 @@
 import type { CommonNodeType, OnSelectBlock } from '@/app/components/workflow/types'
 import { buttonVariants } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuItem,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuPortal,
+  MenuPositioner,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { intersection } from 'es-toolkit/array'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,7 +40,7 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
   )
 
   const triggerElement = (
-    <DropdownMenuItem
+    <MenuItem
       nativeButton
       render={<button type="button" />}
       closeOnClick={false}
@@ -48,11 +48,11 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
         variant: 'ghost',
         size: 'medium',
         className:
-          'mx-0 w-full justify-start px-2 data-highlighted:bg-components-button-ghost-bg-hover',
+          'w-[calc(100%-8px)] justify-start px-2 data-highlighted:bg-components-button-ghost-bg-hover',
       })}
     >
       {t(($) => $['panel.change'], { ns: 'workflow' })}
-    </DropdownMenuItem>
+    </MenuItem>
   )
 
   return (
@@ -83,8 +83,8 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
   const { handleNodeDelete, handleNodeDisconnect } = useNodesInteractions()
 
   return (
-    <DropdownMenu open={open} onOpenChange={onOpenChange}>
-      <DropdownMenuTrigger
+    <Menu open={open} onOpenChange={onOpenChange}>
+      <MenuTrigger
         render={
           <IconButton
             variant="secondary"
@@ -96,38 +96,36 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
           </IconButton>
         }
       />
-      <DropdownMenuPortal>
-        <DropdownMenuPositioner align="end" alignOffset={-4}>
-          <DropdownMenuPopup>
+      <MenuPortal>
+        <MenuPositioner sideOffset={4} align="end" alignOffset={-4}>
+          <MenuPopup>
             <div className="min-w-30 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
-              <div className="p-1">
+              <div className="py-1">
                 <ChangeItem data={data} nodeId={nodeId} sourceHandle={sourceHandle} />
-                <DropdownMenuItem
-                  className="mx-0"
+                <MenuItem
                   onClick={() => {
                     onOpenChange(false)
                     handleNodeDisconnect(nodeId)
                   }}
                 >
                   {t(($) => $['common.disconnect'], { ns: 'workflow' })}
-                </DropdownMenuItem>
+                </MenuItem>
               </div>
-              <div className="p-1">
-                <DropdownMenuItem
-                  className="mx-0"
+              <div className="py-1">
+                <MenuItem
                   onClick={() => {
                     onOpenChange(false)
                     handleNodeDelete(nodeId)
                   }}
                 >
                   {t(($) => $['operation.delete'], { ns: 'common' })}
-                </DropdownMenuItem>
+                </MenuItem>
               </div>
             </div>
-          </DropdownMenuPopup>
-        </DropdownMenuPositioner>
-      </DropdownMenuPortal>
-    </DropdownMenu>
+          </MenuPopup>
+        </MenuPositioner>
+      </MenuPortal>
+    </Menu>
   )
 }
 

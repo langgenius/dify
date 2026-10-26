@@ -122,7 +122,7 @@ const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
   return (
     <div
       className={cn(
-        'flex items-center gap-x-3 pt-4 pr-14 pb-2 pl-4',
+        'flex items-center gap-x-3 ps-4 pe-14 pt-4 pb-2',
         !dataset.embedding_available && 'opacity-30',
       )}
     >

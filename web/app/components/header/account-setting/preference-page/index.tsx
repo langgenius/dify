@@ -75,7 +75,7 @@ export default function PreferencePage() {
         await Promise.all([
           profileMutationOptions.onSuccess?.(data, variables, onMutateResult, context),
           language
-            ? setLocaleOnClient(language, false).then(
+            ? setLocaleOnClient(language).then(
                 () => router.refresh(),
                 (error: unknown) => {
                   toast.error(
@@ -173,7 +173,7 @@ export default function PreferencePage() {
           <ComboboxLabel>
             <span id={timezoneLabelId}>{t(($) => $['language.timezone'], { ns: 'common' })}</span>
           </ComboboxLabel>
-          <ComboboxTrigger className="group/timezone-trigger flex min-h-8 w-full min-w-0 items-center gap-0.5 rounded-lg border-0 bg-components-input-bg-normal py-2 pr-2 pl-3 text-start system-sm-regular text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled data-placeholder:text-components-input-text-placeholder data-disabled:data-placeholder:text-components-input-text-disabled data-popup-open:bg-state-base-hover-alt">
+          <ComboboxTrigger className="group/timezone-trigger flex min-h-8 w-full min-w-0 items-center gap-0.5 rounded-lg border-0 bg-components-input-bg-normal py-2 ps-3 pe-2 text-start system-sm-regular text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled data-placeholder:text-components-input-text-placeholder data-disabled:data-placeholder:text-components-input-text-disabled data-popup-open:bg-state-base-hover-alt">
             <span className="min-w-0 grow wrap-anywhere whitespace-normal">
               <ComboboxValue<TimezoneValue>
                 placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}

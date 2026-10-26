@@ -23,7 +23,7 @@ export function useCommandContext(
 ): CommandContext {
   const { t, i18n } = useTranslation(['app', 'common', 'modelProvider', 'accountSettings'])
   const { setTheme } = useTheme()
-  const { push } = useRouter()
+  const { push, refresh } = useRouter()
   const getDocsHomeUrl = useDocLink()
   const { appId: routeAppId } = useParams<{ appId?: string }>()
   // Only the app workflow page has an app id param that names an app; other routes reuse the
@@ -48,7 +48,10 @@ export function useCommandContext(
           ? { id: appId, mode: appMode }
           : null,
       setTheme,
-      setLocale: setLocaleOnClient,
+      setLocale: async (locale) => {
+        await setLocaleOnClient(locale)
+        refresh()
+      },
       getDocsHomeUrl,
       navigate: push,
       onError: (error) => {
@@ -69,6 +72,7 @@ export function useCommandContext(
       setTheme,
       getDocsHomeUrl,
       push,
+      refresh,
     ],
   )
 }
