@@ -3683,6 +3683,48 @@ describe('DocumentsPage', () => {
     }
   })
 
+  it('debounces server searches while keeping the input responsive', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({ title: 'Report.pdf' })] }] }
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    server.inputs.set('documents', [])
+
+    await user.type(screen.getByRole('searchbox'), 'report')
+    expect(screen.getByRole('searchbox')).toHaveValue('report')
+    expect(server.inputs.get('documents')).toEqual([])
+    await waitFor(() =>
+      expect(server.inputs.get('documents')).toEqual([
+        { params: { control_space_id: 'space-1' }, query: { query: 'report' } },
+      ]),
+    )
+    expect(await screen.findByRole('link', { name: 'Report.pdf' })).toBeInTheDocument()
+  })
+
+  it('clears search immediately and cancels the pending server search', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?query=sso' })
+    expect(server.inputs.get('documents')).toEqual([
+      { params: { control_space_id: 'space-1' }, query: { query: 'sso' } },
+    ])
+    server.inputs.set('documents', [])
+
+    await user.type(screen.getByRole('searchbox'), ' pending')
+    await user.clear(screen.getByRole('searchbox'))
+    await settle()
+    expect(screen.getByRole('searchbox')).toHaveValue('')
+    expect(screen.getByRole('searchbox')).toHaveFocus()
+    expect(server.inputs.get('documents')).toEqual([
+      { params: { control_space_id: 'space-1' }, query: {} },
+    ])
+    await user.type(screen.getByRole('searchbox'), 'missing')
+    expect(await screen.findByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+    expect(server.inputs.get('documents')).toEqual([
+      { params: { control_space_id: 'space-1' }, query: {} },
+      { params: { control_space_id: 'space-1' }, query: { query: 'missing' } },
+    ])
+  })
+
   it('searches the server and only fetches another matching page on request', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document({ title: 'Product handbook.pdf' })] }] }
@@ -3691,10 +3733,12 @@ describe('DocumentsPage', () => {
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
     await user.type(screen.getByRole('searchbox'), 'later page')
     await settle()
-    expect(lastInput('documents')).toMatchObject({ query: { query: 'later page' } })
+    await waitFor(() =>
+      expect(lastInput('documents')).toMatchObject({ query: { query: 'later page' } }),
+    )
     expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(screen.queryByText('knowledgeDocuments.noMatchingDocuments')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    await user.click(await screen.findByRole('button', { name: 'knowledgeSpace.loadMore' }))
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   })
@@ -3856,6 +3900,10 @@ describe('DocumentsPage', () => {
       screen.getByRole('searchbox', { name: 'knowledgeDocuments.searchDocuments' }),
       'product',
     )
+    await waitFor(() =>
+      expect(lastInput('documents')).toMatchObject({ query: { query: 'product' } }),
+    )
+    await settle()
 
     expect(screen.getByRole('checkbox', { name: 'Product handbook.pdf' })).toHaveAttribute(
       'aria-disabled',
@@ -4188,6 +4236,9 @@ describe('DocumentsPage', () => {
       screen.getByRole('searchbox', { name: 'knowledgeDocuments.searchDocuments' }),
       'product',
     )
+    await waitFor(() =>
+      expect(lastInput('documents')).toMatchObject({ query: { query: 'product' } }),
+    )
     await settle()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     await settle()
@@ -4222,6 +4273,7 @@ describe('DocumentsPage', () => {
       screen.getByRole('searchbox', { name: 'knowledgeDocuments.searchDocuments' }),
       'sso',
     )
+    await waitFor(() => expect(lastInput('documents')).toMatchObject({ query: { query: 'sso' } }))
     await settle()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     await settle()
@@ -8667,7 +8719,7 @@ describe('DocumentsPage', () => {
       'source title from next page',
     )
 
-    expect(screen.getByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+    expect(await screen.findByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
     expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
   })
 
@@ -8699,6 +8751,8 @@ describe('DocumentsPage', () => {
       screen.getByRole('searchbox', { name: 'knowledgeDocuments.searchDocuments' }),
       'sso',
     )
+    await waitFor(() => expect(lastInput('documents')).toMatchObject({ query: { query: 'sso' } }))
+    await settle()
 
     expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(screen.getByText('knowledgeDocuments.partialDocumentResults')).toBeInTheDocument()
@@ -8708,6 +8762,10 @@ describe('DocumentsPage', () => {
     )
     await user.clear(screen.getByRole('searchbox'))
     await user.type(screen.getByRole('searchbox'), 'missing')
+    await waitFor(() =>
+      expect(lastInput('documents')).toMatchObject({ query: { query: 'missing' } }),
+    )
+    await settle()
     expect(screen.queryByText('knowledgeDocuments.noMatchingDocuments')).not.toBeInTheDocument()
     expect(screen.getByText('knowledgeDocuments.partialDocumentResults')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
