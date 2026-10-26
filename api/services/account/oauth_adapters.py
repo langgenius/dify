@@ -43,6 +43,7 @@ from services.billing_service import BillingService
 from services.enterprise.enterprise_service import try_join_default_workspace
 from services.entities.account_activation_entities import InvitationLookup
 from services.entities.account_entities import AccountSessionTokens
+from services.entities.account_login_entities import LoginMode
 from services.entities.account_oauth_entities import (
     OAuthAccountRegistration,
     OAuthAuthorizationRequest,
@@ -105,6 +106,7 @@ class DifyOAuthProviderGateway(OAuthProviderGateway):
             timezone=request.timezone,
             language=request.language,
             redirect_url=request.redirect_url,
+            state=request.state,
         )
 
     @override
@@ -256,8 +258,8 @@ class AccountLifecycleOAuthRegistrationGateway(OAuthAccountRegistrationGateway):
                 timezone=registration.timezone,
                 ip_address=registration.ip_address,
                 check_normalized_email=True,
-                status="active",
-                initialized=True,
+                status="uninitialized" if registration.mode == LoginMode.END_USER else "active",
+                initialized=registration.mode == LoginMode.CONSOLE,
             )
         except AccountEmailDomainSuspendedError:
             raise

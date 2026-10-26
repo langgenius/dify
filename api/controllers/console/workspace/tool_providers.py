@@ -19,6 +19,9 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from constants.end_user_connections import END_USER_OAUTH_CONTEXT_PREFIX
+from controllers.common.end_user_connection_oauth import redirect_end_user_connection_oauth
+from controllers.common.end_user_connections import ConnectionOAuthHTTPError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
@@ -65,6 +68,7 @@ from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import alphanumeric, dump_response, uuid_value
 from libs.login import login_required
 from models import Account
@@ -1182,11 +1186,18 @@ class ToolPluginOAuthApi(Resource):
 @console_ns.route("/oauth/plugin/<path:provider>/tool/callback")
 class ToolOAuthCallback(Resource):
     @console_ns.response(302, "Redirect to OAuth callback page")
+    @error_responses(ConnectionOAuthHTTPError)
     @setup_required
     def get(self, provider: str):
+        if personal_callback := redirect_end_user_connection_oauth(provider):
+            # response-contract:ignore redirect to the originating Web API cookie boundary
+            return personal_callback
         context_id = request.cookies.get("context_id")
         if not context_id:
             raise Forbidden("context_id not found")
+
+        if context_id.startswith(END_USER_OAUTH_CONTEXT_PREFIX):
+            raise ConnectionOAuthHTTPError()
 
         context = OAuthProxyService.use_proxy_context(context_id)
         if context is None:

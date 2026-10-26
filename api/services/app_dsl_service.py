@@ -1102,6 +1102,7 @@ class AppDslService:
             # filter credential id from tool node
             if not include_secret and data_type == BuiltinNodeTypes.TOOL:
                 node_data.pop("credential_id", None)
+                node_data.pop("test_credential_id", None)
             # filter credential id from agent node
             if not include_secret and data_type == BuiltinNodeTypes.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):

@@ -20,6 +20,7 @@ from models import (
 )
 from models.enums import WorkflowRunTriggeredFrom
 from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
+from repositories.entities.workflow_execution import serialize_connection_context
 from repositories.workflow_run_control import get_stopped_workflow_run
 
 logger = logging.getLogger(__name__)
@@ -160,6 +161,16 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             ("finished_at", domain_model.finished_at.isoformat() if domain_model.finished_at else ""),
         ]
 
+        if isinstance(domain_model, TimedWorkflowExecution) and domain_model.connection_context is not None:
+            context = serialize_connection_context(
+                domain_model.connection_context,
+                tenant_id=self._tenant_id,
+                app_id=self._app_id,
+                workflow_id=domain_model.workflow_id,
+                end_user_id=self._creator_user_id if self._creator_user_role == CreatorUserRole.END_USER else None,
+            )
+            assert context is not None
+            logstore_model.append(("connection_context", context))
         return logstore_model
 
     @override

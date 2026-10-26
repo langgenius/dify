@@ -238,6 +238,7 @@ def build_account_services(
             sessions=RedisAccountSessionGateway(redis=redis),
             refresh_preparation=SQLAlchemyAccountRefreshPreparationGateway(accounts=accounts),
             account_provisioning=workspace_provisioning,
+            account_registration=lifecycle,
             workspace_provisioning=workspace_provisioning,
             email_codes=RedisEmailCodeGateway(redis=redis),
             reset_password_emails=RedisResetPasswordEmailGateway(redis=redis),

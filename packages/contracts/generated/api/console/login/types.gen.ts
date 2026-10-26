@@ -4,9 +4,30 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type WebAppAccountSessionResponse = {
+  logged_in: boolean
+  redirect_url: string | null
+}
+
+export type WebLoginUnavailableError = ErrorResponse & {
+  code: 'web_login_unavailable'
+  status: 503
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type LoginPayload = {
   email: string
   invite_token?: string | null
+  mode?: LoginMode
   password: string
   remember_me?: boolean
 }
@@ -51,16 +72,6 @@ export type LimitExceededError = ErrorResponse & {
   status: 400
 }
 
-export type ErrorResponse = {
-  code: string
-  details?: {
-    [key: string]: unknown
-  }
-  message: string
-  params?: string
-  status: number
-}
-
 export type AuthenticationFailedError = ErrorResponse & {
   code: 'authentication_failed'
   status: 401
@@ -70,6 +81,33 @@ export type EmailCodeLoginLimitError = ErrorResponse & {
   code: 'email_code_login_limit'
   status: 429
 }
+
+export type LoginMode = 'console' | 'end_user'
+
+export type GetLoginData = {
+  body?: never
+  path?: never
+  query: {
+    app_code: string
+    code_challenge: string
+    mode?: string
+    redirect_url: string
+  }
+  url: '/login'
+}
+
+export type GetLoginErrors = {
+  503: WebLoginUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetLoginError = GetLoginErrors[keyof GetLoginErrors]
+
+export type GetLoginResponses = {
+  200: WebAppAccountSessionResponse
+}
+
+export type GetLoginResponse = GetLoginResponses[keyof GetLoginResponses]
 
 export type PostLoginData = {
   body: LoginPayload

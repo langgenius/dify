@@ -25,6 +25,8 @@ if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
 
 
+from context.connection_execution import ConnectionExecutionContext
+
 DIFY_RUN_CONTEXT_KEY = "_dify"
 
 
@@ -96,6 +98,7 @@ def get_credit_usage_created_by(app_mode: AppMode | str | None) -> CreditUsageCr
 
 
 class DifyRunContext(BaseModel):
+    connection_context: ConnectionExecutionContext | None = None
     tenant_id: str
     app_id: str
     user_id: str
@@ -132,6 +135,7 @@ def build_dify_run_context(
     created_by: CreditUsageCreatedByInput = None,
     trace_session_id: str | None = None,
     extra_context: Mapping[str, Any] | None = None,
+    connection_context: ConnectionExecutionContext | None = None,
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
@@ -141,6 +145,7 @@ def build_dify_run_context(
     """
     run_context = dict(extra_context) if extra_context else {}
     run_context[DIFY_RUN_CONTEXT_KEY] = DifyRunContext(
+        connection_context=connection_context,
         tenant_id=tenant_id,
         app_id=app_id,
         user_id=user_id,
@@ -305,6 +310,8 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     Advanced Chat Application Generate Entity.
     """
 
+    connection_context: ConnectionExecutionContext | None = None
+
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
@@ -339,6 +346,8 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
     Workflow Application Generate Entity.
     """
+
+    connection_context: ConnectionExecutionContext | None = None
 
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore

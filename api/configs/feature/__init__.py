@@ -1039,6 +1039,21 @@ class AuthConfig(BaseSettings):
     Configuration for authentication and OAuth
     """
 
+    END_USER_AUTH_ALLOW_ANONYMOUS: bool = Field(
+        default=False,
+        description="Allow Guest identities to manage and use personal Connections. Does not control Web App entry. "
+        "Defaults to true in Community and false in "
+        "Cloud/Enterprise when unset; explicit deployment settings take precedence.",
+    )
+
+    WEBAPP_ACCOUNT_PASSPORT_ENABLED: bool = Field(
+        default=False,
+        description="Enable End User login mode and explicit Account Passport exchange for Web Apps. "
+        "When unset, defaults to true in Cloud and false "
+        "in other editions; an explicit value overrides the edition default. Enable only after every API instance "
+        "supports it. Disabling issuance does not revoke existing Passports.",
+    )
+
     OAUTH_REDIRECT_PATH: str = Field(
         description="Redirect path for OAuth authentication callbacks",
         default="/console/api/oauth/authorize",

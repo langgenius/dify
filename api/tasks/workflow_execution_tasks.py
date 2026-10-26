@@ -17,7 +17,7 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
-from repositories.entities.workflow_execution import WorkflowExecution
+from repositories.entities.workflow_execution import WorkflowExecution, serialize_connection_context
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,13 @@ def save_workflow_execution_task(
             existing_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == execution.id_).with_for_update())
 
             if existing_run:
+                if existing_run.tenant_id != tenant_id or existing_run.app_id != app_id:
+                    raise ValueError("Unauthorized access to workflow run")
+                if execution.connection_context is not None and (
+                    existing_run.created_by != creator_user_id
+                    or existing_run.created_by_role != CreatorUserRole(creator_user_role)
+                ):
+                    raise ValueError("Connection context does not match the workflow execution identity.")
                 # Update existing workflow run
                 _update_workflow_run_from_execution(existing_run, execution)
                 logger.debug("Updated existing workflow run: %s", execution.id_)
@@ -96,6 +103,13 @@ def _create_workflow_run_from_execution(
     workflow_run.tenant_id = tenant_id
     workflow_run.app_id = app_id
     workflow_run.workflow_id = execution.workflow_id
+    workflow_run.connection_context = serialize_connection_context(
+        execution.connection_context,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        workflow_id=execution.workflow_id,
+        end_user_id=creator_user_id if creator_user_role == CreatorUserRole.END_USER else None,
+    )
     from models.workflow import WorkflowType as ModelWorkflowType
 
     workflow_run.type = ModelWorkflowType(execution.workflow_type.value)
@@ -128,6 +142,19 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     """
     if workflow_run.stop_requested_at is not None and workflow_run.status == WorkflowExecutionStatus.STOPPED:
         return
+    if execution.connection_context is not None and execution.workflow_id != workflow_run.workflow_id:
+        raise ValueError("Connection context does not match the workflow execution identity.")
+    context = serialize_connection_context(
+        execution.connection_context,
+        tenant_id=workflow_run.tenant_id,
+        app_id=workflow_run.app_id,
+        workflow_id=workflow_run.workflow_id,
+        end_user_id=workflow_run.created_by if workflow_run.created_by_role == CreatorUserRole.END_USER else None,
+    )
+    if context is not None:
+        if workflow_run.connection_context is not None and context != workflow_run.connection_context:
+            raise ValueError("Workflow execution connection choices are immutable.")
+        workflow_run.connection_context = context
     json_converter = WorkflowRuntimeTypeConverter()
     workflow_run.status = execution.status
     workflow_run.outputs = (

@@ -6,6 +6,7 @@ from enums import WebAppAccessMode
 from machinery.context import RequestContext
 from services.account_ports import AccountPasswordHasher
 from services.entities.account_entities import AccountAuthenticationSnapshot, AccountPasswordDigest, AccountSnapshot
+from services.entities.account_login_entities import LoginMode
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.entities.authentication_entities import (
     StoredAuthenticationToken,
@@ -27,6 +28,8 @@ class WebAuthenticationTokenGateway(Protocol):
     def issue_access_token(self, *, account_id: str, email: str) -> str: ...
 
     def verify_access_token(self, token: str | None) -> bool: ...
+
+    def account_id(self, token: str | None) -> str | None: ...
 
     def send_email_login_code(self, *, account_id: str, email: str, language: str) -> str: ...
 
@@ -66,7 +69,9 @@ class WebAppAccessGateway(Protocol):
 
 
 class WebAppSessionGateway(Protocol):
-    def verify(self, *, token: str | None, app_code: str, user_id: str | None) -> bool: ...
+    def verify(
+        self, *, token: str | None, app_code: str, user_id: str | None, account_id: str | None = None
+    ) -> bool: ...
 
 
 class WebAppSessionQuery(Protocol):
@@ -173,9 +178,22 @@ class WebAuthenticationService:
         user_id: str | None,
         access_token: str | None,
         app_session_token: str | None,
+        mode: LoginMode = LoginMode.CONSOLE,
     ) -> WebLoginStatus:
+        if mode == LoginMode.END_USER:
+            if app_code and self._app_access.find_app_id_by_code(app_code) is None:
+                raise WebAppAccessAppNotFoundError(f"App with code {app_code} not found")
+            account_id = self._tokens.account_id(access_token)
+            app_logged_in = bool(
+                account_id
+                and app_code
+                and self._app_sessions.verify(
+                    token=app_session_token, app_code=app_code, user_id=user_id, account_id=account_id
+                )
+            )
+            return WebLoginStatus(logged_in=account_id is not None, app_logged_in=app_logged_in)
         if not app_code:
-            return WebLoginStatus(logged_in=bool(access_token), app_logged_in=False)
+            return WebLoginStatus(logged_in=self._tokens.verify_access_token(access_token), app_logged_in=False)
 
         app_id = self._app_access.find_app_id_by_code(app_code)
         if app_id is None:

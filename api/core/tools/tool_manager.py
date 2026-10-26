@@ -364,6 +364,7 @@ class ToolManager:
                         user_id=user_id,
                         credentials=dict(decrypted_credentials),
                         credential_type=builtin_provider.credential_type,
+                        credential_id=builtin_provider.id,
                         runtime_parameters={},
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,
@@ -498,34 +499,37 @@ class ToolManager:
         variable_pool: "VariablePool | None" = None,
         execution_driver: "WorkflowRunDriver | None" = None,
         workflow_tool_definition: WorkflowTool | None = None,
+        *,
+        tool_runtime: Tool | None = None,
     ) -> Tool:
         """
         get the workflow tool runtime
         """
 
-        if workflow_tool_definition is None:
-            tool_runtime = cls.get_tool_runtime(
-                provider_type=workflow_tool.provider_type,
-                provider_id=workflow_tool.provider_id,
-                tool_name=workflow_tool.tool_name,
-                tenant_id=tenant_id,
-                user_id=user_id,
-                invoke_from=invoke_from,
-                tool_invoke_from=ToolInvokeFrom.WORKFLOW,
-                credential_id=workflow_tool.credential_id,
-                execution_driver=execution_driver,
-            )
-        else:
-            tool_runtime = workflow_tool_definition.fork_tool_runtime(
-                runtime=ToolRuntime(
+        if tool_runtime is None:
+            if workflow_tool_definition is None:
+                tool_runtime = cls.get_tool_runtime(
+                    provider_type=workflow_tool.provider_type,
+                    provider_id=workflow_tool.provider_id,
+                    tool_name=workflow_tool.tool_name,
                     tenant_id=tenant_id,
                     user_id=user_id,
-                    credentials={},
                     invoke_from=invoke_from,
                     tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+                    credential_id=workflow_tool.credential_id,
+                    execution_driver=execution_driver,
                 )
-            )
-            tool_runtime.execution_driver = execution_driver
+            else:
+                tool_runtime = workflow_tool_definition.fork_tool_runtime(
+                    runtime=ToolRuntime(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        credentials={},
+                        invoke_from=invoke_from,
+                        tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+                    )
+                )
+                tool_runtime.execution_driver = execution_driver
 
         parameters = tool_runtime.get_merged_runtime_parameters()
         runtime_parameters = cls._convert_tool_parameters_type(

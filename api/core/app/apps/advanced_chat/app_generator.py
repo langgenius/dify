@@ -19,6 +19,7 @@ from constants import UUID_NIL
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
+from context.connection_execution import ConnectionExecutionContext
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
@@ -91,6 +92,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -106,6 +108,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Generator[Mapping | str]: ...
 
     @overload
@@ -121,6 +124,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping]: ...
 
     def generate(
@@ -135,6 +139,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping]:
         """
         Generate App response.
@@ -210,6 +215,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
             # init application generate entity
             application_generate_entity = AdvancedChatAppGenerateEntity(
+                connection_context=connection_context,
                 task_id=str(uuid.uuid4()),
                 app_config=app_config,
                 file_upload_config=file_extra_config,

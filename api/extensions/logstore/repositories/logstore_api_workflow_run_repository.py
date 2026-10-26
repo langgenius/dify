@@ -104,6 +104,7 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
 
     # Optional fields
     model.graph = data.get("graph")
+    model.connection_context = data.get("connection_context") or None
     model.inputs = data.get("inputs")
     model.outputs = data.get("outputs")
     model.error = data.get("error_message") or data.get("error")

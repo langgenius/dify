@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, create_autospec, patch
 import pytest
 
 import services.app_definition_query_service as module
+from constants.end_user_connections import ConnectionCredentialType
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from services.app_definition_query_service import (
     AppDefinitionNotPublishedError,
@@ -13,6 +14,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppToolIconSource,
 )
+from services.entities.tool_connection_entities import ToolConnectionRequirement
 
 _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/current/tool-provider/builtin/"
 
@@ -169,3 +171,76 @@ def test_get_site_configuration_rejects_missing_site() -> None:
 
     with pytest.raises(AppDefinitionUnavailableError, match="Site not found"):
         service.get_site_configuration("app-1")
+
+
+def test_web_parameters_include_version_and_requirements_without_changing_public_parameters() -> None:
+    service, definitions = _service()
+    parameters = AppParameterConfig(features_dict={"opening_statement": "Hello"}, user_input_form=[])
+    definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
+        parameters=parameters,
+        workflow_id="published-version",
+        requires_end_user_connections=True,
+        connection_requirements=(
+            ToolConnectionRequirement(
+                node_id="tool-1",
+                node_ids=("tool-1", "tool-2"),
+                title="tool-1",
+                purpose="Read events",
+                provider="vendor/calendar/calendar",
+                allowed_credential_types=(ConnectionCredentialType.API_KEY,),
+            ),
+        ),
+    )
+    definitions.get_published_parameter_config.return_value = parameters
+    result = service.get_web_parameters("app-1", "tenant-1")
+    assert result["workflow_id"] == "published-version"
+    assert result["requires_end_user_connections"] is True
+    requirement = result["connection_requirements"][0]
+    assert requirement.node_id == "tool-1"
+    assert requirement.node_ids == ("tool-1", "tool-2")
+    assert requirement.provider == "vendor/calendar/calendar"
+    assert requirement.title == "tool-1"
+    assert requirement.purpose == "Read events"
+    assert result["opening_statement"] == "Hello"
+    definitions.get_web_parameter_config.assert_called_once_with("app-1", "tenant-1")
+    public = service.get_public_parameters("app-1")
+    assert "workflow_id" not in public
+    assert "requires_end_user_connections" not in public
+    assert "connection_requirements" not in public
+
+
+@pytest.mark.parametrize(
+    ("source_error", "expected_error"),
+    [
+        (AgentAppNotPublishedError("unpublished"), AppDefinitionNotPublishedError),
+        (AgentAppGeneratorError("missing"), AppDefinitionUnavailableError),
+    ],
+)
+def test_web_parameters_preserve_agent_publication_errors(
+    source_error: Exception, expected_error: type[Exception]
+) -> None:
+    service, definitions = _service()
+    definitions.get_web_parameter_config.side_effect = source_error
+    with pytest.raises(expected_error):
+        service.get_web_parameters("app-1", "tenant-1")
+
+
+@pytest.mark.parametrize("workflow_id", [None, "published-version"])
+def test_web_parameters_without_personal_tools_have_empty_requirements(workflow_id: str | None) -> None:
+    service, definitions = _service()
+    definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
+        parameters=AppParameterConfig(features_dict={}, user_input_form=[]),
+        workflow_id=workflow_id,
+        requires_end_user_connections=False,
+        connection_requirements=(),
+    )
+
+    assert service.get_web_parameters("app-1", "tenant-1")["connection_requirements"] == ()
+
+
+def test_unavailable_web_parameter_config_is_not_reported_as_connection_free() -> None:
+    service, definitions = _service()
+    definitions.get_web_parameter_config.return_value = None
+
+    with pytest.raises(AppDefinitionUnavailableError):
+        service.get_web_parameters("app-1", "tenant-1")

@@ -113,6 +113,9 @@ export type BrandingModel = {
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type ChatMessagePayload = {
+  connections?: {
+    [key: string]: string | null
+  } | null
   conversation_id?: string | null
   files?: Array<{
     [key: string]: unknown
@@ -124,6 +127,7 @@ export type ChatMessagePayload = {
   query: string
   response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
+  workflow_id?: string | null
 }
 
 export type CompletionMessagePayload = {
@@ -140,6 +144,63 @@ export type CompletionMessagePayload = {
 
 export type CompletionRequestError = ErrorResponse & {
   code: 'completion_request_error'
+  status: 400
+}
+
+export type ConnectionConfigurationInvalidError = ErrorResponse & {
+  code: 'connection_configuration_invalid'
+  status: 400
+}
+
+export type ConnectionConfigurationResponse = {
+  connections: {
+    [key: string]: EndUserConnectionResponse | null
+  }
+}
+
+export type ConnectionConflictError = ErrorResponse & {
+  code: 'connection_conflict'
+  status: 409
+}
+
+export type ConnectionCredentialStatus = 'connected' | 'invalid' | 'reconnect_required'
+
+export type ConnectionCredentialType = 'api-key' | 'oauth2'
+
+export type ConnectionCredentialsInvalidError = ErrorResponse & {
+  code: 'connection_credentials_invalid'
+  status: 400
+}
+
+export type ConnectionCredentialsUnavailableError = ErrorResponse & {
+  code: 'connection_credentials_unavailable'
+  status: 503
+}
+
+export type ConnectionNotFoundError = ErrorResponse & {
+  code: 'connection_not_found'
+  status: 404
+}
+
+export type ConnectionOauthFailedError = ErrorResponse & {
+  code: 'connection_oauth_failed'
+  status: 400
+}
+
+export type ConnectionPreflightStatus = {
+  check: CredentialCheckResult | null
+  connection_id: string | null
+  node_id: string
+  status: NodeConnectionStatus | null
+}
+
+export type ConnectionReauthorizationRequiredError = ErrorResponse & {
+  code: 'connection_reauthorization_required'
+  status: 409
+}
+
+export type ConnectionRequiredError = ErrorResponse & {
+  code: 'connection_required'
   status: 400
 }
 
@@ -170,6 +231,26 @@ export type ConversationRenamePayload = (
   name?: string | null
 }
 
+export type CredentialCheckResult = {
+  checked_at: number
+  reason_code:
+    | 'credential_expired'
+    | 'credential_invalid'
+    | 'credential_revoked'
+    | 'provider_network_error'
+    | 'provider_rate_limited'
+    | 'provider_timeout'
+    | 'provider_unavailable'
+    | null
+  retryable: boolean
+  status: 'invalid' | 'temporarily_unavailable' | 'unsupported' | 'valid'
+}
+
+export type CredentialCheckUnavailableError = ErrorResponse & {
+  code: 'credential_check_unavailable'
+  status: 503
+}
+
 export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 
 export type EmailCodeError = ErrorResponse & {
@@ -196,6 +277,76 @@ export type EmailPasswordResetLimitError = ErrorResponse & {
 export type EmailSendIpLimitError = ErrorResponse & {
   code: 'email_send_ip_limit'
   status: 429
+}
+
+export type EndUserConnectionCreatePayload = {
+  credentials: {
+    [key: string]: JsonValue
+  }
+  name: string
+  node_id: string
+  workflow_id: string
+}
+
+export type EndUserConnectionListQuery = {
+  cursor?: string | null
+  limit?: number
+  provider?: string | null
+}
+
+export type EndUserConnectionListResponse = {
+  data: Array<EndUserConnectionResponse>
+  has_more: boolean
+  next_cursor: string | null
+}
+
+export type EndUserConnectionOAuthPayload = {
+  name: string
+  node_id: string
+  workflow_id: string
+}
+
+export type EndUserConnectionOAuthResponse = {
+  authorization_url: string
+}
+
+export type EndUserConnectionPreflightPayload = {
+  connections: {
+    [key: string]: string | null
+  }
+  conversation_id?: string | null
+  workflow_id: string
+}
+
+export type EndUserConnectionPreflightResponse = {
+  connections: Array<ConnectionPreflightStatus>
+  readonly ready: boolean
+  workflow_id: string
+}
+
+export type EndUserConnectionResponse = {
+  account_label: string | null
+  created_at: number
+  credential_status: ConnectionCredentialStatus
+  credential_type: ConnectionCredentialType
+  expires_at: number | null
+  id: string
+  last_active_at: number
+  name: string
+  provider: string
+  updated_at: number
+}
+
+export type EndUserConnectionUpdatePayload = {
+  credentials?: {
+    [key: string]: JsonValue
+  }
+  name?: string
+}
+
+export type EndUserLoginRequiredError = ErrorResponse & {
+  code: 'end_user_login_required'
+  status: 401
 }
 
 export type ErrorResponse = {
@@ -436,6 +587,8 @@ export type LicenseStatusModel = {
   status: LicenseStatus
 }
 
+export type LoginMode = 'console' | 'end_user'
+
 export type LoginPayload = {
   email: string
   password: string
@@ -443,6 +596,7 @@ export type LoginPayload = {
 
 export type LoginStatusQuery = {
   app_code?: string | null
+  mode?: LoginMode
   user_id?: string | null
 }
 
@@ -498,6 +652,8 @@ export type NoFileUploadedError = ErrorResponse & {
   status: 400
 }
 
+export type NodeConnectionStatus = 'connected' | 'disconnected' | 'invalid' | 'reconnect_required'
+
 export type NotChatAppError = ErrorResponse & {
   code: 'not_chat_app'
   status: 400
@@ -519,10 +675,348 @@ export type ParagraphInputConfig = {
   type?: 'paragraph'
 }
 
-export type Parameters = {
+export type PassportAccessTokenResponse = {
+  access_token: string
+}
+
+export type PassportLoginPayload = {
+  code_verifier: string
+  login_code: string
+}
+
+export type PassportLoginResponse = {
+  access_token: string
+  webapp_access_token: string
+}
+
+export type PassportQuery = {
+  mode?: LoginMode
+  user_id?: string | null
+}
+
+export type PasswordMismatchError = ErrorResponse & {
+  code: 'password_mismatch'
+  status: 400
+}
+
+export type PasswordResetRateLimitExceededError = ErrorResponse & {
+  code: 'password_reset_rate_limit_exceeded'
+  status: 429
+}
+
+export type PluginInstallationPermissionModel = {
+  plugin_installation_scope: PluginInstallationScope
+  restrict_to_marketplace_only: boolean
+}
+
+export type PluginInstallationScope =
+  | 'all'
+  | 'none'
+  | 'official_and_specific_partners'
+  | 'official_only'
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderNotSupportSpeechToTextError = ErrorResponse & {
+  code: 'provider_not_support_speech_to_text'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type RateLimitError = ErrorResponse & {
+  code: 'rate_limit_error'
+  status: 429
+}
+
+export type RemoteFileAccessDeniedError = ErrorResponse & {
+  code: 'remote_file_access_denied'
+  status: 400
+}
+
+export type RemoteFileInfo = {
+  file_length: number
+  file_type: string
+}
+
+export type RemoteFileInvalidResponseError = ErrorResponse & {
+  code: 'remote_file_invalid_response'
+  status: 502
+}
+
+export type RemoteFileInvalidUrlError = ErrorResponse & {
+  code: 'remote_file_invalid_url'
+  status: 400
+}
+
+export type RemoteFileNotFoundError = ErrorResponse & {
+  code: 'remote_file_not_found'
+  status: 404
+}
+
+export type RemoteFileUnavailableError = ErrorResponse & {
+  code: 'remote_file_unavailable'
+  status: 502
+}
+
+export type RemoteFileUploadPayload = {
+  url: string
+}
+
+export type RemoteFileUrlBlockedError = ErrorResponse & {
+  code: 'remote_file_url_blocked'
+  status: 400
+}
+
+export type ResultResponse = {
+  result: string
+}
+
+export type RetrieverResource = {
+  content?: string | null
+  created_at?: number | null
+  data_source_type?: string | null
+  dataset_id?: string | null
+  dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: JsonValueType
+  } | null
+  document_asset_id?: string | null
+  document_id?: string | null
+  document_name?: string | null
+  document_revision?: number | null
+  document_version?: number | null
+  files?: Array<{
+    [key: string]: JsonValueType
+  }> | null
+  hit_count?: number | null
+  id?: string
+  index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
+  message_id?: string
+  page?: number | null
+  position: number
+  retriever_from?: string | null
+  score?: number | null
+  segment_id?: string | null
+  segment_position?: number | null
+  summary?: string | null
+  title?: string | null
+  word_count?: number | null
+}
+
+export type SsoProtocol = 'oauth2' | 'oidc' | 'saml'
+
+export type SavedMessageCreatePayload = {
+  message_id: string
+}
+
+export type SavedMessageInfiniteScrollPagination = {
+  data: Array<SavedMessageItem>
+  has_more: boolean
+  limit: number
+}
+
+export type SavedMessageItem = {
+  answer: string
+  created_at?: number | null
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  query: string
+}
+
+export type SavedMessageListQuery = {
+  last_id?: string | null
+  limit?: number
+}
+
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type ShallowJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: unknown
+    }
+  | Array<unknown>
+  | null
+
+export type SimpleConversation = {
+  created_at?: number | null
+  id: string
+  inputs: {
+    [key: string]: AnyJsonValue
+  }
+  introduction?: string | null
+  name: string
+  status: string
+  updated_at?: number | null
+}
+
+export type SimpleFeedback = {
+  rating?: string | null
+}
+
+export type SimpleResultDataResponse = {
+  data: string
+  result: string
+}
+
+export type SimpleResultResponse = {
+  result: string
+}
+
+export type SpeechToTextDisabledError = ErrorResponse & {
+  code: 'speech_to_text_disabled'
+  status: 400
+}
+
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
+
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
+}
+
+export type SuggestedQuestionsResponse = {
+  data: Array<string>
+}
+
+export type SystemFeatureModel = {
+  agent_tracing_api_collection_enabled: boolean
+  branding: BrandingModel
+  deployment_edition: DeploymentEdition
+  enable_app_deploy: boolean
+  enable_change_email: boolean
+  enable_collaboration_mode: boolean
+  enable_creators_platform: boolean
+  enable_email_code_login: boolean
+  enable_email_password_login: boolean
+  enable_explore_banner: boolean
+  enable_learn_app: boolean
+  enable_marketplace: boolean
+  enable_social_oauth_login: boolean
+  enable_step_by_step_tour: boolean
+  is_allow_register: boolean
+  is_email_setup: boolean
+  license: LicenseStatusModel
+  plugin_installation_permission: PluginInstallationPermissionModel
+  rbac_enabled: boolean
+  sso_enforced_for_signin: boolean
+  sso_enforced_for_signin_protocol: SsoProtocol | null
+  webapp_auth: WebAppAuthModel
+}
+
+export type SystemParameters = {
+  audio_file_size_limit: number
+  file_size_limit: number
+  image_file_size_limit: number
+  video_file_size_limit: number
+  workflow_file_upload_limit: number
+}
+
+export type TextToAudioPayload = {
+  message_id?: string | null
+  streaming?: boolean | null
+  text?: string | null
+  voice?: string | null
+}
+
+export type TooManyFilesError = ErrorResponse & {
+  code: 'too_many_files'
+  status: 400
+}
+
+export type ToolConnectionRequirement = {
+  allowed_credential_types: Array<ConnectionCredentialType>
+  node_id: string
+  node_ids: Array<string>
+  provider: string
+  purpose: string
+  title: string
+}
+
+export type TriggerWorkflowServiceModeUnavailableError = ErrorResponse & {
+  code: 'trigger_workflow_service_mode_unavailable'
+  status: 403
+}
+
+export type UnsupportedAudioTypeError = ErrorResponse & {
+  code: 'unsupported_audio_type'
+  status: 415
+}
+
+export type UnsupportedFileTypeError = ErrorResponse & {
+  code: 'unsupported_file_type'
+  status: 415
+}
+
+export type UploadTokenRequiredError = ErrorResponse & {
+  code: 'upload_token_required'
+  status: 401
+}
+
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type ValueSourceType = 'constant' | 'variable'
+
+export type VerificationTokenResponse = {
+  email: string
+  is_valid: boolean
+  token: string
+}
+
+export type WebAppAuthModel = {
+  allow_email_code_login: boolean
+  allow_email_password_login: boolean
+  allow_public_access: boolean
+  allow_sso: boolean
+  enabled: boolean
+  sso_config: WebAppAuthSsoModel
+}
+
+export type WebAppAuthSsoModel = {
+  protocol: SsoProtocol | null
+}
+
+export type WebAppCustomConfigResponse = {
+  remove_webapp_brand: boolean
+  replace_webapp_logo?: string | null
+}
+
+export type WebAppParametersResponse = {
+  account_login_enabled: boolean
+  account_login_url: string | null
+  allow_anonymous_end_user_auth: boolean
   annotation_reply: {
     enabled?: boolean
   }
+  connection_requirements: Array<ToolConnectionRequirement>
   file_upload: {
     allowed_file_extensions?: Array<string>
     allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
@@ -540,6 +1034,7 @@ export type Parameters = {
     enabled?: boolean
   }
   opening_statement?: string | null
+  requires_end_user_connections: boolean
   retriever_resource: {
     enabled?: boolean
   }
@@ -841,320 +1336,7 @@ export type Parameters = {
         }
       }
   >
-}
-
-export type PassportAccessTokenResponse = {
-  access_token: string
-}
-
-export type PassportQuery = {
-  user_id?: string | null
-}
-
-export type PasswordMismatchError = ErrorResponse & {
-  code: 'password_mismatch'
-  status: 400
-}
-
-export type PasswordResetRateLimitExceededError = ErrorResponse & {
-  code: 'password_reset_rate_limit_exceeded'
-  status: 429
-}
-
-export type PluginInstallationPermissionModel = {
-  plugin_installation_scope: PluginInstallationScope
-  restrict_to_marketplace_only: boolean
-}
-
-export type PluginInstallationScope =
-  | 'all'
-  | 'none'
-  | 'official_and_specific_partners'
-  | 'official_only'
-
-export type ProviderNotInitializeError = ErrorResponse & {
-  code: 'provider_not_initialize'
-  status: 400
-}
-
-export type ProviderNotSupportSpeechToTextError = ErrorResponse & {
-  code: 'provider_not_support_speech_to_text'
-  status: 400
-}
-
-export type ProviderQuotaExceededError = ErrorResponse & {
-  code: 'provider_quota_exceeded'
-  status: 400
-}
-
-export type RateLimitError = ErrorResponse & {
-  code: 'rate_limit_error'
-  status: 429
-}
-
-export type RemoteFileAccessDeniedError = ErrorResponse & {
-  code: 'remote_file_access_denied'
-  status: 400
-}
-
-export type RemoteFileInfo = {
-  file_length: number
-  file_type: string
-}
-
-export type RemoteFileInvalidResponseError = ErrorResponse & {
-  code: 'remote_file_invalid_response'
-  status: 502
-}
-
-export type RemoteFileInvalidUrlError = ErrorResponse & {
-  code: 'remote_file_invalid_url'
-  status: 400
-}
-
-export type RemoteFileNotFoundError = ErrorResponse & {
-  code: 'remote_file_not_found'
-  status: 404
-}
-
-export type RemoteFileUnavailableError = ErrorResponse & {
-  code: 'remote_file_unavailable'
-  status: 502
-}
-
-export type RemoteFileUploadPayload = {
-  url: string
-}
-
-export type RemoteFileUrlBlockedError = ErrorResponse & {
-  code: 'remote_file_url_blocked'
-  status: 400
-}
-
-export type ResultResponse = {
-  result: string
-}
-
-export type RetrieverResource = {
-  content?: string | null
-  created_at?: number | null
-  data_source_type?: string | null
-  dataset_id?: string | null
-  dataset_name?: string | null
-  doc_metadata?: {
-    [key: string]: JsonValueType
-  } | null
-  document_asset_id?: string | null
-  document_id?: string | null
-  document_name?: string | null
-  document_revision?: number | null
-  document_version?: number | null
-  files?: Array<{
-    [key: string]: JsonValueType
-  }> | null
-  hit_count?: number | null
-  id?: string
-  index_node_hash?: string | null
-  knowledge_fs_citation?: KnowledgeFsCitation | null
-  message_id?: string
-  page?: number | null
-  position: number
-  retriever_from?: string | null
-  score?: number | null
-  segment_id?: string | null
-  segment_position?: number | null
-  summary?: string | null
-  title?: string | null
-  word_count?: number | null
-}
-
-export type SsoProtocol = 'oauth2' | 'oidc' | 'saml'
-
-export type SavedMessageCreatePayload = {
-  message_id: string
-}
-
-export type SavedMessageInfiniteScrollPagination = {
-  data: Array<SavedMessageItem>
-  has_more: boolean
-  limit: number
-}
-
-export type SavedMessageItem = {
-  answer: string
-  created_at?: number | null
-  feedback?: SimpleFeedback | null
-  id: string
-  inputs: {
-    [key: string]: JsonValueType
-  }
-  message_files: Array<MessageFile>
-  query: string
-}
-
-export type SavedMessageListQuery = {
-  last_id?: string | null
-  limit?: number
-}
-
-export type SelectInputConfig = {
-  option_source: StringListSource
-  output_variable_name: string
-  type?: 'select'
-}
-
-export type ShallowJsonValue =
-  | string
-  | number
-  | number
-  | boolean
-  | {
-      [key: string]: unknown
-    }
-  | Array<unknown>
-  | null
-
-export type SimpleConversation = {
-  created_at?: number | null
-  id: string
-  inputs: {
-    [key: string]: AnyJsonValue
-  }
-  introduction?: string | null
-  name: string
-  status: string
-  updated_at?: number | null
-}
-
-export type SimpleFeedback = {
-  rating?: string | null
-}
-
-export type SimpleResultDataResponse = {
-  data: string
-  result: string
-}
-
-export type SimpleResultResponse = {
-  result: string
-}
-
-export type SpeechToTextDisabledError = ErrorResponse & {
-  code: 'speech_to_text_disabled'
-  status: 400
-}
-
-export type StringListSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: Array<string>
-}
-
-export type StringSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: string
-}
-
-export type SuggestedQuestionsResponse = {
-  data: Array<string>
-}
-
-export type SystemFeatureModel = {
-  agent_tracing_api_collection_enabled: boolean
-  branding: BrandingModel
-  deployment_edition: DeploymentEdition
-  enable_app_deploy: boolean
-  enable_change_email: boolean
-  enable_collaboration_mode: boolean
-  enable_creators_platform: boolean
-  enable_email_code_login: boolean
-  enable_email_password_login: boolean
-  enable_explore_banner: boolean
-  enable_learn_app: boolean
-  enable_marketplace: boolean
-  enable_social_oauth_login: boolean
-  enable_step_by_step_tour: boolean
-  is_allow_register: boolean
-  is_email_setup: boolean
-  license: LicenseStatusModel
-  plugin_installation_permission: PluginInstallationPermissionModel
-  rbac_enabled: boolean
-  sso_enforced_for_signin: boolean
-  sso_enforced_for_signin_protocol: SsoProtocol | null
-  webapp_auth: WebAppAuthModel
-}
-
-export type SystemParameters = {
-  audio_file_size_limit: number
-  file_size_limit: number
-  image_file_size_limit: number
-  video_file_size_limit: number
-  workflow_file_upload_limit: number
-}
-
-export type TextToAudioPayload = {
-  message_id?: string | null
-  streaming?: boolean | null
-  text?: string | null
-  voice?: string | null
-}
-
-export type TooManyFilesError = ErrorResponse & {
-  code: 'too_many_files'
-  status: 400
-}
-
-export type TriggerWorkflowServiceModeUnavailableError = ErrorResponse & {
-  code: 'trigger_workflow_service_mode_unavailable'
-  status: 403
-}
-
-export type UnsupportedAudioTypeError = ErrorResponse & {
-  code: 'unsupported_audio_type'
-  status: 415
-}
-
-export type UnsupportedFileTypeError = ErrorResponse & {
-  code: 'unsupported_file_type'
-  status: 415
-}
-
-export type UploadTokenRequiredError = ErrorResponse & {
-  code: 'upload_token_required'
-  status: 401
-}
-
-export type UserActionConfig = {
-  button_style?: ButtonStyle
-  id: string
-  title: string
-}
-
-export type ValueSourceType = 'constant' | 'variable'
-
-export type VerificationTokenResponse = {
-  email: string
-  is_valid: boolean
-  token: string
-}
-
-export type WebAppAuthModel = {
-  allow_email_code_login: boolean
-  allow_email_password_login: boolean
-  allow_public_access: boolean
-  allow_sso: boolean
-  enabled: boolean
-  sso_config: WebAppAuthSsoModel
-}
-
-export type WebAppAuthSsoModel = {
-  protocol: SsoProtocol | null
-}
-
-export type WebAppCustomConfigResponse = {
-  remove_webapp_brand: boolean
-  replace_webapp_logo?: string | null
+  workflow_id: string | null
 }
 
 export type WebAppSiteResponse = {
@@ -1172,6 +1354,11 @@ export type WebAppSiteResponse = {
 export type WebFormRateLimitExceededError = ErrorResponse & {
   code: 'web_form_rate_limit_exceeded'
   status: 429
+}
+
+export type WebLoginUnavailableError = ErrorResponse & {
+  code: 'web_login_unavailable'
+  status: 503
 }
 
 export type WebMessageInfiniteScrollPagination = {
@@ -1235,7 +1422,15 @@ export type WebSiteResponse = {
   use_icon_as_answer_icon?: boolean | null
 }
 
+export type WorkflowChangedError = ErrorResponse & {
+  code: 'workflow_changed'
+  status: 409
+}
+
 export type WorkflowRunPayload = {
+  connections?: {
+    [key: string]: string | null
+  } | null
   files?: Array<
     | {
         remote_url?: string
@@ -1269,6 +1464,12 @@ export type WorkflowRunPayload = {
   inputs: {
     [key: string]: unknown
   }
+  workflow_id?: string | null
+}
+
+export type EndUserConnectionPreflightResponseWritable = {
+  connections: Array<ConnectionPreflightStatus>
+  workflow_id: string
 }
 
 export type GeneratedAppResponseWritable = ShallowJsonValue
@@ -1353,15 +1554,24 @@ export type PostChatMessagesErrors = {
     | AgentNotPublishedError
     | AppUnavailableError
     | CompletionRequestError
+    | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: ErrorResponse
-  404: ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | WorkflowChangedError
+    | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1458,6 +1668,241 @@ export type PostCompletionMessagesByTaskIdStopResponses = {
 
 export type PostCompletionMessagesByTaskIdStopResponse =
   PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
+
+export type GetConnectionsData = {
+  body?: never
+  path?: never
+  query?: {
+    cursor?: string
+    limit?: number
+    provider?: string
+  }
+  url: '/connections'
+}
+
+export type GetConnectionsErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsError = GetConnectionsErrors[keyof GetConnectionsErrors]
+
+export type GetConnectionsResponses = {
+  200: EndUserConnectionListResponse
+}
+
+export type GetConnectionsResponse = GetConnectionsResponses[keyof GetConnectionsResponses]
+
+export type PostConnectionsData = {
+  body: EndUserConnectionCreatePayload
+  path?: never
+  query?: never
+  url: '/connections'
+}
+
+export type PostConnectionsErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionCredentialsInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  409: WorkflowChangedError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsError = PostConnectionsErrors[keyof PostConnectionsErrors]
+
+export type PostConnectionsResponses = {
+  201: EndUserConnectionResponse
+}
+
+export type PostConnectionsResponse = PostConnectionsResponses[keyof PostConnectionsResponses]
+
+export type GetConnectionsConfigurationData = {
+  body?: never
+  path?: never
+  query?: {
+    conversation_id?: string
+  }
+  url: '/connections/configuration'
+}
+
+export type GetConnectionsConfigurationErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsConfigurationError =
+  GetConnectionsConfigurationErrors[keyof GetConnectionsConfigurationErrors]
+
+export type GetConnectionsConfigurationResponses = {
+  200: ConnectionConfigurationResponse
+}
+
+export type GetConnectionsConfigurationResponse =
+  GetConnectionsConfigurationResponses[keyof GetConnectionsConfigurationResponses]
+
+export type PostConnectionsOauthAuthorizationUrlData = {
+  body: EndUserConnectionOAuthPayload
+  path?: never
+  query?: never
+  url: '/connections/oauth/authorization-url'
+}
+
+export type PostConnectionsOauthAuthorizationUrlErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionOauthFailedError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | WorkflowChangedError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsOauthAuthorizationUrlError =
+  PostConnectionsOauthAuthorizationUrlErrors[keyof PostConnectionsOauthAuthorizationUrlErrors]
+
+export type PostConnectionsOauthAuthorizationUrlResponses = {
+  200: EndUserConnectionOAuthResponse
+}
+
+export type PostConnectionsOauthAuthorizationUrlResponse =
+  PostConnectionsOauthAuthorizationUrlResponses[keyof PostConnectionsOauthAuthorizationUrlResponses]
+
+export type PostConnectionsPreflightData = {
+  body: EndUserConnectionPreflightPayload
+  path?: never
+  query?: never
+  url: '/connections/preflight'
+}
+
+export type PostConnectionsPreflightErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | WorkflowChangedError
+    | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsPreflightError =
+  PostConnectionsPreflightErrors[keyof PostConnectionsPreflightErrors]
+
+export type PostConnectionsPreflightResponses = {
+  200: EndUserConnectionPreflightResponse
+}
+
+export type PostConnectionsPreflightResponse =
+  PostConnectionsPreflightResponses[keyof PostConnectionsPreflightResponses]
+
+export type DeleteConnectionsByConnectionIdData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}'
+}
+
+export type DeleteConnectionsByConnectionIdErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionConflictError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type DeleteConnectionsByConnectionIdError =
+  DeleteConnectionsByConnectionIdErrors[keyof DeleteConnectionsByConnectionIdErrors]
+
+export type DeleteConnectionsByConnectionIdResponses = {
+  204: void
+}
+
+export type DeleteConnectionsByConnectionIdResponse =
+  DeleteConnectionsByConnectionIdResponses[keyof DeleteConnectionsByConnectionIdResponses]
+
+export type GetConnectionsByConnectionIdData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}'
+}
+
+export type GetConnectionsByConnectionIdErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsByConnectionIdError =
+  GetConnectionsByConnectionIdErrors[keyof GetConnectionsByConnectionIdErrors]
+
+export type GetConnectionsByConnectionIdResponses = {
+  200: EndUserConnectionResponse
+}
+
+export type GetConnectionsByConnectionIdResponse =
+  GetConnectionsByConnectionIdResponses[keyof GetConnectionsByConnectionIdResponses]
+
+export type PatchConnectionsByConnectionIdData = {
+  body: EndUserConnectionUpdatePayload
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}'
+}
+
+export type PatchConnectionsByConnectionIdErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionCredentialsInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionConflictError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PatchConnectionsByConnectionIdError =
+  PatchConnectionsByConnectionIdErrors[keyof PatchConnectionsByConnectionIdErrors]
+
+export type PatchConnectionsByConnectionIdResponses = {
+  200: EndUserConnectionResponse
+}
+
+export type PatchConnectionsByConnectionIdResponse =
+  PatchConnectionsByConnectionIdResponses[keyof PatchConnectionsByConnectionIdResponses]
+
+export type PostConnectionsByConnectionIdReauthorizeData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}/reauthorize'
+}
+
+export type PostConnectionsByConnectionIdReauthorizeErrors = {
+  400: ConnectionConfigurationInvalidError | ConnectionOauthFailedError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostConnectionsByConnectionIdReauthorizeError =
+  PostConnectionsByConnectionIdReauthorizeErrors[keyof PostConnectionsByConnectionIdReauthorizeErrors]
+
+export type PostConnectionsByConnectionIdReauthorizeResponses = {
+  200: EndUserConnectionOAuthResponse
+}
+
+export type PostConnectionsByConnectionIdReauthorizeResponse =
+  PostConnectionsByConnectionIdReauthorizeResponses[keyof PostConnectionsByConnectionIdReauthorizeResponses]
 
 export type GetConversationsData = {
   body?: never
@@ -1889,6 +2334,7 @@ export type GetLoginStatusData = {
   path?: never
   query?: {
     app_code?: string
+    mode?: 'console' | 'end_user'
     user_id?: string
   }
   url: '/login/status'
@@ -2096,7 +2542,7 @@ export type GetParametersErrors = {
 export type GetParametersError = GetParametersErrors[keyof GetParametersErrors]
 
 export type GetParametersResponses = {
-  200: Parameters
+  200: WebAppParametersResponse
 }
 
 export type GetParametersResponse = GetParametersResponses[keyof GetParametersResponses]
@@ -2105,13 +2551,14 @@ export type GetPassportData = {
   body?: never
   path?: never
   query?: {
+    mode?: 'console' | 'end_user'
     user_id?: string
   }
   url: '/passport'
 }
 
 export type GetPassportErrors = {
-  401: ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2123,6 +2570,30 @@ export type GetPassportResponses = {
 }
 
 export type GetPassportResponse = GetPassportResponses[keyof GetPassportResponses]
+
+export type PostPassportData = {
+  body: PassportLoginPayload
+  headers: {
+    'X-App-Code': string
+  }
+  path?: never
+  query?: never
+  url: '/passport'
+}
+
+export type PostPassportErrors = {
+  401: EndUserLoginRequiredError | ErrorResponse
+  503: WebLoginUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostPassportError = PostPassportErrors[keyof PostPassportErrors]
+
+export type PostPassportResponses = {
+  200: PassportLoginResponse
+}
+
+export type PostPassportResponse = PostPassportResponses[keyof PostPassportResponses]
 
 export type PostRemoteFilesUploadData = {
   body: RemoteFileUploadPayload
@@ -2426,16 +2897,25 @@ export type PostWorkflowsRunData = {
 export type PostWorkflowsRunErrors = {
   400:
     | CompletionRequestError
+    | ConnectionConfigurationInvalidError
+    | ConnectionCredentialsInvalidError
+    | ConnectionRequiredError
     | ModelCurrentlyNotSupportError
     | NotWorkflowAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  401: ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
   403: TriggerWorkflowServiceModeUnavailableError | ErrorResponse
-  404: ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  409:
+    | ConnectionConflictError
+    | ConnectionReauthorizationRequiredError
+    | WorkflowChangedError
+    | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
+  503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

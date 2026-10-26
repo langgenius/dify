@@ -6,11 +6,26 @@ from typing import Any, NamedTuple, Protocol
 
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from services.entities.tool_connection_entities import ToolConnectionRequirement
 
 
 class AppParameterConfig(NamedTuple):
     features_dict: Mapping[str, Any]
     user_input_form: list[dict[str, Any]]
+
+
+class WebAppParameterConfig(NamedTuple):
+    parameters: AppParameterConfig
+    # Non-workflow app modes have no workflow version or personal tool requirements.
+    workflow_id: str | None
+    requires_end_user_connections: bool
+    connection_requirements: tuple[ToolConnectionRequirement, ...]
+
+
+class WebAppParametersDict(AppParametersDict):
+    workflow_id: str | None
+    requires_end_user_connections: bool
+    connection_requirements: tuple[ToolConnectionRequirement, ...]
 
 
 class AppToolIconSource(NamedTuple):
@@ -55,6 +70,8 @@ class AppDefinitionQuery(Protocol):
         *,
         public_runtime: bool = False,
     ) -> AppParameterConfig | None: ...
+
+    def get_web_parameter_config(self, app_id: str, tenant_id: str) -> WebAppParameterConfig | None: ...
 
     def get_tool_icon_sources(self, app_id: str) -> Sequence[AppToolIconSource] | None: ...
 
@@ -104,6 +121,23 @@ class AppDefinitionQueryService:
             raise AppDefinitionUnavailableError from None
 
         return self._map_parameters(config)
+
+    def get_web_parameters(self, app_id: str, tenant_id: str) -> WebAppParametersDict:
+        """Read inputs and connection requirements from one published definition."""
+        try:
+            config = self._definitions.get_web_parameter_config(app_id, tenant_id)
+        except AgentAppNotPublishedError:
+            raise AppDefinitionNotPublishedError from None
+        except AgentAppGeneratorError:
+            raise AppDefinitionUnavailableError from None
+        if config is None:
+            raise AppDefinitionUnavailableError()
+        return {
+            **self._map_parameters(config.parameters),
+            "workflow_id": config.workflow_id,
+            "requires_end_user_connections": config.requires_end_user_connections,
+            "connection_requirements": config.connection_requirements,
+        }
 
     @staticmethod
     def _map_parameters(config: AppParameterConfig | None) -> AppParametersDict:
