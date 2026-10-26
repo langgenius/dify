@@ -249,6 +249,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
+  const { documentDisplayStatus } = await import('../model')
   const forever = () => new Promise<never>(() => {})
   const track = async <T,>(read: () => Promise<T> | T) => {
     server.inflight += 1
@@ -276,7 +277,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
   const paged =
     <Item,>(resource: string, state: PagedState<Item>, toApi: (item: Item) => unknown) =>
-    (input: { query?: { cursor?: string } }) => {
+    (input: { query?: { cursor?: string; query?: string; status?: string } }) => {
       record(resource, input)
       if (state.isPending || (!state.data && !state.error)) return forever()
       return track(async () => {
@@ -312,6 +313,42 @@ vi.mock('@/service/console', async (importOriginal) => {
             : cursor.startsWith('page-')
               ? Number(cursor.slice('page-'.length))
               : pages.length
+        // The service filters the collection before applying its cursor. Fixtures describe the
+        // available collection; hasNextPage can also model a still-unavailable matching page.
+        if (resource === 'documents' && (input.query?.query || input.query?.status)) {
+          const names = new Map(
+            sourcesQuery.data?.pages.flatMap((page) =>
+              page.items.map((item) => [item.id, item.name] as const),
+            ) ?? [],
+          )
+          const matches = (pages.flatMap((page) => page.items) as LogicalDocument[]).filter(
+            (item) => {
+              if (
+                input.query?.status &&
+                documentDisplayStatus(item, item.latestTask) !== input.query.status
+              )
+                return false
+              const name = item.sourceId ? names.get(item.sourceId) : undefined
+              return `${item.title} ${name ?? item.userMetadata.sourceName ?? ''}`
+                .toLowerCase()
+                .includes(input.query?.query?.toLowerCase() ?? '')
+            },
+          )
+          const offset = cursor?.startsWith('match-')
+            ? Number(cursor.slice(6))
+            : cursor
+              ? matches.length
+              : 0
+          return {
+            data: matches.slice(offset, offset + 50).map((item) => toApi(item as Item)),
+            next_cursor:
+              offset + 50 < matches.length
+                ? `match-${offset + 50}`
+                : state.hasNextPage
+                  ? 'unavailable-matches'
+                  : null,
+          }
+        }
         const page = pages[index]
         // A page the test has not described yet is the end of the list.
         if (!page) return { data: [], next_cursor: null }
@@ -3646,25 +3683,49 @@ describe('DocumentsPage', () => {
     }
   })
 
-  it('filters and searches documents while continuing through cursor pages', async () => {
+  it('searches the server and only fetches another matching page on request', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document({ title: 'Product handbook.pdf' })] }] }
+    documentsQuery.hasNextPage = true
+    documentsQuery.fetchNextPage.mockReturnValue(new Promise(() => {}))
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.type(screen.getByRole('searchbox'), 'later page')
+    await settle()
+    expect(lastInput('documents')).toMatchObject({ query: { query: 'later page' } })
+    expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(screen.queryByText('knowledgeDocuments.noMatchingDocuments')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+  })
+
+  it('finds a document beyond twenty unfiltered pages and clears an exhausted search', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
-      pages: [{ items: [document({ title: 'Product handbook.pdf' })], nextCursor: 'next' }],
+      pages: Array.from({ length: 21 }, (_, pageIndex) => ({
+        items: Array.from({ length: 50 }, (_, itemIndex) =>
+          document({
+            id: `doc-${pageIndex}-${itemIndex}`,
+            title:
+              pageIndex === 20 && itemIndex === 49
+                ? 'Unique late document.pdf'
+                : `Other ${pageIndex}-${itemIndex}`,
+          }),
+        ),
+      })),
     }
-    documentsQuery.hasNextPage = true
-    // The next page is still loading when the user filters.
-    documentsQuery.fetchNextPage.mockReturnValue(new Promise(() => {}))
-
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.type(
-      screen.getByRole('searchbox', { name: 'knowledgeDocuments.searchDocuments' }),
-      'later page',
-    )
-
-    expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
-    expect(screen.queryByText('knowledgeDocuments.noMatchingDocuments')).not.toBeInTheDocument()
-    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
-    expect(screen.getByText('knowledgeDocuments.partialDocumentResults')).toBeInTheDocument()
+    expect(screen.queryByText('Unique late document.pdf')).not.toBeInTheDocument()
+    await user.type(screen.getByRole('searchbox'), 'Unique late')
+    expect(await screen.findByText('Unique late document.pdf')).toBeInTheDocument()
+    expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(lastInput('documents')).toMatchObject({ query: { query: 'Unique late' } })
+    await user.clear(screen.getByRole('searchbox'))
+    await user.type(screen.getByRole('searchbox'), 'no such document')
+    expect(await screen.findByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+    expect(screen.getByRole('searchbox')).toHaveFocus()
+    await user.clear(screen.getByRole('searchbox'))
+    expect(await screen.findByText('Other 0-0')).toBeInTheDocument()
   })
 
   it('blocks selection until filtered cursor pages are complete', async () => {
@@ -4014,6 +4075,8 @@ describe('DocumentsPage', () => {
       'product',
     )
     await settle()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    await settle()
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
 
     expect(screen.getByRole('checkbox', { name: 'Product handbook.pdf' })).toHaveAttribute(
@@ -4045,6 +4108,8 @@ describe('DocumentsPage', () => {
       screen.getByRole('searchbox', { name: 'knowledgeDocuments.searchDocuments' }),
       'sso',
     )
+    await settle()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     await settle()
     const retry = screen.getByRole('button', {
       name: 'common.operation.retry · knowledgeSpace.documentsErrorDescription',
@@ -8468,7 +8533,7 @@ describe('DocumentsPage', () => {
     expect(tasksQuery.refetch).not.toHaveBeenCalled()
   })
 
-  it('keeps source-name searches partial while unresolved sources have more pages', async () => {
+  it('finishes a server search without waiting for unrelated source pages', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [
@@ -8488,11 +8553,11 @@ describe('DocumentsPage', () => {
       'source title from next page',
     )
 
-    expect(screen.queryByText('knowledgeDocuments.noMatchingDocuments')).not.toBeInTheDocument()
-    expect(screen.getByText('knowledgeDocuments.partialDocumentResults')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+    expect(documentsQuery.fetchNextPage).not.toHaveBeenCalled()
   })
 
-  it('bounds document and source pagination without scanning task history', async () => {
+  it('does not scan task or source history when paging search matches', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: Array.from({ length: 20 }, (_, index) => ({
@@ -8527,17 +8592,15 @@ describe('DocumentsPage', () => {
       'aria-describedby',
       'partial-document-results',
     )
-    const loadMore = screen.getByRole('button', { name: 'knowledgeSpace.loadMore' })
-    expect(loadMore).toBeInTheDocument()
     await user.clear(screen.getByRole('searchbox'))
     await user.type(screen.getByRole('searchbox'), 'missing')
     expect(screen.queryByText('knowledgeDocuments.noMatchingDocuments')).not.toBeInTheDocument()
     expect(screen.getByText('knowledgeDocuments.partialDocumentResults')).toBeInTheDocument()
-    await user.click(loadMore)
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
     await settle()
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
-    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
   })
 
   it('keeps task-history pagination out of document result pagination', async () => {
