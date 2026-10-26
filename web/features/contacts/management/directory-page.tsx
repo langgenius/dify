@@ -79,9 +79,9 @@ function ContactRow({
 }) {
   const { i18n, t } = useTranslation(['contacts'])
   return (
-    <tr className="h-12 shadow-[inset_0_-1px_0_0_var(--color-divider-subtle)] hover:bg-state-base-hover">
+    <tr className="relative isolate h-12 shadow-[inset_0_-1px_0_0_var(--color-divider-subtle)] hover:bg-state-base-hover">
       {selectionEnabled && (
-        <td className="w-8 px-2 py-2 text-center">
+        <td className="relative z-10 w-8 px-2 py-2 text-center">
           <Checkbox
             aria-label={t(($) => $['directory.selectContact'], { name: contact.name })}
             checked={selected}
@@ -91,11 +91,12 @@ function ContactRow({
         </td>
       )}
       <td className="p-0">
+        {/* Stretch the native details button across the row; independent controls stay above it. */}
         <button
           ref={registerTrigger}
           type="button"
           aria-label={t(($) => $['directory.openDetails'], { name: contact.name })}
-          className="flex h-12 w-full min-w-64 items-center gap-2.5 py-1 pr-2 pl-3 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
+          className="flex h-12 w-full min-w-64 cursor-pointer items-center gap-2.5 py-1 ps-3 pe-2 text-start after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
           onClick={onOpen}
         >
           <ContactAvatar avatar={contact.avatar_url || null} name={contact.name} size="md" />
@@ -379,7 +380,7 @@ export function ContactsDirectoryPage() {
           </h1>
           <a
             href="#contacts-help"
-            className="ml-auto inline-flex items-center gap-0.5 system-xs-regular text-text-tertiary hover:text-text-secondary hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="ms-auto inline-flex items-center gap-0.5 system-xs-regular text-text-tertiary hover:text-text-secondary hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             {t(($) => $['directory.learnMore'])}
             <span aria-hidden className="i-ri-external-link-line size-3" />
@@ -402,7 +403,7 @@ export function ContactsDirectoryPage() {
                   index < filters.length - 1 &&
                     kind !== filter &&
                     kind !== filters[index + 1] &&
-                    'after:absolute after:inset-y-1.75 after:right-0 after:w-px after:bg-divider-regular',
+                    'after:absolute after:inset-y-1.75 after:inset-e-0 after:w-px after:bg-divider-regular',
                 )}
               >
                 <span>{t(($) => $[`filter.${filter}`])}</span>
@@ -422,13 +423,13 @@ export function ContactsDirectoryPage() {
             onValueChange={updateSearch}
           />
           {context.permissions.canManageContacts && (
-            <div className="flex shrink-0 lg:ml-auto">
+            <div className="flex shrink-0 lg:ms-auto">
               {context.imBindingCentrallyManaged && repository.supportsPlatformImport !== false ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger render={<Button variant="primary" />}>
-                    <span aria-hidden className="mr-1 i-ri-add-line size-4" />
+                    <span aria-hidden className="me-1 i-ri-add-line size-4" />
                     {t(($) => $['directory.addContact'])}
-                    <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4" />
+                    <span aria-hidden className="ms-1 i-ri-arrow-down-s-line size-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="min-w-48">
                     <DropdownMenuItem className="gap-2" onClick={() => setPlatformDialogOpen(true)}>
@@ -449,7 +450,7 @@ export function ContactsDirectoryPage() {
                 </DropdownMenu>
               ) : (
                 <Button variant="primary" onClick={() => setExternalDialogOpen(true)}>
-                  <span aria-hidden className="mr-1 i-ri-add-line size-4" />
+                  <span aria-hidden className="me-1 i-ri-add-line size-4" />
                   {t(($) => $['directory.addExternal'])}
                 </Button>
               )}
@@ -530,7 +531,7 @@ export function ContactsDirectoryPage() {
                       <col className="w-40" />
                       <col className="w-40" />
                     </colgroup>
-                    <thead className="text-left system-xs-medium-uppercase text-text-tertiary">
+                    <thead className="text-start system-xs-medium-uppercase text-text-tertiary">
                       <tr className="h-7">
                         {context.permissions.canManageContacts && (
                           <th scope="col" className="w-8 px-2 text-center font-medium">
@@ -543,7 +544,7 @@ export function ContactsDirectoryPage() {
                             />
                           </th>
                         )}
-                        <th scope="col" className="pr-2 pl-3 font-medium">
+                        <th scope="col" className="ps-3 pe-2 font-medium">
                           {t(($) => $['directory.column.name'])}
                         </th>
                         <th scope="col" className="px-3 font-medium">
@@ -655,7 +656,7 @@ export function ContactsDirectoryPage() {
         )}
       </div>
       {(selectedContactIds.length > 0 || removalError) && (
-        <div className="pointer-events-none absolute right-0 bottom-6 left-0 z-20 flex justify-center px-4">
+        <div className="pointer-events-none absolute inset-s-0 inset-e-0 bottom-6 z-20 flex justify-center px-4">
           <div className="pointer-events-auto flex flex-col items-center gap-1">
             {removalError && (
               <p
@@ -670,7 +671,7 @@ export function ContactsDirectoryPage() {
                 aria-live="polite"
                 className="flex items-center gap-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]"
               >
-                <div className="inline-flex items-center gap-2 py-1 pr-3 pl-2">
+                <div className="inline-flex items-center gap-2 py-1 ps-2 pe-3">
                   <span className="flex size-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
                     {selectedContactIds.length}
                   </span>
