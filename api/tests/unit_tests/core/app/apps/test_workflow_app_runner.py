@@ -106,6 +106,7 @@ from models.human_input_entities import (
 )
 from models.model import AppMode, ConversationFromSource
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.app.generation.ports import MessageIdentity
@@ -1173,17 +1174,18 @@ def test_run_uses_single_node_execution_branch(
         tenant_id="tenant",
         app_id="app",
         id="workflow",
-        type="workflow",
+        type=ModelWorkflowType.WORKFLOW,
         version="v1",
         graph=json.dumps({"nodes": [], "edges": []}),
     )
     workflow.environment_variables = []
+    snapshot = workflow_snapshot(workflow)
 
     runner = WorkflowAppRunner(
         application_generate_entity=app_generate_entity,
         queue_manager=queue_manager,
         variable_loader=MagicMock(),
-        workflow=workflow,
+        workflow=snapshot,
         system_user_id="system-user",
         runtime=workflow_runtime,
     )
@@ -1214,7 +1216,7 @@ def test_run_uses_single_node_execution_branch(
         runner.prepare()
 
     prepare_single.assert_called_once_with(
-        workflow=workflow,
+        workflow=snapshot,
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
         user_id="user",
@@ -1252,7 +1254,7 @@ def test_single_node_run_validates_target_node_config() -> None:
 
     with pytest.raises(ValidationError, match="nodes.0.data.type"):
         runner._get_graph_and_variable_pool_for_single_node_run(
-            workflow=workflow,
+            workflow=workflow_snapshot(workflow),
             node_id="loop-node",
             user_inputs={},
             graph_runtime_state=graph_runtime_state,
@@ -1294,7 +1296,7 @@ def test_single_node_run_rejects_invalid_loop_count() -> None:
     _, _, graph_runtime_state = _make_graph_state()
     with pytest.raises(ValidationError, match="loop_count"):
         runner._get_graph_and_variable_pool_for_single_node_run(
-            workflow=workflow,
+            workflow=workflow_snapshot(workflow),
             node_id="loop-node",
             user_inputs={},
             graph_runtime_state=graph_runtime_state,
@@ -1324,18 +1326,19 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(
         tenant_id="tenant",
         app_id="app",
         id="workflow",
-        type="workflow",
+        type=ModelWorkflowType.WORKFLOW,
         version="v1",
         graph=json.dumps({"nodes": [], "edges": []}),
         kind=WorkflowKind.SNIPPET,
     )
     workflow.environment_variables = []
+    snapshot = workflow_snapshot(workflow)
 
     runner = WorkflowAppRunner(
         application_generate_entity=app_generate_entity,
         queue_manager=queue_manager,
         variable_loader=MagicMock(),
-        workflow=workflow,
+        workflow=snapshot,
         system_user_id="system-user",
         runtime=workflow_runtime,
     )
