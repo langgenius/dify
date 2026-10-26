@@ -238,7 +238,7 @@ def test_admitted_identity_and_mode_return_empty_questions_for_invalid_provider_
                 type=WorkflowType.CHAT,
                 version="published",
                 graph='{"nodes":[],"edges":[]}',
-                features='{"suggested_questions_after_answer":{"enabled":true}}',
+                _features='{"suggested_questions_after_answer":{"enabled":true}}',
                 created_by=str(uuid4()),
             )
             session.add(workflow)

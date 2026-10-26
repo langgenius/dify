@@ -56,6 +56,7 @@ from models.workflow import (
     WorkflowPause,
     WorkflowRun,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.agent.workspace_service import AgentWorkspaceService
@@ -110,10 +111,10 @@ def _pipeline_tool_runner(
                 id="source-workflow",
                 tenant_id="tenant",
                 app_id="source-app",
-                type="workflow",
+                type=ModelWorkflowType.WORKFLOW,
                 version="v1",
                 graph=json.dumps(source_graph),
-                features="{}",
+                _features="{}",
                 created_by="user",
             )
         )
@@ -337,10 +338,10 @@ def make_workflow_runner(
         id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type="workflow",
+        type=ModelWorkflowType.WORKFLOW,
         version="draft",
         graph=json.dumps(graph),
-        features="{}",
+        _features="{}",
         created_by=user_id,
     )
     entity = WorkflowAppGenerateEntity(
@@ -420,10 +421,10 @@ def _make_legacy_workflow_runner(
         id=workflow_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type="workflow",
+        type=ModelWorkflowType.WORKFLOW,
         version="draft",
         graph=json.dumps(graph),
-        features="{}",
+        _features="{}",
         created_by=user_id,
     )
     entity = WorkflowAppGenerateEntity(
@@ -772,9 +773,9 @@ class TestWorkflowRunAggCases:
                         app_id=source_app_id,
                         tenant_id=tenant_id,
                         created_by=original_entity.user_id,
-                        type="workflow",
+                        type=ModelWorkflowType.WORKFLOW,
                         version=version,
-                        features="{}",
+                        _features="{}",
                         graph=json.dumps(
                             {
                                 "nodes": [

@@ -97,6 +97,9 @@ def save_workflow_run(session: Session, incoming: WorkflowRun) -> bool:
         if current.status == WorkflowExecutionStatus.PAUSED and incoming.status == WorkflowExecutionStatus.RUNNING:
             return False
         incoming.created_at = current.created_at
+        # Control fields belong to the control repository; dataclass defaults must not clear them.
+        incoming.task_id = current.task_id
+        incoming.stop_requested_at = current.stop_requested_at
         incoming = session.merge(incoming)
     sync_debug_lease_status(session, incoming)
     return True
