@@ -416,9 +416,9 @@ function CreateKnowledgeSession() {
           </IconButton>
 
           <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle xl:items-end xl:border-e">
-            <div className="min-h-6 w-full max-w-180 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
+            <div className="h-6 shrink-0" />
             <Form
-              className="flex max-h-full min-h-0 w-full max-w-180 flex-col"
+              className="flex min-h-0 w-full max-w-180 flex-1 flex-col"
               onFormSubmit={() => void handleSubmit()}
             >
               <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
@@ -427,7 +427,7 @@ function CreateKnowledgeSession() {
                 </DialogTitle>
               </header>
 
-              <div className="flex min-h-0 scrollbar-none flex-col gap-7 overflow-y-auto px-6 pb-7 sm:px-10">
+              <div className="flex min-h-0 flex-1 scrollbar-none flex-col gap-7 overflow-y-auto px-6 pb-7 sm:px-10">
                 <div className="flex flex-col gap-4">
                   <Field
                     name="name"
@@ -635,7 +635,7 @@ function CreateKnowledgeSession() {
                 </div>
               </div>
             </Form>
-            <div className="min-h-px w-full max-w-180 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
+            <div className="h-6 shrink-0" />
           </div>
 
           <aside className="hidden min-h-0 min-w-0 xl:block">
