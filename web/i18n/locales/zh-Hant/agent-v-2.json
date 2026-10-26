@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "正在載入 Agent 知識庫…",
   "agentDetail.configure.knowledgeFs.rebind": "此綁定來自匯入，請明確重新選擇這個 Agent 知識庫，或替換為可用的 Agent 知識庫。",
   "agentDetail.configure.knowledgeFs.retry": "重試",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "目前部署尚未啟用 Agent 知識庫檢索，請聯絡管理員啟用。",
   "agentDetail.configure.knowledgeFs.select": "最多選擇 10 個 Agent 知識庫",
   "agentDetail.configure.knowledgeFs.title": "Agent 知識庫",
   "agentDetail.configure.knowledgeFs.unavailable": "Agent 知識庫無法使用，或你沒有在此 Agent 中使用它的權限。",

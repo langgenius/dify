@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "جارٍ تحميل قواعد معرفة Agent…",
   "agentDetail.configure.knowledgeFs.rebind": "رابط مستورد: اختر قاعدة معرفة Agent هذه مجددًا أو استبدلها بقاعدة معرفة Agent متاحة.",
   "agentDetail.configure.knowledgeFs.retry": "إعادة المحاولة",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "استرجاع قاعدة معرفة Agent غير متاح في هذا النشر. اطلب من المسؤول تفعيله.",
   "agentDetail.configure.knowledgeFs.select": "اختر حتى 10 قواعد معرفة Agent",
   "agentDetail.configure.knowledgeFs.title": "قاعدة معرفة Agent",
   "agentDetail.configure.knowledgeFs.unavailable": "قاعدة معرفة Agent هذه غير متاحة أو لا تملك إذن استخدامها في هذا الوكيل.",
