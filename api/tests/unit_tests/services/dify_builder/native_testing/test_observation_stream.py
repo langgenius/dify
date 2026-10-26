@@ -318,7 +318,7 @@ def test_wrong_node_type_and_unqualified_hitl_fail_before_projection(guard: Nati
 def make_pipeline(
     guard: NativeObservationGuard, monkeypatch: pytest.MonkeyPatch, **updates: object
 ) -> tuple[WorkflowAppGenerateTaskPipeline, WorkflowAppQueueManager, RejectDraftSaverFactory]:
-    from tests.unit_tests.core.app.apps.workflow.test_generate_task_pipeline_core import _make_pipeline
+    from tests.unit_tests.services.workflow_runtime.test_workflow_pipeline import _make_pipeline
 
     ordinary = _make_pipeline()
     e = ordinary._application_generate_entity.model_copy(

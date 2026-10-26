@@ -65,7 +65,7 @@ const createPageNameEnrichmentPlugin = (): Types.EnrichmentPlugin => {
 export function initializeAmplitudeSDK(apiKey: string, sessionReplaySampleRate: number) {
   amplitude.add(createPageNameEnrichmentPlugin())
   amplitude.init(apiKey, {
-    defaultTracking: {
+    autocapture: {
       sessions: true,
       pageViews: true,
       formInteractions: true,

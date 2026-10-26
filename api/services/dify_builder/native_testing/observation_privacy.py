@@ -54,7 +54,20 @@ from graphon.nodes.iteration.entities import IterationNodeData, IterationStartNo
 from graphon.nodes.loop.entities import LoopEndNodeData, LoopNodeData, LoopStartNodeData
 from graphon.nodes.start.entities import StartNodeData
 from graphon.variables.input_entities import VariableEntityType
-from graphon.variables.segments import ArrayFileSegment
+from graphon.variables.segments import (
+    ArrayAnySegment,
+    ArrayBooleanSegment,
+    ArrayFileSegment,
+    ArrayNumberSegment,
+    ArrayObjectSegment,
+    ArrayStringSegment,
+    BooleanSegment,
+    FloatSegment,
+    IntegerSegment,
+    NoneSegment,
+    ObjectSegment,
+    StringSegment,
+)
 from runtime_contracts.builder.execution import (
     BuilderExecutionPolicyError,
     canonical_digest,
@@ -175,7 +188,8 @@ def _shape(value: Any, *, depth: int = 0, budget: list[int] | None = None) -> di
     """Validate bounded plain values without rendering objects or leaking keys.
 
     All children are checked, even when only eight shapes are displayed. The
-    native empty files segment is allowed; file-bearing segments are not.
+    Exact native scalar and JSON segments are inspected through their values.
+    Empty files segments are allowed; file-bearing segments are not.
     """
     if budget is None:
         budget = [100_000]
@@ -195,6 +209,20 @@ def _shape(value: Any, *, depth: int = 0, budget: list[int] | None = None) -> di
         return {"type": "number"}
     if kind is str:
         return {"type": "string", "length": len(value)}
+    if kind in (
+        NoneSegment,
+        StringSegment,
+        FloatSegment,
+        IntegerSegment,
+        BooleanSegment,
+        ObjectSegment,
+        ArrayAnySegment,
+        ArrayStringSegment,
+        ArrayNumberSegment,
+        ArrayObjectSegment,
+        ArrayBooleanSegment,
+    ):
+        return _shape(value.value, depth=depth + 1, budget=budget)
     if kind is ArrayFileSegment and type(value.value) in (list, tuple) and not value.value:
         return {"type": "array", "length": 0}
     if kind is dict:

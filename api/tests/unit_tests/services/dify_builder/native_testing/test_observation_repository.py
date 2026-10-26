@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections import UserList
 from collections.abc import Callable, Iterator, Mapping
 from copy import deepcopy
@@ -22,6 +23,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
+from graphon.variables import segments
 from models import Account, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.enums import CreatorUserRole, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 from models.model import UploadFile
@@ -398,7 +400,7 @@ def offloaded(c: RepositoryCase, row: WorkflowNodeExecutionModel, *, value: obje
     from extensions.storage.storage_type import StorageType
     from models.enums import ExecutionOffLoadType
     from models.workflow import WorkflowNodeExecutionOffload
-    from tests.unit_tests.model_factories import make_upload_file
+    from tests.helpers.unit.model_factories import make_upload_file
 
     content = json.dumps(value if value is not None else c.guard.values({"private": SENTINEL})).encode()
     file = make_upload_file(
@@ -553,7 +555,7 @@ def test_native_actual_truncation_uploads_only_safe_data_then_cache_has_no_secon
     from uuid import uuid4
 
     from services.variable_truncator import VariableTruncator
-    from tests.unit_tests.model_factories import make_upload_file
+    from tests.helpers.unit.model_factories import make_upload_file
 
     c = case
     bind(c)
@@ -1106,3 +1108,105 @@ def test_repository_cannot_replace_retained_observer_even_with_same_guard(
 def required_run_id(context: ResolvedNativeTestContext) -> str:
     assert context.native_run_id is not None
     return context.native_run_id
+
+
+def test_current_dify_node_execution_preserves_native_diagnostics(case: RepositoryCase) -> None:
+    from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
+
+    bind(case)
+    execution = DifyWorkflowNodeExecution.model_validate(node(case).model_dump())
+    case.nodes.save(execution)
+    saved = case.sql.required((WorkflowNodeExecutionModel, execution.id))
+    assert saved.workflow_id == case.context.workflow_id
+    assert saved.workflow_run_id == required_run_id(case.context)
+    assert saved.triggered_from_workflow_id is None
+    assert saved.triggered_from_node_execution_id is None
+    assert SENTINEL not in (saved.outputs or "")
+    assert not case.guard.failed
+
+
+@pytest.mark.parametrize("field", ["triggered_from_workflow_id", "triggered_from_node_execution_id"])
+@pytest.mark.parametrize("stored", [False, True])
+def test_native_node_refuses_workflow_tool_source_identity(case: RepositoryCase, field: str, stored: bool) -> None:
+    from core.workflow.node_execution import WorkflowNodeExecution as DifyWorkflowNodeExecution
+
+    bind(case)
+    if stored:
+        row = safe_row(case)
+        setattr(row, field, "foreign-source")
+        row.offload_data = []
+        case.sql.selected = [row]
+        with pytest.raises(NativeObservationError):
+            case.nodes.get_by_workflow_execution(required_run_id(case.context))
+    else:
+        execution = DifyWorkflowNodeExecution.model_validate(node(case).model_dump())
+        setattr(execution, field, "foreign-source")
+        with pytest.raises(NativeObservationError):
+            case.nodes.save(execution)
+    assert case.sql.commits == 0
+    assert not case.nodes._node_execution_cache
+    assert case.guard.failed
+
+
+@pytest.mark.parametrize(
+    "segment",
+    [
+        segments.NoneSegment(),
+        segments.StringSegment(value=SENTINEL),
+        segments.FloatSegment(value=1.5),
+        segments.IntegerSegment(value=2),
+        segments.BooleanSegment(value=True),
+        segments.ObjectSegment(value={"private": SENTINEL}),
+        segments.ArrayAnySegment(value=[2, SENTINEL]),
+        segments.ArrayStringSegment(value=[SENTINEL]),
+        segments.ArrayNumberSegment(value=[2, 1.5]),
+        segments.ArrayObjectSegment(value=[{"private": SENTINEL}]),
+        segments.ArrayBooleanSegment(value=[True]),
+    ],
+    ids=[
+        "none",
+        "string",
+        "float",
+        "integer",
+        "boolean",
+        "object",
+        "any-array",
+        "string-array",
+        "number-array",
+        "object-array",
+        "boolean-array",
+    ],
+)
+def test_native_graphon_segments_expose_only_bounded_shapes(case: RepositoryCase, segment: segments.Segment) -> None:
+    projected = case.guard.values({"value": segment})
+    assert SENTINEL not in json.dumps(projected)
+    assert (
+        projected["shape"]["values"][0]["type"]
+        == case.guard.values({"value": segment.value})["shape"]["values"][0]["type"]
+    )
+    assert not case.guard.failed
+
+
+@pytest.mark.parametrize("fault", ["subclass", "payload"])
+def test_native_segment_projection_refuses_untrusted_objects_without_rendering(
+    case: RepositoryCase, fault: str
+) -> None:
+    rendered: list[str] = []
+
+    class UntrustedSegment(segments.StringSegment):
+        pass
+
+    class Hostile:
+        def __repr__(self) -> str:
+            rendered.append("repr")
+            return SENTINEL
+
+    value = (
+        UntrustedSegment(value=SENTINEL)
+        if fault == "subclass"
+        else segments.ArrayAnySegment.model_construct(value=[Hostile()])
+    )
+    with pytest.raises(NativeObservationError):
+        case.guard.values({"value": value})
+    assert rendered == []
+    assert case.guard.failed

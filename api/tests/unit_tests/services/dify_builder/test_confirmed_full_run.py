@@ -36,7 +36,7 @@ from services.dify_builder.application.runner import Env
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.effect_disclosure import disclose
 from services.dify_builder.repository import SqlDifyBuilderRepository
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 GRAPH: Graph = {
     "nodes": [

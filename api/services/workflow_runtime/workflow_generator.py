@@ -180,6 +180,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         builder_execution: BuilderExecutionContext
         | ConfirmedToolExecutionContext
@@ -211,6 +212,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         builder_execution: BuilderExecutionContext
         | ConfirmedToolExecutionContext
@@ -242,6 +244,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         builder_execution: BuilderExecutionContext
         | ConfirmedToolExecutionContext
@@ -272,6 +275,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         builder_execution: BuilderExecutionContext
         | ConfirmedToolExecutionContext
@@ -445,6 +449,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
+                allow_human_input=allow_human_input,
                 call_depth=call_depth,
                 builder_execution=builder_execution,
                 builder_agent_execution=builder_agent_execution,

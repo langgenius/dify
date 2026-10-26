@@ -25,7 +25,7 @@ from services.dify_builder.service import AppAccess, SessionView
 from services.enterprise.rbac_service import RBACService
 from services.entities.app_entities import AppAgentBinding
 from services.rbac.resource_queries import ResourceQueryService
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.installed_spies import installed_mock
 
 

@@ -73,9 +73,9 @@ from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService, SessionView
 from services.enterprise.rbac_service import RBACService
 from services.entities.feature_entities import FeatureModel
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_tenant
 from tests.unit_tests.installed_spies import installed_mock
-from tests.unit_tests.model_factories import make_tenant
 
 
 @dataclass

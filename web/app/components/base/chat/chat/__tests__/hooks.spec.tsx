@@ -638,9 +638,10 @@ describe('useChat', () => {
         callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1', message_id: 'm-3' })
 
         // Human input required
-        callbacks.onHumanInputRequired({ data: { node_id: 'n-human' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-n-human', node_id: 'n-human' } })
         callbacks.onHumanInputRequired({
           data: {
+            form_id: 'form-n-human',
             node_id: 'n-human',
             updated: true,
             form_content: '{{#$output.answer#}}',
@@ -649,11 +650,15 @@ describe('useChat', () => {
         }) // update existing
 
         // setTimeout for timeout form
-        callbacks.onHumanInputFormTimeout({ data: { node_id: 'n-human', expiration_time: 123456 } })
+        callbacks.onHumanInputFormTimeout({
+          data: { form_id: 'form-n-human', node_id: 'n-human', expiration_time: 123456 },
+        })
 
         // Form filled
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'n-human' } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'n-human2' } }) // new one
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-n-human', node_id: 'n-human' } })
+        callbacks.onHumanInputFormFilled({
+          data: { form_id: 'form-n-human2', node_id: 'n-human2' },
+        }) // new one
 
         // onWorkflowPaused
         callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } }) // should call sseGet
@@ -738,7 +743,7 @@ describe('useChat', () => {
         postCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
         postCallbacks.onHumanInputRequired({
           workflow_run_id: 'wr-1',
-          data: { node_id: 'human-1' },
+          data: { form_id: 'form-human-1', node_id: 'human-1' },
         })
       })
       expect(sseGet).not.toHaveBeenCalled()
@@ -812,7 +817,7 @@ describe('useChat', () => {
         })
         postCallbacks.onHumanInputRequired({
           workflow_run_id: 'wr-1',
-          data: { node_id: 'human-1' },
+          data: { form_id: 'form-human-1', node_id: 'human-1' },
         })
         postCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
       })
@@ -850,7 +855,7 @@ describe('useChat', () => {
         postCallbacks.onNodeStarted({ data: { node_id: 'human-1', id: 'human-1' } })
         postCallbacks.onHumanInputRequired({
           workflow_run_id: 'wr-1',
-          data: { node_id: 'human-1' },
+          data: { form_id: 'form-human-1', node_id: 'human-1' },
         })
       })
 
@@ -1723,10 +1728,14 @@ describe('useChat', () => {
         callbacks.onNodeFinished({ data: { node_id: 'n-1', id: 'n-1', status: 'succeeded' } })
 
         // human input
-        callbacks.onHumanInputRequired({ data: { node_id: 'h-1' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'h-1', updated: true } })
-        callbacks.onHumanInputFormTimeout({ data: { node_id: 'h-1', expiration_time: 123 } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'h-1' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-h-1', node_id: 'h-1' } })
+        callbacks.onHumanInputRequired({
+          data: { form_id: 'form-h-1', node_id: 'h-1', updated: true },
+        })
+        callbacks.onHumanInputFormTimeout({
+          data: { form_id: 'form-h-1', node_id: 'h-1', expiration_time: 123 },
+        })
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-h-1', node_id: 'h-1' } })
 
         callbacks.onTTSChunk('m-1', 'audio1')
         callbacks.onTTSEnd('m-1', 'audio1')
@@ -2121,10 +2130,10 @@ describe('useChat', () => {
       act(() => {
         callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
         callbacks.onNodeStarted({ data: { node_id: 'node-1', id: 'node-1' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'node-1' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'node-2' } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'node-1' } })
-        callbacks.onHumanInputFormFilled({ data: { node_id: 'node-3' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-node-1', node_id: 'node-1' } })
+        callbacks.onHumanInputRequired({ data: { form_id: 'form-node-2', node_id: 'node-2' } })
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-node-1', node_id: 'node-1' } })
+        callbacks.onHumanInputFormFilled({ data: { form_id: 'form-node-3', node_id: 'node-3' } })
       })
 
       const lastResponse = result.current.chatList[1]
@@ -2532,7 +2541,7 @@ describe('useChat', () => {
             content: 'answer 1',
             isAnswer: true,
             workflow_run_id: 'wr-1',
-            humanInputFormDataList: [{ node_id: 'n-1' }],
+            humanInputFormDataList: [{ form_id: 'form-n-1', node_id: 'n-1' }],
             siblingIndex: 0,
             annotation: { id: 'anno-old', authorName: 'user' },
           },

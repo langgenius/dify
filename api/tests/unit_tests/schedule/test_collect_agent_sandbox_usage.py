@@ -12,8 +12,8 @@ from configs.extra.agent_backend_config import AgentBackendConfig
 from dify_app import DifyApp
 from extensions import ext_celery
 from schedule.collect_agent_sandbox_usage import collect_agent_sandbox_usage
+from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.celery_fixtures import preserve_celery_apps
-from tests.unit_tests.config_override import config_overrides_context
 
 pytestmark = pytest.mark.usefixtures(preserve_celery_apps.__name__)
 

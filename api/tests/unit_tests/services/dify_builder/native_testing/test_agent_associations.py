@@ -494,6 +494,7 @@ def state_case(monkeypatch: pytest.MonkeyPatch) -> AgentStateCase:
         TenantAccountJoin: membership,
         App: App(id="app", tenant_id="tenant", status="normal"),
         Agent: Agent(
+            name="Native Agent",
             id="agent",
             tenant_id="tenant",
             active_config_snapshot_id="snapshot",
@@ -520,6 +521,7 @@ def state_case(monkeypatch: pytest.MonkeyPatch) -> AgentStateCase:
             id="snapshot",
             tenant_id="tenant",
             agent_id="agent",
+            version=1,
             home_snapshot_id="home",
             config_snapshot=soul.model_dump(mode="json"),
         ),

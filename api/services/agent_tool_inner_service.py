@@ -25,9 +25,9 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.tool_entities import ToolInvokeFrom, ToolProviderType
 from core.tools.errors import (
     ToolInvokeError,
     ToolNotFoundError,
@@ -96,6 +96,14 @@ class AgentToolInnerService:
             credential_id=request.tool.credential_id,
         )
         try:
+            dify_run_context = DifyRunContext(
+                tenant_id=request.caller.tenant_id,
+                app_id=request.caller.app_id,
+                user_id=request.caller.user_id,
+                user_from=UserFrom(request.caller.user_from),
+                invoke_from=InvokeFrom.value_of(request.caller.invoke_from),
+                trace_session_id=request.caller.trace_session_id,
+            )
             tool_runtime = (
                 prepared_runtime
                 if prepared_runtime is not None
@@ -119,6 +127,11 @@ class AgentToolInnerService:
                 runtime = tool_runtime.runtime.model_copy(deep=True)
                 runtime.runtime_parameters.update(request.tool.tool_parameters)
                 tool_runtime = tool_runtime.fork_tool_runtime(runtime)
+            if prepared_runtime is None:
+                tool_runtime.runtime.dify_run_context = dify_run_context
+                tool_runtime.runtime.tool_invoke_from = (
+                    ToolInvokeFrom.WORKFLOW if request.caller.workflow_id is not None else ToolInvokeFrom.AGENT
+                )
             messages = ToolEngine.generic_invoke(
                 session=session,
                 tool=tool_runtime,

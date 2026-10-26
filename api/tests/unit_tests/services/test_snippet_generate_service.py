@@ -20,7 +20,7 @@ from services.snippet_service import SnippetService
 from services.workflow_runtime.node_factory import DifyNodeFactory
 from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
 from services.workflow_service import WorkflowService
-from tests.unit_tests.model_factories import make_account, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_workflow
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

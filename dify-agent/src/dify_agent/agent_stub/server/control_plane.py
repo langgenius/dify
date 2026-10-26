@@ -7,22 +7,23 @@ The HTTP adapter validates transport DTOs before calling into this service.
 from __future__ import annotations
 
 from collections.abc import Callable
-from functools import wraps
-from dify_agent.adapters.native_testing.transport import AgentRuntimeTransportError
-from dify_agent.agent_stub.server.admission import AgentStubAdmission
 from dataclasses import dataclass, field
+from functools import wraps
 from uuid import uuid4
 
+from dify_agent.adapters.native_testing.transport import AgentRuntimeTransportError
 from dify_agent.agent_stub.protocol.agent_stub import (
-    AgentStubConnectResponse,
     AgentStubConfigManifestResponse,
+    AgentStubConfigPromptResponse,
     AgentStubConfigPushRequest,
     AgentStubConfigPushResponse,
+    AgentStubConnectResponse,
     AgentStubFileDownloadRequest,
     AgentStubFileDownloadResponse,
     AgentStubFileUploadRequest,
     AgentStubFileUploadResponse,
 )
+from dify_agent.agent_stub.server.admission import AgentStubAdmission
 from dify_agent.agent_stub.server.agent_stub_config import AgentStubConfigRequestError, AgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestError, AgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import (
@@ -31,7 +32,6 @@ from dify_agent.agent_stub.server.tokens.agent_stub import (
     AgentStubTokenError,
     AgentStubTokenExpiredError,
 )
-
 
 _AGENT_STUB_AUTHORIZATION_EXPIRED_DETAIL = {
     "code": "agent_stub_authorization_expired",
@@ -89,6 +89,13 @@ class AgentStubControlPlaneService:
     file_request_handler: AgentStubFileRequestHandler | None = None
     config_request_handler: AgentStubConfigRequestHandler | None = None
     connection_id_factory: Callable[[], str] = field(default=lambda: str(uuid4()))
+
+    def authenticate(self, *, authorization: str | None) -> AgentStubPrincipal:
+        """Shared authentication boundary for additional typed read-only bridges."""
+        principal = self._authenticate(authorization, expose_expiration=True)
+        if principal.runtime is not None:
+            raise AgentStubAuthenticationError(403, "Agent Stub runtime authorization unavailable")
+        return principal
 
     @_admitted
     async def connect(
@@ -209,6 +216,28 @@ class AgentStubControlPlaneService:
         handler = self._require_config_request_handler()
         try:
             return await handler.update_note(principal=principal, note=note)
+        except AgentStubConfigRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
+    @_admitted
+    async def get_config_prompt(
+        self, *, authorization: str | None, _principal: AgentStubPrincipal | None = None
+    ) -> AgentStubConfigPromptResponse:
+        principal = _principal or self._authenticate(authorization, expose_expiration=True)
+        handler = self._require_config_request_handler()
+        try:
+            return await handler.get_prompt(principal=principal)
+        except AgentStubConfigRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
+    @_admitted
+    async def update_config_prompt(
+        self, *, prompt: str, authorization: str | None, _principal: AgentStubPrincipal | None = None
+    ) -> AgentStubConfigPromptResponse:
+        principal = _principal or self._authenticate(authorization, expose_expiration=True)
+        handler = self._require_config_request_handler()
+        try:
+            return await handler.update_prompt(principal=principal, prompt=prompt)
         except AgentStubConfigRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 

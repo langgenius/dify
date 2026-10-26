@@ -58,7 +58,7 @@ from services.dify_builder.native_testing.observation_privacy import NativeHttpO
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from tests.unit_tests.model_factories import make_account, make_upload_file
+from tests.helpers.unit.model_factories import make_account, make_upload_file
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import (
     SENTINEL,
 )

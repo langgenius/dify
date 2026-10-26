@@ -636,3 +636,73 @@ def test_confirmed_stub_durable_reader_requires_exact_active_identity():
         await redis.aclose()
 
     asyncio.run(exercise())
+
+
+@pytest.mark.parametrize("runtime_token", [False, True])
+def test_direct_authentication_preserves_runtime_admission(runtime_token):
+    from dify_agent.agent_stub.server.control_plane import AgentStubAuthenticationError, AgentStubControlPlaneService
+
+    selected_codec = codec()
+    if runtime_token:
+        with bind_runtime_identity(identity()):
+            token = selected_codec.encode_runtime_token(context(), run_id="run", session_id=None)
+    else:
+        token = selected_codec.encode_connection_token(context())
+
+    async def reader(_):
+        pytest.fail("direct authentication bypassed admission")
+
+    service = AgentStubControlPlaneService(token_codec=selected_codec, admission=admission(reader))
+    if runtime_token:
+        with pytest.raises(AgentStubAuthenticationError) as excinfo:
+            service.authenticate(authorization="Bearer " + token)
+        assert excinfo.value.status_code == 403
+    else:
+        assert service.authenticate(authorization="Bearer " + token).execution_context == context()
+
+
+@pytest.mark.parametrize("update", [False, True])
+def test_prompt_bridge_never_uses_legacy_authority_for_runtime_principal(update):
+    from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
+    from dify_agent.agent_stub.server.control_plane import AgentStubAuthenticationError, AgentStubControlPlaneService
+
+    async def exercise():
+        selected_codec = codec()
+        with bind_runtime_identity(identity()):
+            token = selected_codec.encode_runtime_token(context(), run_id="run", session_id=None)
+
+        async def reader(_):
+            return identity()
+
+        selected_admission = admission(reader)
+        seen = []
+        async with AgentRuntimeHTTPClient(
+            api_url="http://api",
+            api_token="backend",
+            transport=httpx.MockTransport(lambda req: seen.append(req) or httpx.Response(200)),
+        ) as client:
+            handler = DifyApiAgentStubConfigRequestHandler(
+                inner_api_url="http://api",
+                inner_api_key="legacy-key",
+                sandbox_files_base_url="http://files",
+                runtime_client=lambda: client,
+                admission=selected_admission,
+            )
+            selected_principal = principal()
+            with pytest.raises(AgentRuntimeTransportError):
+                if update:
+                    await handler.update_prompt(principal=selected_principal, prompt="changed")
+                else:
+                    await handler.get_prompt(principal=selected_principal)
+            service = AgentStubControlPlaneService(
+                token_codec=selected_codec, admission=selected_admission, config_request_handler=handler
+            )
+            with pytest.raises(AgentStubAuthenticationError) as excinfo:
+                if update:
+                    await service.update_config_prompt(authorization="Bearer " + token, prompt="changed")
+                else:
+                    await service.get_config_prompt(authorization="Bearer " + token)
+            assert excinfo.value.status_code == 403
+        assert seen == []
+
+    asyncio.run(exercise())

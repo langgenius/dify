@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalTraceSource } from './external-trace-row'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -13,6 +14,7 @@ import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/type
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import DifyBuilderEntry from '../dify-builder-entry'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
+import { ExternalTraceRow } from './external-trace-row'
 import MetaData from './meta'
 import StatusPanel from './status'
 
@@ -40,6 +42,7 @@ export type ResultPanelProps = {
   execution_metadata?: any
   isListening?: boolean
   workflowRunId?: string
+  externalTrace?: ExternalTraceSource
   onOpenTracingTab?: () => void
   onFixRun?: (runId: string) => void
   fixWithBuilderDisabled?: boolean
@@ -70,6 +73,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   execution_metadata,
   isListening = false,
   workflowRunId,
+  externalTrace,
   onOpenTracingTab,
   onFixRun,
   fixWithBuilderDisabled,
@@ -187,7 +191,9 @@ const ResultPanel: FC<ResultPanelProps> = ({
           tokens={total_tokens}
           steps={steps}
           showSteps={showSteps}
-        />
+        >
+          {externalTrace && <ExternalTraceRow source={externalTrace} />}
+        </MetaData>
       </div>
     </div>
   )

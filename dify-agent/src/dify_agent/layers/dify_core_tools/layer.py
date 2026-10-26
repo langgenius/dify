@@ -13,12 +13,14 @@ from copy import deepcopy
 from dataclasses import replace
 from typing import cast, override
 
+from opentelemetry.sdk.trace import ReadableSpan
+from opentelemetry.trace import StatusCode, get_current_span
 from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter
 from pydantic_ai import RunContext, Tool
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import FunctionToolset
-from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient
 
+from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient
 from dify_agent.layers.dify_core_tools.client import (
     DifyCoreToolsClient,
     DifyCoreToolsClientConfigurationError,
@@ -165,9 +167,11 @@ class Toolset(FunctionToolset[Deps]):
                     tool_parameters=cast(dict[str, JsonValue], prepared),
                 )
                 return response.observation
-            except DifyCoreToolsClientConfigurationError:
+            except DifyCoreToolsClientConfigurationError as exc:
+                _mark_tool_span_failed(_ctx, exc)
                 return "Tool is unavailable because required execution context is missing."
             except DifyCoreToolsClientError as exc:
+                _mark_tool_span_failed(_ctx, exc)
                 return _tool_error_text(tool_name=tool_name, error=exc)
 
         async def prepare_tool_definition(_ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition:
@@ -191,6 +195,30 @@ class Toolset(FunctionToolset[Deps]):
                 )
             },
         )
+
+
+def _mark_tool_span_failed(ctx: RunContext[Deps], error: DifyCoreToolsClientError) -> None:
+    """Keep handled API errors on this native tool span without failing the Agent.
+
+    Pydantic AI wraps tool execution in the current ``execute_tool`` span. When
+    instrumentation is disabled, an ambient Agent/platform span must stay intact.
+    Only record a safe exception type; the observation retains its existing text
+    and the instrumentation's content policy controls whether that text is traced.
+    """
+    span = get_current_span()
+    attributes = span.attributes if isinstance(span, ReadableSpan) else None
+    if (
+        not span.is_recording()
+        or not attributes
+        or attributes.get("gen_ai.operation.name") != "execute_tool"
+        or ctx.tool_call_id is None
+        or attributes.get("gen_ai.tool.call.id") != ctx.tool_call_id
+        or attributes.get("gen_ai.tool.name") != ctx.tool_name
+    ):
+        return
+    error_type = type(error).__name__
+    span.set_attribute("error.type", error_type)
+    span.set_status(StatusCode.ERROR, error_type)
 
 
 def _tool_error_text(*, tool_name: str, error: DifyCoreToolsClientError) -> str:

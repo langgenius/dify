@@ -1,3 +1,5 @@
+import { DatasetDetailSidebarSlot } from '../../sidebar-page'
+
 export default function DatasetDocumentCreateFromPipelineDetailSidebarSlot() {
-  return null
+  return <DatasetDetailSidebarSlot />
 }

@@ -495,8 +495,6 @@ export type WorkspacePermissionResponse = {
   workspace_id: string
 }
 
-export type BinaryFileResponse = Blob | File
-
 export type PluginError = ErrorResponse & {
   code: 'plugin_error'
   status: 400
@@ -1250,11 +1248,6 @@ export type WorkflowToolCreatePayload = {
   parameters?: Array<WorkflowToolParameterConfiguration>
   privacy_policy?: string | null
   workflow_app_id: string
-}
-
-export type WorkflowToolHumanInputNotSupportedError = ErrorResponse & {
-  code: 'workflow_tool_human_input_not_supported'
-  status: 400
 }
 
 export type WorkflowToolDeletePayload = {
@@ -4765,7 +4758,7 @@ export type GetWorkspacesCurrentPluginAssetError =
   GetWorkspacesCurrentPluginAssetErrors[keyof GetWorkspacesCurrentPluginAssetErrors]
 
 export type GetWorkspacesCurrentPluginAssetResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentPluginAssetResponse =
@@ -4901,7 +4894,7 @@ export type GetWorkspacesCurrentPluginIconError =
   GetWorkspacesCurrentPluginIconErrors[keyof GetWorkspacesCurrentPluginIconErrors]
 
 export type GetWorkspacesCurrentPluginIconResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentPluginIconResponse =
@@ -6740,7 +6733,12 @@ export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleB
 export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/workspace/agents/access-policy'
 }
 
@@ -6830,7 +6828,12 @@ export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBin
 export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/workspace/apps/access-policy'
 }
 
@@ -6923,7 +6926,12 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRol
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/workspace/datasets/access-policy'
 }
 
@@ -7014,7 +7022,9 @@ export type PostWorkspacesCurrentSkillsFilesUploadResponse =
   PostWorkspacesCurrentSkillsFilesUploadResponses[keyof PostWorkspacesCurrentSkillsFilesUploadResponses]
 
 export type PostWorkspacesCurrentSkillsImportData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/current/skills/import'
@@ -7295,7 +7305,7 @@ export type GetWorkspacesCurrentSkillsBySkillIdFilesContentError =
   GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors[keyof GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors]
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentResponse =
@@ -8184,7 +8194,6 @@ export type PostWorkspacesCurrentToolProviderWorkflowCreateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowCreateErrors = {
-  400: WorkflowToolHumanInputNotSupportedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8274,7 +8283,6 @@ export type PostWorkspacesCurrentToolProviderWorkflowUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowUpdateErrors = {
-  400: WorkflowToolHumanInputNotSupportedError | ErrorResponse
   default: ErrorResponse
 }
 

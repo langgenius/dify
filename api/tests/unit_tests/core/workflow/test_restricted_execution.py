@@ -20,15 +20,15 @@ from services.dify_builder.application.execution_policy import (
     admitted_node_bindings,
 )
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, snapshot
-from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import (
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
+from tests.unit_tests.services.workflow_runtime.test_node_factory import (
     forbid_live as forbid_live,  # noqa: PLC0414
 )
-from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import (
+from tests.unit_tests.services.workflow_runtime.test_node_factory import (
     prepare_native,
     receipts,
 )
-from tests.unit_tests.services.dify_builder.test_execution_policy_service import Owned
-from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 
 
 class RawNode(TypedDict):
@@ -299,9 +299,9 @@ def test_reserved_sandbox_fixtures_are_unavailable_before_sandbox_owner(owned: O
     if name == "template_greeting.yml":
         import yaml
 
-        from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import FIXTURES
+        from tests.unit_tests.services.workflow_runtime.test_node_factory import RESTRICTED_FIXTURES
 
-        raw_graph = yaml.safe_load((FIXTURES / name).read_text())
+        raw_graph = yaml.safe_load((RESTRICTED_FIXTURES / name).read_text())
         raw_graph["nodes"][1]["data"]["template"] = "{{ name.__class__ }}"
         reason = "unsupported_template_syntax"
     else:

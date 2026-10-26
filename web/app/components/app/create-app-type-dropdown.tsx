@@ -3,20 +3,14 @@
 import type { CreateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  getStepByStepTourDropdownMenuContentProps,
-  useStepByStepTourControlledDropdown,
-} from '@/app/components/step-by-step-tour/dropdown-menu'
+  getStepByStepTourMenuContentProps,
+  useStepByStepTourControlledMenu,
+} from '@/app/components/step-by-step-tour/menu'
 
 export type CreateAppTypeDropdownProps = {
   onSelectType: (mode: CreateAppPayload['mode']) => void
@@ -53,11 +47,11 @@ function AppTypeItem({
       <TooltipTrigger
         delay={200}
         render={
-          <DropdownMenuItem
+          <MenuItem
             nativeButton
             render={<button type="button" />}
             aria-describedby={descriptionId}
-            className="mx-0 min-h-8 w-full gap-2 rounded-lg px-2 py-1 text-left system-md-regular text-text-secondary"
+            className="mx-0 min-h-8 w-full gap-2 rounded-lg px-2 py-1 text-start system-md-regular text-text-secondary"
             disabled={disabled}
             onClick={onClick}
           />
@@ -69,7 +63,7 @@ function AppTypeItem({
       <span id={descriptionId} className="sr-only">
         {description}
       </span>
-      <TooltipContent role="tooltip" placement="left-start" sideOffset={8} className="w-60">
+      <TooltipContent role="tooltip" side="left" align="start" sideOffset={8} className="w-60">
         {description}
       </TooltipContent>
     </Tooltip>
@@ -126,7 +120,7 @@ function AppTypes({
           onClick={() => onSelectType(type.mode)}
         />
       ))}
-      <DropdownMenuItem
+      <MenuItem
         nativeButton
         render={<button type="button" />}
         closeOnClick={false}
@@ -140,7 +134,7 @@ function AppTypes({
           className={cn('i-ri-arrow-down-s-line size-4 shrink-0', expanded && 'rotate-180')}
         />
         {t(($) => $['newApp.menu.moreTypes'], { ns: 'app' })}
-      </DropdownMenuItem>
+      </MenuItem>
       <div id={moreTypesId} hidden={!expanded}>
         {expanded &&
           types
@@ -169,11 +163,11 @@ export function CreateAppTypeDropdown({
   stepByStepTourHighlightPart,
 }: CreateAppTypeDropdownProps) {
   const { t } = useTranslation(['app', 'common'])
-  const menu = useStepByStepTourControlledDropdown({ controlledOpen: stepByStepTourControlledOpen })
+  const menu = useStepByStepTourControlledMenu({ controlledOpen: stepByStepTourControlledOpen })
 
   return (
-    <DropdownMenu modal={false} open={menu.open} onOpenChange={menu.onOpenChange}>
-      <DropdownMenuTrigger
+    <Menu modal={false} open={menu.open} onOpenChange={menu.onOpenChange}>
+      <MenuTrigger
         render={
           <Button
             data-step-by-step-tour-target={stepByStepTourTarget}
@@ -188,10 +182,11 @@ export function CreateAppTypeDropdown({
           </Button>
         }
       />
-      <DropdownMenuContent
-        placement="bottom-end"
+      <MenuContent
+        side="bottom"
+        align="end"
         sideOffset={4}
-        {...getStepByStepTourDropdownMenuContentProps({
+        {...getStepByStepTourMenuContentProps({
           disableMotion: menu.controlled,
           highlightPart: menu.controlled ? stepByStepTourHighlightPart : undefined,
           interactionMode: menu.controlled ? 'presentation' : 'interactive',
@@ -199,13 +194,13 @@ export function CreateAppTypeDropdown({
         })}
       >
         <AppTypes onSelectType={onSelectType} disabled={disabled || loading} />
-        {(onCreateTemplate || onImportDSL) && <DropdownMenuSeparator className="m-0" />}
+        {(onCreateTemplate || onImportDSL) && <MenuSeparator className="m-0" />}
         <div className="p-1">
           {onCreateTemplate && (
-            <DropdownMenuItem
+            <MenuItem
               nativeButton
               render={<button type="button" />}
-              className="mx-0 min-h-8 w-full gap-2 rounded-lg px-2 py-1 text-left system-md-regular text-text-secondary"
+              className="mx-0 min-h-8 w-full gap-2 rounded-lg px-2 py-1 text-start system-md-regular text-text-secondary"
               onClick={onCreateTemplate}
             >
               <span
@@ -215,13 +210,13 @@ export function CreateAppTypeDropdown({
               <span className="min-w-0 flex-1">
                 {t(($) => $['newApp.menu.startFromTemplate'], { ns: 'app' })}
               </span>
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {onImportDSL && (
-            <DropdownMenuItem
+            <MenuItem
               nativeButton
               render={<button type="button" />}
-              className="mx-0 h-auto w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left"
+              className="mx-0 h-auto w-full items-start gap-2 rounded-lg px-2 py-1.5 text-start"
               onClick={onImportDSL}
             >
               <span
@@ -236,10 +231,10 @@ export function CreateAppTypeDropdown({
                   {t(($) => $['newApp.menu.importDSLHint'], { ns: 'app' })}
                 </span>
               </span>
-            </DropdownMenuItem>
+            </MenuItem>
           )}
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
 }

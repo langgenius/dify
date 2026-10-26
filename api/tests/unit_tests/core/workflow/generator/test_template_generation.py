@@ -16,7 +16,7 @@ from graphon.nodes.template_transform.template_transform_node import TemplateTra
 from graphon.runtime import RuntimeState, VariablePool
 from services.dify_builder.template_execution import BoundedJinja2TemplateRenderer
 from services.workflow_generation.runner import WorkflowGenerator
-from tests.unit_tests.core.workflow.generator.test_runner import _ParallelBuilderModel
+from tests.unit_tests.services.workflow_generation.test_runner import _ParallelBuilderModel
 from tests.workflow_test_utils import build_test_graph_init_params
 
 # Exact template and bindings from Dev run 51e13ecc-ad86-4c44-8b89-53687981475b.

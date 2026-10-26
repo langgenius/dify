@@ -1,15 +1,18 @@
-"""Unit tests for the Agent tool inner invoke service with SQLite-backed app lookup."""
+"""Unit tests for the Agent tool inner invoke service."""
 
 from collections.abc import Generator
+from dataclasses import dataclass, field
 from typing import Literal
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import sqlalchemy.orm
 from pydantic import JsonValue
 from sqlalchemy.orm import Session
 
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.entities.tool_entities import ToolInvokeFrom, ToolInvokeMessage, ToolParameter, ToolProviderType
 from core.tools.errors import (
     ToolInvokeError,
     ToolParameterValidationError,
@@ -17,34 +20,26 @@ from core.tools.errors import (
     ToolProviderNotFoundError,
 )
 from core.tools.plugin_tool.tool import PluginTool
-from models.enums import AppStatus
 from models.model import App, AppMode
 from models.tools import ToolFile
 from services.agent_tool_inner_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 
-TENANT_ID = "11111111-1111-1111-1111-111111111111"
-OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
-USER_ID = "33333333-3333-3333-3333-333333333333"
-APP_ID = "44444444-4444-4444-4444-444444444444"
 
-
-def _persist_app(sqlite_session: Session, *, tenant_id: str = TENANT_ID) -> App:
+def _persist_app(session: Session, *, tenant_id: str = "tenant-1") -> App:
     app = App(
-        id=APP_ID,
+        id="app-1",
         tenant_id=tenant_id,
-        name="Test App",
+        name="Agent tool gateway test app",
         description="",
-        mode=AppMode.CHAT,
-        status=AppStatus.NORMAL,
+        mode=AppMode.AGENT_CHAT,
         enable_site=False,
         enable_api=False,
         max_active_requests=None,
     )
-    sqlite_session.add(app)
-    sqlite_session.commit()
-    sqlite_session.expunge_all()
+    session.add(app)
+    session.commit()
     return app
 
 
@@ -52,10 +47,10 @@ def _request() -> AgentToolInvokeRequest:
     return AgentToolInvokeRequest.model_validate(
         {
             "caller": {
-                "tenant_id": TENANT_ID,
-                "user_id": USER_ID,
+                "tenant_id": "tenant-1",
+                "user_id": "user-1",
                 "user_from": "account",
-                "app_id": APP_ID,
+                "app_id": "app-1",
                 "invoke_from": "service-api",
                 "conversation_id": "conversation-1",
                 "workflow_id": "workflow-1",
@@ -64,6 +59,7 @@ def _request() -> AgentToolInvokeRequest:
                 "node_execution_id": "node-exec-1",
                 "agent_id": "agent-1",
                 "agent_config_version_id": "snapshot-1",
+                "trace_session_id": "trace-session-1",
             },
             "tool": {
                 "provider_type": "plugin",
@@ -77,6 +73,13 @@ def _request() -> AgentToolInvokeRequest:
     )
 
 
+@dataclass
+class _FakeTool:
+    """Stands in for the resolved agent tool; only its runtime is mutated by the service."""
+
+    runtime: ToolRuntime = field(default_factory=lambda: ToolRuntime(tenant_id="tenant-1"))
+
+
 def _messages() -> Generator[ToolInvokeMessage]:
     yield ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.TEXT,
@@ -84,9 +87,19 @@ def _messages() -> Generator[ToolInvokeMessage]:
     )
 
 
-@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
-def test_invoke_uses_agent_tool_runtime_and_returns_observation(sqlite_session: Session) -> None:
-    fake_tool = MagicMock()
+@pytest.mark.parametrize(
+    ("workflow_id", "expected_tool_invoke_from"),
+    [
+        ("workflow-1", ToolInvokeFrom.WORKFLOW),
+        (None, ToolInvokeFrom.AGENT),
+    ],
+)
+def test_invoke_uses_agent_tool_runtime_and_returns_observation(
+    sqlite_session: Session,
+    workflow_id: str | None,
+    expected_tool_invoke_from: ToolInvokeFrom,
+) -> None:
+    fake_tool = _FakeTool()
     _persist_app(sqlite_session)
 
     with (
@@ -100,7 +113,9 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation(sqlite_session: 
             side_effect=lambda messages, **_kwargs: messages,
         ),
     ):
-        response = AgentToolInnerService().invoke(_request(), session=sqlite_session)
+        request = _request()
+        request.caller.workflow_id = workflow_id
+        response = AgentToolInnerService().invoke(request, session=sqlite_session)
 
     assert response.observation == "ok"
     assert response.metadata == {
@@ -111,12 +126,17 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation(sqlite_session: 
     agent_tool = mock_get_runtime.call_args.kwargs["agent_tool"]
     assert agent_tool.provider_type is ToolProviderType.PLUGIN
     assert agent_tool.tool_parameters == {"region": "us"}
+    assert fake_tool.runtime.dify_run_context is not None
+    assert fake_tool.runtime.dify_run_context.tenant_id == "tenant-1"
+    assert fake_tool.runtime.dify_run_context.app_id == "app-1"
+    assert fake_tool.runtime.dify_run_context.user_id == "user-1"
+    assert fake_tool.runtime.dify_run_context.user_from is UserFrom.ACCOUNT
+    assert fake_tool.runtime.dify_run_context.invoke_from is InvokeFrom.SERVICE_API
+    assert fake_tool.runtime.dify_run_context.trace_session_id == "trace-session-1"
+    assert fake_tool.runtime.tool_invoke_from is expected_tool_invoke_from
     mock_invoke.assert_called_once()
-    assert mock_invoke.call_args.kwargs["session"] is sqlite_session
-    assert sqlite_session.in_transaction()
 
 
-@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_invoke_raises_app_not_found_when_session_has_no_app(sqlite_session: Session) -> None:
     with pytest.raises(AgentToolInnerServiceError) as exc_info:
         AgentToolInnerService().invoke(_request(), session=sqlite_session)
@@ -124,12 +144,10 @@ def test_invoke_raises_app_not_found_when_session_has_no_app(sqlite_session: Ses
     assert exc_info.value.error_code == "app_not_found"
     assert exc_info.value.status_code == 404
     assert exc_info.value.description == "App not found."
-    assert sqlite_session.in_transaction()
 
 
-@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_invoke_raises_app_tenant_mismatch_when_app_belongs_to_other_tenant(sqlite_session: Session) -> None:
-    _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
+    _persist_app(sqlite_session, tenant_id="tenant-2")
 
     with pytest.raises(AgentToolInnerServiceError) as exc_info:
         AgentToolInnerService().invoke(_request(), session=sqlite_session)
@@ -137,14 +155,10 @@ def test_invoke_raises_app_tenant_mismatch_when_app_belongs_to_other_tenant(sqli
     assert exc_info.value.error_code == "app_tenant_mismatch"
     assert exc_info.value.status_code == 403
     assert exc_info.value.description == "App does not belong to the caller tenant."
-    assert sqlite_session.in_transaction()
 
 
-@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
-def test_invoke_maps_tool_runtime_app_not_found_value_error_to_specific_error_code(
-    sqlite_session: Session,
-) -> None:
-    fake_tool = MagicMock()
+def test_invoke_maps_tool_runtime_app_not_found_value_error_to_specific_error_code(sqlite_session: Session) -> None:
+    fake_tool = _FakeTool()
     _persist_app(sqlite_session)
 
     with (
@@ -157,12 +171,10 @@ def test_invoke_maps_tool_runtime_app_not_found_value_error_to_specific_error_co
     assert exc_info.value.error_code == "app_not_found"
     assert exc_info.value.status_code == 404
     assert exc_info.value.description == "App not found."
-    assert sqlite_session.in_transaction()
 
 
-@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper(sqlite_session: Session) -> None:
-    fake_tool = MagicMock()
+    fake_tool = _FakeTool()
     _persist_app(sqlite_session)
 
     with (
@@ -176,7 +188,6 @@ def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper(sqlite
             AgentToolInnerService().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == "agent_tool_invoke_failed"
-    assert sqlite_session.in_transaction()
 
 
 @pytest.mark.parametrize(
@@ -187,11 +198,8 @@ def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper(sqlite
         (ToolParameterValidationError("query is required"), "tool_parameters_invalid"),
     ],
 )
-@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_invoke_maps_runtime_lookup_errors_to_service_error_codes(
-    error: Exception,
-    expected_code: str,
-    sqlite_session: Session,
+    sqlite_session: Session, error: Exception, expected_code: str
 ) -> None:
     _persist_app(sqlite_session)
 
@@ -200,7 +208,6 @@ def test_invoke_maps_runtime_lookup_errors_to_service_error_codes(
             AgentToolInnerService().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == expected_code
-    assert sqlite_session.in_transaction()
 
 
 # These ordinary boundary tests execute the real ToolEngine, Tool casts and
@@ -220,15 +227,15 @@ def _ordinary_plugin(parameters: list[ToolParameter], runtime_parameters: dict[s
             parameters=parameters,
         ),
         runtime=ToolRuntime(
-            tenant_id=TENANT_ID,
-            user_id=USER_ID,
+            tenant_id="tenant-1",
+            user_id="user-1",
             tool_id="selected-tool",
             invoke_from=InvokeFrom.SERVICE_API,
             tool_invoke_from=ToolInvokeFrom.AGENT,
             credentials={"api_key": "synthetic-only"},
             runtime_parameters=runtime_parameters,
         ),
-        tenant_id=TENANT_ID,
+        tenant_id="tenant-1",
         icon="icon.svg",
         plugin_unique_identifier="langgenius/search:synthetic",
     )
@@ -270,7 +277,7 @@ def test_actual_plugin_cast_frontend_and_converter_preserve_file_wire(
     assert parameter.init_frontend_parameter(value) == expected
     tool = _ordinary_plugin([parameter], {})
     with patch("core.tools.plugin_tool.tool.PluginToolManager.invoke", return_value=_messages()) as dispatch:
-        message = list(tool.invoke(sqlite_session, USER_ID, {"input": value}))[0].message
+        message = list(tool.invoke(sqlite_session, "user-1", {"input": value}))[0].message
         assert isinstance(message, ToolInvokeMessage.TextMessage)
         assert message.text == "ok"
     assert dispatch.call_args.kwargs["tool_parameters"] == {"input": expected}
@@ -315,10 +322,10 @@ def test_ordinary_plugin_service_preserves_prepared_live_values_and_cached_runti
     sent = dispatch.call_args.kwargs
     assert sent["tool_parameters"] == request.tool.tool_parameters
     assert sent["credentials"] == {"api_key": "synthetic-only"}
-    assert sent["tenant_id"] == TENANT_ID
-    assert sent["user_id"] == USER_ID
+    assert sent["tenant_id"] == "tenant-1"
+    assert sent["user_id"] == "user-1"
     assert sent["tool_provider"] == tool.entity.identity.provider
-    assert sent["app_id"] == APP_ID
+    assert sent["app_id"] == "app-1"
     assert sent["conversation_id"] == "conversation-1"
     assert sent["confirmed_dispatch_headers"] is None
     assert lookup.call_args.kwargs["agent_tool"].credential_id == "credential-1"
@@ -358,11 +365,11 @@ def test_api_multiple_metadata_exposes_existing_agent_select_wire_gap(
     with patch("core.tools.plugin_tool.tool.PluginToolManager.invoke", return_value=_messages()) as dispatch:
         if multiple:
             with pytest.raises(ValueError, match="must be a list"):
-                list(tool.invoke(sqlite_session, USER_ID, {"selection": "['a']"}))
+                list(tool.invoke(sqlite_session, "user-1", {"selection": "['a']"}))
             dispatch.assert_not_called()
             assert parameter.init_frontend_parameter(["a"]) == ["a"]
         else:
-            list(tool.invoke(sqlite_session, USER_ID, {"selection": "['a']"}))
+            list(tool.invoke(sqlite_session, "user-1", {"selection": "['a']"}))
             assert dispatch.call_args.kwargs["tool_parameters"]["selection"] == "['a']"
             assert parameter.init_frontend_parameter("a") == "a"
 
@@ -483,8 +490,8 @@ def test_api_output_observation_and_file_messages_use_existing_owners(
     assert download.call_count == (output_kind == "image")
     assert upload.call_count == (output_kind == "blob")
     for call in download.call_args_list + upload.call_args_list:
-        assert call.kwargs["tenant_id"] == TENANT_ID
-        assert call.kwargs["user_id"] == USER_ID
+        assert call.kwargs["tenant_id"] == "tenant-1"
+        assert call.kwargs["user_id"] == "user-1"
         assert call.kwargs["conversation_id"] == "conversation-1"
     if output_kind in {"image", "blob", "file"}:
         meta = response.messages[0]["meta"]

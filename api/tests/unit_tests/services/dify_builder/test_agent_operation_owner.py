@@ -671,7 +671,7 @@ def test_confirmed_model_exception_never_returns_private_provider_text(
         raise ValueError("PRIVATE_MODEL_TOKEN_CANARY")
 
     from services.agent_llm_inner_service import PreparedAgentLLMInvocation
-    from tests.unit_tests.core.model_fixtures import make_model_instance
+    from tests.helpers.unit.core.model_fixtures import make_model_instance
     from tests.unit_tests.services.test_agent_llm_inner_service import _request
 
     monkeypatch.setattr(operations_service, "validate_model_request", lambda **_kwargs: None)

@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, TypedDict
 
 import httpx
+from pydantic import JsonValue
+
 from dify_agent.adapters.native_testing.transport import (
     AgentRuntimeHTTPClient,
     AgentRuntimeTransportError,
@@ -19,9 +21,9 @@ from dify_agent.adapters.native_testing.transport import (
 )
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.runtime_backend import RuntimeBackendProfile, RuntimeLease
-from pydantic import JsonValue
 
 if TYPE_CHECKING:
+    from dify_agent.layers.knowledge_fs.session import KnowledgeFsSessionStore
     from dify_agent.layers.shell.layer import ShellSession
     from dify_agent.runtime.native_effects import NativeEffectSession
 
@@ -46,6 +48,7 @@ class Services:
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     confirmed_api_http_client: AgentRuntimeHTTPClient | None = None
+    knowledge_session_store: KnowledgeFsSessionStore | None = None
 
 
 @dataclass

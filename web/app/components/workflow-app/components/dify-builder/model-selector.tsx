@@ -37,7 +37,8 @@ const DifyBuilderModelSelector = ({
       completionParams={(model?.completion_params ?? {}) as FormValue}
       modelList={modelList}
       popupClassName="w-[340px]! max-w-[340px]!"
-      placement="top-start"
+      side="top"
+      align="start"
       isAdvancedMode
       isInWorkflow
       readonly={readonly}
@@ -64,7 +65,7 @@ const DifyBuilderModelSelector = ({
         <button
           type="button"
           disabled={readonly}
-          className="flex min-w-0 items-center gap-0.5 rounded-md p-1 text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex min-w-0 items-center gap-0.5 rounded-md p-1 text-start system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
         >
           <span className="max-w-36 truncate">
             {model?.name || t(($) => $['modelProvider.model'], { ns: 'modelProvider' })}

@@ -10,8 +10,12 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.protocol import CreateRunRequest
 from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
 
+from clients.agent_backend import AgentBackendAgentAppRunInput, AgentBackendModelConfig, AgentBackendRunRequestBuilder
 from extensions.storage.storage_type import StorageType
 from models.agent import (
     Agent,
@@ -57,6 +61,14 @@ UPLOAD_FILE = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
 NORMALIZED_SKILL_FILE = "cccccccc-cccc-cccc-cccc-cccccccccccc"
 
 AGENT_CONFIG_TABLES = (Agent, AgentConfigDraft, AgentConfigSnapshot)
+
+
+class _PromptTarget(TypedDict, closed=True):
+    tenant_id: str
+    agent_id: str
+    user_id: str
+    config_version_id: str
+    config_version_kind: AgentConfigVersionKind
 
 
 def _soul(**updates) -> AgentSoulConfig:
@@ -147,6 +159,170 @@ def _target(
         version=_version(version_id=version_id, snapshot=agent_soul),
         agent_soul=agent_soul,
     )
+
+
+@pytest.mark.parametrize("kind", list(AgentConfigVersionKind))
+@pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
+def test_get_prompt_returns_raw_text_for_each_visible_version(
+    kind: AgentConfigVersionKind, sqlite_session: Session
+) -> None:
+    prompt = "  请参考 [§skill:research:Research§] 和 [§file:guide.md:Guide§]。\r\n\n"
+    soul = _soul(prompt={"system_prompt": prompt})
+    version = (
+        _snapshot(soul=soul)
+        if kind == AgentConfigVersionKind.SNAPSHOT
+        else _draft(
+            soul=soul,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD
+            if kind == AgentConfigVersionKind.BUILD_DRAFT
+            else AgentConfigDraftType.DRAFT,
+            account_id=USER if kind == AgentConfigVersionKind.BUILD_DRAFT else None,
+        )
+    )
+    _persist_target(sqlite_session, version)
+    target: _PromptTarget = {
+        "tenant_id": TENANT,
+        "agent_id": AGENT,
+        "config_version_id": version.id,
+        "config_version_kind": kind,
+        "user_id": USER,
+    }
+
+    service = _service(sqlite_session)
+    assert service.get_prompt(**target) == {"prompt": prompt}
+    assert "prompt" not in service.manifest(**target)
+
+
+@pytest.mark.parametrize("prompt", ["  新提示 🪷 [§skill:research:Research§]\r\n\n", ""])
+@pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
+def test_update_prompt_persists_only_system_prompt_and_keeps_built_requests(
+    prompt: str, sqlite_session: Session
+) -> None:
+    original = _soul(
+        prompt={"system_prompt": "Original instructions"},
+        config_note="Keep this note",
+        config_files=[AgentConfigFileRefConfig(name="guide.md", file_kind="upload_file", file_id=UPLOAD_FILE)],
+        config_skills=[AgentConfigSkillRefConfig(name="research", file_id=SKILL_FILE, description="Research")],
+        env={"variables": [{"name": "API_KEY", "value": "configured"}]},
+        model={
+            "plugin_id": "langgenius/openai",
+            "model_provider": "openai",
+            "model": "gpt-test",
+            "model_settings": {"temperature": 0.2},
+        },
+    )
+    _persist_target(
+        sqlite_session,
+        _draft(version_id=BUILD_DRAFT, draft_type=AgentConfigDraftType.DEBUG_BUILD, account_id=USER, soul=original),
+    )
+    service = _service(sqlite_session)
+    target: _PromptTarget = {
+        "tenant_id": TENANT,
+        "agent_id": AGENT,
+        "user_id": USER,
+        "config_version_id": BUILD_DRAFT,
+        "config_version_kind": AgentConfigVersionKind.BUILD_DRAFT,
+    }
+    before = service.resolve_target(**target).agent_soul
+
+    def build_request(soul: AgentSoulConfig) -> CreateRunRequest:
+        return AgentBackendRunRequestBuilder().build_for_agent_app(
+            AgentBackendAgentAppRunInput(
+                model=AgentBackendModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+                execution_context=DifyExecutionContextLayerConfig(
+                    tenant_id=TENANT, user_id=USER, user_from="account", agent_mode="agent_app", invoke_from="debugger"
+                ),
+                backend_binding_ref="binding-1",
+                user_prompt="Continue",
+                agent_config_version_kind="build_draft",
+                agent_soul_prompt=soul.prompt.system_prompt,
+            )
+        )
+
+    built_request = build_request(before)
+    built_payload = built_request.model_dump(mode="json")
+    assert service.update_prompt(**target, prompt=prompt) == {"prompt": prompt}
+    assert service.get_prompt(**target) == {"prompt": prompt}
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(AgentConfigDraft, BUILD_DRAFT)
+    assert persisted is not None
+    expected = original.model_dump(mode="json")
+    expected["prompt"]["system_prompt"] = prompt
+    assert persisted.config_snapshot_dict == expected
+    assert before == original
+    assert built_request.model_dump(mode="json") == built_payload
+    next_request = build_request(service.resolve_target(**target).agent_soul)
+    assert next_request.model_dump(mode="json") != built_payload
+    assert "Original instructions" not in next_request.model_dump_json()
+    next_prompt = next(
+        layer.config["prefix"] for layer in next_request.composition.layers if layer.name == "agent_soul_prompt"
+    )
+    assert isinstance(next_prompt, str)
+    assert (prompt.strip() if prompt else "No task prompt was provided.") in next_prompt
+
+
+@pytest.mark.parametrize("kind", [AgentConfigVersionKind.SNAPSHOT, AgentConfigVersionKind.DRAFT])
+@pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
+def test_update_prompt_rejects_read_only_versions(kind: AgentConfigVersionKind, sqlite_session: Session) -> None:
+    soul = _soul(prompt={"system_prompt": "unchanged"})
+    version = _snapshot(soul=soul) if kind == AgentConfigVersionKind.SNAPSHOT else _draft(soul=soul)
+    _persist_target(sqlite_session, version)
+
+    with pytest.raises(AgentConfigServiceError) as exc_info:
+        _service(sqlite_session).update_prompt(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            user_id=USER,
+            config_version_id=version.id,
+            config_version_kind=kind,
+            prompt="replacement",
+        )
+
+    assert (exc_info.value.code, exc_info.value.status_code) == ("config_not_writable", 403)
+    sqlite_session.refresh(version)
+    assert version.config_snapshot_dict == soul.model_dump(mode="json")
+
+
+@pytest.mark.parametrize("operation", ["get_prompt", "update_prompt"])
+@pytest.mark.parametrize(
+    "mismatch", ["tenant", "agent", "version_tenant", "version_agent", "account", "missing_account", "version", "kind"]
+)
+@pytest.mark.parametrize("sqlite_session", [AGENT_CONFIG_TABLES], indirect=True)
+def test_prompt_access_requires_complete_owner_chain(operation: str, mismatch: str, sqlite_session: Session) -> None:
+    version = _draft(
+        version_id=BUILD_DRAFT,
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        account_id=USER,
+        soul=_soul(prompt={"system_prompt": "private"}),
+    )
+    if mismatch == "version_tenant":
+        version.tenant_id = OTHER_TENANT
+    if mismatch == "version_agent":
+        version.agent_id = END_USER
+    _persist_target(sqlite_session, version)
+    target: _PromptTarget = {
+        "tenant_id": OTHER_TENANT if mismatch == "tenant" else TENANT,
+        "agent_id": END_USER if mismatch == "agent" else AGENT,
+        "user_id": "" if mismatch == "missing_account" else END_USER if mismatch == "account" else USER,
+        "config_version_id": SNAPSHOT if mismatch == "version" else BUILD_DRAFT,
+        "config_version_kind": AgentConfigVersionKind.DRAFT
+        if mismatch == "kind"
+        else AgentConfigVersionKind.BUILD_DRAFT,
+    }
+    service = _service(sqlite_session)
+
+    def call() -> dict[str, str]:
+        if operation == "get_prompt":
+            return service.get_prompt(**target)
+        return service.update_prompt(**target, prompt="replacement")
+
+    with pytest.raises(AgentConfigServiceError) as exc_info:
+        call()
+
+    assert exc_info.value.status_code == (400 if mismatch == "missing_account" else 404)
+    sqlite_session.refresh(version)
+    assert version.config_snapshot.prompt.system_prompt == "private"
 
 
 def _zip_bytes(members: dict[str, bytes]) -> bytes:

@@ -26,9 +26,10 @@ from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.entities.provider_configuration import ProviderModelBundle
 from core.entities.provider_entities import CustomProviderConfiguration
 from core.moderation.base import ModerationError
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
-from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from core.plugin.impl.model_runtime_factory import create_model_type_instance, create_plugin_model_runtime
 from core.provider_manager import ProviderManager
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
@@ -41,12 +42,12 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.dataset import Dataset
 from models.enums import ConversationFromSource
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, IconType, Message
 from services.knowledge.external.service import ExternalDatasetService
-from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
@@ -113,9 +114,17 @@ def model_runtime(monkeypatch: pytest.MonkeyPatch) -> tuple[ProviderModelBundle,
     bundle = config.provider_model_bundle
     bundle.configuration.tenant_id = TENANT_ID
     bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "token"})
-    bundle.model_type_instance = LargeLanguageModel(
-        provider_schema=bundle.configuration.provider,
-        model_runtime=create_plugin_model_runtime(tenant_id=TENANT_ID),
+    provider_declaration = PluginModelProviderDeclaration.model_validate(
+        {
+            **bundle.configuration.provider.model_dump(),
+            "plugin_unique_identifier": "langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "installation_source": None,
+        }
+    )
+    bundle.model_type_instance = create_model_type_instance(
+        runtime=create_plugin_model_runtime(tenant_id=TENANT_ID),
+        provider_schema=provider_declaration,
+        model_type=ModelType.LLM,
     )
     calls: list[RecordedCall] = []
     events: list[str] = []
@@ -210,7 +219,7 @@ def _message() -> Message:
         id="msg",
         app_id=APP_ID,
         conversation_id="conv",
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         message_unit_price=Decimal(0),
@@ -218,7 +227,7 @@ def _message() -> Message:
         answer_unit_price=Decimal(0),
         total_price=Decimal(0),
         currency="USD",
-        invoke_from=InvokeFrom.SERVICE_API,
+        invoke_from=ModelInvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_account_id="user",
         app_mode=AppMode.COMPLETION,
@@ -242,8 +251,8 @@ def _persist_records(session: Session) -> tuple[App, Message]:
         app_id=APP_ID,
         mode=AppMode.COMPLETION,
         name="Conversation",
-        inputs={},
-        invoke_from=InvokeFrom.SERVICE_API,
+        _inputs={},
+        invoke_from=ModelInvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_account_id="user",
     )
@@ -469,7 +478,11 @@ class TestCompletionAppRunner:
                     "method": "POST",
                     "path": f"plugin/{TENANT_ID}/dispatch/llm/invoke",
                     "type_": LLMResultChunk,
-                    "headers": {"X-Plugin-ID": "langgenius/openai", "Content-Type": "application/json"},
+                    "headers": {
+                        "X-Plugin-ID": "langgenius/openai",
+                        "X-Plugin-Unique-Identifier": "langgenius/openai:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        "Content-Type": "application/json",
+                    },
                     "data": {
                         "app_id": APP_ID,
                         "data": {

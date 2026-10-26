@@ -698,7 +698,11 @@ describe('ModelProviderPage', () => {
       const refreshedDialog = screen.getByRole('dialog', {
         name: 'modelProvider.modelProvider.systemModelSettingsTitle',
       })
-      expect(await within(refreshedDialog).findByRole('button', { name: /^GPT-4/ })).toBeVisible()
+      expect(
+        await within(refreshedDialog).findByRole('button', {
+          name: 'modelProvider.modelProvider.systemReasoningModel.key GPT-4',
+        }),
+      ).toBeVisible()
       expect(mockDefaultModelQuery).toHaveBeenCalledTimes(5)
     })
 

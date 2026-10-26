@@ -10,7 +10,7 @@ from sqlalchemy import Engine
 
 from models.model import App, AppMode
 from services.dify_builder import app_naming
-from tests.unit_tests.model_factories import make_app
+from tests.helpers.unit.model_factories import make_app
 
 
 @dataclass(frozen=True)

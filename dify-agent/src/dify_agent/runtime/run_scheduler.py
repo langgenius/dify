@@ -64,7 +64,7 @@ from dify_agent.runtime.native_continuation import (
     PreparedContinuation,
     validate_deferred_results,
 )
-from dify_agent.runtime.observability import AgentObservability
+from dify_agent.runtime.observability import AgentObservability, ApplicationAgentObservability
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, AgentRunRunner
 from dify_agent.server.schemas import RunCreateClaim, RunRecord
 
@@ -181,6 +181,7 @@ class RunScheduler:
     runner_factory: RunRunnerFactory | None
     services: Services
     agent_observability: AgentObservability | None
+    application_observability: ApplicationAgentObservability | None
     _lifecycle_lock: asyncio.Lock
 
     def __init__(
@@ -196,6 +197,7 @@ class RunScheduler:
         runner_factory: RunRunnerFactory | None = None,
         agent_observability: AgentObservability | None = None,
         native_owner: NativeContinuationOwner | None = None,
+        application_observability: ApplicationAgentObservability | None = None,
     ) -> None:
         if (
             native_owner is not None
@@ -220,6 +222,7 @@ class RunScheduler:
         self.services = services
         self.runner_factory = runner_factory
         self.agent_observability = agent_observability
+        self.application_observability = application_observability
         self._lifecycle_lock = asyncio.Lock()
 
     @property
@@ -639,6 +642,7 @@ class RunScheduler:
             stream_text_delta_flush_interval_seconds=self.stream_text_delta_flush_interval_seconds,
             stream_text_delta_max_chars=self.stream_text_delta_max_chars,
             agent_observability=self.agent_observability,
+            application_observability=self.application_observability,
         )
 
     def _discard_active_run(self, run_id: str, task: asyncio.Task[None]) -> None:

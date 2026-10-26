@@ -1,7 +1,7 @@
 import pytest
 
 from services.feature_service import FeatureService
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def test_dify_builder_flag_follows_config_true(monkeypatch: pytest.MonkeyPatch) -> None:

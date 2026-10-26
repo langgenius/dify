@@ -67,7 +67,7 @@ from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import execution_revision
 from services.dify_builder.serde import context_from_dict, context_to_dict
 from services.tools.builder_credential_reference import credential_revision, select_builder_credential
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.core.dify_builder.test_gmail_read_policy import gmail_graph, tool_data
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import (
     owned as owned,  # noqa: PLC0414 - shared pytest fixture

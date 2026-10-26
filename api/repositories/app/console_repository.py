@@ -7,7 +7,6 @@ existing use cases that still need attached models.
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Sequence
 from dataclasses import replace
@@ -50,6 +49,7 @@ from services.agent.errors import (
 from services.app.console_service import ConsoleAppNotFoundError, ConsoleApps
 from services.app.query_service import AppDescription, DiscoveryApps, RelatedApps
 from services.app_creation_records import create_installed_app_record, create_site_record
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     RECENT_APP_MODES,
     AppAgentBinding,
@@ -65,7 +65,6 @@ from services.entities.app_entities import (
     AppRecord,
     AppReference,
     AppSummary,
-    AppTraceSettings,
     AppUpdateArguments,
     CreateAppParams,
     RecentAppListItem,
@@ -325,12 +324,6 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         with self._session_factory() as session:
             app = require_console_app(session, context, app_id)
             return _app_trace_settings_adapter.validate_json(app.tracing) if app.tracing else AppTraceSettings()
-
-    @override
-    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
-        with self._session_factory.begin() as session:
-            app = require_console_app(session, context, app_id)
-            app.tracing = json.dumps({"enabled": settings.enabled, "tracing_provider": settings.tracing_provider})
 
     @staticmethod
     def _draft_trigger_app_ids(session: Session, workspace_id: str, apps: list[App]) -> set[str]:

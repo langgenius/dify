@@ -119,7 +119,8 @@ export function BuilderPromptModelGuide({
         }}
       />
       <PopoverContent
-        placement="bottom-start"
+        side="bottom"
+        align="start"
         initialFocus={false}
         className="flex w-80 max-w-(--available-width) flex-col gap-3 p-3"
       >

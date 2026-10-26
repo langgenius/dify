@@ -279,7 +279,7 @@ def test_entry_installs_actual_host_layer_first_and_disables_raw_observers(monke
     )
     graph = Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
     commands = case.host.wrap_commands(channel=InMemoryChannel())
-    from tests.unit_tests.config_override import apply_config_overrides
+    from tests.helpers.unit.config_override import apply_config_overrides
 
     apply_config_overrides(monkeypatch, DEBUG=True, ENABLE_OTEL=True)
     monkeypatch.setattr(module, "ObservabilityLayer", lambda: pytest.fail("raw OTel observer"))

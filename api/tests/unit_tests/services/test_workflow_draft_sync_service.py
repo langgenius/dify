@@ -15,7 +15,7 @@ from repositories.workflow_collaboration_repository import WorkflowCollaboration
 from repositories.workflow_draft_sync_repository import ServerDraftChange, WorkflowDraftSyncRepository
 from services.workflow_collaboration_service import WorkflowCollaborationService
 from services.workflow_draft_sync_service import WorkflowDraftSyncService, notify_workflow_draft_changed
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.installed_spies import installed_mock
 
 

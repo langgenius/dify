@@ -8,7 +8,7 @@ from core.model_manager import ModelInstance
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule, ParameterType
 from services.workflow_generation.runner import WorkflowGenerator, _clamp_for_planner
-from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
 def _model(monkeypatch: pytest.MonkeyPatch, maximum: object) -> ModelInstance:
