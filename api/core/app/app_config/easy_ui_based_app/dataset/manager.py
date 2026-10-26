@@ -268,8 +268,8 @@ class DatasetConfigManager:
 
                     try:
                         uuid.UUID(tool_item["id"])
-                    except ValueError:
-                        raise ValueError("id in dataset must be of UUID type")
+                    except ValueError as caught_error:
+                        raise ValueError("id in dataset must be of UUID type") from caught_error
 
                     if not cls.is_dataset_exists(tenant_id, tool_item["id"], session):
                         raise ValueError("Dataset ID does not exist, please check your permission.")

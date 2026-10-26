@@ -173,6 +173,7 @@ class PluginConnectionOAuthGateway:
             raise ConnectionConfigurationError()
         client_id = parameters.get("client_id")
         return ResolvedOAuthClient(
+            plugin_unique_identifier=controller.plugin_unique_identifier,
             snapshot=OAuthClientSnapshot(
                 reference=ConnectionOAuthClient(
                     source=stored.source,
@@ -199,6 +200,7 @@ class PluginConnectionOAuthGateway:
                 provider=identity.provider_name,
                 redirect_uri=self.redirect_uri(provider),
                 system_credentials=client.parameters,
+                plugin_unique_identifier=client.plugin_unique_identifier,
             ).authorization_url
         except Exception:
             raise ConnectionOAuthError() from None
@@ -221,6 +223,7 @@ class PluginConnectionOAuthGateway:
                     provider=identity.provider_name,
                     redirect_uri=self.redirect_uri(provider),
                     system_credentials=client.parameters,
+                    plugin_unique_identifier=client.plugin_unique_identifier,
                     request=callback,
                 )
             return self._grant(result)
@@ -261,6 +264,7 @@ class PluginConnectionOAuthGateway:
                     provider=identity.provider_name,
                     redirect_uri=self.redirect_uri(provider),
                     system_credentials=client.parameters,
+                    plugin_unique_identifier=client.plugin_unique_identifier,
                     credentials=credentials,
                 )
             if not result.credentials:
@@ -298,6 +302,7 @@ class PluginConnectionOAuthGateway:
                 provider=provider,
                 credentials=credentials,
                 credential_type=CredentialType.OAUTH2,
+                plugin_unique_identifier=self._providers.provider(context.tenant_id, provider).plugin_unique_identifier,
             )
         except PluginNotImplementedError:
             return CredentialCheckResult(
@@ -320,6 +325,7 @@ class PluginConnectionOAuthGateway:
                 user_id=context.end_user_id,
                 provider=provider,
                 system_credentials=client.parameters,
+                plugin_unique_identifier=client.plugin_unique_identifier,
                 credentials=credentials,
             )
         except PluginNotImplementedError:

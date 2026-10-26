@@ -221,6 +221,12 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                     self._app_id is not None and existing_model.app_id != self._app_id
                 ):
                     raise ValueError("Unauthorized access to workflow run")
+                # A delayed persistence task must not resurrect a durably stopped run.
+                if (
+                    existing_model.stop_requested_at is not None
+                    and existing_model.status == WorkflowExecutionStatus.STOPPED
+                ):
+                    return
                 if db_model.connection_context is not None:
                     if (
                         existing_model.workflow_id != db_model.workflow_id
@@ -245,3 +251,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
             # Update the in-memory cache for faster subsequent lookups
             self._execution_cache[db_model.id] = db_model
+
+    @override
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        self.save(execution)

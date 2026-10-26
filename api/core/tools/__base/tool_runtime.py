@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.tool_entities import ToolInvokeFrom
 
@@ -20,6 +20,7 @@ class ToolRuntime(BaseModel):
     tool_id: str | None = None
     invoke_from: InvokeFrom | None = None
     tool_invoke_from: ToolInvokeFrom | None = None
+    dify_run_context: DifyRunContext | None = Field(default=None, exclude=True, repr=False)
     credential_id: str | None = Field(default=None, exclude=True)
     connection_id: str | None = Field(default=None, exclude=True)
     credentials: dict[str, Any] = Field(default_factory=dict, repr=False)

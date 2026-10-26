@@ -3,20 +3,24 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { expectLoadingButton } from '@/test/button'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConfigurationModals as render } from '@/test/configuration-modals'
 import { createDeferred } from '@/test/deferred'
+import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
 import Action from '../action'
 
 const requests = vi.hoisted(() => ({
   uninstall: vi.fn(),
   releases: vi.fn(),
-  updateModal: vi.fn(),
+  uploadGitHub: vi.fn(),
+  updateFromGitHub: vi.fn(),
   invalidate: vi.fn(),
   notify: vi.fn(),
 }))
 vi.mock('@/service/plugins', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/plugins')>()),
   uninstallPlugin: requests.uninstall,
+  uploadGitHub: requests.uploadGitHub,
+  updateFromGitHub: requests.updateFromGitHub,
 }))
 vi.mock('../../install-plugin/hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../install-plugin/hooks')>()),
@@ -26,10 +30,20 @@ vi.mock('@/app/notifications', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/notifications')>()
   return { ...actual, toast: Object.assign(requests.notify, actual.toast) }
 })
-// The shared modal host and catalog invalidation are separate owners.
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({ setShowUpdatePluginModal: requests.updateModal }),
+// Catalog refresh is an independent installer contract; the real host, release picker and installer stay mounted.
+vi.mock('../../install-plugin/hooks/use-refresh-plugin-list', () => ({
+  default: () => ({ refreshPluginList: vi.fn() }),
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+    }),
+  }
+})
 vi.mock('@/service/use-plugins', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   useInvalidateInstalledPluginList: () => requests.invalidate,
@@ -158,32 +172,61 @@ describe('installed plugin actions', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it('opens the update host with the existing identifier and fetched releases, then refreshes on save', async () => {
+  it('updates the chosen release through the real modal and refreshes after saving', async () => {
     const user = userEvent.setup()
-    const releases = [{ tag_name: '2.0.0', assets: [] }]
-    requests.releases.mockResolvedValue(releases)
+    requests.releases.mockResolvedValue([
+      {
+        tag_name: '2.0.0',
+        assets: [
+          {
+            id: 2,
+            name: 'test-plugin.difypkg',
+            browser_download_url:
+              'https://github.com/test-author/test-plugin/releases/download/2.0.0/test-plugin.difypkg',
+          },
+        ],
+      },
+      { tag_name: '1.0.0', assets: [] },
+    ])
+    requests.uploadGitHub.mockResolvedValue({
+      unique_identifier: 'test-author/test-plugin@2.0.0',
+      manifest: createPluginDeclarationFixture({ version: '2.0.0' }),
+    })
+    const pending = createDeferred<{ all_installed: boolean; task_id: string }>()
+    requests.updateFromGitHub.mockReturnValueOnce(pending.promise)
     render(<Action {...createActionProps({ isShowFetchNewVersion: true })} />)
     await user.click(updateButton())
-    await waitFor(() => expect(requests.updateModal).toHaveBeenCalledOnce())
+    expect(
+      await screen.findByRole('dialog', { name: 'plugin.installFromGitHub.updatePlugin' }),
+    ).toBeVisible()
     expect(requests.releases).toHaveBeenCalledExactlyOnceWith('test-author', 'test-plugin')
-    expect(requests.updateModal).toHaveBeenCalledWith({
-      onSaveCallback: expect.any(Function),
-      payload: {
-        category: 'tool',
-        github: {
-          originalPackageInfo: {
-            id: 'test-author/test-plugin@1.0.0',
-            repo: 'test-author/test-plugin',
-            version: '1.0.0',
-            package: 'test-plugin.difypkg',
-            releases,
-          },
-        },
-      },
-    })
     expect(requests.notify).toHaveBeenCalledWith('New version available: 2.0.0', { type: 'info' })
+    await user.click(
+      screen.getByRole('combobox', { name: 'plugin.installFromGitHub.selectVersion' }),
+    )
+    expect(await screen.findByRole('option', { name: /1\.0\.0.*INSTALLED/ })).toBeVisible()
+    await user.click(screen.getByRole('option', { name: '2.0.0' }))
+    await user.click(
+      screen.getByRole('combobox', { name: 'plugin.installFromGitHub.selectPackage' }),
+    )
+    await user.click(await screen.findByRole('option', { name: 'test-plugin.difypkg' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.installModal.next' }))
+    await user.click(await screen.findByRole('button', { name: 'plugin.installModal.install' }))
+    expect(requests.uploadGitHub).toHaveBeenCalledExactlyOnceWith(
+      'test-author/test-plugin',
+      '2.0.0',
+      'test-plugin.difypkg',
+    )
+    expect(requests.updateFromGitHub).toHaveBeenCalledExactlyOnceWith(
+      'test-author/test-plugin',
+      '2.0.0',
+      'test-plugin.difypkg',
+      'test-author/test-plugin@1.0.0',
+      'test-author/test-plugin@2.0.0',
+    )
     expect(requests.invalidate).not.toHaveBeenCalled()
-    requests.updateModal.mock.calls[0]![0].onSaveCallback()
+    pending.resolve({ all_installed: true, task_id: '' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(requests.invalidate).toHaveBeenCalledExactlyOnceWith('tool')
   })
 
@@ -203,7 +246,7 @@ describe('installed plugin actions', () => {
       expect(requests.notify).toHaveBeenCalledWith('No new version available', { type: 'info' }),
     )
     expect(requests.releases).toHaveBeenCalledExactlyOnceWith('test-author', 'test-plugin')
-    expect(requests.updateModal).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('does not open an update when the repository has no releases', async () => {
@@ -212,6 +255,6 @@ describe('installed plugin actions', () => {
     await user.click(updateButton())
     await waitFor(() => expect(requests.releases).toHaveBeenCalledOnce())
     expect(requests.notify).not.toHaveBeenCalled()
-    expect(requests.updateModal).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

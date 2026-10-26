@@ -403,8 +403,8 @@ def _list_chat_messages(
                 user=current_user,
                 session=session,
             )
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
     else:
         conversation = session.scalar(
             select(Conversation)
@@ -529,25 +529,25 @@ def _get_message_suggested_questions(
         raise AppUnavailableError() from exc
     except SuggestedQuestionsActorNotFoundError as exc:
         raise Unauthorized("Account no longer exists") from exc
-    except MessageNotExistsError:
-        raise NotFound("Message not found")
-    except ConversationNotExistsError:
-        raise NotFound("Conversation not found")
+    except MessageNotExistsError as caught_error:
+        raise NotFound("Message not found") from caught_error
+    except ConversationNotExistsError as caught_error:
+        raise NotFound("Conversation not found") from caught_error
     except ProviderTokenNotInitError as ex:
-        raise ProviderNotInitializeError(ex.description)
-    except QuotaExceededError:
-        raise ProviderQuotaExceededError()
-    except ModelCurrentlyNotSupportError:
-        raise ProviderModelCurrentlyNotSupportError()
+        raise ProviderNotInitializeError(ex.description) from ex
+    except QuotaExceededError as caught_error:
+        raise ProviderQuotaExceededError() from caught_error
+    except ModelCurrentlyNotSupportError as caught_error:
+        raise ProviderModelCurrentlyNotSupportError() from caught_error
     except InvokeError as e:
-        raise CompletionRequestError(e.description)
-    except SuggestedQuestionsAfterAnswerDisabledError:
-        raise AppSuggestedQuestionsAfterAnswerDisabledError()
+        raise CompletionRequestError(e.description) from e
+    except SuggestedQuestionsAfterAnswerDisabledError as caught_error:
+        raise AppSuggestedQuestionsAfterAnswerDisabledError() from caught_error
     except HTTPException:
         raise
-    except Exception:
+    except Exception as caught_error:
         logger.exception("internal server error.")
-        raise InternalServerError()
+        raise InternalServerError() from caught_error
 
     return dump_response(SuggestedQuestionsResponse, {"data": questions})
 

@@ -44,6 +44,8 @@ class ScriptedAuth(PluginCredentialAuthClient):
         self.on_check: Callable[[], None] | None = None
         self.calls: list[tuple[str, str, str, dict[str, Any]]] = []
         self.credential_types: list[CredentialType] = []
+        self.check_artifacts: list[str | None] = []
+        self.revocation_artifacts: list[str | None] = []
         self.check_error: Exception | None = None
         self.revoke_result = OAuthRevokeResult(status="revoked", reason_code=None, retryable=False)
         self.on_revoke: Callable[[], None] | None = None
@@ -58,7 +60,9 @@ class ScriptedAuth(PluginCredentialAuthClient):
         provider: str,
         credentials: Mapping[str, Any],
         credential_type: CredentialType,
+        plugin_unique_identifier: str | None = None,
     ) -> CredentialCheckResult:
+        self.check_artifacts.append(plugin_unique_identifier)
         self.credential_types.append(credential_type)
         self.calls.append((tenant_id, user_id, provider, dict(credentials)))
         if callback := self.on_check:
@@ -77,7 +81,9 @@ class ScriptedAuth(PluginCredentialAuthClient):
         provider: str,
         system_credentials: Mapping[str, Any],
         credentials: Mapping[str, Any],
+        plugin_unique_identifier: str | None = None,
     ) -> OAuthRevokeResult:
+        self.revocation_artifacts.append(plugin_unique_identifier)
         self.revocations.append((tenant_id, user_id, provider, dict(system_credentials), dict(credentials)))
         if callback := self.on_revoke:
             self.on_revoke = None
@@ -182,7 +188,7 @@ def make_harness(sessions: sessionmaker[Session]) -> ConnectionHarness:
             type=EndUserType.BROWSER,
             account_id=account.id,
             session_id=str(uuidv7()),
-            is_anonymous=False,
+            _is_anonymous=False,
         )
         session.add(user)
         graph: dict[str, Any] = {

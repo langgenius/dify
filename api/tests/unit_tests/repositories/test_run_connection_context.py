@@ -184,7 +184,7 @@ def test_logstore_keeps_the_same_secret_free_run_snapshot(
         app_id="app",
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
     )
-    payload = dict(repository._to_logstore_model(execution))
+    payload = dict(repository._to_logstore_model(execution, log_version=1))
     assert execution.connection_context is not None
     assert payload["connection_context"] == execution.connection_context.model_dump_json()
     run = _dict_to_workflow_run(payload)

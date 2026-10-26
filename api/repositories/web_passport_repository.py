@@ -6,9 +6,36 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.public_runtime import published_app_filter
+from core.db.session_factory import session_factory as global_session_factory
 from models.enums import AppStatus, EndUserType
 from models.model import App, EndUser, Site
 from services.entities.passport_entities import EndUserRecord, WebAppRecord, WebPassportEndUserResolution
+
+
+def get_web_passport_identity(
+    app_id: str | None, app_code: str | None, end_user_id: str | None
+) -> tuple[App | None, EndUser | None]:
+    """Resolve a previously issued passport against the current published app and owner chain."""
+    with global_session_factory.create_session() as session:
+        app = session.scalar(
+            select(App).where(App.id == app_id, App.status == AppStatus.NORMAL, published_app_filter())
+        )
+        if app is None:
+            return None, None
+        site = session.scalar(
+            select(Site).where(Site.code == app_code, Site.app_id == app.id, Site.status == AppStatus.NORMAL)
+        )
+        if app_code is None or site is None or app.enable_site is False:
+            return None, None
+        end_user = session.scalar(
+            select(EndUser).where(
+                EndUser.id == end_user_id,
+                EndUser.app_id == app.id,
+                EndUser.tenant_id == app.tenant_id,
+            )
+        )
+        return app, end_user
 
 
 class WebPassportRepository:
@@ -98,7 +125,7 @@ class WebPassportRepository:
                             app_id=app.app_id,
                             type=EndUserType.BROWSER,
                             account_id=account_id,
-                            is_anonymous=False,
+                            _is_anonymous=False,
                             session_id=self._generate_unique_session_id(session),
                         )
                         session.add(end_user)
@@ -121,6 +148,7 @@ class WebPassportRepository:
                 Site.status == AppStatus.NORMAL,
                 App.status == AppStatus.NORMAL,
                 App.enable_site.is_(True),
+                published_app_filter(),
             )
         )
 
@@ -170,7 +198,7 @@ class WebPassportRepository:
             tenant_id=app.tenant_id,
             app_id=app.app_id,
             type=EndUserType.BROWSER,
-            is_anonymous=True,
+            _is_anonymous=True,
             session_id=session_id,
         )
         session.add(end_user)

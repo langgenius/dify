@@ -5,8 +5,7 @@ from typing import Concatenate
 
 from flask import request
 from flask_restx import Resource
-from sqlalchemy import select
-from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
 from constants import HEADER_NAME_APP_CODE
@@ -16,13 +15,12 @@ from controllers.web.error import (
     WebAppAuthRequiredError,
     WebAppNotFoundError,
 )
-from core.db.session_factory import session_factory
 from core.logging.context import set_identity_context
 from extensions.ext_application_services import application_services
 from libs.passport import PassportService
 from libs.token import extract_console_cookie_token, extract_webapp_access_token, extract_webapp_passport
-from models.enums import AppStatus
-from models.model import App, EndUser, Site
+from models.model import App, EndUser
+from repositories.web_passport_repository import get_web_passport_identity
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode, WebAppSettings
 from services.system_feature_service import SystemFeatureService
 from services.web_identity_service import WebIdentityError
@@ -78,37 +76,22 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
         if not tk:
             raise Unauthorized("App token is missing.")
         decoded = PassportService().verify(tk)
-        if decoded.get("app_code") != app_code:
+        decoded_app_code = decoded.get("app_code")
+        if not isinstance(decoded_app_code, str) or not decoded_app_code:
+            raise WebAppNotFoundError()
+        if decoded_app_code != app_code:
             raise Unauthorized("Passport belongs to another web app.")
-        app_code = decoded.get("app_code")
+        app_code = decoded_app_code
         app_id = decoded.get("app_id")
-        with session_factory.create_session() as session:
-            app_model = session.scalar(select(App).where(App.id == app_id))
-            site = session.scalar(select(Site).where(Site.code == app_code, Site.app_id == app_id))
-            if not app_model:
-                raise NotFound()
-            if not app_code or not site:
-                raise BadRequest("Site URL is no longer valid.")
-            if (
-                app_model.enable_site is False
-                or app_model.status != AppStatus.NORMAL
-                or site.status != AppStatus.NORMAL
-            ):
-                raise BadRequest("Site is disabled.")
-            end_user_id = decoded.get("end_user_id")
-            end_user = session.scalar(
-                select(EndUser).where(
-                    EndUser.id == end_user_id,
-                    EndUser.app_id == app_model.id,
-                    EndUser.tenant_id == app_model.tenant_id,
-                )
-            )
-            if not end_user:
-                raise NotFound()
+        app_model, end_user = get_web_passport_identity(app_id, app_code, decoded.get("end_user_id"))
+        if app_model is None:
+            raise WebAppNotFoundError()
+        if end_user is None:
+            raise NotFound()
 
-            # Validate user_id against end_user's session_id if provided
-            if end_user.account_id is None and user_id is not None and end_user.session_id != user_id:
-                raise Unauthorized("Authentication has expired.")
+        # Validate user_id against end_user's session_id if provided.
+        if end_user.account_id is None and user_id is not None and end_user.session_id != user_id:
+            raise Unauthorized("Authentication has expired.")
 
         try:
             application_services().web_identity.validate_passport(decoded, account_id=end_user.account_id)
@@ -135,16 +118,16 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
     except Unauthorized as e:
         if webapp_auth_enabled:
             if not app_code:
-                raise Unauthorized("Please re-login to access the web app.")
+                raise Unauthorized("Please re-login to access the web app.") from e
             app_id = resolve_web_app_id(app_code)
             app_web_auth_enabled = (
                 EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode
                 != WebAppAccessMode.PUBLIC
             )
             if app_web_auth_enabled:
-                raise WebAppAuthRequiredError()
+                raise WebAppAuthRequiredError() from e
 
-        raise Unauthorized(e.description)
+        raise Unauthorized(e.description) from e
 
 
 def _validate_webapp_token(decoded, app_web_auth_enabled: bool, system_webapp_auth_enabled: bool):

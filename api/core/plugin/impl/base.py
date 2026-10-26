@@ -119,6 +119,11 @@ def _normalize_plugin_daemon_response_for_type(json_response: Any, type_: type[o
 
 
 class BasePluginClient:
+    def __init__(self, *, plugin_unique_identifier: str | None = None) -> None:
+        if plugin_unique_identifier == "":
+            raise ValueError("Plugin unique identifier must not be empty")
+        self._plugin_unique_identifier = plugin_unique_identifier
+
     def _request(
         self,
         method: str,
@@ -148,9 +153,9 @@ class BasePluginClient:
 
         try:
             response = _httpx_client.request(**request_kwargs)
-        except httpx.RequestError:
+        except httpx.RequestError as caught_error:
             logger.exception("Request to Plugin Daemon Service failed")
-            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
+            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed") from caught_error
 
         return response
 
@@ -180,6 +185,10 @@ class BasePluginClient:
         prepared_headers = dict(headers or {})
         prepared_headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
         prepared_headers.setdefault("Accept-Encoding", "gzip, deflate, br")
+
+        from services.plugin.dispatch_identity import prepare_dispatch_identity
+
+        prepare_dispatch_identity(path, prepared_headers, self._plugin_unique_identifier)
 
         # Inject traceparent header for distributed tracing
         self._inject_trace_headers(prepared_headers)
@@ -318,9 +327,9 @@ class BasePluginClient:
         except httpx.HTTPStatusError as e:
             logger.exception("Failed to request plugin daemon, status: %s, url: %s", e.response.status_code, path)
             if e.response.status_code < 500:
-                raise PluginDaemonClientSideError(description=str(e))
+                raise PluginDaemonClientSideError(description=str(e)) from e
             else:
-                raise PluginDaemonInternalServerError(description=str(e))
+                raise PluginDaemonInternalServerError(description=str(e)) from e
         except Exception as e:
             msg = f"Failed to request plugin daemon, url: {path}"
             logger.exception("Failed to request plugin daemon, url: %s", path)

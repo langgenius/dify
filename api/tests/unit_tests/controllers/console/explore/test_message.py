@@ -370,8 +370,8 @@ def _message(
         from_source=source,
         from_account_id=account_id or state.harness.account.id,
         from_end_user_id=end_user_id,
-        created_at=_CREATED_AT - timedelta(minutes=age),
     )
+    message.created_at = _CREATED_AT - timedelta(minutes=age)
     with state.factory.begin() as session:
         session.add(message)
     return message

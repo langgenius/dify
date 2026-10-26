@@ -13,14 +13,14 @@ from controllers.web import passport, wraps
 from enums import DeploymentEdition, WebAppAccessMode
 from libs.passport import PassportService
 from models.enums import CustomizeTokenStrategy
-from models.model import App, AppMode, EndUser, Site
+from models.model import App, AppMode, AppModelConfig, EndUser, Site
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.web_authentication_adapters import PassportWebAppSessionGateway
 from services.web_identity_service import WebIdentityService
 from services.web_passport_gateways import DeploymentWebPassportAuthGateway, PassportTokenGateway
 from services.web_passport_service import WebPassportAccountExchangeDisabledError, WebPassportService
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, WebAccounts
 
 
@@ -49,6 +49,10 @@ def identity_flow(
         app = App(tenant_id=str(uuid4()), name=code, mode=AppMode.CHAT, enable_site=True, enable_api=False)
         sqlite_session.add(app)
         sqlite_session.flush()
+        config = AppModelConfig(app_id=app.id)
+        sqlite_session.add(config)
+        sqlite_session.flush()
+        app.app_model_config_id = config.id
         sqlite_session.add(
             Site(
                 app_id=app.id,

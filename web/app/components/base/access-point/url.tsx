@@ -60,7 +60,10 @@ export function AccessPointUrl({
   unavailableLabel,
   value,
 }: AccessPointUrlProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['common', 'appOverview'])
+  const copyActionLabel = copyLabel || t(($) => $['operation.copy'])
+  const qrCodeActionLabel =
+    qrCodeLabel || t(($) => $['overview.appInfo.qrcode.title'], { ns: 'appOverview' })
   const regenerateActionLabel = regenerateLabel || t(($) => $['operation.regenerate'])
   const detailsAvailable = !loading && !unavailable
   const disabledOpenButton = (
@@ -86,26 +89,23 @@ export function AccessPointUrl({
 
   const disabledActions = (
     <div className="flex items-center gap-0.5">
-      <div className="flex cursor-not-allowed items-center justify-center p-0.5">
-        <span aria-hidden className="i-ri-file-copy-line size-4 text-text-disabled" />
-      </div>
+      <IconButton aria-label={copyActionLabel} disabled>
+        <span aria-hidden className="i-ri-file-copy-line size-4" />
+      </IconButton>
       {showQrCode && (
-        <div className="flex cursor-not-allowed items-center justify-center p-0.5">
-          <span aria-hidden className="i-ri-qr-code-line size-4 text-text-disabled" />
-        </div>
+        <IconButton aria-label={qrCodeActionLabel} disabled>
+          <span aria-hidden className="i-ri-qr-code-line size-4" />
+        </IconButton>
       )}
       {showRegenerate && (
-        <div className="flex cursor-not-allowed items-center justify-center p-0.5">
-          <span aria-hidden className="i-ri-loop-left-line size-4 text-text-disabled" />
-        </div>
+        <IconButton aria-label={regenerateActionLabel} disabled>
+          <span aria-hidden className="i-ri-loop-left-line size-4" />
+        </IconButton>
       )}
       {showOpen && (
         <>
           <span className="mx-1 h-3.5 w-px bg-divider-subtle" />
-          <div className="flex h-6 cursor-not-allowed items-center gap-1 rounded-md border-[0.5px] border-components-button-secondary-border-disabled px-1.5 system-sm-medium text-components-button-secondary-text-disabled backdrop-blur-xs">
-            <span aria-hidden className="i-ri-external-link-line size-3.5" />
-            {openLabel}
-          </div>
+          {disabledOpenAction}
         </>
       )}
     </div>
@@ -114,9 +114,9 @@ export function AccessPointUrl({
   const availableActions = (
     <div className="flex items-center gap-0.5">
       {copyDisabled ? (
-        <div className="flex cursor-not-allowed items-center justify-center p-0.5">
-          <span aria-hidden className="i-ri-file-copy-line size-4 text-text-disabled" />
-        </div>
+        <IconButton aria-label={copyActionLabel} disabled>
+          <span aria-hidden className="i-ri-file-copy-line size-4" />
+        </IconButton>
       ) : (
         <CopyFeedback
           content={value}
@@ -127,9 +127,9 @@ export function AccessPointUrl({
       )}
       {showQrCode &&
         (copyDisabled ? (
-          <div className="flex cursor-not-allowed items-center justify-center p-0.5">
-            <span aria-hidden className="i-ri-qr-code-line size-4 text-text-disabled" />
-          </div>
+          <IconButton aria-label={qrCodeActionLabel} disabled>
+            <span aria-hidden className="i-ri-qr-code-line size-4" />
+          </IconButton>
         ) : (
           <ShareQRCode
             content={value}
@@ -150,7 +150,7 @@ export function AccessPointUrl({
               >
                 <span
                   aria-hidden
-                  className={`i-ri-loop-left-line size-4 ${regenerating ? 'animate-spin' : ''}`}
+                  className={`i-ri-loop-left-line size-4 ${regenerating ? 'animate-spin motion-reduce:animate-none' : ''}`}
                 />
               </IconButton>
             }

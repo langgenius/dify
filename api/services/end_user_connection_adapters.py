@@ -120,6 +120,7 @@ class PluginApiKeyCredentialGateway:
                 provider=canonical,
                 credentials=credentials,
                 credential_type=CredentialType.API_KEY,
+                plugin_unique_identifier=controller.plugin_unique_identifier,
             )
         except PluginNotImplementedError:
             return CredentialCheckResult(

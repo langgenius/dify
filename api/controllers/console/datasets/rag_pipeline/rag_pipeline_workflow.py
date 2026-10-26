@@ -187,6 +187,10 @@ class RagPipelineRecommendedPluginsResponse(ResponseModel):
     uninstalled_recommended_plugins: list[dict[str, Any]]
 
 
+class RagPipelinePublishedWorkflowResponse(RootModel[WorkflowResponse | None]):
+    """A null response means the pipeline has no published workflow."""
+
+
 register_schema_models(
     console_ns,
     DraftWorkflowSyncPayload,
@@ -211,6 +215,7 @@ register_response_schema_models(
     RagPipelineDatasourceProviderResponse,
     RagPipelineOpaqueResponse,
     RagPipelinePublishedRunResponse,
+    RagPipelinePublishedWorkflowResponse,
     RagPipelineRecommendedPluginsResponse,
     RagPipelineStepParametersResponse,
     RagPipelineTransformResponse,
@@ -276,8 +281,8 @@ class DraftRagPipelineApi(Resource):
         elif "text/plain" in content_type:
             try:
                 payload = DraftWorkflowSyncPayload.model_validate_json(request.data)
-            except (ValueError, ValidationError):
-                raise InvalidArgumentError("Invalid JSON data")
+            except (ValueError, ValidationError) as caught_error:
+                raise InvalidArgumentError("Invalid JSON data") from caught_error
         else:
             abort(415)
         rag_pipeline_service = RagPipelineService(db.session())
@@ -302,8 +307,8 @@ class DraftRagPipelineApi(Resource):
                 conversation_variables=conversation_variables,
                 rag_pipeline_variables=payload.rag_pipeline_variables or [],
             )
-        except WorkflowHashNotEqualError:
-            raise DraftWorkflowNotSync()
+        except WorkflowHashNotEqualError as caught_error:
+            raise DraftWorkflowNotSync() from caught_error
 
         return {
             "result": "success",
@@ -342,15 +347,15 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logging.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/loop/nodes/<string:node_id>/run")
@@ -383,15 +388,15 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logging.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/run")
@@ -429,7 +434,7 @@ class DraftRagPipelineRunApi(Resource):
 
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/run")
@@ -466,7 +471,7 @@ class PublishedRagPipelineRunApi(Resource):
 
             return helper.compact_generate_response(response)
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run")
@@ -596,7 +601,7 @@ class PublishedRagPipelineApi(Resource):
     @console_ns.response(
         200,
         "Published workflow retrieved successfully, or null if not exist",
-        console_ns.models[WorkflowResponse.__name__],
+        console_ns.models[RagPipelinePublishedWorkflowResponse.__name__],
     )
     @setup_required
     @login_required
@@ -620,7 +625,7 @@ class PublishedRagPipelineApi(Resource):
         if workflow is None:
             return None
 
-        return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
+        return dump_response(RagPipelinePublishedWorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
     @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowPublishResponse.__name__])
     @setup_required
@@ -697,8 +702,8 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         if req_data.q:
             try:
                 filters = json.loads(req_data.q)
-            except json.JSONDecodeError:
-                raise ValueError("Invalid filters")
+            except json.JSONDecodeError as caught_error:
+                raise ValueError("Invalid filters") from caught_error
 
         # Get default block configs
         rag_pipeline_service = RagPipelineService(db.session())
@@ -859,7 +864,7 @@ class RagPipelineByIdApi(Resource):
             except DraftWorkflowDeletionError as e:
                 abort(400, description=str(e))
             except ValueError as e:
-                raise NotFound(str(e))
+                raise NotFound(str(e)) from e
 
         WorkflowAgentRetirementService.retire_unowned(
             tenant_id=pipeline.tenant_id,

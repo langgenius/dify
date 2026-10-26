@@ -107,6 +107,13 @@ class DifyConfig(
             )
         return self
 
+    @model_validator(mode="after")
+    def validate_knowledge_fs_production_origin(self) -> "DifyConfig":
+        if self.DEPLOY_ENV.strip().upper() == "PRODUCTION":
+            if self.KNOWLEDGE_FS_BASE_URL and not self._is_secure_or_loopback_origin(self.KNOWLEDGE_FS_BASE_URL):
+                raise ValueError("KNOWLEDGE_FS_BASE_URL must use HTTPS in production unless it targets loopback")
+        return self
+
     @classmethod
     @override
     def settings_customise_sources(

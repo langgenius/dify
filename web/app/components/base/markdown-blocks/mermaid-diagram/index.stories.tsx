@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { MermaidDiagram } from '.'
 
 const meta = {
@@ -11,7 +12,9 @@ const meta = {
   decorators: [
     (Story) => (
       <div className="w-full max-w-3xl">
-        <Story />
+        <TooltipProvider delay={300} closeDelay={200}>
+          <Story />
+        </TooltipProvider>
       </div>
     ),
   ],

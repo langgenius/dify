@@ -6,7 +6,7 @@ DB polling. This module owns the redis pub/sub channel that connects the two
 sides:
 
 * :func:`publish_node_changed` / :func:`publish_workflow_completed` —
-  invoked by :class:`core.app.workflow.layers.persistence.WorkflowPersistenceLayer`
+  invoked by :class:`services.workflow_persistence.WorkflowPersistenceLayer`
   at the very end of each handler, after the DB write has already
   succeeded. Publish failures are swallowed so the engine never trips on a
   flaky redis connection.

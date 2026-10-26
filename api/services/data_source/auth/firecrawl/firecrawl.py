@@ -63,6 +63,8 @@ class FirecrawlAuth:
             payload = response.json()
         except json.JSONDecodeError:
             payload = {}
+        if not isinstance(payload, dict):
+            payload = {}
         error_message = payload.get("error") or payload.get("message") or (response.text or "Unknown error occurred")
         raise DataSourceApiKeyAuthCredentialValidationError(
             f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}"

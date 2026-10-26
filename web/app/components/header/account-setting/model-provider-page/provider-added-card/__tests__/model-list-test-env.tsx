@@ -3,7 +3,7 @@ import type { ModelItem } from '../../declarations'
 import { zModelCredentialResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import {
   createProviderResponseFixture,
@@ -60,7 +60,7 @@ export function renderModelList({
           onCollapse={onCollapse}
           onChange={onChange}
         />
-        <AppToastHost timeout={0} />
+        <AppToaster timeout={0} />
       </ModalContextProvider>
     </NuqsTestingAdapter>,
     { features: { model_load_balancing_enabled: true }, workspacePermissionKeys: permissions },

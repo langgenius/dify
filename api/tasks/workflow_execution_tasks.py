@@ -13,6 +13,7 @@ from celery import shared_task
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
+from graphon.enums import WorkflowExecutionStatus
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import CreatorUserRole, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
@@ -83,7 +84,7 @@ def save_workflow_execution_task(
     except Exception as e:
         logger.exception("Failed to save workflow execution %s", execution_data.get("id_", "unknown"))
         # Retry the task with exponential backoff
-        raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+        raise self.retry(exc=e, countdown=60 * (2**self.request.retries)) from e
 
 
 def _create_workflow_run_from_execution(
@@ -139,6 +140,8 @@ def _update_workflow_run_from_execution(workflow_run: WorkflowRun, execution: Wo
     """
     Update a WorkflowRun database model from a WorkflowExecution domain entity.
     """
+    if workflow_run.stop_requested_at is not None and workflow_run.status == WorkflowExecutionStatus.STOPPED:
+        return
     if execution.connection_context is not None and execution.workflow_id != workflow_run.workflow_id:
         raise ValueError("Connection context does not match the workflow execution identity.")
     context = serialize_connection_context(

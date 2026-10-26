@@ -25,7 +25,7 @@ from repositories.web_passport_repository import WebPassportRepository
 from services.web_login_handoff import WebLoginHandoffService, WebLoginTarget
 from services.web_login_handoff_adapters import RedisWebLoginGrantStore
 from services.web_passport_gateways import PassportTokenGateway
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.unit_tests.controllers.web.test_web_account_passport_flow import identity_flow as identity_flow  # noqa: PLC0414 -- Register the shared pytest fixture in this module.
 from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, WebAccounts
 
