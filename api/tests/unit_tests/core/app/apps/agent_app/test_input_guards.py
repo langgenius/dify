@@ -9,11 +9,9 @@ answer, or pass through a possibly moderation-sanitized query.
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import create_autospec
 
 import pytest
-from sqlalchemy.orm import Session
 
 import core.moderation.input_moderation as input_moderation_mod
 import services.annotation.reply_service as annotation_mod
@@ -27,14 +25,14 @@ from models.model import App, AppMode, Message, MessageAnnotation
 from models.tool_runtime_contracts import WorkflowToolQueries
 from services.app.generation.adapters.agent_app import AgentAppGenerator
 from services.app.generation.agent_config import AgentAppConfigurations
-from tests.unit_tests.model_factories import make_app, make_message
+from tests.helpers.unit.model_factories import make_app, make_message
 
 
 class _FakeQueueManager:
     def __init__(self) -> None:
-        self.events: list[Any] = []
+        self.events: list[object] = []
 
-    def publish(self, event: Any, _from: Any) -> None:
+    def publish(self, event: object, _from: object) -> None:
         self.events.append(event)
 
 
@@ -60,7 +58,7 @@ def _message() -> Message:
 
 def _patch_moderation(monkeypatch: pytest.MonkeyPatch, *, returns=None, raises: Exception | None = None) -> None:
     class _FakeModeration:
-        def check(self, **kwargs: Any):
+        def check(self, **_kwargs: object):
             if raises is not None:
                 raise raises
             return returns
@@ -70,18 +68,18 @@ def _patch_moderation(monkeypatch: pytest.MonkeyPatch, *, returns=None, raises: 
 
 def _patch_annotation(monkeypatch: pytest.MonkeyPatch, *, reply=None) -> None:
     class _FakeAnnotation:
-        def query(self, **kwargs: Any):
+        def query(self, **_kwargs: object):
             return reply
 
     monkeypatch.setattr(annotation_mod.AnnotationReplyService, "query", _FakeAnnotation.query)
 
 
-def _answer_text(events: list[Any]) -> str:
+def _answer_text(events: list[object]) -> str:
     end = next(e for e in events if isinstance(e, QueueMessageEndEvent))
     return end.llm_result.message.content
 
 
-def _saved_user_query(events: list[Any]) -> str:
+def _saved_user_query(events: list[object]) -> str:
     end = next(e for e in events if isinstance(e, QueueMessageEndEvent))
     prompt_messages = end.llm_result.prompt_messages
     assert len(prompt_messages) == 1
@@ -93,11 +91,9 @@ class TestRunInputGuards:
         self,
         tool_providers,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
         *,
         annotation_replies,
         app_records,
-        human_forms,
     ):
         _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
         _patch_annotation(monkeypatch, reply=None)
@@ -105,7 +101,6 @@ class TestRunInputGuards:
 
         handled, query, annotation_reply = AgentAppGenerator(
             agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
-            forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,
@@ -126,11 +121,9 @@ class TestRunInputGuards:
         self,
         tool_providers,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
         *,
         annotation_replies,
         app_records,
-        human_forms,
     ):
         _patch_moderation(monkeypatch, returns=(True, {}, "[redacted]"))
         _patch_annotation(monkeypatch, reply=None)
@@ -138,7 +131,6 @@ class TestRunInputGuards:
 
         handled, query, annotation_reply = AgentAppGenerator(
             agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
-            forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,
@@ -159,11 +151,9 @@ class TestRunInputGuards:
         self,
         tool_providers,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
         *,
         annotation_replies,
         app_records,
-        human_forms,
     ):
         _patch_moderation(monkeypatch, raises=ModerationError("blocked preset answer"))
         _patch_annotation(monkeypatch, reply=None)
@@ -171,7 +161,6 @@ class TestRunInputGuards:
 
         handled, _, annotation_reply = AgentAppGenerator(
             agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
-            forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,
@@ -193,11 +182,9 @@ class TestRunInputGuards:
         self,
         tool_providers,
         monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
         *,
         annotation_replies,
         app_records,
-        human_forms,
     ):
         _patch_moderation(monkeypatch, returns=(False, {}, "what is your name"))
         annotation = MessageAnnotation(
@@ -212,7 +199,6 @@ class TestRunInputGuards:
 
         handled, _, annotation_reply = AgentAppGenerator(
             agent_configs=create_autospec(AgentAppConfigurations, instance=True, spec_set=True),
-            forms=human_forms,
             annotations=annotation_replies,
             records=app_records,
             tool_providers=tool_providers,

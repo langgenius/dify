@@ -24,6 +24,7 @@ from repositories.knowledge.document_repository import SQLAlchemyDocumentReposit
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
 from repositories.knowledge.vector_configuration_repository import resolve_vector_configuration
+from services.knowledge.indexing.adapters.cleanup import delete_index_entries
 from services.knowledge.indexing.adapters.sources import (
     CompositeStoredSourceResolver,
     FileSourceAdapter,
@@ -157,6 +158,38 @@ class IndexingExecutionAdapter:
             # them and incorrectly let the document become completed.
             with ThreadPoolExecutor(max_workers=1) as executor:
                 executor.submit(propagate_context(self._process_chunk), app, document.ref, chunks, True).result()
+
+    def discard(self, document: IndexingDocument, chunks: list[Document]) -> None:
+        """Remove the index entries ``load`` writes for ``chunks`` through ``delete_index_entries``.
+
+        Mirrors ``_process_chunk``: child vectors for parent-child documents, body vectors
+        otherwise, and body keywords for economy datasets. Some ids may never have been
+        written; each store handles that as it does when document cleanup issues the same call.
+        """
+        dataset = self._documents.get_indexing_dataset(document.ref.dataset)
+        if dataset is None:
+            return
+        if document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+            node_ids = [child.metadata["doc_id"] for chunk in chunks for child in chunk.children or []]
+        else:
+            node_ids = [chunk.metadata["doc_id"] for chunk in chunks]
+        if not node_ids:
+            return
+        vector_configuration = None
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
+            with self._session_factory() as session:
+                vector_configuration = resolve_vector_configuration(dataset, session=session)
+        writes_keywords = (
+            dataset.indexing_technique == IndexTechniqueType.ECONOMY
+            and document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
+        )
+        delete_index_entries(
+            dataset,
+            vector_node_ids=node_ids,
+            vector_configuration=vector_configuration,
+            keyword_node_ids=node_ids if writes_keywords else [],
+            new_session=self._session_factory,
+        )
 
     def _process_chunk(self, app: Flask, ref: DocumentRef, chunks: list[Document], keywords: bool) -> None:
         with app.app_context():

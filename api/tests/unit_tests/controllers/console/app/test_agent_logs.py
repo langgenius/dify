@@ -12,7 +12,7 @@ from controllers.console.app.error import AppNotFoundError
 from controllers.console.wraps import RBACPermission
 from machinery.context import RequestContext
 from services.agent.log_contracts import AgentLogAppNotFoundError
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 CONTEXT = RequestContext("request", "trace", "viewer", "tenant")
 APP_ID = UUID("00000000-0000-0000-0000-000000000001")

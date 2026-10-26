@@ -321,10 +321,8 @@ class DraftVariableSaver:
         )
 
     def _should_save_output_variables_for_draft(self) -> bool:
-        if self._enclosing_node_id is not None and self._node_type != BuiltinNodeTypes.VARIABLE_ASSIGNER:
-            # Currently we do not save output variables for nodes inside loop or iteration.
-            return False
-        return True
+        # Currently we do not save output variables for nodes inside loop or iteration.
+        return self._enclosing_node_id is None or self._node_type == BuiltinNodeTypes.VARIABLE_ASSIGNER
 
     def _build_from_variable_assigner_mapping(self, process_data: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
         draft_vars: list[WorkflowDraftVariable] = []
@@ -440,10 +438,7 @@ class DraftVariableSaver:
                     self._node_type,
                 )
                 continue
-            if isinstance(value, Segment):
-                value_seg = value
-            else:
-                value_seg = _build_segment_for_serialized_values(value)
+            value_seg = value if isinstance(value, Segment) else _build_segment_for_serialized_values(value)
             draft_vars.append(
                 self._create_draft_variable(
                     name=name,
@@ -609,17 +604,13 @@ class DraftVariableSaver:
     def _should_variable_be_editable(node_id: str, name: str) -> bool:
         if node_id in (CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID):
             return False
-        if node_id == SYSTEM_VARIABLE_NODE_ID and not is_system_variable_editable(name):
-            return False
-        return True
+        return node_id != SYSTEM_VARIABLE_NODE_ID or is_system_variable_editable(name)
 
     @staticmethod
     def _should_variable_be_visible(node_id: str, node_type: NodeType, name: str) -> bool:
         if node_type == BuiltinNodeTypes.IF_ELSE:
             return False
-        if node_id == SYSTEM_VARIABLE_NODE_ID and not is_system_variable_editable(name):
-            return False
-        return True
+        return node_id != SYSTEM_VARIABLE_NODE_ID or is_system_variable_editable(name)
 
     def _should_variable_be_saved(self, name: str) -> bool:
         exclude_var_names = self._EXCLUDE_VARIABLE_NAMES_MAPPING.get(self._node_type)

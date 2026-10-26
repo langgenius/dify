@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 import ChatWithHistory from '../index'
 
 vi.mock('@/hooks/use-breakpoints', () => ({
@@ -17,7 +18,7 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/context/web-app-context', () => ({ useWebAppStore: () => null }))
 vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({
-    queryKey: ['sidebar-focus-system-features'],
+    queryKey: consoleQueryKey('systemFeatures.get'),
     initialData: { branding: { enabled: false } },
     queryFn: async () => ({ branding: { enabled: false } }),
     staleTime: Infinity,

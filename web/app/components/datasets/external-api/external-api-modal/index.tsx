@@ -76,6 +76,17 @@ const emptyExternalAPIFormData: CreateExternalAPIReq = {
   },
 }
 
+function isValidHttpEndpoint(value: string) {
+  try {
+    const endpoint = new URL(value)
+    return (
+      (endpoint.protocol === 'http:' || endpoint.protocol === 'https:') && Boolean(endpoint.host)
+    )
+  } catch {
+    return false
+  }
+}
+
 const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
   data,
   onSave,
@@ -88,6 +99,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
   const formId = useId()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [endpointError, setEndpointError] = useState<string>()
   const [formData, setFormData] = useState<CreateExternalAPIReq>(() =>
     isEditMode && data ? data : emptyExternalAPIFormData,
   )
@@ -97,9 +109,15 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
       : Object.values(value).some((v) => v.trim() === ''),
   )
   const handleDataChange = (val: CreateExternalAPIReq) => {
+    if (val.settings.endpoint !== formData.settings.endpoint) setEndpointError(undefined)
     setFormData(val)
   }
   const handleSave = async () => {
+    const endpoint = formData.settings.endpoint.trim()
+    if (!isValidHttpEndpoint(endpoint)) {
+      setEndpointError(t(($) => $['validation.invalidHttpUrl'], { ns: 'dataset' }))
+      return
+    }
     if (formData && formData.settings.api_key && formData.settings.api_key?.length < 5) {
       toast.error(t(($) => $['apiBasedExtension.modal.apiKey.lengthError'], { ns: 'common' }))
       setLoading(false)
@@ -114,16 +132,18 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
           formData.settings.api_key === '[__HIDDEN__]' ? '[__HIDDEN__]' : formData.settings.api_key
         await onEdit({
           ...formData,
-          settings: { ...formData.settings, api_key: apiKeyToSend },
+          settings: { ...formData.settings, api_key: apiKeyToSend, endpoint },
         })
       } else {
-        const res = await createExternalAPI({ body: formData })
+        const res = await createExternalAPI({
+          body: { ...formData, settings: { ...formData.settings, endpoint } },
+        })
         if (res && res.id) onSave(res)
       }
       onCancel()
     } catch (error) {
       console.error('Error saving/updating external API:', error)
-      toast.error('Failed to save/update External API')
+      toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
     } finally {
       setLoading(false)
     }
@@ -133,8 +153,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
     if (hasEmptyInputs || loading) return
 
     if (isEditMode && (datasetBindings?.length ?? 0) > 0) setShowConfirm(true)
-    else if (isEditMode && onEdit) onEdit(formData)
-    else handleSave()
+    else void handleSave()
   }
 
   return (
@@ -173,10 +192,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                       </button>
                     }
                   />
-                  <PopoverContent
-                    placement="bottom"
-                    className="flex w-[320px] items-center self-stretch px-3 py-2"
-                  >
+                  <PopoverContent className="flex w-[320px] items-center self-stretch px-3 py-2">
                     <div className="p-1">
                       <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">
                         <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t(($) => $.editExternalAPITooltipTitle, { ns: 'dataset' })}`}</div>
@@ -208,6 +224,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
               handleSubmit()
             }}
             formSchemas={formSchemas}
+            errors={{ endpoint: endpointError }}
           />
         </DialogBody>
         <DialogFooter>

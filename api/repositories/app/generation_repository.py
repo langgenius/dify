@@ -213,7 +213,7 @@ class AppGenerationRepository:
             if session.scalar(select(App.id).where(App.id == app_id, App.tenant_id == tenant_id)) is None:
                 raise ConversationNotExistsError("Conversation app not found")
             if conversation_id is None:
-                conversation = Conversation(**{**seed.conversation, "app_id": app_id})
+                conversation = Conversation(app_id=app_id, **seed.conversation)
                 session.add(conversation)
                 session.flush()
             else:
@@ -227,7 +227,7 @@ class AppGenerationRepository:
                 if conversation is None:
                     raise ConversationNotExistsError()
                 conversation.updated_at = naive_utc_now()
-            message = Message(**{**seed.message, "app_id": app_id, "conversation_id": conversation.id})
+            message = Message(app_id=app_id, conversation_id=conversation.id, **seed.message)
             session.add(message)
             session.flush()
             session.add_all(MessageFile(message_id=message.id, **fields) for fields in seed.files)

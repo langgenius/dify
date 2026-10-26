@@ -7,7 +7,6 @@ from queue import Empty
 from typing import final
 
 from core.app.apps.execution_coordinator import is_app_task_stop_flag_set
-
 from graphon.engine.ready_queue import ReadyTask
 from graphon.runtime import RuntimeState
 from graphon.runtime.execution import GraphExecution

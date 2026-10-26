@@ -13,7 +13,7 @@ from services.app.generation.input_adapter import AppInputAdapter
 from services.app.generation.response import convert_to_event_stream
 from services.errors.app import WorkflowNotFoundError
 from services.workflow.execution.generation_service import consume_stream, join_worker
-from tests.unit_tests.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_workflow
 
 
 def _workflow_run(*, graph: str | None) -> WorkflowRun:
