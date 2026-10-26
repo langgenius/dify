@@ -173,7 +173,14 @@ class LocalExecutionBindingBackend:
         try:
             result = await run_shellctl_control_command(lease.commands, script)
             if result.exit_code != 0:
-                raise BindingCreateError(result.output)
+                raise BindingCreateError(
+                    result.output
+                    or (
+                        "Local binding setup failed "
+                        f"(job_id={result.job_id}, status={result.status}, exit_code={result.exit_code}). "
+                        "Inspect runtime logs, including stderr, for the cause."
+                    )
+                )
             return ExecutionBindingAllocation(binding_ref=binding_ref, workspace_ref=workspace_ref)
         except BaseException as exc:
             targets = [home_dir]
