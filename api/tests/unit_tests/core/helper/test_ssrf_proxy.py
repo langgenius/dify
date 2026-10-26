@@ -405,27 +405,21 @@ def test_graphon_ssrf_proxy_wraps_module_requests(method_name: str) -> None:
 # Squid-blocked 403 regression tests (issues #38443, #44785)
 # ---------------------------------------------------------------------------
 # When the SSRF proxy denies a request to a private/internal network address,
-# Squid answers with its own error page, which identifies it in the Server
-# header and carries an X-Squid-Error header. The Python client must raise
-# ToolSSRFError with a message that tells the user exactly which env var to
-# set, instead of just "blocked by SSRF protection" (the pre-#38443 message
-# gave no actionable guidance).
+# Squid returns 401/403 with itself identified in the Server or Via header.
+# The Python client must raise ToolSSRFError with a message that tells the
+# user exactly which env var to set, instead of just "blocked by SSRF
+# protection" (the pre-#38443 message gave no actionable guidance).
 #
-# The Via header is NOT a denial signal: Squid appends it to every proxied
-# response, so Squid-based CDNs (e.g. Aliyun CDN) send `Via: ... (squid/...)`
-# on the upstream's own 401/403 responses too (issue #44785).
+# The Via header alone is not proof of a denial: Squid appends it to every
+# proxied response, so Squid-based CDNs (e.g. Aliyun CDN) send
+# `Via: ... (squid/...)` on the upstream's own 401/403 responses too
+# (issue #44785). The origin's own Server header settles it — a response
+# naming a server that is not Squid was forwarded, not denied.
 
 
 def _build_squid_blocked_response(status_code: int = 403) -> httpx.Response:
     """Construct an HTTP response with Squid's ACL denial headers."""
-    return httpx.Response(
-        status_code,
-        headers={
-            "server": "squid/4.10",
-            "via": "1.1 squid (squid/4.10)",
-            "x-squid-error": "ERR_ACCESS_DENIED 0",
-        },
-    )
+    return httpx.Response(status_code, headers={"server": "squid/4.10", "via": "1.1 squid (squid/4.10)"})
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
@@ -451,16 +445,32 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client, client_f
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_squid_401_with_x_squid_error_triggers_actionable_error(mock_get_client, client_factory) -> None:
-    """A Squid denial is identified by X-Squid-Error even when Squid does not
-    set a Server header. Via alone is not evidence: it is appended to every
-    proxied response, including forwarded upstream 401/403s (issue #44785)."""
-    response = httpx.Response(401, headers={"x-squid-error": "ERR_ACCESS_DENIED 0", "via": "1.1 squid (squid/4.10)"})
+def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client, client_factory) -> None:
+    """Squid can return 401 with only the Via header set (no Server header)
+    on some configurations. The detection must work for both."""
+    # Server header absent — only Via identifies Squid.
+    response = httpx.Response(401, headers={"server": "", "via": "1.1 squid (squid/4.10)"})
     mock_client, _ = client_factory(response)
     mock_get_client.return_value = mock_client
 
     with pytest.raises(ToolSSRFError) as exc_info:
         make_request("GET", "http://10.0.0.1/internal")
+
+    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_squid_403_with_only_via_header_still_triggers_actionable_error(mock_get_client, client_factory) -> None:
+    """A 403 that names no server at all is a denial even though only the Via
+    header mentions Squid. Crawler pagination relies on this: the proxy
+    rejects the private address it wants to follow and answers with a bare
+    ``Via: squid`` (issue #44785 regression)."""
+    response = httpx.Response(403, headers={"Via": "squid"})
+    mock_client, _ = client_factory(response)
+    mock_get_client.return_value = mock_client
+
+    with pytest.raises(ToolSSRFError) as exc_info:
+        make_request("GET", "http://127.0.0.1/next")
 
     assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
 

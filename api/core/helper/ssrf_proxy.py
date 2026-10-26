@@ -248,10 +248,18 @@ def make_request(
                 # appends ``Via`` to *every* proxied response, so a Squid-based
                 # CDN forwards upstream 401/403s with a ``Via`` header too and
                 # matching it would misreport a public destination as blocked
-                # (issue #44785).
+                # (issue #44785). The origin's own ``Server`` header settles it:
+                # a response naming a server that is not Squid came from the
+                # origin, so the proxy forwarded it. Only when no server claims
+                # the response does ``Via`` remain the only evidence of Squid.
                 server_header = response.headers.get("server", "").lower()
+                via_header = response.headers.get("via", "").lower()
                 squid_error_header = response.headers.get("x-squid-error", "").lower()
-                is_squid_denial = "squid" in server_header or "err_access_denied" in squid_error_header
+                is_squid_denial = (
+                    "squid" in server_header
+                    or "err_access_denied" in squid_error_header
+                    or ("squid" in via_header and not server_header)
+                )
 
                 if is_squid_denial:
                     # The deny ACL is usually ``to_private_networks`` (RFC1918 +
