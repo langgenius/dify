@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, relative, resolve } from 'node:path'
+import { loadOperationConfigs } from './operation-config.js'
 import { runtimeConfigFile } from './runtime-config.js'
 import { compileRuntime } from './transform.js'
 
@@ -10,6 +11,10 @@ type LoaderContext = {
   getOptions: () => { runtime?: string; sidecars?: string }
   addDependency: (file: string) => void
   addMissingDependency?: (file: string) => void
+  async: () => (error: Error | null, source?: string) => void
+  getResolve: (options: {
+    dependencyType: string
+  }) => (context: string, request: string) => Promise<string | false>
 }
 
 type Compiled = {
@@ -17,13 +22,21 @@ type Compiled = {
   render: ReturnType<typeof compileRuntime>
 }
 
-const cache = new Map<string, Compiled>()
+const cache = new Map<string, Promise<Compiled>>()
 const namespaceFile = createRequire(import.meta.url).resolve(
   '@dify/openapi-content-mapper/namespace',
 )
 
 /** Namespace modules use an empty resource so bundlers don't retain a spec copy per module. */
-export default function openapiLoader(this: LoaderContext): string {
+export default function openapiLoader(this: LoaderContext): void {
+  const done = this.async()
+  render.call(this).then(
+    (source) => done(null, source),
+    (error: Error) => done(error),
+  )
+}
+
+async function render(this: LoaderContext): Promise<string> {
   const query = new URLSearchParams(this.resourceQuery)
   const document = query.get('openapi-document')
   const fileName = document ?? this.resourcePath
@@ -57,23 +70,38 @@ export default function openapiLoader(this: LoaderContext): string {
         return `${file}:${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}`
       })
       .join('\n')
-  let compiled = cache.get(key)
+  const cached = cache.get(key)
+  let compiled = cached ? await cached : undefined
   const version = versionOf(compiled?.render.dependencies ?? [])
   if (!compiled || compiled.version !== version) {
-    const source = readFileSync(fileName, 'utf8')
-    compiled = {
-      version,
-      render: compileRuntime(
+    const pending = (async () => {
+      const source = readFileSync(fileName, 'utf8')
+      const resolveModule = this.getResolve({ dependencyType: 'esm' })
+      const configs = await loadOperationConfigs(sidecarFileName, async (specifier, importer) => {
+        const resolved = await resolveModule(dirname(importer), specifier)
+        if (!resolved)
+          throw new Error(`Cannot inspect sidecar re-export ${specifier} from ${importer}`)
+        return resolved
+      })
+      const render = compileRuntime(
         source,
         fileName,
         runtimeModule,
         namespace,
         (file) => `./${relative(dirname(this.resourcePath), file).replaceAll('\\', '/')}`,
         sidecarFileName,
-      ),
+        configs,
+      )
+      return { version: versionOf(render.dependencies), render }
+    })()
+    // Concurrent namespace loaders share both resolution and document compilation.
+    cache.set(key, pending)
+    try {
+      compiled = await pending
+    } catch (error) {
+      if (cache.get(key) === pending) cache.delete(key)
+      throw error
     }
-    compiled.version = versionOf(compiled.render.dependencies)
-    cache.set(key, compiled)
   }
   for (const file of new Set([...sidecars, ...compiled.render.dependencies])) {
     if (existsSync(file)) this.addDependency(file)

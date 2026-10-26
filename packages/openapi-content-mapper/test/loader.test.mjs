@@ -8,7 +8,19 @@ import loader from '../dist/tooling/loader.js'
 
 const root = resolve(import.meta.dirname, '..')
 
-test('loader namespaces use a tiny resource and invalidate when the source document changes', () => {
+function runLoader(context) {
+  return new Promise((resolve, reject) => {
+    loader.call({
+      getResolve: () => async () => {
+        throw new Error('Unexpected re-export')
+      },
+      ...context,
+      async: () => (error, source) => (error ? reject(error) : resolve(source)),
+    })
+  })
+}
+
+test('loader namespaces use a tiny resource and invalidate when the source document changes', async () => {
   const directory = mkdtempSync(join(root, 'test/.loader-&-'))
   const file = join(directory, 'spec.json')
   const runtime = join(directory, 'runtime.js')
@@ -27,18 +39,15 @@ test('loader namespaces use a tiny resource and invalidate when the source docum
   try {
     writeFileSync(file, JSON.stringify(spec))
     writeFileSync(runtime, 'export default {};')
-    const entry = loader.call(context, JSON.stringify(spec))
+    const entry = await runLoader(context)
     const rootModule = JSON.parse(entry.match(/export \* from (.+);/)[1])
     const namespacePath = join(root, 'dist/tooling/openapi-namespace.js')
-    const namespaceEntry = loader.call(
-      {
-        ...context,
-        resourcePath: namespacePath,
-        getOptions: () => ({}),
-        resourceQuery: rootModule.slice(rootModule.indexOf('?')),
-      },
-      '',
-    )
+    const namespaceEntry = await runLoader({
+      ...context,
+      resourcePath: namespacePath,
+      getOptions: () => ({}),
+      resourceQuery: rootModule.slice(rootModule.indexOf('?')),
+    })
     const apiModule = JSON.parse(namespaceEntry.match(/export \* as api from (.+);/)[1])
     assert.equal(
       resolve(dirname(namespacePath), apiModule.split('?')[0]),
@@ -54,7 +63,7 @@ test('loader namespaces use a tiny resource and invalidate when the source docum
       getOptions: () => ({}),
       resourceQuery: `?${query}`,
     }
-    const before = loader.call(namespaceContext, '')
+    const before = await runLoader(namespaceContext)
     assert(before.includes('as "get"'))
     const runtimeImport = JSON.parse(before.match(/import runtime from (.+);/)[1])
     assert.equal(resolve(dirname(namespaceContext.resourcePath), runtimeImport), runtime)
@@ -62,40 +71,47 @@ test('loader namespaces use a tiny resource and invalidate when the source docum
     assert(dependencies.has(runtime))
     spec.paths['/pets'].delete = { responses: { 204: { description: 'Deleted' } } }
     writeFileSync(file, JSON.stringify(spec))
-    const after = loader.call(namespaceContext, '')
+    const after = await runLoader(namespaceContext)
     assert(after.includes('as "delete"'))
     assert.notEqual(after, before)
     const errors = `${file}.errors.ts`
     writeFileSync(errors, 'const errors = {}; export { errors as "GET /pets" };')
-    const configured = loader.call(namespaceContext, '')
+    const configured = await runLoader(namespaceContext)
     assert(configured.includes('openapi-errors='))
     assert(dependencies.has(errors))
     const errorQuery = new URLSearchParams(query)
     errorQuery.delete('openapi-router')
     errorQuery.set('openapi-errors', JSON.stringify(['pets', 'get']))
-    const errorModule = loader.call({ ...namespaceContext, resourceQuery: `?${errorQuery}` }, '')
+    const errorModule = await runLoader({ ...namespaceContext, resourceQuery: `?${errorQuery}` })
     assert(errorModule.includes('"GET /pets" as errors'))
     const errorImport = JSON.parse(errorModule.match(/from (.+);/)[1])
     assert.equal(resolve(dirname(namespacePath), errorImport), errors)
     writeFileSync(errors, 'const errors = {}; export { errors as "DELETE /pets" };')
-    const changed = loader.call(namespaceContext, '')
+    const changed = await runLoader(namespaceContext)
     assert.notEqual(changed, configured)
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }
 })
 
-test('loader binds logical sidecars when the document resolves outside the application', () => {
+test('loader resolves logical sidecar re-exports and invalidates when their sources change', async () => {
   const directory = mkdtempSync(join(root, 'test/.loader-sidecars-'))
   const file = join(directory, 'physical.json')
   const logical = join(directory, 'logical.openapi')
   const namespacePath = join(root, 'dist/tooling/openapi-namespace.js')
   const dependencies = new Set()
+  const resolutions = []
   const context = {
     resourcePath: namespacePath,
     resourceQuery: `?${new URLSearchParams({ 'openapi-document': file, 'openapi-query': JSON.stringify(['pets']) })}`,
     getOptions: () => ({ sidecars: './logical.openapi' }),
     addDependency: (file) => dependencies.add(file),
+    getResolve: (options) => async (context, request) => {
+      assert.deepEqual(options, { dependencyType: 'esm' })
+      assert.equal(context, directory)
+      resolutions.push(request)
+      return resolve(context, request.replace(/\.js$/, '.ts'))
+    },
   }
   try {
     writeFileSync(
@@ -106,20 +122,30 @@ test('loader binds logical sidecars when the document resolves outside the appli
         paths: { '/pets': { get: { responses: { 200: { description: 'OK' } } } } },
       }),
     )
+    writeFileSync(`${logical}.queries.ts`, "export * from './defaults.js';")
     writeFileSync(
-      `${logical}.queries.ts`,
+      join(directory, 'defaults.ts'),
       'const defaults = { queryOptions: { staleTime: 42 } }; export { defaults as "GET /pets" };',
     )
+    writeFileSync(`${logical}.errors.ts`, "export * from './errors.js';")
     writeFileSync(
-      `${logical}.errors.ts`,
+      join(directory, 'errors.ts'),
       'const errors = { CONFLICT: { status: 409 } }; export { errors as "GET /pets" };',
     )
-    const selected = loader.call(context)
+    const [selected, concurrent] = await Promise.all([runLoader(context), runLoader(context)])
+    assert.equal(concurrent, selected)
+    assert.deepEqual(resolutions.sort(), ['./defaults.js', './errors.js'])
     assert(selected.includes('"GET /pets" as operation0Defaults'))
     assert(selected.includes('openapi-errors='))
     assert(dependencies.has(`${logical}.queries.ts`))
     assert(dependencies.has(`${logical}.errors.ts`))
-    const withoutSidecars = loader.call({ ...context, getOptions: () => ({}) })
+    assert(dependencies.has(join(directory, 'defaults.ts')))
+    assert(dependencies.has(join(directory, 'errors.ts')))
+    writeFileSync(join(directory, 'errors.ts'), 'export {};')
+    const changed = await runLoader(context)
+    assert(!changed.includes('openapi-errors='))
+    assert(changed.includes('"GET /pets" as operation0Defaults'))
+    const withoutSidecars = await runLoader({ ...context, getOptions: () => ({}) })
     assert(!withoutSidecars.includes('operation0Defaults'))
     assert(!withoutSidecars.includes('openapi-errors='))
   } finally {

@@ -455,6 +455,11 @@ test('JSON responses use wire strings and request media selects a matching body'
       'media.openapi': JSON.stringify(mediaSpec),
       'index.ts': `
 import { api, query } from './media.openapi';
+const wildcard: Blob = await api.wildcard.get();
+await wildcard.arrayBuffer();
+const textWildcard: string = await api.textWildcard.get();
+// @ts-expect-error a binary wildcard cannot promise decoded text
+const wrongWildcard: string = await api.wildcard.get();
 const response = await api.binary.get();
 const inline: string = response.inline;
 const referenced: string = response.referenced;

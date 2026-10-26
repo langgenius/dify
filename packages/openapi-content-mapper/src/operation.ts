@@ -19,9 +19,11 @@ export type OperationDescriptor = {
   contentTypes?: string[]
   multipartJson?: string[]
   bodyRequired?: boolean
+  /** Only retained when wildcard response media need declaration-aware decoding. */
+  responseContentTypes?: Record<string, string[]>
 }
 
-/** Build-time only: strip descriptions, examples, schemas, and response metadata. */
+/** Build-time only: strip descriptions, examples, schemas, and unused response metadata. */
 export function describeOperations(spec: OpenApiDocument): Map<string, OperationDescriptor> {
   assertDocument(spec)
   const root = record(spec)
@@ -99,6 +101,17 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
         multipartJson.push(name)
       }
       const clientPath = operation['x-client-path']
+      const responseContentTypes = Object.fromEntries(
+        Object.entries(record(operation.responses))
+          .filter(([status]) => /^2(?:\d\d|XX)$/.test(status))
+          .map(([status, response]) => [
+            status,
+            Object.keys(record(resolveRef(response, spec).content)),
+          ]),
+      )
+      const wildcardResponse = Object.values(responseContentTypes).some((types) =>
+        types.some((type) => type.endsWith('/*')),
+      )
       if (
         clientPath !== undefined &&
         (!Array.isArray(clientPath) ||
@@ -121,6 +134,7 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
         ...(contentTypes.length ? { bodyRequired: body.required === true } : {}),
         ...(contentTypes.length > 1 ? { contentTypes } : {}),
         ...(multipartJson.length ? { multipartJson } : {}),
+        ...(wildcardResponse ? { responseContentTypes } : {}),
       })
     }
   }

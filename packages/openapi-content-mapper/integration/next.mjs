@@ -45,7 +45,7 @@ const loader = { loader: '@dify/openapi-content-mapper/loader', options: { runti
 const marketplaceLoader = { loader: '@dify/openapi-content-mapper/loader', options: { runtime: ${JSON.stringify(relative(specDir, join(dir, 'marketplace-runtime.js')))}, sidecars: ${JSON.stringify(relative(specDir, join(dir, 'marketplace.openapi')))} } };
 const namespaceLoader = { loader: '@dify/openapi-content-mapper/loader' };
 export default {
-  experimental: { cpus: 1 },
+  experimental: { cpus: 1, extensionAlias: { '.js': ['.ts', '.js'] } },
   turbopack: { root: ${JSON.stringify(repository)}, rules: { '*console-spec.json': { loaders: [loader], as: '*.js' }, '*marketplace-spec.json': { loaders: [marketplaceLoader], as: '*.js' }, '*openapi-namespace.js': { loaders: [namespaceLoader], as: '*.js' } } },
   webpack(config) { config.module.rules.push({ test: /console-spec\\.json$/, type: 'javascript/auto', use: [loader] }, { test: /marketplace-spec\\.json$/, type: 'javascript/auto', use: [marketplaceLoader] }, { test: /openapi-namespace\\.js$/, type: 'javascript/auto', use: [namespaceLoader] }); return config; },
 };
@@ -98,8 +98,16 @@ export default { queryKeyPrefix: ['marketplace'], createClient: () => createClie
       )
       const policy = `const selected = { queryOptions: { staleTime: 4242 } }; const unused = { queryOptions: { meta: { marker: 'UNUSED_POLICY_MUST_DISAPPEAR' } } }; export { selected as 'GET /knowledge-fs/spaces/{control_space_id}/metadata', unused as 'GET /UNUSED_ENDPOINT_MUST_DISAPPEAR' };`
       const errors = `const selected = { CONFLICT: { status: 409 } }; const unused = { UNUSED: { status: 400, message: 'UNUSED_ERROR_MUST_DISAPPEAR' } }; export { selected as 'GET /knowledge-fs/spaces/{control_space_id}/metadata', unused as 'GET /UNUSED_ENDPOINT_MUST_DISAPPEAR' };`
-      await writeFile(join(dir, 'spec.openapi.queries.ts'), policy)
-      await writeFile(join(dir, 'spec.openapi.errors.ts'), errors)
+      await writeFile(
+        join(dir, 'spec.openapi.queries.ts'),
+        `export * from ${JSON.stringify(bundler === 'webpack' ? './policies.js' : './policies.ts')};`,
+      )
+      await writeFile(join(dir, 'policies.ts'), policy)
+      await writeFile(
+        join(dir, 'spec.openapi.errors.ts'),
+        `export * from ${JSON.stringify(bundler === 'webpack' ? './errors.js' : './errors.ts')};`,
+      )
+      await writeFile(join(dir, 'errors.ts'), errors)
 
       await writeFile(
         join(dir, 'runtime.js'),

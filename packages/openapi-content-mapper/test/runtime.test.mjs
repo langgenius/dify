@@ -18,6 +18,53 @@ import '../dist/tooling/register.js'
 const { api, query: generatedQuery } = await import('../examples/petstore/pets.openapi.yaml')
 const pet = { id: 1, name: 'Mochi', status: 'available' }
 
+test('wildcard response media preserve Blob types, specific matches and HTTP errors', async () => {
+  const response = (...media) => ({ content: Object.fromEntries(media.map((type) => [type, {}])) })
+  const operation = describeOperations({
+    openapi: '3.1.0',
+    paths: {
+      '/files': {
+        get: {
+          operationId: 'file',
+          responses: {
+            '2XX': { $ref: '#/components/responses/File' },
+            201: response('application/json', '*/*'),
+            202: response('text/*', '*/*'),
+            203: response('application/*', '*/*'),
+            206: response('text/plain'),
+          },
+        },
+      },
+    },
+    components: { responses: { File: response('*/*') } },
+  }).get('file')
+  let reply
+  const client = createClient({ baseUrl: 'https://example.test', fetch: async () => reply })
+  for (const [status, contentType, expected] of [
+    [200, 'text/plain', 'blob'],
+    [200, 'application/json', 'blob'],
+    [200, 'text/event-stream', 'blob'],
+    [201, 'application/json', 'json'],
+    [201, 'text/plain', 'blob'],
+    [202, 'text/event-stream', 'text'],
+    [203, 'application/json', 'blob'],
+    [206, 'text/plain', 'text'],
+  ]) {
+    reply = new Response('123', { status, headers: { 'content-type': contentType } })
+    const value = await client.request(operation)
+    if (expected === 'blob') {
+      assert(value instanceof Blob, `${status} ${contentType}`)
+      assert.equal(await value.text(), '123')
+    } else assert.equal(value, expected === 'json' ? 123 : '123')
+  }
+  reply = Response.json({ code: 'DENIED' }, { status: 403 })
+  await assert.rejects(client.request(operation), (error) => {
+    assert(error instanceof ApiError)
+    assert.deepEqual(error.data, { code: 'DENIED' })
+    return true
+  })
+})
+
 test('document sidecar automatically binds only API and query exports in Node', async () => {
   const dir = await mkdtemp(join(import.meta.dirname, '.config-'))
   try {

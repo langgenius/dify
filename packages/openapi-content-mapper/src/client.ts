@@ -195,7 +195,18 @@ export function createClient(initial: ClientOptions = {}): HttpClient {
       signal: options.signal,
       credentials: options.credentials,
     })
-    const contentType = response.headers.get('content-type')?.split(';')[0]?.trim() ?? ''
+    let contentType = response.headers.get('content-type')?.split(';')[0]?.trim() ?? ''
+    if (response.ok) {
+      const media =
+        operation.responseContentTypes?.[response.status] ?? operation.responseContentTypes?.['2XX']
+      // Match the most specific declaration. A binary wildcard remains a Blob
+      // even when the server chooses JSON, text, or SSE as its concrete media type.
+      if (media && !media.includes(contentType)) {
+        const range = `${contentType.split('/')[0]}/*`
+        if (media.includes(range)) contentType = range
+        else if (media.includes('*/*')) contentType = '*/*'
+      }
+    }
     let data: unknown
     if (response.status !== 204 && response.status !== 205 && method !== 'head') {
       const disposition = response.headers.get('content-disposition')

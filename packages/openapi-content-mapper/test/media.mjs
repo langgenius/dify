@@ -16,6 +16,12 @@ const binary = { type: 'string', format: 'binary' }
 export const mediaSpec = {
   openapi: '3.1.0',
   paths: {
+    '/wildcard': {
+      get: { responses: { 200: { content: { '*/*': { schema: binary } } } } },
+    },
+    '/text-wildcard': {
+      get: { responses: { 200: { content: { 'text/*': { schema: { type: 'string' } } } } } },
+    },
     '/mixed': post({
       // Deliberately put vendor JSON first: the default must not depend on key order.
       'application/vnd.example+json': json('vendor'),

@@ -1,4 +1,5 @@
 import type { Node, Scalar } from 'yaml'
+import type { OperationConfigs } from './operation-config.js'
 import type { RouterNode } from './router.js'
 import type { Selection } from './type-document.js'
 import { isMap, isScalar, isSeq, parseDocument, visit } from 'yaml'
@@ -169,12 +170,12 @@ export function compileRuntime(
   namespaceFileName = fileName,
   resolveModule: (file: string) => string = (file) => file,
   sidecarFileName = fileName,
-) {
-  const { router } = parseSpec(content, fileName)
-  const configs = {
+  configs: OperationConfigs = {
     queries: operationConfig(sidecarFileName, 'queries'),
     errors: operationConfig(sidecarFileName, 'errors'),
-  }
+  },
+) {
+  const { router } = parseSpec(content, fileName)
   const text =
     `export * as api from ${JSON.stringify(routerModuleId(namespaceFileName, []))};\n` +
     `export * as query from ${JSON.stringify(routerModuleId(namespaceFileName, [], true))};\n`

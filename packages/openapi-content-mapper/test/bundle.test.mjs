@@ -14,6 +14,54 @@ import { openapi } from '../dist/tooling/vite.js'
 const root = resolve(import.meta.dirname, '..')
 const fixture = parse(readFileSync(join(root, 'examples/petstore/pets.openapi.yaml'), 'utf8'))
 
+test('sidecar star re-exports use Vite aliases and TypeScript extension resolution', async () => {
+  const dir = mkdtempSync(join(root, 'test/.sidecar-resolve-'))
+  try {
+    writeFileSync(
+      join(dir, 'api.openapi'),
+      JSON.stringify({
+        openapi: '3.1.0',
+        paths: { '/pets': { get: { responses: { 200: { description: 'OK' } } } } },
+      }),
+    )
+    writeFileSync(join(dir, 'api.openapi.queries.ts'), "export * from './defaults.js';")
+    writeFileSync(join(dir, 'defaults.ts'), "export * from '@policies';")
+    writeFileSync(
+      join(dir, 'policies.ts'),
+      "const policy = {queryOptions: {staleTime: 42}}; export {policy as 'GET /pets'};",
+    )
+    writeFileSync(join(dir, 'api.openapi.errors.ts'), "export * from './errors.js';")
+    writeFileSync(
+      join(dir, 'errors.ts'),
+      "const errors = {CONFLICT: {status: 409}}; export {errors as 'GET /pets'};",
+    )
+    writeFileSync(
+      join(dir, 'entry.ts'),
+      `
+import {createClient} from '@dify/openapi-content-mapper';
+import {api, query} from './api.openapi';
+export const staleTime = query.pets.get.queryOptions().staleTime;
+export async function fail() {
+  const client = createClient({baseUrl: 'https://example.test', fetch: async () => Response.json({code: 'CONFLICT'}, {status: 409})});
+  return api.pets.get(undefined, {client}).catch(error => ({code: error.code, defined: error.defined}));
+}`,
+    )
+    await build({
+      configFile: false,
+      root: dir,
+      logLevel: 'silent',
+      plugins: [openapi()],
+      resolve: { alias: { '@policies': join(dir, 'policies.ts') } },
+      build: { lib: { entry: join(dir, 'entry.ts'), formats: ['es'], fileName: () => 'entry.js' } },
+    })
+    const result = await import(pathToFileURL(join(dir, 'dist/entry.js')).href)
+    assert.equal(result.staleTime, 42)
+    assert.deepEqual(await result.fail(), { code: 'CONFLICT', defined: true })
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 for (const mode of ['api', 'query'])
   test(`${mode}: error chunks are shared per document and stay lazy with distinct maps`, async () => {
     const dir = mkdtempSync(join(root, 'test/.shared-errors-'))

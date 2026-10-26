@@ -149,6 +149,8 @@ A client override takes precedence over document configuration. Otherwise the do
 
 Successful calls return decoded response data. Non-2xx responses throw `ApiError` with `response` and decoded `data`; network and cancellation failures propagate. Responses are not runtime-validated and schema defaults are not filled in. JSON binary-formatted fields remain strings; binary response media return Blob objects (File with the response filename when Content-Disposition is present); SSE returns a raw `ReadableStream<Uint8Array>`.
 
+Wildcard response media follow the most specific matching declaration for the response status: `*/*` and `application/*` return Blob, while `text/*` returns text. An explicit `application/json` or `text/event-stream` declaration takes precedence over a wildcard. HTTP errors are decoded from their actual Content-Type.
+
 With one request media type, `contentType` can be omitted. With multiple media types, only `application/json` is implicit; other alternatives require an explicit matching `contentType`. Multipart accepts flat objects with scalar, Blob/File or repeated array fields, plus explicit JSON part encodings. Fetch supplies its boundary. Optional request bodies may be omitted entirely.
 
 ### Document configuration
@@ -225,6 +227,7 @@ chunks together with the entry bundle. Keep validators free of module-level side
 effects; schema construction must be removable when its map is unused. Named
 re-exports and `export *` are supported; sidecars are inspected without executing them.
 Vite and Next track sidecar changes; Node imports follow normal module caching.
+Sidecar star re-exports use the consuming bundler's resolver. Vite supports aliases and TypeScript extension resolution (such as `./defaults.js` resolving to `defaults.ts`); Next.js Webpack requires the same `experimental.extensionAlias` configuration as ordinary imports for that convention. For Turbopack, use explicit relative source paths such as `./defaults.ts`: its loader resolver does not support those aliases. Native Node execution retains Node's ESM resolution rules and requires executable import paths.
 
 ### Query helpers and bundles
 

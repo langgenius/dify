@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { readFile, realpath } from 'node:fs/promises'
 import { dirname, relative, resolve } from 'node:path'
+import { loadOperationConfigs } from './operation-config.js'
 import { errorsQuery, moduleQuery, queryQuery } from './router.js'
 import { compileRuntime } from './transform.js'
 
@@ -71,6 +72,15 @@ export function openapi(
           await readFile(fileName, 'utf8'),
           fileName,
           options.runtime?.(fileName),
+          fileName,
+          undefined,
+          fileName,
+          await loadOperationConfigs(fileName, async (specifier, importer) => {
+            const resolved = await this.resolve(specifier, importer, { skipSelf: true })
+            if (!resolved || resolved.external)
+              throw new Error(`Cannot inspect sidecar re-export ${specifier} from ${importer}`)
+            return resolved.id
+          }),
         )
         cache.set(fileName, render)
         const physical = await realpath(fileName)
