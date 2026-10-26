@@ -144,6 +144,7 @@ from services.inner_mail_service import InnerMailService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
 from services.knowledge_fs.workflow_runtime import build_knowledge_fs_node_dependencies
+from services.message_feedback_service import MessageFeedbackService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_more_like_this_generator import MessageMoreLikeThisGenerator
 from services.message_more_like_this_service import MessageMoreLikeThisService
@@ -301,6 +302,7 @@ class ApplicationServices:
     file_grants: FileGrantService
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
+    message_feedbacks: MessageFeedbackService
     message_file_previews: MessageFilePreviewService
     message_suggested_questions: MessageSuggestedQuestions
     message_more_like_this: MessageMoreLikeThisService
@@ -663,6 +665,7 @@ def build_application_services(
             files=file_service,
             remote_files=remote_file_service,
         ),
+        message_feedbacks=MessageFeedbackService(repository=messages),
         message_file_previews=MessageFilePreviewService(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
             storage=storage,

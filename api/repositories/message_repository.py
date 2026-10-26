@@ -1,4 +1,4 @@
-"""Message ownership and generation reads shared by message capabilities.
+"""Message ownership, feedback and generation reads shared by message capabilities.
 
 History and more-like-this reads own short sessions and return detached data.
 Only suggested-question configuration preparation borrows the caller's session.
@@ -20,12 +20,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageFile
-from models.model import AppMode, load_annotation_reply_config
+from models.enums import FeedbackFromSource, FeedbackRating
+from models.model import AppMode, InstalledApp, MessageFeedback, load_annotation_reply_config
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.entities.message_entities import MessageAccount, MessageActor
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageActorNotFoundError, MessageNotExistsError
+from services.errors.message import FeedbackRatingRequiredError, MessageActorNotFoundError, MessageNotExistsError
+from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
+from services.message_feedback_service import MessageFeedbackRecord
 from services.message_more_like_this_service import (
     MoreLikeThisFile,
     MoreLikeThisNotCompletionError,
@@ -42,6 +45,140 @@ class SuggestedQuestionsRecords(NamedTuple):
 class MessageRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
+
+    def set_feedback(
+        self,
+        *,
+        app_id: str,
+        app_owner_tenant_id: str,
+        actor: MessageActor,
+        message_id: str,
+        rating: FeedbackRating | None,
+        content: str | None,
+        app_wide: bool,
+        installed_app: InstalledAppRef | None,
+    ) -> MessageFeedbackRecord | None:
+        """Validate ownership and write atomically; None rating revokes feedback.
+
+        app_wide is reserved for an admitted Console admin. Installed requests
+        also recheck their installation in this transaction; others pass None.
+        The returned record is detached; revocation returns None.
+        """
+        with self._session_factory.begin() as session:
+            if installed_app is None:
+                app = self._get_app(session, app_id=app_id, tenant_id=app_owner_tenant_id)
+            else:
+                app = session.scalar(
+                    select(App)
+                    .join(InstalledApp, InstalledApp.app_id == App.id)
+                    .where(
+                        App.id == app_id,
+                        App.tenant_id == app_owner_tenant_id,
+                        App.tenant_id == installed_app.app_owner_tenant_id,
+                        InstalledApp.id == installed_app.id,
+                        InstalledApp.tenant_id == installed_app.tenant_id,
+                        InstalledApp.app_id == installed_app.app_id,
+                    )
+                )
+                if app is None:
+                    raise InstalledAppNotFoundError(f"Installed app {installed_app.id} no longer exists")
+            if app is None:
+                raise AppDefinitionUnavailableError(f"App {app_id} is unavailable in tenant {app_owner_tenant_id}")
+
+            account_id = actor.account_id if isinstance(actor, MessageAccount) else None
+            end_user_id = None if isinstance(actor, MessageAccount) else actor.end_user_id
+            if not self._actor_exists(
+                session,
+                app_id=app_id,
+                tenant_id=app_owner_tenant_id,
+                account_id=account_id,
+                end_user_id=end_user_id,
+            ):
+                raise MessageActorNotFoundError(
+                    f"Message actor {account_id or end_user_id} is unavailable for app {app_id}"
+                )
+
+            if app_wide:
+                if not isinstance(actor, MessageAccount):
+                    raise ValueError("App-wide feedback requires an admitted Console account")
+                message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app_id))
+            else:
+                message = self._get_message(
+                    session,
+                    message_id=message_id,
+                    app_id=app_id,
+                    source="console" if isinstance(actor, MessageAccount) else "api",
+                    account_id=account_id,
+                    end_user_id=end_user_id,
+                )
+            if message is None:
+                raise MessageNotExistsError(f"Message {message_id} is unavailable for this app and actor")
+
+            source = FeedbackFromSource.ADMIN if isinstance(actor, MessageAccount) else FeedbackFromSource.USER
+            feedback = session.scalar(
+                select(MessageFeedback).where(
+                    MessageFeedback.app_id == app_id,
+                    MessageFeedback.message_id == message_id,
+                    MessageFeedback.from_source == source,
+                )
+            )
+            if rating is None:
+                if feedback is None:
+                    raise FeedbackRatingRequiredError(
+                        f"Message {message_id} has no {source.value} feedback to remove; a rating is required."
+                    )
+                session.delete(feedback)
+                return None
+            if feedback is None:
+                feedback = MessageFeedback(
+                    app_id=app_id,
+                    conversation_id=message.conversation_id,
+                    message_id=message_id,
+                    rating=rating,
+                    content=content,
+                    from_source=source,
+                    from_end_user_id=end_user_id,
+                    from_account_id=account_id,
+                )
+                session.add(feedback)
+            else:
+                # Admin feedback is shared per message; updating it preserves the
+                # original reviewer identity, as in the existing Console endpoints.
+                feedback.rating = rating
+                feedback.content = content
+            session.flush()
+            return self._feedback_record(feedback)
+
+    def get_feedbacks(
+        self, *, app_id: str, app_owner_tenant_id: str, page: int, limit: int
+    ) -> list[MessageFeedbackRecord]:
+        with self._session_factory() as session:
+            if self._get_app(session, app_id=app_id, tenant_id=app_owner_tenant_id) is None:
+                raise AppDefinitionUnavailableError(f"App {app_id} is unavailable in tenant {app_owner_tenant_id}")
+            feedbacks = session.scalars(
+                select(MessageFeedback)
+                .where(MessageFeedback.app_id == app_id)
+                .order_by(MessageFeedback.created_at.desc(), MessageFeedback.id.desc())
+                .limit(limit)
+                .offset((page - 1) * limit)
+            )
+            return [self._feedback_record(feedback) for feedback in feedbacks]
+
+    @staticmethod
+    def _feedback_record(feedback: MessageFeedback) -> MessageFeedbackRecord:
+        return MessageFeedbackRecord(
+            id=feedback.id,
+            app_id=feedback.app_id,
+            conversation_id=feedback.conversation_id,
+            message_id=feedback.message_id,
+            rating=feedback.rating,
+            content=feedback.content,
+            from_source=feedback.from_source,
+            from_end_user_id=feedback.from_end_user_id,
+            from_account_id=feedback.from_account_id,
+            created_at=feedback.created_at.isoformat(),
+            updated_at=feedback.updated_at.isoformat(),
+        )
 
     def get_suggested_questions_context(
         self,

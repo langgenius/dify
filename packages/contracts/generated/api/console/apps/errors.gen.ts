@@ -210,6 +210,14 @@ const zRosterAgentPackageExportFailedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zMessageFeedbackRatingRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('message_feedback_rating_required'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zProviderNotSupportTextToSpeechError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -662,7 +670,11 @@ export const get31Errors = {
   roster_agent_package_export_failed: { status: 500, data: zRosterAgentPackageExportFailedError },
 }
 
-export const post23Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const post23Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+  message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+}
 
 export const get32Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 

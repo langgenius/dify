@@ -353,6 +353,7 @@ export const getErrors = {
 
 export const post7Errors = {
   access_denied: { status: 403, data: zAccessDeniedError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
   installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
   message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
   message_not_found: { status: 404, data: zMessageNotFoundError },

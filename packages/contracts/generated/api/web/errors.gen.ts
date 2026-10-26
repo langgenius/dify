@@ -194,6 +194,14 @@ const zMalformedUploadTokenError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zMessageFeedbackRatingRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('message_feedback_rating_required'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zModelCurrentlyNotSupportError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -522,6 +530,11 @@ export const post15Errors = {
 export const post16Errors = {
   account_banned: { status: 400, data: zAccountBannedError },
   authentication_failed: { status: 401, data: zAuthenticationFailedError },
+}
+
+export const post18Errors = {
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+  message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
 }
 
 export const get4Errors = {

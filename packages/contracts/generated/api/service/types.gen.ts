@@ -3269,6 +3269,11 @@ export type MessageFeedbackPayloadWithUser = {
   user: string
 }
 
+export type MessageFeedbackRatingRequiredError = ErrorResponse & {
+  code: 'message_feedback_rating_required'
+  status: 400
+}
+
 export type MessageFile = {
   belongs_to?: string | null
   filename: string
@@ -4566,8 +4571,15 @@ export type GetAppFeedbacksData = {
 }
 
 export type GetAppFeedbacksErrors = {
+  400: AppUnavailableError | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8827,9 +8839,15 @@ export type PostMessagesByMessageIdFeedbacksData = {
 }
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
-  400: ErrorResponse
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }

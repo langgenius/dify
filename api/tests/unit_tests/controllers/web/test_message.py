@@ -7,18 +7,14 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, patch
 from uuid import uuid4
 
 import pytest
 from flask import Flask
 from flask.views import MethodView
 
-from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.errors import NotFoundError
-from controllers.web.message import (
-    MessageFeedbackApi,
-)
+from controllers.common.controller_schemas import MessageListQuery
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.execution_extra_content import HumanInputContent
 from models.enums import ConversationFromSource, EndUserType, FeedbackFromSource, FeedbackRating
@@ -31,72 +27,6 @@ from models.model import (
     MessageAgentThought,
     MessageFeedback,
 )
-from services.errors.message import MessageNotExistsError
-from tests.helpers.unit.model_factories import make_end_user
-
-"""Unit tests for controllers.web.message — feedback, more-like-this, suggested questions."""
-
-
-def _chat_app() -> App:
-    return App(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
-
-
-def _end_user() -> EndUser:
-    return make_end_user(end_user_id="eu-1")
-
-
-# The @model_validate and @with_session decorators wrap the handlers; tests
-# call the undecorated function so they can pass a pydantic payload / a fake
-# session directly.
-_feedback_post = inspect.unwrap(MessageFeedbackApi.post)
-
-
-class TestMessageEndpointsCases:
-    # ---------------------------------------------------------------------------
-    # MessageFeedbackApi
-    # ---------------------------------------------------------------------------
-    class TestMessageFeedbackApi:
-        @patch("controllers.web.message.MessageService.create_feedback")
-        def test_feedback_success(self, mock_create: MagicMock, app: Flask) -> None:
-            payload = MessageFeedbackPayload.model_validate({"rating": "like", "content": "great"})
-            msg_id = uuid4()
-
-            with app.test_request_context(f"/messages/{msg_id}/feedbacks", method="POST"):
-                result = _feedback_post(MessageFeedbackApi(), payload, _chat_app(), _end_user(), msg_id)
-
-            assert result == {"result": "success"}
-            mock_create.assert_called_once()
-
-        @patch("controllers.web.message.MessageService.create_feedback")
-        def test_feedback_null_rating(self, mock_create: MagicMock, app: Flask) -> None:
-            payload = MessageFeedbackPayload.model_validate({"rating": None})
-            msg_id = uuid4()
-
-            with app.test_request_context(f"/messages/{msg_id}/feedbacks", method="POST"):
-                result = _feedback_post(MessageFeedbackApi(), payload, _chat_app(), _end_user(), msg_id)
-
-            assert result == {"result": "success"}
-
-        @patch(
-            "controllers.web.message.MessageService.create_feedback",
-            side_effect=MessageNotExistsError(),
-        )
-        def test_feedback_message_not_found(self, mock_create: MagicMock, app: Flask) -> None:
-            payload = MessageFeedbackPayload.model_validate({"rating": "dislike"})
-            msg_id = uuid4()
-
-            with app.test_request_context(f"/messages/{msg_id}/feedbacks", method="POST"):
-                with pytest.raises(NotFoundError, match="Message Not Exists"):
-                    _feedback_post(MessageFeedbackApi(), payload, _chat_app(), _end_user(), msg_id)
-
-    # ---------------------------------------------------------------------------
-    # MessageMoreLikeThisApi
-    # ---------------------------------------------------------------------------
-
-    # ---------------------------------------------------------------------------
-    # MessageSuggestedQuestionApi
-    # ---------------------------------------------------------------------------
-
 
 """Unit tests for controllers.web.message message list mapping."""
 

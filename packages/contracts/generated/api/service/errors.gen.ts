@@ -266,6 +266,14 @@ const zKnowledgeFsUpstreamUnavailableError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zMessageFeedbackRatingRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('message_feedback_rating_required'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zModelCurrentlyNotSupportError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -409,6 +417,15 @@ const zWorkspaceNotFoundError = /* @__PURE__ */ (() =>
       status: z.literal(403),
     }),
   ))()
+
+export const get2Errors = {
+  app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+  app_api_disabled: { status: 403, data: zAppApiDisabledError },
+  app_not_found: { status: 403, data: zAppNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+  workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+  workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+}
 
 export const post3Errors = {
   app_unavailable: { status: 400, data: zAppUnavailableError },
@@ -1239,6 +1256,16 @@ export const get60Errors = {
   knowledge_fs_operation_unavailable: { status: 503, data: zKnowledgeFsOperationUnavailableError },
   knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
   knowledge_fs_upstream_unavailable: { status: 502, data: zKnowledgeFsUpstreamUnavailableError },
+}
+
+export const post58Errors = {
+  app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+  app_api_disabled: { status: 403, data: zAppApiDisabledError },
+  app_not_found: { status: 403, data: zAppNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+  message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+  workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+  workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
 }
 
 export const get61Errors = {
