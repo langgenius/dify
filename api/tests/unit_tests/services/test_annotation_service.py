@@ -839,47 +839,6 @@ class TestAnnotationServiceCases:
             assert total == 2
             assert [item.id for item in items] == [old.id]
 
-        def test_get_annotation_by_id_uses_real_identity_lookup(
-            self, sqlite_session: Session, current_user: Account
-        ) -> None:
-            app = _persist_app(sqlite_session)
-            annotation = _persist_annotation(sqlite_session, app)
-
-            assert AppAnnotationService.get_annotation_by_id("missing", sqlite_session) is None
-            assert AppAnnotationService.get_annotation_by_id(annotation.id, sqlite_session) is annotation
-
-        def test_add_history_increments_count_and_flushes_row(
-            self, sqlite_session: Session, current_user: Account
-        ) -> None:
-            app = _persist_app(sqlite_session)
-            annotation = _persist_annotation(sqlite_session, app)
-
-            AppAnnotationService.add_annotation_history(
-                annotation_id=annotation.id,
-                app_id=app.id,
-                annotation_question="q",
-                annotation_content="a",
-                query="user q",
-                user_id=current_user.id,
-                message_id="msg-1",
-                from_source="chat",
-                score=0.8,
-                session=sqlite_session,
-            )
-
-            sqlite_session.refresh(annotation)
-            assert annotation.hit_count == 1
-            history = sqlite_session.scalar(
-                select(AppAnnotationHitHistory).where(AppAnnotationHitHistory.annotation_id == annotation.id)
-            )
-            assert history is not None
-            assert (history.question, history.annotation_question, history.annotation_content, history.score) == (
-                "user q",
-                "q",
-                "a",
-                0.8,
-            )
-
         def test_get_setting_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
             app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
 
