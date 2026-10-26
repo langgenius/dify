@@ -25,17 +25,25 @@ vi.mock('@/hooks/use-oauth', () => ({
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  get: (url: string, options?: { params?: { visibility?: string } }) => {
-    if (url.endsWith('/oauth/client-schema'))
-      return Promise.resolve({
+  request: async (url: string, _init: RequestInit, options: { request: Request }) => {
+    const target = new URL(url)
+    const path = target.pathname.replace('/console/api', '')
+    if (path.endsWith('/oauth/client-schema'))
+      return Response.json({
         schema: [],
         is_oauth_custom_client_enabled: false,
         is_system_oauth_params_exists: true,
         client_params: {},
+        redirect_uri: '',
       })
-    return mockGetPluginOAuthUrl(url, options)
+    if (options.request.method === 'POST')
+      return Response.json(await mockSaveClient(path, { body: await options.request.json() }))
+    return Response.json(
+      await mockGetPluginOAuthUrl(path, {
+        params: { visibility: target.searchParams.get('visibility') ?? undefined },
+      }),
+    )
   },
-  post: (...args: unknown[]) => mockSaveClient(...args),
 }))
 vi.mock('@/app/notifications', () => ({ toast: { success: vi.fn() } }))
 
@@ -208,10 +216,7 @@ describe('AddOAuthButton', () => {
   })
 
   it('should skip visibility picker for categories without backend visibility support', async () => {
-    // Trigger / model OAuth endpoints don't yet accept a visibility value on
-    // the backend — the picker would let users select "Only me" while the
-    // credential silently defaults to all_team_members. Tool and datasource
-    // are both wired end-to-end so they DO get the picker.
+    // This shared hook has no endpoint for trigger/model OAuth.
     const triggerPayload = { category: AuthCategory.trigger, provider: 'test-trigger' }
     renderWithAccountProfile(
       <AddOAuthButton
@@ -223,9 +228,8 @@ describe('AddOAuthButton', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Use OAuth' }))
 
-    await waitFor(() => {
-      expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith('', { params: { visibility: undefined } })
-    })
+    expect(mockGetPluginOAuthUrl).not.toHaveBeenCalled()
+    expect(mockOpenOAuthPopup).not.toHaveBeenCalled()
     // No pre-OAuth visibility modal should ever appear for unsupported categories.
     expect(screen.queryByText('plugin.auth.authorize')).not.toBeInTheDocument()
   })

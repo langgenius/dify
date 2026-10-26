@@ -22,7 +22,7 @@ from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from models import Account, App, EndUser
+from models import Account, App, Conversation, EndUser, Message
 from models.annotation_reply import AnnotationReplies
 from services.app.generation.adapters.completion_runner import CompletionAppRunner
 from services.app.generation.message_records import MessageBasedAppGenerator
@@ -183,50 +183,71 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             session.expunge_all()
             session.close()
 
-            # init generate records
-            (conversation, message) = self._init_generate_records(
-                application_generate_entity,
-            )
+            return self.generate_from_entity(application_generate_entity, user=user)
 
-            # init queue manager
-            queue_manager = MessageBasedAppQueueManager(
-                task_id=application_generate_entity.task_id,
-                user_id=application_generate_entity.user_id,
-                invoke_from=application_generate_entity.invoke_from,
-                conversation_id=conversation.id,
-                app_mode=conversation.mode,
-                message_id=message.id,
-            )
+    def generate_from_entity(
+        self,
+        application_generate_entity: CompletionAppGenerateEntity,
+        *,
+        user: Account | EndUser,
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
+        """Persist one prepared completion before starting provider work.
 
-            context = contextvars.copy_context()
+        The caller owns preparation of the historical configuration, inputs,
+        files and admitted actor. The injected records port commits those
+        values in its own transaction; a failed record write therefore rolls
+        back before a worker can start.
+        """
+        conversation, message = self._init_generate_records(application_generate_entity)
+        return self._start_generation(
+            application_generate_entity,
+            conversation=conversation,
+            message=message,
+            user=user,
+        )
 
-            # new thread with request context
-            @copy_current_request_context
-            def worker_with_context():
-                return context.run(
-                    self._generate_worker,
-                    flask_app=current_app._get_current_object(),  # type: ignore
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    message_id=message.id,
-                    conversation_id=conversation.id,
-                )
+    def _start_generation(
+        self,
+        application_generate_entity: CompletionAppGenerateEntity,
+        *,
+        conversation: Conversation,
+        message: Message,
+        user: Account | EndUser,
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
+        queue_manager = MessageBasedAppQueueManager(
+            task_id=application_generate_entity.task_id,
+            user_id=application_generate_entity.user_id,
+            invoke_from=application_generate_entity.invoke_from,
+            conversation_id=conversation.id,
+            app_mode=conversation.mode,
+            message_id=message.id,
+        )
+        context = contextvars.copy_context()
 
-            worker_thread = threading.Thread(target=worker_with_context)
-
-            worker_thread.start()
-
-            # return response or stream generator
-            response = self._handle_response(
+        @copy_current_request_context
+        def worker_with_context() -> None:
+            context.run(
+                self._generate_worker,
+                flask_app=current_app._get_current_object(),  # type: ignore
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
-                conversation=conversation,
-                message=message,
-                user=user,
-                stream=streaming,
+                message_id=message.id,
+                conversation_id=conversation.id,
             )
 
-            return CompletionAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+        threading.Thread(target=worker_with_context).start()
+        response = self._handle_response(
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            conversation=conversation,
+            message=message,
+            user=user,
+            stream=application_generate_entity.stream,
+        )
+        return CompletionAppGenerateResponseConverter.convert(
+            response=response,
+            invoke_from=application_generate_entity.invoke_from,
+        )
 
     def _generate_worker(
         self,
@@ -376,48 +397,4 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
             session.expunge_all()
             session.close()
-
-            # init generate records
-            (conversation, message) = self._init_generate_records(
-                application_generate_entity,
-            )
-
-            # init queue manager
-            queue_manager = MessageBasedAppQueueManager(
-                task_id=application_generate_entity.task_id,
-                user_id=application_generate_entity.user_id,
-                invoke_from=application_generate_entity.invoke_from,
-                conversation_id=conversation.id,
-                app_mode=conversation.mode,
-                message_id=message.id,
-            )
-
-            context = contextvars.copy_context()
-
-            # new thread with request context
-            @copy_current_request_context
-            def worker_with_context():
-                return context.run(
-                    self._generate_worker,
-                    flask_app=current_app._get_current_object(),  # type: ignore
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    message_id=message.id,
-                    conversation_id=conversation.id,
-                )
-
-            worker_thread = threading.Thread(target=worker_with_context)
-
-            worker_thread.start()
-
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                queue_manager=queue_manager,
-                conversation=conversation,
-                message=message,
-                user=user,
-                stream=stream,
-            )
-
-            return CompletionAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            return self.generate_from_entity(application_generate_entity, user=user)

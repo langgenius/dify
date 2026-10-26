@@ -1,64 +1,85 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { Condition } from '../../types'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
+import {
+  createEdge,
+  createNode,
+  createStartNode,
+} from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { TransferMethod } from '@/types/app'
-import { VarType } from '../../../../types'
+import { BlockEnum, InputVarType, VarType } from '../../../../types'
 import { ComparisonOperator } from '../../../if-else/types'
 import FilterCondition from '../filter-condition'
 
-const { mockUseAvailableVarList } = vi.hoisted(() => ({
-  mockUseAvailableVarList: vi.fn((_nodeId: string, _options: unknown) => ({
-    availableVars: [],
-    availableNodesWithParent: [],
-  })),
-}))
+const renderCondition = (ui: React.ReactElement) => {
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
+  seedModelProviderQueries(queryClient, [])
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
 
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  default: (nodeId: string, options: unknown) => mockUseAvailableVarList(nodeId, options),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-var', () => ({
-  default: ({
-    value,
-    onChange,
-    onFocusChange,
-    readOnly,
-    placeholder,
-    className,
-  }: {
-    value: string
-    onChange: (value: string) => void
-    onFocusChange?: (value: boolean) => void
-    readOnly?: boolean
-    placeholder?: string
-    className?: string
-  }) => (
-    <input
-      aria-label="variable-input"
-      className={className}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onFocus={() => onFocusChange?.(true)}
-      onBlur={() => onFocusChange?.(false)}
-      readOnly={readOnly}
-      placeholder={placeholder}
-    />
-  ),
-}))
-
-describe('FilterCondition', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseAvailableVarList.mockReturnValue({
-      availableVars: [],
-      availableNodesWithParent: [],
-    })
+  const start = createStartNode({
+    id: 'start',
+    data: {
+      title: 'File input',
+      variables: [
+        {
+          variable: 'file_name',
+          label: 'File name',
+          type: InputVarType.textInput,
+          required: true,
+        },
+      ],
+    },
+  })
+  const code = createNode({
+    id: 'code',
+    data: {
+      title: 'File stats',
+      type: BlockEnum.Code,
+      outputs: { file_size: { type: VarType.number, children: null } },
+    },
+  })
+  const current = createNode({
+    id: 'node-1',
+    data: { title: 'List operator', type: BlockEnum.ListFilter },
   })
 
+  return renderWorkflowFlowComponent(ui, {
+    queryClient,
+    nodes: [start, code, current],
+    edges: [
+      createEdge({
+        source: start.id,
+        target: code.id,
+        data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Code },
+      }),
+      createEdge({
+        source: code.id,
+        target: current.id,
+        data: { sourceType: BlockEnum.Code, targetType: BlockEnum.ListFilter },
+      }),
+    ],
+  })
+}
+
+describe('FilterCondition', () => {
   it('should render a select input for array-backed file conditions and update array values', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
-    render(
+    renderCondition(
       <FilterCondition
         condition={{
           key: 'type',
@@ -91,7 +112,7 @@ describe('FilterCondition', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
-    render(
+    renderCondition(
       <FilterCondition
         condition={{
           key: 'enabled',
@@ -117,50 +138,56 @@ describe('FilterCondition', () => {
 
   it('should update a file name condition and accept only string variable references', async () => {
     const user = userEvent.setup()
-    const onChange = vi.fn()
-
-    render(
-      <FilterCondition
-        condition={{
-          key: 'name',
-          comparison_operator: ComparisonOperator.equal,
-          value: 'draft',
-        }}
-        varType={VarType.file}
-        onChange={onChange}
-        hasSubVariable={false}
-        readOnly={false}
-        nodeId="node-1"
-      />,
-    )
-
-    const variableInput = screen.getByRole('textbox', { name: 'variable-input' })
-    expect(variableInput).toHaveAttribute(
-      'placeholder',
-      'workflowIntegrations.nodes.http.insertVarPlaceholder',
-    )
-
-    await user.click(variableInput)
-
-    fireEvent.change(variableInput, { target: { value: 'draft next' } })
-    expect(onChange).toHaveBeenLastCalledWith({
+    const initialCondition: Condition = {
       key: 'name',
       comparison_operator: ComparisonOperator.equal,
-      value: 'draft next',
-    })
-
-    const config = mockUseAvailableVarList.mock.calls[0]?.[1] as {
-      filterVar: (varPayload: { type: VarType }) => boolean
+      value: 'draft',
     }
-    expect(config.filterVar({ type: VarType.string })).toBe(true)
-    expect(config.filterVar({ type: VarType.number })).toBe(false)
+    const ControlledCondition = () => {
+      const [condition, setCondition] = useState(initialCondition)
+      return (
+        <>
+          <FilterCondition
+            condition={condition}
+            varType={VarType.file}
+            onChange={setCondition}
+            hasSubVariable={false}
+            readOnly={false}
+            nodeId="node-1"
+          />
+          <output aria-label="Saved condition">{JSON.stringify(condition)}</output>
+        </>
+      )
+    }
+
+    renderCondition(<ControlledCondition />)
+
+    const editor = screen.getByRole('textbox')
+    await waitFor(() => expect(editor).toHaveTextContent('draft'))
+    await replacePromptEditorText(editor, 'draft next ')
+    await user.click(editor)
+    await user.type(editor, '/')
+
+    expect(await screen.findByText('file_name')).toBeVisible()
+    expect(screen.queryByText('file_size')).not.toBeInTheDocument()
+    await user.click(screen.getByText('file_name'))
+
+    await waitFor(() =>
+      expect(
+        JSON.parse(screen.getByRole('status', { name: 'Saved condition' }).textContent!),
+      ).toEqual({
+        key: 'name',
+        comparison_operator: ComparisonOperator.equal,
+        value: 'draft next {{#start.file_name#}}',
+      }),
+    )
   })
 
   it('should reset operator and value when the sub variable changes', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
-    render(
+    renderCondition(
       <FilterCondition
         condition={{
           key: '',
@@ -190,7 +217,7 @@ describe('FilterCondition', () => {
   it('should render fallback inputs for unsupported keys and hide value inputs for no-value operators', async () => {
     const onChange = vi.fn()
 
-    const { rerender } = render(
+    const { rerender } = renderCondition(
       <FilterCondition
         condition={{
           key: 'custom_field',
@@ -229,7 +256,7 @@ describe('FilterCondition', () => {
       />,
     )
 
-    expect(screen.queryByRole('textbox', { name: 'variable-input' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
   })
 
@@ -237,7 +264,7 @@ describe('FilterCondition', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
-    const { rerender } = render(
+    const { rerender } = renderCondition(
       <FilterCondition
         condition={{
           key: 'transfer_method',
@@ -280,7 +307,7 @@ describe('FilterCondition', () => {
   it('prevents boolean and sub-variable changes in read-only mode', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    const { rerender } = render(
+    const { rerender } = renderCondition(
       <FilterCondition
         condition={{ key: 'enabled', comparison_operator: ComparisonOperator.equal, value: false }}
         varType={VarType.boolean}
@@ -307,7 +334,7 @@ describe('FilterCondition', () => {
     })
     expect(subVariable).toBeDisabled()
     await user.click(subVariable)
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'name' })).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
 })

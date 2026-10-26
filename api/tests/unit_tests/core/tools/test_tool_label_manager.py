@@ -17,14 +17,14 @@ def _api_controller(provider_id: str = "api-1") -> ApiToolProviderController:
 
 
 # Test pure logic: filtering and deduplication
-def test_tool_label_manager_filter_tool_labels():
+def test_tool_label_manager_filter_tool_labels() -> None:
     filtered = ToolLabelManager.filter_tool_labels(["search", "search", "invalid", "news"])
     assert set(filtered) == {"search", "news"}
     assert len(filtered) == 2
 
 
 @pytest.mark.parametrize("sqlite_session", [(ToolLabelBinding,)], indirect=True)
-def test_tool_label_manager_update_tool_labels_db(sqlite_session: Session):
+def test_tool_label_manager_update_tool_labels_db(sqlite_session: Session) -> None:
     """
     Test the database update logic for tool labels.
     Focus: Verify that labels are filtered, de-duplicated, and safely handled within a database session.
@@ -49,6 +49,6 @@ def test_tool_label_manager_update_tool_labels_db(sqlite_session: Session):
 
 
 # Test error handling
-def test_tool_label_manager_update_tool_labels_unsupported(sqlite_session: Session):
+def test_tool_label_manager_update_tool_labels_unsupported(sqlite_session: Session) -> None:
     with pytest.raises(ValueError, match="Unsupported tool type"):
         ToolLabelManager.update_tool_labels(object(), ["search"], session=sqlite_session)  # type: ignore[arg-type]

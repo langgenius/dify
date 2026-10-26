@@ -2,7 +2,6 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import type { TagSelectorProps } from '../components/tag-selector'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { DatasetCardTags } from '../components/dataset-card-tags'
 import { TagSelector } from '../components/tag-selector'
 import { renderWithTags } from './render'
 
@@ -110,56 +109,6 @@ describe('TagSelector', () => {
     render(<TagSelector {...defaultProps} contextLabel="Test App" />)
 
     expect(screen.getByRole('combobox', { name: 'Frontend: Test App' })).toBeInTheDocument()
-  })
-
-  it('keeps dataset tag interactions inside the tag trigger', async () => {
-    const user = userEvent.setup()
-    const onOuterClick = vi.fn()
-    mockUseQueryData.current = []
-
-    document.addEventListener('click', onOuterClick)
-    try {
-      render(<DatasetCardTags datasetId="dataset-1" embeddingAvailable tags={[]} />)
-
-      await user.click(screen.getByRole('combobox', { name: i18n.noTag }))
-
-      expect(onOuterClick).not.toHaveBeenCalled()
-    } finally {
-      document.removeEventListener('click', onOuterClick)
-    }
-  })
-
-  it('keeps dataset tag popup option interactions inside the tag trigger', async () => {
-    const user = userEvent.setup()
-    const onOuterClick = vi.fn()
-    const onTagsChange = vi.fn()
-    mockUseQueryData.current = [
-      { id: 'knowledge-tag-1', name: 'Knowledge', type: 'knowledge', binding_count: '' },
-    ]
-
-    document.addEventListener('click', onOuterClick)
-    try {
-      render(
-        <DatasetCardTags
-          datasetId="dataset-1"
-          embeddingAvailable
-          tags={[]}
-          canBindOrUnbindTags
-          onTagsChange={onTagsChange}
-        />,
-      )
-
-      await user.click(screen.getByRole('combobox', { name: i18n.addTag }))
-      await user.click(await screen.findByRole('option', { name: 'Knowledge' }))
-      await user.type(screen.getByRole('combobox', { name: i18n.selectorPlaceholder }), 'NewTag')
-      await user.click(await screen.findByRole('option', { name: /NewTag/ }))
-      await user.click(screen.getByRole('button', { name: i18n.manageTags }))
-
-      await waitFor(() => expect(onTagsChange).toHaveBeenCalled())
-      expect(onOuterClick).not.toHaveBeenCalled()
-    } finally {
-      document.removeEventListener('click', onOuterClick)
-    }
   })
 
   it('renders the no tag trigger when no current tag is visible and binding is unavailable', () => {

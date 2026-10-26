@@ -25,7 +25,7 @@ from services.file_service import FileService
 from services.workflow.variable_file_gateway import WorkflowVariableFileGateway
 from services.workflow.variable_service import WorkflowVariableService
 from tasks.workflow_draft_var_tasks import cleanup_draft_variable_files_task, recover_draft_variable_file_cleanup_task
-from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
 
 
 @pytest.fixture

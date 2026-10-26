@@ -1,17 +1,19 @@
 from unittest.mock import patch
 
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowType
+from models.workflow import WorkflowType
+from repositories.workflow.definition_repository import workflow_snapshot
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.chatflow.app_config_manager import AdvancedChatAppConfigManager
-from tests.unit_tests.model_factories import make_app, make_workflow
+from tests.helpers.unit.model_factories import make_app, make_workflow
 
 
 def _app() -> App:
     return make_app(name="Advanced Chat App", mode=AppMode.ADVANCED_CHAT, icon_type=None)
 
 
-def _workflow() -> Workflow:
-    return make_workflow(workflow_id="wf-1", workflow_type=WorkflowType.CHAT, graph="{}")
+def _workflow() -> WorkflowSnapshot:
+    return workflow_snapshot(make_workflow(workflow_id="wf-1", workflow_type=WorkflowType.CHAT, graph="{}"))
 
 
 class TestAdvancedChatAppConfigManager:

@@ -20,7 +20,7 @@ from services.entities.app_entities import AppEvent
 from services.errors.workflow_service import WorkflowConversionError
 from services.workflow.conversion_service import WorkflowConversionService
 from services.workflow.workflow_converter import WorkflowConverter
-from tests.unit_tests.model_factories import make_account, make_app, make_tenant
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant
 
 CONTEXT = RequestContext("conversion", None, "account-1", "tenant-1")
 

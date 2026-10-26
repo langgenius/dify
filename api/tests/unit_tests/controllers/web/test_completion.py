@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError
 
+from controllers.common.errors import InternalServerError
 from controllers.web.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
 from controllers.web.error import (
     AgentNotPublishedError,
@@ -25,7 +25,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
 from services.app.generation.errors import AgentAppNotPublishedError
-from tests.unit_tests.model_factories import make_app, make_end_user
+from tests.helpers.unit.model_factories import make_app, make_end_user
 
 
 def _app(mode: AppMode) -> App:

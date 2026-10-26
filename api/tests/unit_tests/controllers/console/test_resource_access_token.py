@@ -15,8 +15,8 @@ from controllers.console import flask_admission
 from controllers.console import resource_access_token as controller
 from libs.login import AccountWithTenant
 from models.account import TenantAccountRole
-from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account
 
 _ENDPOINTS = [
     controller.ResourceAccessTokenListApi.get,
