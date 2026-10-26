@@ -353,8 +353,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                     tool_invoker=self._tool_invoker,
                 )
                 runner.run(
-                    draft_variable_saver=self._draft_variable_saver,
-                    workflow_runtime=self._workflow_runtime,
+                    draft_variable_saver=self.draft_variable_saver,
+                    workflow_runtime=self.workflow_runtime,
                     app_record=app_record,
                     annotations=self._annotations,
                     application_generate_entity=application_generate_entity,
