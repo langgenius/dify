@@ -5,6 +5,7 @@ import * as React from 'react'
 import { useDirection } from '../../direction-provider'
 import { IconButton } from '../../icon-button'
 import { formatDateValue, parseDateValue } from './date-value'
+import { PickerPanelClose } from './picker-panel'
 
 type CalendarGridProps = {
   numberingSystem: string
@@ -13,6 +14,7 @@ type CalendarGridProps = {
     monthTrigger: React.ReactNode
     previousMonth: string
     nextMonth: string
+    close: string
   }
   value: string | null
   onSelect: (value: string, event: React.MouseEvent<Element> | React.KeyboardEvent<Element>) => void
@@ -64,7 +66,7 @@ function CalendarNavigation({
   return (
     <nav {...navProps} className="flex h-10 items-center justify-between px-2 pt-2">
       {navigation.monthTrigger}
-      <div className="flex">
+      <div className="flex shrink-0">
         <IconButton
           size="lg"
           aria-label={navigation.previousMonth}
@@ -87,6 +89,7 @@ function CalendarNavigation({
             aria-hidden="true"
           />
         </IconButton>
+        <PickerPanelClose label={navigation.close} />
       </div>
     </nav>
   )

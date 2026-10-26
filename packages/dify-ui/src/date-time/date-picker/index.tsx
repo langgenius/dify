@@ -61,6 +61,7 @@ const defaultLabels: CalendarPanelLabels = {
   month: 'Month',
   year: 'Year',
   cancel: 'Cancel',
+  close: 'Close',
   apply: 'OK',
   unavailable: 'This date is unavailable.',
 }

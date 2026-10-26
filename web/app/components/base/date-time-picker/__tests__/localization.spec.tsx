@@ -20,9 +20,11 @@ import {
   TimePickerTrigger,
 } from '@/app/components/base/date-time-picker/time-picker'
 import { I18nDirectionProvider } from '@/app/components/provider/i18n-direction'
+import enCommon from '@/i18n/locales/en-US/common.json'
 import en from '@/i18n/locales/en-US/time.json'
 import fa from '@/i18n/locales/fa-IR/time.json'
 import lo from '@/i18n/locales/lo-LA/time.json'
+import zhCommon from '@/i18n/locales/zh-Hans/common.json'
 import zh from '@/i18n/locales/zh-Hans/time.json'
 
 vi.unmock('react-i18next')
@@ -35,8 +37,8 @@ async function createI18n(language = 'en-US') {
     defaultNS: 'time',
     keySeparator: false,
     resources: {
-      'en-US': { time: en },
-      'zh-Hans': { time: zh },
+      'en-US': { time: en, common: enCommon },
+      'zh-Hans': { time: zh, common: zhCommon },
       'fa-IR': { time: fa },
       'lo-LA': { time: lo },
     },
@@ -159,4 +161,23 @@ it.each([
   } finally {
     vi.useRealTimers()
   }
+})
+
+it('localizes the picker close action and dismisses without changing its value', async () => {
+  const user = userEvent.setup()
+  const i18n = await createI18n('zh-Hans')
+  const changed = vi.fn()
+  render(
+    <I18nextProvider i18n={i18n}>
+      <TimePicker defaultValue="13:30" onValueChange={changed}>
+        <TimePickerLabel>Time</TimePickerLabel>
+        <TimePickerTrigger />
+        <TimePickerContent />
+      </TimePicker>
+    </I18nextProvider>,
+  )
+  await user.click(screen.getByRole('button', { name: /^Time / }))
+  await user.click(screen.getByRole('button', { name: zhCommon['operation.close'] }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(changed).not.toHaveBeenCalled()
 })

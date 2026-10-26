@@ -206,7 +206,9 @@ function PickerRoot({
     field.validation.change(value, resetVersion !== handledResetVersionRef.current)
   })
 
+  const blurTimeout = useTimeout()
   const focus = useStableCallback((element: HTMLElement) => {
+    blurTimeout.clear()
     if (disabled || element.matches(':disabled')) return
     focusedPartRef.current = element
     field.focusOwnerRef.current = triggerRef
@@ -227,9 +229,19 @@ function PickerRoot({
     )
       return
     if (field.focusOwnerRef.current !== triggerRef) return
-    releaseFocus()
-    field.setTouched(true)
-    if (field.validationMode === 'onBlur') field.validation.commit(value)
+    // Focus guards and closing popovers can briefly move focus outside before restoring it.
+    blurTimeout.start(0, () => {
+      const target = activeElement(ownerDocument(inputRef.current))
+      if (
+        contains(triggerRef.current, target) ||
+        contains(clearRef.current, target) ||
+        contains(popupRef.current, target)
+      )
+        return
+      releaseFocus()
+      field.setTouched(true)
+      if (field.validationMode === 'onBlur') field.validation.commit(value)
+    })
   })
   React.useLayoutEffect(() => {
     if (disabled || inputRef.current?.matches(':disabled')) releaseFocus()
@@ -348,6 +360,7 @@ function PickerRoot({
         }}
       />
       <Popover
+        modal="trap-focus"
         open={props.open}
         defaultOpen={props.defaultOpen}
         onOpenChange={(open, details) => {

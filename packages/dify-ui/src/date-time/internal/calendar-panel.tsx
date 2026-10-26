@@ -13,6 +13,7 @@ type CalendarPanelLabels = {
   month: string
   year: string
   cancel: string
+  close: string
   apply: string
   unavailable: string
 }
@@ -119,7 +120,7 @@ function CalendarPanel({
       aria-label={`${labels.chooseMonthAndYear}: ${monthLabel}`}
       aria-expanded={choosingMonth}
       aria-controls={choosingMonth ? monthPickerId : undefined}
-      className="gap-0.5 px-2 text-sm leading-5 font-semibold text-text-primary"
+      className="min-w-0 gap-0.5 px-2 text-sm leading-5 font-semibold text-text-primary"
       onKeyDown={choosingMonth ? handleEscape : undefined}
       onClick={() => {
         if (choosingMonth) {
@@ -133,7 +134,7 @@ function CalendarPanel({
         setMonthPickerHeight(height)
       }}
     >
-      {monthLabel}
+      <span className="truncate">{monthLabel}</span>
       <span
         aria-hidden="true"
         className={`${choosingMonth ? 'i-ri-arrow-up-s-line' : 'i-ri-arrow-down-s-line'} size-4 forced-colors:text-[ButtonText] forced-colors:forced-color-adjust-none`}
@@ -146,7 +147,9 @@ function CalendarPanel({
       style={monthPickerHeight === null ? undefined : { height: monthPickerHeight }}
       header={
         choosingMonth && (
-          <PickerPanelHeader className="items-start px-2 pt-2">{monthTrigger}</PickerPanelHeader>
+          <PickerPanelHeader closeLabel={labels.close} className="items-start ps-2 pt-2">
+            {monthTrigger}
+          </PickerPanelHeader>
         )
       }
       message={
@@ -230,6 +233,7 @@ function CalendarPanel({
             monthTrigger,
             previousMonth: labels.previousMonth,
             nextMonth: labels.nextMonth,
+            close: labels.close,
           }}
           focusOnMount={focusCalendar}
           value={value}

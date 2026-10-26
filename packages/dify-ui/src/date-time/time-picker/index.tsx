@@ -33,6 +33,7 @@ import { usePickerValue } from '../internal/use-picker-value'
 
 type TimePickerLabels = TimePanelLabels & {
   title: string
+  close: string
   now: string
   apply: string
   unavailable: string
@@ -68,6 +69,7 @@ function useContext() {
 }
 const defaultLabels: TimePickerLabels = {
   title: 'Pick Time',
+  close: 'Close',
   hour: 'Hour',
   minute: 'Minute',
   period: 'Period',
@@ -189,7 +191,7 @@ function Session() {
   const errorId = React.useId()
   return (
     <PickerPanel
-      header={<PickerPanelHeader>{text.title}</PickerPanelHeader>}
+      header={<PickerPanelHeader closeLabel={text.close}>{text.title}</PickerPanelHeader>}
       message={
         unavailable && (
           <p id={errorId} role="status" className="px-2 system-xs-regular text-text-destructive">

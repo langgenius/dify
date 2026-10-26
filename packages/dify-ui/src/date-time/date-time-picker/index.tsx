@@ -72,6 +72,7 @@ const defaultLabels: DateTimePickerLabels = {
   month: 'Month',
   year: 'Year',
   cancel: 'Cancel',
+  close: 'Close',
   apply: 'OK',
   hour: 'Hour',
   minute: 'Minute',
@@ -292,7 +293,7 @@ function Session() {
         />
       ) : (
         <PickerPanel
-          header={<PickerPanelHeader>{text.pickTime}</PickerPanelHeader>}
+          header={<PickerPanelHeader closeLabel={text.close}>{text.pickTime}</PickerPanelHeader>}
           footer={
             <React.Fragment>
               <Button
