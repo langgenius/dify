@@ -33,6 +33,7 @@ from services.end_user_connections.errors import (
     ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
 )
+from services.end_user_connections.revision import ConnectionRevisionSnapshots
 from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig, check_tool_credentials
 
 
@@ -169,15 +170,20 @@ class PluginApiKeyCredentialGateway:
 
 
 class PublishedConnectionTargetResolver:
-    def __init__(self, *, workflows: ConnectionWorkflowQuery, providers: PluginApiKeyCredentialGateway) -> None:
+    def __init__(
+        self,
+        *,
+        workflows: ConnectionWorkflowQuery,
+        providers: PluginApiKeyCredentialGateway,
+        snapshots: ConnectionRevisionSnapshots,
+    ) -> None:
         self._workflows = workflows
         self._providers = providers
+        self._revisions = PluginConnectionRevisions(providers=providers, snapshots=snapshots)
 
     def resolve(self, context: WebConnectionContext, reference: ConnectionTargetInput) -> ToolConnectionTarget:
         workflow_id, graph = self._workflows.published_graph(context)
-        PluginConnectionRevisions(providers=self._providers).require(
-            context.tenant_id, context.app_id, graph, reference.connection_revision
-        )
+        self._revisions.require(context.tenant_id, context.app_id, graph, reference.connection_revision)
         try:
             if check_tool_credentials(graph, complete=True):
                 raise ConnectionConfigurationError()

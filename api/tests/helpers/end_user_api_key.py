@@ -168,7 +168,7 @@ class ConnectionHarness:
             assert workflow is not None
             graph = workflow.graph_dict
         return PluginConnectionRevisions(
-            providers=TestProviders(self.auth, plugin_provider(self.context.tenant_id))
+            providers=TestProviders(self.auth, plugin_provider(self.context.tenant_id)), snapshots=self.repository
         ).resolve(self.context.tenant_id, self.context.app_id, graph)
 
     def command(self, secret: str = "original-secret") -> CreateApiKeyConnectionInput:
@@ -247,9 +247,9 @@ def make_harness(sessions: sessionmaker[Session]) -> ConnectionHarness:
     cipher = TestCipher()
     gateway = TestProviders(auth, plugin_provider(tenant_id))
     service = ConnectionService(
-        revisions=PluginConnectionProviderRevisions(providers=gateway),
+        revisions=PluginConnectionProviderRevisions(providers=gateway, snapshots=repository),
         store=repository,
-        targets=PublishedConnectionTargetResolver(workflows=repository, providers=gateway),
+        targets=PublishedConnectionTargetResolver(workflows=repository, snapshots=repository, providers=gateway),
         credentials=gateway,
         cipher=cipher,
         oauth=OAuthConnectionLifecycleService(

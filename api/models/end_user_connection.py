@@ -17,6 +17,27 @@ from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, LongText, StringUUID
 
 
+class EndUserConnectionRevision(TypeBase):
+    """Immutable, content-addressed authorization snapshots scoped to one Web App.
+
+    Keep old snapshots for consent validation after upgrades and for revocation
+    references after uninstall. They contain no personal credentials or Client secrets.
+    """
+
+    __tablename__ = "end_user_connection_revisions"
+
+    id: Mapped[str] = mapped_column(sa.String(67), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    snapshot: Mapped[str] = mapped_column(LongText, nullable=False, repr=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        default_factory=naive_utc_now,
+        server_default=sa.func.current_timestamp(),
+    )
+
+
 class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
     """An Account owns credentials across Apps within their tenant namespace.
 

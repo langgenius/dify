@@ -7,12 +7,13 @@ from pydantic import ValidationError
 
 from clients.plugin.auth import PluginCredentialAuthClient
 from context.connection_execution import ConnectionExecutionContext
+from core.db.session_factory import get_session_maker
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
 from services.end_user_connection_identity import connection_context_from_web_passport
-from services.end_user_connection_revision_adapters import ConnectionRevisionCodec, PluginConnectionRevisions
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionIdentityError,
@@ -33,13 +34,11 @@ def prepare_web_connection_execution(
         )
     except ValidationError:
         raise ValueError("Invalid connection execution payload.") from None
-    empty_revision = ConnectionRevisionCodec.encode(
-        ConnectionContractSnapshot(tenant_id=app.tenant_id, app_id=app.id, providers=(), requirements=())
-    )
+    repository = EndUserConnectionRepository(session_factory=get_session_maker())
     if not required and command.connection_revision is not None:
-        PluginConnectionRevisions(providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())).require(
-            app.tenant_id, app.id, workflow.graph_dict, command.connection_revision
-        )
+        PluginConnectionRevisions(
+            providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()), snapshots=repository
+        ).require(app.tenant_id, app.id, workflow.graph_dict, command.connection_revision)
     if not required and command.connections:
         raise ConnectionConfigurationError()
     if not isinstance(user, EndUser):
@@ -56,6 +55,11 @@ def prepare_web_connection_execution(
     conversation_id = args.get("conversation_id")
     has_explicit_connections = "connections" in args
     if not required:
+        empty_revision = repository.save_revision(
+            ConnectionContractSnapshot(
+                tenant_id=identity.tenant_id, app_id=identity.app_id, providers=(), requirements=()
+            )
+        )
         empty = ConnectionExecutionContext(
             tenant_id=identity.tenant_id,
             app_id=identity.app_id,

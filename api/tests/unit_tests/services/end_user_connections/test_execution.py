@@ -31,7 +31,6 @@ from services.end_user_connection_execution_adapters import (
     validate_connection_execution,
 )
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
-from services.end_user_connection_revision_adapters import ConnectionRevisionCodec
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
@@ -67,7 +66,10 @@ def preflight(harness: OAuthHarness) -> ConnectionPreflightService:
         connections=harness.base.repository,
         checks=harness.base.service,
         requirements=PublishedPreflightRequirements(
-            workflows=harness.base.repository, providers=harness.providers, oauth=harness.gateway
+            workflows=harness.base.repository,
+            snapshots=harness.base.repository,
+            providers=harness.providers,
+            oauth=harness.gateway,
         ),
     )
 
@@ -183,7 +185,7 @@ def test_protocol_mismatch_never_selects_the_requested_workflow(
     with pytest.raises(ConnectionRevisionChangedError):
         service.prepare(
             harness.base.context,
-            ConnectionRunInput.model_validate({"connection_revision": "e30.e30." + "A" * 43, "connections": {}}),
+            ConnectionRunInput.model_validate({"connection_revision": "cr_" + "a" * 64, "connections": {}}),
             workflow_id=harness.base.workflow_id,
             conversation_id=None,
         )
@@ -420,11 +422,11 @@ def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
         args["connections"] = choices
     if pin != "missing":
         args["connection_revision"] = (
-            ConnectionRevisionCodec.encode(
+            harness.base.repository.save_revision(
                 ConnectionContractSnapshot(tenant_id=app.tenant_id, app_id=app.id, providers=(), requirements=())
             )
             if pin == "matching"
-            else "e30.e30." + "A" * 43
+            else "cr_" + "a" * 64
         )
     if pin == "stale":
         with pytest.raises(ConnectionRevisionChangedError):

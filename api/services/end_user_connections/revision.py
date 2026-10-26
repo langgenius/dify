@@ -10,9 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from services.end_user_connections.entities import WebConnectionContext
 
-ConnectionRevision = Annotated[
-    str, Field(pattern=r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$", max_length=262144)
-]
+ConnectionRevision = Annotated[str, Field(pattern=r"^cr_[0-9a-f]{64}$", min_length=67, max_length=67)]
 
 
 class ProviderContractSnapshot(BaseModel):
@@ -53,7 +51,13 @@ class ConnectionContractSnapshot(BaseModel):
 
     @property
     def revision(self) -> str:
-        return hashlib.sha256(self.canonical_json().encode()).hexdigest()
+        return "cr_" + hashlib.sha256(self.canonical_json().encode()).hexdigest()
+
+
+class ConnectionRevisionSnapshots(Protocol):
+    def save_revision(self, snapshot: ConnectionContractSnapshot) -> str: ...
+
+    def get_revision(self, tenant_id: str, app_id: str, revision: str) -> ConnectionContractSnapshot | None: ...
 
 
 class ConnectionRevisions(Protocol):
@@ -66,5 +70,5 @@ class ConnectionProviderRevisions(Protocol):
     def require(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot: ...
 
     def reference(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
-        """Validate a signed Provider reference without requiring its current installation."""
+        """Validate a persisted Provider reference without requiring its current installation."""
         ...

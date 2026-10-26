@@ -46,9 +46,6 @@ from tests.unit_tests.web_identity_fakes import web_identities
 """Public bootstrap admission with real SQL repositories and the canonical hook."""
 
 
-pytestmark = pytest.mark.usefixtures("connection_revision_key")
-
-
 @dataclass
 class AdmissionHarness:
     app: _public_app_admission_App

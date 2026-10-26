@@ -78,7 +78,7 @@ def make_conversation_harness(oauth: OAuthHarness) -> ConversationHarness:
     with oauth.base.sessions.begin() as session:
         session.execute(sa.update(App).where(App.id == oauth.base.context.app_id).values(mode=AppMode.ADVANCED_CHAT))
     requirements = PublishedPreflightRequirements(
-        workflows=oauth.base.repository, providers=oauth.providers, oauth=oauth.gateway
+        workflows=oauth.base.repository, snapshots=oauth.base.repository, providers=oauth.providers, oauth=oauth.gateway
     )
     return ConversationHarness(
         oauth=oauth,

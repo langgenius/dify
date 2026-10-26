@@ -435,7 +435,8 @@ def build_application_services(
     app_definitions = AppDefinitionQueryService(
         definitions=app_definition_repository,
         connection_revisions=PluginConnectionRevisions(
-            providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
+            providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
+            snapshots=EndUserConnectionRepository(session_factory=database_client),
         ),
         builtin_icon_url_prefix=(
             dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"

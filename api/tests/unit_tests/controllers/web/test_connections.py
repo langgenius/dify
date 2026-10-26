@@ -15,8 +15,6 @@ from models.end_user_connection import EndUserConnection
 from models.model import App, EndUser
 from tests.helpers.end_user_api_key import ConnectionHarness, make_harness
 
-pytestmark = pytest.mark.usefixtures("connection_revision_key")
-
 
 @pytest.fixture
 def harness(sqlite_session_factory: sessionmaker[Session]) -> ConnectionHarness:
@@ -164,7 +162,7 @@ def test_stale_workflow_request_is_rejected_before_plugin_calls(
 ) -> None:
     payload = {
         **harness.command().model_dump(mode="json"),
-        "connection_revision": "e30.e30." + "A" * 43,
+        "connection_revision": "cr_" + "a" * 64,
     }
     response = client.post("/api/connections", json=payload)
     assert response.status_code == 409
@@ -227,7 +225,6 @@ def test_provider_revision_is_available_after_the_authorization_node_is_removed(
     client: FlaskClient, harness: ConnectionHarness
 ) -> None:
     from models.workflow import Workflow
-    from services.end_user_connection_revision_adapters import ConnectionRevisionCodec
 
     connection = harness.service.create_api_key(harness.context, harness.command())
     with harness.sessions.begin() as session:
@@ -237,7 +234,10 @@ def test_provider_revision_is_available_after_the_authorization_node_is_removed(
     response = client.get(f"/api/connections/{connection.id}/revision")
     assert response.status_code == 200
     assert response.headers["Cache-Control"] == "no-store"
-    snapshot = ConnectionRevisionCodec.decode(response.get_json()["connection_revision"])
+    snapshot = harness.repository.get_revision(
+        harness.context.tenant_id, harness.context.app_id, response.get_json()["connection_revision"]
+    )
+    assert snapshot is not None
     assert snapshot.app_id == harness.context.app_id
     assert snapshot.tenant_id == harness.context.tenant_id
     assert snapshot.requirements == ()
@@ -263,7 +263,7 @@ def test_credential_patch_requires_confirmed_revision_before_sending_credentials
     assert original is not None
     payload: dict[str, object] = {"credentials": {"api_key": "private-replacement"}}
     if revision is not None:
-        payload["connection_revision"] = harness.connection_revision if revision == "stale" else "e30.e30." + "A" * 43
+        payload["connection_revision"] = harness.connection_revision if revision == "stale" else "cr_" + "a" * 64
     assert isinstance(harness.service._credentials, TestProviders)
     harness.service._credentials.controller.plugin_unique_identifier = "vendor/calendar:2.0.0@" + "b" * 64
     harness.auth.calls.clear()

@@ -17,6 +17,7 @@ from services.end_user_connections.errors import (
     ConnectionReauthorizationRequiredError,
 )
 from services.end_user_connections.preflight import ConnectionRequirement
+from services.end_user_connections.revision import ConnectionRevisionSnapshots
 from services.workflow.tool_credentials import (
     ToolCredentialConfig,
     check_tool_credentials,
@@ -37,10 +38,12 @@ class PublishedPreflightRequirements:
         workflows: PreflightGraphQuery,
         providers: PluginApiKeyCredentialGateway,
         oauth: PluginConnectionOAuthGateway,
+        snapshots: ConnectionRevisionSnapshots,
     ) -> None:
         self._workflows = workflows
         self._providers = providers
         self._oauth = oauth
+        self._revisions = PluginConnectionRevisions(providers=providers, snapshots=snapshots)
 
     def resolve(
         self,
@@ -52,9 +55,7 @@ class PublishedPreflightRequirements:
         connection_revision: str,
     ) -> tuple[str, str, tuple[ConnectionRequirement, ...]]:
         workflow_id, graph = self._workflows.preflight_graph(context, workflow_id, conversation_id)
-        revision = PluginConnectionRevisions(providers=self._providers).require(
-            context.tenant_id, context.app_id, graph, connection_revision
-        )
+        revision = self._revisions.require(context.tenant_id, context.app_id, graph, connection_revision)
         try:
             if check_tool_credentials(graph, complete=True):
                 raise ConnectionConfigurationError()

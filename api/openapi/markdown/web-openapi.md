@@ -1348,18 +1348,6 @@ Invalid email or password.
 | ---- | ---- | ----------- | -------- |
 | AuthenticationFailedError |  | Invalid email or password. |  |
 
-#### AuthorizationRequirementSnapshot
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_credential_types | [ string ] |  | Yes |
-| node_id | string |  | Yes |
-| node_ids | [ string ] |  | Yes |
-| oauth_client_type | string |  | Yes |
-| provider | string |  | Yes |
-| purpose | string |  | Yes |
-| tool_name | string |  | Yes |
-
 #### BooleanResultResponse
 
 | Name | Type | Description | Required |
@@ -1517,18 +1505,14 @@ Select a connection for every required tool before running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | connection_revision | string |  | Yes |
-| current_providers | [ [ProviderContractSnapshot](#providercontractsnapshot) ] |  | Yes |
-| current_requirements | [ [AuthorizationRequirementSnapshot](#authorizationrequirementsnapshot) ] |  | Yes |
-| previous_providers | [ [ProviderContractSnapshot](#providercontractsnapshot) ] |  | Yes |
-| previous_requirements | [ [AuthorizationRequirementSnapshot](#authorizationrequirementsnapshot) ] |  | Yes |
 
 #### ConnectionRevisionChangedError
 
-The connection requirements changed. Confirm the connection selection again.
+The connection requirements changed. Refresh and confirm again.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ConnectionRevisionChangedError |  | The connection requirements changed. Confirm the connection selection again. |  |
+| ConnectionRevisionChangedError |  | The connection requirements changed. Refresh and confirm again. |  |
 
 #### ConversationInfiniteScrollPagination
 
@@ -2234,13 +2218,6 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
-
-#### ProviderContractSnapshot
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| plugin_unique_identifier | string |  | Yes |
-| provider | string |  | Yes |
 
 #### ProviderNotInitializeError
 

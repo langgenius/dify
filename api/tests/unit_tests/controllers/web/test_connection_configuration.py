@@ -23,8 +23,6 @@ from services.end_user_connections.errors import ConnectionRequiredError
 from tests.helpers.end_user_conversation import ConversationHarness, make_conversation_harness
 from tests.helpers.end_user_oauth import make_oauth_harness
 
-pytestmark = pytest.mark.usefixtures("connection_revision_key")
-
 
 @pytest.fixture
 def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> ConversationHarness:

@@ -267,17 +267,21 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
     )
     attempts = RedisConnectionOAuthAttempts()
     service = OAuthConnectionService(
-        revisions=PluginConnectionProviderRevisions(providers=providers),
+        revisions=PluginConnectionProviderRevisions(providers=providers, snapshots=base.repository),
         store=base.repository,
-        targets=PublishedConnectionTargetResolver(workflows=base.repository, providers=providers),
+        targets=PublishedConnectionTargetResolver(
+            workflows=base.repository, snapshots=base.repository, providers=providers
+        ),
         gateway=gateway,
         attempts=attempts,
         cipher=base.cipher,
     )
     base.service = ConnectionService(
-        revisions=PluginConnectionProviderRevisions(providers=providers),
+        revisions=PluginConnectionProviderRevisions(providers=providers, snapshots=base.repository),
         store=base.repository,
-        targets=PublishedConnectionTargetResolver(workflows=base.repository, providers=providers),
+        targets=PublishedConnectionTargetResolver(
+            workflows=base.repository, snapshots=base.repository, providers=providers
+        ),
         credentials=providers,
         cipher=base.cipher,
         oauth=OAuthConnectionLifecycleService(

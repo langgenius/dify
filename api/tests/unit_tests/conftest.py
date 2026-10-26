@@ -153,12 +153,6 @@ def reset_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def connection_revision_key(reset_secret_key: None, monkeypatch: pytest.MonkeyPatch) -> None:
-    assert reset_secret_key is None
-    apply_config_overrides(monkeypatch, SECRET_KEY="connection-revision-test-secret-key")
-
-
-@pytest.fixture
 def config_overrides(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
     """Temporarily override fields on the shared typed application config.
 

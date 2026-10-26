@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.end_user_connection import EndUserConnection
 from models.workflow import Workflow
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
 from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.errors import ConnectionRevisionChangedError
@@ -47,12 +48,16 @@ def tool(node_id: str, provider: str, source: str = "end_user") -> dict[str, obj
     }
 
 
-def test_revision_tracks_only_involved_plugins_and_ignores_node_order_and_duplicates() -> None:
+def test_revision_tracks_only_involved_plugins_and_ignores_node_order_and_duplicates(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     calendar = "vendor/calendar/calendar"
     mail = "vendor/mail/mail"
     identifiers = {calendar: "vendor/calendar:1.0@first", mail: "vendor/mail:1.0@second"}
     installed = InstalledPlugins(identifiers)
-    revisions = PluginConnectionRevisions(providers=installed)
+    revisions = PluginConnectionRevisions(
+        providers=installed, snapshots=EndUserConnectionRepository(session_factory=sqlite_session_factory)
+    )
     app_id = str(uuid4())
     graph = {"nodes": [tool("one", calendar), tool("two", mail), tool("three", calendar)]}
     expected = revisions.resolve("tenant", app_id, graph)
@@ -77,7 +82,10 @@ def preflight(harness: OAuthHarness) -> ConnectionPreflightService:
         connections=harness.base.repository,
         checks=harness.base.service,
         requirements=PublishedPreflightRequirements(
-            workflows=harness.base.repository, providers=harness.providers, oauth=harness.gateway
+            workflows=harness.base.repository,
+            snapshots=harness.base.repository,
+            providers=harness.providers,
+            oauth=harness.gateway,
         ),
     )
 
@@ -140,7 +148,7 @@ def test_reloaded_contract_accepts_the_new_plugin_artifact(harness: OAuthHarness
     with harness.base.sessions() as session:
         workflow = session.get(Workflow, harness.base.workflow_id)
         assert workflow is not None
-        revision = PluginConnectionRevisions(providers=harness.providers).resolve(
+        revision = PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository).resolve(
             harness.base.context.tenant_id, harness.base.context.app_id, workflow.graph_dict
         )
     result = preflight(harness).check(
@@ -227,11 +235,16 @@ def test_republishing_unchanged_requirements_keeps_the_confirmed_revision(harnes
         assert harness.finish(started).id
 
 
-def test_revision_tracks_authentication_content_and_ignores_presentation_changes() -> None:
+def test_revision_tracks_authentication_content_and_ignores_presentation_changes(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     from copy import deepcopy
 
     provider = "vendor/calendar/calendar"
-    revisions = PluginConnectionRevisions(providers=InstalledPlugins({provider: "vendor/calendar:1.0@first"}))
+    revisions = PluginConnectionRevisions(
+        providers=InstalledPlugins({provider: "vendor/calendar:1.0@first"}),
+        snapshots=EndUserConnectionRepository(session_factory=sqlite_session_factory),
+    )
     graph = {"nodes": [tool("root", provider)]}
     before = revisions.resolve("tenant", "app", graph)
     presentation = deepcopy(graph)
@@ -332,31 +345,23 @@ def test_verified_upgrade_does_not_inherit_changed_authorization_requirements(ha
         preflight(harness).check(
             harness.base.context, ConnectionPreflightInput(connection_revision=previous, connections={})
         )
-    assert error.value.previous is not None
-    assert error.value.current is not None
-    assert error.value.previous.requirements[0].purpose != error.value.current.requirements[0].purpose
+    assert error.value.current_revision is not None
+    assert error.value.current_revision != previous
 
 
-@pytest.mark.parametrize("tamper", ["signature", "scope", "payload"])
+@pytest.mark.parametrize("tamper", ["unknown", "scope", "modified"])
 def test_revision_cannot_forge_trust_or_cross_application_scope(harness: OAuthHarness, tamper: str) -> None:
-    import jwt
-
-    from services.end_user_connection_revision_adapters import ConnectionRevisionCodec
-
     revision = harness.base.connection_revision
     if tamper == "scope":
-        snapshot = ConnectionRevisionCodec.decode(revision)
-        revision = ConnectionRevisionCodec.encode(snapshot.model_copy(update={"app_id": "another-app"}))
-    elif tamper == "payload":
-        snapshot = ConnectionRevisionCodec.decode(revision)
-        revision = jwt.encode(
-            {"aud": "connection_revision", "version": 1, "snapshot": snapshot.model_dump(mode="json")},
-            "attacker-secret-key-with-sufficient-length",
-            algorithm="HS256",
+        snapshot = harness.base.repository.get_revision(
+            harness.base.context.tenant_id, harness.base.context.app_id, revision
         )
+        assert snapshot is not None
+        revision = harness.base.repository.save_revision(snapshot.model_copy(update={"app_id": "another-app"}))
+    elif tamper == "modified":
+        revision = revision[:-1] + ("a" if revision[-1] != "a" else "b")
     else:
-        header, payload, signature = revision.split(".")
-        revision = ".".join([header, payload, ("A" if signature[0] != "A" else "B") + signature[1:]])
+        revision = "cr_" + "0" * 64
     with pytest.raises(ConnectionRevisionChangedError):
         preflight(harness).check(
             harness.base.context, ConnectionPreflightInput(connection_revision=revision, connections={})

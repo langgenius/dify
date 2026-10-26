@@ -254,7 +254,7 @@ class ConnectionManagement(Protocol):
         """Remove the resource and live selections; retain historical Run references.
 
         Best-effort OAuth revocation uses only the artifact recorded for the grant.
-        A valid signed Provider revision enables best-effort revocation. Without
+        A valid persisted Provider revision enables best-effort revocation. Without
         one, deletion is local-only. Remote failures never undo local Disconnect.
         """
         ...

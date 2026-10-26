@@ -21,8 +21,6 @@ from services.end_user_connection_revision_adapters import PluginConnectionRevis
 from services.end_user_connections.preflight import ConnectionPreflightService
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
-pytestmark = pytest.mark.usefixtures("connection_revision_key")
-
 
 @pytest.fixture
 def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> OAuthHarness:
@@ -43,7 +41,10 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
         connections=harness.base.repository,
         checks=harness.base.service,
         requirements=PublishedPreflightRequirements(
-            workflows=harness.base.repository, providers=harness.providers, oauth=harness.gateway
+            workflows=harness.base.repository,
+            snapshots=harness.base.repository,
+            providers=harness.providers,
+            oauth=harness.gateway,
         ),
     )
     monkeypatch.setattr(wraps, "decode_jwt_token", identity)
@@ -53,7 +54,7 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
     definitions = AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=harness.base.sessions),
         builtin_icon_url_prefix="",
-        connection_revisions=PluginConnectionRevisions(providers=harness.providers),
+        connection_revisions=PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository),
     )
     monkeypatch.setattr(app_controller, "application_services", lambda: SimpleNamespace(app_definitions=definitions))
     app = Flask(__name__)
@@ -132,7 +133,7 @@ def test_temporary_check_failure_has_unknown_effective_state(client: FlaskClient
 def test_stale_workflow_is_documented_conflict(client: FlaskClient, harness: OAuthHarness) -> None:
     response = client.post(
         "/api/connections/preflight",
-        json={"connection_revision": "e30.e30." + "A" * 43, "connections": {}},
+        json={"connection_revision": "cr_" + "a" * 64, "connections": {}},
     )
     assert response.status_code == 409
     assert response.get_json()["code"] == "connection_revision_changed"
@@ -172,11 +173,11 @@ def test_guest_can_discover_requirements(
     ("payload", "valid"),
     [
         ({"connections": {}}, False),
-        ({"connections": {}, "connection_revision": "e30.e30." + "A" * 43}, True),
+        ({"connections": {}, "connection_revision": "cr_" + "a" * 64}, True),
         ({"connections": {}, "connection_revision": None}, False),
         ({"connections": {"tool-1": None}}, False),
         ({"connections": {"tool-1": str(uuid4())}, "connection_revision": None}, False),
-        ({"connections": {"tool-1": str(uuid4())}, "connection_revision": "e30.e30." + "A" * 43}, True),
+        ({"connections": {"tool-1": str(uuid4())}, "connection_revision": "cr_" + "a" * 64}, True),
         ({}, False),
     ],
 )
@@ -244,11 +245,8 @@ def test_parameters_replace_workflow_id_and_plugin_upgrade_invalidates_the_revis
     assert harness.base.auth.calls == []
 
 
-def test_unverified_plugin_change_returns_only_changed_contract_metadata(
-    client: FlaskClient, harness: OAuthHarness
-) -> None:
+def test_unverified_plugin_change_returns_only_current_revision(client: FlaskClient, harness: OAuthHarness) -> None:
     previous = harness.base.connection_revision
-    original = harness.providers.controller.plugin_unique_identifier
     upgraded = "vendor/calendar:2.0.0@" + "b" * 64
     harness.providers.controller.plugin_unique_identifier = upgraded
     response = client.post("/api/connections/preflight", json={"connection_revision": previous, "connections": {}})
@@ -256,8 +254,6 @@ def test_unverified_plugin_change_returns_only_changed_contract_metadata(
     payload = response.get_json()
     assert payload["code"] == "connection_revision_changed"
     details = payload["details"]
-    assert details["previous_providers"][0]["plugin_unique_identifier"] == original
-    assert details["current_providers"][0]["plugin_unique_identifier"] == upgraded
-    assert details["previous_requirements"] == details["current_requirements"] == []
+    assert set(details) == {"connection_revision"}
     assert details["connection_revision"] != previous
     assert harness.base.auth.calls == []

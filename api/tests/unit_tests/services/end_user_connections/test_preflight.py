@@ -43,6 +43,7 @@ def service(harness: OAuthHarness) -> ConnectionPreflightService:
         checks=harness.base.service,
         requirements=PublishedPreflightRequirements(
             workflows=harness.base.repository,
+            snapshots=harness.base.repository,
             providers=harness.providers,
             oauth=harness.gateway,
         ),

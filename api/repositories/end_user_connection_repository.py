@@ -6,13 +6,14 @@ from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, load_only, sessionmaker
 
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, OAuthClientSource
 from context.connection_execution import ConnectionExecutionContext
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus
-from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
+from models.end_user_connection import AppConnection, EndUserConnection, EndUserConnectionRevision, SessionConnection
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser
 from models.provider_ids import ToolProviderID
@@ -40,7 +41,7 @@ from services.end_user_connections.oauth import (
     OAuthClientSnapshot,
     StoredOAuthClientConfiguration,
 )
-from services.end_user_connections.revision import AuthorizationRequirementSnapshot
+from services.end_user_connections.revision import AuthorizationRequirementSnapshot, ConnectionContractSnapshot
 from services.end_user_connections.selections import SavedConnectionSelection
 from services.errors.conversation import ConversationNotExistsError
 from services.workflow.tool_credentials import get_tool_authorization_requirements
@@ -49,6 +50,60 @@ from services.workflow.tool_credentials import get_tool_authorization_requiremen
 class EndUserConnectionRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._sessions = session_factory
+
+    def save_revision(self, snapshot: ConnectionContractSnapshot) -> str:
+        revision = snapshot.revision
+        canonical = snapshot.canonical_json()
+        with self._sessions.begin() as session:
+            existing = session.scalar(
+                sa.select(EndUserConnectionRevision.snapshot).where(
+                    EndUserConnectionRevision.id == revision,
+                    EndUserConnectionRevision.tenant_id == snapshot.tenant_id,
+                    EndUserConnectionRevision.app_id == snapshot.app_id,
+                )
+            )
+            if existing is not None:
+                if existing != canonical:
+                    raise ConnectionRevisionChangedError()
+                return revision
+            try:
+                with session.begin_nested():
+                    session.add(
+                        EndUserConnectionRevision(
+                            id=revision, tenant_id=snapshot.tenant_id, app_id=snapshot.app_id, snapshot=canonical
+                        )
+                    )
+                    session.flush()
+            except IntegrityError:
+                # Concurrent requests can discover the same contract for the first time.
+                existing = session.scalar(
+                    sa.select(EndUserConnectionRevision.snapshot)
+                    .where(
+                        EndUserConnectionRevision.id == revision,
+                        EndUserConnectionRevision.tenant_id == snapshot.tenant_id,
+                        EndUserConnectionRevision.app_id == snapshot.app_id,
+                    )
+                    .with_for_update()
+                )
+                if existing != canonical:
+                    raise
+        return revision
+
+    def get_revision(self, tenant_id: str, app_id: str, revision: str) -> ConnectionContractSnapshot | None:
+        with self._sessions() as session:
+            payload = session.scalar(
+                sa.select(EndUserConnectionRevision.snapshot).where(
+                    EndUserConnectionRevision.id == revision,
+                    EndUserConnectionRevision.tenant_id == tenant_id,
+                    EndUserConnectionRevision.app_id == app_id,
+                )
+            )
+        if payload is None:
+            return None
+        snapshot = ConnectionContractSnapshot.model_validate_json(payload)
+        if snapshot.tenant_id != tenant_id or snapshot.app_id != app_id or snapshot.revision != revision:
+            raise ConnectionRevisionChangedError()
+        return snapshot
 
     @staticmethod
     def disconnect_oauth_client_connections(

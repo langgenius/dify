@@ -21,7 +21,7 @@ from services.end_user_connections.errors import (
     ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
 )
-from services.end_user_connections.revision import AuthorizationRequirementSnapshot, ProviderContractSnapshot
+from services.end_user_connections.revision import ConnectionRevision
 
 
 class ConnectionLoginRequiredError(BaseHTTPException):
@@ -55,18 +55,14 @@ class ConnectionConflictHTTPError(BaseHTTPException):
 
 
 class ConnectionRevisionChangeDetails(BaseModel):
-    connection_revision: str | None
-    current_providers: tuple[ProviderContractSnapshot, ...]
-    current_requirements: tuple[AuthorizationRequirementSnapshot, ...]
-    previous_providers: tuple[ProviderContractSnapshot, ...]
-    previous_requirements: tuple[AuthorizationRequirementSnapshot, ...]
+    connection_revision: ConnectionRevision | None
 
 
 class ConnectionRevisionChangedHTTPError(BaseHTTPException):
     code = 409
     error_code = "connection_revision_changed"
     details_model = ConnectionRevisionChangeDetails
-    description = "The connection requirements changed. Confirm the connection selection again."
+    description = "The connection requirements changed. Refresh and confirm again."
 
 
 class ConnectionCredentialsHTTPError(BaseHTTPException):
@@ -104,22 +100,7 @@ def raise_connection_error(error: ConnectionError) -> NoReturn:
         raise Unauthorized(str(error)) from None
     if isinstance(error, ConnectionRevisionChangedError):
         exception = ConnectionRevisionChangedHTTPError()
-        previous, current = error.previous, error.current
-        old_providers = {item.provider: item for item in previous.providers} if previous is not None else {}
-        new_providers = {item.provider: item for item in current.providers} if current is not None else {}
-        old_requirements = {item.node_id: item for item in previous.requirements} if previous is not None else {}
-        new_requirements = {item.node_id: item for item in current.requirements} if current is not None else {}
-        details = ConnectionRevisionChangeDetails(
-            connection_revision=error.current_revision,
-            previous_providers=tuple(item for key, item in old_providers.items() if new_providers.get(key) != item),
-            current_providers=tuple(item for key, item in new_providers.items() if old_providers.get(key) != item),
-            previous_requirements=tuple(
-                item for key, item in old_requirements.items() if new_requirements.get(key) != item
-            ),
-            current_requirements=tuple(
-                item for key, item in new_requirements.items() if old_requirements.get(key) != item
-            ),
-        )
+        details = ConnectionRevisionChangeDetails(connection_revision=error.current_revision)
         assert exception.data is not None
         exception.data["details"] = details.model_dump(mode="json")
         raise exception from None

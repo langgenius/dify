@@ -98,16 +98,6 @@ export type AuthenticationFailedError = ErrorResponse & {
   status: 401
 }
 
-export type AuthorizationRequirementSnapshot = {
-  allowed_credential_types: Array<string>
-  node_id: string
-  node_ids: Array<string>
-  oauth_client_type: string | null
-  provider: string
-  purpose: string
-  tool_name: string
-}
-
 export type BooleanResultResponse = {
   result: boolean
 }
@@ -216,10 +206,6 @@ export type ConnectionRequiredError = ErrorResponse & {
 
 export type ConnectionRevisionChangeDetails = {
   connection_revision: string | null
-  current_providers: Array<ProviderContractSnapshot>
-  current_requirements: Array<AuthorizationRequirementSnapshot>
-  previous_providers: Array<ProviderContractSnapshot>
-  previous_requirements: Array<AuthorizationRequirementSnapshot>
 }
 
 export type ConnectionRevisionChangedError = ErrorResponse & {
@@ -751,11 +737,6 @@ export type PluginInstallationScope =
   | 'none'
   | 'official_and_specific_partners'
   | 'official_only'
-
-export type ProviderContractSnapshot = {
-  plugin_unique_identifier: string
-  provider: string
-}
 
 export type ProviderNotInitializeError = ErrorResponse & {
   code: 'provider_not_initialize'

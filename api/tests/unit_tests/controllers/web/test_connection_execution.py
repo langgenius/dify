@@ -44,8 +44,6 @@ from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
 from tests.helpers.end_user_api_key import ConnectionHarness, TestProviders, make_harness, plugin_provider
 
-pytestmark = pytest.mark.usefixtures("connection_revision_key")
-
 
 @pytest.fixture
 def harness(sqlite_session_factory: sessionmaker[Session]) -> ConnectionHarness:
@@ -163,6 +161,7 @@ def real_execution_gate(
         checks=harness.service,
         requirements=PublishedPreflightRequirements(
             workflows=harness.repository,
+            snapshots=harness.repository,
             providers=providers,
             oauth=PluginConnectionOAuthGateway(
                 clients=harness.repository,
@@ -248,7 +247,7 @@ def test_real_gate_rejects_before_run_creation_or_enqueue(
         case "extra":
             choices["unused-node"] = connection.id
         case "stale":
-            payload["connection_revision"] = "e30.e30." + "A" * 43
+            payload["connection_revision"] = "cr_" + "a" * 64
     if selection != "omitted":
         payload["connections"] = choices
     params = mocker.spy(AppExecutionParams, "new")

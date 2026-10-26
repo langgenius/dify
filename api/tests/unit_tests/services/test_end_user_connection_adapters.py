@@ -15,8 +15,6 @@ from services.end_user_connections.errors import (
 )
 from tests.helpers.end_user_api_key import PROVIDER, ScriptedAuth, make_harness, plugin_provider
 
-pytestmark = pytest.mark.usefixtures("connection_revision_key")
-
 
 def test_cipher_encrypts_the_entire_payload_with_the_tenant_key(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[str, str]] = []

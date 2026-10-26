@@ -96,7 +96,7 @@ def get_tool_runtime(
                 identity, repository.access_records(identity, frozenset({connection_id})).get(connection_id)
             )
             auth = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
-            revisions = PluginConnectionRevisions(providers=auth)
+            revisions = PluginConnectionRevisions(providers=auth, snapshots=repository)
             revisions.require(identity.tenant_id, identity.app_id, graph, context.connection_revision)
             provider = auth.provider(identity.tenant_id, root.provider_id)
             canonical = str(ToolProviderID(provider.entity.identity.name))

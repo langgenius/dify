@@ -25,8 +25,6 @@ from services.end_user_connections.preflight import ConnectionPreflightService
 from tests.helpers.end_user_api_key import PROVIDER
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
-pytestmark = pytest.mark.usefixtures("connection_revision_key")
-
 
 @pytest.fixture
 def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch) -> OAuthHarness:
@@ -51,7 +49,10 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
             connections=harness.base.repository,
             checks=harness.base.service,
             requirements=PublishedPreflightRequirements(
-                workflows=harness.base.repository, providers=harness.providers, oauth=harness.gateway
+                workflows=harness.base.repository,
+                snapshots=harness.base.repository,
+                providers=harness.providers,
+                oauth=harness.gateway,
             ),
         ),
     )
@@ -310,7 +311,7 @@ def test_reauthorization_requires_revision_before_plugin_dispatch(
 
 
 @pytest.mark.parametrize("revision", [None, "forged", "original"])
-def test_disconnect_requires_signed_provider_consent_only_for_remote_revoke(
+def test_disconnect_requires_persisted_provider_consent_only_for_remote_revoke(
     client: FlaskClient, harness: OAuthHarness, revision: str | None
 ) -> None:
     connection = harness.finish(harness.start())
@@ -318,7 +319,7 @@ def test_disconnect_requires_signed_provider_consent_only_for_remote_revoke(
     payload = {}
     if revision is not None:
         payload["connection_revision"] = (
-            harness.base.connection_revision if revision == "original" else "e30.e30." + "A" * 43
+            harness.base.connection_revision if revision == "original" else "cr_" + "a" * 64
         )
     harness.providers.controller.plugin_unique_identifier = "vendor/calendar:9.0.0@" + "f" * 64
     response = client.delete(f"/api/connections/{connection.id}", json=payload)
