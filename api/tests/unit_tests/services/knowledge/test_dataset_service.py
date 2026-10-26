@@ -55,6 +55,7 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, Pr
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
+from services.auth.resource_access_token_contracts import DatasetServiceApiGrant
 from services.enterprise import rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
@@ -700,6 +701,86 @@ class TestDatasetServiceDatasetCases:
 
             assert total == 1
             assert [dataset.id for dataset in datasets] == [shared.id]
+
+        @pytest.mark.parametrize("rbac_enabled", [False, True])
+        def test_get_datasets_workspace_scope_skips_account_acl_and_honors_resource_scope(
+            self,
+            application_tags,
+            config_overrides: Callable[..., None],
+            sqlite_session: Session,
+            rbac_enabled: bool,
+        ) -> None:
+            user = _dataset_service_dataset_account(role=TenantAccountRole.NORMAL)
+            shared = _dataset_service_dataset_dataset(
+                dataset_id="shared", name="Shared", permission=DatasetPermissionEnum.ALL_TEAM
+            )
+            private = _dataset_service_dataset_dataset(
+                dataset_id="private",
+                name="Private",
+                maintainer="other",
+                permission=DatasetPermissionEnum.ONLY_ME,
+            )
+            partial = _dataset_service_dataset_dataset(
+                dataset_id="partial",
+                name="Partial",
+                maintainer="other",
+                permission=DatasetPermissionEnum.PARTIAL_TEAM,
+            )
+            foreign = _dataset_service_dataset_dataset(dataset_id="foreign", tenant_id="tenant-2", name="Foreign")
+            sqlite_session.add_all([shared, private, partial, foreign])
+            sqlite_session.commit()
+
+            config_overrides(RBAC_ENABLED=rbac_enabled)
+            workspace_grant = DatasetServiceApiGrant(
+                token_id="workspace-token",
+                tenant_id="tenant-1",
+                dataset_ids=None,
+            )
+            datasets, total = _dataset_service_dataset_DatasetService.get_datasets(
+                page=1,
+                per_page=20,
+                session=sqlite_session,
+                tenant_id="tenant-1",
+                user=user,
+                tags=application_tags,
+                service_api_grant=workspace_grant,
+            )
+
+            assert total == 3
+            assert {dataset.id for dataset in datasets} == {"shared", "private", "partial"}
+
+            restricted, restricted_total = _dataset_service_dataset_DatasetService.get_datasets(
+                page=1,
+                per_page=20,
+                session=sqlite_session,
+                tenant_id="tenant-1",
+                user=user,
+                include_all=True,
+                tags=application_tags,
+                service_api_grant=DatasetServiceApiGrant(
+                    token_id="resource-token",
+                    tenant_id="tenant-1",
+                    dataset_ids=frozenset({private.id, foreign.id}),
+                ),
+            )
+
+            assert restricted_total == 1
+            assert [dataset.id for dataset in restricted] == [private.id]
+
+            with pytest.raises(ValueError, match="does not match"):
+                _dataset_service_dataset_DatasetService.get_datasets(
+                    page=1,
+                    per_page=20,
+                    session=sqlite_session,
+                    tenant_id="tenant-1",
+                    user=user,
+                    tags=application_tags,
+                    service_api_grant=DatasetServiceApiGrant(
+                        token_id="foreign-token",
+                        tenant_id="tenant-2",
+                        dataset_ids=None,
+                    ),
+                )
 
         def test_get_datasets_by_ids_intersects_requested_and_accessible_ids(
             self, config_overrides: Callable[..., None], sqlite_session: Session
