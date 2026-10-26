@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   chatProps: vi.fn(),
   feedbackMutationFn: vi.fn(),
   messagesQueryFn: vi.fn(),
+  agentQueryFn: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }))
@@ -25,20 +26,43 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     chatList,
     config,
     onFeedback,
+    onOpenLog,
   }: {
     chatList: IChatItem[]
     config?: { supportFeedback?: boolean }
     onFeedback?: OnFeedback
+    onOpenLog?: (item: IChatItem) => void
   }) => {
-    mocks.chatProps({ chatList, config, onFeedback })
+    mocks.chatProps({ chatList, config, onFeedback, onOpenLog })
     return (
-      <button
-        onClick={() => void onFeedback?.('message-1', { rating: 'like' }).catch(() => undefined)}
-      >
-        submit-feedback
-      </button>
+      <div>
+        <button
+          onClick={() => void onFeedback?.('message-1', { rating: 'like' }).catch(() => undefined)}
+        >
+          submit-feedback
+        </button>
+        {onOpenLog && (
+          <button
+            onClick={() => onOpenLog(chatList.find((item) => item.conversationId) ?? chatList[0]!)}
+          >
+            open-log
+          </button>
+        )}
+      </div>
     )
   },
+}))
+
+vi.mock('@/app/components/base/agent-log-modal', () => ({
+  default: ({ currentLogItem, onCancel }: { currentLogItem?: IChatItem; onCancel: () => void }) =>
+    currentLogItem
+      ? (
+          <div>
+            <span>agent-log-modal</span>
+            <button onClick={onCancel}>close-modal</button>
+          </div>
+        )
+      : null,
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -60,6 +84,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.get': mocks.agentQueryFn,
       'agent.byAgentId.feedbacks.post': mocks.feedbackMutationFn,
       'agent.byAgentId.logs.byConversationId.messages.get': mocks.messagesQueryFn,
     }),
@@ -146,6 +171,7 @@ describe('AgentLogDetailPanel', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     mocks.feedbackMutationFn.mockResolvedValue({ result: 'success' })
+    mocks.agentQueryFn.mockResolvedValue({ backing_app_id: 'backing-app-1' })
   })
 
   it('maps user and admin feedback and submits operator feedback for webapp messages', async () => {
@@ -223,5 +249,19 @@ describe('AgentLogDetailPanel', () => {
         ]),
       }),
     )
+  })
+
+  it('opens the agent log modal for a message and closes it', async () => {
+    const user = userEvent.setup()
+    renderPanel(webappLog, webappMessages)
+
+    await screen.findByRole('button', { name: 'open-log' })
+    expect(screen.queryByText('agent-log-modal')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'open-log' }))
+    expect(screen.getByText('agent-log-modal')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'close-modal' }))
+    expect(screen.queryByText('agent-log-modal')).not.toBeInTheDocument()
   })
 })
