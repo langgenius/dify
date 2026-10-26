@@ -165,6 +165,23 @@ function IMIdentityAvatar({
   )
 }
 
+function IMIdentityDetails({ identity }: { identity: IMIdentityOption }) {
+  const name = identity.display_name || identity.email || identity.provider_user_id
+  const identifiers = [...new Set([identity.email, identity.provider_user_id])].filter(
+    (value) => value && value !== name,
+  )
+  return (
+    <span className="flex min-w-0 flex-1 flex-col gap-0.5 whitespace-normal">
+      <span className="system-sm-medium wrap-anywhere">{name}</span>
+      {identifiers.length > 0 && (
+        <span className="system-xs-regular wrap-anywhere text-text-tertiary">
+          {identifiers.join(' · ')}
+        </span>
+      )}
+    </span>
+  )
+}
+
 function ContactIMBindingEditor({
   contact,
   provider,
@@ -312,18 +329,12 @@ function ContactIMBindingEditor({
             >
               <ComboboxTrigger
                 aria-label={t(($) => $['imBinding.contactLabel'])}
-                className="h-9 gap-2 rounded-lg py-1.5 ps-1.5 pe-2.5"
+                className="h-auto min-h-9 gap-2 rounded-lg py-1.5 ps-1.5 pe-2.5"
               >
                 {identity ? (
                   <span className="flex min-w-0 items-center gap-1.5">
                     <IMIdentityAvatar identity={identity} />
-                    <span className="max-w-1/2 shrink-0 truncate system-sm-medium">
-                      {identity.display_name && !identity.display_name.startsWith('@') && '@'}
-                      {identity.display_name || identity.email || identity.provider_user_id}
-                    </span>
-                    <span className="truncate system-xs-regular text-text-tertiary">
-                      {identity.email}
-                    </span>
+                    <IMIdentityDetails identity={identity} />
                   </span>
                 ) : (
                   <span className="px-2 text-components-input-text-placeholder">
@@ -337,7 +348,7 @@ function ContactIMBindingEditor({
                 <ComboboxPositioner>
                   <ComboboxPopup
                     aria-label={t(($) => $['imBinding.contactLabel'])}
-                    className="bg-components-panel-bg-blur backdrop-blur-[5px]"
+                    className="max-w-(--available-width) bg-components-panel-bg-blur backdrop-blur-[5px]"
                     onKeyDown={(event) => {
                       if (event.key === 'Escape') {
                         event.stopPropagation()
@@ -390,15 +401,10 @@ function ContactIMBindingEditor({
                         <ComboboxItem
                           key={option.id}
                           value={option}
-                          className="flex h-8 gap-2 py-1 ps-2 pe-3"
+                          className="flex min-h-12 gap-2 py-2 ps-2 pe-3"
                         >
                           <IMIdentityAvatar identity={option} />
-                          <span className="min-w-0 flex-1 truncate system-sm-medium">
-                            {option.display_name || option.email || option.provider_user_id}
-                          </span>
-                          <span className="max-w-1/2 shrink-0 truncate text-end system-xs-regular text-text-quaternary">
-                            {option.email || option.provider_user_id}
-                          </span>
+                          <IMIdentityDetails identity={option} />
                         </ComboboxItem>
                       )}
                     </ComboboxList>
@@ -599,7 +605,7 @@ function ContactIMChannels({
           if (!busy) setOpen(nextOpen)
         }}
       >
-        <DialogContent className="w-120">
+        <DialogContent className="w-140">
           {editingProvider && (
             <ContactIMBindingEditor
               key={`${editingProvider}:${context.imBindingCentrallyManaged}`}
