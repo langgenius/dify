@@ -1,9 +1,33 @@
 """Export community Console schemas to stdout for the OpenAPI content mapper."""
 
+import ast
 import contextlib
+import inspect
 import json
 import sys
+import textwrap
 from pathlib import Path
+from typing import Any
+
+
+def attach_source_location(document: dict[str, Any], path: str, method: str, handler: Any) -> None:
+    """Attach editor-only origins to exported operations, leaving live schemas unchanged."""
+    operation = document["paths"].get(path, {}).get(method.lower())
+    if not isinstance(operation, dict) or handler is None:
+        return
+    try:
+        handler = inspect.unwrap(handler)
+        filename = inspect.getsourcefile(handler)
+        lines, start = inspect.getsourcelines(handler)
+        definition = ast.parse(textwrap.dedent("".join(lines))).body[0]
+    except (OSError, TypeError, ValueError, SyntaxError):
+        # Dynamically created or native handlers have no navigable Python source.
+        return
+    if filename and isinstance(definition, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        operation["x-source-location"] = {
+            "file": str(Path(filename).resolve()),
+            "line": start + definition.lineno - 1,
+        }
 
 
 def main() -> None:
@@ -17,6 +41,21 @@ def main() -> None:
             "console": export_specs()["console-openapi.json"],
             "fast": export_fastopenapi_specs()["fastopenapi-console-openapi.json"],
         }
+        from flask_restx.swagger import extract_path
+
+        from controllers.console import api
+        from controllers.fastopenapi import console_router
+
+        for namespace in api.namespaces:
+            for resource in namespace.resources:
+                for url in api.ns_urls(namespace, resource.urls):
+                    path = extract_path(url)
+                    for method in resource.resource.methods:
+                        attach_source_location(
+                            documents["console"], path, method, getattr(resource.resource, method.lower(), None)
+                        )
+        for path, method, handler in console_router.get_routes():
+            attach_source_location(documents["fast"], f"/console/api{path}", method, handler)
     json.dump(documents, sys.stdout, sort_keys=True)
     sys.stdout.write("\n")
 

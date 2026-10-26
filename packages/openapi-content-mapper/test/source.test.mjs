@@ -29,7 +29,7 @@ import { readFileSync, appendFileSync } from 'node:fs';
 appendFileSync('unwatched/calls', '1');
 console.error('Exporter diagnostic');
 console.log(JSON.stringify({openapi:'3.1.0',info:{title:'Pets',version:'1'},paths:{
-  '/pets':{get:{responses:{200:{description:'OK',content:{'application/json':{schema:{type:readFileSync('schema.txt','utf8')}}}}}}},
+  '/pets':{get:{'x-source-location':{file:'./backend.py',line:7},responses:{200:{description:'OK',content:{'application/json':{schema:{type:readFileSync('schema.txt','utf8')}}}}}}},
   '/unused':{get:{responses:{204:{description:'OK'}}}}
 }}));
 `,
@@ -244,6 +244,12 @@ test('the language server refreshes command-source hover types after backend cha
       position: { line: 2, character: 1 },
     })
   assert.match(JSON.stringify(await hover()), /pet: string/)
+  const methodHover = await rpc.request('textDocument/hover', {
+    textDocument: { uri },
+    position: { line: 1, character: source.split('\n')[1].indexOf('.get') + 2 },
+  })
+  assert.match(JSON.stringify(methodHover), /Open backend implementation/)
+  assert.match(JSON.stringify(methodHover), /backend.py#L7/)
   writeFileSync(schema, 'number')
   rpc.notify('workspace/didChangeWatchedFiles', {
     changes: [{ uri: pathToFileURL(schema).href, type: 2 }],

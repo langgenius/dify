@@ -3,6 +3,7 @@ import { api as knowledgeClient } from './knowledge-fs.openapi'
 
 // Hover over `result`, `total`, or a query option to see inferred types.
 // Type `consoleClient.datasets.` to explore the actual console endpoints.
+// Hover `get` for its backend link; the optional navigation extension also enables F12.
 export async function listDatasets() {
   const result = await consoleClient.datasets.get({ query: { page: 1, limit: 20 } })
   const total: number = result.total

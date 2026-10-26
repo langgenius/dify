@@ -2,8 +2,10 @@ import type { Node, Scalar } from 'yaml'
 import type { OperationConfigs } from './operation-config.js'
 import type { RouterNode } from './router.js'
 import type { Selection } from './type-document.js'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isMap, isScalar, isSeq, parseDocument, visit } from 'yaml'
-import { assertDocument, pointer } from '../document.js'
+import { assertDocument, pointer, record, resolveRef } from '../document.js'
 import { describeOperations } from '../operation.js'
 import { operationConfig } from './operation-config.js'
 import { createRouter, routerModule, routerModuleId } from './router.js'
@@ -123,6 +125,24 @@ export function transformSpec(content: string, fileName: string): Transform {
     function emitRouter(node: RouterNode) {
       text += '{\n'
       for (const [method, op] of node.methods) {
+        const operation = resolveRef(
+          resolveRef(record(value.paths)[op.path], value)[op.method],
+          value,
+        )
+        const source = record(operation['x-source-location'])
+        if (
+          typeof source.file === 'string' &&
+          source.file &&
+          Number.isSafeInteger(source.line) &&
+          Number(source.line) > 0
+        ) {
+          const input = fileName.startsWith('file:') ? fileURLToPath(fileName) : fileName
+          const url = pathToFileURL(resolve(dirname(input), source.file))
+          url.hash = `L${source.line}`
+          // Encode comment terminators as well as Markdown delimiters in authored filenames.
+          const href = url.href.replaceAll('*', '%2A').replaceAll('(', '%28').replaceAll(')', '%29')
+          text += `/** [Open backend implementation](${href}) */\n`
+        }
         token(JSON.stringify(method), methodNodes.get(`${op.path} ${op.method}`))
         text += `: readonly [${JSON.stringify(op.path)}, ${JSON.stringify(op.method)}];\n`
       }

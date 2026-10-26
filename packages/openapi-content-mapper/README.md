@@ -180,6 +180,29 @@ specification. Each new process needs the backend export environment. The export
 and schema do not ship to the browser. Definitions from a command source have no
 schema-file location; file imports retain their existing source navigation.
 
+### Navigate to backend implementations
+
+An operation can carry optional development metadata:
+
+```json
+"x-source-location": { "file": "/checkout/api/controllers/pets.py", "line": 42 }
+```
+
+`line` is one-based. Relative paths resolve against the imported OpenAPI file or
+`.openapi-source` descriptor. The mapper adds an **Open backend implementation**
+link to the method's hover documentation, for both `api` and `query`. This works
+with command sources and imported OpenAPI files. Metadata is excluded from runtime
+operation descriptors and browser bundles.
+
+For F12 / Cmd+click and Go to Implementation, install the optional local
+[VS Code extension]. It uses the same hover link to find the
+backend target. Without source metadata, normal schema navigation is preserved;
+the extension skips backend files that are not present locally.
+
+The Dify Console stdout exporter adds these locations automatically, including
+unwrapping decorated handlers. This affects only the local in-memory export;
+live API schemas and retained Enterprise snapshots are unchanged.
+
 ## API and transport
 
 Documents export only `api` and `query`; operation IDs are not exports. `/pets/{petId}` becomes `pets.byPetId`, hyphenated segments become camelCase and HTTP methods are leaf functions. Colon actions such as `/chat:run` become `chat.run`. `key` is reserved as a route segment for query helpers. Unresolvable member collisions fail during compilation.
@@ -427,3 +450,4 @@ This package retains the repository's modified Apache 2.0 terms, including its a
 [CHANGELOG]: CHANGELOG.md
 [Development and release]: #development-and-release
 [LICENSE]: LICENSE
+[VS Code extension]: ./vscode/README.md

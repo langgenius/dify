@@ -12,7 +12,14 @@ const root = resolve(import.meta.dirname, '..')
 
 test('native TS 7.1 LSP: operation completions, hover, definition into YAML, live schema updates', async () => {
   const dir = mkdtempSync(join(root, 'test/.lsp-'))
-  const spec = readFileSync(join(root, 'examples/petstore/pets.openapi.yaml'), 'utf8')
+  const specDocument = parseDocument(
+    readFileSync(join(root, 'examples/petstore/pets.openapi.yaml'), 'utf8'),
+  )
+  specDocument.setIn(['paths', '/pets/{petId}', 'get', 'x-source-location'], {
+    file: './backend.py',
+    line: 7,
+  })
+  const spec = specDocument.toString()
   const source = [
     "import { api, query } from './pets.yaml';",
     '// SDK inferred by the content mapper',
@@ -71,6 +78,12 @@ test('native TS 7.1 LSP: operation completions, hover, definition into YAML, liv
       position: { line: 3, character: 5 },
     })
     assert.match(JSON.stringify(hover), /name.*string/)
+    const methodHover = await rpc.request('textDocument/hover', {
+      textDocument: { uri },
+      position: { line: 2, character: source.split('\n')[2].indexOf('.get') + 2 },
+    })
+    assert.match(JSON.stringify(methodHover), /Open backend implementation/)
+    assert.match(JSON.stringify(methodHover), /backend.py#L7/)
     const definitions = await rpc.request('textDocument/definition', {
       textDocument: { uri },
       position: { line: 2, character: source.split('\n')[2].indexOf('.get') + 2 },
@@ -81,6 +94,11 @@ test('native TS 7.1 LSP: operation completions, hover, definition into YAML, liv
       position: { line: 4, character: source.split('\n')[4].indexOf('.get') + 2 },
     })
     assert.match(JSON.stringify(queryDefinition), /pets.yaml/)
+    const queryHover = await rpc.request('textDocument/hover', {
+      textDocument: { uri },
+      position: { line: 4, character: source.split('\n')[4].indexOf('.get') + 2 },
+    })
+    assert.match(JSON.stringify(queryHover), /backend.py#L7/)
     rpc.notify('textDocument/didOpen', {
       textDocument: { uri: specUri, languageId: 'yaml', version: 1, text: spec },
     })

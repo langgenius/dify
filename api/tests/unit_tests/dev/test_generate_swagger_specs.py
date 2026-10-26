@@ -81,6 +81,15 @@ def test_console_stdout_export_contains_both_surfaces_without_spec_files(tmp_pat
     for document in documents.values():
         assert document["openapi"].startswith("3.")
         assert document["paths"]
+        for item in document["paths"].values():
+            for operation in item.values():
+                if not isinstance(operation, dict) or "responses" not in operation:
+                    continue
+                origin = operation["x-source-location"]
+                source_line = Path(origin["file"]).read_text().splitlines()[origin["line"] - 1].lstrip()
+                assert source_line.startswith(("def ", "async def "))
+    datasets = documents["console"]["paths"]["/datasets"]["get"]["x-source-location"]
+    assert datasets["file"].endswith("/controllers/console/datasets/datasets.py")
     assert not list(tmp_path.rglob("*.json"))
 
 
