@@ -56,7 +56,7 @@ class _LazyTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         assert isinstance(session, _TrackingSession)
         assert user_id == "user-1"
         assert tool_parameters == {"query": "hello"}
@@ -81,7 +81,7 @@ def _unused_draft_variable_saver(_tenant_id: str, _account: Account) -> DraftVar
     raise AssertionError("the patched tool lookup must not call the draft variable saver")
 
 
-def _invoke(runtime: WorkflowExecutionDependencies) -> Generator[ToolInvokeMessage, None, None]:
+def _invoke(runtime: WorkflowExecutionDependencies) -> Generator[ToolInvokeMessage]:
     return PluginToolBackwardsInvocation.invoke_tool(
         tenant_id="tenant-1",
         user_id="user-1",
@@ -99,9 +99,7 @@ def test_plugin_invocation_closes_transform_and_session_when_consumer_stops_earl
     tool = _LazyTool()
     transform_closed = False
 
-    def tracking_transform(
-        messages: Generator[ToolInvokeMessage, None, None], **_kwargs: object
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    def tracking_transform(messages: Generator[ToolInvokeMessage], **_kwargs: object) -> Generator[ToolInvokeMessage]:
         nonlocal transform_closed
         try:
             yield from messages
@@ -133,9 +131,7 @@ def test_plugin_invocation_closes_session_when_transformer_raises(sqlite_engine:
     runtime = _runtime(sqlite_engine)
     tool = _LazyTool()
 
-    def failing_transform(
-        messages: Generator[ToolInvokeMessage, None, None], **_kwargs: object
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    def failing_transform(messages: Generator[ToolInvokeMessage], **_kwargs: object) -> Generator[ToolInvokeMessage]:
         yield next(messages)
         raise RuntimeError("transform failed")
 

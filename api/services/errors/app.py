@@ -6,8 +6,20 @@ class PermittedAppsUnavailableError(Exception):
     pass
 
 
+class AppQuotaCheckError(Exception):
+    """The app quota could not be determined because its lookup failed."""
+
+
 class MoreLikeThisDisabledError(Exception):
     pass
+
+
+class AppAbnormalStatusError(Exception):
+    """The app is not in its normal operating state."""
+
+
+class AppApiDisabledError(Exception):
+    """The app owner has disabled Service API access."""
 
 
 class WorkflowHashNotEqualError(Exception):

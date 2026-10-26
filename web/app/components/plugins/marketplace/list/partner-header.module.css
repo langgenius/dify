@@ -12,7 +12,7 @@
   }
 
   :global([data-marketplace-standalone]) .partnerHeaderWithNavigation {
-    padding-right: 80px;
+    padding-inline-end: 80px;
   }
 
   :global([data-marketplace-standalone]) .partnerTitle {

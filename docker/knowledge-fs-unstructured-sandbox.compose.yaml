@@ -1,0 +1,35 @@
+# Opt-in only. Run the pinned-image golden gate before applying to production.
+# Merge with docker-compose.yaml; this replaces the EXISTING dedicated service.
+services:
+  knowledge_fs_unstructured:
+    build:
+      context: ../knowledge-fs/services/unstructured-sandbox
+      dockerfile: Dockerfile
+    image: knowledge-fs-unstructured-sandbox:local
+    init: true
+    read_only: true
+    pids_limit: 192
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=1073741824,mode=1777
+    # Override the original mount by target, keeping parser outputs off host storage.
+    volumes:
+      - type: bind
+        source: ./volumes/knowledge-fs-unstructured
+        target: /app/data
+        read_only: true
+    environment:
+      UNSTRUCTURED_PARALLEL_MODE_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthcheck', timeout=3).read(4096)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 6G
+          pids: 192

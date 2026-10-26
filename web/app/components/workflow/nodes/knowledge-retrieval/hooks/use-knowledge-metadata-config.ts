@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type {
   HandleAddCondition,
   HandleRemoveCondition,
@@ -17,7 +17,7 @@ import { ComparisonOperator, LogicalOperator, MetadataFilteringVariableType } fr
 
 type Params = {
   id: string
-  inputRef: MutableRefObject<KnowledgeRetrievalNodeType>
+  inputRef: RefObject<KnowledgeRetrievalNodeType>
   setInputs: (inputs: KnowledgeRetrievalNodeType) => void
 }
 

@@ -46,156 +46,90 @@ function unlockAsync(path: string): Promise<void> {
 export const STORAGE_MODES = ['keychain', 'file'] as const
 export type StorageMode = (typeof STORAGE_MODES)[number]
 
+/** What an update returns to delete the file. */
+export const REMOVE = Symbol('remove')
+
+/** The next document, REMOVE to delete the file, or undefined to leave the file as it is. */
+export type Change<T> = T | typeof REMOVE | undefined
+
 export class YamlStore {
-  filePath: string
-  private rawContent: string | undefined
+  private readonly filePath: string
   private readonly platform: Platform
-  private dirty: boolean = false
 
   constructor(filePath: string) {
     this.filePath = filePath
     this.platform = resolvePlatform()
   }
 
-  private async ensureDir(): Promise<void> {
-    await fsp.mkdir(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
-  }
-
-  async unlock(): Promise<void> {
-    await unlockAsync(`${this.filePath}.lock`)
+  async read(): Promise<string | undefined> {
+    return this.withLock(() => this.load())
   }
 
   /**
-   * atomically write raw_content (if any)
+   * Read, change and write the file under one lock, so a change made by another
+   * process in between is never lost. `change` is sync: an async one could hold the
+   * lock past LOCK_STALE_MS, and another process would then take it.
    */
-  async flush(): Promise<void> {
-    // we don't handle A-B-A scenario,
-    // which is not likely to happen in cli
-    if (!this.dirty) {
-      return
-    }
-
-    if (this.rawContent !== undefined) {
-      await this.ensureDir()
-      const tmp = `${this.filePath}.tmp.${pid()}.${Date.now()}`
-      try {
-        await fsp.writeFile(tmp, this.rawContent, { mode: FILE_PERM })
-        this.platform.atomicReplace(tmp, this.filePath)
-      } catch (err) {
-        try {
-          await fsp.unlink(tmp)
-        } catch {
-          /* tmp may not exist */
-        }
-        throw err
-      }
-    }
-
-    this.dirty = false
+  async update<T>(change: (content: string | undefined) => Change<T>): Promise<void> {
+    await this.withLock(async () => {
+      const content = await this.load()
+      const next = change(content)
+      if (next === undefined) return
+      if (next === REMOVE) return this.rm()
+      const dumped = dump(next, { lineWidth: -1, noRefs: true })
+      if (dumped !== content) await this.replace(dumped)
+    })
   }
 
-  async lock(): Promise<void> {
-    await this.ensureDir()
+  private async withLock<R>(body: () => Promise<R>): Promise<R> {
+    await this.lock()
+    try {
+      return await body()
+    } finally {
+      await unlockAsync(`${this.filePath}.lock`)
+    }
+  }
+
+  private async lock(): Promise<void> {
+    await fsp.mkdir(dirname(this.filePath), { recursive: true, mode: DIR_PERM })
     try {
       await lockAsync(`${this.filePath}.lock`, {
         stale: LOCK_STALE_MS,
         wait: LOCK_WAIT_MS,
       })
     } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code
-      if (code === 'EEXIST') {
+      if ((err as NodeJS.ErrnoException).code === 'EEXIST')
         throw new ConcurrentAccessError(this.filePath)
-      }
       throw err
     }
   }
 
-  async load(): Promise<void> {
+  private async load(): Promise<string | undefined> {
     try {
-      this.rawContent = await fsp.readFile(this.filePath, 'utf8')
-      this.dirty = false
+      return await fsp.readFile(this.filePath, 'utf8')
     } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code
-      if (code !== 'ENOENT') {
-        throw err
-      }
-      this.rawContent = undefined
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+      throw err
     }
   }
 
-  public setRawContent(content: string): void {
-    this.dirty = content !== this.getRawContent()
-    this.rawContent = content
-  }
-
-  public getRawContent(): string | undefined {
-    return this.rawContent
-  }
-
-  /** Read, transform, and replace a document under one lock for read-modify-write operations. */
-  async update<T>(
-    update: (rawContent: string | undefined) => T | undefined | Promise<T | undefined>,
-  ): Promise<void> {
-    await this.withLock(async () => {
-      await this.load()
-      const next = await update(this.rawContent)
-      if (next === undefined) return
-      this.setRawContent(dump(next, { lineWidth: -1, noRefs: true }))
-      await this.flush()
-    })
-  }
-
-  async getRaw(): Promise<string | undefined> {
-    return this.withLock(async () => {
-      await this.load()
-      return this.rawContent
-    })
-  }
-
-  private async withLock<R>(body: () => R | Promise<R>): Promise<R> {
-    await this.lock()
+  private async replace(content: string): Promise<void> {
+    const tmp = `${this.filePath}.tmp.${pid()}.${Date.now()}`
     try {
-      return await body()
-    } finally {
-      await this.unlock()
+      await fsp.writeFile(tmp, content, { mode: FILE_PERM })
+      this.platform.atomicReplace(tmp, this.filePath)
+    } catch (err) {
+      await fsp.unlink(tmp).catch(() => undefined)
+      throw err
     }
   }
 
-  /**
-   * Remove the underlying file of the store. No-op if file doesn't exist.
-   */
-  async rm(): Promise<void> {
+  private async rm(): Promise<void> {
     try {
       await fsp.unlink(this.filePath)
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err
     }
-  }
-
-  /**
-   * Remove the file only when `matches` accepts what it holds now. The read and the
-   * removal share one lock, so a file another process rewrote in between survives.
-   */
-  async rmIf(matches: (doc: Record<string, unknown> | null) => boolean): Promise<void> {
-    await this.withLock(async () => {
-      await this.load()
-      if (matches(loadYaml(this.getRawContent(), this.filePath))) await this.rm()
-    })
-  }
-
-  async getTyped<T>(): Promise<T | null> {
-    return this.withLock(async () => {
-      await this.load()
-      return loadYaml(this.getRawContent(), this.filePath) as T
-    })
-  }
-
-  async setTyped<T>(data: T): Promise<void> {
-    await this.withLock(async () => {
-      await this.load()
-      this.setRawContent(dump(data, { lineWidth: -1, noRefs: true }))
-      await this.flush()
-    })
   }
 }
 

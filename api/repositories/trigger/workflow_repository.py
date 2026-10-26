@@ -26,7 +26,9 @@ class WorkflowTriggerRepository:
         session.execute(select(App.id).where(App.id == app.id, App.tenant_id == app.tenant_id).with_for_update()).one()
 
     @staticmethod
-    def sync_webhooks(session: Session, app: App, node_ids: Sequence[str], *, remove_stale: bool) -> None:
+    def sync_webhooks(
+        session: Session, app: App, node_ids: Sequence[str], *, created_by: str, remove_stale: bool
+    ) -> None:
         records = session.scalars(
             select(WorkflowWebhookTrigger).where(
                 WorkflowWebhookTrigger.tenant_id == app.tenant_id,
@@ -42,7 +44,7 @@ class WorkflowTriggerRepository:
                         tenant_id=app.tenant_id,
                         node_id=node_id,
                         webhook_id=WorkflowTriggerRepository.generate_webhook_id(),
-                        created_by=app.created_by,
+                        created_by=created_by,
                     )
                 )
         if remove_stale:

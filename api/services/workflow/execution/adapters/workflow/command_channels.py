@@ -5,7 +5,6 @@ from collections.abc import Callable, Sequence
 from typing import final, override
 
 from core.app.apps.execution_coordinator import is_app_task_stop_flag_set
-
 from graphon.engine.command import AbortCommand, Command, CommandChannel
 
 logger = logging.getLogger(__name__)

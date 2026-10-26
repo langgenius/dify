@@ -1,9 +1,4 @@
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -73,12 +68,12 @@ describe('SkillDetailPage clipboard', () => {
     renderSkillDetailPage()
     await waitFor(() => expect(getFileTreeItem('SKILL.md')).toBeInTheDocument())
     render(
-      <DropdownMenu>
-        <DropdownMenuTrigger>Other actions</DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuItem>Other copy</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>,
+      <Menu>
+        <MenuTrigger>Other actions</MenuTrigger>
+        <MenuContent>
+          <MenuItem>Other copy</MenuItem>
+        </MenuContent>
+      </Menu>,
     )
     await user.click(screen.getByRole('button', { name: 'Other actions' }))
     const menuItem = await screen.findByRole('menuitem', { name: 'Other copy' })
@@ -326,9 +321,8 @@ describe('SkillDetailPage clipboard', () => {
       })
       return mocks.skillDetail
     })
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     renderSkillDetailPage()
@@ -390,9 +384,8 @@ describe('SkillDetailPage clipboard', () => {
         return copiedDetail
       })
     mocks.skillDetailGetFn.mockResolvedValueOnce(latestDetail)
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     renderSkillDetailPage()
@@ -472,9 +465,8 @@ describe('SkillDetailPage clipboard', () => {
       .mockRejectedValueOnce(conflict)
       .mockResolvedValueOnce(afterBetaCopy)
     mocks.skillDetailGetFn.mockResolvedValueOnce(refreshedDetail)
-    mocks.skillDetailKey.mockReturnValue(['skill-detail'])
+
     mocks.skillDetailQueryOptions.mockImplementation(() => ({
-      queryKey: ['skill-detail'],
       queryFn: async () => mocks.skillDetail,
     }))
     renderSkillDetailPage()

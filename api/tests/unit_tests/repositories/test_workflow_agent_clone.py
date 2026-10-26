@@ -12,7 +12,7 @@ from models.agent_config_entities import AgentConfigSkillRefConfig, AgentSoulCon
 from models.model import App, AppModelConfig
 from repositories.agent.workflow_binding_repository import workflow_binding_scope
 from services.agent.dsl_service import AgentDslService
-from tests.unit_tests.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_workflow
 
 
 @pytest.mark.parametrize("rollback", [False, True])
