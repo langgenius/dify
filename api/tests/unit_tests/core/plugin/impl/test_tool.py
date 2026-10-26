@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from types import SimpleNamespace
-from typing import cast
 
 from pytest_mock import MockerFixture
 
@@ -24,8 +23,13 @@ class TestPluginToolManager:
         provider = _tool_provider("remote")
         mocker.patch("core.plugin.impl.tool.resolve_dify_schema_refs", return_value={"resolved": True})
 
-        def fake_request(method: str, path: str, type_: object, **kwargs: object) -> list[SimpleNamespace]:
-            transformer = cast("Callable[[dict[str, object]], dict[str, object]]", kwargs["transformer"])
+        def fake_request(
+            method: str,
+            path: str,
+            type_: object,
+            transformer: Callable[[dict[str, object]], dict[str, object]],
+            **kwargs: object,
+        ) -> list[SimpleNamespace]:
             payload: dict[str, object] = {
                 "data": [
                     {
@@ -37,9 +41,12 @@ class TestPluginToolManager:
                 ]
             }
             transformed = transformer(payload)
-            data = cast("list[dict[str, object]]", transformed["data"])
-            declaration = cast("dict[str, object]", data[0]["declaration"])
-            tools = cast("list[dict[str, object]]", declaration["tools"])
+            data = transformed["data"]
+            assert isinstance(data, list)
+            declaration = data[0]["declaration"]
+            assert isinstance(declaration, dict)
+            tools = declaration["tools"]
+            assert isinstance(tools, list)
             assert tools[0]["output_schema"] == {"resolved": True}
             return [provider]
 
@@ -56,17 +63,25 @@ class TestPluginToolManager:
         provider = _tool_provider("provider")
         mocker.patch("core.plugin.impl.tool.resolve_dify_schema_refs", return_value={"resolved": True})
 
-        def fake_request(method: str, path: str, type_: object, **kwargs: object) -> SimpleNamespace:
-            transformer = cast("Callable[[dict[str, object]], dict[str, object]]", kwargs["transformer"])
+        def fake_request(
+            method: str,
+            path: str,
+            type_: object,
+            transformer: Callable[[dict[str, object]], dict[str, object]],
+            **kwargs: object,
+        ) -> SimpleNamespace:
             payload: dict[str, object] = {
                 "data": {
                     "declaration": {"tools": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]}
                 }
             }
             transformed = transformer(payload)
-            data = cast("dict[str, object]", transformed["data"])
-            declaration = cast("dict[str, object]", data["declaration"])
-            tools = cast("list[dict[str, object]]", declaration["tools"])
+            data = transformed["data"]
+            assert isinstance(data, dict)
+            declaration = data["declaration"]
+            assert isinstance(declaration, dict)
+            tools = declaration["tools"]
+            assert isinstance(tools, list)
             assert tools[0]["output_schema"] == {"resolved": True}
             return provider
 
