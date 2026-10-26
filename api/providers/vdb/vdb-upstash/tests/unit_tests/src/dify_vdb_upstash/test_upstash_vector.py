@@ -1,7 +1,9 @@
 import importlib
 import json
 import sys
-from types import SimpleNamespace
+from dataclasses import dataclass
+from types import ModuleType, SimpleNamespace
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,19 +13,22 @@ from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
+if TYPE_CHECKING:
+    from dify_vdb_upstash.upstash_vector import UpstashVectorConfig
 
-def _build_fake_upstash_module():
+
+def _build_fake_upstash_module() -> FakeModule:
     upstash_module = FakeModule("upstash_vector")
 
+    @dataclass(eq=False, repr=False)
     class Vector:
-        def __init__(self, id, vector, metadata, data):
-            self.id = id
-            self.vector = vector
-            self.metadata = metadata
-            self.data = data
+        id: str
+        vector: list[float]
+        metadata: dict[str, object]
+        data: str
 
     class Index:
-        def __init__(self, url, token):
+        def __init__(self, url: str, token: str) -> None:
             self.url = url
             self.token = token
             self.info = MagicMock(return_value=SimpleNamespace(dimension=8))
@@ -38,7 +43,7 @@ def _build_fake_upstash_module():
 
 
 @pytest.fixture
-def upstash_module(monkeypatch: pytest.MonkeyPatch):
+def upstash_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     # Remove patched modules if present
     for modname in ["upstash_vector", "dify_vdb_upstash.upstash_vector"]:
         if modname in sys.modules:
@@ -48,7 +53,7 @@ def upstash_module(monkeypatch: pytest.MonkeyPatch):
     return module
 
 
-def _config(module):
+def _config(module: ModuleType) -> "UpstashVectorConfig":
     return module.UpstashVectorConfig(url="https://upstash.example", token="token-123")
 
 
@@ -59,7 +64,7 @@ def _config(module):
         ("token", "", "Upstash Token is required"),
     ],
 )
-def test_upstash_config_validation(upstash_module, field, value, message):
+def test_upstash_config_validation(upstash_module: ModuleType, field: str, value: str, message: str) -> None:
     values = _config(upstash_module).model_dump()
     values[field] = value
 
@@ -67,7 +72,7 @@ def test_upstash_config_validation(upstash_module, field, value, message):
         upstash_module.UpstashVectorConfig.model_validate(values)
 
 
-def test_init_get_type_and_dimension(upstash_module, monkeypatch: pytest.MonkeyPatch):
+def test_init_get_type_and_dimension(upstash_module: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     vector = upstash_module.UpstashVector("collection_1", _config(upstash_module))
 
     assert vector.get_type() == upstash_module.VectorType.UPSTASH
@@ -89,7 +94,7 @@ def test_init_get_type_and_dimension(upstash_module, monkeypatch: pytest.MonkeyP
     assert upsert_vectors[0].id == "generated-uuid"
 
 
-def test_create_text_exists_and_delete_by_ids(upstash_module):
+def test_create_text_exists_and_delete_by_ids(upstash_module: ModuleType) -> None:
     vector = upstash_module.UpstashVector("collection_1", _config(upstash_module))
     vector.add_texts = MagicMock()
 
@@ -99,7 +104,7 @@ def test_create_text_exists_and_delete_by_ids(upstash_module):
 
     vector.get_ids_by_metadata_field = MagicMock(return_value=["id-1"])
     assert vector.text_exists("doc-1") is True
-    vector.get_ids_by_metadata_field.return_value = []
+    vector.get_ids_by_metadata_field.return_value = list[str]()
     assert vector.text_exists("doc-1") is False
 
     vector.get_ids_by_metadata_field = MagicMock(side_effect=[["item-1"], [], ["item-2"]])
@@ -108,7 +113,7 @@ def test_create_text_exists_and_delete_by_ids(upstash_module):
     vector._delete_by_ids.assert_called_once_with(ids=["item-1", "item-2"])
 
 
-def test_delete_helpers_and_search(upstash_module):
+def test_delete_helpers_and_search(upstash_module: ModuleType) -> None:
     vector = upstash_module.UpstashVector("collection_1", _config(upstash_module))
 
     vector._delete_by_ids([])
@@ -129,12 +134,12 @@ def test_delete_helpers_and_search(upstash_module):
     vector._delete_by_ids.assert_called_once_with(["x-1"])
 
     vector._delete_by_ids.reset_mock()
-    vector.get_ids_by_metadata_field.return_value = []
+    vector.get_ids_by_metadata_field.return_value = list[str]()
     vector.delete_by_metadata_field("doc_id", "doc-2")
     vector._delete_by_ids.assert_not_called()
 
 
-def test_search_by_vector_filter_threshold_and_delete(upstash_module):
+def test_search_by_vector_filter_threshold_and_delete(upstash_module: ModuleType) -> None:
     vector = upstash_module.UpstashVector("collection_1", _config(upstash_module))
     vector.index.query.return_value = [
         SimpleNamespace(metadata={"document_id": "d-1"}, data="text-1", score=0.9),
@@ -164,7 +169,9 @@ def test_search_by_vector_filter_threshold_and_delete(upstash_module):
     vector.index.reset.assert_called_once()
 
 
-def test_upstash_factory_uses_existing_or_generated_collection(upstash_module, monkeypatch: pytest.MonkeyPatch):
+def test_upstash_factory_uses_existing_or_generated_collection(
+    upstash_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory = upstash_module.UpstashVectorFactory()
     dataset_with_index = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
