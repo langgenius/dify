@@ -14,7 +14,6 @@ from flask import Flask, request
 from flask.ctx import RequestContext
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
-from tests.unit_tests.controllers.openapi.auth._world import account_subject, make_ctx
 from werkzeug.exceptions import RequestEntityTooLarge, UnprocessableEntity
 
 from controllers.common.schema import register_response_schema_model, register_schema_model
@@ -23,6 +22,7 @@ from controllers.openapi._contract import CapRequestBody, accepts, paginated, re
 from controllers.openapi._errors import RequestOverRouteLimits
 from controllers.openapi._models import Hint, PaginationEnvelope
 from controllers.openapi._upload import UploadPart
+from tests.helpers.unit.controllers.openapi.auth._world import account_subject, make_ctx
 
 
 class ContractQuery(BaseModel):
