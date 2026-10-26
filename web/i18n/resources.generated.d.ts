@@ -287,7 +287,6 @@ export default interface Resources {
     'agentDetail.configure.knowledgeFs.loading': 'Loading Agent Knowledge Bases…'
     'agentDetail.configure.knowledgeFs.rebind': 'Imported binding: explicitly select this Agent Knowledge Base again or replace it with an available Agent Knowledge Base.'
     'agentDetail.configure.knowledgeFs.retry': 'Retry'
-    'agentDetail.configure.knowledgeFs.runtimeUnavailable': 'Agent Knowledge Base retrieval is unavailable in this deployment. Ask an administrator to enable it.'
     'agentDetail.configure.knowledgeFs.select': 'Select up to 10 Agent Knowledge Bases'
     'agentDetail.configure.knowledgeFs.title': 'Agent Knowledge Base'
     'agentDetail.configure.knowledgeFs.unavailable': 'This Agent Knowledge Base is unavailable or you do not have permission to use it in this Agent.'
