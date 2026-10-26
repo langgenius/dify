@@ -44,8 +44,8 @@ def detect_file_encodings(file_path: str, timeout: int = 5, sample_size: int = 1
         future = executor.submit(read_and_detect, file_path)
         try:
             encodings = future.result(timeout=timeout)
-        except concurrent.futures.TimeoutError:
-            raise TimeoutError(f"Timeout reached while detecting encoding for {file_path}")
+        except concurrent.futures.TimeoutError as caught_error:
+            raise TimeoutError(f"Timeout reached while detecting encoding for {file_path}") from caught_error
 
     if all(encoding.encoding is None for encoding in encodings):
         raise RuntimeError(f"Could not detect encoding for {file_path}")

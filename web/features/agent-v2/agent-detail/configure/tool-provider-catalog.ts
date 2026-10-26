@@ -3,16 +3,13 @@
 import type { MarketplacePlugin } from '@dify/contracts/marketplace'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { useGetLanguage } from '@/context/i18n'
+import { consoleQuery } from '@/service/console'
 import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
 import { getProviderReference } from '@/utils/provider-reference'
 
@@ -73,10 +70,22 @@ export function createAgentToolProviderCatalog({
 }
 
 export function useAgentToolProviderCatalog(): AgentToolProviderCatalog {
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
 
   return useMemo(
     () => createAgentToolProviderCatalog({ buildInTools, customTools, mcpTools, workflowTools }),

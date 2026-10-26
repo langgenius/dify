@@ -1,18 +1,22 @@
 import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { inferParserType } from 'nuqs'
 import { zGetAppsQuery } from '@dify/contracts/api/console/apps/zod.gen'
-import { createParser, debounce, parseAsString, parseAsStringLiteral } from 'nuqs'
+import {
+  createParser,
+  createSerializer,
+  debounce,
+  parseAsArrayOf,
+  parseAsString,
+  parseAsStringLiteral,
+} from 'nuqs'
+import { APP_TYPES } from './app-type'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 
 type AppListMode = NonNullable<NonNullable<GetAppsData['query']>['mode']>
 
 export const studioAppListCategories = [
   'all',
-  'workflow',
-  'advanced-chat',
-  'chat',
-  'agent-chat',
-  'completion',
+  ...APP_TYPES,
 ] as const satisfies readonly AppListMode[]
 
 const studioAppListCategorySchema = zGetAppsQuery.shape.mode
@@ -32,6 +36,8 @@ const parseAsAppListCategory = createParser({
 
 export const appListQueryParsers = {
   category: parseAsAppListCategory,
+  creatorIDs: parseAsArrayOf(parseAsString, ';').withDefault([]),
+  tagIDs: parseAsArrayOf(parseAsString, ';').withDefault([]),
   sort_by: parseAsStringLiteral(zGetAppsQuery.shape.sort_by.unwrap().unwrap().options).withDefault(
     zGetAppsQuery.shape.sort_by.parse(undefined),
   ),
@@ -39,5 +45,7 @@ export const appListQueryParsers = {
     limitUrlUpdates: debounce(APP_LIST_SEARCH_DEBOUNCE_MS),
   }),
 }
+
+export const serializeAppListQuery = createSerializer(appListQueryParsers)
 
 export type AppListUrlQuery = inferParserType<typeof appListQueryParsers>

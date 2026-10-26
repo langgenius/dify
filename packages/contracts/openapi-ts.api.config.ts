@@ -1,8 +1,8 @@
-import type { UserConfig } from '@hey-api/openapi-ts'
+import type { DefinePlugin, UserConfig } from '@hey-api/openapi-ts'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { $, defineConfig } from '@hey-api/openapi-ts'
+import { $, defineConfig, definePluginConfig } from '@hey-api/openapi-ts'
 import ts from 'typescript'
 
 type JsonObject = Record<string, unknown>
@@ -559,11 +559,21 @@ const writeConsoleRouterContract = (segments: string[]) => {
   fs.writeFileSync(routerPath, consoleRouterContractContent(segments))
 }
 
+type NoOutputPlugin = DefinePlugin<{ name: 'dify-no-output' }>
+
+// openapi-ts falls back to its default plugins when `plugins` is empty, so the
+// entry job needs an explicit plugin that emits nothing beside its source callback.
+const noOutputPlugin = definePluginConfig<NoOutputPlugin['Types']>({
+  config: {},
+  handler: () => {},
+  name: 'dify-no-output',
+})
+
 const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
   return {
     document,
     outputPath: 'generated/api/console',
-    plugins: [],
+    plugins: [noOutputPlugin()],
     source: {
       callback: () => {
         writeConsoleContractEntry(segments)

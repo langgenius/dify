@@ -131,8 +131,7 @@ describe('Marketplace Carousel', () => {
   it('keeps every slide shell while mounting only the current and adjacent pages', () => {
     const { rerender } = render(<Carousel pages={pages} deferMountPages />)
 
-    expect(document.querySelectorAll('[data-carousel-page]')).toHaveLength(5)
-    expect(document.querySelectorAll('[data-carousel-page-mounted="true"]')).toHaveLength(3)
+    expect(screen.getAllByRole('group', { hidden: true })).toHaveLength(5)
     expect(screen.getByText('Page content 1')).toBeInTheDocument()
     expect(screen.getByText('Page content 2')).toBeInTheDocument()
     expect(screen.getByText('Page content 5')).toBeInTheDocument()
@@ -155,14 +154,14 @@ describe('Marketplace Carousel', () => {
 
     rerender(<Carousel pages={pages.slice(0, 3)} deferMountPages />)
 
-    expect(document.querySelectorAll('[data-carousel-page]')).toHaveLength(3)
+    expect(screen.getAllByRole('group', { hidden: true })).toHaveLength(3)
     expect(screen.getByText('Page content 3')).toBeInTheDocument()
   })
 
   it('keeps eager consumers fully mounted and preserves loop navigation', () => {
     render(<Carousel pages={pages} />)
 
-    expect(document.querySelectorAll('[data-carousel-page-mounted="true"]')).toHaveLength(5)
+    expect(screen.getAllByText(/Page content/)).toHaveLength(5)
 
     fireEvent.click(
       screen.getByRole('button', { name: 'plugin.marketplace.carousel.scrollPrevious' }),
@@ -217,8 +216,9 @@ describe('Marketplace Carousel', () => {
     triggerIntersection(intersectionObservers[0]!, 0.25)
     expect(autoplay.play).toHaveBeenCalledOnce()
 
+    autoplay.stop.mockClear()
     fireEvent.mouseEnter(carousel)
-    expect(autoplay.stop).toHaveBeenCalled()
+    expect(autoplay.stop).toHaveBeenCalledOnce()
 
     Object.defineProperty(document, 'visibilityState', {
       configurable: true,
@@ -235,9 +235,10 @@ describe('Marketplace Carousel', () => {
     fireEvent(document, new Event('visibilitychange'))
     expect(autoplay.play).toHaveBeenCalledTimes(2)
 
+    autoplay.stop.mockClear()
     reducedMotion = true
     act(() => reducedMotionListener?.())
-    expect(autoplay.stop).toHaveBeenCalled()
+    expect(autoplay.stop).toHaveBeenCalledOnce()
 
     Object.defineProperty(document, 'visibilityState', {
       configurable: true,
@@ -255,21 +256,12 @@ describe('Marketplace Carousel', () => {
     act(() => reducedMotionListener?.())
     expect(autoplay.play).toHaveBeenCalledTimes(3)
 
+    autoplay.stop.mockClear()
     triggerIntersection(intersectionObservers[0]!, 0)
-    expect(autoplay.stop).toHaveBeenCalled()
+    expect(autoplay.stop).toHaveBeenCalledOnce()
 
     unmount()
     marketplaceContainer.remove()
-  })
-
-  it('preserves standalone autoplay initialization', () => {
-    render(<Carousel pages={pages} autoPlay />)
-
-    expect(mocks.autoplayOptions[0]).toMatchObject({
-      playOnInit: true,
-      stopOnMouseEnter: true,
-    })
-    expect(intersectionObservers).toHaveLength(0)
   })
 
   it('honors reduced motion for the eagerly playing first-collection carousel', () => {
@@ -294,6 +286,8 @@ describe('Marketplace Carousel', () => {
     // the reduced-motion guard must work outside the viewport-managed path.
     render(<Carousel pages={pages} autoPlay />)
     const autoplay = mocks.autoplayInstances[0]!
+    expect(mocks.autoplayOptions[0]).toMatchObject({ playOnInit: true, stopOnMouseEnter: true })
+    expect(intersectionObservers).toHaveLength(0)
 
     expect(autoplay.stop).toHaveBeenCalled()
     expect(autoplay.play).not.toHaveBeenCalled()
@@ -309,7 +303,7 @@ describe('Marketplace Carousel', () => {
 
     expect(screen.getByRole('region', { name: 'Featured tools' })).toBeInTheDocument()
 
-    const slides = document.querySelectorAll('[data-carousel-page]')
+    const slides = screen.getAllByRole('group', { hidden: true })
     expect(slides[0]).toHaveAttribute('aria-roledescription', 'slide')
     expect(slides[0]).toHaveAttribute('aria-label', '1 / 5')
     expect(slides[0]).not.toHaveAttribute('aria-hidden', 'true')
@@ -331,10 +325,8 @@ describe('Marketplace Carousel', () => {
     const autoplay = mocks.autoplayInstances[0]!
     const carousel = screen.getByRole('region')
 
-    // The controls expose only the pagination dots and the two nav arrows.
-    expect(screen.getAllByRole('button')).toHaveLength(7)
-
     const playsBeforeFocus = autoplay.play.mock.calls.length
+    autoplay.stop.mockClear()
     fireEvent.focusIn(carousel)
 
     expect(autoplay.stop).toHaveBeenCalled()

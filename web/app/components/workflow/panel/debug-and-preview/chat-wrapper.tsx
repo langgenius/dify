@@ -4,14 +4,15 @@ import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/a
 import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
 import { useNodes } from 'reactflow'
 import Chat from '@/app/components/base/chat/chat'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useStore, useWorkflowStore } from '../../store'
 import { BlockEnum, WorkflowRunningStatus } from '../../types'
@@ -34,12 +35,12 @@ const ChatWrapper = ({
   showInputsFieldsPanel,
   onHide,
 }: ChatWrapperProps & {
-  ref: React.RefObject<ChatWrapperRefType>
+  ref: React.RefObject<ChatWrapperRefType | null>
 }) => {
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
-  const { appId } = useParams<{ appId: string }>()
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const queryClient = useQueryClient()
   const { mutateAsync: stopChat } = useMutation(
     consoleQuery.apps.byAppId.chatMessages.byTaskId.stop.post.mutationOptions(),
@@ -53,7 +54,8 @@ const ChatWrapper = ({
     const initInputs: Record<string, any> = {}
     if (startVariables) {
       startVariables.forEach((variable) => {
-        if (variable.default) initInputs[variable.variable] = variable.default
+        if (variable.default !== undefined && variable.default !== null)
+          initInputs[variable.variable] = variable.default
       })
     }
     return initInputs

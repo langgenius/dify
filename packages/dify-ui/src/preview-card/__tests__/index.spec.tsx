@@ -14,7 +14,7 @@ const renderWithSafeViewport = (ui: React.ReactNode) =>
 
 describe('PreviewCardContent', () => {
   describe('Placement', () => {
-    it('should use bottom placement and default offsets when placement props are not provided', async () => {
+    it('should use bottom placement and default offsets when positioning props are not provided', async () => {
       const screen = await renderWithSafeViewport(
         <PreviewCard open>
           <PreviewCardTrigger href="#default-preview">Open</PreviewCardTrigger>
@@ -30,11 +30,11 @@ describe('PreviewCardContent', () => {
         .toHaveAttribute('data-align', 'center')
     })
 
-    it('should apply parsed custom placement and custom offsets when placement props are provided', async () => {
+    it('should apply custom side and alignment and custom offsets when positioning props are provided', async () => {
       const screen = await renderWithSafeViewport(
         <PreviewCard open>
           <PreviewCardTrigger href="#custom-preview">Open</PreviewCardTrigger>
-          <PreviewCardContent placement="top-end" sideOffset={14} alignOffset={6}>
+          <PreviewCardContent side="top" align="end" sideOffset={14} alignOffset={6}>
             Custom placement content
           </PreviewCardContent>
         </PreviewCard>,
@@ -90,7 +90,7 @@ describe('PreviewCard anatomy', () => {
       <PreviewCard open>
         <PreviewCardTrigger href="#anatomy-preview">Open</PreviewCardTrigger>
         <PreviewCardPortal>
-          <PreviewCardPositioner placement="top-end" data-testid="preview-positioner">
+          <PreviewCardPositioner side="top" align="end" data-testid="preview-positioner">
             <PreviewCardPopup>Anatomy surface</PreviewCardPopup>
           </PreviewCardPositioner>
         </PreviewCardPortal>

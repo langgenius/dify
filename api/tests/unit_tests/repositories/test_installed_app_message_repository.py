@@ -2,20 +2,19 @@ import json
 from dataclasses import replace
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Literal
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, event, inspect, select, update
+from sqlalchemy import inspect, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, InstalledApp, Message, MessageAgentThought, MessageFeedback
 from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import FirstMessageNotExistsError, MessageNotExistsError
+from services.errors.message import FirstMessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_message_service import FeedbackRatingRequiredError, MessagePage, MessageRating
+from services.installed_app_message_service import MessagePage
 
 _ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
 _OWNER_TENANT_ID = "22222222-2222-4222-8222-222222222222"
@@ -47,7 +46,7 @@ def _conversation(session: Session, installation: InstalledAppRef) -> Conversati
         app_id=installation.app_id,
         mode=AppMode.CHAT,
         name="Chat",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=_ACCOUNT_ID,
         from_end_user_id=None,
@@ -62,7 +61,7 @@ def _message(session: Session, conversation: Conversation, *, created_at: dateti
     message = Message(
         app_id=conversation.app_id,
         conversation_id=conversation.id,
-        inputs={"empty": "", "list": [], "zero": 0, "false": False, "none": None},
+        _inputs={"empty": "", "list": [], "zero": 0, "false": False, "none": None},
         query="Question",
         message={},
         answer="Answer",
@@ -76,8 +75,8 @@ def _message(session: Session, conversation: Conversation, *, created_at: dateti
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=_ACCOUNT_ID,
         from_end_user_id=None,
-        created_at=created_at,
     )
+    message.created_at = created_at
     session.add(message)
     session.flush()
     return message
@@ -183,7 +182,7 @@ def test_page_keeps_cursor_order_and_detaches_complete_message_data(
     assert thought.created_at == earlier.created_at
 
 
-def test_empty_conversation_and_strict_timestamp_ties_preserve_legacy_page_behavior(
+def test_empty_conversation_and_timestamp_ties_preserve_all_pages(
     sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
 ) -> None:
     repository = SQLAlchemyInstalledAppMessageRepository(session_factory=sqlite_session_factory)
@@ -192,20 +191,22 @@ def test_empty_conversation_and_strict_timestamp_ties_preserve_legacy_page_behav
     ) == MessagePage(limit=20, has_more=False, data=())
     with sqlite_session_factory.begin() as session:
         conversation = _conversation(session, installation)
-        _message(session, conversation)
-        _message(session, conversation)
-    page = repository.get_page(
+        messages = [_message(session, conversation), _message(session, conversation)]
+    first = repository.get_page(
         installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id, first_id=None, limit=1
     )
-    assert page.has_more is True
-    assert len(page.data) == 1
-    assert repository.get_page(
+    second = repository.get_page(
         installed_app=installation,
         account_id=_ACCOUNT_ID,
         conversation_id=conversation.id,
-        first_id=page.data[0].id,
+        first_id=first.data[0].id,
         limit=1,
-    ) == MessagePage(limit=1, has_more=False, data=())
+    )
+    assert first.has_more is True
+    assert second.has_more is False
+    assert [item.id for item in (*first.data, *second.data)] == sorted(
+        (message.id for message in messages), reverse=True
+    )
 
 
 @pytest.mark.parametrize("mismatch", ["app_id", "from_account_id", "from_source", "from_end_user_id", "is_deleted"])
@@ -244,12 +245,12 @@ def test_cursor_must_belong_to_the_requested_conversation(
 
 
 @pytest.mark.parametrize("mismatch", ["id", "tenant_id", "app_id", "deleted_app", "deleted_installation"])
-def test_read_and_feedback_revalidate_installation_after_admission(
+def test_read_revalidates_installation_after_admission(
     sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef, mismatch: str
 ) -> None:
     with sqlite_session_factory.begin() as session:
         conversation = _conversation(session, installation)
-        message = _message(session, conversation)
+        _message(session, conversation)
         if mismatch == "deleted_app":
             app = session.get(App, installation.app_id)
             assert app is not None
@@ -270,122 +271,3 @@ def test_read_and_feedback_revalidate_installation_after_admission(
         repository.get_page(
             installed_app=ref, account_id=_ACCOUNT_ID, conversation_id=conversation.id, first_id=None, limit=20
         )
-    with pytest.raises(InstalledAppNotFoundError):
-        repository.set_feedback(
-            installed_app=ref, account_id=_ACCOUNT_ID, message_id=message.id, rating="like", content=None
-        )
-
-
-@pytest.mark.parametrize("mismatch", ["app_id", "from_account_id", "from_source", "from_end_user_id"])
-def test_feedback_checks_each_message_ownership_predicate(
-    sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef, mismatch: str
-) -> None:
-    with sqlite_session_factory.begin() as session:
-        message = _message(session, _conversation(session, installation))
-        value = ConversationFromSource.API if mismatch == "from_source" else str(uuid4())
-        session.execute(update(Message).where(Message.id == message.id).values({mismatch: value}))
-    repository = SQLAlchemyInstalledAppMessageRepository(session_factory=sqlite_session_factory)
-    with pytest.raises(MessageNotExistsError):
-        repository.set_feedback(
-            installed_app=installation, account_id=_ACCOUNT_ID, message_id=message.id, rating="like", content=None
-        )
-    with sqlite_session_factory() as session:
-        assert session.scalars(select(MessageFeedback)).all() == []
-
-
-def test_feedback_create_update_and_delete_preserve_admin_scope_and_owner_tenant(
-    sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
-) -> None:
-    with sqlite_session_factory.begin() as session:
-        message = _message(session, _conversation(session, installation))
-        user_feedback = _feedback(session, message, source=FeedbackFromSource.USER)
-    repository = SQLAlchemyInstalledAppMessageRepository(session_factory=sqlite_session_factory)
-    with pytest.raises(FeedbackRatingRequiredError, match=message.id):
-        repository.set_feedback(
-            installed_app=installation, account_id=_ACCOUNT_ID, message_id=message.id, rating=None, content=None
-        )
-    created = repository.set_feedback(
-        installed_app=installation, account_id=_ACCOUNT_ID, message_id=message.id, rating="like", content=""
-    )
-    assert created is not None
-    assert (
-        created.tenant_id,
-        created.app_id,
-        created.conversation_id,
-        created.message_id,
-        created.account_id,
-        created.rating,
-        created.content,
-    ) == (_OWNER_TENANT_ID, installation.app_id, message.conversation_id, message.id, _ACCOUNT_ID, "like", "")
-    with sqlite_session_factory.begin() as session:
-        feedback = message.admin_feedback_with_session(session=session)
-        assert feedback is not None
-        assert (feedback.from_source, feedback.from_account_id, feedback.from_end_user_id, feedback.content) == (
-            FeedbackFromSource.ADMIN,
-            _ACCOUNT_ID,
-            None,
-            "",
-        )
-        feedback.from_account_id = original_owner = str(uuid4())
-        feedback_id = feedback.id
-    updated = repository.set_feedback(
-        installed_app=installation, account_id=_ACCOUNT_ID, message_id=message.id, rating="dislike", content=None
-    )
-    assert updated is not None
-    assert (updated.rating, updated.content) == ("dislike", None)
-    with sqlite_session_factory() as session:
-        feedback = session.get(MessageFeedback, feedback_id)
-        assert feedback is not None
-        assert (feedback.rating, feedback.content, feedback.from_account_id) == (
-            FeedbackRating.DISLIKE,
-            None,
-            original_owner,
-        )
-    assert (
-        repository.set_feedback(
-            installed_app=installation, account_id=_ACCOUNT_ID, message_id=message.id, rating=None, content=None
-        )
-        is None
-    )
-    with sqlite_session_factory() as session:
-        remaining = session.scalars(select(MessageFeedback)).all()
-        assert [feedback.id for feedback in remaining] == [user_feedback.id]
-        assert (remaining[0].rating, remaining[0].content) == (FeedbackRating.LIKE, "Original")
-
-
-@pytest.mark.parametrize("operation", ["create", "update", "delete"])
-def test_failed_feedback_commit_rolls_back_and_preserves_original_error(
-    sqlite_session_factory: sessionmaker[Session],
-    sqlite_engine: Engine,
-    installation: InstalledAppRef,
-    operation: Literal["create", "update", "delete"],
-) -> None:
-    with sqlite_session_factory.begin() as session:
-        message = _message(session, _conversation(session, installation))
-        if operation != "create":
-            _feedback(session, message, source=FeedbackFromSource.ADMIN)
-    failing_factory = sessionmaker(bind=sqlite_engine)
-    failure = RuntimeError("database commit unavailable")
-
-    @event.listens_for(failing_factory, "before_commit")
-    def fail_commit(session: Session) -> None:
-        session.flush()
-        raise failure
-
-    rating: MessageRating | None = None if operation == "delete" else "dislike"
-    with pytest.raises(RuntimeError) as error:
-        SQLAlchemyInstalledAppMessageRepository(session_factory=failing_factory).set_feedback(
-            installed_app=installation,
-            account_id=_ACCOUNT_ID,
-            message_id=message.id,
-            rating=rating,
-            content="Discarded",
-        )
-    assert error.value is failure
-    with sqlite_session_factory() as session:
-        feedback = message.admin_feedback_with_session(session=session)
-        if operation == "create":
-            assert feedback is None
-        else:
-            assert feedback is not None
-            assert (feedback.rating, feedback.content) == (FeedbackRating.LIKE, "Original")

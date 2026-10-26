@@ -5,6 +5,7 @@ import type { Features } from '@/app/components/base/features/types'
 import type { ModerationConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -15,7 +16,7 @@ import {
   useAppFeatures,
   useSetAppFeatures,
 } from '@/features/agent-v2/agent-composer/store-modules/app-features'
-import { useCodeBasedExtensions } from '@/service/use-common'
+import { codeBasedExtensionsQueryOptions } from '@/features/code-based-extension/query'
 import { ConfigureSection } from '../common/section'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 
@@ -38,7 +39,7 @@ function AgentContentModerationSettingsContent() {
   const setAppFeatures = useSetAppFeatures()
   const { setShowModerationSettingModal } = useModalContext()
   const moderation = useFeatures((state) => state.features.moderation)
-  const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
+  const { data: codeBasedExtensionList } = useQuery(codeBasedExtensionsQueryOptions('moderation'))
   const panelId = 'agent-configure-content-moderation-panel'
 
   const persistModeration = useCallback(

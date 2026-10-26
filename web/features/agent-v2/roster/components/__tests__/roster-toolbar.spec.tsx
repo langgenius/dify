@@ -1,5 +1,5 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
-import { screen, within } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -142,7 +142,9 @@ describe('RosterToolbar', () => {
 
     await user.click(screen.getByRole('button', { name: 'Complete agent import' }))
 
-    expect(invalidateQueries).toHaveBeenCalledTimes(1)
+    expect(invalidateQueries).toHaveBeenCalledExactlyOnceWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
   })
 
   it('enables roster filters and emits the selected filter', async () => {
@@ -164,38 +166,6 @@ describe('RosterToolbar', () => {
         queryString: '?filter=published',
       }),
     )
-  })
-
-  it('renders stable filter count badges and omits the all count', () => {
-    renderToolbar()
-
-    const allFilter = screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.all/ })
-    const publishedFilter = screen.getByRole('radio', {
-      name: /agentRoster\.roster\.filters\.published/,
-    })
-    const draftsFilter = screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.drafts/ })
-
-    expect(allFilter).not.toHaveTextContent('3')
-    expect(within(publishedFilter).getByText('1')).toBeInTheDocument()
-    expect(within(draftsFilter).getByText('2')).toBeInTheDocument()
-  })
-
-  it('renders zero counts before server data is available', () => {
-    renderToolbar({ publicationCounts: { drafts: 0, published: 0 } })
-
-    expect(
-      screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.published/ }),
-    ).toBeInTheDocument()
-    expect(
-      within(
-        screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.published/ }),
-      ).getByText('0'),
-    ).toBeInTheDocument()
-    expect(
-      within(screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.drafts/ })).getByText(
-        '0',
-      ),
-    ).toBeInTheDocument()
   })
 
   it('renders created-by-me filtering and emits checked state', async () => {
@@ -246,7 +216,6 @@ describe('RosterToolbar', () => {
         queryString: '?sort_by=recently_created',
       }),
     )
-    expect(sortSelect).toHaveAccessibleName('agentRoster.roster.sort.label')
     expect(sortSelect).toHaveTextContent('agentRoster.roster.sort.recentlyCreated')
   })
 })

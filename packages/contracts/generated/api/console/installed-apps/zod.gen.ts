@@ -233,18 +233,15 @@ export const zUnsupportedAudioTypeError = zErrorResponse.and(
 )
 
 /**
- * ChatMessagePayload
+ * ChatMessageExplorePayload
  */
-export const zChatMessagePayload = z.object({
+export const zChatMessageExplorePayload = z.object({
   conversation_id: z.string().nullish(),
-  draft_type: z.enum(['debug_build', 'draft']).optional().default('draft'),
-  files: z.array(z.unknown()).nullish(),
+  files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
-  model_config: z.record(z.string(), z.unknown()).optional(),
   parent_message_id: z.string().nullish(),
   query: z.string(),
-  response_mode: z.enum(['blocking', 'streaming']).optional().default('blocking'),
-  retriever_from: z.string().optional().default('dev'),
+  retriever_from: z.string().optional().default('explore_app'),
 })
 
 /**
@@ -390,7 +387,6 @@ export const zMessageCursorNotFoundError = zErrorResponse.and(
  */
 export const zMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
-  message_id: z.string(),
   rating: z.enum(['dislike', 'like']).nullish(),
 })
 
@@ -480,13 +476,6 @@ export const zTextToAudioPayload = z.object({
 })
 
 /**
- * AudioBinaryResponse
- */
-export const zAudioBinaryResponse = z.custom<Blob | File>(
-  (value) => value instanceof Blob || value instanceof File,
-)
-
-/**
  * ProviderNotSupportTextToSpeechError
  *
  * Provider does not support text to speech.
@@ -551,16 +540,7 @@ export const zNotWorkflowAppError = zErrorResponse.and(
   }),
 )
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+export const zAnyJsonValue = z.unknown()
 
 /**
  * SimpleConversation
@@ -568,7 +548,7 @@ export const zJsonValue = z
 export const zSimpleConversation = z.object({
   created_at: z.int().nullish(),
   id: z.uuid(),
-  inputs: z.record(z.string(), zJsonValue),
+  inputs: z.record(z.string(), zAnyJsonValue),
   introduction: z.string().nullish(),
   name: z.string(),
   status: z.string(),
@@ -1007,7 +987,7 @@ export const zAgentThought = z.object({
   thought: z.string().nullish(),
   tool: z.string().nullish(),
   tool_input: z.string().nullish(),
-  tool_labels: zJsonValue,
+  tool_labels: zAnyJsonValue,
 })
 
 /**
@@ -1057,6 +1037,32 @@ export const zSavedMessageInfiniteScrollPagination = z.object({
 })
 
 /**
+ * ExecutionContentType
+ */
+export const zExecutionContentType = z.enum(['human_input'])
+
+/**
+ * KnowledgeFsCitation
+ *
+ * Immutable evidence identity; no signed URLs, tokens or storage keys.
+ */
+export const zKnowledgeFsCitation = z.object({
+  artifact_hash: z.string().min(1).max(255),
+  control_space_id: z.string().length(36),
+  document_asset_id: z.string().min(1).max(512),
+  document_title: z.string().max(2000).nullish(),
+  document_version: z.int().gte(1).nullish(),
+  end_offset: z.int().gte(0).nullish(),
+  id: z.string().regex(/^kfs_[a-f0-9]{32}$/),
+  node_id: z.string().min(1).max(512),
+  page_number: z.int().gte(0).nullish(),
+  parse_artifact_id: z.string().max(512).nullish(),
+  section_path: z.array(z.string()).max(64).optional(),
+  space_name: z.string().min(1).max(120),
+  start_offset: z.int().gte(0).nullish(),
+})
+
+/**
  * RetrieverResource
  */
 export const zRetrieverResource = z.object({
@@ -1066,12 +1072,16 @@ export const zRetrieverResource = z.object({
   dataset_id: z.uuid().nullish(),
   dataset_name: z.string().nullish(),
   doc_metadata: z.record(z.string(), zJsonValueType).nullish(),
+  document_asset_id: z.uuid().nullish(),
   document_id: z.uuid().nullish(),
   document_name: z.string().nullish(),
+  document_revision: z.int().nullish(),
+  document_version: z.int().nullish(),
   files: z.array(z.record(z.string(), zJsonValueType)).nullish(),
   hit_count: z.int().nullish(),
   id: z.uuid().optional(),
   index_node_hash: z.string().nullish(),
+  knowledge_fs_citation: zKnowledgeFsCitation.nullish(),
   message_id: z.uuid().optional(),
   page: z.int().nullish(),
   position: z.int(),
@@ -1084,12 +1094,7 @@ export const zRetrieverResource = z.object({
   word_count: z.int().nullish(),
 })
 
-/**
- * ExecutionContentType
- */
-export const zExecutionContentType = z.enum(['human_input'])
-
-export const zJsonValue2 = z.unknown()
+export const zJsonValue = z.unknown()
 
 /**
  * HumanInputFormSubmissionData
@@ -1100,7 +1105,7 @@ export const zHumanInputFormSubmissionData = z.object({
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
 })
 
 /**
@@ -1211,10 +1216,10 @@ export const zSelectInputConfig = z.object({
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
 ])
 
 /**
@@ -1397,7 +1402,7 @@ export const zPostInstalledAppsByInstalledAppIdAudioToTextPath = z.object({
  */
 export const zPostInstalledAppsByInstalledAppIdAudioToTextResponse = zAudioTranscriptResponse
 
-export const zPostInstalledAppsByInstalledAppIdChatMessagesBody = zChatMessagePayload
+export const zPostInstalledAppsByInstalledAppIdChatMessagesBody = zChatMessageExplorePayload
 
 export const zPostInstalledAppsByInstalledAppIdChatMessagesPath = z.object({
   installed_app_id: z.uuid(),
@@ -1628,7 +1633,9 @@ export const zPostInstalledAppsByInstalledAppIdTextToAudioPath = z.object({
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdTextToAudioResponse = zAudioBinaryResponse
+export const zPostInstalledAppsByInstalledAppIdTextToAudioResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 export const zPostInstalledAppsByInstalledAppIdWorkflowsRunBody = zWorkflowRunPayload
 

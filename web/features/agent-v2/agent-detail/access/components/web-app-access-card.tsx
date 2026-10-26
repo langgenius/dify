@@ -23,7 +23,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getAgentWebAppUrl } from '../../web-app-access'
 import { useWebAppAccessControl } from './use-web-app-access-control'
 
@@ -210,19 +209,7 @@ export function WebAppAccessCard({
         headingLevel={3}
         title={t(($) => $['agentDetail.access.webApp.title'])}
         description={t(($) => $['agentDetail.access.webApp.description'])}
-        icon={
-          icon ? (
-            <AppIcon
-              size="large"
-              iconType={icon.icon_type}
-              icon={icon.icon}
-              background={icon.icon_background}
-              imageUrl={icon.icon_url}
-            />
-          ) : (
-            'i-ri-window-line'
-          )
-        }
+        icon={icon ? <AppIcon size="large" icon={icon} /> : 'i-ri-window-line'}
         status={status}
         statusLabel={statusLabel}
         switchDisabled={isLoading || !canManageWebApp}
@@ -337,7 +324,7 @@ function createSettingsAppInfo(agent: AgentAppDetailWithSite): SettingsAppInfo |
 
   return {
     id: appId,
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     site: {
       title: site.title ?? agent.name,
       description: site.description ?? '',

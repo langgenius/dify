@@ -14,6 +14,7 @@ from controllers.common.errors import (
     RemoteFileUrlBlockedError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
@@ -31,7 +32,6 @@ from services.remote_file_service import RemoteFileNotFoundError as RemoteFileNo
 from services.remote_file_service import RemoteFileUnavailableError as RemoteFileUnavailableServiceError
 from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFileUrlBlockedServiceError
 
-from ..common.schema import register_response_schema_models, register_schema_models
 from . import web_ns
 from .wraps import WebApiResource
 

@@ -5,7 +5,7 @@ export type ClientOptions = {
 }
 
 export type CodeBasedExtensionResponse = {
-  data: unknown
+  data: Array<CodeBasedExtensionItemResponse>
   module: string
 }
 
@@ -17,6 +17,16 @@ export type ErrorResponse = {
   message: string
   params?: string
   status: number
+}
+
+export type CodeBasedExtensionItemResponse = {
+  form_schema?: Array<{
+    [key: string]: unknown
+  }> | null
+  label?: {
+    [key: string]: unknown
+  } | null
+  name: string
 }
 
 export type GetCodeBasedExtensionData = {

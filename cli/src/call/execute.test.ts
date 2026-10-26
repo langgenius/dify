@@ -148,8 +148,26 @@ it('a paused run is exit 0 with status suspended and the server hints', async ()
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(JSON.parse(w.io.outBuf())).toMatchObject({
     status: 'suspended',
+    run_id: 'wf-run-hitl-1',
     hints: [{ op: 'submit.run.form', input: { form_token: 'ft-hitl-1', action: 'submit' } }],
   })
+})
+
+it('a form submit prints the hint to follow the run', async () => {
+  const w = await world([
+    'submit',
+    'run',
+    'form',
+    '--input',
+    '{"app_id":"app-2","form_token":"ft-hitl-1","action":"submit","inputs":{"name":"Bob"}}',
+  ])
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(JSON.parse(w.io.outBuf()).hints).toEqual([
+    expect.objectContaining({
+      op: 'get.run.event',
+      input: { app_id: 'app-2', task_id: 'wf-run-hitl-1', continue_on_pause: false },
+    }),
+  ])
 })
 
 it('a stale catalog is refreshed once and the op is retried', async () => {

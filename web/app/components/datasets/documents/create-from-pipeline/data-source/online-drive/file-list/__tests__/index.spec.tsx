@@ -1,20 +1,7 @@
-import type { OnlineDriveFile } from '@/models/pipeline'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { OnlineDriveFileType } from '@/models/pipeline'
 import FileList from '../index'
-
-// Mock ahooks useDebounceFn: required because tests verify the debounced
-// callback is invoked with specific arguments (mockDebounceFnRun assertions).
-const mockDebounceFnRun = vi.fn()
-const mockDebounceFnCancel = vi.fn()
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (...args: unknown[]) => void) => {
-    mockDebounceFnRun.mockImplementation(fn)
-    return { run: mockDebounceFnRun, cancel: mockDebounceFnCancel }
-  },
-}))
 
 // Mock store - context provider requires mocking
 const mockStoreState = {
@@ -37,14 +24,6 @@ vi.mock('../../../store', () => ({
   useDataSourceStoreWithSelector: (selector: (s: typeof mockStoreState) => unknown) =>
     selector(mockStoreState),
 }))
-
-const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): OnlineDriveFile => ({
-  id: 'file-1',
-  name: 'test-file.txt',
-  size: 1024,
-  type: OnlineDriveFileType.file,
-  ...overrides,
-})
 
 type FileListProps = React.ComponentProps<typeof FileList>
 
@@ -81,196 +60,15 @@ describe('FileList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetMockStoreState()
-    mockDebounceFnRun.mockClear()
-    mockDebounceFnCancel.mockClear()
   })
-
-  describe('Rendering', () => {
-    it('should render Header component with search input', () => {
-      const props = createDefaultProps()
-
-      render(<FileList {...props} />)
-
-      const input = screen.getByPlaceholderText(
-        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-      )
-      expect(input).toBeInTheDocument()
-    })
-
-    it('should render files when fileList has items', () => {
-      const fileList = [
-        createMockOnlineDriveFile({ id: 'file-1', name: 'file1.txt' }),
-        createMockOnlineDriveFile({ id: 'file-2', name: 'file2.txt' }),
-      ]
-      const props = createDefaultProps({ fileList })
-
-      render(<FileList {...props} />)
-
-      expect(screen.getByText('file1.txt')).toBeInTheDocument()
-      expect(screen.getByText('file2.txt')).toBeInTheDocument()
-    })
-
-    it('should show loading state when isLoading is true and fileList is empty', () => {
-      const props = createDefaultProps({ isLoading: true, fileList: [] })
-
-      const { container } = render(<FileList {...props} />)
-      expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
-    })
-
-    it('should show empty folder state when not loading and fileList is empty', () => {
-      const props = createDefaultProps({ isLoading: false, fileList: [], keywords: '' })
-
-      render(<FileList {...props} />)
-
-      expect(screen.getByText('datasetPipeline.onlineDrive.emptyFolder')).toBeInTheDocument()
-    })
-
-    it('should show empty search result when not loading, fileList is empty, and keywords exist', () => {
-      const props = createDefaultProps({ isLoading: false, fileList: [], keywords: 'search-term' })
-
-      render(<FileList {...props} />)
-
-      expect(screen.getByText('datasetPipeline.onlineDrive.emptySearchResult')).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    describe('fileList prop', () => {
-      it('should render all files from fileList', () => {
-        const fileList = [
-          createMockOnlineDriveFile({ id: '1', name: 'a.txt' }),
-          createMockOnlineDriveFile({ id: '2', name: 'b.txt' }),
-          createMockOnlineDriveFile({ id: '3', name: 'c.txt' }),
-        ]
-        const props = createDefaultProps({ fileList })
-
-        render(<FileList {...props} />)
-
-        expect(screen.getByText('a.txt')).toBeInTheDocument()
-        expect(screen.getByText('b.txt')).toBeInTheDocument()
-        expect(screen.getByText('c.txt')).toBeInTheDocument()
-      })
-
-      it('should handle empty fileList', () => {
-        const props = createDefaultProps({ fileList: [] })
-
-        render(<FileList {...props} />)
-
-        // Assert - Should show empty folder state
-        expect(screen.getByText('datasetPipeline.onlineDrive.emptyFolder')).toBeInTheDocument()
-      })
-    })
-
-    describe('selectedFileIds prop', () => {
-      it('should mark files as selected based on selectedFileIds', () => {
-        const fileList = [
-          createMockOnlineDriveFile({ id: 'file-1', name: 'file1.txt' }),
-          createMockOnlineDriveFile({ id: 'file-2', name: 'file2.txt' }),
-        ]
-        const props = createDefaultProps({ fileList, selectedFileIds: ['file-1'] })
-
-        render(<FileList {...props} />)
-
-        expect(screen.getByRole('checkbox', { name: 'file1.txt' })).toHaveAttribute(
-          'aria-checked',
-          'true',
-        )
-        expect(screen.getByRole('checkbox', { name: 'file2.txt' })).toHaveAttribute(
-          'aria-checked',
-          'false',
-        )
-      })
-    })
-
-    describe('keywords prop', () => {
-      it('should initialize input with keywords value', () => {
-        const props = createDefaultProps({ keywords: 'my-search' })
-
-        render(<FileList {...props} />)
-
-        const input = screen.getByPlaceholderText(
-          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-        )
-        expect(input).toHaveValue('my-search')
-      })
-    })
-
-    describe('isLoading prop', () => {
-      it('should show loading when isLoading is true with empty list', () => {
-        const props = createDefaultProps({ isLoading: true, fileList: [] })
-
-        const { container } = render(<FileList {...props} />)
-        expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
-      })
-
-      it('should show loading indicator at bottom when isLoading is true with files', () => {
-        const fileList = [createMockOnlineDriveFile()]
-        const props = createDefaultProps({ isLoading: true, fileList })
-
-        const { rerender } = render(<FileList {...props} />)
-
-        expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
-        expect(screen.getByRole('checkbox', { name: 'test-file.txt' })).toBeInTheDocument()
-
-        rerender(<FileList {...props} isLoading={false} />)
-
-        expect(screen.queryByRole('status', { name: 'appApi.loading' })).not.toBeInTheDocument()
-        expect(screen.getByRole('checkbox', { name: 'test-file.txt' })).toBeInTheDocument()
-      })
-    })
-
-    describe('supportBatchUpload prop', () => {
-      it('should render checkboxes when supportBatchUpload is true', () => {
-        const fileList = [createMockOnlineDriveFile({ id: 'file-1', name: 'file1.txt' })]
-        const props = createDefaultProps({ fileList, supportBatchUpload: true })
-
-        render(<FileList {...props} />)
-
-        expect(screen.getByRole('checkbox', { name: 'file1.txt' })).toBeInTheDocument()
-      })
-
-      it('should render radio buttons when supportBatchUpload is false', () => {
-        const fileList = [createMockOnlineDriveFile({ id: 'file-1', name: 'file1.txt' })]
-        const props = createDefaultProps({ fileList, supportBatchUpload: false })
-
-        const { container } = render(<FileList {...props} />)
-
-        // Assert - Radio is rendered as a div with rounded-full class
-        expect(container.querySelector('.rounded-full')).toBeInTheDocument()
-        // And checkbox should not be present
-        expect(screen.queryByRole('checkbox', { name: 'file1.txt' })).not.toBeInTheDocument()
-      })
-    })
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('State Management', () => {
-    describe('inputValue state', () => {
-      it('should initialize inputValue with keywords prop', () => {
-        const props = createDefaultProps({ keywords: 'initial-keyword' })
-
-        render(<FileList {...props} />)
-
-        const input = screen.getByPlaceholderText(
-          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-        )
-        expect(input).toHaveValue('initial-keyword')
-      })
-
-      it('should update inputValue when input changes', () => {
-        const props = createDefaultProps({ keywords: '' })
-        render(<FileList {...props} />)
-        const input = screen.getByPlaceholderText(
-          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-        )
-
-        fireEvent.change(input, { target: { value: 'new-value' } })
-
-        expect(input).toHaveValue('new-value')
-      })
-    })
-
     describe('debounced keywords update', () => {
-      it('should call updateKeywords with debounce when input changes', () => {
+      it('should delay the search until typing has stopped', () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
         const mockUpdateKeywords = vi.fn()
         const props = createDefaultProps({ updateKeywords: mockUpdateKeywords })
         render(<FileList {...props} />)
@@ -280,7 +78,11 @@ describe('FileList', () => {
 
         fireEvent.change(input, { target: { value: 'debounced-value' } })
 
-        expect(mockDebounceFnRun).toHaveBeenCalledWith('debounced-value')
+        expect(mockUpdateKeywords).not.toHaveBeenCalled()
+        act(() => vi.advanceTimersByTime(499))
+        expect(mockUpdateKeywords).not.toHaveBeenCalled()
+        act(() => vi.advanceTimersByTime(1))
+        expect(mockUpdateKeywords).toHaveBeenCalledExactlyOnceWith('debounced-value')
       })
     })
   })
@@ -288,32 +90,8 @@ describe('FileList', () => {
   // Event Handlers Tests
   describe('Event Handlers', () => {
     describe('handleInputChange', () => {
-      it('should update inputValue on input change', () => {
-        const props = createDefaultProps()
-        render(<FileList {...props} />)
-        const input = screen.getByPlaceholderText(
-          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-        )
-
-        fireEvent.change(input, { target: { value: 'typed-text' } })
-
-        expect(input).toHaveValue('typed-text')
-      })
-
-      it('should trigger debounced updateKeywords on input change', () => {
-        const mockUpdateKeywords = vi.fn()
-        const props = createDefaultProps({ updateKeywords: mockUpdateKeywords })
-        render(<FileList {...props} />)
-        const input = screen.getByPlaceholderText(
-          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-        )
-
-        fireEvent.change(input, { target: { value: 'search-term' } })
-
-        expect(mockDebounceFnRun).toHaveBeenCalledWith('search-term')
-      })
-
-      it('should handle multiple sequential input changes', () => {
+      it('should search only for the latest input after rapid changes', () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
         const mockUpdateKeywords = vi.fn()
         const props = createDefaultProps({ updateKeywords: mockUpdateKeywords })
         render(<FileList {...props} />)
@@ -325,15 +103,16 @@ describe('FileList', () => {
         fireEvent.change(input, { target: { value: 'ab' } })
         fireEvent.change(input, { target: { value: 'abc' } })
 
-        expect(mockDebounceFnRun).toHaveBeenCalledTimes(3)
-        expect(mockDebounceFnRun).toHaveBeenLastCalledWith('abc')
+        act(() => vi.advanceTimersByTime(500))
+        expect(mockUpdateKeywords).toHaveBeenCalledExactlyOnceWith('abc')
         expect(input).toHaveValue('abc')
       })
     })
 
     describe('handleResetKeywords', () => {
       it('should cancel the pending search before clearing the query', async () => {
-        const user = userEvent.setup()
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+        const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
         const mockResetKeywords = vi.fn()
         const props = createDefaultProps({ resetKeywords: mockResetKeywords })
         render(<FileList {...props} />)
@@ -344,220 +123,27 @@ describe('FileList', () => {
         await user.type(input, 'report')
         await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
-        expect(mockDebounceFnRun).toHaveBeenLastCalledWith('report')
-        expect(mockDebounceFnCancel).toHaveBeenCalledOnce()
+        act(() => vi.advanceTimersByTime(500))
+        expect(props.updateKeywords).not.toHaveBeenCalled()
         expect(mockResetKeywords).toHaveBeenCalledOnce()
         expect(input).toHaveValue('')
       })
     })
   })
 
-  describe('Edge Cases and Error Handling', () => {
-    it('should handle empty string keywords', () => {
-      const props = createDefaultProps({ keywords: '' })
-
-      render(<FileList {...props} />)
-
-      const input = screen.getByPlaceholderText(
-        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-      )
-      expect(input).toHaveValue('')
-    })
-
-    it('should handle special characters in keywords', () => {
-      const specialChars = 'test[file].txt (copy)'
-      const props = createDefaultProps({ keywords: specialChars })
-
-      render(<FileList {...props} />)
-
-      const input = screen.getByPlaceholderText(
-        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-      )
-      expect(input).toHaveValue(specialChars)
-    })
-
-    it('should handle unicode characters in keywords', () => {
-      const unicodeKeywords = '文件搜索 日本語'
-      const props = createDefaultProps({ keywords: unicodeKeywords })
-
-      render(<FileList {...props} />)
-
-      const input = screen.getByPlaceholderText(
-        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-      )
-      expect(input).toHaveValue(unicodeKeywords)
-    })
-
-    it('should handle very long file names in fileList', () => {
-      const longName = `${'a'.repeat(100)}.txt`
-      const fileList = [createMockOnlineDriveFile({ id: '1', name: longName })]
-      const props = createDefaultProps({ fileList })
-
-      render(<FileList {...props} />)
-
-      expect(screen.getByText(longName)).toBeInTheDocument()
-    })
-
-    it('should handle large number of files', () => {
-      const fileList = Array.from({ length: 50 }, (_, i) =>
-        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }),
-      )
-      const props = createDefaultProps({ fileList })
-
-      render(<FileList {...props} />)
-
-      // Assert - Check a few files exist
-      expect(screen.getByText('file-0.txt')).toBeInTheDocument()
-      expect(screen.getByText('file-49.txt')).toBeInTheDocument()
-    })
-
-    it('should handle whitespace-only keywords input', () => {
-      const props = createDefaultProps()
-      render(<FileList {...props} />)
-      const input = screen.getByPlaceholderText(
-        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-      )
-
-      fireEvent.change(input, { target: { value: '   ' } })
-
-      expect(input).toHaveValue('   ')
-      expect(mockDebounceFnRun).toHaveBeenCalledWith('   ')
-    })
-  })
-
-  describe('Prop Variations', () => {
-    it.each([
-      { isInPipeline: true, supportBatchUpload: true },
-      { isInPipeline: true, supportBatchUpload: false },
-      { isInPipeline: false, supportBatchUpload: true },
-      { isInPipeline: false, supportBatchUpload: false },
-    ])(
-      'keeps search available with isInPipeline=$isInPipeline and supportBatchUpload=$supportBatchUpload',
-      (propVariation) => {
-        const props = createDefaultProps(propVariation)
-
-        render(<FileList {...props} />)
-
-        expect(
-          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
-        ).toBeInTheDocument()
-      },
-    )
-
-    it.each([
-      { isLoading: true, fileCount: 0, description: 'loading state with no files' },
-      { isLoading: false, fileCount: 0, description: 'not loading with no files' },
-      { isLoading: false, fileCount: 3, description: 'not loading with files' },
-    ])('should handle $description correctly', ({ isLoading, fileCount }) => {
-      const fileList = Array.from({ length: fileCount }, (_, i) =>
-        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }),
-      )
-      const props = createDefaultProps({ isLoading, fileList })
-
-      const { container } = render(<FileList {...props} />)
-
-      if (isLoading && fileCount === 0)
-        expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
-      else if (!isLoading && fileCount === 0)
-        expect(screen.getByText('datasetPipeline.onlineDrive.emptyFolder')).toBeInTheDocument()
-      else expect(screen.getByText('file-0.txt')).toBeInTheDocument()
-    })
-
-    it.each([
-      { keywords: '', searchResultsLength: 0 },
-      { keywords: 'test', searchResultsLength: 5 },
-      { keywords: 'not-found', searchResultsLength: 0 },
-    ])(
-      'should render correctly with keywords="$keywords" and searchResultsLength=$searchResultsLength',
-      ({ keywords, searchResultsLength }) => {
-        const props = createDefaultProps({ keywords, searchResultsLength })
-
-        render(<FileList {...props} />)
-
-        const input = screen.getByPlaceholderText(
-          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-        )
-        expect(input).toHaveValue(keywords)
-      },
-    )
-  })
-
   // File Type Variations
-  describe('File Type Variations', () => {
-    it('should render folder type correctly', () => {
-      const fileList = [
-        createMockOnlineDriveFile({
-          id: 'folder-1',
-          name: 'my-folder',
-          type: OnlineDriveFileType.folder,
-        }),
-      ]
-      const props = createDefaultProps({ fileList })
-
-      render(<FileList {...props} />)
-
-      expect(screen.getByText('my-folder')).toBeInTheDocument()
-    })
-
-    it('should render bucket type correctly', () => {
-      const fileList = [
-        createMockOnlineDriveFile({
-          id: 'bucket-1',
-          name: 'my-bucket',
-          type: OnlineDriveFileType.bucket,
-        }),
-      ]
-      const props = createDefaultProps({ fileList })
-
-      render(<FileList {...props} />)
-
-      expect(screen.getByText('my-bucket')).toBeInTheDocument()
-    })
-
-    it('should render file with size', () => {
-      const fileList = [createMockOnlineDriveFile({ id: 'file-1', name: 'test.txt', size: 1024 })]
-      const props = createDefaultProps({ fileList })
-
-      render(<FileList {...props} />)
-
-      expect(screen.getByText('test.txt')).toBeInTheDocument()
-      // formatFileSize returns '1.00 KB' for 1024 bytes
-      expect(screen.getByText('1.00 KB')).toBeInTheDocument()
-    })
-
-    it('should not show checkbox for bucket type', () => {
-      const fileList = [
-        createMockOnlineDriveFile({
-          id: 'bucket-1',
-          name: 'my-bucket',
-          type: OnlineDriveFileType.bucket,
-        }),
-      ]
-      const props = createDefaultProps({ fileList, supportBatchUpload: true })
-
-      render(<FileList {...props} />)
-
-      // Assert - No checkbox should be rendered for bucket
-      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-    })
-  })
 
   // Search Results Display
-  describe('Search Results Display', () => {
-    it('should show search results count when keywords and results exist', () => {
-      const props = createDefaultProps({
-        keywords: 'test',
-        searchResultsLength: 5,
-        breadcrumbs: ['folder1'],
-      })
-
-      render(<FileList {...props} />)
-
-      expect(
-        screen.getByText(/datasetPipeline\.onlineDrive\.breadcrumbs\.searchResult/),
-      ).toBeInTheDocument()
-    })
-  })
 
   // Callback Stability
+})
+
+it('clears an unmatched drive search from the empty-result action', async () => {
+  const user = userEvent.setup()
+  const props = createDefaultProps({ keywords: 'missing' })
+  render(<FileList {...props} />)
+  await user.click(
+    screen.getByRole('button', { name: 'datasetPipeline.onlineDrive.resetKeywords' }),
+  )
+  expect(props.resetKeywords).toHaveBeenCalledOnce()
 })

@@ -12,7 +12,7 @@ from controllers.console.explore.error import RecommendedAppNotFoundError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
-from fields.app_export_fields import AppExportResponse
+from fields.app_fields import AppExportResponse
 from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY

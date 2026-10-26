@@ -3,17 +3,13 @@
 from datetime import datetime, timedelta
 from uuid import uuid4
 
-import pytest
 from sqlalchemy import Connection, Engine, event
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
-from core import telemetry
-from core.telemetry import FeedbackCreatedEvent
 from core.workflow.nodes.human_input.entities import FormDefinition, UserActionConfig
 from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm
-from services.installed_app_message_adapters import InstalledAppMessageRuntime, emit_installed_app_feedback
-from services.installed_app_message_service import MessageFeedbackEvent
+from services.installed_app_message_adapters import InstalledAppMessageRuntime
 
 
 def test_extra_contents_use_real_repository_preserve_message_order_and_omit_none(
@@ -76,42 +72,3 @@ def test_extra_contents_use_real_repository_preserve_message_order_and_omit_none
     assert len(read_sessions) == 1
     assert not read_sessions[0].in_transaction()
     assert not read_sessions[0].identity_map
-
-
-@pytest.mark.parametrize("fail", [False, True])
-def test_feedback_telemetry_preserves_event_fields_and_suppresses_sink_failure(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, fail: bool
-) -> None:
-    events: list[FeedbackCreatedEvent] = []
-
-    def emit(event: FeedbackCreatedEvent) -> None:
-        events.append(event)
-        if fail:
-            raise RuntimeError("Telemetry unavailable")
-
-    monkeypatch.setattr(telemetry, "emit", emit)
-    emit_installed_app_feedback(
-        feedback=MessageFeedbackEvent(
-            tenant_id="owner-tenant",
-            app_id="app",
-            conversation_id="conversation",
-            message_id="message",
-            account_id="account",
-            rating="dislike",
-            content="",
-        )
-    )
-    assert len(events) == 1
-    assert events[0].context.tenant_id == "owner-tenant"
-    assert events[0].payload == {
-        "message_id": "message",
-        "app_id": "app",
-        "conversation_id": "conversation",
-        "from_end_user_id": None,
-        "from_account_id": "account",
-        "rating": "dislike",
-        "from_source": "admin",
-        "content": "",
-    }
-    if fail:
-        assert "Failed to emit feedback telemetry for message message" in caplog.text

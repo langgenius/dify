@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 import core.rag.extractor.pdf_extractor as pe
 from models.model import UploadFile
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 TENANT_ID = str(uuid4())
 USER_ID = str(uuid4())
@@ -25,11 +25,9 @@ class _Storage:
         self.saves.append((key, data))
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     session: Session
-
-    def __init__(self, session: Session) -> None:
-        self.session = session
 
 
 @dataclass(frozen=True)

@@ -37,6 +37,12 @@ class AppImportParams(BaseModel):
     app_id: str | None = None
 
 
+class DraftGuardedImportParams(AppImportParams):
+    """An overwrite that saves only while the draft's ``draft_token`` still equals ``draft_hash``."""
+
+    draft_hash: str | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class AppDslExportData:
     """Materialized export input; remote dependencies can be resolved after closing the read transaction."""

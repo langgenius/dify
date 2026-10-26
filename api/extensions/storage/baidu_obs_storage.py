@@ -55,9 +55,7 @@ class BaiduObsStorage(BaseStorage):
     @override
     def exists(self, filename):
         res = self.client.get_object_meta_data(bucket_name=self.bucket_name, key=filename)
-        if res is None:
-            return False
-        return True
+        return res is not None
 
     @override
     def delete(self, filename: str):

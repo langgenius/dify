@@ -1,10 +1,10 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type {
   WorkflowCommentDetail,
-  WorkflowCommentDetailReply,
-} from '@/app/components/workflow/comment/types'
+  WorkflowCommentReply,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactNode } from 'react'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -12,16 +12,12 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
@@ -34,13 +30,14 @@ import {
   RiMoreFill,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useParams } from '@/next/navigation'
 import { getAvatarInitial } from '@/utils/avatar'
 import { useStore } from '../store'
 import { MentionInput } from './mention-input'
@@ -197,8 +194,7 @@ function CommentThreadComponent({
   onReplyDelete,
   onReplyDeleteDirect,
 }: CommentThreadProps) {
-  const params = useParams()
-  const appId = params.appId as string
+  const appId = useAtomValue(editorAppIdAtom)
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
   const { data: userProfile } = useSuspenseQuery({
@@ -316,7 +312,7 @@ function CommentThreadComponent({
     [screenPosition.x, screenPosition.y, containerLeft, containerTop],
   )
 
-  const handleStartEdit = useCallback((reply: WorkflowCommentDetailReply) => {
+  const handleStartEdit = useCallback((reply: WorkflowCommentReply) => {
     setEditingReply({ id: reply.id, content: reply.content })
     setIsCommentEditing(false)
     setActiveReplyMenuId(null)
@@ -401,7 +397,7 @@ function CommentThreadComponent({
   const previousReplyCountRef = useRef<number | undefined>(undefined)
   const previousCommentIdRef = useRef<string | undefined>(undefined)
 
-  // Close dropdown when scrolling
+  // Close menu when scrolling
   useEffect(() => {
     const container = messageListRef.current
     if (!container || !activeReplyMenuId) return
@@ -484,7 +480,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent>
                 {t(($) => $['comments.aria.deleteComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -510,7 +506,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent>
                 {t(($) => $['comments.aria.resolveComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -533,7 +529,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent>
                 {t(($) => $['comments.aria.previousComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -555,7 +551,7 @@ function CommentThreadComponent({
                   </button>
                 }
               />
-              <TooltipContent placement="top">
+              <TooltipContent>
                 {t(($) => $['comments.aria.nextComment'], { ns: 'workflowComments' })}
               </TooltipContent>
             </Tooltip>
@@ -572,24 +568,20 @@ function CommentThreadComponent({
         <div ref={messageListRef} className="relative mt-2 flex-1 overflow-y-auto px-4 pb-4">
           <div className="group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover">
             {isOwnComment && !isCommentEditing && (
-              <DropdownMenu
+              <Menu
                 open={activeReplyMenuId === comment.id}
                 onOpenChange={(open) => setActiveReplyMenuId(open ? comment.id : null)}
               >
-                <DropdownMenuTrigger
+                <MenuTrigger
                   className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
                   aria-label={t(($) => $['comments.aria.commentActions'], {
                     ns: 'workflowComments',
                   })}
                 >
                   <RiMoreFill className="size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  placement="bottom-end"
-                  sideOffset={4}
-                  className="w-36 backdrop-blur-[10px]"
-                >
-                  <DropdownMenuItem
+                </MenuTrigger>
+                <MenuContent align="end" className="w-36 backdrop-blur-[10px]">
+                  <MenuItem
                     className="px-3"
                     onClick={(e) => {
                       e.stopPropagation()
@@ -597,9 +589,9 @@ function CommentThreadComponent({
                     }}
                   >
                     {t(($) => $['comments.actions.editComment'], { ns: 'workflowComments' })}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  </MenuItem>
+                </MenuContent>
+              </Menu>
             )}
             {isCommentEditing ? (
               <div className="flex gap-3 pt-1">
@@ -658,13 +650,13 @@ function CommentThreadComponent({
                     className="group relative -mx-4 rounded-lg px-4 py-2 transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
                   >
                     {isOwnReply && !isReplyEditing && (
-                      <DropdownMenu
+                      <Menu
                         open={activeReplyMenuId === reply.id}
                         onOpenChange={(open) => {
                           setActiveReplyMenuId(open ? reply.id : null)
                         }}
                       >
-                        <DropdownMenuTrigger
+                        <MenuTrigger
                           ref={(element: HTMLButtonElement | null) => {
                             if (element) replyMenuTriggersRef.current.set(reply.id, element)
                             else replyMenuTriggersRef.current.delete(reply.id)
@@ -676,14 +668,13 @@ function CommentThreadComponent({
                           })}
                         >
                           <RiMoreFill className="size-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          placement="bottom-end"
-                          sideOffset={4}
+                        </MenuTrigger>
+                        <MenuContent
+                          align="end"
                           className="w-36 backdrop-blur-[10px]"
                           data-reply-menu
                         >
-                          <DropdownMenuItem
+                          <MenuItem
                             onClick={(event) => {
                               event.stopPropagation()
                               handleStartEdit(reply)
@@ -692,8 +683,8 @@ function CommentThreadComponent({
                             {t(($) => $['comments.actions.editReply'], {
                               ns: 'workflowComments',
                             })}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
+                          </MenuItem>
+                          <MenuItem
                             variant="destructive"
                             onClick={(event) => {
                               event.stopPropagation()
@@ -708,9 +699,9 @@ function CommentThreadComponent({
                             {t(($) => $['comments.actions.deleteReply'], {
                               ns: 'workflowComments',
                             })}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          </MenuItem>
+                        </MenuContent>
+                      </Menu>
                     )}
                     {isReplyEditing ? (
                       <div className="flex gap-3 pt-1">
@@ -818,14 +809,14 @@ function CommentThreadComponent({
               : (replyInputRef.current ?? true)
           }
         >
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['comments.actions.deleteReply'], { ns: 'workflowComments' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['operation.confirmAction'], { ns: 'common' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={loading}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

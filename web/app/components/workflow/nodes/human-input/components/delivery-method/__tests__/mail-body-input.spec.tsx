@@ -1,105 +1,29 @@
-import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWorkflowEditor } from '@/test/workflow-editor'
 import MailBodyInput from '../mail-body-input'
 
-const mockPromptEditor = vi.hoisted(() => vi.fn())
+it('shows the originating node and system alias for saved email variable references', async () => {
+  const nodes = [
+    createNode({ id: 'start', data: { title: 'Start Node', type: BlockEnum.Start } }),
+    createNode({ id: 'answer', data: { title: 'Answer Node', type: BlockEnum.Answer } }),
+  ]
+  renderWorkflowEditor(
+    <MailBodyInput availableNodes={nodes} value="{{#answer.answer#}} {{#sys.query#}}" />,
+    { nodes },
+  )
+  const editor = within(screen.getByRole('textbox'))
+  expect(await editor.findByText('Answer Node')).toBeVisible()
+  expect(editor.getByText('answer')).toBeVisible()
+  expect(editor.getByText('workflow.blocks.start')).toBeVisible()
+  expect(editor.getByText('query')).toBeVisible()
+})
 
-vi.mock('@/app/components/base/prompt-editor', () => ({
-  __esModule: true,
-  default: (props: Record<string, unknown>) => {
-    mockPromptEditor(props)
-    return <div data-testid="prompt-editor" />
-  },
-}))
-
-vi.mock(
-  '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder',
-  () => ({
-    __esModule: true,
-    default: (_props: { hideBadge?: boolean }) => <div data-testid="placeholder" />,
-  }),
-)
-
-describe('human-input/delivery-method/mail-body-input', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should pass prompt editor config with sys start mapping when a start node is available', () => {
-    const handleChange = vi.fn()
-    const nodesOutputVars = [{ nodeId: 'start', title: 'Start', vars: [] }] as NodeOutPutVar[]
-    const availableNodes = [
-      {
-        id: 'start',
-        data: { title: 'Start Node', type: BlockEnum.Start },
-      },
-      {
-        id: 'answer',
-        data: { title: 'Answer Node', type: BlockEnum.Answer },
-      },
-    ] as unknown as Node[]
-
-    render(
-      <MailBodyInput
-        value="Hello {{#url#}}"
-        onChange={handleChange}
-        nodesOutputVars={nodesOutputVars}
-        availableNodes={availableNodes}
-      />,
-    )
-
-    expect(screen.getByTestId('prompt-editor')).toBeInTheDocument()
-    expect(mockPromptEditor).toHaveBeenCalledWith(
-      expect.objectContaining({
-        editable: true,
-        value: 'Hello {{#url#}}',
-        onChange: handleChange,
-        placeholder: expect.any(Object),
-        requestURLBlock: {
-          show: true,
-          selectable: true,
-        },
-        workflowVariableBlock: {
-          show: true,
-          variables: nodesOutputVars,
-          workflowNodesMap: {
-            start: { title: 'Start Node', type: BlockEnum.Start },
-            answer: { title: 'Answer Node', type: BlockEnum.Answer },
-            sys: { title: 'workflow.blocks.start', type: BlockEnum.Start },
-          },
-        },
-      }),
-    )
-  })
-
-  it('should disable editing and omit sys mapping when there is no start node', () => {
-    render(
-      <MailBodyInput
-        readOnly
-        availableNodes={
-          [
-            {
-              id: 'llm',
-              data: { title: 'LLM Node', type: BlockEnum.LLM },
-            },
-          ] as unknown as Node[]
-        }
-      />,
-    )
-
-    expect(mockPromptEditor).toHaveBeenCalledWith(
-      expect.objectContaining({
-        editable: false,
-        value: '',
-        workflowVariableBlock: {
-          show: true,
-          variables: [],
-          workflowNodesMap: {
-            llm: { title: 'LLM Node', type: BlockEnum.LLM },
-          },
-        },
-      }),
-    )
-  })
+it('resolves node references in flows without a Start node', async () => {
+  const nodes = [createNode({ id: 'llm', data: { title: 'LLM Node', type: BlockEnum.LLM } })]
+  renderWorkflowEditor(<MailBodyInput availableNodes={nodes} value="{{#llm.text#}}" />, { nodes })
+  const editor = within(screen.getByRole('textbox'))
+  expect(await editor.findByText('LLM Node')).toBeVisible()
+  expect(editor.getByText('text')).toBeVisible()
 })

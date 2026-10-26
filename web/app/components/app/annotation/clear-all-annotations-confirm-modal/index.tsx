@@ -5,6 +5,7 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -20,14 +21,9 @@ export function ClearAllAnnotationsConfirmContent({ isPending, onConfirm }: Prop
 
   return (
     <AlertDialogContent>
-      <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-        <AlertDialogTitle
-          className="w-full truncate title-2xl-semi-bold text-text-primary"
-          title={title}
-        >
-          {title}
-        </AlertDialogTitle>
-      </div>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{title}</AlertDialogTitle>
+      </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancelButton disabled={isPending}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}

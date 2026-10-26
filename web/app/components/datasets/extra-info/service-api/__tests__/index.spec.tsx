@@ -50,7 +50,10 @@ describe('ServiceApi', () => {
 
     await user.click(trigger)
 
-    expect(trigger).toHaveAttribute('data-popup-open', '')
+    expect(screen.getByText('https://api.example.com')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'dataset.serviceApi.card.apiReference' }),
+    ).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.card.apiKey' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })

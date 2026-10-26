@@ -9,11 +9,12 @@ const dayToggleClassName =
   'rounded-lg border border-divider-subtle bg-components-option-card-option-bg py-1 text-xs text-text-tertiary outline-state-accent-solid transition-colors hover:border-divider-regular hover:text-text-secondary focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid data-pressed:border-util-colors-blue-brand-blue-brand-600 data-pressed:text-text-secondary data-pressed:hover:border-util-colors-blue-brand-blue-brand-600'
 
 type MonthlyDaysSelectorProps = {
+  disabled?: boolean
   selectedDays: (number | 'last')[]
   onChange: (days: (number | 'last')[]) => void
 }
 
-const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProps) => {
+const MonthlyDaysSelector = ({ selectedDays, onChange, disabled }: MonthlyDaysSelectorProps) => {
   const lastDayLabelId = React.useId()
 
   const { t } = useTranslation(['workflowIntegrations'])
@@ -49,6 +50,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
               day === 'last' ? (
                 <div key={day} className="relative col-span-2 min-w-0">
                   <Toggle
+                    disabled={disabled}
                     id={lastDayLabelId}
                     pressed={isDaySelected(day)}
                     onPressedChange={() => handleDayClick(day)}
@@ -71,6 +73,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                 </div>
               ) : (
                 <Toggle
+                  disabled={disabled}
                   key={day}
                   pressed={isDaySelected(day)}
                   onPressedChange={() => handleDayClick(day)}

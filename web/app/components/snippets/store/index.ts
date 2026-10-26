@@ -1,13 +1,14 @@
 'use client'
 
-import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetDetail } from '@/models/snippet'
 import { create } from 'zustand'
 
 type SnippetNavigationState = {
   snippet?: SnippetDetail
   snippetId?: string
   readonly: boolean
-  onFieldsChange?: (fields: SnippetInputField[]) => void
+  onFieldsChange?: (fields: InputVar[]) => void
 }
 
 type SnippetDetailUIState = {

@@ -7,12 +7,12 @@ describe('StartPlaceholderNode', () => {
     const { rerender } = render(
       <Node
         id="start-placeholder"
-        data={
-          {
-            type: BlockEnum.StartPlaceholder,
-            selected: true,
-          } as never
-        }
+        data={{
+          type: BlockEnum.StartPlaceholder,
+          title: 'Start',
+          desc: '',
+          selected: true,
+        }}
       />,
     )
 
@@ -21,12 +21,12 @@ describe('StartPlaceholderNode', () => {
     rerender(
       <Node
         id="start-placeholder"
-        data={
-          {
-            type: BlockEnum.StartPlaceholder,
-            selected: false,
-          } as never
-        }
+        data={{
+          type: BlockEnum.StartPlaceholder,
+          title: 'Start',
+          desc: '',
+          selected: false,
+        }}
       />,
     )
 

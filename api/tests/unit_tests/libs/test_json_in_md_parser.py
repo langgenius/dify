@@ -36,7 +36,7 @@ def test_parse_json_markdown_braces_only():
 
 
 def test_parse_json_markdown_not_found():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="could not find json block in the output\\."):
         parse_json_markdown("no json here")
 
 

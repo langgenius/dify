@@ -15,7 +15,7 @@ def test_external_data_tool_factory_init():
         variable = "var_v"
         config = {"key": "value"}
 
-        factory = ExternalDataToolFactory(name, tenant_id, app_id, variable, config)
+        ExternalDataToolFactory(name, tenant_id, app_id, variable, config)
 
         mock_code_based_extension.extension_class.assert_called_once_with(ExtensionModule.EXTERNAL_DATA_TOOL, name)
         mock_extension_class.assert_called_once_with(

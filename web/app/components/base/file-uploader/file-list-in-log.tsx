@@ -62,12 +62,12 @@ const FileListInLog = ({
               const { id, name, type, supportFileType, base64Url, url } = file
               const isImageFile = supportFileType === SupportUploadFileTypes.image
               return (
-                <>
+                <React.Fragment key={id}>
                   {isImageFile && (
                     <Tooltip>
                       <TooltipTrigger
                         render={
-                          <div key={id}>
+                          <div>
                             <FileImageRender className="size-8" imageUrl={base64Url || url || ''} />
                           </div>
                         }
@@ -79,10 +79,7 @@ const FileListInLog = ({
                     <Tooltip>
                       <TooltipTrigger
                         render={
-                          <div
-                            key={id}
-                            className="rounded-md border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1.5 shadow-xs"
-                          >
+                          <div className="rounded-md border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1.5 shadow-xs">
                             <FileTypeIcon type={getFileAppearanceType(name, type)} size="lg" />
                           </div>
                         }
@@ -90,7 +87,7 @@ const FileListInLog = ({
                       <TooltipContent>{name}</TooltipContent>
                     </Tooltip>
                   )}
-                </>
+                </React.Fragment>
               )
             })}
           </div>

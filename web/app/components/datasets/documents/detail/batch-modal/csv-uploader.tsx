@@ -4,6 +4,7 @@ import type { FileItem } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +13,7 @@ import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { toast } from '@/app/notifications'
 import useTheme from '@/hooks/use-theme'
 import { upload } from '@/service/base'
-import { useFileUploadConfig } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { Theme } from '@/types/app'
 
 type Props = Readonly<{
@@ -25,7 +26,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
   const fileUploadConfig = useMemo(
     () => ({
       ...fileUploadConfigResponse,

@@ -1,6 +1,7 @@
 import type { RoleListRequest } from '@/models/access-control'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
+import { workspaceRoleListInfiniteOptions } from '../workspace-role-list-query'
 import { formatRoleGroups } from './helpers'
 
 export const useRoleGroups = (params: RoleListRequest) => {
@@ -11,7 +12,7 @@ export const useRoleGroups = (params: RoleListRequest) => {
     fetchNextPage,
     hasNextPage,
     error,
-  } = useWorkspaceRoleList(params)
+  } = useInfiniteQuery(workspaceRoleListInfiniteOptions(params))
 
   const roleGroups = useMemo(() => formatRoleGroups(roleList), [roleList])
 

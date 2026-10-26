@@ -1,13 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 
 export const useAutoGenerateWebhookUrl = () => {
-  const { appId } = useParams<{ appId?: string }>()
+  const appId = useAtomValue(editorAppIdAtom)
   const queryClient = useQueryClient()
   const collaborativeWorkflow = useCollaborativeWorkflow()
 

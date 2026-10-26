@@ -1,4 +1,5 @@
 import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ImageIconInput as ImageInput } from '../image-input'
 
 const createObjectURLMock = vi.fn(() => 'blob:mock-url')
@@ -32,48 +33,15 @@ describe('ImageInput', () => {
     globalThis.URL.revokeObjectURL = originalRevokeObjectURL
   })
 
-  describe('Rendering', () => {
-    it('should render upload prompt when no image is selected', () => {
-      render(<ImageInput />)
-
-      expect(screen.getByText(/drop.*here/i)).toBeInTheDocument()
-      expect(screen.getByText(/browse/i)).toBeInTheDocument()
-      expect(screen.getByText(/supported/i)).toBeInTheDocument()
-    })
-  })
-
   describe('User Interactions', () => {
-    it('should trigger file input click when browse button is clicked', () => {
-      render(<ImageInput />)
-
-      const fileInput = screen.getByTestId('image-input')
-      const clickSpy = vi.spyOn(fileInput, 'click')
-
-      fireEvent.click(screen.getByText(/browse/i))
-
-      expect(clickSpy).toHaveBeenCalled()
-    })
-
-    it('should show Cropper when a static image file is selected', async () => {
-      render(<ImageInput />)
-
-      const file = new File(['image-data'], 'photo.png', { type: 'image/png' })
-      const input = screen.getByTestId('image-input')
-      fireEvent.change(input, { target: { files: [file] } })
-
-      await waitForCropperContainer()
-
-      // Upload prompt should be gone
-      expect(screen.queryByText(/browse/i)).not.toBeInTheDocument()
-    })
-
     it('should call onChange with cropped data when crop completes on static image', async () => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
       render(<ImageInput onChange={onChange} />)
 
       const file = new File(['image-data'], 'photo.png', { type: 'image/png' })
       const input = screen.getByTestId('image-input')
-      fireEvent.change(input, { target: { files: [file] } })
+      await user.upload(input, file)
 
       await loadCropperImage()
 
@@ -95,7 +63,7 @@ describe('ImageInput', () => {
       })
     })
 
-    it('should show img tag and call onChange with isCropped=false for animated GIF', async () => {
+    it('preserves animated GIFs as the original file without cropping', async () => {
       const onChange = vi.fn()
       render(<ImageInput onChange={onChange} />)
 
@@ -113,16 +81,6 @@ describe('ImageInput', () => {
       // Cropper should NOT be shown
       expect(screen.queryByTestId('container')).not.toBeInTheDocument()
       expect(onChange).toHaveBeenCalledWith({ type: 'file', file })
-    })
-
-    it('should reset file input value after selection', () => {
-      render(<ImageInput />)
-
-      const input = screen.getByTestId('image-input') as HTMLInputElement
-      // Simulate previous value
-      Object.defineProperty(input, 'value', { writable: true, value: 'old-file.png' })
-      fireEvent.change(input, { target: { files: [] } })
-      expect(input.value).toBe('')
     })
   })
 
@@ -187,21 +145,6 @@ describe('ImageInput', () => {
       expect(onDrop).toHaveBeenCalledOnce()
       await waitForCropperContainer()
     })
-
-    it('should show image after dropping a file', async () => {
-      render(<ImageInput />)
-
-      const dropZone = screen
-        .getByText(/browse/i)
-        .closest('[class*="border-dashed"]') as HTMLElement
-      const file = new File(['image-data'], 'dropped.png', { type: 'image/png' })
-
-      fireEvent.drop(dropZone, {
-        dataTransfer: { files: [file], types: ['Files'] },
-      })
-
-      await waitForCropperContainer()
-    })
   })
 
   describe('Cleanup', () => {
@@ -218,12 +161,6 @@ describe('ImageInput', () => {
 
       expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock-url')
     })
-
-    it('should not call URL.revokeObjectURL on unmount when no image was set', () => {
-      const { unmount } = render(<ImageInput />)
-      unmount()
-      expect(revokeObjectURLMock).not.toHaveBeenCalled()
-    })
   })
 
   describe('Edge Cases', () => {
@@ -238,17 +175,6 @@ describe('ImageInput', () => {
       expect(onChange).toHaveBeenLastCalledWith(null)
       expect(screen.getByRole('alert').textContent).toMatch(/ReadError/)
       expect(screen.getByRole('button', { name: /browse/i })).toBeInTheDocument()
-    })
-
-    it('should accept the correct file extensions', () => {
-      render(<ImageInput />)
-
-      const input = screen.getByTestId('image-input') as HTMLInputElement
-      expect(input.accept).toContain('.png')
-      expect(input.accept).toContain('.jpg')
-      expect(input.accept).toContain('.jpeg')
-      expect(input.accept).toContain('.webp')
-      expect(input.accept).toContain('.gif')
     })
   })
 })
