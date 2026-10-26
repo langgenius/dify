@@ -210,14 +210,18 @@ def test_selection_reuses_vector_configuration(
 def test_qdrant_selection_and_unsupported_provider(config_overrides: Callable[..., None]) -> None:
     config_overrides(VECTOR_STORE="qdrant")
     native = QdrantClient(":memory:")
-    with patch("services.knowledge_fs.vector_store.configured_vector_client", return_value=nullcontext(native)):
-        with configured_text_client(A) as store:
-            assert isinstance(store, QdrantTextStore)
+    with (
+        patch("services.knowledge_fs.vector_store.configured_vector_client", return_value=nullcontext(native)),
+        configured_text_client(A) as store,
+    ):
+        assert isinstance(store, QdrantTextStore)
     native.close()
-    with patch("services.knowledge_fs.vector_store.configured_vector_client", return_value=nullcontext(object())):
-        with pytest.raises(VectorStoreUnavailableError):
-            with configured_text_client(A):
-                pass
+    with (
+        patch("services.knowledge_fs.vector_store.configured_vector_client", return_value=nullcontext(object())),
+        pytest.raises(VectorStoreUnavailableError),
+        configured_text_client(A),
+    ):
+        pass
 
 
 def test_sparse_weights_are_order_independent_and_normalized() -> None:

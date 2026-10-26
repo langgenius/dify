@@ -227,17 +227,19 @@ def test_lease_release_keeps_file_referenced_by_another_legacy_document(
         )
         session.add_all([document, lease])
 
-    with patch("services.dataset_knowledge_fs_upgrade_file_lease.storage") as storage:
-        with sqlite_session_factory.begin() as session:
-            assert (
-                release_upgrade_file_lease(
-                    session,
-                    job_id=job.id,
-                    upload_file_id=upload_file.id,
-                    now=now,
-                )
-                is False
+    with (
+        patch("services.dataset_knowledge_fs_upgrade_file_lease.storage") as storage,
+        sqlite_session_factory.begin() as session,
+    ):
+        assert (
+            release_upgrade_file_lease(
+                session,
+                job_id=job.id,
+                upload_file_id=upload_file.id,
+                now=now,
             )
+            is False
+        )
 
     storage.delete.assert_not_called()
     with sqlite_session_factory() as session:

@@ -51,9 +51,9 @@ def test_publication_failure_is_retryable_and_does_not_report_success(app: Flask
             "controllers.inner_api.knowledge_fs.background.publish_background_job",
             side_effect=RuntimeError("broker unavailable"),
         ),
+        pytest.raises(ServiceUnavailable),
     ):
-        with pytest.raises(ServiceUnavailable):
-            inspect.unwrap(handler.post)(handler)
+        inspect.unwrap(handler.post)(handler)
 
 
 def test_unknown_fields_never_reach_the_broker(app: Flask) -> None:
@@ -79,15 +79,17 @@ def test_publisher_readiness_is_closed_before_rollout(config_overrides: Callable
 
 def test_oversized_locator_is_rejected_before_json_parsing(app: Flask) -> None:
     handler = KnowledgeFSBackgroundJobApi()
-    with app.test_request_context(json={"body": "x" * 17000}):
-        with pytest.raises(RequestEntityTooLarge):
-            inspect.unwrap(handler.post)(handler)
+    with app.test_request_context(json={"body": "x" * 17000}), pytest.raises(RequestEntityTooLarge):
+        inspect.unwrap(handler.post)(handler)
 
 
 def test_broker_outage_is_not_reported_as_ready() -> None:
     handler = KnowledgeFSBackgroundHealthApi()
-    with patch(
-        "controllers.inner_api.knowledge_fs.background.check_background_publisher_ready", side_effect=OSError("offline")
+    with (
+        patch(
+            "controllers.inner_api.knowledge_fs.background.check_background_publisher_ready",
+            side_effect=OSError("offline"),
+        ),
+        pytest.raises(ServiceUnavailable),
     ):
-        with pytest.raises(ServiceUnavailable):
-            inspect.unwrap(handler.get)(handler)
+        inspect.unwrap(handler.get)(handler)

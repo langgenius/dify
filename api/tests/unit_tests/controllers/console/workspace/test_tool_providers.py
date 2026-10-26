@@ -348,15 +348,15 @@ class TestToolProviderApisCases:
 
             with (
                 app.test_request_context("/", json={"credentials": empty_mapping(), "type": "invalid"}),
+                pytest.raises(ValueError, match="1 validation error for BuiltinToolAddPayload\\\ntype"),
             ):
-                with pytest.raises(ValueError, match="1 validation error for BuiltinToolAddPayload\\\ntype"):
-                    method(
-                        api,
-                        BuiltinToolAddPayload(credentials=empty_mapping(), type="invalid"),
-                        "t",
-                        make_account(),
-                        "provider",
-                    )
+                method(
+                    api,
+                    BuiltinToolAddPayload(credentials=empty_mapping(), type="invalid"),
+                    "t",
+                    make_account(),
+                    "provider",
+                )
 
         def test_add_success(self, app: Flask) -> None:
             api = ToolBuiltinProviderAddApi()
@@ -653,15 +653,15 @@ class TestToolProviderApisCases:
 
             with (
                 app.test_request_context("/"),
-            ):
-                with pytest.raises(
+                pytest.raises(
                     ValueError,
                     match=(
                         "1 validation error for WorkflowToolGetQuery\\\n  Value error, "
                         "workflow_tool_id or workflow_app_id is required"
                     ),
-                ):
-                    method(api, "t", make_account())
+                ),
+            ):
+                method(api, "t", make_account())
 
     class TestLists:
         def test_builtin_list(self, app: Flask) -> None:
@@ -728,17 +728,16 @@ class TestToolProviderApisCases:
                     "controllers.console.workspace.tool_providers.BuiltinToolManageService.get_oauth_client",
                     return_value=None,
                 ),
+                pytest.raises(Forbidden),
             ):
-                with pytest.raises(Forbidden):
-                    method(api, "t", make_account(), "provider")
+                method(api, "t", make_account(), "provider")
 
         def test_oauth_callback_no_cookie(self, app: Flask) -> None:
             api = ToolOAuthCallback()
             method = unwrap(api.get)
 
-            with app.test_request_context("/"):
-                with pytest.raises(Forbidden):
-                    method(api, "provider")
+            with app.test_request_context("/"), pytest.raises(Forbidden):
+                method(api, "provider")
 
     class TestOAuthCustomClient:
         def test_save_custom_client(self, app: Flask) -> None:
@@ -1727,9 +1726,11 @@ class TestToolProvidersCases:
 
         monkeypatch.setattr(controller_module.OAuthHandler, "get_credentials", unexpected_dispatch)
         api = controller_module.ToolOAuthCallback()
-        with app.test_request_context("/", headers={"Cookie": "context_id=ctx-id"}):
-            with pytest.raises(Forbidden, match="Plugin changed"):
-                unwrap(api.get)(api, provider=_OAUTH_PROVIDER_PATH)
+        with (
+            app.test_request_context("/", headers={"Cookie": "context_id=ctx-id"}),
+            pytest.raises(Forbidden, match="Plugin changed"),
+        ):
+            unwrap(api.get)(api, provider=_OAUTH_PROVIDER_PATH)
 
     @staticmethod
     @pytest.mark.parametrize(

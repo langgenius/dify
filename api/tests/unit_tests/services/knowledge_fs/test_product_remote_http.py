@@ -956,9 +956,11 @@ def test_multipart_remote_logs_bounded_upstream_rejection(
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
     client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
 
-    with caplog.at_level(logging.WARNING, logger=product_remote_http.__name__):
-        with pytest.raises(KnowledgeFSProductRequestRejectedError) as rejected:
-            client.execute_multipart(_multipart_request())
+    with (
+        caplog.at_level(logging.WARNING, logger=product_remote_http.__name__),
+        pytest.raises(KnowledgeFSProductRequestRejectedError) as rejected,
+    ):
+        client.execute_multipart(_multipart_request())
 
     assert "operation_id=createDocument" in caplog.text
     assert "trace_id=trace-1" in caplog.text
@@ -1206,9 +1208,11 @@ def test_json_remote_logs_bounded_upstream_rejection_details(
     monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda buffered, **_: buffered)
     client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
 
-    with caplog.at_level(logging.WARNING, logger=product_remote_http.__name__):
-        with pytest.raises(KnowledgeFSProductRequestRejectedError) as rejected:
-            client.execute_json(_json_request())
+    with (
+        caplog.at_level(logging.WARNING, logger=product_remote_http.__name__),
+        pytest.raises(KnowledgeFSProductRequestRejectedError) as rejected,
+    ):
+        client.execute_json(_json_request())
 
     assert "operation_id=getSettings" in caplog.text
     assert "trace_id=trace-1" in caplog.text
