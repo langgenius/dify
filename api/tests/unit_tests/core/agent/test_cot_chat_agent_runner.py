@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -44,7 +44,8 @@ class DummyUnit:
 
 @pytest.fixture
 def runner():
-    runner = CotChatAgentRunner.__new__(CotChatAgentRunner)
+    # Bypass __init__ to avoid constructing heavy dependencies in unit tests.
+    runner = object.__new__(CotChatAgentRunner)
     runner._instruction = "test_instruction"
     runner._prompt_messages_tools = [DummyTool("tool1"), DummyTool("tool2")]
     runner._query = "user query"
