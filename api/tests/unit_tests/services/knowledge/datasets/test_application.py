@@ -48,26 +48,26 @@ def service(operations: MagicMock, access: MagicMock) -> DatasetApplicationServi
         ([], [], {"hidden": ["dataset.preview"]}),
     ],
 )
-def test_restricted_whitelist_preserves_own_datasets_and_limits_other_grants(
+def test_restricted_whitelist_takes_precedence_over_grants(
     defaults: list[str], workspace: list[str], overrides: dict[str, list[str]]
 ) -> None:
     visibility = DatasetVisibility(defaults, workspace, overrides, False, ["allowed"])
-    assert visibility.list_scope(rbac_enabled=True) == (["allowed"], True)
+    assert visibility.list_scope(rbac_enabled=True) == ["allowed"]
 
 
 @pytest.mark.parametrize(
     ("visibility", "expected"),
     [
-        (DatasetVisibility(default_permissions=["dataset.preview"]), (None, True)),
-        (DatasetVisibility(workspace_permissions=["dataset.acl.preview"]), (None, True)),
-        (DatasetVisibility(overrides={"a": ["dataset.preview"], "b": ["dataset.edit"]}), (["a"], True)),
-        (DatasetVisibility(workspace_permissions=["dataset.create_and_management"]), ([], True)),
-        (DatasetVisibility(unrestricted=False), ([], True)),
+        (DatasetVisibility(default_permissions=["dataset.preview"]), None),
+        (DatasetVisibility(workspace_permissions=["dataset.acl.preview"]), None),
+        (DatasetVisibility(overrides={"a": ["dataset.preview"], "b": ["dataset.edit"]}), ["a"]),
+        (DatasetVisibility(workspace_permissions=["dataset.create_and_management"]), []),
+        (DatasetVisibility(unrestricted=False), []),
     ],
 )
-def test_visibility_scope(visibility: DatasetVisibility, expected: tuple[list[str] | None, bool]) -> None:
+def test_visibility_scope(visibility: DatasetVisibility, expected: list[str] | None) -> None:
     assert visibility.list_scope(rbac_enabled=True) == expected
-    assert visibility.list_scope(rbac_enabled=False) == (None, False)
+    assert visibility.list_scope(rbac_enabled=False) is None
 
 
 def test_list_applies_visibility_and_reports_model_availability(
@@ -92,7 +92,7 @@ def test_list_applies_visibility_and_reports_model_availability(
     }
     operations.embedding_models.return_value = set()
     result = service.list_datasets(CONTEXT, DatasetListFilter(ids=["a"]))
-    operations.list_datasets.assert_called_once_with(CONTEXT, DatasetListFilter(ids=["a"]), ["a"], True)
+    operations.list_datasets.assert_called_once_with(CONTEXT, DatasetListFilter(ids=["a"]), ["a"])
     assert result["data"][0]["embedding_available"] is False
     assert result["data"][0]["permission_keys"] == ["dataset.edit"]
     assert result["data"][1]["embedding_available"] is True
