@@ -7,6 +7,7 @@ import type { AgentRosterNodeData } from '../../block-selector/types'
 import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
 import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
@@ -14,6 +15,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { InheritedTracingSummary } from '@/app/components/app/tracing/inherited-tracing-summary'
 import {
   createAgentOutputConfig,
   extractAgentOutputNames,
@@ -646,7 +648,17 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         onCancel={() => setEditingOutputFromTask(null)}
         onChange={handleDeclaredOutputsChange}
       />
-      <div className="border-b border-divider-subtle">
+      {inlineAgentResource && inlineAgent && (
+        <SaveInlineAgentToRosterDialog
+          resource={inlineAgentResource}
+          initialAgent={inlineAgent}
+          nodeId={id}
+          open={isSaveToRosterDialogOpen}
+          onOpenChange={setIsSaveToRosterDialogOpen}
+          onSaved={handleInlineSavedToRoster}
+        />
+      )}
+      <div className="divide-y divide-divider-subtle">
         <AgentRosterField
           agent={
             isInlineAgentWaitingForCreation || isInlineAgentLoadError ? undefined : displayedAgent
@@ -672,7 +684,6 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
                   resource={inlineAgentResource ?? undefined}
                   inlineComposerState={inlineComposerStateForPanel}
                   nodeId={id}
-                  onClose={() => handleAgentPanelOpenChange(false)}
                   onSaved={handleInlineAgentSaved}
                   onSaveInlineToRoster={
                     canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined
@@ -702,23 +713,14 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           onSaveInlineToRoster={canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined}
           onStartFromScratch={canStartFromScratch ? handleStartFromScratch : undefined}
         />
-        {inlineAgentResource && inlineAgent && (
-          <SaveInlineAgentToRosterDialog
-            resource={inlineAgentResource}
-            initialAgent={inlineAgent}
-            nodeId={id}
-            open={isSaveToRosterDialogOpen}
-            onOpenChange={setIsSaveToRosterDialogOpen}
-            onSaved={handleInlineSavedToRoster}
-          />
-        )}
-      </div>
-      <div
-        aria-disabled={isInlineAgentPending}
-        inert={isInlineAgentPending ? true : undefined}
-        className={isInlineAgentPending ? 'pointer-events-none' : undefined}
-      >
-        <div className="border-b border-divider-subtle">
+        <div
+          aria-disabled={isInlineAgentPending}
+          inert={isInlineAgentPending ? true : undefined}
+          className={cn(
+            'divide-y divide-divider-subtle',
+            isInlineAgentPending && 'pointer-events-none',
+          )}
+        >
           <AgentTaskField
             id={id}
             data={inputs}
@@ -727,9 +729,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onEditOutput={handleEditTaskOutput}
             onOutputsChange={handleDeclaredOutputsChange}
           />
-        </div>
-        <AgentOutputRoutes id={id} data={inputs} />
-        <div>
+          <AgentOutputRoutes id={id} data={inputs} />
           <AgentOutputVariables
             collapsed={isOutputVariablesCollapsed}
             outputs={declaredOutputs}
@@ -737,6 +737,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onChange={handleDeclaredOutputsChange}
           />
         </div>
+        {resource.kind === 'app' && (
+          <InheritedTracingSummary
+            resource={{ kind: 'app', appId: resource.appId, mode: resource.mode }}
+          />
+        )}
       </div>
     </div>
   )

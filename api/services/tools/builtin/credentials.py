@@ -1,7 +1,6 @@
 """Resolve builtin credentials with no transaction spanning plugin or cryptographic I/O."""
 
 import time
-from collections.abc import Mapping
 from typing import Any
 
 from configs import dify_config
@@ -18,16 +17,17 @@ from core.tools.utils.encryption import create_provider_encrypter
 from core.tools.utils.system_encryption import decrypt_system_params
 from core.tools.utils.uuid_utils import is_valid_uuid
 from models.provider_ids import ToolProviderID
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.tools.provider_queries import ToolProviders
 
 
 def resolve_oauth_client(
     *,
     providers: ToolProviders,
-    controller: BuiltinToolProviderController,
+    controller: PluginToolProviderController,
     tenant_id: str,
     provider_id: str,
-) -> Mapping[str, Any] | None:
+) -> PluginOAuthClientConfig | None:
     provider = ToolProviderID(provider_id)
     config = providers.oauth_client(
         tenant_id=tenant_id,
@@ -40,15 +40,18 @@ def resolve_oauth_client(
             config=[field.to_basic_provider_config() for field in controller.get_oauth_client_schema()],
             cache=NoOpProviderCredentialCache(),
         )
-        return encrypter.decrypt(config.tenant_params)
+        return PluginOAuthClientConfig(
+            controller.plugin_unique_identifier,
+            dict(encrypter.decrypt(config.tenant_params)),
+        )
     if config.system_params is None:
         return None
-    if isinstance(controller, PluginToolProviderController) and not PluginService.is_plugin_verified(
-        tenant_id,
-        controller.plugin_unique_identifier,
-    ):
+    if not PluginService.is_plugin_verified(tenant_id, controller.plugin_unique_identifier):
         return None
-    return decrypt_system_params(config.system_params)
+    return PluginOAuthClientConfig(
+        controller.plugin_unique_identifier,
+        dict(decrypt_system_params(config.system_params)),
+    )
 
 
 def resolve_builtin_credentials(
@@ -93,9 +96,21 @@ def resolve_builtin_credentials(
         return credentials, record.credential_type
 
     provider = ToolProviderID(provider_id)
-    system = resolve_oauth_client(
-        providers=providers, controller=controller, tenant_id=tenant_id, provider_id=provider_id
+    plugin_unique_identifier = (
+        controller.plugin_unique_identifier if isinstance(controller, PluginToolProviderController) else None
     )
+    system = (
+        resolve_oauth_client(
+            providers=providers,
+            controller=controller,
+            tenant_id=tenant_id,
+            provider_id=provider_id,
+        )
+        if isinstance(controller, PluginToolProviderController)
+        else None
+    )
+    if system is not None:
+        plugin_unique_identifier = system.plugin_unique_identifier
     try:
         refreshed = OAuthHandler().refresh_credentials(
             tenant_id=tenant_id,
@@ -103,8 +118,9 @@ def resolve_builtin_credentials(
             plugin_id=provider.plugin_id,
             provider=provider.provider_name,
             redirect_uri=f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback",
-            system_credentials=system or {},
+            system_credentials=dict(system.credentials) if system is not None else {},
             credentials=credentials,
+            plugin_unique_identifier=plugin_unique_identifier,
         )
     except Exception as exc:
         raise ToolProviderCredentialValidationError(

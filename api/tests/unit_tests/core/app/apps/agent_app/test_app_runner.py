@@ -56,6 +56,7 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueRetrieverResourcesEvent,
 )
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
@@ -70,7 +71,7 @@ from services.app.generation.adapters.agent_request_builder import (
 from services.app.generation.adapters.agent_runner import AgentAppRunner
 from services.app.generation.ports import MessageIdentity
 from services.workflow.execution.adapters.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
-from tests.unit_tests.model_factories import make_app, make_conversation
+from tests.helpers.unit.model_factories import make_app, make_conversation
 
 
 @pytest.fixture(autouse=True)
@@ -675,7 +676,7 @@ def _message_record() -> Message:
     message = Message(
         app_id="app-1",
         conversation_id="conv-1",
-        inputs={},
+        _inputs={},
         query="hello",
         message={},
         message_tokens=0,
@@ -785,16 +786,12 @@ def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_o
     assert store.saved
 
 
-def test_successful_turn_persists_usage_without_a_queue_consumer(
-    sqlite_session: Session, *, app_records
-) -> None:
+def test_successful_turn_persists_usage_without_a_queue_consumer(sqlite_session: Session, *, app_records) -> None:
     sqlite_session.merge(_message_record())
     sqlite_session.commit()
 
     _run(
-        _runner(
-            _StreamingFakeAgentBackendRunClient(), _FakeSessionStore(), app_records=app_records
-        ),
+        _runner(_StreamingFakeAgentBackendRunClient(), _FakeSessionStore(), app_records=app_records),
         _FakeQueueManager(),
     )
 
@@ -808,9 +805,7 @@ def test_successful_turn_persists_usage_without_a_queue_consumer(
     assert json.loads(message.message_metadata)["usage"]["total_tokens"] == 8
 
 
-def test_successful_turn_routes_single_agent_message_delta(
-    sqlite_session: Session, *, app_records
-) -> None:
+def test_successful_turn_routes_single_agent_message_delta(sqlite_session: Session, *, app_records) -> None:
     client = _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
@@ -828,9 +823,7 @@ def test_successful_turn_routes_single_agent_message_delta(
     assert rows == []
 
 
-def test_thought_commit_failure_rolls_back_and_turn_continues(
-    sqlite_session: Session, *, app_records
-) -> None:
+def test_thought_commit_failure_rolls_back_and_turn_continues(sqlite_session: Session, *, app_records) -> None:
     rollback_events: list[Session] = []
     should_fail = True
 
@@ -861,9 +854,7 @@ def test_thought_commit_failure_rolls_back_and_turn_continues(
     assert _llm_result(qm).message.content == "hello agent"
 
 
-def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_literal_null(
-    *, app_records
-) -> None:
+def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_literal_null(*, app_records) -> None:
     client = _NullOutputFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
@@ -900,9 +891,7 @@ def test_successful_turn_with_stream_text_and_null_terminal_output_keeps_empty_m
     assert rows[0].answer == "streamed answer"
 
 
-def test_successful_turn_routes_agent_answer_to_agent_message(
-    sqlite_session: Session, *, app_records
-) -> None:
+def test_successful_turn_routes_agent_answer_to_agent_message(sqlite_session: Session, *, app_records) -> None:
     client = _AgentAnswerStreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
@@ -944,9 +933,7 @@ def test_agent_message_deltas_are_debounced_to_agent_message(
     assert rows == []
 
 
-def test_successful_turn_persists_thinking_and_tool_process_events(
-    sqlite_session: Session, *, app_records
-) -> None:
+def test_successful_turn_persists_thinking_and_tool_process_events(sqlite_session: Session, *, app_records) -> None:
     client = _ProcessStreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
@@ -969,9 +956,7 @@ def test_successful_turn_persists_thinking_and_tool_process_events(
     assert len(rows) == 2
 
 
-def test_streaming_turn_cancels_after_persisting_seen_agent_answer(
-    sqlite_session: Session, *, app_records
-) -> None:
+def test_streaming_turn_cancels_after_persisting_seen_agent_answer(sqlite_session: Session, *, app_records) -> None:
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
     client = _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(queue_manager=qm)
@@ -1032,6 +1017,43 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(sqlite_se
     assert rows[1].tool == ""
     assert rows[1].tool_input == ""
     assert rows[1].observation == "Knowledge base search results: browser skill"
+
+
+def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Session, *, app_records) -> None:
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        records=app_records,
+        conversation_id="conv-1",
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    receipt = {
+        "id": "kfs_" + "a" * 32,
+        "control_space_id": "00000000-0000-4000-8000-000000000001",
+        "space_name": "Docs",
+        "node_id": "node",
+        "document_asset_id": "doc",
+        "artifact_hash": "hash",
+        "document_title": "manual.pdf",
+        "document_version": 2,
+    }
+    part = ToolReturnPart(
+        tool_name="shell_run",
+        tool_call_id="shell-call-1",
+        content={"knowledge_results": [{"data": {"receipt_id": receipt["id"], "text": "evidence"}}]},
+        metadata={"knowledge_fs_citations": [receipt]},
+    )
+    event = PydanticAIStreamRunEvent(run_id="run-1", data=FunctionToolResultEvent(part=part))
+    internal = AgentBackendStreamInternalEvent(run_id="run-1", data=event.model_dump(mode="json")["data"])
+    recorder.handle_stream_event(internal)
+    recorder.handle_stream_event(internal)
+    sources = [event for event in qm.events if isinstance(event, QueueRetrieverResourcesEvent)]
+    assert len(sources) == 1
+    assert sources[0].retriever_resources[0].document_name == "manual.pdf"
+    assert sources[0].retriever_resources[0].knowledge_fs_citation.id == receipt["id"]
+    assert sources[0].retriever_resources[0].content == "evidence"
+    assert _thought_rows(sqlite_session)[0].tool == "shell_run"
 
 
 def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session, *, app_records) -> None:
@@ -1428,9 +1450,7 @@ def test_failed_run_persists_partial_usage(sqlite_session: Session, *, app_recor
 
 
 def test_partial_usage_persistence_ignores_missing_message(app_records) -> None:
-    _runner(
-        FakeAgentBackendRunClient(), _FakeSessionStore(), app_records=app_records
-    )._persist_message_usage(
+    _runner(FakeAgentBackendRunClient(), _FakeSessionStore(), app_records=app_records)._persist_message_usage(
         identity=MessageIdentity("tenant-1", "app-1", "conv-1", "missing"),
         usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
     )
@@ -1445,9 +1465,7 @@ def test_partial_usage_persistence_recovers_invalid_metadata(
     sqlite_session.merge(message)
     sqlite_session.commit()
 
-    _runner(
-        FakeAgentBackendRunClient(), _FakeSessionStore(), app_records=app_records
-    )._persist_message_usage(
+    _runner(FakeAgentBackendRunClient(), _FakeSessionStore(), app_records=app_records)._persist_message_usage(
         identity=MessageIdentity("tenant-1", "app-1", "conv-1", message.id),
         usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
     )
@@ -1459,9 +1477,7 @@ def test_partial_usage_persistence_recovers_invalid_metadata(
     assert json.loads(persisted.message_metadata)["usage"]["total_tokens"] == 3
 
 
-def test_partial_usage_persistence_rolls_back_database_error(
-    app_records, sqlite_session: Session
-) -> None:
+def test_partial_usage_persistence_rolls_back_database_error(app_records, sqlite_session: Session) -> None:
     engine = sqlite_session.get_bind()
 
     def fail(_conn, _cursor, statement, _params, _ctx, _many):
@@ -1470,9 +1486,7 @@ def test_partial_usage_persistence_rolls_back_database_error(
 
     event.listen(engine, "before_cursor_execute", fail)
     try:
-        _runner(
-            FakeAgentBackendRunClient(), _FakeSessionStore(), app_records=app_records
-        )._persist_message_usage(
+        _runner(FakeAgentBackendRunClient(), _FakeSessionStore(), app_records=app_records)._persist_message_usage(
             identity=MessageIdentity("tenant-1", "app-1", "conv-1", "msg-1"),
             usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
         )

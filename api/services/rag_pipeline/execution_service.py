@@ -330,12 +330,10 @@ class RagPipelineExecutionService:
                         yield online_drive_event.model_dump()
                 case DatasourceProviderType.WEBSITE_CRAWL:
                     datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
-                    website_crawl_result: Generator[WebsiteCrawlMessage] = (
-                        datasource_runtime.get_website_crawl(
-                            user_id=account.id,
-                            datasource_parameters=variables_map,
-                            provider_type=datasource_runtime.datasource_provider_type(),
-                        )
+                    website_crawl_result: Generator[WebsiteCrawlMessage] = datasource_runtime.get_website_crawl(
+                        user_id=account.id,
+                        datasource_parameters=variables_map,
+                        provider_type=datasource_runtime.datasource_provider_type(),
                     )
                     start_time = time.time()
                     try:

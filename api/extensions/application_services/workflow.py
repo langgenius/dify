@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -33,6 +33,9 @@ from services.workflow.execution.ports import (
     WorkflowExecutionLogs,
     WorkflowToolInvoker,
 )
+
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
 
 
 class _SessionBoundWorkflowToolInvoker(WorkflowToolInvoker):

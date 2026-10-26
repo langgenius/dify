@@ -65,14 +65,14 @@ const OptionCard = <T,>({
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         className={cn(
-          'relative flex w-full cursor-pointer rounded-t-xl border-0 bg-transparent p-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          'relative flex w-full cursor-pointer rounded-t-xl border-0 bg-transparent p-2 text-start outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
           className,
         )}
       >
         {effectColor && showEffectColor && (
           <span
             className={cn(
-              'absolute -top-0.5 -left-0.5 h-14 w-14 rounded-full blur-[80px]',
+              'absolute -inset-s-0.5 -top-0.5 h-14 w-14 rounded-full blur-[80px]',
               `${HEADER_EFFECT_MAP[effectColor]}`,
             )}
           />
@@ -116,7 +116,7 @@ const OptionCard = <T,>({
         >
           <span
             aria-hidden
-            className="absolute -top-2.75 left-3.5 i-custom-vender-knowledge-arrow-shape size-4 text-components-panel-bg"
+            className="absolute inset-s-3.5 -top-2.75 i-custom-vender-knowledge-arrow-shape size-4 text-components-panel-bg"
           />
           {children}
         </div>

@@ -293,3 +293,38 @@ def test_platform_fastapi_instrumentation_omits_parsed_argument_payloads() -> No
         assert "fastapi.arguments.errors" not in serialized
     finally:
         client.shutdown(timeout_millis=5000)
+
+
+def test_platform_fastapi_instrumentation_accepts_unsampled_request_bodies() -> None:
+    exporter = InMemorySpanExporter()
+    client = logfire.configure(
+        local=True,
+        send_to_logfire=False,
+        console=False,
+        metrics=False,
+        inspect_arguments=False,
+        additional_span_processors=[SimpleSpanProcessor(exporter)],
+    )
+    app = FastAPI()
+
+    @app.post("/echo")
+    def echo(payload: _SmokePayload) -> dict[str, str]:
+        return {"text": payload.text}
+
+    try:
+        with client.instrument_fastapi(
+            app,
+            request_attributes_mapper=observability._platform_request_attributes,
+            capture_headers=False,
+            tracer_provider=IsolatedTracerProvider(client, preserve_external_parent=True),
+        ):
+            with TestClient(app) as http:
+                headers = {"traceparent": "00-0000000000000000000000000000abcd-0000000000001234-00"}
+                response = http.post("/echo", json={"text": "unsampled-body", "count": 1}, headers=headers)
+                assert response.status_code == 200
+                assert response.json() == {"text": "unsampled-body"}
+                assert http.post("/echo", json={"text": "invalid", "count": "x"}, headers=headers).status_code == 422
+        assert client.force_flush(timeout_millis=10000)
+        assert not exporter.get_finished_spans()
+    finally:
+        client.shutdown(timeout_millis=5000)
