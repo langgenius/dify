@@ -408,14 +408,14 @@ function CreateKnowledgeSession() {
             size="lg"
             variant="ghost"
             aria-label={tCommon(($) => $['operation.close'])}
-            className="absolute top-3 right-3 z-10 bg-background-section-burn"
+            className="absolute inset-e-3 top-3 z-10 bg-background-section-burn"
             onClick={requestClose}
             disabled={submissionPending}
           >
             <span aria-hidden className="i-ri-close-line size-5" />
           </IconButton>
 
-          <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle xl:items-end xl:border-r">
+          <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle xl:items-end xl:border-e">
             <div className="min-h-6 w-full max-w-180 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
             <Form
               className="flex max-h-full min-h-0 w-full max-w-180 flex-col"
@@ -444,7 +444,7 @@ function CreateKnowledgeSession() {
                   >
                     <FieldLabel>
                       {t(($) => $.name)}
-                      <span aria-hidden className="ml-0.5 text-text-destructive">
+                      <span aria-hidden className="ms-0.5 text-text-destructive">
                         *
                       </span>
                     </FieldLabel>
@@ -604,17 +604,19 @@ function CreateKnowledgeSession() {
               </div>
 
               <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10">
-                {startMode === 'upload' && (
+                <div
+                  aria-hidden={startMode !== 'upload'}
+                  className={startMode === 'upload' ? 'mb-4' : 'invisible mb-4'}
+                >
                   <ModelCostNotice
                     id={modelCostNoticeId}
-                    className="mb-4"
                     summary={
                       validUploads.length > 0 &&
                       t(($) => $['modelCost.uploadSummary'], { count: validUploads.length })
                     }
                     description={t(($) => $['modelCost.uploadDescription'])}
                   />
-                )}
+                </div>
                 <div className="flex justify-end gap-2">
                   <Button type="button" disabled={submissionPending} onClick={requestClose}>
                     {tCommon(($) => $['operation.cancel'])}
