@@ -12,8 +12,9 @@ from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
-from models import WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from models import WorkflowRun, WorkflowRunTriggeredFrom
 from models.enums import CreatorUserRole
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunMessageRef, WorkflowRunPauseRecord
 from services import workflow_run_service as service_module
 from services.workflow_node_execution_trace_service import WorkflowNodeExecutionTrace
@@ -51,7 +52,7 @@ def _workflow_run(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType.CHAT,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         graph="{}",

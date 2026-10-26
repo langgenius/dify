@@ -33,6 +33,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import RecipientType
 from models.model import App, AppMode
 from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.enterprise.rbac_service import RBACService
 from services.entities.app_entities import AppAgentBinding
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -66,12 +67,12 @@ def _workflow_run(
     created_by: str = "user-1",
     finished_at: datetime | None = None,
 ) -> WorkflowRun:
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id="run-1",
         tenant_id="t1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         version="draft",
         graph="{}",
@@ -79,9 +80,10 @@ def _workflow_run(
         status=WorkflowExecutionStatus.SUCCEEDED if finished_at else WorkflowExecutionStatus.RUNNING,
         created_by_role=created_by_role,
         created_by=created_by,
-        created_at=datetime(2024, 1, 1, tzinfo=UTC),
         finished_at=finished_at,
     )
+    workflow_run.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    return workflow_run
 
 
 def test_jsonify_form_definition() -> None:

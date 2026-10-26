@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 from core.app.apps.base_app_generator import BaseAppGenerator
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from models import CreatorUserRole, Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
+from models import CreatorUserRole, Workflow, WorkflowRun, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 
 
 def _workflow_run(*, graph: str | None) -> WorkflowRun:
@@ -17,7 +18,7 @@ def _workflow_run(*, graph: str | None) -> WorkflowRun:
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType.CHAT,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         graph=graph,
