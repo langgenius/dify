@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from inspect import unwrap
-from typing import NoReturn
+from typing import NoReturn, TypedDict, Unpack
 from unittest.mock import Mock
 
 import pytest
@@ -32,17 +32,25 @@ def _account(account_id: str = "account-1") -> Account:
     )
 
 
-def _snippet(**overrides: object) -> CustomizedSnippet:
-    data: dict[str, object] = {
-        "id": "snippet-1",
-        "tenant_id": "tenant-1",
-        "name": "Snippet",
-        "description": "Description",
-        "type": "node",
-        "created_by": "account-1",
-    }
-    data.update(overrides)
-    return CustomizedSnippet(**data)
+class _SnippetOverrides(TypedDict, total=False):
+    is_published: bool
+    input_fields: str | None
+
+
+def _snippet(**overrides: Unpack[_SnippetOverrides]) -> CustomizedSnippet:
+    snippet = CustomizedSnippet(
+        id="snippet-1",
+        tenant_id="tenant-1",
+        name="Snippet",
+        description="Description",
+        type="node",
+        created_by="account-1",
+    )
+    if "is_published" in overrides:
+        snippet.is_published = overrides["is_published"]
+    if "input_fields" in overrides:
+        snippet.input_fields = overrides["input_fields"]
+    return snippet
 
 
 def _workflow(**overrides: object) -> Workflow:

@@ -50,7 +50,7 @@ def test_node_binding_resolution_uses_injected_database_through_nested_factories
     from enums import DeploymentEdition
     from extensions.ext_application_services import build_application_services
     from extensions.ext_redis import RedisClientWrapper
-    from graphon.runtime import GraphRuntimeState, VariablePool
+    from graphon.runtime import RuntimeState, VariablePool
     from models.base import TypeBase
     from services.workflow.execution.adapters.agent_v2.agent_node import DifyAgentNode
     from services.workflow.execution.adapters.node_factory import DifyGraphInitContext, DifyNodeFactory
@@ -109,11 +109,13 @@ def test_node_binding_resolution_uses_injected_database_through_nested_factories
         with app.app_context():
             factory = DifyNodeFactory.from_graph_init_context(
                 graph_init_context=context,
-                graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0),
+                runtime_state=RuntimeState(workflow_id=ids["workflow_id"], variable_pool=VariablePool(), start_at=0),
                 agent_binding_resolver=resolver,
                 workflow_runtime=services.workflow_runtime,
             )
-            nested = factory.with_runtime_state(GraphRuntimeState(variable_pool=VariablePool(), start_at=0))
+            nested = factory.with_runtime_state(
+                RuntimeState(workflow_id=ids["workflow_id"], variable_pool=VariablePool(), start_at=0)
+            )
             for owner in (factory, nested):
                 node = owner.create_node(
                     {"id": ids["node_id"], "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"}}

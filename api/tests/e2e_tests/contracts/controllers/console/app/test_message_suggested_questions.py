@@ -45,6 +45,8 @@ from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from repositories.message_repository import MessageRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.tools.provider_repository import ToolProviderRepository
+from repositories.tools.workflow_repository import WorkflowToolRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.app.agent_app_service import AgentAppAccessService
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
@@ -194,6 +196,8 @@ def harness(
             sources=DatabaseRecommendedAppCatalogRepository(sqlite_session_factory, redis=redis),
             exporter=RosterAgentPackageExporter(),
         ),
+        tool_providers=ToolProviderRepository(sqlite_session_factory),
+        workflow_queries=WorkflowToolRepository(sqlite_session_factory),
     )
     flask_app = Flask(__name__)
     flask_app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
