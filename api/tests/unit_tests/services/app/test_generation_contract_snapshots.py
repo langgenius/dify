@@ -14,7 +14,7 @@ from services.app.generation.ports import (
     StoredWorkflowSnapshot,
     WorkflowSnapshot,
 )
-from tests.unit_tests.model_factories import make_app, make_conversation, make_message, make_workflow
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_message, make_workflow
 
 
 def test_generation_snapshots_remain_usable_after_session_close_and_source_mutation(

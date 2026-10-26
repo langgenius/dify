@@ -8,7 +8,7 @@ import { isEqual } from 'es-toolkit/predicate'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
-import SnippetInfoDropdown from '@/app/components/app-sidebar/snippet-info/dropdown'
+import SnippetInfoMenu from '@/app/components/app-sidebar/snippet-info/actions-menu'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import VarList from '@/app/components/workflow/nodes/start/components/var-list'
@@ -120,7 +120,7 @@ export const SnippetSidebarContent = ({
               {snippet.name}
             </div>
           </div>
-          <SnippetInfoDropdown snippet={snippet} />
+          <SnippetInfoMenu snippet={snippet} />
         </div>
         {!!snippet.description && (
           <div

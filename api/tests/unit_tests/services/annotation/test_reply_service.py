@@ -20,10 +20,10 @@ from repositories.annotation.reply_repository import AnnotationReplyRepository
 from services.annotation import retrieval_gateway
 from services.annotation.reply_service import AnnotationReplyService
 from services.annotation.retrieval_gateway import AnnotationVectorRetrieval
-from tests.unit_tests.core.app.apps.advanced_chat.test_app_runner_input_moderation import (
+from tests.helpers.unit.model_factories import make_app, make_message
+from tests.unit_tests.core.app.apps.advanced_chat.test_app_runner import (
     build_runner as _runner_fixture,
 )
-from tests.unit_tests.model_factories import make_app, make_message
 
 build_runner = _runner_fixture
 

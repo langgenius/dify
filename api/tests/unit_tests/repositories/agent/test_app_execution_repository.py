@@ -6,6 +6,7 @@ from typing import Literal
 import pytest
 from sqlalchemy import delete
 from sqlalchemy.orm import Session, sessionmaker
+from tests.unit_tests.model_factories import make_conversation
 
 from core.agent.workspace import AgentWorkspaceBindingGenerationMismatchError
 from models.agent import (
@@ -29,7 +30,6 @@ from models.enums import ConversationFromSource
 from repositories.agent.app_execution_repository import AgentAppExecutionRepository
 from services.app.generation.agent_config import AgentAppConfiguration
 from services.app.generation.errors import AgentAppGeneratorError, AgentAppNotPublishedError
-from tests.unit_tests.model_factories import make_conversation
 
 
 def soul(prompt: str = "Published") -> AgentSoulConfig:

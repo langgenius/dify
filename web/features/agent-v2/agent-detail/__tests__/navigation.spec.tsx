@@ -1,9 +1,10 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
@@ -162,8 +163,10 @@ describe('AgentDetailSection', () => {
     })
   })
 
-  it('returns to the roster after deleting the current agent', async () => {
+  it('keeps confirmation open while deleting and returns to the roster only after success', async () => {
     const user = userEvent.setup()
+    const pending = createDeferred<void>()
+    mocks.deleteAgent.mockReturnValueOnce(pending.promise)
     renderAgentDetailSection()
 
     await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
@@ -172,8 +175,14 @@ describe('AgentDetailSection', () => {
     const dialog = await screen.findByRole('alertdialog', {
       name: /agentRoster\.roster\.deleteDialog\.title/,
     })
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
 
+    await waitFor(() => expect(mocks.deleteAgent).toHaveBeenCalledOnce())
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    expect(mocks.replace).not.toHaveBeenCalled()
+    await act(async () => pending.resolve())
     await waitFor(() => {
       expect(mocks.replace).toHaveBeenCalledWith('/agents')
     })
@@ -195,11 +204,12 @@ describe('AgentDetailSection', () => {
     const dialog = await screen.findByRole('alertdialog', {
       name: /agentRoster\.roster\.deleteDialog\.title/,
     })
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
 
-    await waitFor(() => {
-      expect(mocks.deleteAgent).toHaveBeenCalled()
-    })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'agentRoster.roster.deleteFailed',
+    )
     expect(mocks.replace).not.toHaveBeenCalled()
     expect(dialog).toBeInTheDocument()
   })

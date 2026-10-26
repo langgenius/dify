@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { render, screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { httpErrorFromResponse } from '@/service/http-error'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 
 const mocks = vi.hoisted(() => ({
   queryClient: undefined as QueryClient | undefined,
@@ -22,7 +23,7 @@ vi.mock('@/next/headers', () => ({ headers: () => mocks.headers() }))
 vi.mock('@/next/navigation', () => ({ redirect: (url: string) => mocks.redirect(url) }))
 vi.mock('@/features/account-profile/server', () => ({
   serverUserProfileQueryOptions: () => ({
-    queryKey: ['common', 'user-profile'],
+    queryKey: consoleQueryKey('account.profile.get'),
     queryFn: mocks.profile,
     retry: false,
   }),
@@ -100,7 +101,7 @@ it('hydrates the profile, workspace, permissions and feature data', async () => 
   render(<QueryClientProvider client={client}>{element}</QueryClientProvider>)
 
   expect(screen.getByText('Common shell')).toBeInTheDocument()
-  expect(client.getQueryData(['common', 'user-profile'])).toMatchObject({
+  expect(client.getQueryData(consoleQueryKey('account.profile.get'))).toMatchObject({
     profile: { id: 'account-id' },
   })
   expect(client.getQueryData(keys.workspace)).toMatchObject({ id: 'workspace-id' })

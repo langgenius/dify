@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { ALL_PLANS } from '@/app/components/billing/config'
 import { CloudPlanItem } from '@/app/components/billing/pricing/plans/cloud-plan-item'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createDeferred } from '@/test/deferred'
@@ -48,7 +48,7 @@ const renderPlan = ({
   const { wrapper } = createConsoleQueryWrapper()
   return render(
     <>
-      <AppToastHost timeout={0} />
+      <AppToaster timeout={0} />
       <CloudPlanItem
         plan={plan}
         billingInterval={billingInterval}
