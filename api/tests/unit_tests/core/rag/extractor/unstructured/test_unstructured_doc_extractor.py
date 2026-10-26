@@ -7,7 +7,6 @@ import types
 import pytest
 from unstructured.documents.elements import ElementMetadata, Text
 
-import core.rag.extractor.unstructured.unstructured_epub_extractor as epub_module
 from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
 from core.rag.extractor.unstructured.unstructured_eml_extractor import UnstructuredEmailExtractor
 from core.rag.extractor.unstructured.unstructured_epub_extractor import UnstructuredEpubExtractor
@@ -159,23 +158,19 @@ class TestUnstructuredEmailAndEpub:
     def test_epub_extractor_local_and_api(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _install_chunk_by_title(monkeypatch, [Text(text="epub-doc")])
 
-        calls = {"download": 0, "partition": 0}
+        calls = {"partition": 0}
 
-        def fake_download_pandoc() -> None:
-            calls["download"] += 1
-
-        def partition_epub(filename: str, xml_keep_tags: bool) -> list[Text]:
+        def partition_epub(file_path: str) -> list[Text]:
             calls["partition"] += 1
-            assert xml_keep_tags is True
+            assert file_path == "/tmp/file.epub"
             return [Text(text="x")]
 
-        monkeypatch.setattr(epub_module.pypandoc, "download_pandoc", fake_download_pandoc)
-        _register_module(monkeypatch, "unstructured.partition.epub", partition_epub=partition_epub)
+        _register_module(monkeypatch, "libs.epub", partition_epub=partition_epub)
 
         docs = UnstructuredEpubExtractor("/tmp/file.epub").extract()
 
         assert docs[0].page_content == "epub-doc"
-        assert calls == {"download": 1, "partition": 1}
+        assert calls == {"partition": 1}
 
         _register_module(
             monkeypatch,
@@ -185,6 +180,7 @@ class TestUnstructuredEmailAndEpub:
 
         docs = UnstructuredEpubExtractor("/tmp/file.epub", api_url="https://u", api_key="k").extract()
         assert docs[0].page_content == "epub-doc"
+        assert calls == {"partition": 1}
 
 
 class TestUnstructuredPPTAndPPTX:
