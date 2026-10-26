@@ -6569,11 +6569,6 @@
       "count": 2
     }
   },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/common/configurable-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/common/section.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -7136,9 +7131,6 @@
     }
   },
   "web/features/tag-management/components/tag-item-editor.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    },
     "jsx-a11y/no-autofocus": {
       "count": 1
     }

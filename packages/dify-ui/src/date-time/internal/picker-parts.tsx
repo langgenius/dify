@@ -38,7 +38,7 @@ import { IconButton } from '../../icon-button'
 import { formLabelClassName } from '../../internal/form-control'
 import { resolveClassName } from '../../internal/resolve-class-name'
 import { mergeProps } from '../../merge-props'
-import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '../../popover'
 import { useMergedRefs } from '../../use-merged-refs'
 import { arePickerValuesEqual } from './use-picker-value'
 
@@ -206,7 +206,9 @@ function PickerRoot({
     field.validation.change(value, resetVersion !== handledResetVersionRef.current)
   })
 
+  const blurTimeout = useTimeout()
   const focus = useStableCallback((element: HTMLElement) => {
+    blurTimeout.clear()
     if (disabled || element.matches(':disabled')) return
     focusedPartRef.current = element
     field.focusOwnerRef.current = triggerRef
@@ -223,13 +225,25 @@ function PickerRoot({
     if (
       contains(triggerRef.current, nextTarget) ||
       contains(clearRef.current, nextTarget) ||
-      contains(popupRef.current, nextTarget)
+      contains(popupRef.current, nextTarget) ||
+      (nextTarget?.hasAttribute('data-base-ui-focus-guard') &&
+        nextTarget.parentElement === popupRef.current?.parentElement)
     )
       return
     if (field.focusOwnerRef.current !== triggerRef) return
-    releaseFocus()
-    field.setTouched(true)
-    if (field.validationMode === 'onBlur') field.validation.commit(value)
+    // Closing popovers can briefly restore trigger focus before the outside target receives it.
+    blurTimeout.start(0, () => {
+      const target = activeElement(ownerDocument(inputRef.current))
+      if (
+        contains(triggerRef.current, target) ||
+        contains(clearRef.current, target) ||
+        contains(popupRef.current, target)
+      )
+        return
+      releaseFocus()
+      field.setTouched(true)
+      if (field.validationMode === 'onBlur') field.validation.commit(value)
+    })
   })
   React.useLayoutEffect(() => {
     if (disabled || inputRef.current?.matches(':disabled')) releaseFocus()
@@ -348,6 +362,7 @@ function PickerRoot({
         }}
       />
       <Popover
+        modal="trap-focus"
         open={props.open}
         defaultOpen={props.defaultOpen}
         onOpenChange={(open, details) => {
@@ -607,12 +622,13 @@ function PickerClear({ onClick, disabled, ref, ...props }: PickerClearProps) {
 type PickerContentProps = Omit<PopoverContentProps, 'children' | 'initialFocus' | 'render'>
 function PickerContent({
   children,
+  closeLabel,
   ref,
   className,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
   ...props
-}: PickerContentProps & { children: React.ReactNode }) {
+}: PickerContentProps & { children: React.ReactNode; closeLabel: string }) {
   const { labelId, popupRef, focus, blur } = usePickerContext()
   const focusRef = usePickerFocusRef(popupRef)
   const mergedRef = useMergedRefs(popupRef, ref, focusRef)
@@ -644,7 +660,18 @@ function PickerContent({
         popupRef.current?.querySelector<HTMLElement>('button:not(:disabled)') ??
         true
       }
-      render={(popupProps, state) => <div {...popupProps}>{state.open ? children : null}</div>}
+      render={(popupProps, state) => (
+        <div {...popupProps}>
+          {state.open && (
+            <React.Fragment>
+              {children}
+              <PopoverClose style={visuallyHidden} tabIndex={-1}>
+                {closeLabel}
+              </PopoverClose>
+            </React.Fragment>
+          )}
+        </div>
+      )}
     >
       {children}
     </PopoverContent>
