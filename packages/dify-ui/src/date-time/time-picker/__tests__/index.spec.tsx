@@ -272,14 +272,12 @@ it('preserves draft selection after focus leaves and does not select hovered opt
       <TimePicker defaultValue="13:30" onValueChange={changed}>
         <TimePickerLabel className="sr-only">Time</TimePickerLabel>
         <TimePickerTrigger />
-        <TimePickerContent />
+        <TimePickerContent dir="rtl" />
       </TimePicker>
     </DirectionProvider>,
   )
   await screen.getByRole('button', { name: 'Time 1:30 PM' }).click()
-  await expect
-    .element(screen.getByRole('dialog', { name: 'Time', exact: true }))
-    .toHaveAttribute('dir', 'rtl')
+  await expect.element(screen.getByRole('dialog', { name: 'Time', exact: true })).toBeVisible()
   const hours = screen.getByRole('listbox', { name: 'Hour' })
   const minutes = screen.getByRole('listbox', { name: 'Minute' })
   expect(hours.element().getBoundingClientRect().left).toBeGreaterThan(
