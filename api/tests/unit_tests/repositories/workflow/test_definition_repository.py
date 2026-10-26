@@ -77,6 +77,23 @@ from tests.helpers.unit.model_factories import make_account, make_app, make_tena
 CONTEXT = RequestContext("request", None, "account-1", "tenant-1")
 
 
+def _ignore_knowledge_space_sync(
+    *,
+    session: Session,
+    session_maker: sessionmaker[Session],
+    workflow: WorkflowSnapshot,
+) -> None:
+    del session, session_maker, workflow
+
+
+def publication_repository(sessions: sessionmaker[Session]) -> WorkflowDefinitionRepository:
+    """Compose a repository for publication tests that do not exercise KnowledgeFS."""
+    return WorkflowDefinitionRepository(
+        session_factory=sessions,
+        publication_knowledge_spaces=_ignore_knowledge_space_sync,
+    )
+
+
 @pytest.mark.parametrize("kind", ["tool", "agent", "llm"])
 @pytest.mark.parametrize("denied", [False, True])
 def test_publication_credential_policy_runs_after_read_transactions_close(
@@ -135,7 +152,7 @@ def test_publication_credential_policy_runs_after_read_transactions_close(
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=workflows,
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -174,7 +191,7 @@ def seeded(sqlite_session_factory: sessionmaker[Session]) -> sessionmaker[Sessio
 
 @pytest.fixture
 def repository(seeded: sessionmaker[Session]) -> WorkflowDefinitionRepository:
-    return WorkflowDefinitionRepository(session_factory=seeded)
+    return publication_repository(seeded)
 
 
 def test_published_result_is_complete_after_session_closes(repository: WorkflowDefinitionRepository) -> None:
@@ -297,7 +314,7 @@ def test_publication_copies_secret_ciphertext_without_key_io_under_locks(
         app.mode = AppMode.ADVANCED_CHAT
     workflows = WorkflowService(seeded)
     monkeypatch.setattr(workflows, "validate_graph_structure", lambda **_kwargs: None)
-    definitions = WorkflowDefinitionRepository(session_factory=seeded)
+    definitions = publication_repository(seeded)
     service = application(
         build_workflow_definition_gateway(seeded, definitions, workflows, drafts=WorkflowDraftRepository(seeded))
     )
@@ -376,7 +393,7 @@ def test_draft_secret_preparation_releases_sessions_and_rechecks_snapshot(
     workflows = WorkflowService(seeded)
     monkeypatch.setattr(workflows, "validate_graph_structure", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(workflows, "validate_features_structure", lambda *_args: None)
-    definitions = WorkflowDefinitionRepository(session_factory=seeded)
+    definitions = publication_repository(seeded)
     service = application(
         build_workflow_definition_gateway(seeded, definitions, workflows, drafts=WorkflowDraftRepository(seeded))
     )
@@ -526,7 +543,7 @@ def test_workflow_and_bindings_delete_atomically_before_agent_retirement(
                 ("roster", WorkflowAgentBindingType.ROSTER_AGENT, "roster-agent"),
             ]
         )
-    definitions = WorkflowDefinitionRepository(session_factory=seeded)
+    definitions = publication_repository(seeded)
     service = application(
         build_workflow_definition_gateway(
             seeded, definitions, WorkflowService(seeded), drafts=WorkflowDraftRepository(seeded)
@@ -620,7 +637,7 @@ def test_draft_projection_does_not_mutate_persisted_graph(
         "project_draft_bindings_to_graph",
         lambda _self, **_kwargs: {"nodes": [{"id": "projected"}]},
     )
-    repository = WorkflowDefinitionRepository(session_factory=seeded)
+    repository = publication_repository(seeded)
     with repository.draft(CONTEXT, "app-1") as draft:
         assert draft is not None
         projected = WorkflowAgentPublishService(repository=draft.bindings).project_draft_bindings_to_graph(
@@ -679,7 +696,7 @@ def test_publication_and_app_pointer_commit_atomically(seeded: sessionmaker[Sess
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -745,7 +762,7 @@ def test_sync_prepares_patch_without_replacing_server_environment(seeded: sessio
         WorkflowDefinitionGateway(
             session_factory=seeded,
             drafts=WorkflowDraftRepository(seeded),
-            definitions=WorkflowDefinitionRepository(session_factory=seeded),
+            definitions=publication_repository(seeded),
             workflows=WorkflowService(session_maker=seeded),
             credentials=CredentialQueryRepository(session_factory=seeded),
             skills=create_autospec(AgentSkillReader, instance=True),
@@ -760,7 +777,7 @@ def test_sync_prepares_patch_without_replacing_server_environment(seeded: sessio
         WorkflowDefinitionGateway(
             session_factory=seeded,
             drafts=WorkflowDraftRepository(seeded),
-            definitions=WorkflowDefinitionRepository(session_factory=seeded),
+            definitions=publication_repository(seeded),
             workflows=WorkflowService(session_maker=seeded),
             credentials=CredentialQueryRepository(session_factory=seeded),
             skills=create_autospec(AgentSkillReader, instance=True),
@@ -789,11 +806,11 @@ def test_app_maintainers_reuses_tenant_scoped_app_repository(seeded: sessionmake
 def test_use_case_notifies_only_after_real_transaction_commits(
     seeded: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, operation: str, fail_commit: bool
 ) -> None:
-    repository = WorkflowDefinitionRepository(session_factory=seeded)
+    repository = publication_repository(seeded)
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -937,7 +954,7 @@ def test_publish_rejects_revision_modified_after_validation(seeded: sessionmaker
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -972,7 +989,7 @@ def test_trigger_limit_rejects_publish_before_version_or_pointer_changes(
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -993,7 +1010,7 @@ def test_publication_versions_increase_without_reusing_deleted_version(seeded: s
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -1087,7 +1104,7 @@ def test_publication_retains_blocking_domain_validations(
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -1119,7 +1136,7 @@ def test_restore_preserves_historical_features_without_normalizing_persisted_sou
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -1147,7 +1164,7 @@ def test_publication_serializes_on_app_and_closes_the_transaction(
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -1183,7 +1200,7 @@ def test_migration_uses_the_same_atomic_publication_boundary(
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -1286,7 +1303,7 @@ def test_redis_outage_cannot_leave_a_successful_publication_without_runtime_conf
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -1309,7 +1326,7 @@ def test_trigger_storage_failure_rolls_back_version_pointer_and_every_projection
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -1345,7 +1362,7 @@ def test_republication_replaces_all_trigger_configuration(
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -1374,7 +1391,7 @@ def test_draft_webhook_receiver_uses_injected_database(
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -1528,7 +1545,7 @@ def test_republish_without_schedule_removes_the_runtime_plan(seeded: sessionmake
     lifecycle = WorkflowDefinitionGateway(
         session_factory=seeded,
         drafts=WorkflowDraftRepository(seeded),
-        definitions=WorkflowDefinitionRepository(session_factory=seeded),
+        definitions=publication_repository(seeded),
         workflows=WorkflowService(session_maker=seeded),
         credentials=CredentialQueryRepository(session_factory=seeded),
         skills=create_autospec(AgentSkillReader, instance=True),
@@ -1545,9 +1562,23 @@ def test_republish_without_schedule_removes_the_runtime_plan(seeded: sessionmake
         assert session.scalar(select(WorkflowSchedulePlan).where(WorkflowSchedulePlan.app_id == "app-1")) is None
 
 
+def test_publication_requires_knowledge_space_sync(seeded: sessionmaker[Session]) -> None:
+    with seeded() as session:
+        draft = session.get(Workflow, "draft")
+        assert draft is not None
+        snapshot = workflow_snapshot(draft)
+
+    repository = WorkflowDefinitionRepository(
+        session_factory=seeded,
+    )
+    with pytest.raises(RuntimeError, match="requires a KnowledgeFS synchronization callback"):
+        with repository.publication(CONTEXT, "app-1", snapshot):
+            pytest.fail("publication transaction must not start without its required effect")
+
+
 @pytest.mark.parametrize("rollback_at", [None, "knowledge", "after-activation"])
 def test_agent_bindings_knowledge_spaces_and_active_version_share_the_publication_transaction(
-    seeded: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, rollback_at: str | None
+    seeded: sessionmaker[Session], rollback_at: str | None
 ) -> None:
     from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource
     from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
@@ -1612,11 +1643,12 @@ def test_agent_bindings_knowledge_spaces_and_active_version_share_the_publicatio
         draft = session.get(Workflow, "draft")
         assert draft is not None
         snapshot = workflow_snapshot(draft)
-    repository = WorkflowDefinitionRepository(session_factory=seeded)
     published_id = ""
     knowledge_sync_sessions: list[Session] = []
 
-    def sync_knowledge_spaces(*, session: Session, session_maker: sessionmaker[Session], workflow: Workflow) -> None:
+    def sync_knowledge_spaces(
+        *, session: Session, session_maker: sessionmaker[Session], workflow: WorkflowSnapshot
+    ) -> None:
         nonlocal published_id
         assert session_maker is seeded
         published_id = workflow.id
@@ -1636,9 +1668,9 @@ def test_agent_bindings_knowledge_spaces_and_active_version_share_the_publicatio
         if rollback_at == "knowledge":
             raise RuntimeError("rollback during KnowledgeFS synchronization")
 
-    monkeypatch.setattr(
-        "services.agent.knowledge_spaces.sync_workflow_app_knowledge_bindings",
-        sync_knowledge_spaces,
+    repository = WorkflowDefinitionRepository(
+        session_factory=seeded,
+        publication_knowledge_spaces=sync_knowledge_spaces,
     )
 
     with repository.binding_reader() as bindings:
@@ -1827,7 +1859,7 @@ def test_skill_archive_validation_releases_connections_and_rechecks_agent_state(
         app.mode = AppMode.ADVANCED_CHAT
     workflows = WorkflowService(seeded)
     monkeypatch.setattr(workflows, "validate_graph_structure", lambda **_kwargs: None)
-    definitions = WorkflowDefinitionRepository(session_factory=seeded)
+    definitions = publication_repository(seeded)
     service = application(
         build_workflow_definition_gateway(seeded, definitions, workflows, drafts=WorkflowDraftRepository(seeded))
     )
@@ -1952,7 +1984,7 @@ def test_shared_draft_writer_preserves_hash_and_variable_rules(seeded: sessionma
         previous_hash = draft.unique_hash
         if state == "new":
             session.delete(draft)
-    definitions = WorkflowDefinitionRepository(session_factory=seeded)
+    definitions = publication_repository(seeded)
     lifecycle = build_workflow_definition_gateway(
         seeded, definitions, WorkflowService(seeded), drafts=WorkflowDraftRepository(seeded)
     )
@@ -2021,7 +2053,7 @@ def test_publication_repository_is_independent_of_agent_service_and_commits_requ
             assert row.is_published is True
             assert session.get(Workflow, workflow.id) is not None
     else:
-        definitions = WorkflowDefinitionRepository(session_factory=seeded)
+        definitions = publication_repository(seeded)
         with definitions.draft(CONTEXT, "app-1") as read:
             assert read is not None
             assert isinstance(read.bindings, WorkflowAgentBindingRepository)

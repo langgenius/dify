@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.engine import Engine as _webhook_service_Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
@@ -1026,8 +1027,29 @@ class TestWebhookServiceAdditionalCases:
             apply_config_overrides(monkeypatch, WEBHOOK_REQUEST_BODY_MAX_SIZE=1)
 
             with flask_app.test_request_context("/webhook", method="POST", data="ab"):
-                with pytest.raises(WebhookBodyTooLargeError):
+                with pytest.raises(WebhookBodyTooLargeError) as error_info:
                     WebhookService.extract_webhook_data(_workflow_trigger())
+
+            assert str(error_info.value) == (
+                "Webhook request too large: 2 bytes exceeds maximum allowed size of 1 bytes"
+            )
+
+        def test_extract_webhook_data_translates_framework_body_limit(self, flask_app: Flask) -> None:
+            flask_app.config["MAX_CONTENT_LENGTH"] = 1
+
+            with flask_app.test_request_context(
+                "/webhook",
+                method="POST",
+                content_type="text/plain",
+                data="ab",
+            ):
+                with pytest.raises(WebhookBodyTooLargeError) as error_info:
+                    WebhookService.extract_webhook_data(_workflow_trigger())
+
+            assert isinstance(error_info.value.__cause__, RequestEntityTooLarge)
+            assert str(error_info.value) == (
+                "Webhook request too large: 2 bytes exceeds maximum allowed size of 1 bytes"
+            )
 
         def test_extract_octet_stream_body_should_return_none_when_empty_payload(self, flask_app: Flask) -> None:
             webhook_trigger = _workflow_trigger()

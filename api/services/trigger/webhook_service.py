@@ -9,6 +9,7 @@ from flask import request
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
@@ -248,7 +249,19 @@ class WebhookService:
             extractor = cls._extract_text_body
 
         # Extract body and files
-        body_data, files_data = extractor()
+        try:
+            body_data, files_data = extractor()
+        except RequestEntityTooLarge as error:
+            content_length = request.content_length
+            maximum_size = request.max_content_length
+            if content_length is not None and maximum_size is not None:
+                message = (
+                    f"Webhook request too large: {content_length} bytes exceeds maximum allowed size "
+                    f"of {maximum_size} bytes"
+                )
+            else:
+                message = "Webhook request too large"
+            raise WebhookBodyTooLargeError(message) from error
         data["body"] = body_data
         data["files"] = files_data
 
@@ -363,6 +376,8 @@ class WebhookService:
                 return {"raw": file_obj.to_dict()}, {}
             else:
                 return {"raw": None}, {}
+        except RequestEntityTooLarge:
+            raise
         except Exception:
             logger.exception("Failed to process octet-stream data")
             return {"raw": None}, {}
@@ -378,6 +393,8 @@ class WebhookService:
         """
         try:
             body = {"raw": request.get_data(as_text=True)}
+        except RequestEntityTooLarge:
+            raise
         except Exception:
             logger.warning("Failed to extract text body")
             body = {"raw": ""}
