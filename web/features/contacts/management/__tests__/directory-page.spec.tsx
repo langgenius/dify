@@ -1068,6 +1068,23 @@ describe('Contact IM binding controls', () => {
     expect(repository.removeIMBinding).not.toHaveBeenCalled()
   })
 
+  it('exposes the identity name, email, and provider user ID in the picker and selected value', async () => {
+    const { scenario, repository, contact } = setup(undefined, false)
+    const user = userEvent.setup()
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const dialog = await openEditor(user, contact)
+    const picker = within(dialog).getByRole('combobox', { name: 'contacts.imBinding.contactLabel' })
+    await user.click(picker)
+    const option = await screen.findByRole('option', { name: /Synced Member/ })
+    expect(option).toHaveTextContent(identity.email!)
+    expect(option).toHaveTextContent(identity.provider_user_id)
+    await user.click(option)
+
+    expect(picker).toHaveTextContent(identity.display_name!)
+    expect(picker).toHaveTextContent(identity.email!)
+    expect(picker).toHaveTextContent(identity.provider_user_id)
+  })
+
   it('replaces a legacy workspace override with a normal binding and retries a failed override reset before closing', async () => {
     const { scenario, repository, contact } = setup('workspace', false)
     const binding = contact.im_bindings[0]!
