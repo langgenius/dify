@@ -1,11 +1,9 @@
 from types import SimpleNamespace
-from typing import cast
 from unittest.mock import Mock, patch
 
 from core.app.features.hosting_moderation.hosting_moderation import (
     HostingModerationFeature,
 )
-from graphon.model_runtime.entities.message_entities import PromptMessage
 
 
 class TestHostingModerationFeature:
@@ -14,20 +12,19 @@ class TestHostingModerationFeature:
         application_generate_entity.model_conf = {"model": "mock"}
         application_generate_entity.app_config = SimpleNamespace(tenant_id="tenant-1")
 
+        # Stand-ins rather than real PromptMessage instances: `content` is
+        # deliberately not always a string so the skip branch gets exercised.
         prompt_messages = [
-            SimpleNamespace(content="hello"),
-            SimpleNamespace(content=123),
-            SimpleNamespace(content="world"),
+            Mock(content="hello"),
+            Mock(content=123),
+            Mock(content="world"),
         ]
 
         with patch("core.app.features.hosting_moderation.hosting_moderation.moderation.check_moderation") as mock_check:
             mock_check.return_value = True
 
             feature = HostingModerationFeature()
-            result = feature.check(
-                application_generate_entity,
-                cast("list[PromptMessage]", prompt_messages),
-            )
+            result = feature.check(application_generate_entity, prompt_messages)
 
         assert result is True
         mock_check.assert_called_once_with(
