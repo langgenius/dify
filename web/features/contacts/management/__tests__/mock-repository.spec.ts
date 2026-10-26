@@ -799,6 +799,59 @@ describe('contacts IM API repository', () => {
     )
   })
 
+  it('forwards an explicit unbind command to the bindings endpoint with the exact binding ID', async () => {
+    vi.mocked(client.contacts.byContactId.imBindings.delete).mockResolvedValue({})
+
+    await createContactsApiRepository().unbindIMBinding({
+      contactId: contact.id,
+      bindingId: 'binding-to-unbind',
+    })
+
+    expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { contact_id: contact.id },
+        query: { binding_id: 'binding-to-unbind' },
+      },
+      { context: { silent: true } },
+    )
+    expect(client.contacts.byContactId.imOverride.delete).not.toHaveBeenCalled()
+    expect(client.contacts.byContactId.imBindings.put).not.toHaveBeenCalled()
+    expect(client.contacts.byContactId.imOverride.put).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      error: new Response(JSON.stringify({ code: 'im_binding_not_found' }), { status: 404 }),
+      code: 'im_binding_not_found',
+    },
+    {
+      error: { data: { body: { code: 'im_write_unavailable', status: 503 } } },
+      code: 'im_write_unavailable',
+    },
+    { error: new Error('Network unavailable'), code: 'im_binding_failed' },
+  ])(
+    'normalizes an explicit unbind failure as $code without resetting an override',
+    async ({ error, code }) => {
+      vi.mocked(client.contacts.byContactId.imBindings.delete).mockRejectedValue(error)
+
+      await expect(
+        createContactsApiRepository().unbindIMBinding({
+          contactId: contact.id,
+          bindingId: 'legacy-workspace-binding',
+        }),
+      ).rejects.toMatchObject({ code })
+
+      expect(client.contacts.byContactId.imBindings.delete).toHaveBeenCalledExactlyOnceWith(
+        {
+          params: { contact_id: contact.id },
+          query: { binding_id: 'legacy-workspace-binding' },
+        },
+        { context: { silent: true } },
+      )
+      expect(client.contacts.byContactId.imOverride.delete).not.toHaveBeenCalled()
+    },
+  )
+
   it('preserves missing-channel and binding-conflict errors without returning success', async () => {
     const repository = createContactsApiRepository()
     vi.mocked(client.imIdentities.get).mockRejectedValue(

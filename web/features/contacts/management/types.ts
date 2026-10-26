@@ -43,6 +43,11 @@ export type RemoveContactIMBindingCommand = {
   binding: ContactIMBinding
 }
 
+export type UnbindContactIMBindingCommand = {
+  contactId: string
+  bindingId: string
+}
+
 export type ContactView = HumanInputContact & {
   avatar_url: string
   email: string | null

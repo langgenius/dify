@@ -12,6 +12,7 @@ import type {
   RemoveContactsCommand,
   RemoveMemberCommand,
   SetContactIMBindingCommand,
+  UnbindContactIMBindingCommand,
   UpdateExternalContactCommand,
   UpgradeExternalContactsToWorkspaceCommand,
 } from './types'
@@ -330,6 +331,18 @@ export function useRemoveContactIMBinding() {
   return useMutation(
     mutationOptions({
       mutationFn: (command: RemoveContactIMBindingCommand) => repository.removeIMBinding(command),
+      onSuccess: () => invalidateHumanInputContactQueries(queryClient, context.workspaceId),
+    }),
+  )
+}
+
+export function useUnbindContactIMBinding() {
+  const context = useContactsFeatureContext()
+  const repository = useContactsManagementRepository()
+  const queryClient = useQueryClient()
+  return useMutation(
+    mutationOptions({
+      mutationFn: (command: UnbindContactIMBindingCommand) => repository.unbindIMBinding(command),
       onSuccess: () => invalidateHumanInputContactQueries(queryClient, context.workspaceId),
     }),
   )

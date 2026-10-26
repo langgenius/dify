@@ -72,6 +72,9 @@ export function createContactsMockRepository({
     async removeIMBinding() {
       throw new Error('IM identity fixtures are not configured')
     },
+    async unbindIMBinding() {
+      throw new Error('IM identity fixtures are not configured')
+    },
     async getContact(contactId) {
       await wait()
       const contact = contacts.find((item) => item.id === contactId)
