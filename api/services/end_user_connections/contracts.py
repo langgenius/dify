@@ -21,19 +21,26 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, computed_field, fi
 from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, NodeConnectionStatus
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
+from services.end_user_connections.revision import ConnectionRevision, revision_workflow_id
 
 
 class ConnectionInput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True, hide_input_in_errors=True)
 
 
-class ConnectionTargetInput(ConnectionInput):
+class ConnectionContractInput(ConnectionInput):
+    connection_revision: ConnectionRevision = Field(
+        description="Opaque revision from Web App parameters, including publication and installed plugin artifacts.",
+    )
+
+    @property
+    def workflow_id(self) -> UUID:
+        return revision_workflow_id(self.connection_revision)
+
+
+class ConnectionTargetInput(ConnectionContractInput):
     """Client connection contract references, checked against the current published graph."""
 
-    workflow_id: UUID = Field(
-        strict=False,
-        description="Expected connection contract revision from Web App parameters.",
-    )
     node_id: str = Field(min_length=1, max_length=255)
 
 

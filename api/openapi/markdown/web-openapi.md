@@ -1342,6 +1342,7 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match the current publication and installed plugin artifacts. | No |
 | connections | object | Chatflow choices keyed by independent authorization node ID. Omit on an existing conversation to reuse its last accepted choices. Explicit choices replace the saved configuration after validation. An explicit null, empty map, or missing node does not inherit saved choices. Required for a new conversation with EndUser tool authentication. | No |
 | conversation_id | string | Conversation ID | No |
 | files | [ object ] | Files to be processed | No |
@@ -1350,7 +1351,6 @@ Button styles for user actions.
 | query | string | User query/message | Yes |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
-| workflow_id | string | Connections protocol revision from Web App parameters. Required for EndUser tool authentication; must match the current published workflow and does not select an execution version. | No |
 
 #### CompletionMessagePayload
 
@@ -1558,10 +1558,10 @@ Too many emails have been sent from this IP address recently. Please try again l
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque revision from Web App parameters, including publication and installed plugin artifacts. | Yes |
 | credentials | object |  | Yes |
 | name | string |  | Yes |
 | node_id | string |  | Yes |
-| workflow_id | string (uuid) | Expected connection contract revision from Web App parameters. | Yes |
 
 #### EndUserConnectionListQuery
 
@@ -1583,9 +1583,9 @@ Too many emails have been sent from this IP address recently. Please try again l
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque revision from Web App parameters, including publication and installed plugin artifacts. | Yes |
 | name | string |  | Yes |
 | node_id | string |  | Yes |
-| workflow_id | string (uuid) | Expected connection contract revision from Web App parameters. | Yes |
 
 #### EndUserConnectionOAuthResponse
 
@@ -1597,17 +1597,17 @@ Too many emails have been sent from this IP address recently. Please try again l
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque revision from Web App parameters, including publication and installed plugin artifacts. | Yes |
 | connections | object | Explicit choices keyed by independent authorization node ID. Missing/null choices remain disconnected; saved choices are never inferred. | Yes |
 | conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
-| workflow_id | string (uuid) | Expected connection contract revision from Web App parameters. Must match the current published workflow; does not select an execution version. | Yes |
 
 #### EndUserConnectionPreflightResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connection_revision | string | Connection contract revision evaluated by this preflight. | Yes |
 | connections | [ [ConnectionPreflightStatus](#connectionpreflightstatus) ] |  | Yes |
 | ready | boolean |  | Yes |
-| workflow_id | string | Connection contract revision evaluated by this preflight. | Yes |
 
 #### EndUserConnectionResponse
 
@@ -2559,6 +2559,7 @@ in form definition, or a variable while the workflow is running.
 | allow_anonymous_end_user_auth | boolean | Whether Guest identities may manage and use personal Connections; does not control App entry. | Yes |
 | annotation_reply | { **"enabled"**: boolean } |  | Yes |
 | connection_requirements | [ [ToolConnectionRequirement](#toolconnectionrequirement) ] | Static authorization requirements for this published version, without personal connection state. | Yes |
+| connection_revision | string | Opaque revision of the published connection contract and installed plugin artifacts; null for other app modes. Return it unchanged in connection requests and runs. | Yes |
 | file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
 | more_like_this | { **"enabled"**: boolean } |  | Yes |
 | opening_statement | string |  | No |
@@ -2571,7 +2572,6 @@ in form definition, or a variable while the workflow is running.
 | system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
 | text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
 | user_input_form | [ object<br>object<br>object<br>object<br>object<br>object<br>object<br>object<br>object ] |  | Yes |
-| workflow_id | string | Connection contract revision represented by the published workflow/chatflow ID; null for other app modes. This is not an execution-version selector. | Yes |
 
 #### WebAppSiteResponse
 
@@ -2682,7 +2682,7 @@ The workflow changed. Confirm the connection selection again.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match the current publication and installed plugin artifacts. | No |
 | connections | object | Explicit choices keyed by independent authorization node ID. Required for EndUser tool authentication. Missing/null choices are not filled from saved selections. | No |
 | files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
-| workflow_id | string | Connections protocol revision from Web App parameters. Required for EndUser tool authentication; must match the current published workflow and does not select an execution version. | No |

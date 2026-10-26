@@ -151,7 +151,7 @@ class OAuthConnectionService:
             target.provider,
             client,
             callback_url=callback_url,
-            target=ConnectionTargetInput(workflow_id=command.workflow_id, node_id=command.node_id),
+            target=ConnectionTargetInput(connection_revision=command.connection_revision, node_id=command.node_id),
             name=command.name,
             guard=None,
         )
@@ -250,6 +250,8 @@ class OAuthConnectionService:
         grant = self._gateway.exchange(context, attempt.provider, client, query_string)
         if not grant.credentials:
             raise ConnectionOAuthError()
+        if attempt.target is not None:
+            self._targets.resolve(context, attempt.target)
         encrypted = self._cipher.encrypt(context.tenant_id, grant.credentials)
         return self._store.save_oauth(
             attempt,

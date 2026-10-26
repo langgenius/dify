@@ -6,6 +6,8 @@ from typing import Any, NamedTuple, Protocol
 
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from services.end_user_connections.errors import ConnectionError
+from services.end_user_connections.revision import ConnectionRevisions
 from services.workflow.tool_credentials import ToolConnectionRequirement, get_tool_connection_requirements
 
 
@@ -23,7 +25,7 @@ class WebAppParameterConfig(NamedTuple):
 
 
 class WebAppParametersDict(AppParametersDict):
-    workflow_id: str | None
+    connection_revision: str | None
     requires_end_user_connections: bool
     connection_requirements: tuple[ToolConnectionRequirement, ...]
 
@@ -97,8 +99,10 @@ class AppDefinitionQueryService:
         *,
         definitions: AppDefinitionQuery,
         builtin_icon_url_prefix: str,
+        connection_revisions: ConnectionRevisions,
     ) -> None:
         self._definitions = definitions
+        self._connection_revisions = connection_revisions
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
 
     def get_mode(self, app_id: str) -> str:
@@ -134,11 +138,16 @@ class AppDefinitionQueryService:
             raise AppDefinitionUnavailableError()
         try:
             requirements = get_tool_connection_requirements(config.graph) if config.graph is not None else ()
-        except (KeyError, TypeError, ValueError):
+            revision = (
+                self._connection_revisions.resolve(tenant_id, config.workflow_id, config.graph)
+                if config.workflow_id is not None and config.graph is not None
+                else None
+            )
+        except (KeyError, TypeError, ValueError, ConnectionError):
             raise AppDefinitionUnavailableError() from None
         return {
             **self._map_parameters(config.parameters),
-            "workflow_id": config.workflow_id,
+            "connection_revision": revision,
             "requires_end_user_connections": config.requires_end_user_connections,
             "connection_requirements": requirements,
         }

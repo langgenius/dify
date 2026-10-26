@@ -116,6 +116,10 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
+  connection_revision: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{64}$/)
+    .nullish(),
   connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   conversation_id: z.string().nullish(),
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
@@ -124,7 +128,6 @@ export const zChatMessagePayload = z.object({
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
-  workflow_id: z.uuid().nullish(),
 })
 
 /**
@@ -240,9 +243,11 @@ export const zEndUserConnectionListQuery = z.object({
  * EndUserConnectionOAuthPayload
  */
 export const zEndUserConnectionOAuthPayload = z.object({
+  connection_revision: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{64}$/),
   name: z.string().min(1).max(100),
   node_id: z.string().min(1).max(255),
-  workflow_id: z.uuid(),
 })
 
 /**
@@ -256,9 +261,11 @@ export const zEndUserConnectionOAuthResponse = z.object({
  * EndUserConnectionPreflightPayload
  */
 export const zEndUserConnectionPreflightPayload = z.object({
+  connection_revision: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{64}$/),
   connections: z.record(z.string(), z.uuid().nullable()),
   conversation_id: z.uuid().nullish(),
-  workflow_id: z.uuid(),
 })
 
 /**
@@ -814,10 +821,12 @@ export const zJsonValue = z.unknown()
  * EndUserConnectionCreatePayload
  */
 export const zEndUserConnectionCreatePayload = z.object({
+  connection_revision: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{64}$/),
   credentials: z.record(z.string(), zJsonValue),
   name: z.string().min(1).max(100),
   node_id: z.string().min(1).max(255),
-  workflow_id: z.uuid(),
 })
 
 /**
@@ -1024,9 +1033,9 @@ export const zConnectionPreflightStatus = z.object({
  * EndUserConnectionPreflightResponse
  */
 export const zEndUserConnectionPreflightResponse = z.object({
+  connection_revision: z.string(),
   connections: z.array(zConnectionPreflightStatus),
   ready: z.boolean().readonly(),
-  workflow_id: z.string(),
 })
 
 /**
@@ -1710,6 +1719,7 @@ export const zWebAppParametersResponse = z.object({
     enabled: z.boolean().optional(),
   }),
   connection_requirements: z.array(zToolConnectionRequirement),
+  connection_revision: z.string().nullable(),
   file_upload: z.object({
     allowed_file_extensions: z.array(z.string()).optional(),
     allowed_file_types: z
@@ -2026,7 +2036,6 @@ export const zWebAppParametersResponse = z.object({
       }),
     ]),
   ),
-  workflow_id: z.string().nullable(),
 })
 
 /**
@@ -2170,6 +2179,10 @@ export const zWorkflowChangedError = zErrorResponse.and(
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
+  connection_revision: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{64}$/)
+    .nullish(),
   connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   files: z
     .array(
@@ -2206,15 +2219,14 @@ export const zWorkflowRunPayload = z.object({
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
-  workflow_id: z.uuid().nullish(),
 })
 
 /**
  * EndUserConnectionPreflightResponse
  */
 export const zEndUserConnectionPreflightResponseWritable = z.object({
+  connection_revision: z.string(),
   connections: z.array(zConnectionPreflightStatus),
-  workflow_id: z.string(),
 })
 
 /**

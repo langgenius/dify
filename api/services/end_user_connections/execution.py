@@ -22,17 +22,22 @@ from services.end_user_connections.preflight import (
     ConnectionPreflightService,
     NodeId,
 )
+from services.end_user_connections.revision import ConnectionRevision, revision_workflow_id
 
 
 class ConnectionRunInput(BaseModel):
-    workflow_id: UUID | None = Field(
+    connection_revision: ConnectionRevision | None = Field(
         default=None,
-        strict=False,
         description=(
-            "Connections protocol revision from Web App parameters. Required for EndUser tool authentication; "
-            "must match the current published workflow and does not select an execution version."
+            "Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; "
+            "must match the current publication and installed plugin artifacts."
         ),
     )
+
+    @property
+    def workflow_id(self) -> UUID | None:
+        return revision_workflow_id(self.connection_revision) if self.connection_revision is not None else None
+
     connections: dict[NodeId, ConnectionId | None] | None = Field(
         default=None,
         description=(
@@ -54,14 +59,14 @@ class ConnectionExecutionService:
         workflow_id: str,
         conversation_id: str | None,
     ) -> ConnectionExecutionContext:
-        if command.workflow_id is None:
+        if command.connection_revision is None:
             raise ConnectionConfigurationError()
         if str(command.workflow_id) != workflow_id:
             raise ConnectionWorkflowChangedError()
         result = self._preflight.check(
             identity,
             ConnectionPreflightInput(
-                workflow_id=command.workflow_id,
+                connection_revision=command.connection_revision,
                 conversation_id=UUID(conversation_id) if conversation_id is not None else None,
                 connections=command.connections or {},
             ),
@@ -95,5 +100,6 @@ class ConnectionExecutionService:
             end_user_id=identity.end_user_id,
             account_id=identity.account_id,
             workflow_id=workflow_id,
+            connection_revision=result.connection_revision,
             selections=tuple(selections),
         )

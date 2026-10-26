@@ -55,7 +55,7 @@ class ConversationHarness:
             assert app is not None
             assert user is not None
             assert workflow is not None
-        args: dict[str, Any] = {"workflow_id": base.workflow_id}
+        args: dict[str, Any] = {"connection_revision": base.connection_revision}
         if conversation_id is not None:
             args["conversation_id"] = conversation_id
         if connections is not None:

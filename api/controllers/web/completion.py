@@ -265,7 +265,9 @@ class ChatApi(WebApiResource):
             raise NotChatAppError()
 
         payload = ChatMessagePayload.model_validate(web_ns.payload or {})
-        if app_mode != AppMode.ADVANCED_CHAT and (payload.workflow_id is not None or payload.connections is not None):
+        if app_mode != AppMode.ADVANCED_CHAT and (
+            payload.connection_revision is not None or payload.connections is not None
+        ):
             raise ValueError("Connection selections require a Chatflow app.")
         args = payload.model_dump(mode="json", exclude_none=True)
         if "connections" in payload.model_fields_set and payload.connections is None:

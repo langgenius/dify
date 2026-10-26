@@ -19,12 +19,14 @@ from models.provider_ids import ToolProviderID
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway, validate_provider_authentication
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionError,
     ConnectionIdentityError,
     ConnectionRequiredError,
+    ConnectionWorkflowChangedError,
 )
 from services.end_user_connections.policy import require_owned_connection
 from services.workflow.tool_credentials import resolve_tool_credential_root
@@ -95,6 +97,9 @@ def get_tool_runtime(
                 identity, repository.access_records(identity, frozenset({connection_id})).get(connection_id)
             )
             auth = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
+            revisions = PluginConnectionRevisions(providers=auth)
+            if context.connection_revision != revisions.resolve(identity.tenant_id, workflow_id, graph):
+                raise ConnectionWorkflowChangedError()
             provider = auth.provider(identity.tenant_id, root.provider_id)
             canonical = str(ToolProviderID(provider.entity.identity.name))
             if selection.provider != canonical or root.end_user_auth is None:
@@ -134,6 +139,8 @@ def get_tool_runtime(
             resolved = application_services().end_user_connection_runtime.resolve(
                 identity, connection=record, target=target
             )
+            if context.connection_revision != revisions.resolve(identity.tenant_id, workflow_id, graph):
+                raise ConnectionWorkflowChangedError()
             tool = provider.get_tool(spec.tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=identity.tenant_id,

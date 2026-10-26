@@ -16,11 +16,13 @@ from constants.end_user_connections import ConnectionCredentialType
 from core.entities.provider_entities import ProviderConfigType
 from core.helper.encrypter import decrypt_token, encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.impl.exc import PluginDaemonError
+from core.plugin.impl.exc import PluginDaemonError, PluginDaemonNotFoundError, PluginNotFoundError
+from core.plugin.impl.tool import PluginToolManager
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from models.provider_ids import ToolProviderID
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.contracts import ConnectionTargetInput
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
 from services.end_user_connections.errors import (
@@ -28,6 +30,7 @@ from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionInvalidCredentialsError,
     ConnectionSecretUnavailableError,
+    ConnectionWorkflowChangedError,
 )
 from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig, check_tool_credentials
 
@@ -83,6 +86,16 @@ class PluginApiKeyCredentialGateway:
         except ValueError:
             raise ConnectionConfigurationError() from None
         return controller
+
+    def plugin_unique_identifier(self, tenant_id: str, provider: str) -> str:
+        # ToolManager caches controllers for the request. Contract revalidation
+        # must observe upgrades during an external credential check.
+        try:
+            return PluginToolManager().fetch_tool_provider(tenant_id, provider).plugin_unique_identifier
+        except (PluginNotFoundError, PluginDaemonNotFoundError, KeyError, ValueError):
+            raise ConnectionConfigurationError() from None
+        except (PluginDaemonError, httpx.HTTPError):
+            raise ConnectionCheckUnavailableError() from None
 
     def validate_format(self, tenant_id: str, provider: str, credentials: Mapping[str, Any]) -> dict[str, Any]:
         controller = self.provider(tenant_id, provider)
@@ -142,6 +155,11 @@ class PublishedConnectionTargetResolver:
 
     def resolve(self, context: WebConnectionContext, reference: ConnectionTargetInput) -> ToolConnectionTarget:
         graph = self._workflows.published_graph(context, str(reference.workflow_id))
+        revision = PluginConnectionRevisions(providers=self._providers).resolve(
+            context.tenant_id, str(reference.workflow_id), graph
+        )
+        if reference.connection_revision != revision:
+            raise ConnectionWorkflowChangedError()
         try:
             if check_tool_credentials(graph, complete=True):
                 raise ConnectionConfigurationError()

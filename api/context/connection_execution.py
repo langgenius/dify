@@ -23,4 +23,5 @@ class ConnectionExecutionContext(BaseModel):
     end_user_id: str
     account_id: str | None
     workflow_id: str
+    connection_revision: str
     selections: tuple[ExecutionConnectionSelection, ...]

@@ -34,6 +34,7 @@ from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionConfigurationError
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
+from services.end_user_connections.revision import connection_revision
 
 PROVIDER = "vendor/calendar/calendar"
 
@@ -117,6 +118,10 @@ class TestProviders(PluginApiKeyCredentialGateway):
         self.controller = controller
 
     @override
+    def plugin_unique_identifier(self, tenant_id: str, provider: str) -> str:
+        return self.provider(tenant_id, provider).plugin_unique_identifier
+
+    @override
     def provider(self, tenant_id: str, provider: str) -> PluginToolProviderController:
         if tenant_id != self.controller.tenant_id or provider != PROVIDER:
             raise ConnectionConfigurationError()
@@ -150,10 +155,14 @@ class ConnectionHarness:
     cipher: TestCipher
     sessions: sessionmaker[Session]
 
+    @property
+    def connection_revision(self) -> str:
+        return connection_revision(self.workflow_id, ["vendor/calendar:1.0"])
+
     def command(self, secret: str = "original-secret") -> CreateApiKeyConnectionInput:
         return CreateApiKeyConnectionInput.model_validate(
             {
-                "workflow_id": self.workflow_id,
+                "connection_revision": self.connection_revision,
                 "node_id": "tool-1",
                 "name": "My calendar",
                 "credentials": {"api_key": secret},

@@ -13,6 +13,7 @@ from clients.plugin.auth_entities import CredentialCheckResult
 from controllers.web import bp, connections, wraps
 from models.end_user_connection import EndUserConnection
 from models.model import App, EndUser
+from services.end_user_connections.revision import connection_revision
 from tests.helpers.end_user_api_key import ConnectionHarness, make_harness
 
 
@@ -149,7 +150,10 @@ def test_disabling_anonymous_connections_blocks_existing_guest_management(
 def test_stale_workflow_request_is_rejected_before_plugin_calls(
     client: FlaskClient, harness: ConnectionHarness
 ) -> None:
-    payload = {**harness.command().model_dump(mode="json"), "workflow_id": str(uuid4())}
+    payload = {
+        **harness.command().model_dump(mode="json"),
+        "connection_revision": connection_revision(str(uuid4()), []),
+    }
     response = client.post("/api/connections", json=payload)
     assert response.status_code == 409
     assert response.get_json()["code"] == "workflow_changed"

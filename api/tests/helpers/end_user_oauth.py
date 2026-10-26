@@ -130,7 +130,7 @@ class OAuthHarness:
 
     def command(self) -> StartConnectionOAuthInput:
         return StartConnectionOAuthInput(
-            workflow_id=self.base.command().workflow_id, node_id="tool-1", name="My calendar"
+            connection_revision=self.base.command().connection_revision, node_id="tool-1", name="My calendar"
         )
 
     def start(self) -> ConnectionOAuthStart:

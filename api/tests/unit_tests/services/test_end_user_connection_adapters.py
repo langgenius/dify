@@ -88,3 +88,29 @@ def test_empty_required_key_is_rejected_even_if_checking_is_unsupported(monkeypa
     gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
     with pytest.raises(ConnectionInvalidCredentialsError):
         gateway.validate_format("tenant", PROVIDER, {"api_key": ""})
+
+
+def test_revision_identifier_bypasses_the_request_controller_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
+    from core.plugin.impl.tool import PluginToolManager
+
+    controller = plugin_provider("tenant")
+    monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: controller)
+    identifiers = iter(["vendor/calendar:1.0@first", "vendor/calendar:1.0@rebuilt"])
+    calls: list[tuple[str, str]] = []
+
+    def fetch(_self: PluginToolManager, tenant_id: str, provider: str) -> PluginToolProviderEntity:
+        calls.append((tenant_id, provider))
+        return PluginToolProviderEntity(
+            provider=provider,
+            plugin_id=controller.plugin_id,
+            plugin_unique_identifier=next(identifiers),
+            declaration=controller.entity,
+        )
+
+    monkeypatch.setattr(PluginToolManager, "fetch_tool_provider", fetch)
+    gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
+    assert gateway.provider("tenant", PROVIDER) is controller
+    assert gateway.plugin_unique_identifier("tenant", PROVIDER) == "vendor/calendar:1.0@first"
+    assert gateway.plugin_unique_identifier("tenant", PROVIDER) == "vendor/calendar:1.0@rebuilt"
+    assert calls == [("tenant", PROVIDER), ("tenant", PROVIDER)]

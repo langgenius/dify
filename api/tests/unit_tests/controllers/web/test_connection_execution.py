@@ -39,6 +39,7 @@ from services.end_user_connections.errors import (
 )
 from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.preflight import ConnectionPreflightService
+from services.end_user_connections.revision import connection_revision
 from services.end_user_connections.selections import ConnectionSelectionService
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
@@ -107,7 +108,8 @@ def test_connection_errors_are_served_with_documented_contract(
     monkeypatch.setattr(AppGenerateService, "generate", fail)
     http, path = client
     response = http.post(
-        path, json={"inputs": {}, "query": "hello", "workflow_id": harness.workflow_id, "connections": {}}
+        path,
+        json={"inputs": {}, "query": "hello", "connection_revision": harness.connection_revision, "connections": {}},
     )
     assert response.status_code == status
     assert response.get_json()["code"] == code
@@ -132,7 +134,7 @@ def test_identity_fields_are_not_forwarded_as_request_authority(
         json={
             "inputs": {},
             "query": "hello",
-            "workflow_id": harness.workflow_id,
+            "connection_revision": harness.connection_revision,
             "connections": {"tool-1": selected},
             "tenant_id": "foreign",
             "account_id": "foreign",
@@ -140,7 +142,7 @@ def test_identity_fields_are_not_forwarded_as_request_authority(
         },
     )
     assert response.status_code == 200
-    assert captured["workflow_id"] == harness.workflow_id
+    assert captured["connection_revision"] == harness.connection_revision
     assert captured["connections"] == {"tool-1": selected}
     assert not {"tenant_id", "account_id", "connection_context"} & captured.keys()
 
@@ -231,7 +233,7 @@ def test_real_gate_rejects_before_run_creation_or_enqueue(
     payload: dict[str, object] = {
         "inputs": {},
         "query": "hello",
-        "workflow_id": harness.workflow_id,
+        "connection_revision": harness.connection_revision,
         "response_mode": response_mode,
     }
     choices: dict[str, str | None] = {"tool-1": connection.id}
@@ -245,7 +247,7 @@ def test_real_gate_rejects_before_run_creation_or_enqueue(
         case "extra":
             choices["unused-node"] = connection.id
         case "stale":
-            payload["workflow_id"] = str(uuid4())
+            payload["connection_revision"] = connection_revision(str(uuid4()), [])
     if selection != "omitted":
         payload["connections"] = choices
     params = mocker.spy(AppExecutionParams, "new")
@@ -283,7 +285,7 @@ def test_ready_selection_is_checked_before_serializing_the_queued_context(
             "inputs": {},
             "query": "hello",
             "response_mode": "streaming",
-            "workflow_id": harness.workflow_id,
+            "connection_revision": harness.connection_revision,
             "connections": {"tool-1": connection.id},
         },
     )
@@ -330,7 +332,7 @@ def test_only_chatflow_omission_restores_last_conversation_choices(
         "inputs": {},
         "query": "hello",
         "response_mode": "streaming",
-        "workflow_id": harness.workflow_id,
+        "connection_revision": harness.connection_revision,
         "conversation_id": conversation_id,
         "connections": {"tool-1": connection.id},
     }
@@ -379,7 +381,7 @@ def test_blocking_run_uses_the_same_id_as_app_configuration(
             args={
                 "inputs": {},
                 "query": "hello",
-                "workflow_id": harness.workflow_id,
+                "connection_revision": harness.connection_revision,
                 "connections": {"tool-1": connection.id},
             },
         )

@@ -129,6 +129,7 @@ class ConnectionService:
         )
         credentials = self._credentials.validate_format(context.tenant_id, target.provider, command.credentials)
         self._require_accepted(self._credentials.check(context, target.provider, credentials))
+        self._targets.resolve(context, command)
         ciphertext = self._cipher.encrypt(context.tenant_id, credentials)
         return self._store.create_api_key(
             context,

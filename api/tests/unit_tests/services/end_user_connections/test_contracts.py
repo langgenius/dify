@@ -14,13 +14,14 @@ from services.end_user_connections.contracts import (
     StartConnectionOAuthInput,
     UpdateConnectionInput,
 )
+from services.end_user_connections.revision import connection_revision
 
 WORKFLOW_ID = "019a0000-0000-7000-8000-000000000001"
 
 
 def create_payload() -> dict[str, object]:
     return {
-        "workflow_id": WORKFLOW_ID,
+        "connection_revision": connection_revision(WORKFLOW_ID, ["vendor/calendar:1.0"]),
         "node_id": "1730000000000",
         "name": "My calendar",
         "credentials": {"api_key": "secret-sentinel"},
@@ -28,7 +29,18 @@ def create_payload() -> dict[str, object]:
 
 
 @pytest.mark.parametrize(
-    "field", ["tenant_id", "app_id", "account_id", "end_user_id", "owner", "provider", "oauth_client", "revision"]
+    "field",
+    [
+        "tenant_id",
+        "app_id",
+        "account_id",
+        "end_user_id",
+        "owner",
+        "provider",
+        "oauth_client",
+        "revision",
+        "workflow_id",
+    ],
 )
 def test_create_input_cannot_supply_authority_or_provider_configuration(field: str) -> None:
     with pytest.raises(ValidationError):
@@ -41,7 +53,7 @@ def test_create_input_keeps_credentials_out_of_repr_and_validation_messages() ->
     assert command.credentials == {"api_key": "secret-sentinel"}
     assert "secret-sentinel" not in repr(command)
     with pytest.raises(ValidationError) as exc:
-        CreateApiKeyConnectionInput.model_validate({**create_payload(), "workflow_id": "invalid"})
+        CreateApiKeyConnectionInput.model_validate({**create_payload(), "connection_revision": "invalid"})
     assert "secret-sentinel" not in str(exc.value)
 
 
@@ -88,7 +100,12 @@ def test_oauth_start_does_not_accept_browser_supplied_tokens_or_client() -> None
     for field in ("credentials", "oauth_client", "client_id", "client_secret", "redirect_uri", "context_id"):
         with pytest.raises(ValidationError):
             StartConnectionOAuthInput.model_validate(
-                {"workflow_id": WORKFLOW_ID, "node_id": "node", "name": "My account", field: "secret-sentinel"}
+                {
+                    "connection_revision": connection_revision(WORKFLOW_ID, ["vendor/calendar:1.0"]),
+                    "node_id": "node",
+                    "name": "My account",
+                    field: "secret-sentinel",
+                }
             )
 
 

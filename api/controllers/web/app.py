@@ -66,10 +66,10 @@ class WebAppParametersResponse(Parameters, ResponseModel):
         description="Whether Guest identities may manage and use personal Connections; does not control App entry."
     )
     account_login_enabled: bool = Field(description="Whether explicit Account login and Passport exchange are enabled.")
-    workflow_id: str | None = Field(
+    connection_revision: str | None = Field(
         description=(
-            "Connection contract revision represented by the published workflow/chatflow ID; "
-            "null for other app modes. This is not an execution-version selector."
+            "Opaque revision of the published connection contract and installed plugin artifacts; "
+            "null for other app modes. Return it unchanged in connection requests and runs."
         ),
     )
     requires_end_user_connections: bool = Field(

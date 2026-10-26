@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import ConnectionCredentialType, NodeConnectionStatus
-from services.end_user_connections.contracts import ConnectionCredentialChecks, ConnectionInput
+from services.end_user_connections.contracts import ConnectionContractInput, ConnectionCredentialChecks
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
     ConnectionCheckSnapshot,
@@ -32,14 +32,7 @@ ConnectionId = Annotated[UUID, Field(strict=False)]
 NodeId = Annotated[str, Field(min_length=1, max_length=255)]
 
 
-class ConnectionPreflightInput(ConnectionInput):
-    workflow_id: UUID = Field(
-        strict=False,
-        description=(
-            "Expected connection contract revision from Web App parameters. "
-            "Must match the current published workflow; does not select an execution version."
-        ),
-    )
+class ConnectionPreflightInput(ConnectionContractInput):
     # Only existing Chatflow Conversations have an authoritative business Session.
     # None checks a new conversation or a plain Workflow's App/user context.
     conversation_id: UUID | None = Field(
@@ -81,7 +74,7 @@ class ConnectionPreflightStatus(BaseModel):
 class ConnectionPreflightView(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    workflow_id: str = Field(description="Connection contract revision evaluated by this preflight.")
+    connection_revision: str = Field(description="Connection contract revision evaluated by this preflight.")
     connections: tuple[ConnectionPreflightStatus, ...]
 
     @computed_field
@@ -98,6 +91,7 @@ class PreflightRequirements(Protocol):
         conversation_id: str | None,
         *,
         oauth_providers: frozenset[str],
+        connection_revision: str,
     ) -> tuple[ConnectionRequirement, ...]: ...
 
 
@@ -136,7 +130,11 @@ class ConnectionPreflightService:
             record.provider for record in records.values() if record.credential_type == ConnectionCredentialType.OAUTH2
         )
         requirements = self._requirements.resolve(
-            context, workflow_id, conversation_id, oauth_providers=oauth_providers
+            context,
+            workflow_id,
+            conversation_id,
+            oauth_providers=oauth_providers,
+            connection_revision=command.connection_revision,
         )
         if requirements:
             require_personal_connection_access(context)
@@ -178,7 +176,11 @@ class ConnectionPreflightService:
         # Resolve again after external checks so Client changes cannot leave a
         # stale ready response. The final owner/revision read never loads secrets.
         current_requirements = self._requirements.resolve(
-            context, workflow_id, conversation_id, oauth_providers=oauth_providers
+            context,
+            workflow_id,
+            conversation_id,
+            oauth_providers=oauth_providers,
+            connection_revision=command.connection_revision,
         )
         if current_requirements != requirements:
             raise ConnectionConflictError()
@@ -229,4 +231,4 @@ class ConnectionPreflightService:
                     check=check,
                 )
             )
-        return ConnectionPreflightView(workflow_id=workflow_id, connections=tuple(views))
+        return ConnectionPreflightView(connection_revision=command.connection_revision, connections=tuple(views))

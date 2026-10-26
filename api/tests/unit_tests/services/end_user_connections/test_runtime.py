@@ -40,6 +40,7 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
     )
     monkeypatch.setattr(adapters.session_factory, "get_session_maker", lambda: harness.base.sessions)
     monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: harness.providers.controller)
+    monkeypatch.setattr(adapters, "PluginApiKeyCredentialGateway", lambda **_kwargs: harness.providers)
     monkeypatch.setattr(
         ext_application_services, "application_services", lambda: SimpleNamespace(end_user_connection_runtime=service)
     )
@@ -81,6 +82,7 @@ def context(harness: OAuthHarness, selections: dict[str, str]) -> DifyRunContext
             end_user_id=identity.end_user_id,
             account_id=identity.account_id,
             workflow_id=harness.base.workflow_id,
+            connection_revision=harness.base.connection_revision,
             selections=tuple(
                 ExecutionConnectionSelection(node_id=key, provider=PROVIDER, connection_id=value)
                 for key, value in selections.items()
@@ -433,3 +435,21 @@ def test_deleted_connection_uses_normal_tool_node_failure(harness: OAuthHarness)
     assert events[0].node_run_result.status == "failed"
     assert events[0].node_run_result.error_type == "ToolRuntimeResolutionError"
     assert "original-secret" not in repr(events)
+
+
+@pytest.mark.parametrize("phase", ["queued", "check"])
+def test_plugin_upgrade_invalidates_the_fixed_execution_contract(harness: OAuthHarness, phase: str) -> None:
+    selected = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    loader = runtime(harness, selected.id)
+    harness.base.auth.calls.clear()
+
+    def upgrade() -> None:
+        harness.providers.controller.plugin_unique_identifier = "vendor/calendar:1.0@rebuilt"
+
+    if phase == "queued":
+        upgrade()
+    else:
+        harness.base.auth.on_check = upgrade
+    with pytest.raises(ToolRuntimeResolutionError, match="configuration changed"):
+        loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
+    assert len(harness.base.auth.calls) == (0 if phase == "queued" else 1)

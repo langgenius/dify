@@ -10,8 +10,13 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.provider_ids import ToolProviderID
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway, validate_provider_authentication
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.entities import ConnectionOAuthClient, ToolConnectionTarget, WebConnectionContext
-from services.end_user_connections.errors import ConnectionConfigurationError, ConnectionReauthorizationRequiredError
+from services.end_user_connections.errors import (
+    ConnectionConfigurationError,
+    ConnectionReauthorizationRequiredError,
+    ConnectionWorkflowChangedError,
+)
 from services.end_user_connections.preflight import ConnectionRequirement
 from services.workflow.tool_credentials import (
     ToolCredentialConfig,
@@ -45,8 +50,12 @@ class PublishedPreflightRequirements:
         conversation_id: str | None,
         *,
         oauth_providers: frozenset[str],
+        connection_revision: str,
     ) -> tuple[ConnectionRequirement, ...]:
         graph = self._workflows.preflight_graph(context, workflow_id, conversation_id)
+        revision = PluginConnectionRevisions(providers=self._providers).resolve(context.tenant_id, workflow_id, graph)
+        if connection_revision != revision:
+            raise ConnectionWorkflowChangedError()
         try:
             if check_tool_credentials(graph, complete=True):
                 raise ConnectionConfigurationError()

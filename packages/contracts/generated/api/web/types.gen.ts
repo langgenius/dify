@@ -113,6 +113,7 @@ export type BrandingModel = {
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type ChatMessagePayload = {
+  connection_revision?: string | null
   connections?: {
     [key: string]: string | null
   } | null
@@ -127,7 +128,6 @@ export type ChatMessagePayload = {
   query: string
   response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
-  workflow_id?: string | null
 }
 
 export type CompletionMessagePayload = {
@@ -280,12 +280,12 @@ export type EmailSendIpLimitError = ErrorResponse & {
 }
 
 export type EndUserConnectionCreatePayload = {
+  connection_revision: string
   credentials: {
     [key: string]: JsonValue
   }
   name: string
   node_id: string
-  workflow_id: string
 }
 
 export type EndUserConnectionListQuery = {
@@ -301,9 +301,9 @@ export type EndUserConnectionListResponse = {
 }
 
 export type EndUserConnectionOAuthPayload = {
+  connection_revision: string
   name: string
   node_id: string
-  workflow_id: string
 }
 
 export type EndUserConnectionOAuthResponse = {
@@ -311,17 +311,17 @@ export type EndUserConnectionOAuthResponse = {
 }
 
 export type EndUserConnectionPreflightPayload = {
+  connection_revision: string
   connections: {
     [key: string]: string | null
   }
   conversation_id?: string | null
-  workflow_id: string
 }
 
 export type EndUserConnectionPreflightResponse = {
+  connection_revision: string
   connections: Array<ConnectionPreflightStatus>
   readonly ready: boolean
-  workflow_id: string
 }
 
 export type EndUserConnectionResponse = {
@@ -1017,6 +1017,7 @@ export type WebAppParametersResponse = {
     enabled?: boolean
   }
   connection_requirements: Array<ToolConnectionRequirement>
+  connection_revision: string | null
   file_upload: {
     allowed_file_extensions?: Array<string>
     allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
@@ -1336,7 +1337,6 @@ export type WebAppParametersResponse = {
         }
       }
   >
-  workflow_id: string | null
 }
 
 export type WebAppSiteResponse = {
@@ -1428,6 +1428,7 @@ export type WorkflowChangedError = ErrorResponse & {
 }
 
 export type WorkflowRunPayload = {
+  connection_revision?: string | null
   connections?: {
     [key: string]: string | null
   } | null
@@ -1464,12 +1465,11 @@ export type WorkflowRunPayload = {
   inputs: {
     [key: string]: unknown
   }
-  workflow_id?: string | null
 }
 
 export type EndUserConnectionPreflightResponseWritable = {
+  connection_revision: string
   connections: Array<ConnectionPreflightStatus>
-  workflow_id: string
 }
 
 export type GeneratedAppResponseWritable = ShallowJsonValue

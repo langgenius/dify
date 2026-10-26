@@ -172,7 +172,7 @@ def test_oauth_preflight_refresh_and_delete(client: FlaskClient, harness: OAuthH
         )
     response = client.post(
         "/api/connections/preflight",
-        json={"workflow_id": harness.base.workflow_id, "connections": {"tool-1": connection.id}},
+        json={"connection_revision": harness.base.connection_revision, "connections": {"tool-1": connection.id}},
     )
     assert response.status_code == 200
     assert response.get_json()["connections"][0]["check"]["status"] == "valid"
@@ -204,7 +204,7 @@ def test_oauth_client_change_requires_reconnection_in_preflight(
             )
     response = client.post(
         "/api/connections/preflight",
-        json={"workflow_id": harness.base.workflow_id, "connections": {"tool-1": connection.id}},
+        json={"connection_revision": harness.base.connection_revision, "connections": {"tool-1": connection.id}},
     )
     assert response.status_code == 200
     assert response.get_json()["ready"] is False
@@ -225,7 +225,7 @@ def test_refresh_timeout_is_a_check_result_without_invalidating_connection(
     harness.handler.refresh_error = ValueError("private-provider-response")
     response = client.post(
         "/api/connections/preflight",
-        json={"workflow_id": harness.base.workflow_id, "connections": {"tool-1": connection.id}},
+        json={"connection_revision": harness.base.connection_revision, "connections": {"tool-1": connection.id}},
     )
     assert response.status_code == 200
     assert response.get_json()["connections"][0]["check"]["status"] == "temporarily_unavailable"

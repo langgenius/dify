@@ -47,6 +47,7 @@ from services.end_user_connections.execution import (
     ConnectionRunInput,
 )
 from services.end_user_connections.preflight import ConnectionPreflightInput, ConnectionPreflightService
+from services.end_user_connections.revision import connection_revision
 from services.end_user_connections.selections import ConnectionSelectionService
 from services.errors.conversation import ConversationNotExistsError
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
@@ -83,7 +84,9 @@ def prepare(
 ) -> ConnectionExecutionContext:
     return service.prepare(
         harness.base.context,
-        ConnectionRunInput.model_validate({"workflow_id": harness.base.workflow_id, "connections": choices}),
+        ConnectionRunInput.model_validate(
+            {"connection_revision": harness.base.connection_revision, "connections": choices}
+        ),
         workflow_id=harness.base.workflow_id,
         conversation_id=conversation_id,
     )
@@ -107,7 +110,8 @@ def test_explicit_selection_is_checked_without_copying_secrets(
     serialized = context.model_dump_json()
     assert "original-secret" not in serialized
     assert "encrypted_credentials" not in serialized
-    assert "revision" not in serialized
+    assert context.connection_revision == harness.base.connection_revision
+    assert "encrypted_credentials" not in serialized
     assert ConnectionExecutionContext.model_validate_json(serialized) == context
     assert len(harness.base.auth.calls) == 2
 
@@ -178,7 +182,9 @@ def test_protocol_mismatch_never_selects_the_requested_workflow(
     with pytest.raises(ConnectionWorkflowChangedError):
         service.prepare(
             harness.base.context,
-            ConnectionRunInput.model_validate({"workflow_id": str(uuid4()), "connections": {}}),
+            ConnectionRunInput.model_validate(
+                {"connection_revision": connection_revision(str(uuid4()), []), "connections": {}}
+            ),
             workflow_id=harness.base.workflow_id,
             conversation_id=None,
         )
@@ -374,7 +380,7 @@ def test_entry_ignores_client_authority_fields(
         workflow=workflow,
         workflow_run_id=str(uuid4()),
         args={
-            "workflow_id": workflow.id,
+            "connection_revision": harness.base.connection_revision,
             "connections": {"tool-1": connection.id},
             "tenant_id": "foreign",
             "account_id": "foreign",
@@ -414,7 +420,9 @@ def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
             choices["removed-node"] = None if selection == "unused-null" else str(uuid4())
         args["connections"] = choices
     if pin != "missing":
-        args["workflow_id"] = workflow.id if pin == "matching" else str(uuid4())
+        args["connection_revision"] = (
+            connection_revision(workflow.id, []) if pin == "matching" else connection_revision(str(uuid4()), [])
+        )
     if pin == "stale":
         with pytest.raises(ConnectionWorkflowChangedError):
             prepare_web_connection_execution(
@@ -490,7 +498,9 @@ def test_missing_selection_never_uses_saved_defaults(
     with pytest.raises(ConnectionRequiredError):
         service.prepare(
             harness.base.context,
-            ConnectionRunInput.model_validate({"workflow_id": harness.base.workflow_id, "connections": choices}),
+            ConnectionRunInput.model_validate(
+                {"connection_revision": harness.base.connection_revision, "connections": choices}
+            ),
             workflow_id=harness.base.workflow_id,
             conversation_id=conversation_id,
         )
@@ -556,7 +566,7 @@ def test_previous_preflight_success_does_not_skip_execution_check(
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     command = ConnectionPreflightInput.model_validate(
         {
-            "workflow_id": harness.base.workflow_id,
+            "connection_revision": harness.base.connection_revision,
             "connections": {"tool-1": connection.id},
         }
     )

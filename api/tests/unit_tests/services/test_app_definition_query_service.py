@@ -19,9 +19,12 @@ _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/curre
 
 def _service() -> tuple[AppDefinitionQueryService, MagicMock]:
     definitions: MagicMock = create_autospec(AppDefinitionQuery, instance=True, spec_set=True)
+    revisions = create_autospec(module.ConnectionRevisions, instance=True, spec_set=True)
+    revisions.resolve.return_value = "connection-revision"
     return (
         AppDefinitionQueryService(
             definitions=definitions,
+            connection_revisions=revisions,
             builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
         ),
         definitions,
@@ -198,7 +201,8 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
     )
     definitions.get_published_parameter_config.return_value = parameters
     result = service.get_web_parameters("app-1", "tenant-1")
-    assert result["workflow_id"] == "published-version"
+    assert result["connection_revision"] == "connection-revision"
+    assert "workflow_id" not in result
     assert result["requires_end_user_connections"] is True
     requirement = result["connection_requirements"][0]
     assert requirement.node_id == "tool-1"
