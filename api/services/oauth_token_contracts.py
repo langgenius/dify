@@ -28,12 +28,20 @@ class TokenErrorCode(StrEnum):
     ACCESS_DENIED = "access_denied"
     TEMPORARILY_UNAVAILABLE = "temporarily_unavailable"
 
+    @property
+    def status(self) -> HTTPStatus:
+        if self is TokenErrorCode.INVALID_CLIENT:
+            return HTTPStatus.UNAUTHORIZED
+        if self is TokenErrorCode.TEMPORARILY_UNAVAILABLE:
+            return HTTPStatus.TOO_MANY_REQUESTS
+        return HTTPStatus.BAD_REQUEST
+
 
 class TokenEndpointError(Exception):
-    def __init__(self, code: TokenErrorCode, status: HTTPStatus = HTTPStatus.BAD_REQUEST) -> None:
+    def __init__(self, code: TokenErrorCode, status: HTTPStatus | None = None) -> None:
         super().__init__(code.value)
         self.code = code
-        self.status = status
+        self.status = status or code.status
 
 
 @dataclass(frozen=True)

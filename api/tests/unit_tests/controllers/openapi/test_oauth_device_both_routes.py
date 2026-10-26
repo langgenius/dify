@@ -216,6 +216,8 @@ def test_mismatched_client_id_succeeds_on_old_route_and_fails_on_new(store: Fake
 
     assert old.status_code == 200
     assert old.get_json()["token"] == "dfoa_secret"
+    assert new.status_code == 401
+    assert new.headers["WWW-Authenticate"] == 'Basic realm="dify-openapi"'
     assert new.get_json() == {"error": "invalid_client"}
     assert DEVICE_CODE in store.states
 

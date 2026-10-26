@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from http import HTTPStatus
 
 import pytest
 
@@ -76,3 +77,18 @@ def test_exchange_dispatches_to_registered_handler() -> None:
 
     assert service.exchange(request) is handler.result
     assert handler.seen == [request]
+
+
+@pytest.mark.parametrize(
+    ("code", "status"),
+    [
+        (TokenErrorCode.INVALID_CLIENT, HTTPStatus.UNAUTHORIZED),
+        (TokenErrorCode.TEMPORARILY_UNAVAILABLE, HTTPStatus.TOO_MANY_REQUESTS),
+        (TokenErrorCode.INVALID_GRANT, HTTPStatus.BAD_REQUEST),
+        (TokenErrorCode.SLOW_DOWN, HTTPStatus.BAD_REQUEST),
+    ],
+)
+def test_token_error_code_owns_its_status(code: TokenErrorCode, status: HTTPStatus) -> None:
+    assert code.status == status
+    assert TokenEndpointError(code).status == status
+    assert TokenEndpointError(code, HTTPStatus.CONFLICT).status == HTTPStatus.CONFLICT
