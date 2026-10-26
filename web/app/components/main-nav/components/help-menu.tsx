@@ -182,6 +182,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
         />
         <MenuContent
           side="top"
+          align="end"
           sideOffset={8}
           className="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
