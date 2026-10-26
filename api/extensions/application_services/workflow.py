@@ -52,7 +52,7 @@ class _SessionBoundWorkflowToolInvoker(WorkflowToolInvoker):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         with self._sessions.begin() as session:
             yield from ToolEngine.generic_invoke(
                 session=session,
