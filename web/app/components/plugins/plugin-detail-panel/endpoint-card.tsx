@@ -176,7 +176,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
                       </IconButton>
                     }
                   />
-                  <TooltipContent placement="top">{copyLabel}</TooltipContent>
+                  <TooltipContent>{copyLabel}</TooltipContent>
                 </Tooltip>
               </div>
             </div>

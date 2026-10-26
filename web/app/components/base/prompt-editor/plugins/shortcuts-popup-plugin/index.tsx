@@ -1,4 +1,4 @@
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { LexicalCommand } from 'lexical'
 import type { CSSProperties } from 'react'
 import { autoUpdate, flip, offset, shift, size, useFloating } from '@floating-ui/react'
@@ -17,7 +17,7 @@ export type ShortcutPopupInsertHandler = <Payload>(
 export type ShortcutPopupDisplayMode = 'selection' | 'workflow-panel-adjacent-center'
 
 type ShortcutPopupPluginProps = {
-  hotkey?: Hotkey
+  hotkey?: HotkeyChord
   children?:
     | React.ReactNode
     | ((close: () => void, onInsert: ShortcutPopupInsertHandler) => React.ReactNode)

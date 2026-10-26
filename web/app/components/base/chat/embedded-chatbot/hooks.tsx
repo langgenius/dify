@@ -428,7 +428,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     async (messageId, feedback) => {
       await updateFeedback(
         {
-          url: `/messages/${messageId}/feedbacks`,
+          messageId,
           body: { rating: feedback.rating, content: feedback.content },
         },
         appSourceType,

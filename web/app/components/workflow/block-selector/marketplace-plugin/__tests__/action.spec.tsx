@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import OperationDropdown from '../action'
+import OperationMenu from '../action'
 
 const mockDownloadBlob = vi.fn()
 const mockDownloadPlugin = vi.fn()
@@ -42,12 +42,12 @@ const createQueryClient = () =>
     },
   })
 
-const renderComponent = (props?: Partial<ComponentProps<typeof OperationDropdown>>) => {
+const renderComponent = (props?: Partial<ComponentProps<typeof OperationMenu>>) => {
   const queryClient = createQueryClient()
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <OperationDropdown
+      <OperationMenu
         open={false}
         onOpenChange={vi.fn()}
         author="langgenius"
@@ -59,7 +59,7 @@ const renderComponent = (props?: Partial<ComponentProps<typeof OperationDropdown
   )
 }
 
-describe('MarketplaceOperationDropdown', () => {
+describe('MarketplaceOperationMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDownloadPlugin.mockResolvedValue(new Blob(['plugin zip'], { type: 'application/zip' }))

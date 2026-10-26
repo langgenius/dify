@@ -34,10 +34,13 @@ export function HomeTemplatesHeader({
           href="https://marketplace.dify.ai/templates"
           target="_blank"
           rel="noopener noreferrer"
-          className="-m-1 flex min-h-6 shrink-0 touch-manipulation items-center gap-1 rounded-md p-1 system-xs-medium text-text-tertiary outline-hidden transition-colors hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
+          className="-my-1 -me-1 flex min-h-6 shrink-0 touch-manipulation items-center gap-1 rounded-md p-1 system-xs-medium text-text-tertiary outline-hidden transition-colors hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
         >
           {t(($) => $['apps.viewMore'], { ns: 'explore' })}
-          <span className="i-ri-arrow-right-line size-3 shrink-0" aria-hidden="true" />
+          <span
+            className="i-ri-arrow-right-line size-3 shrink-0 rtl:rotate-180"
+            aria-hidden="true"
+          />
         </a>
       </div>
 
@@ -49,14 +52,12 @@ export function HomeTemplatesHeader({
           onChange={onCategoryChange}
           allCategoriesEn={allCategoriesEn}
         />
-        <div className="flex shrink-0 items-center gap-3">
-          <SearchInput
-            className="w-40 shrink-0"
-            aria-label={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
-            value={keywords}
-            onValueChange={onKeywordsChange}
-          />
-        </div>
+        <SearchInput
+          className="w-40 shrink-0"
+          aria-label={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
+          value={keywords}
+          onValueChange={onKeywordsChange}
+        />
       </div>
     </div>
   )

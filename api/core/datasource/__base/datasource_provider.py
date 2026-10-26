@@ -11,6 +11,7 @@ from core.tools.errors import ToolProviderCredentialValidationError
 class DatasourcePluginProviderController(ABC):
     entity: DatasourceProviderEntityWithPlugin
     tenant_id: str
+    plugin_unique_identifier: str
 
     def __init__(self, entity: DatasourceProviderEntityWithPlugin, tenant_id: str) -> None:
         self.entity = entity
@@ -29,7 +30,7 @@ class DatasourcePluginProviderController(ABC):
         """
         validate the credentials of the provider
         """
-        manager = PluginToolManager()
+        manager = PluginToolManager(plugin_unique_identifier=self.plugin_unique_identifier)
         if not manager.validate_datasource_credentials(
             tenant_id=self.tenant_id,
             user_id=user_id,
@@ -37,6 +38,11 @@ class DatasourcePluginProviderController(ABC):
             credentials=credentials,
         ):
             raise ToolProviderCredentialValidationError("Invalid credentials")
+
+    def validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+        """Validate credential shape and value against this installed provider declaration."""
+        self.validate_credentials_format(credentials)
+        self._validate_credentials(user_id, credentials)
 
     @property
     def provider_type(self) -> DatasourceProviderType:

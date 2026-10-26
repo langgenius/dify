@@ -13,6 +13,8 @@ Run backend checks from the repository root:
 
 Run direct Python commands through `uv run --project api`. Docker-backed integration suites are normally CI-owned. Do not start long-running services as part of routine agent work.
 
+Follow the backend developer guide's [test layout and naming requirements](README.md#testing) when adding or moving unit tests.
+
 ## Architecture And Boundaries
 
 - Treat `api/core/` as a migration-only area: do not add files or move implementations into it. Move responsibilities out; limit changes to existing callers to the adaptations needed for that migration.

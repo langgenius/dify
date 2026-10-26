@@ -8,6 +8,7 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import { isBoundAgentV2Execution } from '@/app/components/workflow/nodes/agent-v2/execution'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { isNotFoundError } from '@/service/http-error'
@@ -73,6 +74,11 @@ const LastRun: FC<Props> = ({
 
   const noLastRun = isNotFoundError(error)
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
+  const lastRunNode = runResult as Partial<NodeTracing>
+  const externalTrace =
+    resource.kind === 'app' && isBoundAgentV2Execution(lastRunNode) && lastRunNode.id
+      ? { appId: resource.appId, kind: 'node' as const, nodeExecutionId: lastRunNode.id }
+      : undefined
 
   let resolvedStatus = (runResult as any).status || otherResultPanelProps.status
   if (isPaused || oneStepRunRunningStatus === NodeRunningStatus.Stopped)
@@ -156,6 +162,7 @@ const LastRun: FC<Props> = ({
         }
         nodeInfo={runResult as NodeTracing}
         showSteps={false}
+        externalTrace={externalTrace}
       />
     </div>
   )
