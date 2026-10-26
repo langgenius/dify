@@ -29,6 +29,17 @@ internal/            - internal implementations
 The response models are identical in both modes. Use `stdio` for bounded,
 machine-readable control commands and `pty` for interactive jobs.
 
+## Job result retention
+
+The ordinary server retains terminal job results and output for 24 hours after
+`ended_at`, with garbage collection every 60 seconds. This allows a later
+`shell_wait` to read the original result across human approval and pause windows.
+Reads do not extend retention; expired terminal jobs and their artifacts are
+removed, while unfinished jobs are not collected by this policy.
+
+This is result retention, not SandboxTTL or a process lifetime limit. The strict
+native scope worker keeps its separate one-hour terminal retention.
+
 ## Building
 
 ```bash
@@ -74,8 +85,13 @@ make gen-cli-help
 
 ## Testing
 
+Install Go, `golangci-lint`, and `tmux`. The real job lifecycle tests also need
+current runtime helpers on `PATH` and a Linux kernel with Landlock support when
+path isolation is enabled.
+
 ```bash
-make test
+make bin/shellctl-runner bin/shellctl-runner-exit bin/shellctl-sanitize-pty
+PATH="$PWD/bin:$PATH" make test
 ```
 
 ## Path Isolation
