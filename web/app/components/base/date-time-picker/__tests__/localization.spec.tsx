@@ -167,10 +167,16 @@ it('inherits a local direction override independently of the application languag
     </I18nextProvider>,
   )
 
-  for (const name of ['Date', 'Time', 'Meeting'])
+  for (const name of [
+    `Date ${fa['operation.pickDate']}`,
+    `Time ${fa['title.pickTime']}`,
+    `Meeting ${fa['operation.pickDate']}`,
+  ])
     expect(screen.getByRole('button', { name })).toHaveAttribute('dir', 'ltr')
-  expect(screen.getByRole('button', { name: 'Explicit RTL' })).toHaveAttribute('dir', 'rtl')
-  await user.click(screen.getByRole('button', { name: 'Date' }))
+  expect(
+    screen.getByRole('button', { name: `Explicit RTL ${fa['operation.pickDate']}` }),
+  ).toHaveAttribute('dir', 'rtl')
+  await user.click(screen.getByRole('button', { name: `Date ${fa['operation.pickDate']}` }))
   expect(screen.getByRole('dialog', { name: 'Date' })).toHaveAttribute('dir', 'ltr')
   expect(document.documentElement.dir).toBe('rtl')
 })
