@@ -5,7 +5,6 @@ import type {
   PickerContentProps,
   PickerFieldProps,
   PickerLabelProps,
-  PickerLabels,
   PickerTriggerProps,
   PickerValueProps,
 } from '../internal/picker-parts'
@@ -32,13 +31,13 @@ import { TimePanel } from '../internal/time-panel'
 import { formatTimeValue, requireTimeValue } from '../internal/time-value'
 import { usePickerValue } from '../internal/use-picker-value'
 
-type TimePickerLabels = PickerLabels &
-  TimePanelLabels & {
-    title: string
-    now: string
-    apply: string
-    unavailable: string
-  }
+type TimePickerLabels = TimePanelLabels & {
+  title: string
+  close: string
+  now: string
+  apply: string
+  unavailable: string
+}
 type TimePickerChangeEventReason = PickerChangeEventReason
 type TimePickerChangeEventDetails = PickerChangeEventDetails
 
