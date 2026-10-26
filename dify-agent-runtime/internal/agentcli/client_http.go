@@ -202,6 +202,28 @@ func (c *httpStubClient) PutConfigNote(_ context.Context, note string) ([]byte, 
 	return body, nil
 }
 
+func (c *httpStubClient) GetConfigPrompt(_ context.Context) ([]byte, error) {
+	body, statusCode, err := c.http.getJSON("/config/prompt", nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkAgentStubHTTPError(body, statusCode); err != nil {
+		return nil, fmt.Errorf("agent stub config prompt read failed: %w", err)
+	}
+	return body, nil
+}
+
+func (c *httpStubClient) PutConfigPrompt(_ context.Context, prompt string) ([]byte, error) {
+	body, statusCode, err := c.http.putJSON("/config/prompt", map[string]string{"prompt": prompt})
+	if err != nil {
+		return nil, err
+	}
+	if err := checkAgentStubHTTPError(body, statusCode); err != nil {
+		return nil, fmt.Errorf("agent stub config prompt update failed: %w", err)
+	}
+	return body, nil
+}
+
 func (c *httpStubClient) UploadFileToURL(uploadURL, filePath, filename, mimetype string) ([]byte, error) {
 	return c.http.uploadFile(uploadURL, filePath, filename, mimetype)
 }

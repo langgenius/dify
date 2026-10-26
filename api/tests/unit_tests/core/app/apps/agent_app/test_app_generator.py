@@ -457,6 +457,12 @@ class TestGenerateWorker:
 
     def test_generate_task_stopped_is_swallowed(self, generator, mocker: MockerFixture):
         self._wire(generator, mocker, run_side_effect=GenerateTaskStoppedError())
+        # Local stop intent is not a backend terminal; tracing finalization stays
+        # with the runner event that proves the terminal outcome.
+        mocker.patch(
+            "core.ops.base_trace_instance.application_tracing_hooks",
+            side_effect=AssertionError("stop intent must not invent a tracing terminal"),
+        )
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
         queue_manager.publish_error.assert_not_called()

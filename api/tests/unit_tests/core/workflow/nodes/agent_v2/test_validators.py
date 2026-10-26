@@ -16,7 +16,7 @@ from services.agent.workflow_validator import (
     WorkflowAgentNodeValidationError,
     WorkflowAgentNodeValidator,
 )
-from tests.unit_tests.model_factories import make_dataset, make_workflow
+from tests.helpers.unit.model_factories import make_dataset, make_workflow
 
 
 def _workflow(graph: dict) -> Workflow:

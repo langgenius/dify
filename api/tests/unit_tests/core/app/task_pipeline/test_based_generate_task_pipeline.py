@@ -15,7 +15,6 @@ from core.errors.error import QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError, InvokeRateLimitError
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import AppMode, Message
-from services.app.generation.errors import AgentSessionSnapshotIncompatibleError
 
 
 def _persist_message(session: Session, *, message_id: str) -> Message:
@@ -26,7 +25,7 @@ def _persist_message(session: Session, *, message_id: str) -> Message:
         model_id=None,
         override_model_configs=None,
         conversation_id="conversation-1",
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         message_unit_price=Decimal(0),

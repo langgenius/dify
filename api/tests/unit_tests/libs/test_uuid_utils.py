@@ -11,7 +11,7 @@ from libs.uuid_utils import _create_uuidv7_bytes, uuidv7, uuidv7_boundary, uuidv
 
 
 # Tests for private helper function _create_uuidv7_bytes
-def test_create_uuidv7_bytes_basic_structure():
+def test_create_uuidv7_bytes_basic_structure() -> None:
     """Test basic byte structure creation."""
     timestamp_ms = 1609459200000  # 2021-01-01 00:00:00 UTC in milliseconds
     random_bytes = b"\x12\x34\x56\x78\x9a\xbc\xde\xf0\x11\x22"
@@ -27,7 +27,7 @@ def test_create_uuidv7_bytes_basic_structure():
     assert uuid_obj.version == 7
 
 
-def test_create_uuidv7_bytes_timestamp_encoding():
+def test_create_uuidv7_bytes_timestamp_encoding() -> None:
     """Test timestamp is correctly encoded in first 48 bits."""
     timestamp_ms = 1609459200000  # 2021-01-01 00:00:00 UTC in milliseconds
     random_bytes = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
@@ -41,7 +41,7 @@ def test_create_uuidv7_bytes_timestamp_encoding():
     assert extracted_timestamp == timestamp_ms
 
 
-def test_create_uuidv7_bytes_version_bits():
+def test_create_uuidv7_bytes_version_bits() -> None:
     """Test version bits are set to 7."""
     timestamp_ms = 1609459200000
     random_bytes = b"\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00"  # Set first 2 bytes to all 1s
@@ -55,7 +55,7 @@ def test_create_uuidv7_bytes_version_bits():
     assert version == 7
 
 
-def test_create_uuidv7_bytes_variant_bits():
+def test_create_uuidv7_bytes_variant_bits() -> None:
     """Test variant bits are set correctly."""
     timestamp_ms = 1609459200000
     random_bytes = b"\x00\x00\xff\x00\x00\x00\x00\x00\x00\x00"  # Set byte 8 to all 1s
@@ -69,7 +69,7 @@ def test_create_uuidv7_bytes_variant_bits():
     assert variant_bits == 0b10  # Should be binary 10
 
 
-def test_create_uuidv7_bytes_random_data():
+def test_create_uuidv7_bytes_random_data() -> None:
     """Test random bytes are placed correctly."""
     timestamp_ms = 1609459200000
     random_bytes = b"\x12\x34\x56\x78\x9a\xbc\xde\xf0\x11\x22"
@@ -91,7 +91,7 @@ def test_create_uuidv7_bytes_random_data():
     assert result[9:16] == random_bytes[3:10]
 
 
-def test_create_uuidv7_bytes_zero_random():
+def test_create_uuidv7_bytes_zero_random() -> None:
     """Test with zero random bytes (boundary case)."""
     timestamp_ms = 1609459200000
     zero_random_bytes = b"\x00" * 10
@@ -113,7 +113,7 @@ def test_create_uuidv7_bytes_zero_random():
     assert result[9:16] == b"\x00" * 7
 
 
-def test_uuidv7_basic_generation():
+def test_uuidv7_basic_generation() -> None:
     """Test basic UUID generation produces valid UUIDv7."""
     result = uuidv7()
 
@@ -129,7 +129,7 @@ def test_uuidv7_basic_generation():
     assert (variant_byte >> 6) == 0b10
 
 
-def test_uuidv7_with_custom_timestamp():
+def test_uuidv7_with_custom_timestamp() -> None:
     """Test UUID generation with custom timestamp."""
     custom_timestamp = 1609459200000  # 2021-01-01 00:00:00 UTC in milliseconds
     result = uuidv7(custom_timestamp)
@@ -143,7 +143,7 @@ def test_uuidv7_with_custom_timestamp():
     assert extracted_timestamp == custom_timestamp  # Exact match for integer milliseconds
 
 
-def test_uuidv7_with_none_timestamp(monkeypatch: pytest.MonkeyPatch):
+def test_uuidv7_with_none_timestamp(monkeypatch: pytest.MonkeyPatch) -> None:
     """Test UUID generation with None timestamp uses current time."""
     mock_time = 1609459200
     mock_time_func = mock.Mock(return_value=mock_time)
@@ -159,7 +159,7 @@ def test_uuidv7_with_none_timestamp(monkeypatch: pytest.MonkeyPatch):
     assert extracted_timestamp == mock_time * 1000  # 1609459200.0 * 1000
 
 
-def test_uuidv7_time_ordering():
+def test_uuidv7_time_ordering() -> None:
     """Test that sequential UUIDs have increasing timestamps."""
     # Generate UUIDs with incrementing timestamps (in milliseconds)
     timestamp1 = 1609459200000  # 2021-01-01 00:00:00 UTC
@@ -184,7 +184,7 @@ def test_uuidv7_time_ordering():
     assert uuid_strings == sorted(uuid_strings)
 
 
-def test_uuidv7_uniqueness():
+def test_uuidv7_uniqueness() -> None:
     """Test that multiple calls generate different UUIDs."""
     # Generate multiple UUIDs with the same timestamp (in milliseconds)
     timestamp = 1609459200000
@@ -199,7 +199,7 @@ def test_uuidv7_uniqueness():
         assert extracted_ts == timestamp
 
 
-def test_uuidv7_timestamp_error_handling_wrong_version():
+def test_uuidv7_timestamp_error_handling_wrong_version() -> None:
     """Test error handling for non-UUIDv7 inputs."""
 
     uuid_v4 = uuid.uuid4()
@@ -210,7 +210,7 @@ def test_uuidv7_timestamp_error_handling_wrong_version():
 
 
 @given(st.integers(max_value=2**48 - 1, min_value=0))
-def test_uuidv7_timestamp_round_trip(timestamp_ms):
+def test_uuidv7_timestamp_round_trip(timestamp_ms: int) -> None:
     # Generate UUID with timestamp
     uuid_obj = uuidv7(timestamp_ms)
 
@@ -221,7 +221,7 @@ def test_uuidv7_timestamp_round_trip(timestamp_ms):
     assert extracted_timestamp == timestamp_ms
 
 
-def test_uuidv7_timestamp_edge_cases():
+def test_uuidv7_timestamp_edge_cases() -> None:
     """Test timestamp extraction with edge case values."""
     # Test with very small timestamp
     small_timestamp = 1  # 1ms after epoch
@@ -236,7 +236,7 @@ def test_uuidv7_timestamp_edge_cases():
     assert extracted_large == large_timestamp
 
 
-def test_uuidv7_boundary_basic_generation():
+def test_uuidv7_boundary_basic_generation() -> None:
     """Test basic boundary UUID generation with a known timestamp."""
     timestamp = 1609459200000  # 2021-01-01 00:00:00 UTC in milliseconds
     result = uuidv7_boundary(timestamp)
@@ -253,7 +253,7 @@ def test_uuidv7_boundary_basic_generation():
     assert (variant_byte >> 6) == 0b10
 
 
-def test_uuidv7_boundary_timestamp_extraction():
+def test_uuidv7_boundary_timestamp_extraction() -> None:
     """Test that boundary UUID timestamp can be extracted correctly."""
     timestamp = 1609459200000  # 2021-01-01 00:00:00 UTC in milliseconds
     boundary_uuid = uuidv7_boundary(timestamp)
@@ -265,7 +265,7 @@ def test_uuidv7_boundary_timestamp_extraction():
     assert extracted_timestamp == timestamp
 
 
-def test_uuidv7_boundary_deterministic():
+def test_uuidv7_boundary_deterministic() -> None:
     """Test that boundary UUIDs are deterministic for same timestamp."""
     timestamp = 1609459200000  # 2021-01-01 00:00:00 UTC in milliseconds
 
@@ -279,7 +279,7 @@ def test_uuidv7_boundary_deterministic():
     assert str(uuid1) == str(uuid2) == str(uuid3)
 
 
-def test_uuidv7_boundary_is_minimum():
+def test_uuidv7_boundary_is_minimum() -> None:
     """Test that boundary UUID is lexicographically smaller than regular UUIDs."""
     timestamp = 1609459200000  # 2021-01-01 00:00:00 UTC in milliseconds
 
@@ -302,7 +302,7 @@ def test_uuidv7_boundary_is_minimum():
         assert boundary_bytes < regular_bytes
 
 
-def test_uuidv7_boundary_different_timestamps():
+def test_uuidv7_boundary_different_timestamps() -> None:
     """Test that boundary UUIDs with different timestamps are ordered correctly."""
     timestamp1 = 1609459200000  # 2021-01-01 00:00:00 UTC
     timestamp2 = 1609459201000  # 2021-01-01 00:00:01 UTC
@@ -328,7 +328,7 @@ def test_uuidv7_boundary_different_timestamps():
     assert uuid1.bytes < uuid2.bytes < uuid3.bytes
 
 
-def test_uuidv7_boundary_edge_cases():
+def test_uuidv7_boundary_edge_cases() -> None:
     """Test boundary UUID generation with edge case timestamp values."""
     # Test with timestamp 0 (Unix epoch)
     epoch_uuid = uuidv7_boundary(0)

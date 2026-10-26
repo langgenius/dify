@@ -14,8 +14,9 @@ import { EnvironmentServiceApiCard } from '../deployed-environment-access-points
 import { EnvironmentWebAppCard } from '../deployed-environment-access-points/environment-web-app-card'
 
 const mocks = vi.hoisted(() => ({
+  getApp: vi.fn(),
   getApi: vi.fn(),
-  saveSiteConfig: vi.fn(),
+  updateAppSite: vi.fn(),
   getSite: vi.fn(),
   getSubjects: vi.fn(),
   resetSite: vi.fn(),
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   updateSite: vi.fn(),
   environmentAccessControlProps: vi.fn(),
   apiKeyButtonProps: vi.fn(),
+  toast: vi.fn(),
 }))
 
 let mockAppMode: AppMode = 'workflow'
@@ -35,12 +37,7 @@ vi.mock('@/app/components/base/app-icon', () => ({
   default: () => <div aria-label="app-icon" />,
 }))
 
-vi.mock('@/app/components/app/access-point/shared/use-access-point-actions', () => ({
-  useAccessPointActions: () => ({
-    saveSiteConfig: mocks.saveSiteConfig,
-  }),
-}))
-
+// These independently tested children do not own the Settings form or its save/query lifecycle.
 vi.mock('../deployed-environment-access-points/environment-access-control', () => ({
   EnvironmentAccessControl: (props: {
     appId: string
@@ -73,12 +70,12 @@ vi.mock(
   }),
 )
 
-vi.mock('@/app/notifications', () => ({
-  toast: {
-    error: vi.fn(),
-    success: vi.fn(),
-  },
-}))
+vi.mock('@/app/notifications', () => {
+  const toast = (...args: unknown[]) => mocks.toast(...args)
+  toast.error = vi.fn()
+  toast.success = vi.fn()
+  return { toast }
+})
 
 const environmentParams = {
   app_id: 'app-1',
@@ -98,18 +95,23 @@ const api = {
   enabled: true,
 }
 
+function createEnvironmentApp(siteOverrides: Parameters<typeof createAppSiteFixture>[0] = {}) {
+  return createAppDetailFixture({
+    mode: mockAppMode,
+    site: createAppSiteFixture({
+      access_token: 'built-in-code',
+      app_base_url: 'https://built-in.example.test',
+      ...siteOverrides,
+    }),
+  })
+}
+
 function renderCard(ui: ReactElement, queryClient = createTestQueryClient()) {
-  seedFeatures(queryClient)
+  seedFeatures(queryClient, { webapp_copyright_enabled: true })
   seedSystemFeatures(queryClient, { webapp_auth: { enabled: true } })
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-    createAppDetailFixture({
-      mode: mockAppMode,
-      site: createAppSiteFixture({
-        access_token: 'built-in-code',
-        app_base_url: 'https://built-in.example.test',
-      }),
-    }),
+    createEnvironmentApp(),
   )
 
   return render(
@@ -135,12 +137,33 @@ afterAll(() => vi.unstubAllGlobals())
 
 describe('environment access point cards', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.saveSiteConfig.mockResolvedValue(true)
     mockAppMode = 'workflow'
+    mocks.toast.mockReset()
+    mocks.getApp.mockReset().mockResolvedValue(createEnvironmentApp())
+    mocks.updateAppSite.mockReset().mockImplementation(({ params, body }) =>
+      Promise.resolve({
+        app_id: params.app_id,
+        customize_token_strategy: 'not_allow',
+        default_language: body.default_language ?? 'en-US',
+        prompt_public: body.prompt_public ?? false,
+        show_workflow_steps: body.show_workflow_steps ?? false,
+        title: body.title ?? 'App',
+        use_icon_as_answer_icon: body.use_icon_as_answer_icon ?? false,
+      }),
+    )
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init)
       const path = new URL(request.url).pathname
+      const appMatch = /^\/console\/api\/apps\/([^/]+)(?:\/(site))?$/.exec(path)
+      if (appMatch && request.method === 'GET' && !appMatch[2])
+        return Response.json(await mocks.getApp({ params: { app_id: appMatch[1] } }))
+      if (appMatch?.[2] === 'site' && request.method === 'POST')
+        return Response.json(
+          await mocks.updateAppSite({
+            params: { app_id: appMatch[1] },
+            body: await request.json(),
+          }),
+        )
       const match = /\/enterprise\/app-deploy\/apps\/([^/]+)\/environments\/([^/]+)\/(.+)$/.exec(
         path,
       )
@@ -382,7 +405,23 @@ describe('environment access point cards', () => {
 
   it('opens Customize and Settings with environment endpoint data', async () => {
     const user = userEvent.setup()
-    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
+    const queryClient = createTestQueryClient()
+    mocks.updateAppSite.mockImplementation(async ({ params, body }) => {
+      mocks.getApp.mockResolvedValue(createEnvironmentApp({ title: body.title }))
+      return {
+        app_id: params.app_id,
+        customize_token_strategy: 'not_allow',
+        default_language: body.default_language,
+        prompt_public: body.prompt_public,
+        show_workflow_steps: body.show_workflow_steps,
+        title: body.title,
+        use_icon_as_answer_icon: body.use_icon_as_answer_icon,
+      }
+    })
+    renderCard(
+      <EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />,
+      queryClient,
+    )
 
     await screen.findByText(/environment\/workflow\/site-code/)
     await waitFor(() =>
@@ -400,16 +439,53 @@ describe('environment access point cards', () => {
     const settings = await screen.findByRole('dialog', {
       name: 'appOverview.overview.appInfo.settings.title',
     })
-    await user.clear(within(settings).getByPlaceholderText('app.appNamePlaceholder'))
-    await user.type(
-      within(settings).getByPlaceholderText('app.appNamePlaceholder'),
-      'Environment portal',
-    )
+    const title = within(settings).getByRole('textbox', {
+      name: 'appOverview.overview.appInfo.settings.webName',
+    })
+    await user.clear(title)
+    await user.type(title, 'Environment portal')
     await user.click(within(settings).getByRole('button', { name: 'common.operation.save' }))
-    expect(mocks.saveSiteConfig).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Environment portal' }),
+    await waitFor(() =>
+      expect(mocks.updateAppSite).toHaveBeenCalledExactlyOnceWith({
+        params: { app_id: 'app-1' },
+        body: {
+          chat_color_theme: '',
+          chat_color_theme_inverted: false,
+          copyright: '',
+          custom_disclaimer: '',
+          default_language: 'en-US',
+          description: '',
+          icon: null,
+          icon_background: null,
+          icon_type: null,
+          input_placeholder: '',
+          privacy_policy: '',
+          prompt_public: false,
+          show_workflow_steps: false,
+          title: 'Environment portal',
+          use_icon_as_answer_icon: false,
+        },
+      }),
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const appKey = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: 'app-1' } },
+    })
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<ReturnType<typeof createEnvironmentApp>>(appKey)?.site?.title,
+      ).toBe('Environment portal'),
+    )
+
+    await user.click(screen.getByRole('button', { name: /settings\.settings/ }))
+    const reopenedSettings = await screen.findByRole('dialog', {
+      name: 'appOverview.overview.appInfo.settings.title',
+    })
+    expect(
+      within(reopenedSettings).getByRole('textbox', {
+        name: 'appOverview.overview.appInfo.settings.webName',
+      }),
+    ).toHaveValue('Environment portal')
   })
 
   it('keeps view actions available while disabling deployed Web App management', async () => {

@@ -4,7 +4,7 @@ import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useId, useMemo } from 'react'
+import { memo, useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
@@ -12,20 +12,27 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { hasOnlyAppPreviewPermission } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
 import { AppCardInteractions } from './app-card/interactions'
+import { StudioListLink } from './list-navigation'
 
 type StarredAppCardProps = {
   app: AppPartial
+  onDelete: (item: HTMLLIElement | null) => void
   stepByStepTourCardTarget?: string
   stepByStepTourCardHighlightPart?: string
 }
 
 export const StarredAppCard = memo(
-  ({ app, stepByStepTourCardTarget, stepByStepTourCardHighlightPart }: StarredAppCardProps) => {
+  ({
+    app,
+    onDelete,
+    stepByStepTourCardTarget,
+    stepByStepTourCardHighlightPart,
+  }: StarredAppCardProps) => {
+    const itemRef = useRef<HTMLLIElement>(null)
     const { t } = useTranslation(['app', 'common', 'time'])
     const { data: currentUserId } = useSuspenseQuery({
       ...userProfileQueryOptions(),
@@ -85,6 +92,7 @@ export const StarredAppCard = memo(
 
     return (
       <li
+        ref={itemRef}
         className={cn(
           "group relative isolate overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
           !isPreviewOnly &&
@@ -103,8 +111,8 @@ export const StarredAppCard = memo(
             {cardContent}
           </button>
         ) : (
-          <AppCardInteractions app={app}>
-            <Link
+          <AppCardInteractions app={app} onDelete={() => onDelete(itemRef.current)}>
+            <StudioListLink
               href={href}
               aria-labelledby={appNameId}
               data-step-by-step-tour-target={stepByStepTourCardTarget}
@@ -112,7 +120,7 @@ export const StarredAppCard = memo(
               className={cardClassName}
             >
               {cardContent}
-            </Link>
+            </StudioListLink>
           </AppCardInteractions>
         )}
       </li>

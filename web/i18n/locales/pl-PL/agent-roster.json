@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "np. Asystent badawczy",
   "roster.dateTimeFormat": "DD.MM.YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Spowoduje to trwałe usunięcie {{name}}. Jego aplikacja webowa, dostęp do API oraz workflow, które go używają, natychmiast przestaną działać.",
+  "roster.deleteDialog.inputLabel": "Wpisz <name>{{name}}</name>, aby potwierdzić",
+  "roster.deleteDialog.inputPlaceholder": "Wpisz nazwę agenta",
   "roster.deleteDialog.title": "Usunąć {{name}}?",
   "roster.deleteFailed": "Nie udało się usunąć agenta.",
   "roster.duplicateDialog.description": "Utwórz kopię {{name}} i dostosuj jej tożsamość Agent.",

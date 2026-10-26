@@ -3,7 +3,7 @@ import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { Node } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -26,7 +26,6 @@ import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
-import { stopWorkflowRun } from '@/service/workflow'
 import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 import {
   createBaseWorkflowRunCallbacks,
@@ -480,6 +479,10 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     ],
   )
 
+  const { mutate: stopRun } = useMutation(
+    consoleQuery.apps.byAppId.workflowRuns.tasks.byTaskId.stop.post.mutationOptions(),
+  )
+
   const handleStopRun = useCallback(
     (taskId: string) => {
       const setStoppedState = () => {
@@ -501,7 +504,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       }
 
       if (taskId) {
-        stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
+        stopRun({ params: { app_id: appId, task_id: taskId } })
         setStoppedState()
         return
       }
@@ -527,7 +530,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       abortControllerRef.current = null
       setStoppedState()
     },
-    [appId, workflowStore],
+    [appId, stopRun, workflowStore],
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(

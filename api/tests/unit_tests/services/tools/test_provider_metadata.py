@@ -32,13 +32,13 @@ from services.workflow.execution.adapters.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolsBuilder,
     WorkflowAgentDifyToolsBuildError,
 )
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 type Database = tuple[sessionmaker[Session], ToolProviderRepository]
 
 
 @pytest.fixture
-def database(monkeypatch: pytest.MonkeyPatch) -> Generator[Database, None, None]:
+def database(monkeypatch: pytest.MonkeyPatch) -> Generator[Database]:
     engines = [create_engine("sqlite://", poolclass=QueuePool) for _ in range(2)]
     tables: list[Table] = []
     for model in (
@@ -269,7 +269,7 @@ def test_list_all_skips_invalid_api_record_and_loads_mcp_author_before_conversio
 
     def no_builtin_providers(
         _tenant_id: str,
-    ) -> Generator[BuiltinToolProviderController | PluginToolProviderController, None, None]:
+    ) -> Generator[BuiltinToolProviderController | PluginToolProviderController]:
         yield from ()
 
     monkeypatch.setattr(ToolManager, "list_builtin_providers", no_builtin_providers)

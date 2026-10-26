@@ -12,7 +12,8 @@ is a syntactic guard, not general Python inheritance or execution analysis.
 Protocol and Pydantic model implementations are not targeted.
 
 Both rules retain the provided Git baseline. Identical mock calls are counted
-per file: an additional copy or a different constructor call is rejected.
+per file, with removed occurrences available to match code moved between files:
+an additional copy or a different constructor call is rejected.
 Git-detected renames retain the source file's baseline, including paths with
 spaces. Subclass matches are compared by class name within each changed file,
 not only by the line of the class header:
@@ -25,16 +26,21 @@ For a justified subclass exception only, add
 from __future__ import annotations
 
 import argparse
+import ast
 import sys
+import textwrap
 from collections import Counter
+from dataclasses import replace
 from pathlib import Path
 
 from ast_grep_guard import (
     Match,
     Violation,
+    filter_moved_matches,
     git_output,
     has_reasoned_guard_ignore,
     is_python_source_path,
+    match_key,
     parse_args,
     print_violations,
     rule_path,
@@ -48,7 +54,13 @@ def changed_file_versions(args: argparse.Namespace) -> dict[str, tuple[str, str]
     """Read Git blobs, preserving rename baselines and NUL-delimited filenames."""
     revisions = ["--cached"] if args.staged else [f"{args.base_rev}..HEAD"]
     status_text = git_output(
-        "diff", "--name-status", "-z", "--find-renames", "--diff-filter=AMR", "--no-ext-diff", *revisions
+        "diff",
+        "--name-status",
+        "-z",
+        "--find-renames",
+        "--diff-filter=AMRD",
+        "--no-ext-diff",
+        *revisions,
     )
     if not status_text:
         return {}
@@ -65,27 +77,56 @@ def changed_file_versions(args: argparse.Namespace) -> dict[str, tuple[str, str]
         if not is_python_source_path(path):
             continue
         old_source = "" if status == "A" else git_output("show", f"{old_revision}:{old_path}")
-        versions[path] = (old_source, git_output("show", f"{new_revision}:{path}"))
+        new_source = "" if status == "D" else git_output("show", f"{new_revision}:{path}")
+        versions[path] = (old_source, new_source)
     return versions
+
+
+def mock_matches(source: str) -> list[Match]:
+    """Keep import renames from turning existing constructors into new calls."""
+    bindings: dict[str, str] = {}
+    for node in ast.parse(source).body:
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                bindings[alias.asname or alias.name.split(".")[0]] = (
+                    alias.name if alias.asname else alias.name.split(".")[0]
+                )
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                bindings[alias.asname or alias.name] = alias.name
+    matches = []
+    for match in run_ast_grep(source, rule=rule_path("no_new_mock.yml")):
+        tree = ast.parse(textwrap.dedent(match.text))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and node.id in bindings:
+                node.id = bindings[node.id]
+        matches.append(replace(match, text=ast.unparse(tree)))
+    return matches
 
 
 def find_new_mock_calls(changed: dict[str, tuple[str, str]]) -> list[Violation]:
     """Keep identical baseline calls, but catch alias changes outside their hunks."""
-    violations: list[Violation] = []
+    removed: Counter[str] = Counter()
+    added: list[tuple[str, Match]] = []
     for path, (old_source, new_source) in changed.items():
-        old_calls = Counter(match.text for match in run_ast_grep(old_source, rule=rule_path("no_new_mock.yml")))
-        for match in run_ast_grep(new_source, rule=rule_path("no_new_mock.yml")):
-            if old_calls[match.text]:
-                old_calls[match.text] -= 1
+        if old_source == new_source:
+            continue
+        old_calls = Counter(match_key(match) for match in mock_matches(old_source))
+        for match in mock_matches(new_source):
+            key = match_key(match)
+            if old_calls[key]:
+                old_calls[key] -= 1
                 continue
-            violations.append(
-                Violation(
-                    path=path,
-                    line_number=match.line_number,
-                    message="no-new-mock: instantiate a real class instead of Mock, MagicMock or SimpleNamespace",
-                )
-            )
-    return violations
+            added.append((path, match))
+        removed.update(old_calls)
+    return [
+        Violation(
+            path,
+            match.line_number,
+            "no-new-mock: instantiate a real class instead of Mock, MagicMock or SimpleNamespace",
+        )
+        for path, match in filter_moved_matches(added, removed)
+    ]
 
 
 def is_reportable_subclass(match: Match) -> bool:
@@ -93,28 +134,35 @@ def is_reportable_subclass(match: Match) -> bool:
 
 
 def find_new_stub_subclasses(changed: dict[str, tuple[str, str]]) -> list[Violation]:
-    violations: list[Violation] = []
+    removed: Counter[str] = Counter()
+    added: list[tuple[str, Match]] = []
     for path, (old_source, new_source) in changed.items():
         if not Path(path).is_relative_to("api/tests"):
             continue
         old_matches = run_ast_grep(old_source, rule=rule_path("no_new_stub_subclass.yml"))
         new_matches = run_ast_grep(new_source, rule=rule_path("no_new_stub_subclass.yml"))
-        old_names = Counter(match.meta_variables["NAME"] for match in old_matches if is_reportable_subclass(match))
+        old_names: dict[str, list[Match]] = {}
+        for match in old_matches:
+            if is_reportable_subclass(match):
+                old_names.setdefault(match.meta_variables["NAME"], []).append(match)
         for match in new_matches:
             if not is_reportable_subclass(match):
                 continue
             name = match.meta_variables["NAME"]
-            if old_names[name]:
-                old_names[name] -= 1
+            if old_names.get(name):
+                old_names[name].pop()
                 continue
-            violations.append(
-                Violation(
-                    path=path,
-                    line_number=match.line_number,
-                    message=f"{STUB_RULE_ID}: {name} bypasses a runtime constructor; instantiate the real class",
-                )
-            )
-    return violations
+            added.append((path, match))
+        removed.update(match_key(match) for matches in old_names.values() for match in matches)
+    return [
+        Violation(
+            path,
+            match.line_number,
+            f"{STUB_RULE_ID}: {match.meta_variables['NAME']} bypasses a runtime constructor; "
+            "instantiate the real class",
+        )
+        for path, match in filter_moved_matches(added, removed)
+    ]
 
 
 def main() -> int:

@@ -1,83 +1,26 @@
-import type { ReactElement } from 'react'
 import type { NodeProps } from 'reactflow'
 import type { CommonNodeType } from '../../../../types'
 import ReactFlow from 'reactflow'
+import { onTestFinished } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render as renderBrowser } from 'vitest-browser-react'
-import { consoleQuery } from '@/service/console'
-import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { seedToolProviders } from '@/test/console/tool-providers'
-import { createAppDetailFixture } from '@/test/fixtures/app'
-import { createTestQueryClient } from '@/test/query-client'
-import { EditorResourceScope } from '../../../../editor-resource/provider'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { CanvasNodesCatalogProbe } from '../../../../__tests__/canvas-nodes-catalog-probe'
+import { renderWorkflowBrowserComponent } from '../../../../__tests__/workflow-browser-test-env'
+import { fullWorkflowAccessControl } from '../../../../hooks-store/store'
 import { BlockEnum } from '../../../../types'
 import NodeControl from '../node-control'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 import 'reactflow/dist/style.css'
 
-const render = (ui: ReactElement) => {
-  const queryClient = createTestQueryClient()
-  seedToolProviders(queryClient, {
-    builtInTools: [],
-    customTools: [],
-    workflowTools: [],
-    mcpTools: [],
-  })
-  queryClient.setQueryData(consoleQuery.rag.pipelines.recommendedPlugins.get.queryKey(), {
-    installed_recommended_plugins: [],
-    uninstalled_recommended_plugins: [],
-  })
-  queryClient.setQueryData(
-    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-    createAppDetailFixture({ id: 'app-1', mode: 'workflow' }),
-  )
-  return renderBrowser(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
-        {ui}
-      </EditorResourceScope>
-    </QueryClientTestProvider>,
-  )
-}
+beforeEach(() => {
+  onTestFinished(guardUnexpectedFetch())
+})
 
 // Plugin installation is outside node trigger and popup focus ownership.
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
   default: () => null,
 }))
 
-vi.mock('../../../../hooks/use-available-blocks', () => ({
-  useAvailableBlocks: () => ({
-    availablePrevBlocks: [BlockEnum.Code],
-    availableNextBlocks: [BlockEnum.Code],
-  }),
-}))
-vi.mock('../../../../hooks/use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({ handleNodeAdd: vi.fn(), handleNodeSelect: vi.fn() }),
-}))
-vi.mock('../../../../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false, getNodesReadOnly: () => false }),
-}))
-vi.mock('../../../../hooks/use-nodes-meta-data', () => ({
-  useNodeMetaData: () => ({
-    isTypeFixed: true,
-    isUndeletable: false,
-    isSingleton: false,
-    description: 'Code',
-    author: 'Dify',
-  }),
-}))
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({ nodes: [], dataSourceList: [], shouldAutoOpenStartNodeSelector: false }),
-  useWorkflowStore: () => ({ getState: () => ({}) }),
-}))
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      availableNodesMetaData: { nodes: [] },
-      accessControl: { canRun: false },
-    }),
-}))
 vi.mock('@/service/use-plugins', () => ({
   useInvalidateCheckInstalled: () => vi.fn(),
   useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
@@ -106,8 +49,9 @@ function FocusNode({ id, data }: NodeProps<CommonNodeType>) {
 const nodeTypes = { focus: FocusNode }
 async function renderCanvas() {
   await page.viewport(1000, 800)
-  return render(
+  return renderWorkflowBrowserComponent(
     <>
+      <CanvasNodesCatalogProbe />
       <button type="button">Before canvas</button>
 
       <div style={{ width: 800, height: 600 }}>
@@ -126,6 +70,7 @@ async function renderCanvas() {
       </div>
       <input aria-label="Outside editor" />
     </>,
+    { hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canRun: false } } },
   )
 }
 

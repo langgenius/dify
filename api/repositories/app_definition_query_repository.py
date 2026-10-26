@@ -2,14 +2,15 @@
 
 from typing import Any, cast, override
 
-from sqlalchemy import select
+from sqlalchemy import String, select
+from sqlalchemy import cast as sql_cast
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
-from models.account import Tenant, TenantStatus
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.agent import AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
@@ -21,6 +22,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppSiteConfiguration,
     AppToolIconSource,
+    ServiceApiAppRecord,
 )
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
 
@@ -117,6 +119,50 @@ def _get_public_agent_parameter_config(app: App, *, session: Session) -> AppPara
 class AppDefinitionQueryRepository(AppDefinitionQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    @override
+    def get_service_api_record(self, app_id: str, *, tenant_id: str | None = None) -> ServiceApiAppRecord | None:
+        with self._session_factory() as session:
+            statement = (
+                # Let admission reject abnormal historical statuses with a domain
+                # error instead of failing enum deserialization before policy runs.
+                select(App.id, App.tenant_id, App.mode, sql_cast(App.status, String), App.enable_api, Tenant.status)
+                .outerjoin(Tenant, Tenant.id == App.tenant_id)
+                .where(App.id == app_id)
+            )
+            if tenant_id is not None:
+                statement = statement.where(App.tenant_id == tenant_id)
+            row = session.execute(statement).one_or_none()
+            if row is None:
+                return None
+            resolved_id, tenant_id, mode, status, enable_api, tenant_status = row
+            return ServiceApiAppRecord(
+                app_id=resolved_id,
+                tenant_id=tenant_id,
+                mode=mode.value,
+                status=status,
+                enable_api=enable_api,
+                tenant_status=tenant_status.value if tenant_status is not None else None,
+            )
+
+    @override
+    def has_service_api_owner(self, tenant_id: str) -> bool:
+        with self._session_factory() as session:
+            return bool(
+                session.scalar(
+                    select(
+                        select(Account.id)
+                        .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+                        .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+                        .where(
+                            Tenant.id == tenant_id,
+                            Tenant.status == TenantStatus.NORMAL,
+                            TenantAccountJoin.role == TenantAccountRole.OWNER,
+                        )
+                        .exists()
+                    )
+                )
+            )
 
     @override
     def get_mode(self, app_id: str) -> str | None:

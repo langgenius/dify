@@ -54,9 +54,9 @@ from services.agent.chat.base_runner import BaseAgentRunner
 from services.app.generation.ports import AgentHistoryMessage
 from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
 from services.tools.dataset.tool import DatasetRetrieverTool
+from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.model_factories import make_app
 from tests.tool_fixtures import make_runtime_tool
-from tests.unit_tests.core.model_fixtures import make_model_config
-from tests.unit_tests.model_factories import make_app
 
 
 def _message(
