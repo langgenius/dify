@@ -17,7 +17,7 @@ from tests.pytest_dify import (
 )
 
 
-def test_ensure_backend_test_environment_uses_example_env_and_stable_logging(
+def test_ensure_backend_test_environment_selects_env_without_loading_service_settings(
     tmp_path: Path,
     monkeypatch,
 ):
@@ -25,7 +25,7 @@ def test_ensure_backend_test_environment_uses_example_env_and_stable_logging(
     integration_tests_dir = repo_root / "api" / "tests" / "e2e_tests" / "middleware"
     integration_tests_dir.mkdir(parents=True)
     env_example = integration_tests_dir / ".env.example"
-    env_example.write_text("LOG_LEVEL=INFO\nREDIS_PASSWORD=difyai123456\n")
+    env_example.write_text("LOG_LEVEL=INFO\nREDIS_PASSWORD=difyai123456\nWEAVIATE_API_KEY=example-only\n")
     storage_root = repo_root / "storage"
 
     monkeypatch.setenv("LOG_FORMAT", "json")
@@ -33,6 +33,7 @@ def test_ensure_backend_test_environment_uses_example_env_and_stable_logging(
     monkeypatch.delenv("DIFY_TEST_ENV_FILE", raising=False)
     monkeypatch.delenv("DIFY_VDB_TEST_ENV_FILE", raising=False)
     monkeypatch.delenv("REDIS_PASSWORD", raising=False)
+    monkeypatch.delenv("WEAVIATE_API_KEY", raising=False)
     monkeypatch.delenv("STORAGE_TYPE", raising=False)
     monkeypatch.delenv("OPENDAL_SCHEME", raising=False)
     monkeypatch.setenv("OPENDAL_FS_ROOT", str(storage_root))
@@ -41,7 +42,8 @@ def test_ensure_backend_test_environment_uses_example_env_and_stable_logging(
 
     assert os.environ["DIFY_TEST_ENV_FILE"] == str(env_example)
     assert "DIFY_VDB_TEST_ENV_FILE" not in os.environ
-    assert os.environ["REDIS_PASSWORD"] == "difyai123456"
+    assert "REDIS_PASSWORD" not in os.environ
+    assert "WEAVIATE_API_KEY" not in os.environ
     assert os.environ["LOG_OUTPUT_FORMAT"] == "text"
     assert os.environ["LOG_FORMAT"] == DEFAULT_LOG_FORMAT
     assert os.environ["STORAGE_TYPE"] == "opendal"
