@@ -81,7 +81,7 @@ from core.workflow.generator.types import (
     WorkflowGenerationModeRequest,
 )
 from graphon.enums import BuiltinNodeTypes
-from graphon.model_runtime.entities.llm_entities import LLMResult
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.errors.invoke import (
     InvokeConnectionError,
@@ -1146,7 +1146,11 @@ class WorkflowGenerator:
             text = response.message.get_text_content() or ""
             requested_max_tokens = model_parameters.get("max_tokens")
             usage = response.usage
-            token_counts = (usage.prompt_tokens, usage.completion_tokens, usage.total_tokens)
+            token_counts = (
+                (usage.prompt_tokens, usage.completion_tokens, usage.total_tokens)
+                if isinstance(usage, LLMUsage)
+                else (None, None, None)
+            )
             logger.info(
                 "Workflow generator response metadata: stage=%s attempt=%s response_characters=%s "
                 "requested_max_tokens=%s effective_provider_limit=unavailable prompt_tokens=%s "
