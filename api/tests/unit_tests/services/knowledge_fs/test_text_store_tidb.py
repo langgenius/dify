@@ -314,9 +314,11 @@ def test_non_creating_operations_check_index_before_selecting_database(
         patch("pymysql.connect", side_effect=connect) as open_connection,
     ):
         if operation == "search" and not database_exists:
-            with pytest.raises(VectorStoreUnavailableError, match="index is missing"):
-                with configured_text_client(A) as client:
-                    execute_text_request(client, payload)
+            with (
+                pytest.raises(VectorStoreUnavailableError, match="index is missing"),
+                configured_text_client(A) as client,
+            ):
+                execute_text_request(client, payload)
         else:
             with configured_text_client(A) as client:
                 assert execute_text_request(client, payload) == {"points": [], "matches": []}
@@ -343,10 +345,10 @@ def test_non_creating_operations_preserve_database_errors(
         patch("services.knowledge_fs.text_store_tidb._sql_endpoint", return_value=("tenant.example.test", 4000)),
         patch("pymysql.connect", side_effect=error if stage == "connect" else None, return_value=connection),
         patch.object(connection, "select_db", side_effect=error if stage == "select" else None),
+        pytest.raises(pymysql.err.OperationalError) as raised,
+        configured_text_client(A) as client,
     ):
-        with pytest.raises(pymysql.err.OperationalError) as raised:
-            with configured_text_client(A) as client:
-                execute_text_request(client, request("delete", ids=[A]))
+        execute_text_request(client, request("delete", ids=[A]))
 
     assert raised.value is error
     assert connection.close_count == (0 if stage == "connect" else 1)
@@ -360,9 +362,11 @@ def test_missing_cloud_endpoint_config_and_missing_cluster_fail_closed(config_ov
     config_overrides(TIDB_API_URL="https://cloud.example.test")
     config_overrides(TIDB_PUBLIC_KEY="test-public")
     config_overrides(TIDB_PRIVATE_KEY="test-private")
-    with patch("dify_vdb_tidb_on_qdrant.tidb_service.TidbService.get_tidb_serverless_cluster", return_value=None):
-        with pytest.raises(VectorStoreUnavailableError, match="unavailable"):
-            _sql_endpoint("missing")
+    with (
+        patch("dify_vdb_tidb_on_qdrant.tidb_service.TidbService.get_tidb_serverless_cluster", return_value=None),
+        pytest.raises(VectorStoreUnavailableError, match="unavailable"),
+    ):
+        _sql_endpoint("missing")
     _sql_endpoint.cache_clear()
 
 
@@ -427,9 +431,12 @@ def test_search_deadline_closes_real_pymysql_socket_when_server_never_replies(
             patch("pymysql.connect", return_value=connection),
         ):
             deadline = TextSearchDeadline.from_epoch_ms(int(time.time() * 1000) + 50)
-            with pytest.raises((TextSearchTimeoutError, pymysql.err.OperationalError)):
-                with deadline.enforce(), configured_text_client(A, deadline=deadline) as client:
-                    execute_text_request(client, request("search", ids=[A], query="refund"))
+            with (
+                pytest.raises((TextSearchTimeoutError, pymysql.err.OperationalError)),
+                deadline.enforce(),
+                configured_text_client(A, deadline=deadline) as client,
+            ):
+                execute_text_request(client, request("search", ids=[A], query="refund"))
         assert time.monotonic() - started < 0.5
         assert not connection.open
         server_socket.settimeout(0.5)

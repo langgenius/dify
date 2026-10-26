@@ -334,9 +334,8 @@ class TestKnowledgeFSInnerApiOnly:
             pytest.fail("disabled KnowledgeFS must not enter the handler")
 
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, KNOWLEDGE_FS_ENABLED=False)
-        with app.test_request_context(headers={"X-Inner-Api-Key": "valid_plugin_key"}):
-            with pytest.raises(NotFound):
-                protected_view()
+        with app.test_request_context(headers={"X-Inner-Api-Key": "valid_plugin_key"}), pytest.raises(NotFound):
+            protected_view()
 
     def test_should_hide_endpoint_for_invalid_key(self, app: Flask, config_overrides: Callable[..., None]) -> None:
         @knowledge_fs_inner_api_only
@@ -344,8 +343,7 @@ class TestKnowledgeFSInnerApiOnly:
             return "success"
 
         config_overrides(PLUGIN_DAEMON_KEY="plugin_key", INNER_API_KEY_FOR_PLUGIN="valid_plugin_key")
-        with app.test_request_context(headers={"X-Inner-Api-Key": "invalid"}):
-            with pytest.raises(HTTPException) as exc_info:
-                protected_view()
+        with app.test_request_context(headers={"X-Inner-Api-Key": "invalid"}), pytest.raises(HTTPException) as exc_info:
+            protected_view()
 
         assert exc_info.value.code == 404

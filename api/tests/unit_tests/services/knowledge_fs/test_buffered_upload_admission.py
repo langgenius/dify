@@ -15,9 +15,8 @@ def test_admission_rejects_invalid_limits_and_reservations() -> None:
         KnowledgeFSBufferedUploadAdmission(max_concurrency=1, max_reserved_bytes=0)
 
     admission = KnowledgeFSBufferedUploadAdmission(max_concurrency=1, max_reserved_bytes=10)
-    with pytest.raises(ValueError, match="reserved_bytes"):
-        with admission.admit(reserved_bytes=0):
-            pass
+    with pytest.raises(ValueError, match="reserved_bytes"), admission.admit(reserved_bytes=0):
+        pass
 
 
 def test_oversized_reservation_runs_exclusively_instead_of_failing_or_deadlocking() -> None:
@@ -72,9 +71,8 @@ def test_admission_bounds_concurrency_and_aggregate_reserved_bytes() -> None:
 def test_admission_releases_capacity_when_the_upload_fails() -> None:
     admission = KnowledgeFSBufferedUploadAdmission(max_concurrency=1, max_reserved_bytes=10)
 
-    with pytest.raises(RuntimeError, match="upload failed"):
-        with admission.admit(reserved_bytes=10):
-            raise RuntimeError("upload failed")
+    with pytest.raises(RuntimeError, match="upload failed"), admission.admit(reserved_bytes=10):
+        raise RuntimeError("upload failed")
 
     with admission.admit(reserved_bytes=10):
         assert admission.snapshot().active_count == 1

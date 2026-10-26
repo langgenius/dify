@@ -649,15 +649,14 @@ def test_initial_website_source_import_rejects_unavailable_spaces(
 
 def test_initial_website_source_import_rejects_missing_control_space() -> None:
     facade = _facade()
-    with _runtime(facade, control_space_found=False):
-        with pytest.raises(RuntimeError, match="control-space was not found"):
-            start_initial_website_source_import(
-                tenant_id="tenant-1",
-                account_id="account-1",
-                control_space_id="control-1",
-                operation_id="operation-1",
-                payload=_knowledge_fs_initial_source_import_payload(),
-            )
+    with _runtime(facade, control_space_found=False), pytest.raises(RuntimeError, match="control-space was not found"):
+        start_initial_website_source_import(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            operation_id="operation-1",
+            payload=_knowledge_fs_initial_source_import_payload(),
+        )
 
 
 def test_initial_website_source_import_rejects_unavailable_provider() -> None:

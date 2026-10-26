@@ -420,19 +420,21 @@ class TestAudioCases:
 
         api = AgentChatMessageAudioApi()
         handler = unwrap(api.post)
-        with app.test_request_context(
-            f"/console/api/agent/{agent_id}/audio-to-text",
-            method="POST",
-            data={"file": _file_data()},
+        with (
+            app.test_request_context(
+                f"/console/api/agent/{agent_id}/audio-to-text",
+                method="POST",
+                data={"file": _file_data()},
+            ),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                handler(
-                    api,
-                    session=unbound_session,
-                    current_tenant_id="tenant-1",
-                    current_user=_account(),
-                    agent_id=agent_id,
-                )
+            handler(
+                api,
+                session=unbound_session,
+                current_tenant_id="tenant-1",
+                current_user=_account(),
+                agent_id=agent_id,
+            )
 
         assert soul_loaded is False
 
@@ -454,19 +456,21 @@ class TestAudioCases:
 
         api = AgentChatMessageAudioApi()
         handler = unwrap(api.post)
-        with app.test_request_context(
-            f"/console/api/agent/{agent_id}/audio-to-text",
-            method="POST",
-            data={"file": _file_data(), "draft_type": "debug_build"},
+        with (
+            app.test_request_context(
+                f"/console/api/agent/{agent_id}/audio-to-text",
+                method="POST",
+                data={"file": _file_data(), "draft_type": "debug_build"},
+            ),
+            pytest.raises(AgentVersionNotFoundError),
         ):
-            with pytest.raises(AgentVersionNotFoundError):
-                handler(
-                    api,
-                    session=unbound_session,
-                    current_tenant_id="tenant-1",
-                    current_user=_account(),
-                    agent_id=agent_id,
-                )
+            handler(
+                api,
+                session=unbound_session,
+                current_tenant_id="tenant-1",
+                current_user=_account(),
+                agent_id=agent_id,
+            )
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -490,11 +494,11 @@ class TestAudioCases:
         handler = unwrap(api.post)
         app_model = _app()
 
-        with app.test_request_context(
-            "/console/api/apps/app/audio-to-text", method="POST", data={"file": _file_data()}
+        with (
+            app.test_request_context("/console/api/apps/app/audio-to-text", method="POST", data={"file": _file_data()}),
+            pytest.raises(expected),
         ):
-            with pytest.raises(expected):
-                handler(api, app_model=app_model)
+            handler(api, app_model=app_model)
 
     @staticmethod
     def test_console_audio_api_unhandled_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -505,11 +509,11 @@ class TestAudioCases:
         handler = unwrap(api.post)
         app_model = _app()
 
-        with app.test_request_context(
-            "/console/api/apps/app/audio-to-text", method="POST", data={"file": _file_data()}
+        with (
+            app.test_request_context("/console/api/apps/app/audio-to-text", method="POST", data={"file": _file_data()}),
+            pytest.raises(InternalServerError),
         ):
-            with pytest.raises(InternalServerError):
-                handler(api, app_model=app_model)
+            handler(api, app_model=app_model)
 
     @staticmethod
     def test_console_text_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -564,13 +568,15 @@ class TestAudioCases:
         handler = unwrap(api.post)
         app_model = _app()
 
-        with app.test_request_context(
-            "/console/api/apps/app/text-to-audio",
-            method="POST",
-            json={"text": "hello"},
+        with (
+            app.test_request_context(
+                "/console/api/apps/app/text-to-audio",
+                method="POST",
+                json={"text": "hello"},
+            ),
+            pytest.raises(ProviderQuotaExceededError),
         ):
-            with pytest.raises(ProviderQuotaExceededError):
-                handler(api, TextToSpeechPayload(text="hello"), app_model=app_model)
+            handler(api, TextToSpeechPayload(text="hello"), app_model=app_model)
 
     @staticmethod
     def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -621,14 +627,16 @@ class TestAudioCases:
         app_model = _app(app_id="app-1")
 
         data = {"file": (io.BytesIO(b"x"), "sample.wav")}
-        with app.test_request_context(
-            "/console/api/apps/app-1/audio-to-text",
-            method="POST",
-            data=data,
-            content_type="multipart/form-data",
+        with (
+            app.test_request_context(
+                "/console/api/apps/app-1/audio-to-text",
+                method="POST",
+                data=data,
+                content_type="multipart/form-data",
+            ),
+            pytest.raises(AudioTooLargeError),
         ):
-            with pytest.raises(AudioTooLargeError):
-                method(api, app_model=app_model)
+            method(api, app_model=app_model)
 
     @staticmethod
     def test_text_to_audio_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

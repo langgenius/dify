@@ -189,9 +189,11 @@ class TestMcpToolCases:
         bad_resource = EmbeddedResource.model_construct(type="resource", resource=object())
         result = CallToolResult(content=[bad_resource], _meta=None)
 
-        with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
-            with pytest.raises(ToolInvokeError, match="Unsupported embedded resource type"):
-                list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
+        with (
+            patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result),
+            pytest.raises(ToolInvokeError, match="Unsupported embedded resource type"),
+        ):
+            list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
 
     @staticmethod
     def test_mcp_tool_handle_none_parameter_filters_empty_values():
@@ -261,14 +263,16 @@ class TestMcpToolCases:
         tool = _build_forwarding_tool()
         headers: dict[str, str] = {}
 
-        with patch(
-            "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
-            side_effect=MCPNoRefreshTokenError("please re-sso"),
+        with (
+            patch(
+                "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
+                side_effect=MCPNoRefreshTokenError("please re-sso"),
+            ),
+            pytest.raises(ToolInvokeError, match="forwarded identity token"),
         ):
-            with pytest.raises(ToolInvokeError, match="forwarded identity token"):
-                tool._inject_forwarded_identity(
-                    headers, user_id="alice", app_id=None, audience="https://mcp.example.com/mcp/"
-                )
+            tool._inject_forwarded_identity(
+                headers, user_id="alice", app_id=None, audience="https://mcp.example.com/mcp/"
+            )
 
         # Headers must NOT have been mutated when token-issuance failed.
         assert FORWARDED_IDENTITY_HEADER not in headers
@@ -335,13 +339,15 @@ class TestMcpToolCases:
                 content=[],
                 _meta=None,
             )
-            with patch.object(tool, "_inject_forwarded_identity") as inject:
-                with patch("services.tools.mcp_tools_manage_service.MCPToolManageService"):
-                    with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"):
-                        with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_headers", return_value={}):
-                            # Should not raise; should not call enterprise.
-                            with contextlib.suppress(Exception):
-                                tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
+            with (
+                patch.object(tool, "_inject_forwarded_identity") as inject,
+                patch("services.tools.mcp_tools_manage_service.MCPToolManageService"),
+                patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"),
+                patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_headers", return_value={}),
+                contextlib.suppress(Exception),
+            ):
+                # Should not raise; should not call enterprise.
+                tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
             inject.assert_not_called()
 
 

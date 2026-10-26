@@ -342,17 +342,19 @@ class TestAppApisCases:
                 lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
             )
 
-            with app.test_request_context(
-                "/",
-                json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
+            with (
+                app.test_request_context(
+                    "/",
+                    json={"tracing_provider": "langfuse", "tracing_config": {"api_key": "k"}},
+                ),
+                pytest.raises(TracingConfigVerificationFailedError),
             ):
-                with pytest.raises(TracingConfigVerificationFailedError):
-                    method(
-                        api,
-                        TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"}),
-                        _make_request_context(),
-                        uuid.UUID(_APP_APIS_APP_ID),
-                    )
+                method(
+                    api,
+                    TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"}),
+                    _make_request_context(),
+                    uuid.UUID(_APP_APIS_APP_ID),
+                )
 
         def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
             api = ops_trace_module.TraceAppConfigApi()
@@ -365,14 +367,13 @@ class TestAppApisCases:
                 lambda: SimpleNamespace(app_tracing_configs=tracing_configs),
             )
 
-            with app.test_request_context("/?tracing_provider=langfuse"):
-                with pytest.raises(TracingConfigNotFoundError):
-                    method(
-                        api,
-                        TraceProviderQuery(tracing_provider="langfuse"),
-                        _make_request_context(),
-                        uuid.UUID(_APP_APIS_APP_ID),
-                    )
+            with app.test_request_context("/?tracing_provider=langfuse"), pytest.raises(TracingConfigNotFoundError):
+                method(
+                    api,
+                    TraceProviderQuery(tracing_provider="langfuse"),
+                    _make_request_context(),
+                    uuid.UUID(_APP_APIS_APP_ID),
+                )
 
     class TestSiteEndpoints:
         @staticmethod
@@ -1606,9 +1607,11 @@ class TestConsoleAppApiCases:
     def test_request_validation_retains_422_and_redacts_submitted_values(app: Flask, boundary: AppBoundary) -> None:
         from werkzeug.exceptions import UnprocessableEntity
 
-        with app.test_request_context(method="PUT", json={"name": "", "icon": "private-input"}):
-            with pytest.raises(UnprocessableEntity) as error:
-                invoke(controller.AppApi, controller.AppApi.put, app_id=_CONSOLE_APP_API_APP_ID)
+        with (
+            app.test_request_context(method="PUT", json={"name": "", "icon": "private-input"}),
+            pytest.raises(UnprocessableEntity) as error,
+        ):
+            invoke(controller.AppApi, controller.AppApi.put, app_id=_CONSOLE_APP_API_APP_ID)
         assert "private-input" not in (error.value.description or "")
         assert boundary.calls == []
 

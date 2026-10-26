@@ -68,16 +68,16 @@ class KnowledgeFSTextApi(Resource):
             try:
                 with text_backend_stage("deadline"):
                     deadline = TextSearchDeadline.from_epoch_ms(deadline_ms) if payload.operation == "search" else None
-                with deadline.enforce() if deadline else nullcontext():
-                    with (
-                        text_backend_stage("configure"),
-                        configured_text_client(
-                            payload.scope.tenant_id,
-                            allow_create=payload.operation == "upsert",
-                            **({"deadline": deadline} if deadline else {}),
-                        ) as client,
-                    ):
-                        result = execute_text_request(client, payload)
+                with (
+                    deadline.enforce() if deadline else nullcontext(),
+                    text_backend_stage("configure"),
+                    configured_text_client(
+                        payload.scope.tenant_id,
+                        allow_create=payload.operation == "upsert",
+                        **({"deadline": deadline} if deadline else {}),
+                    ) as client,
+                ):
+                    result = execute_text_request(client, payload)
             except (TidbBindingPendingError, TextIndexPendingError) as error:
                 diagnostics.log_failure(error, outcome="pending")
                 raise ServiceUnavailable("KnowledgeFS full-text index is being initialized", retry_after=5) from None
