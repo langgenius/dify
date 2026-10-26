@@ -3277,6 +3277,66 @@ class TestDatasetServiceDocumentCases:
             assert document.enabled is True
             mock_redis.setex.assert_called_once_with(f"document_{document.id}_indexing", 600, 1)
 
+        def test_batch_update_document_status_sets_guard_before_task_dispatch(self, sqlite_session: Session):
+            dataset = _dataset_row()
+            document = _document_row(enabled=False)
+            sqlite_session.add_all([dataset, document])
+            sqlite_session.commit()
+
+            indexing_cache_key = f"document_{document.id}_indexing"
+            guard_store: dict[str, object] = {}
+
+            with (
+                _dataset_service_document_patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+                _dataset_service_document_patch(
+                    "services.knowledge.dataset_service.add_document_to_index_task"
+                ) as add_task,
+            ):
+                mock_redis.get.return_value = None
+                mock_redis.setex.side_effect = lambda key, _ttl, value: guard_store.__setitem__(key, value)
+                mock_redis.delete.side_effect = lambda key: guard_store.pop(key, None)
+
+                def finish_worker_immediately(*_args):
+                    guard_store.pop(indexing_cache_key, None)
+
+                add_task.delay.side_effect = finish_worker_immediately
+
+                _dataset_service_document_DocumentService.batch_update_document_status(
+                    dataset, [document.id], "enable", _dataset_service_document_account(), sqlite_session
+                )
+
+            mock_redis.setex.assert_called_once_with(indexing_cache_key, 600, 1)
+            assert indexing_cache_key not in guard_store
+
+        def test_batch_update_document_status_clears_guard_when_task_submission_fails(self, sqlite_session: Session):
+            dataset = _dataset_row()
+            document = _document_row(enabled=False)
+            sqlite_session.add_all([dataset, document])
+            sqlite_session.commit()
+
+            indexing_cache_key = f"document_{document.id}_indexing"
+            guard_store: dict[str, object] = {}
+
+            with (
+                _dataset_service_document_patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+                _dataset_service_document_patch(
+                    "services.knowledge.dataset_service.add_document_to_index_task"
+                ) as add_task,
+            ):
+                mock_redis.get.return_value = None
+                mock_redis.setex.side_effect = lambda key, _ttl, value: guard_store.__setitem__(key, value)
+                mock_redis.delete.side_effect = lambda key: guard_store.pop(key, None)
+                add_task.delay.side_effect = RuntimeError("broker unavailable")
+
+                with pytest.raises(RuntimeError, match="broker unavailable"):
+                    _dataset_service_document_DocumentService.batch_update_document_status(
+                        dataset, [document.id], "enable", _dataset_service_document_account(), sqlite_session
+                    )
+
+            mock_redis.setex.assert_called_once_with(indexing_cache_key, 600, 1)
+            mock_redis.delete.assert_called_once_with(indexing_cache_key)
+            assert indexing_cache_key not in guard_store
+
     class TestDocumentServiceTenantAndUpdateEdges:
         """Unit tests for tenant-count and update edge cases."""
 
