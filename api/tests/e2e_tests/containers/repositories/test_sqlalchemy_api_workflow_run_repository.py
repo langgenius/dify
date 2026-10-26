@@ -23,6 +23,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import BackstageRecipientPayload, HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
 from models.human_input_entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
@@ -64,7 +65,7 @@ def _create_workflow_run(
         tenant_id=scope.tenant_id,
         app_id=scope.app_id,
         workflow_id=scope.workflow_id,
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         version="draft",
         graph="{}",
@@ -72,8 +73,8 @@ def _create_workflow_run(
         status=status,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=scope.user_id,
-        created_at=created_at or naive_utc_now(),
     )
+    workflow_run.created_at = created_at or naive_utc_now()
     session.add(workflow_run)
     session.commit()
     return workflow_run
