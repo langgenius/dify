@@ -3337,6 +3337,47 @@ class TestDatasetServiceDocumentCases:
             mock_redis.delete.assert_called_once_with(indexing_cache_key)
             assert indexing_cache_key not in guard_store
 
+
+        @pytest.mark.parametrize(
+            ("guard_write_fails", "guard_cleanup_fails"),
+            [(True, False), (False, True)],
+        )
+        def test_batch_update_document_status_preserves_task_error_on_redis_failure(
+            self, sqlite_session: Session, guard_write_fails: bool, guard_cleanup_fails: bool
+        ):
+            dataset = _dataset_row()
+            document = _document_row(enabled=False)
+            sqlite_session.add_all([dataset, document])
+            sqlite_session.commit()
+
+            indexing_cache_key = f"document_{document.id}_indexing"
+            with (
+                _dataset_service_document_patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+                _dataset_service_document_patch(
+                    "services.knowledge.dataset_service.add_document_to_index_task"
+                ) as add_task,
+            ):
+                mock_redis.get.return_value = None
+                if guard_write_fails:
+                    mock_redis.setex.side_effect = RuntimeError("redis write unavailable")
+                if guard_cleanup_fails:
+                    mock_redis.delete.side_effect = RuntimeError("redis cleanup unavailable")
+                add_task.delay.side_effect = RuntimeError("broker unavailable")
+
+                with pytest.raises(RuntimeError, match="broker unavailable"):
+                    _dataset_service_document_DocumentService.batch_update_document_status(
+                        dataset, [document.id], "enable", _dataset_service_document_account(), sqlite_session
+                    )
+
+            mock_redis.setex.assert_called_once_with(indexing_cache_key, 600, 1)
+            add_task.delay.assert_called_once()
+            if guard_write_fails:
+                mock_redis.delete.assert_not_called()
+            else:
+                mock_redis.delete.assert_called_once_with(indexing_cache_key)
+            sqlite_session.refresh(document)
+            assert document.enabled is True
+
     class TestDocumentServiceTenantAndUpdateEdges:
         """Unit tests for tenant-count and update edge cases."""
 
