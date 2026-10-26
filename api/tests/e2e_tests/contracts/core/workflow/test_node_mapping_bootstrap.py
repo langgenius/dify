@@ -102,31 +102,34 @@ def test_moved_core_nodes_resolve_after_importing_production_entrypoints() -> No
     script = textwrap.dedent(
         """
         from core.app.apps import workflow_app_runner
+        from core.workflow.nodes.datasource.datasource_node import DatasourceNode
         from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+        from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
         from services.workflow.execution.adapters import workflow_entry
+        from services.workflow.execution.adapters.knowledge_retrieval import KnowledgeRetrievalNode
         from services.workflow.execution.adapters.node_factory import (
             DifyNodeFactory,
             NODE_TYPE_CLASSES_MAPPING,
             resolve_workflow_node_class,
         )
-        from core.workflow.nodes.agent import AgentNode
-        from core.workflow.nodes.agent_v2 import DifyAgentNode
         from graphon.enums import BuiltinNodeTypes
         from services import workflow_service
         from services.rag_pipeline import rag_pipeline
+        from services.workflow.execution.adapters.agent_node import AgentNode
+        from services.workflow.execution.adapters.agent_v2.agent_node import DifyAgentNode
 
         _ = workflow_entry, workflow_app_runner, workflow_service, rag_pipeline
 
-        expected = (
-            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
-            KNOWLEDGE_INDEX_NODE_TYPE,
-            BuiltinNodeTypes.DATASOURCE,
-        )
+        expected = {
+            BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: KnowledgeRetrievalNode,
+            KNOWLEDGE_INDEX_NODE_TYPE: KnowledgeIndexNode,
+            BuiltinNodeTypes.DATASOURCE: DatasourceNode,
+        }
 
-        for node_type in expected:
+        for node_type, node_class in expected.items():
             assert node_type in NODE_TYPE_CLASSES_MAPPING, node_type
             resolved = DifyNodeFactory._resolve_node_class(node_type=node_type, node_version="1")
-            assert resolved.__module__.startswith("core.workflow.nodes."), resolved.__module__
+            assert resolved is node_class, (node_type, resolved)
 
         assert DifyNodeFactory._resolve_node_class(
             node_type=BuiltinNodeTypes.AGENT,
