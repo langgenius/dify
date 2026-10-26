@@ -47,6 +47,25 @@ changes, and CI checks the PR against its target revision.
 - Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
 - Treat default parameter values as introducing distinct function overloads; verify that every added default has demonstrable practical utility and avoids masking unsafe runtime states.
 
+## Invariants And Construction
+
+- Start each design from explicit principles and domain invariants. An invariant is a condition that all valid states preserve.
+- Derive implementation rules and memory documents from these principles. Explain the invariant that each rule protects.
+- Use abstract interpretation to reason about possible values and state transitions. Check that each operation preserves the relevant invariants.
+- Use dedicated types to distinguish domain values with different meanings. Use `NewType` for static distinctions between values with identical representations.
+- `NewType` does not validate values at runtime. Use validated value objects when an invariant requires runtime checks.
+- Prefer safe-by-construction functional idioms. Use immutable values, explicit result variants, and pure functions where practical.
+- Validate external values at boundaries. Construct trusted domain values only after validation succeeds.
+
+## Control Flow And Contracts
+
+- Use structured control flow. Do not add `continue` or `break` statements.
+- Express iteration with explicit conditions, comprehensions, or small functions that return a result.
+- State preconditions and postconditions for each new or changed function in the code you produce.
+- Put these contracts in the function docstring. Include accepted inputs, required state, results, side effects, and failure behavior as applicable.
+- Specify which invariants remain true after success and failure. Use types and executable checks to enforce contracts where practical.
+- Include preconditions and postconditions in the change report. State which checks support the claimed postconditions.
+
 [architecture]: ../docs/BACKEND_ARCHITECTURE.md
 [repositories]: ../docs/BACKEND_REPOSITORIES.md
 [sqlalchemy]: ../docs/BACKEND_SQLALCHEMY.md
