@@ -25,7 +25,7 @@ from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppPausedBlockingResponse,
@@ -355,6 +355,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param workflow_node_execution_repository: repository for workflow node execution
         :param streaming: is stream
         """
+        # Invocation source does not determine identity: scheduled SERVICE_API runs use an Account.
+        application_generate_entity = application_generate_entity.model_copy(
+            update={"user_from": UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER}
+        )
         with self._bind_file_access_scope(
             tenant_id=application_generate_entity.app_config.tenant_id,
             user=user,
@@ -651,18 +655,24 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         workflow_run_id=application_generate_entity.workflow_execution_id,
                     )
 
-                # Determine system_user_id based on invocation source
-                is_external_api_call = application_generate_entity.invoke_from in {
-                    InvokeFrom.WEB_APP,
-                    InvokeFrom.SERVICE_API,
-                }
+                user_from = application_generate_entity.user_from
+                if user_from is None:
+                    # Compatibility for callers that construct worker entities directly.
+                    user_from = (
+                        UserFrom.END_USER
+                        if application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}
+                        else UserFrom.ACCOUNT
+                    )
 
-                if is_external_api_call:
-                    # For external API calls, use end user's session ID
-                    end_user = session.scalar(select(EndUser).where(EndUser.id == application_generate_entity.user_id))
+                if user_from == UserFrom.END_USER:
+                    end_user = session.scalar(
+                        select(EndUser).where(
+                            EndUser.tenant_id == application_generate_entity.app_config.tenant_id,
+                            EndUser.id == application_generate_entity.user_id,
+                        )
+                    )
                     system_user_id = end_user.session_id if end_user else ""
                 else:
-                    # For internal calls, use the original user ID
                     system_user_id = application_generate_entity.user_id
 
             runner = WorkflowAppRunner(

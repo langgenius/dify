@@ -5,7 +5,12 @@ import json
 import pytest
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
+    UserFrom,
+    WorkflowAppGenerateEntity,
+)
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
@@ -105,3 +110,18 @@ def test_resumption_context_defaults_elapsed_time_for_legacy_snapshots() -> None
 
     assert restored.elapsed_time == 0.0
     assert restored.get_generate_entity().workflow_execution_timing.elapsed_time == 0.0
+
+
+@pytest.mark.parametrize("user_from", [UserFrom.ACCOUNT, UserFrom.END_USER])
+def test_resumption_context_preserves_explicit_workflow_user_from(user_from: UserFrom) -> None:
+    context = _build_workflow_generate_entity_for_roundtrip()
+    entity = context.get_generate_entity()
+    assert isinstance(entity, WorkflowAppGenerateEntity)
+    entity.invoke_from = InvokeFrom.SERVICE_API
+    entity.user_from = user_from
+
+    restored = WorkflowResumptionContext.loads(context.dumps()).get_generate_entity()
+
+    assert isinstance(restored, WorkflowAppGenerateEntity)
+    assert restored.user_from == user_from
+    assert restored.invoke_from == InvokeFrom.SERVICE_API
