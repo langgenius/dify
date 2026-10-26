@@ -1,7 +1,15 @@
 import type { SkillMeta } from './lib.ts'
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { insertFrontmatter, latestStableTag, skillFields } from './lib.ts'
@@ -9,6 +17,8 @@ import { insertFrontmatter, latestStableTag, skillFields } from './lib.ts'
 const WORKBUDDY_DIR = fileURLToPath(new URL('.', import.meta.url))
 const REPO_ROOT = join(WORKBUDDY_DIR, '..', '..')
 const BUILD_NAME = 'build'
+const CONNECTOR_NAME = /^[a-z0-9][a-z0-9-]*$/
+const ARCHIVE_MAX_BYTES = 256 * 1024 * 1024
 const BUILD_DIR = join(WORKBUDDY_DIR, BUILD_NAME)
 const ICON_FILES = ['icon.svg', 'icon.png', 'icon.jpg']
 const COPIED_FILES = ['connector-meta.json', 'cli.json']
@@ -30,19 +40,20 @@ function main() {
   if (!connector || positionals.length > 1)
     throw new Error('usage: node package.ts <connector> [--tag <tag>]')
 
-  if (
-    basename(connector) !== connector ||
-    connector === '.' ||
-    connector === '..' ||
-    connector === BUILD_NAME
-  )
-    throw new Error(`invalid connector name "${connector}"`)
+  if (!CONNECTOR_NAME.test(connector))
+    throw new Error(
+      `invalid connector name "${connector}": use lowercase letters, digits and hyphens`,
+    )
+  if (connector === BUILD_NAME) throw new Error(`invalid connector name "${connector}"`)
 
   const sourceDir = join(WORKBUDDY_DIR, connector)
-  if (!existsSync(sourceDir))
-    throw new Error(`unknown connector "${connector}": ${sourceDir} not found`)
+  if (!existsSync(sourceDir) || !statSync(sourceDir).isDirectory())
+    throw new Error(`unknown connector "${connector}": ${sourceDir} is not a directory`)
 
-  const { version } = readJson<{ version: string }>(join(sourceDir, 'connector-meta.json'))
+  const metaPath = join(sourceDir, 'connector-meta.json')
+  const { version } = readJson<{ version?: unknown }>(metaPath)
+  if (typeof version !== 'string' || !version)
+    throw new Error(`${metaPath}: "version" must be a non-empty string`)
   const meta = readJson<SkillMeta>(join(sourceDir, 'skill-meta.json'))
 
   const tag =
@@ -61,7 +72,7 @@ function main() {
 
   const archive = execFileSync('git', ['archive', tag, `skills/${meta.skill}`], {
     cwd: REPO_ROOT,
-    maxBuffer: 256 * 1024 * 1024,
+    maxBuffer: ARCHIVE_MAX_BYTES,
   })
   execFileSync('tar', ['-x', '-C', outDir], { input: archive })
 
