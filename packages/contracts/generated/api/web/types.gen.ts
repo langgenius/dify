@@ -2003,6 +2003,7 @@ export type GetMessagesByMessageIdMoreLikeThisData = {
 
 export type GetMessagesByMessageIdMoreLikeThisErrors = {
   400:
+    | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotCompletionAppError

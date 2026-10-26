@@ -1,7 +1,7 @@
 """Explore message HTTP contracts through real admission, services and SQLite."""
 
 import json
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -12,21 +12,14 @@ import pytest
 from pydantic import JsonValue
 from sqlalchemy import Connection, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
-from werkzeug.exceptions import Forbidden
 from werkzeug.test import TestResponse
 
 import controllers.console.explore.message as module
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from graphon.model_runtime.errors.invoke import InvokeError
 from models import App, AppMode, InstalledApp
 from models.enums import ConversationFromSource, ConversationStatus, FeedbackFromSource, FeedbackRating
 from models.model import Conversation, Message, MessageFeedback
 from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
-from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
-from services.errors.app import MoreLikeThisDisabledError
-from services.errors.message import MessageNotExistsError
-from services.installed_app_generation_service import GenerationResponse, InstalledAppGenerationService
 from services.installed_app_message_service import InstalledAppMessageService, MessageFeedbackEvent
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
@@ -37,15 +30,13 @@ from tests.unit_tests.controllers.console.explore.test_installed_app_admission i
 __all__ = ["harness"]
 
 _CREATED_AT = datetime(2024, 1, 1)
-type _Operation = Literal["list", "feedback", "more-like-this"]
-_OPERATIONS: tuple[_Operation, ...] = ("list", "feedback", "more-like-this")
-_BLOCKING: dict[str, object] = {"answer": "你好", "metadata": {}, "usage": None}
+type _Operation = Literal["list", "feedback"]
+_OPERATIONS: tuple[_Operation, ...] = ("list", "feedback")
 
 
 @dataclass(frozen=True)
 class _InstalledAppServices:
     messages: InstalledAppMessageService
-    generation: InstalledAppGenerationService
 
 
 @dataclass(frozen=True)
@@ -62,9 +53,6 @@ class _Messages:
     extras: dict[str, list[dict[str, JsonValue]]] = field(default_factory=dict)
     extra_calls: list[list[str]] = field(default_factory=list)
     feedback_events: list[MessageFeedbackEvent] = field(default_factory=list)
-    generation_calls: list[tuple[str, str, str, bool]] = field(default_factory=list)
-    generation_response: GenerationResponse = field(default_factory=lambda: dict(_BLOCKING))
-    external_error: Exception | None = None
 
     def assert_sessions_closed(self) -> None:
         assert all(not session.in_transaction() and not session.identity_map for session in self.sessions)
@@ -83,27 +71,6 @@ class _Messages:
             assert persisted.content == feedback.content
         self.feedback_events.append(feedback)
 
-    def generate(
-        self, *, app_id: str, account_id: str, args: Mapping[str, object], streaming: bool
-    ) -> GenerationResponse:
-        pytest.fail(f"Unexpected normal generation: {app_id=}, {account_id=}, {args=}, {streaming=}")
-
-    def generate_more_like_this(
-        self, *, app_id: str, account_id: str, message_id: str, streaming: bool
-    ) -> GenerationResponse:
-        self.assert_sessions_closed()
-        self.assert_unused()
-        self.generation_calls.append((app_id, account_id, message_id, streaming))
-        if self.external_error is not None:
-            raise self.external_error
-        return self.generation_response
-
-    def assert_unused(self) -> None:
-        with self.factory() as session:
-            installation = session.get(InstalledApp, self.harness.installed_app.id)
-            assert installation is not None
-            assert installation.last_used_at is None
-
     def request(
         self,
         operation: _Operation,
@@ -120,10 +87,7 @@ class _Messages:
             if query:
                 url += f"&{query}"
         else:
-            suffix = "feedbacks" if operation == "feedback" else operation
-            url += f"/{message_id or uuid4()}/{suffix}"
-            if operation == "more-like-this":
-                url += f"?{query if query is not None else 'response_mode=blocking'}"
+            url += f"/{message_id or uuid4()}/feedbacks"
         return self.harness.app.test_client().open(url, method="POST" if operation == "feedback" else "GET", json=body)
 
 
@@ -146,16 +110,12 @@ def messages(
                 get_extra_contents=state.get_extra_contents,
                 emit_feedback=state.emit_feedback,
             ),
-            generation=InstalledAppGenerationService(
-                usage=SQLAlchemyInstalledAppRepository(session_factory=factory), runtime=state
-            ),
         ),
     )
     monkeypatch.setattr(module, "application_services", lambda: state.services)
     for resource, suffix in (
         (module.MessageListApi, ""),
         (module.MessageFeedbackApi, "/<uuid:message_id>/feedbacks"),
-        (module.MessageMoreLikeThisApi, "/<uuid:message_id>/more-like-this"),
     ):
         harness.api.add_resource(resource, f"/installed-apps/<uuid:installed_app_id>/messages{suffix}")
     return state
@@ -461,112 +421,10 @@ def test_all_message_handlers_apply_installed_app_admission(
         status=403 if admission == "denied" else 404,
         code="access_denied" if admission == "denied" else "installed_app_not_found",
     )
-    assert messages.extra_calls == messages.feedback_events == messages.generation_calls == []
+    assert messages.extra_calls == messages.feedback_events == []
 
 
-@pytest.mark.parametrize("operation", ["list", "more-like-this"])
-def test_mode_rejection_precedes_message_queries_and_generation(messages: _Messages, operation: _Operation) -> None:
-    _set_mode(messages, AppMode.CHAT if operation == "more-like-this" else AppMode.COMPLETION)
-    _error(
-        messages.request(operation),
-        status=400,
-        code="not_completion_app" if operation == "more-like-this" else "not_chat_app",
-    )
-    assert messages.extra_calls == messages.generation_calls == []
-
-
-def test_more_like_this_preserves_blocking_response_and_does_not_update_usage(messages: _Messages) -> None:
+def test_list_mode_rejection_precedes_message_queries(messages: _Messages) -> None:
     _set_mode(messages, AppMode.COMPLETION)
-    message_id = str(uuid4())
-    response = messages.request("more-like-this", message_id=message_id)
-    assert response.status_code == 200
-    assert response.get_json() == _BLOCKING
-    assert dict(response.headers) == {
-        "Content-Type": "application/json; charset=utf-8",
-        "Content-Length": str(len(response.data)),
-    }
-    assert messages.generation_calls == [
-        (messages.harness.target_app.id, messages.harness.account.id, message_id, False)
-    ]
-    messages.assert_unused()
-
-
-@pytest.mark.parametrize("consume_all", [False, True])
-def test_more_like_this_stream_keeps_sse_and_closes_iterator(messages: _Messages, consume_all: bool) -> None:
-    _set_mode(messages, AppMode.COMPLETION)
-    closed: list[bool] = []
-
-    def chunks() -> Generator[str]:
-        try:
-            yield 'data: {"answer":"你好"}\n\n'
-            yield "data: [DONE]\n\n"
-        finally:
-            closed.append(True)
-
-    messages.generation_response = chunks()
-    response = messages.request("more-like-this", query="response_mode=streaming")
-    assert response.status_code == 200
-    assert dict(response.headers) == {"Content-Type": "text/event-stream; charset=utf-8"}
-    if consume_all:
-        assert response.data == 'data: {"answer":"你好"}\n\ndata: [DONE]\n\n'.encode()
-    else:
-        assert next(iter(response.response)) == 'data: {"answer":"你好"}\n\n'.encode()
-        assert closed == []
-    response.close()
-    assert closed == [True]
-    assert messages.generation_calls[0][-1] is True
-    messages.assert_unused()
-
-
-@pytest.mark.parametrize("query", ["", "response_mode=invalid"])
-def test_more_like_this_invalid_query_uses_shared_422(messages: _Messages, query: str) -> None:
-    _set_mode(messages, AppMode.COMPLETION)
-    _error(messages.request("more-like-this", query=query), status=422, code="unprocessable_entity")
-    assert messages.generation_calls == []
-
-
-@pytest.mark.parametrize("operation", ["more-like-this"])
-@pytest.mark.parametrize(
-    ("failure", "status", "code", "description"),
-    [
-        (ProviderTokenNotInitError("Missing credentials"), 400, "provider_not_initialize", "Missing credentials"),
-        (QuotaExceededError(), 400, "provider_quota_exceeded", None),
-        (ModelCurrentlyNotSupportError(), 400, "model_currently_not_support", None),
-        (InvokeError("Provider rejected input"), 400, "completion_request_error", "Provider rejected input"),
-        (
-            Forbidden("Private provider details"),
-            500,
-            "internal_server_error",
-            "The server encountered an internal error and was unable to complete your request. "
-            "Either the server is overloaded or there is an error in the application.",
-        ),
-        (RuntimeError("Unexpected failure"), 500, "internal_server_error", None),
-    ],
-)
-def test_generation_failures_keep_provider_errors_and_context(
-    messages: _Messages, operation: _Operation, failure: Exception, status: int, code: str, description: str | None
-) -> None:
-    if operation == "more-like-this":
-        _set_mode(messages, AppMode.COMPLETION)
-    messages.external_error = failure
-    _error(messages.request(operation), status=status, code=code, message=description)
-    assert len(messages.generation_calls) == 1
-    messages.assert_unused()
-
-
-@pytest.mark.parametrize(
-    ("operation", "failure", "status", "code"),
-    [
-        ("more-like-this", MessageNotExistsError(), 404, "message_not_found"),
-        ("more-like-this", MoreLikeThisDisabledError(), 403, "app_more_like_this_disabled"),
-        ("more-like-this", ValueError("Bad runtime arguments"), 400, "invalid_param"),
-    ],
-)
-def test_generation_resource_errors_remain_specific(
-    messages: _Messages, operation: _Operation, failure: Exception, status: int, code: str
-) -> None:
-    if operation == "more-like-this":
-        _set_mode(messages, AppMode.COMPLETION)
-    messages.external_error = failure
-    _error(messages.request(operation), status=status, code=code)
-    messages.assert_unused()
+    _error(messages.request("list"), status=400, code="not_chat_app")
+    assert messages.extra_calls == []

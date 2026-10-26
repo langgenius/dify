@@ -1,10 +1,11 @@
 """Select message configuration using the existing Agent and Workflow policy owners.
 
-Each operation owns a short read session. Only scalar configuration or detached
-history leaves this module; model resolution and attachment I/O happen afterwards.
+Configuration preparation owns a short read session; history reads delegate
+session ownership to the repository. Only scalar configuration or detached history
+leaves this module; model resolution and attachment I/O happen afterwards.
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from copy import deepcopy
 from types import MappingProxyType
 
@@ -31,23 +32,21 @@ from services.workflow_service import WorkflowService
 class SuggestedQuestionsQuery:
     """Coordinate repository reads with the existing ORM-based config readers.
 
-    This query owns each short session because AgentRuntimeConfigService,
+    Only prepare owns a short session because AgentRuntimeConfigService,
     WorkflowService and conversation config helpers still need a caller session.
-    The composition root supplies repository_factory to select the repository;
-    it borrows that same session rather than opening another one.
-
-    TODO: Move session ownership into repositories once those config readers
-    expose detached results, keeping their configuration policies in services.
+    The shared MessageRepository borrows that session for configuration reads
+    and owns the separate history session. Its module docstring describes when
+    the remaining caller-session parameters can be removed.
     """
 
     def __init__(
         self,
         *,
         session_factory: sessionmaker[Session],
-        repository_factory: Callable[[Session], MessageRepository],
+        repository: MessageRepository,
     ) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
-        self._repository_factory: Callable[[Session], MessageRepository] = repository_factory
+        self._repository: MessageRepository = repository
 
     def prepare(
         self,
@@ -60,8 +59,8 @@ class SuggestedQuestionsQuery:
         message_id: str,
     ) -> SuggestedQuestionsContext | None:
         with self._session_factory(expire_on_commit=False) as session:
-            repository = self._repository_factory(session)
-            records = repository.get_context(
+            records = self._repository.get_suggested_questions_context(
+                session=session,
                 app_id=app_id,
                 app_owner_tenant_id=app_owner_tenant_id,
                 expected_app_mode=expected_app_mode,
@@ -69,7 +68,7 @@ class SuggestedQuestionsQuery:
                 message_id=message_id,
             )
             config = self._configuration(
-                session=session, repository=repository, records=records, actor=actor, invoke_from=invoke_from
+                session=session, repository=self._repository, records=records, actor=actor, invoke_from=invoke_from
             )
             if config is None:
                 return None
@@ -119,7 +118,9 @@ class SuggestedQuestionsQuery:
                 account_id=actor.account_id if isinstance(actor, MessageAccount) else None,
                 use_debug_draft=invoke_from == "debugger",
             )
-            model_config = repository.get_model_config(app_id=app.id, config_id=app.app_model_config_id)
+            model_config = repository.get_model_config(
+                session=session, app_id=app.id, config_id=app.app_model_config_id
+            )
             annotation_reply = load_annotation_reply_config(session, app.id) if model_config else None
             features = merge_agent_app_features(
                 agent_soul=soul or AgentSoulConfig(),
@@ -134,11 +135,12 @@ class SuggestedQuestionsQuery:
                 conversation.model_config_with_session(session=session)
             )
         else:
-            model_config = repository.get_model_config(app_id=app.id, config_id=conversation.app_model_config_id)
+            model_config = repository.get_model_config(
+                session=session, app_id=app.id, config_id=conversation.app_model_config_id
+            )
         if model_config is None:
             raise ValueError("did not find app model config")
         return model_config.suggested_questions_after_answer_dict
 
     def load_history(self, context: SuggestedQuestionsContext) -> PreparedHistory:
-        with self._session_factory(expire_on_commit=False) as session:
-            return self._repository_factory(session).load_history(context=context)
+        return self._repository.load_suggested_questions_history(context=context)

@@ -145,6 +145,8 @@ from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
 from services.knowledge_fs.workflow_runtime import build_knowledge_fs_node_dependencies
 from services.message_file_preview_service import MessageFilePreviewService
+from services.message_more_like_this_generator import MessageMoreLikeThisGenerator
+from services.message_more_like_this_service import MessageMoreLikeThisService
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import MessageSuggestedQuestions, MessageSuggestedQuestionsService
@@ -301,6 +303,7 @@ class ApplicationServices:
     human_input_file_uploads: HumanInputFileUploadService
     message_file_previews: MessageFilePreviewService
     message_suggested_questions: MessageSuggestedQuestions
+    message_more_like_this: MessageMoreLikeThisService
     plugin_file_uploads: PluginFileUploadService
     tool_file_downloads: ToolFileDownloadService
     upload_file_delivery: UploadFileDeliveryService
@@ -537,9 +540,10 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
     )
+    messages = MessageRepository(session_factory=database_client)
     suggested_questions = SuggestedQuestionsQuery(
         session_factory=database_client,
-        repository_factory=MessageRepository,
+        repository=messages,
     )
 
     return ApplicationServices(
@@ -662,6 +666,10 @@ def build_application_services(
         message_file_previews=MessageFilePreviewService(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
             storage=storage,
+        ),
+        message_more_like_this=MessageMoreLikeThisService(
+            repository=messages,
+            generator=MessageMoreLikeThisGenerator(session_factory=database_client),
         ),
         message_suggested_questions=MessageSuggestedQuestionsService(
             queries=suggested_questions,

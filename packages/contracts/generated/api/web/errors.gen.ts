@@ -526,6 +526,7 @@ export const post16Errors = {
 
 export const get4Errors = {
   app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_completion_app: { status: 400, data: zNotCompletionAppError },
