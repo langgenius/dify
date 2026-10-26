@@ -13,6 +13,15 @@ Focus on:
 """
 
 import uuid
+
+# =============================================================================
+# API Endpoint Tests
+#
+# ``FileApi.post`` is wrapped by ``@validate_app_token(fetch_user_arg=...)``
+# which preserves ``__wrapped__`` via ``functools.wraps``.  We call the
+# unwrapped method directly to bypass the decorator.
+# =============================================================================
+from inspect import unwrap
 from unittest.mock import Mock, patch
 
 import pytest
@@ -194,17 +203,6 @@ class TestFileUploadResponse:
         assert hasattr(mock_file, "mime_type")
         assert hasattr(mock_file, "created_by")
         assert hasattr(mock_file, "created_at")
-
-
-# =============================================================================
-# API Endpoint Tests
-#
-# ``FileApi.post`` is wrapped by ``@validate_app_token(fetch_user_arg=...)``
-# which preserves ``__wrapped__`` via ``functools.wraps``.  We call the
-# unwrapped method directly to bypass the decorator.
-# =============================================================================
-
-from inspect import unwrap
 
 
 @pytest.fixture

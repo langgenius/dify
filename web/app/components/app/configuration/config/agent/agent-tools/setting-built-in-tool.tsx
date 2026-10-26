@@ -30,18 +30,12 @@ import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { getPluginLanguage } from '@/i18n/metadata'
-import {
-  fetchBuiltInToolList,
-  fetchCustomToolList,
-  fetchModelToolList,
-  fetchWorkflowToolList,
-} from '@/service/tools'
+import { fetchBuiltInToolList, fetchCustomToolList, fetchWorkflowToolList } from '@/service/tools'
 
 type Props = Readonly<{
   showBackButton?: boolean
   collection: Collection | ToolWithProvider
   isBuiltIn?: boolean
-  isModel?: boolean
   toolName: string
   setting?: Record<string, any>
   readonly?: boolean
@@ -56,7 +50,6 @@ const SettingBuiltInTool: FC<Props> = ({
   showBackButton = false,
   collection,
   isBuiltIn = true,
-  isModel = true,
   toolName,
   setting = {},
   readonly,
@@ -90,8 +83,7 @@ const SettingBuiltInTool: FC<Props> = ({
       try {
         const list = await new Promise<Tool[]>((resolve) => {
           ;(async function () {
-            if (isModel) resolve(await fetchModelToolList(collection.name))
-            else if (isBuiltIn) resolve(await fetchBuiltInToolList(collection.name))
+            if (isBuiltIn) resolve(await fetchBuiltInToolList(collection.name))
             else if (collection.type === CollectionType.workflow)
               resolve(await fetchWorkflowToolList(collection.id))
             else resolve(await fetchCustomToolList(collection.name))

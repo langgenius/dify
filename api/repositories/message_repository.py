@@ -15,7 +15,7 @@ from copy import deepcopy
 from typing import NamedTuple, cast
 
 from pydantic import JsonValue
-from sqlalchemy import Select, select
+from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
@@ -86,8 +86,14 @@ class MessageRepository:
             if not conversation_id:
                 return MessagePage(limit=limit, has_more=False, data=())
             self._require_page_conversation(session, app_id=app_id, conversation_id=conversation_id, actor=actor)
-            statement = self._page_statement(session, app_id=app_id, conversation_id=conversation_id, first_id=first_id)
-            messages = list(session.scalars(statement.order_by(Message.created_at.desc()).limit(limit + 1)))
+            statement = self._page_statement(
+                session,
+                app_id=app_id,
+                conversation_id=conversation_id,
+                first_id=first_id,
+                use_id_tiebreaker=installed_app is not None,
+            )
+            messages = list(session.scalars(statement.limit(limit + 1)))
             has_more = len(messages) > limit
             return MessagePage(
                 limit=limit,
@@ -121,8 +127,14 @@ class MessageRepository:
                 conversation_id=conversation_id,
                 actor=actor if app.mode == AppMode.AGENT else None,
             )
-            statement = self._page_statement(session, app_id=app_id, conversation_id=conversation_id, first_id=first_id)
-            messages = list(session.scalars(statement.order_by(Message.created_at.desc()).limit(limit)))
+            statement = self._page_statement(
+                session,
+                app_id=app_id,
+                conversation_id=conversation_id,
+                first_id=first_id,
+                use_id_tiebreaker=False,
+            )
+            messages = list(session.scalars(statement.limit(limit)))
             # Console's legacy has_more checks for a strictly older timestamp;
             # actor pages instead count the extra row, including timestamp ties.
             has_more = bool(
@@ -241,7 +253,7 @@ class MessageRepository:
 
     @staticmethod
     def _page_statement(
-        session: Session, *, app_id: str, conversation_id: str, first_id: str | None
+        session: Session, *, app_id: str, conversation_id: str, first_id: str | None, use_id_tiebreaker: bool
     ) -> Select[tuple[Message]]:
         statement = select(Message).where(Message.app_id == app_id, Message.conversation_id == conversation_id)
         if first_id:
@@ -250,9 +262,20 @@ class MessageRepository:
                 raise FirstMessageNotExistsError(
                     f"The first_id cursor {first_id} does not belong to conversation {conversation_id}"
                 )
-            # Preserve strict timestamp cursors: a tied row is not a later page.
-            statement = statement.where(Message.created_at < first_message.created_at, Message.id != first_message.id)
-        return statement
+            if use_id_tiebreaker:
+                statement = statement.where(
+                    or_(
+                        Message.created_at < first_message.created_at,
+                        and_(Message.created_at == first_message.created_at, Message.id < first_message.id),
+                    )
+                )
+            else:
+                statement = statement.where(
+                    Message.created_at < first_message.created_at, Message.id != first_message.id
+                )
+        # Explore already uses an ID tiebreaker; the other entrypoints retain timestamp-only cursors.
+        statement = statement.order_by(Message.created_at.desc())
+        return statement.order_by(Message.id.desc()) if use_id_tiebreaker else statement
 
     def set_feedback(
         self,
@@ -700,7 +723,7 @@ class MessageRepository:
             query=record.query,
             answer=record.answer,
             feedback=record.feedback,
-            retriever_resources=record.retriever_resources,
+            retriever_resources=record.retriever_resources or [],
             created_at=record.created_at,
             agent_thoughts=record.agent_thoughts,
             message_files=record.message_files,

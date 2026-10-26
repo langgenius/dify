@@ -73,7 +73,7 @@ def _conversation(session: Session, installation: InstalledAppRef) -> Conversati
         app_id=installation.app_id,
         mode=AppMode.CHAT,
         name="Chat",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=_ACCOUNT_ID,
         from_end_user_id=None,
@@ -88,7 +88,7 @@ def _message(session: Session, conversation: Conversation, *, created_at: dateti
     message = Message(
         app_id=conversation.app_id,
         conversation_id=conversation.id,
-        inputs={"empty": "", "list": [], "zero": 0, "false": False, "none": None},
+        _inputs={"empty": "", "list": [], "zero": 0, "false": False, "none": None},
         query="Question",
         message={},
         answer="Answer",
@@ -102,8 +102,8 @@ def _message(session: Session, conversation: Conversation, *, created_at: dateti
         from_source=conversation.from_source,
         from_account_id=conversation.from_account_id,
         from_end_user_id=conversation.from_end_user_id,
-        created_at=created_at,
     )
+    message.created_at = created_at
     session.add(message)
     session.flush()
     return message
@@ -223,7 +223,7 @@ def test_page_keeps_cursor_order_and_detaches_complete_message_data(
     assert thought.created_at == earlier.created_at
 
 
-def test_empty_conversation_and_strict_timestamp_ties_preserve_legacy_page_behavior(
+def test_empty_conversation_returns_empty_page(
     sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
 ) -> None:
     repository = MessageRepository(
@@ -238,12 +238,22 @@ def test_empty_conversation_and_strict_timestamp_ties_preserve_legacy_page_behav
         first_id=str(uuid4()),
         limit=20,
     ) == MessagePage(limit=20, has_more=False, data=())
+
+
+@pytest.mark.parametrize("with_installation", [True, False])
+def test_timestamp_cursor_preserves_each_entrypoint_policy(
+    sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef, with_installation: bool
+) -> None:
+    repository = MessageRepository(session_factory=sqlite_session_factory)
+    admitted_installation = installation if with_installation else None
     with sqlite_session_factory.begin() as session:
         conversation = _conversation(session, installation)
-        _message(session, conversation)
-        _message(session, conversation)
+        older = _message(session, conversation, created_at=_TIME - timedelta(seconds=1))
+        first = _message(session, conversation)
+        second = _message(session, conversation)
+        tied_ids = sorted([first.id, second.id])
     page = repository.get_message_page(
-        installed_app=installation,
+        installed_app=admitted_installation,
         app_id=installation.app_id,
         app_owner_tenant_id=installation.app_owner_tenant_id,
         actor=MessageAccount(account_id=_ACCOUNT_ID),
@@ -253,15 +263,20 @@ def test_empty_conversation_and_strict_timestamp_ties_preserve_legacy_page_behav
     )
     assert page.has_more is True
     assert len(page.data) == 1
-    assert repository.get_message_page(
-        installed_app=installation,
+    if with_installation:
+        assert page.data[0].record.id == tied_ids[1]
+    remaining = repository.get_message_page(
+        installed_app=admitted_installation,
         app_id=installation.app_id,
         app_owner_tenant_id=installation.app_owner_tenant_id,
         actor=MessageAccount(account_id=_ACCOUNT_ID),
         conversation_id=conversation.id,
         first_id=page.data[0].record.id,
-        limit=1,
-    ) == MessagePage(limit=1, has_more=False, data=())
+        limit=2,
+    )
+    assert remaining.has_more is False
+    expected_ids = [older.id, tied_ids[0]] if with_installation else [older.id]
+    assert [source.record.id for source in remaining.data] == expected_ids
 
 
 @pytest.mark.parametrize("mismatch", ["app_id", "from_account_id", "from_source", "from_end_user_id", "is_deleted"])

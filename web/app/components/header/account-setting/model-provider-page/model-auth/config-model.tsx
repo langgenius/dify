@@ -34,7 +34,7 @@ const ConfigModel = ({
       >
         <span aria-hidden className="i-ri-scales-3-line size-3" />
         {t(($) => $['modelProvider.auth.authorizationError'], { ns: 'modelProvider' })}
-        <StatusDot status="warning" className="absolute -top-px -right-px size-1.5" />
+        <StatusDot status="warning" className="absolute -inset-e-px -top-px size-1.5" />
       </Button>
     )
   }

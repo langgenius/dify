@@ -5,7 +5,14 @@ import type { ImageIconInputValue } from '@/app/components/base/icon-picker/imag
 import type { ImageFile } from '@/types/app'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
@@ -130,7 +137,7 @@ const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
         open={isShowAvatarPicker}
         onOpenChange={(open) => !open && setIsShowAvatarPicker(false)}
       >
-        <DialogContent className="w-90.5! p-0!">
+        <DialogContent className="w-90.5">
           <DialogTitle className="sr-only">
             {t(($) => $['avatar.editAction'], { ns: 'common' })}
           </DialogTitle>
@@ -164,15 +171,16 @@ const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
         open={isShowDeleteConfirm}
         onOpenChange={(open) => !open && setIsShowDeleteConfirm(false)}
       >
-        <DialogContent className="w-90.5! p-6!">
-          <DialogTitle className="mb-3 title-2xl-semi-bold text-text-primary">
-            {t(($) => $['avatar.deleteTitle'], { ns: 'common' })}
-          </DialogTitle>
-          <p className="mb-8 text-text-secondary">
-            {t(($) => $['avatar.deleteDescription'], { ns: 'common' })}
-          </p>
-
-          <div className="flex w-full items-center justify-center gap-2">
+        <DialogContent className="w-90.5">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $['avatar.deleteTitle'], { ns: 'common' })}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <p className="text-text-secondary">
+              {t(($) => $['avatar.deleteDescription'], { ns: 'common' })}
+            </p>
+          </DialogBody>
+          <DialogFooter>
             <Button className="w-full" onClick={() => setIsShowDeleteConfirm(false)}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
@@ -185,7 +193,7 @@ const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
             >
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

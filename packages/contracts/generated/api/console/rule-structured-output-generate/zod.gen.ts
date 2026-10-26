@@ -3,9 +3,12 @@
 import * as z from 'zod'
 
 /**
- * GeneratorResponse
+ * StructuredOutputGenerateResponse
  */
-export const zGeneratorResponse = z.unknown()
+export const zStructuredOutputGenerateResponse = z.object({
+  error: z.string(),
+  output: z.string(),
+})
 
 /**
  * ErrorResponse
@@ -101,4 +104,4 @@ export const zPostRuleStructuredOutputGenerateBody = zRuleStructuredOutputPayloa
 /**
  * Structured output generated successfully
  */
-export const zPostRuleStructuredOutputGenerateResponse = zGeneratorResponse
+export const zPostRuleStructuredOutputGenerateResponse = zStructuredOutputGenerateResponse

@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
@@ -17,7 +17,7 @@ class TriggerEventNodeData(BaseNodeData):
     type: NodeType = TRIGGER_PLUGIN_NODE_TYPE
 
     class TriggerEventInput(BaseModel):
-        value: Union[Any, list[str]]
+        value: Any | list[str]
         type: Literal["mixed", "variable", "constant"]
 
         @field_validator("type", mode="before")

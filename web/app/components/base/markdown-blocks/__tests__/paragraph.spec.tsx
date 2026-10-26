@@ -1,14 +1,8 @@
 import type { ReactNode } from 'react'
 import type { ExtraProps } from 'streamdown'
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { render, screen, within } from '@testing-library/react'
+import { describe, expect, it } from 'vite-plus/test'
 import Paragraph from '../paragraph'
-
-vi.mock('@/app/components/base/image-gallery', () => ({
-  default: ({ srcs }: { srcs: string[] }) => (
-    <div data-testid="image-gallery">{srcs.join(',')}</div>
-  ),
-}))
 
 const renderParagraph = (
   nodeChildren: NonNullable<ExtraProps['node']>['children'],
@@ -36,22 +30,14 @@ describe('Paragraph', () => {
     expect(screen.getByText('Hello world').tagName).toBe('P')
   })
 
-  it('renders the image gallery when the first child is an image', () => {
-    renderParagraph(
-      [{ type: 'element', tagName: 'img', properties: { src: 'test.png' }, children: [] }],
-      ['Image only'],
-    )
-
-    expect(screen.getByTestId('image-gallery')).toHaveTextContent('test.png')
-  })
-
   it('preserves additional content after the leading image', () => {
     renderParagraph(
       [{ type: 'element', tagName: 'img', properties: { src: 'test.png' }, children: [] }],
       ['Image', <span key="caption">Caption</span>],
     )
 
-    expect(screen.getByTestId('image-gallery')).toHaveTextContent('test.png')
+    const preview = screen.getByRole('button', { name: /imageGallery.previewImage/ })
+    expect(within(preview).getByAltText('')).toHaveAttribute('src', 'test.png')
     expect(screen.getByText('Caption')).toBeInTheDocument()
   })
 

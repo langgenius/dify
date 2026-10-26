@@ -3,10 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { ChunkingMode } from '@/models/datasets'
 import ResultPreview from '../index'
 
-vi.mock('@/app/components/rag-pipeline/components/chunk-card-list', () => ({
-  ChunkCardList: () => <div>Chunk preview</div>,
-}))
-
 describe('ResultPreview', () => {
   it('shows progress while results are pending', () => {
     render(<ResultPreview isRunning onSwitchToDetail={vi.fn()} />)
@@ -34,6 +30,7 @@ describe('ResultPreview', () => {
       />,
     )
 
-    expect(screen.getByText('Chunk preview')).toBeInTheDocument()
+    expect(screen.getByText('answer')).toBeInTheDocument()
+    expect(screen.queryByText('pipeline.result.resultPreview.loading')).not.toBeInTheDocument()
   })
 })

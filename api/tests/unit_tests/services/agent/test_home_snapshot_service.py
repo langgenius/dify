@@ -30,7 +30,7 @@ from services.agent.errors import (
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService, validate_home_snapshot_binding
 from services.agent.workspace_service import AgentWorkspaceBindingGenerationMismatchError, AgentWorkspaceService
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _build_draft(*, home_snapshot_id: str | None = "home-old") -> AgentConfigDraft:
@@ -64,7 +64,9 @@ def test_home_snapshot_client_outlasts_the_gateway_snapshot_budget(monkeypatch: 
 def test_validate_home_snapshot_binding_accepts_default_home_without_ledger_lookup(unbound_session: Session) -> None:
     validate_home_snapshot_binding(
         session=unbound_session,
-        agent=Agent(id="agent-1"),
+        agent=Agent(
+            tenant_id="tenant-1", name="Agent", scope=AgentScope.ROSTER, source=AgentSource.ROSTER, id="agent-1"
+        ),
         home_snapshot_id=None,
     )
 

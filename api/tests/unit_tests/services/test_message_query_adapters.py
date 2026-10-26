@@ -26,7 +26,7 @@ from models.enums import CreatorUserRole, MessageFileBelongsTo
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.entities.message_entities import MessageFileReference, MessageInputValue
 from services.message_query_adapters import ExecutionExtraContentReader, MessageFileResolver
-from tests.test_containers_integration_tests.helpers.execution_extra_content import create_human_input_message_fixture
+from tests.e2e_tests.containers.helpers.execution_extra_content import create_human_input_message_fixture
 
 
 @pytest.fixture(autouse=True)

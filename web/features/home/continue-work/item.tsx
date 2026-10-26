@@ -53,7 +53,7 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
     isRbacEnabled,
   })
   const cardClassName = cn(
-    'relative flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-4 pb-4 text-left shadow-xs shadow-shadow-shadow-3',
+    'relative flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-4 pb-4 text-start shadow-xs shadow-shadow-shadow-3',
     isPreviewOnly && 'cursor-not-allowed opacity-60',
   )
 
@@ -64,13 +64,7 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
   const cardContent = (
     <>
       <div className="relative shrink-0">
-        <AppIcon
-          size="large"
-          iconType={app.icon_type}
-          icon={app.icon ?? undefined}
-          background={app.icon_background}
-          imageUrl={app.icon_url}
-        />
+        <AppIcon size="large" icon={app} />
         <AppTypeIcon
           type={app.mode}
           wrapperClassName="absolute -right-0.5 -bottom-0.5 size-4 rounded-sm border-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3"

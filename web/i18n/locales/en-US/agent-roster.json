@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "e.g. Research Assistant",
   "roster.dateTimeFormat": "MM/DD/YYYY hh:mm:ss A",
   "roster.deleteDialog.description": "This permanently deletes {{name}}. Its web app, API access, and workflows that use it stop working immediately.",
+  "roster.deleteDialog.inputLabel": "Type <name>{{name}}</name> to confirm",
+  "roster.deleteDialog.inputPlaceholder": "Enter agent name",
   "roster.deleteDialog.title": "Delete {{name}}?",
   "roster.deleteFailed": "Failed to delete agent.",
   "roster.duplicateDialog.description": "Create a copy of {{name}} and customize its Agent identity.",

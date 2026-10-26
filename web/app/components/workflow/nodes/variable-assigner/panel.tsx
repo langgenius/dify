@@ -76,11 +76,13 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({ id, data }) => {
                 </div>
               ))}
             </div>
-            <AddButton
-              className="mt-2"
-              text={t(($) => $[`${i18nPrefix}.addGroup`], { ns: 'workflowLogic' })}
-              onClick={handleAddGroup}
-            />
+            {!readOnly && (
+              <AddButton
+                className="mt-2"
+                text={t(($) => $[`${i18nPrefix}.addGroup`], { ns: 'workflowLogic' })}
+                onClick={handleAddGroup}
+              />
+            )}
           </div>
         )}
       </div>

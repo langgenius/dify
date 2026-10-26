@@ -1,13 +1,12 @@
 import type { Window } from 'happy-dom'
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vite-plus/test'
-import type { AnnotationItemBasic } from '../../type'
 import type { Locale } from '@/i18n'
-import { act, screen, waitFor } from '@testing-library/react'
+import type { consoleClient } from '@/service/console'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
 import { LanguagesSupported } from '@/i18n/language'
-import { fetchExportAnnotationList } from '@/service/annotation'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import HeaderOptions from '../index'
 
@@ -16,15 +15,35 @@ const mockCSVDownloader = vi.fn(({ children }) => <>{children}</>)
 
 vi.mock('react-papaparse', () => ({
   useCSVDownloader: () => ({
-    CSVDownloader: (props: any) => mockCSVDownloader(props),
+    CSVDownloader: (
+      props: ComponentProps<
+        ReturnType<typeof import('react-papaparse').useCSVDownloader>['CSVDownloader']
+      >,
+    ) => mockCSVDownloader(props),
     Type: { Link: 'link' },
   }),
   jsonToCSV: (data: unknown) => mockJsonToCSV(data),
 }))
 
-vi.mock('@/service/annotation', () => ({
-  fetchExportAnnotationList: vi.fn(),
+const { mockedFetchAnnotations, addAnnotation } = vi.hoisted(() => ({
+  addAnnotation: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
+  mockedFetchAnnotations: vi.fn(),
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.annotations.post': (input) => addAnnotation(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.annotations.export.get': (input) => mockedFetchAnnotations(input),
+    }),
+  }
+})
 
 const { mockedRequest } = vi.hoisted(() => ({
   mockedRequest:
@@ -55,7 +74,6 @@ const renderComponent = (
 
   const defaultProps: HeaderOptionsProps = {
     appId: 'test-app-id',
-    onAdd: vi.fn(),
     onAdded: vi.fn(),
     controlUpdateList: 0,
     ...props,
@@ -74,7 +92,7 @@ const expandExportMenu = async (user: ReturnType<typeof userEvent.setup>) => {
   const exportItem = await screen.findByRole('menuitem', {
     name: /appAnnotation\.table\.header\.bulkExport/i,
   })
-  await user.hover(exportItem)
+  await user.click(exportItem)
 }
 
 const getExportItems = async () => {
@@ -86,31 +104,31 @@ const getExportItems = async () => {
   }
 }
 
-const clickMenuItem = async (item: HTMLElement) => {
-  await act(async () => {
-    item.click()
-  })
+const clickMenuItem = async (user: ReturnType<typeof userEvent.setup>, item: HTMLElement) => {
+  item.focus()
+  await user.keyboard('{Enter}')
 }
 
-const clickOperationAction = async (translationKey: string) => {
+const clickOperationAction = async (
+  user: ReturnType<typeof userEvent.setup>,
+  translationKey: string,
+) => {
   const item = await screen.findByRole('menuitem', { name: translationKey })
-  await clickMenuItem(item)
+  await clickMenuItem(user, item)
 }
 
-const mockAnnotations: AnnotationItemBasic[] = [
+const mockAnnotations = [
   {
     question: 'Question 1',
     answer: 'Answer 1',
   },
 ]
 
-const mockedFetchAnnotations = vi.mocked(fetchExportAnnotationList)
-
 describe('HeaderOptions', () => {
   const originalUrl = window.location.href
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     vi.useRealTimers()
     mockJsonToCSV.mockReturnValue('csv-content')
     mockedFetchAnnotations.mockResolvedValue({ data: [] })
@@ -128,7 +146,7 @@ describe('HeaderOptions', () => {
     renderComponent()
 
     await waitFor(() => {
-      expect(mockedFetchAnnotations).toHaveBeenCalledWith('test-app-id')
+      expect(mockedFetchAnnotations).toHaveBeenCalledWith({ params: { app_id: 'test-app-id' } })
     })
 
     await expandExportMenu(user)
@@ -138,7 +156,7 @@ describe('HeaderOptions', () => {
     expect(csvItem).not.toHaveAttribute('data-disabled')
     expect(jsonItem).not.toHaveAttribute('data-disabled')
 
-    await clickMenuItem(csvItem)
+    await clickMenuItem(user, csvItem)
 
     expect(mockJsonToCSV).toHaveBeenCalledWith([
       ['Question', 'Answer'],
@@ -170,13 +188,12 @@ describe('HeaderOptions', () => {
     await expandExportMenu(user)
 
     const { csvItem } = await getExportItems()
-    await clickMenuItem(csvItem)
+    await clickMenuItem(user, csvItem)
 
     expect(mockJsonToCSV).toHaveBeenCalledWith([
       ['问题', '答案'],
       ['Question 1', 'Answer 1'],
     ])
-    expect(createElementSpy).toHaveBeenCalled()
     expect(anchor.download).toBe(`annotations-${LanguagesSupported[1]}.csv`)
     expect(clickSpy).toHaveBeenCalled()
     expect(revokeSpy).toHaveBeenCalledWith('blob://mock-url')
@@ -210,11 +227,12 @@ describe('HeaderOptions', () => {
     expect(mockJsonToCSV).not.toHaveBeenCalled()
   })
 
-  it('should open the add annotation modal and forward the onAdd callback', async () => {
+  it('creates an annotation through the dialog and refreshes the parent and export data', async () => {
     mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
     const user = userEvent.setup()
-    const onAdd = vi.fn().mockResolvedValue(undefined)
-    renderComponent({ onAdd })
+    const onAdded = vi.fn()
+    addAnnotation.mockResolvedValue({ id: 'annotation-id' })
+    renderComponent({ onAdded })
 
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalled())
 
@@ -231,10 +249,12 @@ describe('HeaderOptions', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     await waitFor(() => {
-      expect(onAdd).toHaveBeenCalledWith({
-        question: 'Integration question',
-        answer: 'Integration answer',
+      expect(addAnnotation).toHaveBeenCalledWith({
+        params: { app_id: 'test-app-id' },
+        body: { question: 'Integration question', answer: 'Integration answer' },
       })
+      expect(onAdded).toHaveBeenCalledOnce()
+      expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2)
     })
   })
 
@@ -244,7 +264,7 @@ describe('HeaderOptions', () => {
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
-    await clickOperationAction('appAnnotation.table.header.bulkImport')
+    await clickOperationAction(user, 'appAnnotation.table.header.bulkImport')
 
     expect(await screen.findByText('appAnnotation.batchModal.title'))!.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'appAnnotation.batchModal.cancel' }))
@@ -275,9 +295,8 @@ describe('HeaderOptions', () => {
     await expandExportMenu(user)
 
     const { jsonItem } = await getExportItems()
-    await clickMenuItem(jsonItem)
+    await clickMenuItem(user, jsonItem)
 
-    expect(createElementSpy).toHaveBeenCalled()
     expect(anchor.download).toBe(`annotations-${LanguagesSupported[1]}.jsonl`)
     expect(clickSpy).toHaveBeenCalled()
     expect(revokeSpy).toHaveBeenCalledWith('blob://mock-url')
@@ -314,10 +333,11 @@ describe('HeaderOptions', () => {
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
-    await clickOperationAction('appAnnotation.table.header.clearAll')
+    await clickOperationAction(user, 'appAnnotation.table.header.clearAll')
 
     await screen.findByText('appAnnotation.table.header.clearAllConfirm')
     const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+    expect(mockedRequest).not.toHaveBeenCalled()
     await user.click(confirmButton)
 
     await waitFor(() => {
@@ -339,9 +359,10 @@ describe('HeaderOptions', () => {
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
-    await clickOperationAction('appAnnotation.table.header.clearAll')
+    await clickOperationAction(user, 'appAnnotation.table.header.clearAll')
     await screen.findByText('appAnnotation.table.header.clearAllConfirm')
     const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+    expect(mockedRequest).not.toHaveBeenCalled()
     await user.click(confirmButton)
 
     await waitFor(() => {
@@ -361,9 +382,7 @@ describe('HeaderOptions', () => {
 
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(1))
 
-    view.rerender(
-      <HeaderOptions appId="test-app-id" onAdd={vi.fn()} onAdded={vi.fn()} controlUpdateList={1} />,
-    )
+    view.rerender(<HeaderOptions appId="test-app-id" onAdded={vi.fn()} controlUpdateList={1} />)
 
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2))
   })

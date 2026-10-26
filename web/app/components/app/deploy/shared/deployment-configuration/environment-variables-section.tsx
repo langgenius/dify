@@ -1,18 +1,22 @@
 import type { EnvironmentVariableGroup } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentConfigurationValuesController } from './use-deployment-configuration-values'
+import type { DeploymentFieldError } from './utils/field-id'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentVariableField } from './environment-variable-field'
 import { SectionHeading } from './section-heading'
+import { environmentVariableFieldId } from './utils/field-id'
 import { SubworkflowSourceTitle, WorkflowReferenceIcon } from './workflow-source-popover'
 
 function EnvironmentVariableGroupFields({
   group,
+  fieldError,
   getEnvironmentVariableSelection,
   setEnvironmentVariableSelection,
 }: {
   group: EnvironmentVariableGroup
+  fieldError?: DeploymentFieldError
   getEnvironmentVariableSelection: DeploymentConfigurationValuesController['getEnvironmentVariableSelection']
   setEnvironmentVariableSelection: DeploymentConfigurationValuesController['setEnvironmentVariableSelection']
 }) {
@@ -38,6 +42,11 @@ function EnvironmentVariableGroupFields({
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           {group.environment_variable_slots.map((slot) => (
             <EnvironmentVariableField
+              error={
+                fieldError?.fieldId === environmentVariableFieldId(owner.workflow_id, slot.key)
+                  ? fieldError.message
+                  : undefined
+              }
               key={`${owner.workflow_id}:${slot.key}:${slot.has_configured_value}:${slot.has_last_deployed_value}`}
               slot={slot}
               workflowId={owner.workflow_id}
@@ -54,12 +63,14 @@ function EnvironmentVariableGroupFields({
 export const EnvironmentVariablesSection = memo(
   ({
     environmentVariableGroups,
+    fieldError,
     getEnvironmentVariableSelection,
     hasCredentialSlots,
     horizontalPaddingClassName,
     setEnvironmentVariableSelection,
   }: {
     environmentVariableGroups: EnvironmentVariableGroup[]
+    fieldError?: DeploymentFieldError
     getEnvironmentVariableSelection: DeploymentConfigurationValuesController['getEnvironmentVariableSelection']
     hasCredentialSlots: boolean
     horizontalPaddingClassName: string
@@ -90,6 +101,7 @@ export const EnvironmentVariablesSection = memo(
 
           return (
             <EnvironmentVariableGroupFields
+              fieldError={fieldError}
               key={owner.workflow_id}
               group={group}
               getEnvironmentVariableSelection={getEnvironmentVariableSelection}

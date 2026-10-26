@@ -8,6 +8,7 @@ This package is the ESM TypeScript implementation of `difyctl`. Use the Node.js 
 - Plugins under `src/plugins/` (`argv global-flags env config session token catalog http ops io commands`) own state. A plugin's `build()` closes over its own cache or loaded document; nothing outside a plugin reaches into another plugin's internals. Outside a plugin folder, import only `@/plugins/<name>` and use the service from `ctx.get(...)`; the command framework (`plugins/commands/command.ts`, `cancel.ts`, `registry.ts`) and the argv parser (`plugins/argv/parse.ts`) are the only modules imported directly.
 - `src/protocol/` and `src/call/` are pure modules: catalog-shape logic (kinds, bind, pins, fold) and the `call` flag table, request-building and rendering, with no op-specific branching anywhere under `src/call/` — kind and bind dispatch go through the tables in `src/protocol/` and `src/call/render/`, keyed by the catalog's own `kind`/`bind` values, never by operation id.
 - Preserve exit codes and the JSON output contract during refactors. Do not add dependencies or compatibility shims unless the task explicitly requires them.
+- Local YAML files go through `localFile` (`src/store/local-file.ts`), one schema each, no versions. Never change a key's name/type/meaning; add a new key (it may fall back to the old one).
 - `ARD.md` owns CLI code structure. Keep behavior aligned with the real mock-server (`test/fixtures/dify-mock/`) behavior tests.
 
 ## Commands

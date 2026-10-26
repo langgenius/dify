@@ -74,8 +74,8 @@ class SavedMessageListApi(Resource):
                 actor=SavedMessageActor.account(request_context.account_id),
                 message_id=str(req_data.message_id),
             )
-        except MessageNotExistsError:
-            raise NotFoundError("Message Not Exists.")
+        except MessageNotExistsError as caught_error:
+            raise NotFoundError("Message Not Exists.") from caught_error
 
         return ResultResponse(result="success").model_dump(mode="json")
 

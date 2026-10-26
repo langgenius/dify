@@ -4,12 +4,6 @@ import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
 import { useAvailableBlocks } from '../use-available-blocks'
 
-// Transitive imports of use-nodes-meta-data.ts — only useNodeMetaData uses these
-vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
-)
-vi.mock('@/context/i18n', () => ({ useGetLanguage: () => 'en' }))
-
 const mockNodeTypes = [
   BlockEnum.Start,
   BlockEnum.StartPlaceholder,
@@ -46,190 +40,62 @@ const hooksStoreProps = {
   },
 }
 
-describe('useAvailableBlocks', () => {
-  describe('availablePrevBlocks', () => {
-    it('should return empty array when nodeType is undefined', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(undefined), {
-        hooksStoreProps,
-      })
-      expect(result.current.availablePrevBlocks).toEqual([])
-    })
+const outside = [
+  BlockEnum.Start,
+  BlockEnum.End,
+  BlockEnum.LLM,
+  BlockEnum.Code,
+  BlockEnum.IfElse,
+  BlockEnum.Iteration,
+  BlockEnum.Loop,
+  BlockEnum.Tool,
+  BlockEnum.DataSource,
+  BlockEnum.KnowledgeBase,
+  BlockEnum.HumanInput,
+]
+const inside = [
+  BlockEnum.Start,
+  BlockEnum.LLM,
+  BlockEnum.Code,
+  BlockEnum.IfElse,
+  BlockEnum.Tool,
+  BlockEnum.HumanInput,
+  BlockEnum.LoopEnd,
+]
 
-    it('should return empty array for Start node', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.Start), {
-        hooksStoreProps,
-      })
-      expect(result.current.availablePrevBlocks).toEqual([])
-    })
-
-    it('should return empty array for StartPlaceholder node', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.StartPlaceholder), {
-        hooksStoreProps,
-      })
-      expect(result.current.availablePrevBlocks).toEqual([])
-    })
-
-    it('should return empty array for trigger nodes', () => {
-      for (const trigger of [
-        BlockEnum.TriggerPlugin,
-        BlockEnum.TriggerWebhook,
-        BlockEnum.TriggerSchedule,
-      ]) {
-        const { result } = renderWorkflowHook(() => useAvailableBlocks(trigger), {
-          hooksStoreProps,
-        })
-        expect(result.current.availablePrevBlocks).toEqual([])
-      }
-    })
-
-    it('should return empty array for DataSource node', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.DataSource), {
-        hooksStoreProps,
-      })
-      expect(result.current.availablePrevBlocks).toEqual([])
-    })
-
-    it('should return all available nodes for regular block types', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), {
-        hooksStoreProps,
-      })
-      expect(result.current.availablePrevBlocks.length).toBeGreaterThan(0)
-      expect(result.current.availablePrevBlocks).toContain(BlockEnum.Code)
-    })
+it.each([
+  undefined,
+  BlockEnum.Start,
+  BlockEnum.StartPlaceholder,
+  BlockEnum.DataSource,
+  BlockEnum.TriggerPlugin,
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerSchedule,
+])('disallows predecessors for entry node %s in both APIs', (type) => {
+  const { result } = renderWorkflowHook(() => useAvailableBlocks(type), { hooksStoreProps })
+  expect(result.current.availablePrevBlocks).toEqual([])
+  expect(result.current.getAvailableBlocks(type).availablePrevBlocks).toEqual([])
+})
+it.each([undefined, BlockEnum.StartPlaceholder, BlockEnum.LoopEnd, BlockEnum.KnowledgeBase])(
+  'disallows successors for terminal node %s in both APIs',
+  (type) => {
+    const { result } = renderWorkflowHook(() => useAvailableBlocks(type), { hooksStoreProps })
+    expect(result.current.availableNextBlocks).toEqual([])
+    expect(result.current.getAvailableBlocks(type).availableNextBlocks).toEqual([])
+  },
+)
+it.each([false, true])('filters both APIs consistently for container=%s', (inContainer) => {
+  const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM, inContainer), {
+    hooksStoreProps,
   })
-
-  describe('availableNextBlocks', () => {
-    it('should return empty array when nodeType is undefined', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(undefined), {
-        hooksStoreProps,
-      })
-      expect(result.current.availableNextBlocks).toEqual([])
-    })
-
-    it('should return available nodes for End node', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.End), {
-        hooksStoreProps,
-      })
-      expect(result.current.availableNextBlocks.length).toBeGreaterThan(0)
-      expect(result.current.availableNextBlocks).toContain(BlockEnum.Code)
-    })
-
-    it('should return empty array for LoopEnd node', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LoopEnd), {
-        hooksStoreProps,
-      })
-      expect(result.current.availableNextBlocks).toEqual([])
-    })
-
-    it('should return empty array for KnowledgeBase node', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.KnowledgeBase), {
-        hooksStoreProps,
-      })
-      expect(result.current.availableNextBlocks).toEqual([])
-    })
-
-    it('should return empty array for StartPlaceholder node', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.StartPlaceholder), {
-        hooksStoreProps,
-      })
-      expect(result.current.availableNextBlocks).toEqual([])
-    })
-
-    it('should return all available nodes for regular block types', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), {
-        hooksStoreProps,
-      })
-      expect(result.current.availableNextBlocks.length).toBeGreaterThan(0)
-      expect(result.current.availableNextBlocks).not.toContain(BlockEnum.StartPlaceholder)
-    })
+  const expected = inContainer ? inside : outside
+  expect(result.current.availablePrevBlocks).toEqual(expected)
+  expect(result.current.availableNextBlocks).toEqual(expected)
+  expect(result.current.getAvailableBlocks(BlockEnum.Code, inContainer)).toEqual({
+    availablePrevBlocks: expected,
+    availableNextBlocks: expected,
   })
-
-  describe('inContainer filtering', () => {
-    it('should allow HumanInput while excluding unsupported blocks when inContainer=true', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM, true), {
-        hooksStoreProps,
-      })
-
-      expect(result.current.availableNextBlocks).not.toContain(BlockEnum.Iteration)
-      expect(result.current.availableNextBlocks).not.toContain(BlockEnum.Loop)
-      expect(result.current.availableNextBlocks).not.toContain(BlockEnum.End)
-      expect(result.current.availableNextBlocks).not.toContain(BlockEnum.DataSource)
-      expect(result.current.availableNextBlocks).not.toContain(BlockEnum.KnowledgeBase)
-      expect(result.current.availableNextBlocks).toContain(BlockEnum.HumanInput)
-    })
-
-    it('should exclude LoopEnd when not in container', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM, false), {
-        hooksStoreProps,
-      })
-      expect(result.current.availableNextBlocks).not.toContain(BlockEnum.LoopEnd)
-    })
-  })
-
-  describe('getAvailableBlocks callback', () => {
-    it('should return prev and next blocks for a given node type', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), {
-        hooksStoreProps,
-      })
-      const blocks = result.current.getAvailableBlocks(BlockEnum.Code)
-
-      expect(blocks.availablePrevBlocks.length).toBeGreaterThan(0)
-      expect(blocks.availableNextBlocks.length).toBeGreaterThan(0)
-    })
-
-    it('should return empty prevBlocks for Start node', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), {
-        hooksStoreProps,
-      })
-      const blocks = result.current.getAvailableBlocks(BlockEnum.Start)
-
-      expect(blocks.availablePrevBlocks).toEqual([])
-    })
-
-    it('should return empty prevBlocks for DataSource node', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), {
-        hooksStoreProps,
-      })
-      const blocks = result.current.getAvailableBlocks(BlockEnum.DataSource)
-
-      expect(blocks.availablePrevBlocks).toEqual([])
-    })
-
-    it('should return no blocks for StartPlaceholder node', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), {
-        hooksStoreProps,
-      })
-      const blocks = result.current.getAvailableBlocks(BlockEnum.StartPlaceholder)
-
-      expect(blocks.availablePrevBlocks).toEqual([])
-      expect(blocks.availableNextBlocks).toEqual([])
-    })
-
-    it('should return empty nextBlocks for LoopEnd/KnowledgeBase and available nodes for End', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), {
-        hooksStoreProps,
-      })
-
-      expect(
-        result.current.getAvailableBlocks(BlockEnum.End).availableNextBlocks.length,
-      ).toBeGreaterThan(0)
-      expect(result.current.getAvailableBlocks(BlockEnum.End).availableNextBlocks).toContain(
-        BlockEnum.Code,
-      )
-      expect(result.current.getAvailableBlocks(BlockEnum.LoopEnd).availableNextBlocks).toEqual([])
-      expect(
-        result.current.getAvailableBlocks(BlockEnum.KnowledgeBase).availableNextBlocks,
-      ).toEqual([])
-    })
-
-    it('should filter by inContainer when provided', () => {
-      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), {
-        hooksStoreProps,
-      })
-      const blocks = result.current.getAvailableBlocks(BlockEnum.Code, true)
-
-      expect(blocks.availableNextBlocks).not.toContain(BlockEnum.Iteration)
-      expect(blocks.availableNextBlocks).not.toContain(BlockEnum.Loop)
-    })
-  })
+  expect(result.current.getAvailableBlocks(BlockEnum.End, inContainer).availableNextBlocks).toEqual(
+    expected,
+  )
 })

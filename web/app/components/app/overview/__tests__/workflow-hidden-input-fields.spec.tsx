@@ -1,234 +1,100 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { InputVarType } from '@/app/components/workflow/types'
+import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '../app-card-utils'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import WorkflowHiddenInputFields from '../workflow-hidden-input-fields'
 
-describe('WorkflowHiddenInputFields', () => {
-  const onValueChange = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render a text input with label and placeholder', () => {
-    render(
+function renderField(
+  variable: WorkflowHiddenStartVariable,
+  initialValue: WorkflowLaunchInputValue,
+) {
+  const onChange = vi.fn()
+  function ControlledField() {
+    const [values, setValues] = useState({ [variable.variable]: initialValue })
+    return (
       <WorkflowHiddenInputFields
-        hiddenVariables={[
-          {
-            variable: 'name',
-            label: 'Full Name',
-            type: InputVarType.textInput,
-            hide: true,
-            required: true,
-          },
-        ]}
-        values={{ name: 'Alice' }}
-        onValueChange={onValueChange}
-      />,
+        hiddenVariables={[variable]}
+        values={values}
+        fieldIdPrefix="custom-launch"
+        onValueChange={(key, value) => {
+          onChange(key, value)
+          setValues({ [key]: value })
+        }}
+      />
     )
+  }
+  render(<ControlledField />)
+  return onChange
+}
 
-    const input = screen.getByLabelText('Full Name')
-    expect(input).toHaveValue('Alice')
+it.each([
+  { type: InputVarType.textInput, initial: 'Alice', next: 'Bob' },
+  { type: InputVarType.number, initial: '5', next: '10' },
+  { type: InputVarType.paragraph, initial: 'Hello', next: 'Updated paragraph' },
+  { type: InputVarType.json, initial: '{}', next: '{"key":"value"}' },
+  { type: InputVarType.jsonObject, initial: '{}', next: '{"type":"object"}' },
+])('edits a hidden $type value using its label', async ({ type, initial, next }) => {
+  const user = userEvent.setup()
+  const onChange = renderField(
+    { variable: 'input', label: 'Launch input', type, hide: true, required: false },
+    initial,
+  )
+  const input = screen.getByLabelText('Launch input')
+  expect(input).toHaveValue(type === InputVarType.number ? Number(initial) : initial)
+  await user.clear(input)
+  await user.type(input, next.replaceAll('{', '{{'))
+  expect(onChange).toHaveBeenLastCalledWith('input', next)
+})
 
-    fireEvent.change(input, { target: { value: 'Bob' } })
-    expect(onValueChange).toHaveBeenCalledWith('name', 'Bob')
-  })
+it('changes checkbox values as booleans', async () => {
+  const user = userEvent.setup()
+  const onChange = renderField(
+    {
+      variable: 'enabled',
+      label: 'Enable feature',
+      type: InputVarType.checkbox,
+      hide: true,
+      required: false,
+    },
+    true,
+  )
+  const checkbox = screen.getByRole('checkbox', { name: 'Enable feature' })
+  expect(checkbox).toBeChecked()
+  await user.click(checkbox)
+  expect(onChange).toHaveBeenLastCalledWith('enabled', false)
+  expect(checkbox).not.toBeChecked()
+})
 
-  it('should render a number input for number-typed variables', () => {
-    render(
-      <WorkflowHiddenInputFields
-        hiddenVariables={[
-          {
-            variable: 'count',
-            label: 'Count',
-            type: InputVarType.number,
-            hide: true,
-            required: false,
-          },
-        ]}
-        values={{ count: '5' }}
-        onValueChange={onValueChange}
-      />,
-    )
+it('selects one of the configured hidden choices', async () => {
+  const user = userEvent.setup()
+  const onChange = renderField(
+    {
+      variable: 'color',
+      label: 'Color',
+      type: InputVarType.select,
+      hide: true,
+      required: false,
+      options: ['red', 'green'],
+    },
+    'red',
+  )
+  await user.click(screen.getByRole('combobox', { name: 'Color' }))
+  await user.click(await screen.findByRole('option', { name: 'green' }))
+  expect(onChange).toHaveBeenLastCalledWith('color', 'green')
+  expect(screen.getByRole('combobox', { name: 'Color' })).toHaveTextContent('green')
+})
 
-    const input = screen.getByLabelText('Count')
-    expect(input).toHaveAttribute('type', 'number')
-
-    fireEvent.change(input, { target: { value: '10' } })
-    expect(onValueChange).toHaveBeenCalledWith('count', '10')
-  })
-
-  it('should render a checkbox input without a separate label element above', () => {
-    render(
-      <WorkflowHiddenInputFields
-        hiddenVariables={[
-          {
-            variable: 'enabled',
-            label: 'Enable Feature',
-            type: InputVarType.checkbox,
-            hide: true,
-            required: false,
-          },
-        ]}
-        values={{ enabled: true }}
-        onValueChange={onValueChange}
-      />,
-    )
-
-    const checkbox = screen.getByRole('checkbox')
-    expect(checkbox).toBeChecked()
-    expect(screen.getByText('Enable Feature')).toBeInTheDocument()
-
-    fireEvent.click(checkbox)
-    expect(onValueChange).toHaveBeenCalledWith('enabled', false)
-  })
-
-  it('should render a select dropdown for select-typed variables', () => {
-    render(
-      <WorkflowHiddenInputFields
-        hiddenVariables={[
-          {
-            variable: 'color',
-            label: 'Color',
-            type: InputVarType.select,
-            hide: true,
-            required: false,
-            options: ['red', 'green', 'blue'],
-          },
-        ]}
-        values={{ color: 'red' }}
-        onValueChange={onValueChange}
-      />,
-    )
-
-    expect(screen.getByRole('combobox', { name: 'Color' })).toBeInTheDocument()
-  })
-
-  it('should render a textarea for paragraph-typed variables', () => {
-    render(
-      <WorkflowHiddenInputFields
-        hiddenVariables={[
-          {
-            variable: 'description',
-            label: 'Description',
-            type: InputVarType.paragraph,
-            hide: true,
-            required: false,
-            max_length: 500,
-          },
-        ]}
-        values={{ description: 'Hello world' }}
-        onValueChange={onValueChange}
-      />,
-    )
-
-    const textarea = screen.getByPlaceholderText('Description')
-    expect(textarea).toHaveValue('Hello world')
-
-    fireEvent.change(textarea, { target: { value: 'Updated' } })
-    expect(onValueChange).toHaveBeenCalledWith('description', 'Updated')
-  })
-
-  it('should render a textarea for json-typed variables', () => {
-    render(
-      <WorkflowHiddenInputFields
-        hiddenVariables={[
-          {
-            variable: 'config',
-            label: 'Config JSON',
-            type: InputVarType.json,
-            hide: true,
-            required: false,
-          },
-        ]}
-        values={{ config: '{"key": "value"}' }}
-        onValueChange={onValueChange}
-      />,
-    )
-
-    const textarea = screen.getByPlaceholderText('Config JSON')
-    expect(textarea).toHaveValue('{"key": "value"}')
-  })
-
-  it('should render a textarea for jsonObject-typed variables', () => {
-    render(
-      <WorkflowHiddenInputFields
-        hiddenVariables={[
-          {
-            variable: 'schema',
-            label: 'Schema',
-            type: InputVarType.jsonObject,
-            hide: true,
-            required: false,
-          },
-        ]}
-        values={{ schema: '{}' }}
-        onValueChange={onValueChange}
-      />,
-    )
-
-    const textarea = screen.getByPlaceholderText('Schema')
-    expect(textarea).toHaveValue('{}')
-  })
-
-  it('should use the variable key as label when label is not a string', () => {
-    render(
-      <WorkflowHiddenInputFields
-        hiddenVariables={[
-          {
-            variable: 'my_var',
-            label: { nodeType: 'start' as never, nodeName: 'Start', variable: 'my_var' },
-            type: InputVarType.textInput,
-            hide: true,
-            required: false,
-          },
-        ]}
-        values={{ my_var: '' }}
-        onValueChange={onValueChange}
-      />,
-    )
-
-    expect(screen.getByText('my_var')).toBeInTheDocument()
-  })
-
-  it('should use the custom fieldIdPrefix for element ids', () => {
-    const { container } = render(
-      <WorkflowHiddenInputFields
-        hiddenVariables={[
-          {
-            variable: 'token',
-            label: 'Token',
-            type: InputVarType.textInput,
-            hide: true,
-            required: false,
-          },
-        ]}
-        values={{ token: 'abc' }}
-        onValueChange={onValueChange}
-        fieldIdPrefix="custom-prefix"
-      />,
-    )
-
-    expect(container.querySelector('#custom-prefix-token')).toBeInTheDocument()
-  })
-
-  it('should render empty string for non-string fieldValue in text inputs', () => {
-    render(
-      <WorkflowHiddenInputFields
-        hiddenVariables={[
-          {
-            variable: 'flag',
-            label: 'Flag',
-            type: InputVarType.textInput,
-            hide: true,
-            required: false,
-          },
-        ]}
-        values={{ flag: true as never }}
-        onValueChange={onValueChange}
-      />,
-    )
-
-    const input = screen.getByLabelText('Flag')
-    expect(input).toHaveValue('')
-  })
+it('uses the variable key for structured labels and normalizes non-text initial values', () => {
+  renderField(
+    {
+      variable: 'flag',
+      label: { nodeType: BlockEnum.Start, nodeName: 'Start', variable: 'flag' },
+      type: InputVarType.textInput,
+      hide: true,
+      required: false,
+    },
+    true,
+  )
+  expect(screen.getByLabelText('flag')).toHaveValue('')
 })

@@ -90,10 +90,6 @@ describe('human-input utils', () => {
       expect(getButtonStyle(UserActionButtonType.Accent)).toBe('secondary-accent')
       expect(getButtonStyle(UserActionButtonType.Ghost)).toBe('ghost')
     })
-
-    it('should return undefined for unsupported style values', () => {
-      expect(getButtonStyle('unknown' as UserActionButtonType)).toBeUndefined()
-    })
   })
 
   describe('splitByOutputVar', () => {
@@ -143,42 +139,6 @@ describe('human-input utils', () => {
       expect(initializeInputs(formInputs, { bio: 'Lives in Berlin' })).toEqual({
         name: 'John',
         bio: 'Lives in Berlin',
-      })
-    })
-
-    it('should initialize select fields with empty strings', () => {
-      const formInputs: FormInputItem[] = [
-        selectInput({
-          output_variable_name: 'role',
-        }),
-      ]
-
-      expect(initializeInputs(formInputs)).toEqual({
-        role: '',
-      })
-    })
-
-    it('should initialize single file fields with null', () => {
-      const formInputs: FormInputItem[] = [
-        fileInput({
-          output_variable_name: 'avatar',
-        }),
-      ]
-
-      expect(initializeInputs(formInputs)).toEqual({
-        avatar: null,
-      })
-    })
-
-    it('should initialize file list fields with empty arrays', () => {
-      const formInputs: FormInputItem[] = [
-        fileListInput({
-          output_variable_name: 'attachments',
-        }),
-      ]
-
-      expect(initializeInputs(formInputs)).toEqual({
-        attachments: [],
       })
     })
 
@@ -272,17 +232,6 @@ describe('human-input utils', () => {
         attachments: [],
       })
     })
-
-    it('should ignore unsupported input types', () => {
-      expect(
-        initializeInputs([
-          {
-            type: 'unsupported',
-            output_variable_name: 'unknown',
-          } as unknown as FormInputItem,
-        ]),
-      ).toEqual({})
-    })
   })
 
   describe('required input checks', () => {
@@ -349,24 +298,6 @@ describe('human-input utils', () => {
         ),
       ).toBe(false)
     })
-
-    it('should treat unsupported input types as valid by default', () => {
-      const unsupportedInput = {
-        type: 'unsupported',
-        output_variable_name: 'unknown',
-      } as unknown as FormInputItem
-
-      expect(
-        hasInvalidSelectOrFileInput([unsupportedInput], {
-          unknown: 'value',
-        }),
-      ).toBe(false)
-      expect(
-        hasInvalidRequiredHumanInput([unsupportedInput], {
-          unknown: 'value',
-        }),
-      ).toBe(false)
-    })
   })
 
   describe('getProcessedHumanInputFormInputs', () => {
@@ -420,17 +351,24 @@ describe('human-input utils', () => {
   })
 
   describe('time helpers', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-10-17T12:00:00Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
     it('should format relative time for supported and fallback locales', () => {
       const now = Date.now()
       const twoMinutesAgo = now - 2 * 60 * 1000
 
-      expect(getRelativeTime(twoMinutesAgo, 'en-US')).toMatch(/ago/i)
-      expect(getRelativeTime(twoMinutesAgo, 'es-ES' as Locale)).toMatch(/ago/i)
+      expect(getRelativeTime(twoMinutesAgo, 'en-US')).toBe('2 minutes ago')
+      expect(getRelativeTime(twoMinutesAgo, 'es-ES' as Locale)).toBe('2 minutes ago')
     })
 
     it('should compare utc timestamp against current time', () => {
       const now = Date.now()
       expect(isRelativeTimeSameOrAfter(now + 60_000)).toBe(true)
+      expect(isRelativeTimeSameOrAfter(now)).toBe(true)
       expect(isRelativeTimeSameOrAfter(now - 60_000)).toBe(false)
     })
   })

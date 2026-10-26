@@ -64,11 +64,11 @@ class TriggerWebhookNode(Node[WebhookData]):
         happens in the trigger controller.
         """
         # Get webhook data from variable pool (injected by Celery task)
-        webhook_inputs = dict(self.graph_runtime_state.variable_pool.get_by_prefix(self.id))
+        webhook_inputs = dict(self.runtime_state.variable_pool.get_by_prefix(self.id))
 
         # Extract webhook-specific outputs based on node configuration
         outputs = self._extract_configured_outputs(webhook_inputs)
-        system_inputs = self.graph_runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
+        system_inputs = self.runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
 
         for variable_name, value in system_inputs.items():
             outputs[f"{SYSTEM_VARIABLE_NODE_ID}.{variable_name}"] = value

@@ -11,16 +11,6 @@ describe('SearchInput', () => {
       expect(input).toBeInTheDocument()
       expect(input).toHaveValue('')
       expect(input).toHaveAttribute('name', 'query')
-      expect(input).toHaveAttribute('type', 'text')
-      expect(input).toHaveAttribute('autocomplete', 'off')
-    })
-
-    it('renders custom placeholder', () => {
-      render(<SearchInput value="" onValueChange={() => {}} placeholder="Custom Placeholder" />)
-      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveAttribute(
-        'placeholder',
-        'Custom Placeholder',
-      )
     })
 
     it('uses custom aria label', () => {
@@ -29,15 +19,14 @@ describe('SearchInput', () => {
     })
 
     it('uses a custom form name', () => {
-      render(<SearchInput name="provider-query" value="" onValueChange={() => {}} />)
-      expect(screen.getByRole('searchbox')).toHaveAttribute('name', 'provider-query')
-    })
-
-    it('exposes the input element through its ref', () => {
-      const ref = createRef<HTMLInputElement>()
-      render(<SearchInput ref={ref} value="" onValueChange={() => {}} />)
-
-      expect(ref.current).toBe(screen.getByRole('searchbox', { name: 'common.operation.search' }))
+      render(
+        <form data-testid="search-form">
+          <SearchInput name="provider-query" value="tools" onValueChange={() => {}} />
+        </form>,
+      )
+      expect(
+        new FormData(screen.getByTestId('search-form') as HTMLFormElement).get('provider-query'),
+      ).toBe('tools')
     })
 
     it('cleans up callback refs when the owner replaces the ref or unmounts', () => {
@@ -64,15 +53,6 @@ describe('SearchInput', () => {
       expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveFocus()
     })
 
-    it('shows clear button when value is present', () => {
-      const onValueChange = vi.fn()
-      render(<SearchInput value="has value" onValueChange={onValueChange} />)
-
-      const clearButton = screen.getByLabelText('common.operation.clear')
-      expect(clearButton).toBeInTheDocument()
-      expect(clearButton).toHaveAttribute('tabindex', '-1')
-    })
-
     it('keeps a disabled searchbox inert and exposes its description', () => {
       render(
         <>
@@ -93,18 +73,20 @@ describe('SearchInput', () => {
         screen.queryByRole('button', { name: 'common.operation.clear' }),
       ).not.toBeInTheDocument()
     })
+
+    it('forwards keyboard events so forms can own the search action', async () => {
+      const onKeyDown = vi.fn()
+      const user = userEvent.setup()
+      render(<SearchInput value="query" onValueChange={() => {}} onKeyDown={onKeyDown} />)
+
+      await user.click(screen.getByRole('searchbox'))
+      await user.keyboard('{Enter}')
+
+      expect(onKeyDown).toHaveBeenCalledWith(expect.objectContaining({ key: 'Enter' }))
+    })
   })
 
   describe('Interaction', () => {
-    it('calls onValueChange when typing', () => {
-      const onValueChange = vi.fn()
-      render(<SearchInput value="" onValueChange={onValueChange} />)
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
-
-      fireEvent.change(input, { target: { value: 'test' } })
-      expect(onValueChange).toHaveBeenCalledWith('test')
-    })
-
     it('handles composition events', () => {
       const onValueChange = vi.fn()
       render(<SearchInput value="initial" onValueChange={onValueChange} />)

@@ -18,13 +18,13 @@ import {
 } from '@/service/use-triggers'
 import { getErrorMessage } from '@/utils/error-message'
 
-export const AuthorizationStatusEnum = {
+const AuthorizationStatusEnum = {
   Pending: 'pending',
   Success: 'success',
   Failed: 'failed',
 } as const
 
-export type AuthorizationStatusEnum =
+type AuthorizationStatusEnum =
   (typeof AuthorizationStatusEnum)[keyof typeof AuthorizationStatusEnum]
 
 export const ClientTypeEnum = {

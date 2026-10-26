@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -31,10 +31,16 @@ from models import Account, App, EndUser
 from models.model import load_annotation_reply_config
 from services.conversation_service import ConversationService
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 
 
 class AgentChatAppGenerator(MessageBasedAppGenerator):
+    def __init__(self, *, execution_driver: "WorkflowRunDriver") -> None:
+        self._execution_driver = execution_driver
+
     @overload
     def generate(
         self,
@@ -271,7 +277,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 message = self._get_message(message_id)
 
                 # chatbot app
-                runner = AgentChatAppRunner()
+                runner = AgentChatAppRunner(execution_driver=self._execution_driver)
                 with session_factory.create_session() as session:
                     runner.run(
                         application_generate_entity=application_generate_entity,

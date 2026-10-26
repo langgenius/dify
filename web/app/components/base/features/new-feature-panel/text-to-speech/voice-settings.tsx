@@ -1,4 +1,5 @@
 'use client'
+import type { ReactElement } from 'react'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo } from 'react'
@@ -10,6 +11,7 @@ type VoiceSettingsProps = {
   onChange?: OnFeaturesChange
   disabled?: boolean
   children?: React.ReactNode
+  trigger?: ReactElement
   placementLeft?: boolean
 }
 const VoiceSettings = ({
@@ -18,6 +20,7 @@ const VoiceSettings = ({
   onChange,
   disabled,
   children,
+  trigger,
   placementLeft = true,
 }: VoiceSettingsProps) => {
   return (
@@ -28,9 +31,13 @@ const VoiceSettings = ({
         onOpen(nextOpen)
       }}
     >
-      <PopoverTrigger nativeButton={false} render={<div className="flex">{children}</div>} />
+      <PopoverTrigger
+        disabled={disabled}
+        nativeButton={!!trigger}
+        render={trigger ?? <div className="flex">{children}</div>}
+      />
       <PopoverContent
-        placement={placementLeft ? 'left' : 'top'}
+        side={placementLeft ? 'left' : 'top'}
         sideOffset={placementLeft ? 32 : 4}
         className="border-none bg-transparent shadow-none"
       >

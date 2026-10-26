@@ -1,14 +1,19 @@
 import { act, render, waitFor } from '@testing-library/react'
 import { StrictMode } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createZendeskRuntime } from '../runtime'
 import { ZendeskScript } from '../script'
 
 describe('ZendeskScript', () => {
+  let previousSdk: typeof window.zE
+  beforeEach(() => {
+    previousSdk = window.zE
+    window.zE = undefined
+  })
   afterEach(() => {
     vi.useRealTimers()
     vi.restoreAllMocks()
-    window.zE = undefined
+    window.zE = previousSdk
   })
 
   it('does not insert the SDK script until loading is requested', async () => {
@@ -53,9 +58,11 @@ describe('ZendeskScript', () => {
     })
     await waitFor(() => expect(getScripts()).toHaveLength(1))
     const failedScript = getScripts()[0]!
+    const remove = vi.spyOn(failedScript, 'remove')
     const failedExpectation = expect(failedLoad).rejects.toThrow('Failed to load Zendesk')
     act(() => failedScript.dispatchEvent(new Event('error')))
     await failedExpectation
+    expect(remove).toHaveBeenCalledOnce()
 
     let retryLoad!: Promise<void>
     act(() => {

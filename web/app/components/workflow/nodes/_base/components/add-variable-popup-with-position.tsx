@@ -1,9 +1,11 @@
 import type { ValueSelector, Var, VarType } from '../../../types'
 import { useClickAway } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useRef } from 'react'
 import { useStore as useReactFlowStore } from 'reactflow'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
-import { useIsChatMode, useWorkflow } from '../../../hooks/use-workflow'
+import { useWorkflow } from '../../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../../hooks/use-workflow-variables'
 import { useStore } from '../../../store'
 import { useVariableAssigner } from '../../variable-assigner/hooks'
@@ -21,7 +23,7 @@ const AddVariablePopupWithPosition = ({ nodeId, nodeData }: AddVariablePopupWith
   const setShowAssignVariablePopup = useStore((s) => s.setShowAssignVariablePopup)
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleAddVariableInAddVariablePopupWithPosition } = useVariableAssigner()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
 
@@ -51,8 +53,8 @@ const AddVariablePopupWithPosition = ({ nodeId, nodeData }: AddVariablePopupWith
         } as any,
       ],
       hideEnv: true,
-      hideChatVar: !isChatMode,
-      isChatMode,
+      hideChatVar: !isChatflow,
+      isChatflow,
       filterVar: filterVar(outputType as VarType),
     })
       .map((node) => ({
@@ -66,7 +68,7 @@ const AddVariablePopupWithPosition = ({ nodeId, nodeData }: AddVariablePopupWith
     showAssignVariablePopup,
     getNodeAvailableVars,
     getBeforeNodesInSameBranch,
-    isChatMode,
+    isChatflow,
     outputType,
   ])
 

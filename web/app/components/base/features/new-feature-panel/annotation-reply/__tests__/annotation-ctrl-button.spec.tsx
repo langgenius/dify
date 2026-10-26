@@ -1,25 +1,25 @@
 import type { ReactElement } from 'react'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ModalContextProvider } from '@/context/modal-context-provider'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import AnnotationCtrlButton from '../annotation-ctrl-button'
-
-const mockSetShowAnnotationFullModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAnnotationFullModal: mockSetShowAnnotationFullModal,
-  }),
-}))
 
 let mockAnnotatedResponseUsage = 5
 
-const mockAddAnnotation = vi.fn().mockResolvedValue({
-  id: 'annotation-1',
-  account: { name: 'Test User' },
-})
+const api = vi.hoisted(() => ({ addAnnotation: vi.fn() }))
 
-vi.mock('@/service/annotation', () => ({
-  addAnnotation: (...args: unknown[]) => mockAddAnnotation(...args),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.annotations.post': api.addAnnotation,
+    }),
+  }
+})
 
 vi.mock('@/app/notifications', () => ({
   default: { notify: vi.fn() },
@@ -32,36 +32,27 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 function render(ui: ReactElement) {
-  return renderWithConsoleQuery(ui, {
-    systemFeatures: { deployment_edition: 'CLOUD' },
-    features: { annotation_quota_limit: { size: mockAnnotatedResponseUsage, limit: 100 } },
-  })
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+  return renderWithConsoleQuery(
+    <NuqsWrapper>
+      <ModalContextProvider>{ui}</ModalContextProvider>
+    </NuqsWrapper>,
+    {
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { annotation_quota_limit: { size: mockAnnotatedResponseUsage, limit: 100 } },
+    },
+  )
 }
 
 describe('AnnotationCtrlButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAnnotatedResponseUsage = 5
+    api.addAnnotation.mockResolvedValue({ id: 'annotation-1' })
   })
 
-  it('should render edit button when cached', () => {
-    render(
-      <AnnotationCtrlButton
-        appId="test-app"
-        cached={true}
-        query="test query"
-        answer="test answer"
-        onAdded={vi.fn()}
-        onEdit={vi.fn()}
-      />,
-    )
-
-    expect(
-      screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }),
-    ).toBeInTheDocument()
-  })
-
-  it('should call onEdit when edit button is clicked', () => {
+  it('should call onEdit when edit button is clicked', async () => {
+    const user = userEvent.setup()
     const onEdit = vi.fn()
     render(
       <AnnotationCtrlButton
@@ -74,26 +65,9 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
 
     expect(onEdit).toHaveBeenCalled()
-  })
-
-  it('should render add button when not cached and has answer', () => {
-    render(
-      <AnnotationCtrlButton
-        appId="test-app"
-        cached={false}
-        query="test query"
-        answer="test answer"
-        onAdded={vi.fn()}
-        onEdit={vi.fn()}
-      />,
-    )
-
-    expect(
-      screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }),
-    ).toBeInTheDocument()
   })
 
   it('should not render any button when not cached and no answer', () => {
@@ -112,6 +86,7 @@ describe('AnnotationCtrlButton', () => {
   })
 
   it('should call addAnnotation and onAdded when add button is clicked', async () => {
+    const user = userEvent.setup()
     const onAdded = vi.fn()
     render(
       <AnnotationCtrlButton
@@ -125,19 +100,19 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     await waitFor(() => {
-      expect(mockAddAnnotation).toHaveBeenCalledWith('test-app', {
-        message_id: 'msg-1',
-        question: 'test query',
-        answer: 'test answer',
+      expect(api.addAnnotation).toHaveBeenCalledWith({
+        params: { app_id: 'test-app' },
+        body: { message_id: 'msg-1', question: 'test query', answer: 'test answer' },
       })
-      expect(onAdded).toHaveBeenCalledWith('annotation-1', 'Test User')
+      expect(onAdded).toHaveBeenCalledWith('annotation-1', '')
     })
   })
 
-  it('should show annotation full modal when annotation limit is reached', () => {
+  it('should show annotation full modal when annotation limit is reached', async () => {
+    const user = userEvent.setup()
     mockAnnotatedResponseUsage = 100
 
     render(
@@ -151,35 +126,12 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
+    await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
-    expect(mockSetShowAnnotationFullModal).toHaveBeenCalled()
-    expect(mockAddAnnotation).not.toHaveBeenCalled()
-  })
-
-  it('should fallback author name to empty string when account name is missing', async () => {
-    const onAdded = vi.fn()
-    mockAddAnnotation.mockResolvedValueOnce({
-      id: 'annotation-2',
-      account: undefined,
-    })
-
-    render(
-      <AnnotationCtrlButton
-        appId="test-app"
-        messageId="msg-2"
-        cached={false}
-        query="test query"
-        answer="test answer"
-        onAdded={onAdded}
-        onEdit={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
-
-    await waitFor(() => {
-      expect(onAdded).toHaveBeenCalledWith('annotation-2', '')
-    })
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('billing.annotatedResponse.fullTipLine1')).toBeInTheDocument()
+    expect(api.addAnnotation).not.toHaveBeenCalled()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

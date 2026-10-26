@@ -1,6 +1,6 @@
 'use client'
+import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { FullDocumentDetail } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -16,7 +16,7 @@ type Props = Readonly<{
   datasetId: string
   documentId: string
   className?: string
-  docDetail: FullDocumentDetail
+  docDetail: DocumentDetailResponse
   canEdit?: boolean
 }>
 const MetadataDocument: FC<Props> = ({
@@ -50,7 +50,7 @@ const MetadataDocument: FC<Props> = ({
   return (
     <div className={cn('w-97 space-y-4', className)}>
       {hasData || isEdit ? (
-        <div className="pl-2">
+        <div className="ps-2">
           <InfoGroup
             title={t(($) => $['metadata.metadata'], { ns: 'dataset' })}
             uppercaseTitle={false}
@@ -94,7 +94,7 @@ const MetadataDocument: FC<Props> = ({
         embeddingAvailable && canEdit && <NoData onStart={() => setIsEdit(true)} />
       )}
       {builtInEnabled && (
-        <div className="pl-2">
+        <div className="ps-2">
           <Separator className="my-3 h-[0.5px]" variant="gradient" />
           <InfoGroup
             noHeader
@@ -107,13 +107,13 @@ const MetadataDocument: FC<Props> = ({
 
       {/* Old Metadata */}
       <InfoGroup
-        className="pl-2"
+        className="ps-2"
         title={t(($) => $[`${i18nPrefix}.documentInformation`], { ns: 'dataset' })}
         list={originInfo}
         dataSetId={datasetId}
       />
       <InfoGroup
-        className="pl-2"
+        className="ps-2"
         title={t(($) => $[`${i18nPrefix}.technicalParameters`], { ns: 'dataset' })}
         list={technicalParameters}
         dataSetId={datasetId}

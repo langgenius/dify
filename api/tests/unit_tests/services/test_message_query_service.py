@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 from typing import Literal
 
 import pytest
@@ -16,7 +17,7 @@ from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchem
 from services.entities.message_entities import MessageAccount
 from services.message_query_adapters import ExecutionExtraContentReader, MessageFileResolver
 from services.message_query_service import MessageQueryService
-from tests.test_containers_integration_tests.helpers.execution_extra_content import create_human_input_message_fixture
+from tests.e2e_tests.containers.helpers.execution_extra_content import create_human_input_message_fixture
 
 
 @pytest.mark.parametrize("query_kind", ["actor", "console", "detail"])
@@ -41,17 +42,17 @@ def test_extra_contents_are_loaded_after_message_session_closes(
         later = Message(
             app_id=app_id,
             conversation_id=conversation_id,
-            inputs={},
+            _inputs={},
             query="Later question",
             message={},
             answer="Later answer",
-            message_unit_price=0,
-            answer_unit_price=0,
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
             currency="USD",
             from_source=ConversationFromSource.CONSOLE,
             from_account_id=account_id,
-            created_at=fixture.message.created_at + timedelta(seconds=1),
         )
+        later.created_at = fixture.message.created_at + timedelta(seconds=1)
         session.add(later)
         session.commit()
         later_id = later.id

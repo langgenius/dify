@@ -1,11 +1,13 @@
 import type { InputValueTypes } from '../../types'
+import type { fileUpload } from '@/app/components/base/file-uploader/utils'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
-import type { VisionFile, VisionSettings } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { VisionSettings } from '@/types/app'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { Resolution, TransferMethod } from '@/types/app'
 import RunOnce from '../index'
 
@@ -22,52 +24,55 @@ vi.mock('@/hooks/use-breakpoints', () => {
   }
 })
 
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, onChange }: { value?: string; onChange?: (val: string) => void }) => (
-    <textarea
-      data-testid="code-editor-mock"
-      value={value}
-      onChange={(e) => onChange?.(e.target.value)}
-    />
-  ),
+const upload = vi.hoisted(() => vi.fn<typeof fileUpload>())
+vi.mock('@/next/navigation', () => ({
+  useParams: () => ({}),
+  usePathname: () => '/completion/app',
+}))
+vi.mock('@/app/components/base/file-uploader/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/file-uploader/utils')>()),
+  fileUpload: upload,
 }))
 
-vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => {
-  function TextGenerationImageUploaderMock({
-    onFilesChange,
-  }: {
-    onFilesChange: (files: VisionFile[]) => void
-  }) {
-    useEffect(() => {
-      onFilesChange([])
-    }, [onFilesChange])
-    return <div data-testid="vision-uploader-mock" />
-  }
-  return {
-    default: TextGenerationImageUploaderMock,
-  }
+beforeEach(() => {
+  upload.mockImplementation(({ onSuccessCallback }) =>
+    onSuccessCallback({
+      id: 'upload-1',
+      name: 'example.txt',
+      size: 7,
+      mime_type: 'text/plain',
+      extension: 'txt',
+      created_at: 1,
+      created_by: 'account-1',
+      preview_url: null,
+      source_url: '',
+    }),
+  )
 })
 
-vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({
-    value,
-    onChange,
-  }: {
-    value: object[]
-    onChange: (files: object[]) => void
-  }) => (
-    <div data-testid="file-uploader-mock">
-      <button onClick={() => onChange([{ id: 'test-file' }])}>Upload</button>
-      <span>{value?.length || 0} files</span>
-    </div>
-  ),
-}))
+const uploadedFile = expect.objectContaining({
+  name: 'example.txt',
+  size: 7,
+  type: 'text/plain',
+  progress: 100,
+  transferMethod: TransferMethod.local_file,
+  supportFileType: 'document',
+  uploadedId: 'upload-1',
+})
+const getInputs = () =>
+  JSON.parse(screen.getByRole('status', { name: 'Input values' }).textContent!)
 
 const createPromptVariable = (overrides: Partial<PromptVariable>): PromptVariable => ({
   key: 'input',
   name: 'Input',
   type: 'string',
   required: true,
+  config: {
+    allowed_file_types: ['document'],
+    allowed_file_extensions: ['.txt'],
+    allowed_file_upload_methods: [TransferMethod.local_file],
+    number_limits: 2,
+  },
   ...overrides,
 })
 
@@ -122,28 +127,29 @@ const setup = (
   const onInputsChange = vi.fn()
   const onSend = vi.fn()
   const onVisionFilesChange = vi.fn()
-  let inputsRefCapture: React.MutableRefObject<Record<string, InputValueTypes>> | null = null
 
   const Wrapper = () => {
     const [inputs, setInputs] = useState<Record<string, InputValueTypes>>({})
     const inputsRef = useRef<Record<string, InputValueTypes>>({})
-    inputsRefCapture = inputsRef
     return (
-      <RunOnce
-        siteInfo={siteInfo}
-        promptConfig={overrides.promptConfig || basePromptConfig}
-        inputs={inputs}
-        inputsRef={inputsRef}
-        onInputsChange={(updated) => {
-          inputsRef.current = updated
-          setInputs(updated)
-          onInputsChange(updated)
-        }}
-        onSend={onSend}
-        visionConfig={overrides.visionConfig || baseVisionConfig}
-        onVisionFilesChange={onVisionFilesChange}
-        runControl={overrides.runControl ?? null}
-      />
+      <>
+        <output aria-label="Input values">{JSON.stringify(inputs)}</output>
+        <RunOnce
+          siteInfo={siteInfo}
+          promptConfig={overrides.promptConfig || basePromptConfig}
+          inputs={inputs}
+          inputsRef={inputsRef}
+          onInputsChange={(updated) => {
+            inputsRef.current = updated
+            setInputs(updated)
+            onInputsChange(updated)
+          }}
+          onSend={() => onSend(inputsRef.current)}
+          visionConfig={overrides.visionConfig || baseVisionConfig}
+          onVisionFilesChange={onVisionFilesChange}
+          runControl={overrides.runControl ?? null}
+        />
+      </>
     )
   }
 
@@ -153,13 +159,12 @@ const setup = (
     onInputsChange,
     onSend,
     onVisionFilesChange,
-    getInputsRef: () => inputsRefCapture,
   }
 }
 
 describe('RunOnce', () => {
   it('should initialize inputs using prompt defaults', async () => {
-    const { onInputsChange, onVisionFilesChange } = setup()
+    const { onInputsChange } = setup()
 
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalledWith({
@@ -170,16 +175,12 @@ describe('RunOnce', () => {
       })
     })
 
-    await waitFor(() => {
-      expect(onVisionFilesChange).toHaveBeenCalledWith([])
-    })
-
     expect(screen.getByText('common.imageUploader.imageUpload'))!.toBeInTheDocument()
   })
 
   it('should update inputs when user edits fields', async () => {
     const user = userEvent.setup()
-    const { onInputsChange, getInputsRef } = setup()
+    const { onInputsChange } = setup()
 
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalled()
@@ -198,31 +199,27 @@ describe('RunOnce', () => {
     await user.clear(numberInput)
     await user.type(numberInput, '99')
 
-    const label = screen.getByText('Checkbox Input')
-    const checkbox = label.closest('div')?.parentElement?.querySelector('div')
-    expect(checkbox).toBeTruthy()
-    fireEvent.click(checkbox as HTMLElement)
+    await user.click(screen.getByRole('checkbox', { name: 'Checkbox Input' }))
 
-    const latest = onInputsChange.mock.calls[onInputsChange.mock.calls.length - 1]![0]
-    expect(latest).toEqual({
+    expect(getInputs()).toEqual({
       textInput: 'new text',
       paragraphInput: 'paragraph value',
       numberInput: '99',
       checkboxInput: true,
     })
-    expect(getInputsRef()?.current).toEqual(latest)
   })
 
   it('should clear inputs when Clear button is pressed', async () => {
+    const user = userEvent.setup()
     const { onInputsChange } = setup()
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalled()
     })
     onInputsChange.mockClear()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
-    expect(onInputsChange).toHaveBeenCalledWith({
+    expect(getInputs()).toEqual({
       textInput: '',
       paragraphInput: '',
       numberInput: '',
@@ -231,15 +228,22 @@ describe('RunOnce', () => {
   })
 
   it('should submit form and call onSend when Run button clicked', async () => {
+    const user = userEvent.setup()
     const { onSend, onInputsChange } = setup()
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalled()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'share.generation.run' }))
-    expect(onSend).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('button', { name: 'share.generation.run' }))
+    expect(onSend).toHaveBeenCalledExactlyOnceWith({
+      textInput: 'default text',
+      paragraphInput: 'paragraph default',
+      numberInput: 42,
+      checkboxInput: false,
+    })
   })
 
   it('should display stop controls when runControl is provided', async () => {
+    const user = userEvent.setup()
     const onStop = vi.fn()
     const runControl = {
       onStop,
@@ -252,7 +256,7 @@ describe('RunOnce', () => {
     const stopButton = screen.getByRole('button', {
       name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}',
     })
-    fireEvent.click(stopButton)
+    await user.click(stopButton)
     expect(onStop).toHaveBeenCalledTimes(1)
   })
 
@@ -273,6 +277,7 @@ describe('RunOnce', () => {
 
   describe('select input type', () => {
     it('should render select input and handle selection', async () => {
+      const user = userEvent.setup()
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -294,12 +299,16 @@ describe('RunOnce', () => {
           selectInput: 'Option A',
         })
       })
-      expect(screen.getByRole('combobox', { name: 'Select Input' })).toBeInTheDocument()
+      await user.click(screen.getByRole('combobox', { name: 'Select Input' }))
+      await user.click(screen.getByRole('option', { name: 'Option B' }))
+      expect(getInputs()).toEqual({ selectInput: 'Option B' })
+      expect(screen.getByRole('combobox', { name: 'Select Input' })).toHaveTextContent('Option B')
     })
   })
 
   describe('file input types', () => {
     it('should render file uploader for single file input', async () => {
+      const user = userEvent.setup()
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -319,10 +328,16 @@ describe('RunOnce', () => {
           fileInput: undefined,
         })
       })
-      expect(screen.getByText('File Input'))!.toBeInTheDocument()
+      await user.upload(
+        document.querySelector<HTMLInputElement>('input[type="file"]')!,
+        new File(['example'], 'example.txt', { type: 'text/plain' }),
+      )
+      expect(await screen.findByText('example.txt')).toBeInTheDocument()
+      await waitFor(() => expect(getInputs()).toEqual({ fileInput: uploadedFile }))
     })
 
     it('should render file uploader for file-list input', async () => {
+      const user = userEvent.setup()
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -342,37 +357,18 @@ describe('RunOnce', () => {
           fileListInput: [],
         })
       })
-      expect(screen.getByText('File List Input'))!.toBeInTheDocument()
+      await user.upload(
+        document.querySelector<HTMLInputElement>('input[type="file"]')!,
+        new File(['example'], 'example.txt', { type: 'text/plain' }),
+      )
+      expect(await screen.findByText('example.txt')).toBeInTheDocument()
+      await waitFor(() => expect(getInputs()).toEqual({ fileListInput: [uploadedFile] }))
     })
   })
 
   describe('json_object input type', () => {
-    it('should render code editor for json_object input', async () => {
-      const promptConfig: PromptConfig = {
-        prompt_template: 'template',
-        prompt_variables: [
-          createPromptVariable({
-            key: 'jsonInput',
-            name: 'JSON Input',
-            type: 'json_object' as PromptVariable['type'],
-            json_schema: '{"type": "object"}',
-          }),
-        ],
-      }
-      const { onInputsChange } = setup({
-        promptConfig,
-        visionConfig: { ...baseVisionConfig, enabled: false },
-      })
-      await waitFor(() => {
-        expect(onInputsChange).toHaveBeenCalledWith({
-          jsonInput: undefined,
-        })
-      })
-      expect(screen.getByText('JSON Input'))!.toBeInTheDocument()
-      expect(screen.getByTestId('code-editor-mock'))!.toBeInTheDocument()
-    })
-
     it('should update json_object input when code editor changes', async () => {
+      const user = userEvent.setup()
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -392,11 +388,12 @@ describe('RunOnce', () => {
       })
       onInputsChange.mockClear()
 
-      const codeEditor = screen.getByTestId('code-editor-mock')
-      fireEvent.change(codeEditor, { target: { value: '{"key": "value"}' } })
+      const codeEditor = screen.getByTestId('monaco-editor')
+      await user.click(codeEditor)
+      await user.paste('{"key": "value"}')
 
       await waitFor(() => {
-        expect(onInputsChange).toHaveBeenCalledWith({
+        expect(getInputs()).toEqual({
           jsonInput: '{"key": "value"}',
         })
       })
@@ -467,6 +464,7 @@ describe('RunOnce', () => {
 
   describe('clear with different input types', () => {
     it('should clear select input to undefined', async () => {
+      const user = userEvent.setup()
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -488,7 +486,7 @@ describe('RunOnce', () => {
       })
       onInputsChange.mockClear()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(onInputsChange).toHaveBeenCalledWith({
         selectInput: undefined,

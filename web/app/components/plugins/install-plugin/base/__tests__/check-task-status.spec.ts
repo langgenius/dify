@@ -2,158 +2,85 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TaskStatus } from '../../../types'
 import checkTaskStatus from '../check-task-status'
 
-const mockCheckTaskStatus = vi.fn()
-vi.mock('@/service/plugins', () => ({
-  checkTaskStatus: (...args: unknown[]) => mockCheckTaskStatus(...args),
-}))
+const { fetchTask } = vi.hoisted(() => ({ fetchTask: vi.fn() }))
+vi.mock('@/service/plugins', () => ({ checkTaskStatus: fetchTask }))
 
-// Mock sleep to avoid actual waiting in tests
-vi.mock('@/utils', () => ({
-  sleep: vi.fn().mockResolvedValue(undefined),
-}))
+const task = (status: TaskStatus) => ({
+  task: {
+    plugins: [
+      {
+        plugin_unique_identifier: 'other-plugin',
+        status: TaskStatus.failed,
+        message: 'Unrelated failure',
+      },
+      { plugin_unique_identifier: 'test-plugin', status, message: '' },
+    ],
+  },
+})
+const params = { taskId: 'task-1', pluginUniqueIdentifier: 'test-plugin' }
 
 describe('checkTaskStatus', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    vi.useFakeTimers()
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
+  afterEach(() => vi.useRealTimers())
 
-  it('returns success when plugin status is success', async () => {
-    mockCheckTaskStatus.mockResolvedValue({
-      task: {
-        plugins: [
-          { plugin_unique_identifier: 'test-plugin', status: TaskStatus.success, message: '' },
-        ],
-      },
+  it('fails when the requested package is absent from the task', async () => {
+    fetchTask.mockResolvedValue({
+      task: { plugins: [{ plugin_unique_identifier: 'other-plugin', status: TaskStatus.success }] },
     })
 
-    const { check } = checkTaskStatus()
-    const result = await check({ taskId: 'task-1', pluginUniqueIdentifier: 'test-plugin' })
-    expect(result.status).toBe(TaskStatus.success)
+    await expect(checkTaskStatus().check(params)).resolves.toEqual({
+      status: TaskStatus.failed,
+      error: 'Plugin package not found',
+    })
   })
 
-  it('returns failed when plugin status is failed', async () => {
-    mockCheckTaskStatus.mockResolvedValue({
-      task: {
-        plugins: [
-          {
-            plugin_unique_identifier: 'test-plugin',
-            status: TaskStatus.failed,
-            message: 'Install failed',
-          },
-        ],
-      },
-    })
+  it('follows the requested package through pending and running until success', async () => {
+    fetchTask
+      .mockResolvedValueOnce(task(TaskStatus.pending))
+      .mockResolvedValueOnce(task(TaskStatus.running))
+      .mockResolvedValueOnce(task(TaskStatus.success))
+    const completed = vi.fn()
+    const result = checkTaskStatus().check(params).then(completed)
 
-    const { check } = checkTaskStatus()
-    const result = await check({ taskId: 'task-1', pluginUniqueIdentifier: 'test-plugin' })
-    expect(result.status).toBe(TaskStatus.failed)
-    expect(result.error).toBe('Install failed')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-1')
+    expect(completed).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(fetchTask).toHaveBeenCalledTimes(2)
+    expect(completed).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(10_000)
+    await result
+    expect(fetchTask).toHaveBeenNthCalledWith(3, 'task-1')
+    expect(completed).toHaveBeenCalledExactlyOnceWith({ status: TaskStatus.success })
   })
 
-  it('returns failed when plugin is not found in task', async () => {
-    mockCheckTaskStatus.mockResolvedValue({
-      task: {
-        plugins: [
-          { plugin_unique_identifier: 'other-plugin', status: TaskStatus.success, message: '' },
-        ],
-      },
-    })
+  it('stops one checker before its first request without stopping another installation', async () => {
+    fetchTask.mockResolvedValue(task(TaskStatus.success))
+    const stopped = checkTaskStatus()
+    const active = checkTaskStatus()
+    stopped.stop()
 
-    const { check } = checkTaskStatus()
-    const result = await check({ taskId: 'task-1', pluginUniqueIdentifier: 'test-plugin' })
-    expect(result.status).toBe(TaskStatus.failed)
-    expect(result.error).toBe('Plugin package not found')
+    await expect(stopped.check(params)).resolves.toEqual({ status: TaskStatus.success })
+    expect(fetchTask).not.toHaveBeenCalled()
+    await expect(active.check({ ...params, taskId: 'task-2' })).resolves.toEqual({
+      status: TaskStatus.success,
+    })
+    expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-2')
   })
 
-  it('polls recursively when status is running, then resolves on success', async () => {
-    let callCount = 0
-    mockCheckTaskStatus.mockImplementation(() => {
-      callCount++
-      if (callCount < 3) {
-        return Promise.resolve({
-          task: {
-            plugins: [
-              { plugin_unique_identifier: 'test-plugin', status: TaskStatus.running, message: '' },
-            ],
-          },
-        })
-      }
-      return Promise.resolve({
-        task: {
-          plugins: [
-            { plugin_unique_identifier: 'test-plugin', status: TaskStatus.success, message: '' },
-          ],
-        },
-      })
-    })
+  it('does not fetch again when stopped during the polling interval', async () => {
+    fetchTask.mockResolvedValue(task(TaskStatus.running))
+    const checker = checkTaskStatus()
+    const result = checker.check(params)
+    await vi.advanceTimersByTimeAsync(0)
+    checker.stop()
+    await vi.advanceTimersByTimeAsync(10_000)
 
-    const { check } = checkTaskStatus()
-    const result = await check({ taskId: 'task-1', pluginUniqueIdentifier: 'test-plugin' })
-    expect(result.status).toBe(TaskStatus.success)
-    expect(mockCheckTaskStatus).toHaveBeenCalledTimes(3)
-  })
-
-  it('polls recursively when status is pending, then resolves on success', async () => {
-    mockCheckTaskStatus
-      .mockResolvedValueOnce({
-        task: {
-          plugins: [
-            { plugin_unique_identifier: 'test-plugin', status: TaskStatus.pending, message: '' },
-          ],
-        },
-      })
-      .mockResolvedValueOnce({
-        task: {
-          plugins: [
-            { plugin_unique_identifier: 'test-plugin', status: TaskStatus.success, message: '' },
-          ],
-        },
-      })
-
-    const { check } = checkTaskStatus()
-    const result = await check({ taskId: 'task-1', pluginUniqueIdentifier: 'test-plugin' })
-
-    expect(result.status).toBe(TaskStatus.success)
-    expect(mockCheckTaskStatus).toHaveBeenCalledTimes(2)
-  })
-
-  it('stop() causes early return with success', async () => {
-    const { check, stop } = checkTaskStatus()
-    stop()
-    const result = await check({ taskId: 'task-1', pluginUniqueIdentifier: 'test-plugin' })
-    expect(result.status).toBe(TaskStatus.success)
-    expect(mockCheckTaskStatus).not.toHaveBeenCalled()
-  })
-
-  it('returns different instances with independent state', async () => {
-    const checker1 = checkTaskStatus()
-    const checker2 = checkTaskStatus()
-
-    checker1.stop()
-
-    mockCheckTaskStatus.mockResolvedValue({
-      task: {
-        plugins: [
-          { plugin_unique_identifier: 'test-plugin', status: TaskStatus.success, message: '' },
-        ],
-      },
-    })
-
-    const result1 = await checker1.check({
-      taskId: 'task-1',
-      pluginUniqueIdentifier: 'test-plugin',
-    })
-    const result2 = await checker2.check({
-      taskId: 'task-2',
-      pluginUniqueIdentifier: 'test-plugin',
-    })
-
-    expect(result1.status).toBe(TaskStatus.success)
-    expect(result2.status).toBe(TaskStatus.success)
-    expect(mockCheckTaskStatus).toHaveBeenCalledTimes(1)
+    await expect(result).resolves.toEqual({ status: TaskStatus.success })
+    expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-1')
   })
 })
