@@ -4590,9 +4590,14 @@ Get draft workflow for an application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft
-**Sync draft workflow**
+**Save the graph and explicit environment-variable patches**
 
-Sync draft workflow configuration
+Save draft graph and environment patches; initialize configuration for new drafts
+Existing draft
+features and conversation variables are owned by their dedicated endpoints;
+the submitted snapshots only initialize a new draft. Legacy clients that
+edit configuration through this POST must use those dedicated endpoints.
+
 Empty initialization or clearing requires force=true;
 an already-empty draft may be saved with its current hash without force.
 
@@ -4615,8 +4620,8 @@ an already-empty draft may be saved with its current hash without force.
 | 200 | Draft workflow synced successfully | **application/json**: [SyncDraftWorkflowResponse](#syncdraftworkflowresponse)<br> |
 | 400 | Invalid workflow configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App owner not found for draft initialization | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Draft hash changed or multiple draft workflows require repair | **application/json**: [DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/conversation-variables
@@ -5588,6 +5593,7 @@ Restore a published workflow version into the draft workflow
 | 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Source workflow must be published | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Workflow not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Multiple draft workflows require repair | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{resource_id}/api-keys

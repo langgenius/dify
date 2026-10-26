@@ -80,9 +80,7 @@ class EnvironmentProbeTests(unittest.TestCase):
         self.assertEqual(files[0]["sha256"], hashlib.sha256(b"a = 1\n").hexdigest())
         receipt = self.probe["make_receipt"](self.profile(), files)
         digest = receipt.pop("environment_content_sha256")
-        expected = json.dumps(
-            receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=True
-        ).encode()
+        expected = json.dumps(receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
         self.assertEqual(digest, hashlib.sha256(expected).hexdigest())
         receipt2 = self.probe["make_receipt"](self.profile(), list(reversed(files)))
         self.assertEqual(digest, receipt2["environment_content_sha256"])
@@ -91,9 +89,7 @@ class EnvironmentProbeTests(unittest.TestCase):
         changed.add_tree("pkg")
         self.assertNotEqual(
             digest,
-            self.probe["make_receipt"](self.profile(), changed.files())[
-                "environment_content_sha256"
-            ],
+            self.probe["make_receipt"](self.profile(), changed.files())["environment_content_sha256"],
         )
 
     def test_profile_refuses_missing_mismatched_runtime_and_packages(self):
@@ -135,9 +131,7 @@ class EnvironmentProbeTests(unittest.TestCase):
         (self.root / "pkg").mkdir()
         (self.root / "pkg/a").write_bytes(b"abc")
         with (
-            patch.dict(
-                self.probe["ContentManifest"].add_tree.__globals__, MAX_FILE_BYTES=2
-            ),
+            patch.dict(self.probe["ContentManifest"].add_tree.__globals__, MAX_FILE_BYTES=2),
             self.assertRaises(self.probe["Refusal"]),
         ):
             self.manifest().add_tree("pkg")
@@ -155,9 +149,7 @@ class EnvironmentProbeTests(unittest.TestCase):
     def test_empty_directory_traversal_is_globally_bounded(self):
         (self.root / "pkg/one/two").mkdir(parents=True)
         with (
-            patch.dict(
-                self.probe["ContentManifest"].add_tree.__globals__, MAX_ENTRIES=2
-            ),
+            patch.dict(self.probe["ContentManifest"].add_tree.__globals__, MAX_ENTRIES=2),
             self.assertRaises(self.probe["Refusal"]),
         ):
             self.manifest().add_tree("pkg")
@@ -189,9 +181,7 @@ class EnvironmentProbeTests(unittest.TestCase):
             None,
         ]:
             with self.subTest(path=path), self.assertRaises(self.probe["Refusal"]):
-                self.probe["require_origin"](
-                    path, "/usr/local/lib/python3.13/site-packages/jinja2/__init__.py"
-                )
+                self.probe["require_origin"](path, "/usr/local/lib/python3.13/site-packages/jinja2/__init__.py")
 
     def test_root_fd_captures_actual_absolute_path_chain(self):
         stamps = {}
@@ -200,9 +190,7 @@ class EnvironmentProbeTests(unittest.TestCase):
             self.assertEqual(set(stamps), {"/", "/usr", "/usr/local"})
             self.assertEqual(self.probe["_stamp"](os.fstat(fd)), stamps["/usr/local"])
             for path, expected in stamps.items():
-                self.assertEqual(
-                    self.probe["_stamp"](os.stat(path, follow_symlinks=False)), expected
-                )
+                self.assertEqual(self.probe["_stamp"](os.stat(path, follow_symlinks=False)), expected)
         finally:
             os.close(fd)
 
@@ -238,9 +226,7 @@ class EnvironmentProbeTests(unittest.TestCase):
         # Prepare replacement trees before the first snapshot so the hook only
         # changes the ancestor under test, not a higher unrelated directory.
         shutil.copytree(site, site.with_name("replacement-site"))
-        (site.with_name("replacement-site") / "jinja2/__init__.py").write_bytes(
-            b"replacement package"
-        )
+        (site.with_name("replacement-site") / "jinja2/__init__.py").write_bytes(b"replacement package")
         shutil.copytree(self.root / "bin", self.root / "replacement-bin")
 
         collect = self.probe["collect_environment"]
@@ -255,18 +241,11 @@ class EnvironmentProbeTests(unittest.TestCase):
 
         def origin(name):
             return str(
-                site
-                / (
-                    name.replace(".", "/") + suffix
-                    if name.endswith("._speedups")
-                    else name + "/__init__.py"
-                )
+                site / (name.replace(".", "/") + suffix if name.endswith("._speedups") else name + "/__init__.py")
             )
 
         def find_spec(name):
-            loader = self.probe["importlib"].machinery.ExtensionFileLoader(
-                name, origin(name)
-            )
+            loader = self.probe["importlib"].machinery.ExtensionFileLoader(name, origin(name))
             return ModuleSpec(name=name, loader=loader, origin=origin(name))
 
         def import_module(name):
@@ -318,9 +297,7 @@ class EnvironmentProbeTests(unittest.TestCase):
                 timeout=30,
                 check=False,
             )
-            self.assertEqual(
-                completed.returncode, 0, completed.stdout + completed.stderr
-            )
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
             self.assertIn("\nOK\n", completed.stderr)
             return
         with self.assertRaisesRegex(self.probe["Refusal"], "unexpected_python_origin"):
@@ -369,9 +346,7 @@ class EnvironmentProbeTests(unittest.TestCase):
             self.synthetic_collection(import_hook=import_boundary)
         self.assertEqual(seen, [b"replacement package"])
         self.assertEqual(
-            (
-                self.root / "lib/python3.13/site-packages/jinja2/__init__.py"
-            ).read_bytes(),
+            (self.root / "lib/python3.13/site-packages/jinja2/__init__.py").read_bytes(),
             b"original measured package",
         )
 
@@ -383,9 +358,7 @@ class EnvironmentProbeTests(unittest.TestCase):
         def import_boundary(site):
             original = site.with_name("original-site")
             site.rename(original)
-            site.symlink_to(
-                site.with_name("replacement-site"), target_is_directory=True
-            )
+            site.symlink_to(site.with_name("replacement-site"), target_is_directory=True)
             try:
                 seen.append((site / "jinja2/__init__.py").read_bytes())
             finally:
@@ -449,9 +422,7 @@ class EnvironmentProbeTests(unittest.TestCase):
             patch.dict(os.environ, SECRET_SENTINEL="never-output-this-value"),
             patch.dict(
                 observe.__globals__,
-                collect_environment=lambda: (_ for _ in ()).throw(
-                    self.probe["Refusal"]("unsupported_python")
-                ),
+                collect_environment=lambda: (_ for _ in ()).throw(self.probe["Refusal"]("unsupported_python")),
             ),
         ):
             result = observe()
