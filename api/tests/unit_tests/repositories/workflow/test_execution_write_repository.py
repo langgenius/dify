@@ -135,6 +135,29 @@ def test_delayed_write_cannot_revive_synchronously_finished_run(
         assert repository.retained_execution_agent_ids(session, "tenant-1", ["agent-1"]) == set()
 
 
+@pytest.mark.parametrize("status", [WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.STOPPED])
+def test_execution_observation_preserves_control_fields(
+    sqlite_session_factory: sessionmaker[Session],
+    write_execution: Callable[[WorkflowExecution], None],
+    status: WorkflowExecutionStatus,
+) -> None:
+    execution = _execution().model_copy(update={"status": status})
+    write_execution(execution)
+    stopped_at = naive_utc_now() if status == WorkflowExecutionStatus.STOPPED else None
+    with sqlite_session_factory.begin() as session:
+        run = session.get(WorkflowRun, execution.id_)
+        assert run is not None
+        run.task_id = "public-task"
+        run.stop_requested_at = stopped_at
+    write_execution(execution.model_copy(update={"total_tokens": 7}))
+    with sqlite_session_factory() as session:
+        run = session.get(WorkflowRun, execution.id_)
+        assert run is not None
+        assert run.task_id == "public-task"
+        assert run.stop_requested_at == stopped_at
+        assert run.total_tokens == 7
+
+
 def test_resume_and_same_terminal_details_remain_writable(
     sqlite_session_factory: sessionmaker[Session],
     write_execution: Callable[[WorkflowExecution], None],

@@ -36,6 +36,7 @@ from models import WorkflowPause as WorkflowPauseModel
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     _WorkflowRunError,
@@ -216,13 +217,13 @@ class TestWorkflowPauseIntegration:
             id=self.test_workflow_id,
             tenant_id=self.test_tenant_id,
             app_id=self.test_app_id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
+            _features='{"file_upload": {"enabled": false}}',
             created_by=self.test_user_id,
-            created_at=naive_utc_now(),
         )
+        self.test_workflow.created_at = naive_utc_now()
 
         # Store session instance
         self.session = db_session_with_containers
@@ -271,14 +272,14 @@ class TestWorkflowPauseIntegration:
             tenant_id=self.test_tenant_id,
             app_id=self.test_app_id,
             workflow_id=self.test_workflow_id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             triggered_from="debugging",
             version="draft",
             status=status,
             created_by=self.test_user_id,
             created_by_role="account",
-            created_at=naive_utc_now(),
         )
+        workflow_run.created_at = naive_utc_now()
         self.session.add(workflow_run)
         self.session.commit()
         return workflow_run
@@ -724,13 +725,13 @@ class TestWorkflowPauseIntegration:
             id=str(uuid.uuid4()),
             tenant_id=tenant2.id,
             app_id=str(uuid.uuid4()),
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             version="draft",
             graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
+            _features='{"file_upload": {"enabled": false}}',
             created_by=account2.id,
-            created_at=naive_utc_now(),
         )
+        workflow2.created_at = naive_utc_now()
         self.session.add(workflow2)
         self.session.commit()
 
@@ -741,14 +742,14 @@ class TestWorkflowPauseIntegration:
             tenant_id=tenant2.id,
             app_id=workflow2.app_id,
             workflow_id=workflow2.id,
-            type="workflow",
+            type=ModelWorkflowType("workflow"),
             triggered_from="debugging",
             version="draft",
             status=WorkflowExecutionStatus.RUNNING,
             created_by=account2.id,
             created_by_role="account",
-            created_at=naive_utc_now(),
         )
+        workflow_run2.created_at = naive_utc_now()
         self.session.add(workflow_run2)
         self.session.commit()
 

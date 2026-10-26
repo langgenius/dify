@@ -106,6 +106,7 @@ from models.human_input_entities import (
 )
 from models.model import AppMode, ConversationFromSource
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.human_input.form_repository import HumanInputFormSubmissionRepository
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.app.generation.ports import MessageIdentity
@@ -1173,7 +1174,7 @@ def test_run_uses_single_node_execution_branch(
         tenant_id="tenant",
         app_id="app",
         id="workflow",
-        type="workflow",
+        type=ModelWorkflowType.WORKFLOW,
         version="v1",
         graph=json.dumps({"nodes": [], "edges": []}),
     )
@@ -1325,7 +1326,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(
         tenant_id="tenant",
         app_id="app",
         id="workflow",
-        type="workflow",
+        type=ModelWorkflowType.WORKFLOW,
         version="v1",
         graph=json.dumps({"nodes": [], "edges": []}),
         kind=WorkflowKind.SNIPPET,
