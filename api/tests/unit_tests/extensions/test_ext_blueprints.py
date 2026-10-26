@@ -345,7 +345,7 @@ class TestExtBlueprintsOpenapiCases:
         apply_config_overrides(
             monkeypatch,
             OPENAPI_ENABLED=False,
-            inner_CONSOLE_CORS_ALLOW_ORIGINS=origin,
+            inner_console_cors_allow_origins=origin,
         )
 
         app = _build_app()
