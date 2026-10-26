@@ -13,7 +13,7 @@ from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry
 
 from graphon.entities.pause_reason import PauseReasonType
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
 from models.base import Base
 from models.enums import (
@@ -51,6 +51,7 @@ from models.workflow import (
     WorkflowPause,
     WorkflowPauseReason,
     WorkflowRun,
+    WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
 

@@ -35,7 +35,9 @@ def _draft(*, saved_at: datetime, graph: str = _GRAPH) -> WorkflowRecord:
 
 
 def _run(*, status: WorkflowExecutionStatus = WorkflowExecutionStatus.SUCCEEDED, graph: str = _GRAPH) -> WorkflowRun:
-    return WorkflowRun(status=status, graph=graph, created_at=_RUN_STARTED)
+    run = WorkflowRun(status=status, graph=graph)
+    run.created_at = _RUN_STARTED
+    return run
 
 
 def test_a_passing_run_on_the_unchanged_draft_counts() -> None:
