@@ -83,6 +83,7 @@ lint:
 	@uv run --project api python scripts/check_no_spec_mock.py
 	@uv run --project api python scripts/check_no_new_base_model.py
 	@uv run --project api python scripts/check_no_new_constructor_bypass.py
+	@uv run --project api python scripts/check_no_new_cast.py
 	@uv run --directory api --dev lint-imports
 	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 	@echo "✅ Linting complete"
