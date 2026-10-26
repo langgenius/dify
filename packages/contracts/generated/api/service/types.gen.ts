@@ -24,6 +24,11 @@ export type AgentThought = {
   tool_labels: AnyJsonValue
 }
 
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
 export type Annotation = {
   answer?: string | null
   created_at?: number | null
@@ -70,6 +75,16 @@ export type AnnotationReplyActionPayload = {
 
 export type AnyJsonValue = unknown
 
+export type AppAbnormalStatusError = ErrorResponse & {
+  code: 'app_abnormal_status'
+  status: 403
+}
+
+export type AppApiDisabledError = ErrorResponse & {
+  code: 'app_api_disabled'
+  status: 403
+}
+
 export type AppFeedbackListResponse = {
   data: Array<AppFeedbackResponse>
 }
@@ -100,6 +115,16 @@ export type AppMetaResponse = {
   tool_icons?: {
     [key: string]: string | ToolIcon
   }
+}
+
+export type AppNotFoundError = ErrorResponse & {
+  code: 'app_not_found'
+  status: 403
+}
+
+export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
+  code: 'app_suggested_questions_after_answer_disabled'
+  status: 403
 }
 
 export type AppUnavailableError = ErrorResponse & {
@@ -4447,6 +4472,16 @@ export type WorkflowTaskStopPayload = {
 
 export type WorkflowVersionExecutionNotAllowedError = ErrorResponse & {
   code: 'workflow_version_execution_not_allowed'
+  status: 403
+}
+
+export type WorkspaceArchivedError = ErrorResponse & {
+  code: 'workspace_archived'
+  status: 403
+}
+
+export type WorkspaceNotFoundError = ErrorResponse & {
+  code: 'workspace_not_found'
   status: 403
 }
 
@@ -8821,10 +8856,24 @@ export type GetMessagesByMessageIdSuggestedData = {
 }
 
 export type GetMessagesByMessageIdSuggestedErrors = {
-  400: NotChatAppError | ErrorResponse
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | AppSuggestedQuestionsAfterAnswerDisabledError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }

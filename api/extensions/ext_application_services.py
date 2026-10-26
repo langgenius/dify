@@ -72,6 +72,7 @@ from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.message_repository import MessageRepository
 from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
@@ -144,8 +145,9 @@ from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
 from services.knowledge_fs.workflow_runtime import build_knowledge_fs_node_dependencies
 from services.message_file_preview_service import MessageFilePreviewService
-from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
-from services.message_suggested_questions_service import MessageSuggestedQuestions
+from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
+from services.message_suggested_questions_queries import SuggestedQuestionsQuery
+from services.message_suggested_questions_service import MessageSuggestedQuestions, MessageSuggestedQuestionsService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
@@ -535,6 +537,11 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
     )
+    suggested_questions = SuggestedQuestionsQuery(
+        session_factory=database_client,
+        repository_factory=MessageRepository,
+    )
+
     return ApplicationServices(
         rbac=rbac,
         accounts=account_services,
@@ -656,7 +663,10 @@ def build_application_services(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
             storage=storage,
         ),
-        message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=database_client),
+        message_suggested_questions=MessageSuggestedQuestionsService(
+            queries=suggested_questions,
+            generator=SuggestedQuestionsGenerator(),
+        ),
         plugin_file_uploads=PluginFileUploadService(
             owners=SQLAlchemyPluginFileUploadOwnerRepository(session_factory=database_client),
             files=ToolFilePluginUploadGateway(tool_files=ToolFileManager()),

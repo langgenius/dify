@@ -436,6 +436,7 @@ export const post5Errors = {
 }
 
 export const get13Errors = {
+  agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   app_suggested_questions_after_answer_disabled: {
     status: 403,
     data: zAppSuggestedQuestionsAfterAnswerDisabledError,

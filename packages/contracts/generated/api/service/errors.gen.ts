@@ -18,6 +18,46 @@ const zAgentNotPublishedError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zAgentVersionNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('agent_version_not_found_error'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zAppAbnormalStatusError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('app_abnormal_status'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zAppApiDisabledError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('app_api_disabled'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zAppNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('app_not_found'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zAppSuggestedQuestionsAfterAnswerDisabledError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('app_suggested_questions_after_answer_disabled'),
+      status: z.literal(403),
+    }),
+  ))()
+
 const zAppUnavailableError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -350,6 +390,22 @@ const zWorkflowVersionExecutionNotAllowedError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
       code: z.literal('workflow_version_execution_not_allowed'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zWorkspaceArchivedError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('workspace_archived'),
+      status: z.literal(403),
+    }),
+  ))()
+
+const zWorkspaceNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('workspace_not_found'),
       status: z.literal(403),
     }),
   ))()
@@ -1185,7 +1241,24 @@ export const get60Errors = {
   knowledge_fs_upstream_unavailable: { status: 502, data: zKnowledgeFsUpstreamUnavailableError },
 }
 
-export const get61Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const get61Errors = {
+  agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+  app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+  app_api_disabled: { status: 403, data: zAppApiDisabledError },
+  app_not_found: { status: 403, data: zAppNotFoundError },
+  app_suggested_questions_after_answer_disabled: {
+    status: 403,
+    data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+  },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+  completion_request_error: { status: 400, data: zCompletionRequestError },
+  model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+  provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+  provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+  workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+}
 
 export const get62Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
 
