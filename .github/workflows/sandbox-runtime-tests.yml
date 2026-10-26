@@ -42,6 +42,13 @@ jobs:
           go-version-file: dify-agent-runtime/go.mod
           cache-dependency-path: dify-agent-runtime/go.sum
 
+      - name: Install real job runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes tmux
+          make bin/shellctl-runner bin/shellctl-runner-exit bin/shellctl-sanitize-pty
+          echo "$GITHUB_WORKSPACE/dify-agent-runtime/bin" >> "$GITHUB_PATH"
+
       - name: Run unit tests
         run: go test -race -count=1 ./...
 
