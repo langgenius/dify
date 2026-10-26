@@ -24,7 +24,7 @@ from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineDocumentStore, PipelineRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
@@ -215,6 +215,7 @@ class PipelineGenerator(BaseAppGenerator):
                 ),
                 files=[],
                 user_id=user.id,
+                user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
                 stream=streaming,
                 invoke_from=invoke_from,
                 call_depth=call_depth,

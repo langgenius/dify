@@ -278,6 +278,19 @@ class TestWorkflowAppRunnerCoreCases:
             assert runner._resolve_user_from(InvokeFrom.DEBUGGER) == UserFrom.ACCOUNT
             assert runner._resolve_user_from(InvokeFrom.WEB_APP) == UserFrom.END_USER
 
+        def test_resolve_user_from_prefers_captured_role(self):
+            # A schedule trigger runs with InvokeFrom.SERVICE_API while the
+            # initiating user is an Account; the role captured from the real
+            # user object must win over the invoke_from inference.
+            runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+
+            assert runner._resolve_user_from(InvokeFrom.SERVICE_API, UserFrom.ACCOUNT) == UserFrom.ACCOUNT
+            assert runner._resolve_user_from(InvokeFrom.SERVICE_API, UserFrom.END_USER) == UserFrom.END_USER
+            assert runner._resolve_user_from(InvokeFrom.DEBUGGER, UserFrom.END_USER) == UserFrom.END_USER
+            # Fallback to invoke_from inference when no role was captured.
+            assert runner._resolve_user_from(InvokeFrom.SERVICE_API, None) == UserFrom.END_USER
+            assert runner._resolve_user_from(InvokeFrom.EXPLORE, None) == UserFrom.ACCOUNT
+
         def test_init_graph_validates_graph_structure(self):
             runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
 

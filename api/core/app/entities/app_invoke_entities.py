@@ -193,6 +193,13 @@ class AppGenerateEntity(BaseModel):
     # Note: The `user_id` field does not indicate whether the user is a platform user or an end user.
     user_id: str
 
+    # Role of the user initiating the execution, captured where the real
+    # `Account`/`EndUser` object is known. `invoke_from` alone cannot identify
+    # the role: e.g. a schedule trigger runs with `InvokeFrom.SERVICE_API`
+    # while the initiating user is an `Account`. `None` means the role was not
+    # captured and callers fall back to inferring it from `invoke_from`.
+    user_from: UserFrom | None = None
+
     # extras
     stream: bool
     invoke_from: InvokeFrom

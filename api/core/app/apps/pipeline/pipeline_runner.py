@@ -89,7 +89,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             invoke_from = InvokeFrom.DEBUGGER
 
-        user_from = self._resolve_user_from(invoke_from)
+        user_from = self._resolve_user_from(invoke_from, self.application_generate_entity.user_from)
 
         user_id = None
         with create_session() as session:

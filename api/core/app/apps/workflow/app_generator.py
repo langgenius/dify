@@ -25,7 +25,7 @@ from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppPausedBlockingResponse,
@@ -224,6 +224,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 inputs=inputs,
                 files=list(system_files),
                 user_id=user.id,
+                user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
                 stream=streaming,
                 invoke_from=invoke_from,
                 allow_human_input=allow_human_input,

@@ -216,7 +216,13 @@ class WorkflowBasedAppRunner:
         raise NotImplementedError
 
     @staticmethod
-    def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
+    def _resolve_user_from(invoke_from: InvokeFrom, user_from: UserFrom | None = None) -> UserFrom:
+        # Prefer the role captured from the real Account/EndUser object when the
+        # initiating caller recorded it; `invoke_from` alone cannot tell an
+        # Account-triggered run (e.g. a schedule trigger uses
+        # `InvokeFrom.SERVICE_API` with an Account) from an end-user API call.
+        if user_from is not None:
+            return user_from
         if invoke_from.runs_as_account():
             return UserFrom.ACCOUNT
         return UserFrom.END_USER

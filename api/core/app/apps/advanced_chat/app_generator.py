@@ -35,7 +35,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.apps.workflow.active_workflow_tasks import active_workflow_task
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, UserFrom
 from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
     ChatbotAppBlockingResponse,
@@ -225,6 +225,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     else UUID_NIL
                 ),
                 user_id=user.id,
+                user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
                 stream=streaming,
                 invoke_from=invoke_from,
                 extras=extras,
