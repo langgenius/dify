@@ -68,6 +68,7 @@ class ConnectionOAuthAttempt:
     state_digest: str = field(repr=False)
     # Creation captures a published target/name; reauthorization captures a CAS guard.
     target: ConnectionTargetInput | None
+    target_workflow_id: str | None
     name: str | None
     guard: ConnectionMutationGuard | None
 
@@ -141,7 +142,7 @@ class OAuthConnectionService:
         client = self._gateway.resolve_client(context.tenant_id, target.provider, target.oauth_client_source)
         require_creation_target(
             context,
-            workflow_id=str(command.workflow_id),
+            workflow_id=target.workflow_id,
             node_id=command.node_id,
             credential_type=ConnectionCredentialType.OAUTH2,
             target=replace(target, oauth_client=client.snapshot.reference),
@@ -152,6 +153,7 @@ class OAuthConnectionService:
             client,
             callback_url=callback_url,
             target=ConnectionTargetInput(connection_revision=command.connection_revision, node_id=command.node_id),
+            target_workflow_id=target.workflow_id,
             name=command.name,
             guard=None,
         )
@@ -169,6 +171,7 @@ class OAuthConnectionService:
             client,
             callback_url=callback_url,
             target=None,
+            target_workflow_id=None,
             name=None,
             guard=connection_mutation_guard(context, record.access),
         )
@@ -181,6 +184,7 @@ class OAuthConnectionService:
         *,
         callback_url: str,
         target: ConnectionTargetInput | None,
+        target_workflow_id: str | None,
         name: str | None,
         guard: ConnectionMutationGuard | None,
     ) -> ConnectionOAuthStart:
@@ -196,6 +200,7 @@ class OAuthConnectionService:
             client=client.snapshot,
             state_digest=sha256(states[0].encode()).hexdigest(),
             target=target,
+            target_workflow_id=target_workflow_id,
             name=name,
             guard=guard,
         )
@@ -239,7 +244,7 @@ class OAuthConnectionService:
                 raise ConnectionConfigurationError()
             require_creation_target(
                 context,
-                workflow_id=str(attempt.target.workflow_id),
+                workflow_id=target.workflow_id,
                 node_id=attempt.target.node_id,
                 credential_type=ConnectionCredentialType.OAUTH2,
                 target=replace(target, oauth_client=attempt.client.reference),
@@ -251,7 +256,8 @@ class OAuthConnectionService:
         if not grant.credentials:
             raise ConnectionOAuthError()
         if attempt.target is not None:
-            self._targets.resolve(context, attempt.target)
+            target = self._targets.resolve(context, attempt.target)
+            attempt = replace(attempt, target_workflow_id=target.workflow_id)
         encrypted = self._cipher.encrypt(context.tenant_id, grant.credentials)
         return self._store.save_oauth(
             attempt,

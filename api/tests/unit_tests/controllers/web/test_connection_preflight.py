@@ -19,7 +19,6 @@ from services.app_definition_query_service import AppDefinitionQueryService
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
 from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.preflight import ConnectionPreflightService
-from services.end_user_connections.revision import connection_revision
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
 
@@ -131,10 +130,10 @@ def test_temporary_check_failure_has_unknown_effective_state(client: FlaskClient
 def test_stale_workflow_is_documented_conflict(client: FlaskClient, harness: OAuthHarness) -> None:
     response = client.post(
         "/api/connections/preflight",
-        json={"connection_revision": connection_revision(str(uuid4()), []), "connections": {}},
+        json={"connection_revision": "0" * 64, "connections": {}},
     )
     assert response.status_code == 409
-    assert response.get_json()["code"] == "workflow_changed"
+    assert response.get_json()["code"] == "connection_revision_changed"
     assert harness.base.auth.calls == []
 
 
@@ -171,11 +170,11 @@ def test_guest_can_discover_requirements(
     ("payload", "valid"),
     [
         ({"connections": {}}, False),
-        ({"connections": {}, "connection_revision": connection_revision(str(uuid4()), [])}, True),
+        ({"connections": {}, "connection_revision": "0" * 64}, True),
         ({"connections": {}, "connection_revision": None}, False),
         ({"connections": {"tool-1": None}}, False),
         ({"connections": {"tool-1": str(uuid4())}, "connection_revision": None}, False),
-        ({"connections": {"tool-1": str(uuid4())}, "connection_revision": connection_revision(str(uuid4()), [])}, True),
+        ({"connections": {"tool-1": str(uuid4())}, "connection_revision": "0" * 64}, True),
         ({}, False),
     ],
 )
@@ -234,7 +233,7 @@ def test_parameters_replace_workflow_id_and_plugin_upgrade_invalidates_the_revis
         "/api/connections/preflight", json={"connection_revision": before["connection_revision"], "connections": {}}
     )
     assert response.status_code == 409
-    assert response.get_json()["code"] == "workflow_changed"
+    assert response.get_json()["code"] == "connection_revision_changed"
     current = client.post(
         "/api/connections/preflight", json={"connection_revision": after["connection_revision"], "connections": {}}
     )

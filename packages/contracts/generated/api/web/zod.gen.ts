@@ -118,7 +118,7 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
 export const zChatMessagePayload = z.object({
   connection_revision: z
     .string()
-    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{64}$/)
+    .regex(/^[0-9a-f]{64}$/)
     .nullish(),
   connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   conversation_id: z.string().nullish(),
@@ -243,9 +243,7 @@ export const zEndUserConnectionListQuery = z.object({
  * EndUserConnectionOAuthPayload
  */
 export const zEndUserConnectionOAuthPayload = z.object({
-  connection_revision: z
-    .string()
-    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{64}$/),
+  connection_revision: z.string().regex(/^[0-9a-f]{64}$/),
   name: z.string().min(1).max(100),
   node_id: z.string().min(1).max(255),
 })
@@ -261,9 +259,7 @@ export const zEndUserConnectionOAuthResponse = z.object({
  * EndUserConnectionPreflightPayload
  */
 export const zEndUserConnectionPreflightPayload = z.object({
-  connection_revision: z
-    .string()
-    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{64}$/),
+  connection_revision: z.string().regex(/^[0-9a-f]{64}$/),
   connections: z.record(z.string(), z.uuid().nullable()),
   conversation_id: z.uuid().nullish(),
 })
@@ -505,6 +501,18 @@ export const zConnectionRequiredError = zErrorResponse.and(
   z.object({
     code: z.literal('connection_required'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionRevisionChangedError
+ *
+ * The connection requirements changed. Confirm the connection selection again.
+ */
+export const zConnectionRevisionChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_revision_changed'),
+    status: z.literal(409),
   }),
 )
 
@@ -821,9 +829,7 @@ export const zJsonValue = z.unknown()
  * EndUserConnectionCreatePayload
  */
 export const zEndUserConnectionCreatePayload = z.object({
-  connection_revision: z
-    .string()
-    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{64}$/),
+  connection_revision: z.string().regex(/^[0-9a-f]{64}$/),
   credentials: z.record(z.string(), zJsonValue),
   name: z.string().min(1).max(100),
   node_id: z.string().min(1).max(255),
@@ -2164,24 +2170,12 @@ export const zHumanInputFormDefinitionResponse = z.object({
 })
 
 /**
- * WorkflowChangedError
- *
- * The workflow changed. Confirm the connection selection again.
- */
-export const zWorkflowChangedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('workflow_changed'),
-    status: z.literal(409),
-  }),
-)
-
-/**
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
   connection_revision: z
     .string()
-    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{64}$/)
+    .regex(/^[0-9a-f]{64}$/)
     .nullish(),
   connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   files: z

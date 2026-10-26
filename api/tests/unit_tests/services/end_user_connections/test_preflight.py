@@ -23,10 +23,9 @@ from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionConflictError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.preflight import ConnectionPreflightInput, ConnectionPreflightService
-from services.end_user_connections.revision import connection_revision
 from services.errors.conversation import ConversationNotExistsError
 from tests.helpers.end_user_api_key import make_harness
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
@@ -290,7 +289,7 @@ def test_changes_during_checks_cannot_produce_ready(
                 workflow.graph = json.dumps(graph)
 
     harness.base.auth.on_check = mutate
-    with pytest.raises(ConnectionWorkflowChangedError if change == "version" else ConnectionConflictError):
+    with pytest.raises(ConnectionConflictError if change == "connection" else ConnectionRevisionChangedError):
         service.check(harness.base.context, command(harness, {"tool-1": connection.id}))
 
 
@@ -409,9 +408,7 @@ def test_workspace_only_graph_requires_no_personal_connections(
         workflow.graph = json.dumps(graph)
     result = service.check(
         harness.base.context,
-        command(harness, {}).model_copy(
-            update={"connection_revision": connection_revision(harness.base.workflow_id, [])}
-        ),
+        command(harness, {}).model_copy(update={"connection_revision": harness.base.connection_revision}),
     )
     assert result.ready
     assert result.connections == ()

@@ -15,8 +15,8 @@ from controllers.common.end_user_connections import (
     ConnectionNotFoundHTTPError,
     ConnectionOAuthHTTPError,
     ConnectionReauthorizationHTTPError,
+    ConnectionRevisionChangedHTTPError,
     ConnectionSecretUnavailableHTTPError,
-    ConnectionWorkflowChangedHTTPError,
     raise_connection_error,
 )
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -66,7 +66,7 @@ class EndUserConnectionOAuthApi(WebApiResource):
     @error_responses(
         ConnectionLoginRequiredError,
         ConnectionConfigurationHTTPError,
-        ConnectionWorkflowChangedHTTPError,
+        ConnectionRevisionChangedHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,
         ConnectionOAuthHTTPError,
@@ -125,7 +125,7 @@ class EndUserConnectionOAuthCallbackApi(Resource):
         ConnectionOAuthHTTPError,
         ConnectionReauthorizationHTTPError,
         ConnectionSecretUnavailableHTTPError,
-        ConnectionWorkflowChangedHTTPError,
+        ConnectionRevisionChangedHTTPError,
         ConnectionCheckUnavailableHTTPError,
     )
     def get(self, provider: str):

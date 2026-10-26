@@ -36,9 +36,9 @@ class ConnectionConfigurationError(ConnectionError):
         super().__init__("The connection is not compatible with this tool configuration.")
 
 
-class ConnectionWorkflowChangedError(ConnectionError):
+class ConnectionRevisionChangedError(ConnectionError):
     def __init__(self) -> None:
-        super().__init__("The workflow configuration changed. Confirm the connection selection again.")
+        super().__init__("The connection requirements changed. Confirm the connection selection again.")
 
 
 class ConnectionReauthorizationRequiredError(ConnectionError):

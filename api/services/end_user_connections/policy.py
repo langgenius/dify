@@ -13,7 +13,7 @@ from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 
 
@@ -47,7 +47,7 @@ def require_target_reference(
     if target.tenant_id != context.tenant_id or target.app_id != context.app_id:
         raise ConnectionConfigurationError()
     if target.workflow_id != workflow_id:
-        raise ConnectionWorkflowChangedError()
+        raise ConnectionRevisionChangedError()
     if target.node_id != node_id:
         raise ConnectionConfigurationError()
 

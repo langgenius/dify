@@ -68,7 +68,7 @@ class WebAppParametersResponse(Parameters, ResponseModel):
     account_login_enabled: bool = Field(description="Whether explicit Account login and Passport exchange are enabled.")
     connection_revision: str | None = Field(
         description=(
-            "Opaque revision of the published connection contract and installed plugin artifacts; "
+            "Opaque revision of the connection requirements and installed plugin artifacts; "
             "null for other app modes. Return it unchanged in connection requests and runs."
         ),
     )

@@ -16,8 +16,8 @@ from controllers.common.end_user_connections import (
     ConnectionCredentialsHTTPError,
     ConnectionLoginRequiredError,
     ConnectionNotFoundHTTPError,
+    ConnectionRevisionChangedHTTPError,
     ConnectionSecretUnavailableHTTPError,
-    ConnectionWorkflowChangedHTTPError,
 )
 from controllers.common.end_user_connections import (
     raise_connection_error as _raise_error,
@@ -154,7 +154,7 @@ class EndUserConnectionListApi(WebApiResource):
     @error_responses(
         ConnectionLoginRequiredError,
         ConnectionConfigurationHTTPError,
-        ConnectionWorkflowChangedHTTPError,
+        ConnectionRevisionChangedHTTPError,
         ConnectionCredentialsHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,
@@ -205,6 +205,12 @@ class EndUserConnectionApi(WebApiResource):
             _raise_error(error)
         return dump_response(EndUserConnectionResponse, result)
 
+    @web_ns.doc(
+        description=(
+            "Disconnect locally and remove live selections. Old OAuth credentials are not sent to mutable plugin "
+            "installations; users can revoke the remaining permission directly with the Provider."
+        )
+    )
     @web_ns.response(204, "Connection deleted")
     @error_responses(
         ConnectionLoginRequiredError,

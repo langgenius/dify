@@ -29,8 +29,8 @@ from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
     ConnectionInvalidCredentialsError,
+    ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
-    ConnectionWorkflowChangedError,
 )
 from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig, check_tool_credentials
 
@@ -46,7 +46,7 @@ def validate_provider_authentication(provider: PluginToolProviderController, aut
 
 
 class ConnectionWorkflowQuery(Protocol):
-    def published_graph(self, context: WebConnectionContext, workflow_id: str) -> Mapping[str, Any]: ...
+    def published_graph(self, context: WebConnectionContext) -> tuple[str, Mapping[str, Any]]: ...
 
 
 class TenantConnectionCipher:
@@ -154,12 +154,12 @@ class PublishedConnectionTargetResolver:
         self._providers = providers
 
     def resolve(self, context: WebConnectionContext, reference: ConnectionTargetInput) -> ToolConnectionTarget:
-        graph = self._workflows.published_graph(context, str(reference.workflow_id))
+        workflow_id, graph = self._workflows.published_graph(context)
         revision = PluginConnectionRevisions(providers=self._providers).resolve(
-            context.tenant_id, str(reference.workflow_id), graph
+            context.tenant_id, context.app_id, graph
         )
         if reference.connection_revision != revision:
-            raise ConnectionWorkflowChangedError()
+            raise ConnectionRevisionChangedError()
         try:
             if check_tool_credentials(graph, complete=True):
                 raise ConnectionConfigurationError()
@@ -188,7 +188,7 @@ class PublishedConnectionTargetResolver:
         return ToolConnectionTarget(
             tenant_id=context.tenant_id,
             app_id=context.app_id,
-            workflow_id=str(reference.workflow_id),
+            workflow_id=workflow_id,
             node_id=reference.node_id,
             provider=canonical,
             allowed_credential_types=frozenset(

@@ -179,6 +179,7 @@ class PluginConnectionOAuthGateway:
                     source=stored.source,
                     configuration_id=stored.configuration_id,
                     client_id=client_id if isinstance(client_id, str) else None,
+                    fingerprint=stored.fingerprint,
                 ),
                 fingerprint=stored.fingerprint,
             ),

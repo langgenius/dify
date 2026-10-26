@@ -40,14 +40,14 @@ from services.end_user_connections.errors import (
     ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
     ConnectionRequiredError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.execution import (
     ConnectionExecutionService,
     ConnectionRunInput,
 )
 from services.end_user_connections.preflight import ConnectionPreflightInput, ConnectionPreflightService
-from services.end_user_connections.revision import connection_revision
+from services.end_user_connections.revision import ConnectionContractSnapshot
 from services.end_user_connections.selections import ConnectionSelectionService
 from services.errors.conversation import ConversationNotExistsError
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
@@ -179,12 +179,10 @@ def test_reuse_requires_root_selection_and_keeps_independent_nodes_separate(
 def test_protocol_mismatch_never_selects_the_requested_workflow(
     harness: OAuthHarness, service: ConnectionExecutionService
 ) -> None:
-    with pytest.raises(ConnectionWorkflowChangedError):
+    with pytest.raises(ConnectionRevisionChangedError):
         service.prepare(
             harness.base.context,
-            ConnectionRunInput.model_validate(
-                {"connection_revision": connection_revision(str(uuid4()), []), "connections": {}}
-            ),
+            ConnectionRunInput.model_validate({"connection_revision": "0" * 64, "connections": {}}),
             workflow_id=harness.base.workflow_id,
             conversation_id=None,
         )
@@ -208,12 +206,12 @@ def test_async_authority_revalidated_without_rebinding_to_new_publication(
     )
     published_version = workflow.version
     workflow.version = Workflow.VERSION_DRAFT
-    with pytest.raises(ConnectionWorkflowChangedError):
+    with pytest.raises(ConnectionRevisionChangedError):
         validate_connection_execution(
             context, app=app, user=user, workflow=workflow, conversation_id=None, repository=harness.base.repository
         )
     workflow.version = published_version
-    with pytest.raises(ConnectionWorkflowChangedError):
+    with pytest.raises(ConnectionRevisionChangedError):
         prepare(harness, service, {})
     changed = context.model_copy(update={"account_id": str(uuid4())})
     with pytest.raises(ConnectionIdentityError):
@@ -421,10 +419,12 @@ def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
         args["connections"] = choices
     if pin != "missing":
         args["connection_revision"] = (
-            connection_revision(workflow.id, []) if pin == "matching" else connection_revision(str(uuid4()), [])
+            ConnectionContractSnapshot(tenant_id=app.tenant_id, app_id=app.id, providers=(), requirements=()).revision
+            if pin == "matching"
+            else "0" * 64
         )
     if pin == "stale":
-        with pytest.raises(ConnectionWorkflowChangedError):
+        with pytest.raises(ConnectionRevisionChangedError):
             prepare_web_connection_execution(
                 app=app, user=user, workflow=workflow, args=args, workflow_run_id=str(uuid4())
             )
@@ -596,7 +596,7 @@ def test_gate_rejects_changes_during_selected_connection_check(
                 )
 
     harness.base.auth.on_check = mutate
-    with pytest.raises(ConnectionWorkflowChangedError if change == "publication" else ConnectionConflictError):
+    with pytest.raises(ConnectionRevisionChangedError if change == "publication" else ConnectionConflictError):
         prepare(harness, service, {"tool-1": connection.id})
 
 

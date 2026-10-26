@@ -10,6 +10,7 @@ from constants.end_user_connections import ConnectionCredentialType, OAuthClient
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from models.provider_ids import ToolProviderID
+from services.end_user_connections.revision import AuthorizationRequirementSnapshot
 
 
 class EndUserAuthConfig(BaseModel):
@@ -111,6 +112,34 @@ def get_tool_connection_requirements(graph: Mapping[str, Any]) -> tuple[ToolConn
             )
         )
     return tuple(requirements)
+
+
+def get_tool_authorization_requirements(graph: Mapping[str, Any]) -> tuple[AuthorizationRequirementSnapshot, ...]:
+    nodes = {
+        node["id"]: node["data"]
+        for node in graph.get("nodes", [])
+        if isinstance(node, Mapping)
+        and isinstance(node.get("id"), str)
+        and isinstance(node.get("data"), Mapping)
+        and node.get("type") != "custom-note"
+    }
+    requirements: list[AuthorizationRequirementSnapshot] = []
+    for item in get_tool_connection_requirements(graph):
+        data = nodes[item.node_id]
+        config = ToolCredentialConfig.model_validate(data)
+        assert config.end_user_auth is not None
+        requirements.append(
+            AuthorizationRequirementSnapshot(
+                node_id=item.node_id,
+                node_ids=tuple(sorted(item.node_ids)),
+                provider=item.provider,
+                tool_name=data["tool_name"],
+                purpose=item.purpose,
+                allowed_credential_types=tuple(sorted(value.value for value in item.allowed_credential_types)),
+                oauth_client_type=config.end_user_auth.oauth_client_type,
+            )
+        )
+    return tuple(sorted(requirements, key=lambda item: item.node_id))
 
 
 @dataclass(frozen=True)

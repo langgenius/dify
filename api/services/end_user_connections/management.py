@@ -122,14 +122,14 @@ class ConnectionService:
         target = self._targets.resolve(context, command)
         require_creation_target(
             context,
-            workflow_id=str(command.workflow_id),
+            workflow_id=target.workflow_id,
             node_id=command.node_id,
             credential_type=ConnectionCredentialType.API_KEY,
             target=target,
         )
         credentials = self._credentials.validate_format(context.tenant_id, target.provider, command.credentials)
         self._require_accepted(self._credentials.check(context, target.provider, credentials))
-        self._targets.resolve(context, command)
+        target = self._targets.resolve(context, command)
         ciphertext = self._cipher.encrypt(context.tenant_id, credentials)
         return self._store.create_api_key(
             context,

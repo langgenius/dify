@@ -53,6 +53,8 @@ class ConnectionOAuthClient:
     configuration_id: str
     # None means the plugin does not expose a public Client ID.
     client_id: str | None = field(repr=False)
+    # None identifies a legacy grant with no trustworthy Client credential snapshot.
+    fingerprint: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True, slots=True)

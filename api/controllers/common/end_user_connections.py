@@ -17,8 +17,8 @@ from services.end_user_connections.errors import (
     ConnectionOAuthError,
     ConnectionReauthorizationRequiredError,
     ConnectionRequiredError,
+    ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
-    ConnectionWorkflowChangedError,
 )
 
 
@@ -52,10 +52,10 @@ class ConnectionConflictHTTPError(BaseHTTPException):
     description = "Connection changed during the operation."
 
 
-class ConnectionWorkflowChangedHTTPError(BaseHTTPException):
+class ConnectionRevisionChangedHTTPError(BaseHTTPException):
     code = 409
-    error_code = "workflow_changed"
-    description = "The workflow changed. Confirm the connection selection again."
+    error_code = "connection_revision_changed"
+    description = "The connection requirements changed. Confirm the connection selection again."
 
 
 class ConnectionCredentialsHTTPError(BaseHTTPException):
@@ -99,7 +99,7 @@ def raise_connection_error(error: ConnectionError) -> NoReturn:
         ConnectionConfigurationError: ConnectionConfigurationHTTPError,
         ConnectionRequiredError: ConnectionRequiredHTTPError,
         ConnectionConflictError: ConnectionConflictHTTPError,
-        ConnectionWorkflowChangedError: ConnectionWorkflowChangedHTTPError,
+        ConnectionRevisionChangedError: ConnectionRevisionChangedHTTPError,
         ConnectionInvalidCredentialsError: ConnectionCredentialsHTTPError,
         ConnectionCheckUnavailableError: ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableError: ConnectionSecretUnavailableHTTPError,

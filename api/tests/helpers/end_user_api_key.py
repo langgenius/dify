@@ -29,12 +29,12 @@ from models.workflow import Workflow, WorkflowType
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway, PublishedConnectionTargetResolver
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway, RedisOAuthRefreshSingleFlight
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.contracts import CreateApiKeyConnectionInput
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionConfigurationError
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
-from services.end_user_connections.revision import connection_revision
 
 PROVIDER = "vendor/calendar/calendar"
 
@@ -157,7 +157,13 @@ class ConnectionHarness:
 
     @property
     def connection_revision(self) -> str:
-        return connection_revision(self.workflow_id, ["vendor/calendar:1.0"])
+        with self.sessions() as session:
+            workflow = session.get(Workflow, self.workflow_id)
+            assert workflow is not None
+            graph = workflow.graph_dict
+        return PluginConnectionRevisions(
+            providers=TestProviders(self.auth, plugin_provider(self.context.tenant_id))
+        ).resolve(self.context.tenant_id, self.context.app_id, graph)
 
     def command(self, secret: str = "original-secret") -> CreateApiKeyConnectionInput:
         return CreateApiKeyConnectionInput.model_validate(

@@ -26,7 +26,7 @@ from services.end_user_connections.errors import (
     ConnectionError,
     ConnectionIdentityError,
     ConnectionRequiredError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.policy import require_owned_connection
 from services.workflow.tool_credentials import resolve_tool_credential_root
@@ -98,8 +98,8 @@ def get_tool_runtime(
             )
             auth = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
             revisions = PluginConnectionRevisions(providers=auth)
-            if context.connection_revision != revisions.resolve(identity.tenant_id, workflow_id, graph):
-                raise ConnectionWorkflowChangedError()
+            if context.connection_revision != revisions.resolve(identity.tenant_id, identity.app_id, graph):
+                raise ConnectionRevisionChangedError()
             provider = auth.provider(identity.tenant_id, root.provider_id)
             canonical = str(ToolProviderID(provider.entity.identity.name))
             if selection.provider != canonical or root.end_user_auth is None:
@@ -139,8 +139,8 @@ def get_tool_runtime(
             resolved = application_services().end_user_connection_runtime.resolve(
                 identity, connection=record, target=target
             )
-            if context.connection_revision != revisions.resolve(identity.tenant_id, workflow_id, graph):
-                raise ConnectionWorkflowChangedError()
+            if context.connection_revision != revisions.resolve(identity.tenant_id, identity.app_id, graph):
+                raise ConnectionRevisionChangedError()
             tool = provider.get_tool(spec.tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=identity.tenant_id,

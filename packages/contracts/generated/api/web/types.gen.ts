@@ -204,6 +204,11 @@ export type ConnectionRequiredError = ErrorResponse & {
   status: 400
 }
 
+export type ConnectionRevisionChangedError = ErrorResponse & {
+  code: 'connection_revision_changed'
+  status: 409
+}
+
 export type ConversationInfiniteScrollPagination = {
   data: Array<SimpleConversation>
   has_more: boolean
@@ -1422,11 +1427,6 @@ export type WebSiteResponse = {
   use_icon_as_answer_icon?: boolean | null
 }
 
-export type WorkflowChangedError = ErrorResponse & {
-  code: 'workflow_changed'
-  status: 409
-}
-
 export type WorkflowRunPayload = {
   connection_revision?: string | null
   connections?: {
@@ -1567,7 +1567,7 @@ export type PostChatMessagesErrors = {
   409:
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
-    | WorkflowChangedError
+    | ConnectionRevisionChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
@@ -1704,7 +1704,7 @@ export type PostConnectionsData = {
 export type PostConnectionsErrors = {
   400: ConnectionConfigurationInvalidError | ConnectionCredentialsInvalidError | ErrorResponse
   401: EndUserLoginRequiredError | ErrorResponse
-  409: WorkflowChangedError | ErrorResponse
+  409: ConnectionRevisionChangedError | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1751,7 +1751,7 @@ export type PostConnectionsOauthAuthorizationUrlData = {
 export type PostConnectionsOauthAuthorizationUrlErrors = {
   400: ConnectionConfigurationInvalidError | ConnectionOauthFailedError | ErrorResponse
   401: EndUserLoginRequiredError | ErrorResponse
-  409: ConnectionReauthorizationRequiredError | WorkflowChangedError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | ConnectionRevisionChangedError | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1779,7 +1779,7 @@ export type PostConnectionsPreflightErrors = {
   409:
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
-    | WorkflowChangedError
+    | ConnectionRevisionChangedError
     | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
@@ -2911,7 +2911,7 @@ export type PostWorkflowsRunErrors = {
   409:
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
-    | WorkflowChangedError
+    | ConnectionRevisionChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse

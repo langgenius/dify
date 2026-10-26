@@ -1,28 +1,54 @@
-"""Opaque connection contracts pin publication and installed plugin artifacts."""
+"""Content-addressed authorization contracts, independent of workflow publications."""
 
 import hashlib
 import json
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
+from operator import itemgetter
 from typing import Annotated, Any, Protocol
-from uuid import UUID
 
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
-ConnectionRevision = Annotated[
-    str,
-    Field(pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:[0-9a-f]{64}$"),
-]
+ConnectionRevision = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
 
 
-def connection_revision(workflow_id: str, plugin_unique_identifiers: Iterable[str]) -> str:
-    payload = json.dumps([workflow_id, sorted(set(plugin_unique_identifiers))], separators=(",", ":"))
-    return f"{workflow_id}:{hashlib.sha256(payload.encode()).hexdigest()}"
+class ProviderContractSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    provider: str
+    plugin_unique_identifier: str
 
 
-def revision_workflow_id(revision: str) -> UUID:
-    """The embedded ID is a reference; publication and plugin checks remain mandatory."""
-    return UUID(revision.split(":", 1)[0])
+class AuthorizationRequirementSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    node_id: str
+    node_ids: tuple[str, ...]
+    provider: str
+    tool_name: str
+    purpose: str
+    allowed_credential_types: tuple[str, ...]
+    oauth_client_type: str | None
+
+
+class ConnectionContractSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    tenant_id: str
+    app_id: str
+    providers: tuple[ProviderContractSnapshot, ...]
+    requirements: tuple[AuthorizationRequirementSnapshot, ...]
+
+    @property
+    def revision(self) -> str:
+        data = self.model_dump(mode="json")
+        data["providers"] = sorted(data["providers"], key=itemgetter("provider"))
+        for requirement in data["requirements"]:
+            requirement["node_ids"] = sorted(requirement["node_ids"])
+            requirement["allowed_credential_types"] = sorted(requirement["allowed_credential_types"])
+        data["requirements"] = sorted(data["requirements"], key=itemgetter("node_id"))
+        payload = json.dumps(data, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(payload.encode()).hexdigest()
 
 
 class ConnectionRevisions(Protocol):
-    def resolve(self, tenant_id: str, workflow_id: str, graph: Mapping[str, Any]) -> str: ...
+    def resolve(self, tenant_id: str, app_id: str, graph: Mapping[str, Any]) -> str: ...

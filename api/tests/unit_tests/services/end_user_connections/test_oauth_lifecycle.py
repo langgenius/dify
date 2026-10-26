@@ -10,11 +10,10 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
-from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
+from clients.plugin.auth_entities import CredentialCheckResult
 from clients.plugin.errors import PluginNotImplementedError
 from constants.end_user_connections import ConnectionCredentialStatus
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.impl.exc import PluginDaemonInternalServerError
 from models.account import Account, AccountStatus
 from models.end_user_connection import EndUserConnection
 from models.model import EndUser
@@ -285,31 +284,24 @@ def test_lost_refresh_lease_cannot_persist_remote_result(harness: OAuthHarness) 
     assert record.access.revision == 1
 
 
-@pytest.mark.parametrize("revoke_status", ["revoked", "unsupported", "failed", "temporarily_unavailable"])
-def test_delete_commits_before_best_effort_revocation(harness: OAuthHarness, revoke_status: str) -> None:
+@pytest.mark.parametrize("plugin_change", [False, True])
+def test_delete_never_dispatches_secrets_to_an_unpinned_plugin(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, plugin_change: bool
+) -> None:
     connection_id = create(harness, expired=False)
-    harness.base.auth.revoke_result = OAuthRevokeResult.model_validate(
-        {"status": revoke_status, "reason_code": None, "retryable": False}
-    )
+    if plugin_change:
+        harness.providers.controller.plugin_unique_identifier = "vendor/calendar:9.0@untrusted"
 
-    def assert_deleted() -> None:
-        with harness.base.sessions() as session:
-            assert session.get(EndUserConnection, connection_id) is None
+    def deny_decryption(_tenant_id: str, _ciphertext: str) -> dict[str, object]:
+        pytest.fail("Disconnect must not decrypt credentials for plugin revocation.")
 
-    harness.base.auth.on_revoke = assert_deleted
+    monkeypatch.setattr(harness.base.cipher, "decrypt", deny_decryption)
     harness.base.service.delete_connection(harness.base.context, connection_id)
     assert harness.base.repository.find(harness.base.context, connection_id) is None
-    assert len(harness.base.auth.revocations) == 1
-    tenant_id, user_id, _, client, credentials = harness.base.auth.revocations[0]
-    assert tenant_id == harness.base.context.tenant_id
-    assert user_id == harness.base.context.end_user_id
-    assert client == {"client_id": "public-client"}
-    assert credentials["access_token"] == "access-secret"
+    assert harness.base.auth.revocations == []
 
 
-@pytest.mark.parametrize(
-    "change", ["missing_client", "changed_client", "disabled_client", "secret_error", "revoke_error"]
-)
+@pytest.mark.parametrize("change", ["missing_client", "changed_client", "disabled_client", "secret_error"])
 def test_configuration_and_provider_failures_do_not_prevent_local_delete(
     harness: OAuthHarness, change: str, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -331,15 +323,9 @@ def test_configuration_and_provider_failures_do_not_prevent_local_delete(
             )
     if change == "secret_error":
         harness.base.cipher.values.clear()
-    elif change == "revoke_error":
-
-        def fail() -> None:
-            raise PluginDaemonInternalServerError("private-access-token")
-
-        harness.base.auth.on_revoke = fail
     harness.base.service.delete_connection(harness.base.context, connection_id)
     assert harness.base.repository.find(harness.base.context, connection_id) is None
-    assert len(harness.base.auth.revocations) == (1 if change in {"disabled_client", "revoke_error"} else 0)
+    assert harness.base.auth.revocations == []
     assert "private-access-token" not in caplog.text
 
 

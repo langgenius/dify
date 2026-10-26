@@ -139,7 +139,7 @@ class AppDefinitionQueryService:
         try:
             requirements = get_tool_connection_requirements(config.graph) if config.graph is not None else ()
             revision = (
-                self._connection_revisions.resolve(tenant_id, config.workflow_id, config.graph)
+                self._connection_revisions.resolve(tenant_id, app_id, config.graph)
                 if config.workflow_id is not None and config.graph is not None
                 else None
             )

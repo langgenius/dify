@@ -19,7 +19,7 @@ from services.end_user_connections.errors import (
     ConnectionIdentityError,
     ConnectionInvalidCredentialsError,
     ConnectionNotFoundError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from tests.helpers.end_user_api_key import ConnectionHarness, make_harness
 
@@ -153,7 +153,7 @@ def test_creation_revalidates_after_external_check(harness: ConnectionHarness, c
                 )
 
     harness.auth.on_check = mutate
-    with pytest.raises(ConnectionWorkflowChangedError if change == "workflow" else ConnectionIdentityError):
+    with pytest.raises(ConnectionRevisionChangedError if change == "workflow" else ConnectionIdentityError):
         harness.service.create_api_key(harness.context, harness.command())
     with harness.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 0

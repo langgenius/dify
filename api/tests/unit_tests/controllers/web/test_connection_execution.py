@@ -34,12 +34,11 @@ from services.end_user_connections.errors import (
     ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
     ConnectionRequiredError,
+    ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
-    ConnectionWorkflowChangedError,
 )
 from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.preflight import ConnectionPreflightService
-from services.end_user_connections.revision import connection_revision
 from services.end_user_connections.selections import ConnectionSelectionService
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
@@ -87,7 +86,7 @@ def client(
         (ConnectionInvalidCredentialsError(), 400, "connection_credentials_invalid"),
         (ConnectionRequiredError(), 400, "connection_required"),
         (ConnectionNotFoundError(), 404, "connection_not_found"),
-        (ConnectionWorkflowChangedError(), 409, "workflow_changed"),
+        (ConnectionRevisionChangedError(), 409, "connection_revision_changed"),
         (ConnectionReauthorizationRequiredError(), 409, "connection_reauthorization_required"),
         (ConnectionCheckUnavailableError(), 503, "credential_check_unavailable"),
         (ConnectionSecretUnavailableError(), 503, "connection_credentials_unavailable"),
@@ -197,7 +196,7 @@ def real_execution_gate(
         ("null", 400, "connection_required"),
         ("invalid", 400, "connection_credentials_invalid"),
         ("temporarily_unavailable", 503, "credential_check_unavailable"),
-        ("stale", 409, "workflow_changed"),
+        ("stale", 409, "connection_revision_changed"),
         ("extra", 400, "connection_configuration_invalid"),
         ("missing", 404, "connection_not_found"),
     ],
@@ -247,7 +246,7 @@ def test_real_gate_rejects_before_run_creation_or_enqueue(
         case "extra":
             choices["unused-node"] = connection.id
         case "stale":
-            payload["connection_revision"] = connection_revision(str(uuid4()), [])
+            payload["connection_revision"] = "0" * 64
     if selection != "omitted":
         payload["connections"] = choices
     params = mocker.spy(AppExecutionParams, "new")

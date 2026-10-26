@@ -14,7 +14,6 @@ from services.end_user_connections.errors import (
     ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
     ConnectionRequiredError,
-    ConnectionWorkflowChangedError,
 )
 from services.end_user_connections.preflight import (
     ConnectionId,
@@ -22,7 +21,7 @@ from services.end_user_connections.preflight import (
     ConnectionPreflightService,
     NodeId,
 )
-from services.end_user_connections.revision import ConnectionRevision, revision_workflow_id
+from services.end_user_connections.revision import ConnectionRevision
 
 
 class ConnectionRunInput(BaseModel):
@@ -30,13 +29,9 @@ class ConnectionRunInput(BaseModel):
         default=None,
         description=(
             "Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; "
-            "must match the current publication and installed plugin artifacts."
+            "must match the current authorization requirements and installed plugin artifacts."
         ),
     )
-
-    @property
-    def workflow_id(self) -> UUID | None:
-        return revision_workflow_id(self.connection_revision) if self.connection_revision is not None else None
 
     connections: dict[NodeId, ConnectionId | None] | None = Field(
         default=None,
@@ -61,8 +56,6 @@ class ConnectionExecutionService:
     ) -> ConnectionExecutionContext:
         if command.connection_revision is None:
             raise ConnectionConfigurationError()
-        if str(command.workflow_id) != workflow_id:
-            raise ConnectionWorkflowChangedError()
         result = self._preflight.check(
             identity,
             ConnectionPreflightInput(
@@ -70,6 +63,7 @@ class ConnectionExecutionService:
                 conversation_id=UUID(conversation_id) if conversation_id is not None else None,
                 connections=command.connections or {},
             ),
+            workflow_id=workflow_id,
         )
         selections: list[ExecutionConnectionSelection] = []
         for requirement in result.connections:

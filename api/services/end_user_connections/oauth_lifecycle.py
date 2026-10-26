@@ -101,6 +101,8 @@ class OAuthConnectionLifecycleService:
         self, context: WebConnectionContext, record: StoredConnection
     ) -> tuple[ResolvedOAuthClient, dict[str, Any]]:
         connection_mutation_guard(context, record.access)
+        if record.access.credential_status == ConnectionCredentialStatus.RECONNECT_REQUIRED:
+            raise ConnectionReauthorizationRequiredError()
         reference = record.access.oauth_client
         if reference is None:
             raise ConnectionReauthorizationRequiredError()
@@ -231,18 +233,6 @@ class OAuthConnectionLifecycleService:
         )
 
     def revoke_deleted(self, context: WebConnectionContext, record: StoredConnection) -> None:
-        try:
-            reference = record.access.oauth_client
-            if reference is None:
-                return
-            client = self._gateway.resolve_grant_client(context.tenant_id, record.access.provider, reference)
-            credentials = self._cipher.decrypt(context.tenant_id, record.encrypted_credentials)
-            result = self._gateway.revoke(context, record.access.provider, client, credentials)
-            if result.status in {"failed", "temporarily_unavailable"}:
-                logger.warning(
-                    "OAuth revocation incomplete for deleted Connection %s: %s", record.access.id, result.status
-                )
-        except Exception:
-            # Provider/Client removal and secret failures must not undo deletion.
-            # Upstream exceptions may contain tokens or Client secrets.
-            logger.warning("OAuth revocation unavailable for deleted Connection %s", record.access.id)
+        # Dispatch currently resolves a mutable plugin ID. Until it can pin the
+        # grant's trusted artifact, sending tokens here could expose them to an upgrade.
+        logger.info("Skipped unpinned OAuth revocation for deleted Connection %s", record.access.id)

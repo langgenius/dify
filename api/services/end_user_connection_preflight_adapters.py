@@ -15,7 +15,7 @@ from services.end_user_connections.entities import ConnectionOAuthClient, ToolCo
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionReauthorizationRequiredError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.preflight import ConnectionRequirement
 from services.workflow.tool_credentials import (
@@ -27,8 +27,8 @@ from services.workflow.tool_credentials import (
 
 class PreflightGraphQuery(Protocol):
     def preflight_graph(
-        self, context: WebConnectionContext, workflow_id: str, conversation_id: str | None
-    ) -> Mapping[str, Any]: ...
+        self, context: WebConnectionContext, workflow_id: str | None, conversation_id: str | None
+    ) -> tuple[str, Mapping[str, Any]]: ...
 
 
 class PublishedPreflightRequirements:
@@ -46,16 +46,18 @@ class PublishedPreflightRequirements:
     def resolve(
         self,
         context: WebConnectionContext,
-        workflow_id: str,
+        workflow_id: str | None,
         conversation_id: str | None,
         *,
         oauth_providers: frozenset[str],
         connection_revision: str,
-    ) -> tuple[ConnectionRequirement, ...]:
-        graph = self._workflows.preflight_graph(context, workflow_id, conversation_id)
-        revision = PluginConnectionRevisions(providers=self._providers).resolve(context.tenant_id, workflow_id, graph)
+    ) -> tuple[str, tuple[ConnectionRequirement, ...]]:
+        workflow_id, graph = self._workflows.preflight_graph(context, workflow_id, conversation_id)
+        revision = PluginConnectionRevisions(providers=self._providers).resolve(
+            context.tenant_id, context.app_id, graph
+        )
         if connection_revision != revision:
-            raise ConnectionWorkflowChangedError()
+            raise ConnectionRevisionChangedError()
         try:
             if check_tool_credentials(graph, complete=True):
                 raise ConnectionConfigurationError()
@@ -124,6 +126,6 @@ class PublishedPreflightRequirements:
                         node_ids=requirement.node_ids,
                     )
                 )
-            return tuple(requirements)
+            return workflow_id, tuple(requirements)
         except (KeyError, TypeError, ValueError, ValidationError):
             raise ConnectionConfigurationError() from None

@@ -14,14 +14,13 @@ this Web Passport and published-workflow contract.
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol, Self
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, computed_field, field_validator, model_validator
 
 from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, NodeConnectionStatus
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
-from services.end_user_connections.revision import ConnectionRevision, revision_workflow_id
+from services.end_user_connections.revision import ConnectionRevision
 
 
 class ConnectionInput(BaseModel):
@@ -30,12 +29,8 @@ class ConnectionInput(BaseModel):
 
 class ConnectionContractInput(ConnectionInput):
     connection_revision: ConnectionRevision = Field(
-        description="Opaque revision from Web App parameters, including publication and installed plugin artifacts.",
+        description="Opaque revision of Web App authorization requirements and installed plugin artifacts.",
     )
-
-    @property
-    def workflow_id(self) -> UUID:
-        return revision_workflow_id(self.connection_revision)
 
 
 class ConnectionTargetInput(ConnectionContractInput):
@@ -229,8 +224,8 @@ class ConnectionManagement(Protocol):
     def delete_connection(self, context: WebConnectionContext, connection_id: str) -> None:
         """Remove the resource and live selections; retain historical Run references.
 
-        OAuth revocation is best effort outside a write transaction. Failure or
-        lack of revoke support must not restore the deleted Connection.
+        Local deletion does not dispatch old OAuth credentials to a mutable plugin
+        installation. Provider-side permission removal requires trusted revocation.
         """
         ...
 

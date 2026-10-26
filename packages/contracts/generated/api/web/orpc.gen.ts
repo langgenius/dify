@@ -19,6 +19,7 @@ import {
   zConnectionOauthFailedError,
   zConnectionReauthorizationRequiredError,
   zConnectionRequiredError,
+  zConnectionRevisionChangedError,
   zCredentialCheckUnavailableError,
   zEmailCodeError,
   zEmailPasswordResetLimitError,
@@ -61,7 +62,6 @@ import {
   zUploadTokenRequiredError,
   zWebFormRateLimitExceededError,
   zWebLoginUnavailableError,
-  zWorkflowChangedError,
 } from './zod.gen.ts'
 import {
   zDeleteConnectionsByConnectionIdPath,
@@ -264,6 +264,7 @@ export const post3 = oc
       data: zConnectionReauthorizationRequiredError,
     },
     connection_required: { status: 400, data: zConnectionRequiredError },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
@@ -271,7 +272,6 @@ export const post3 = oc
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     rate_limit_error: { status: 429, data: zRateLimitError },
-    workflow_changed: { status: 409, data: zWorkflowChangedError },
   })
 
 export const chatMessages = {
@@ -375,9 +375,9 @@ export const post6 = oc
       status: 409,
       data: zConnectionReauthorizationRequiredError,
     },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
-    workflow_changed: { status: 409, data: zWorkflowChangedError },
   })
 
 export const authorizationUrl = {
@@ -409,9 +409,9 @@ export const post7 = oc
       status: 409,
       data: zConnectionReauthorizationRequiredError,
     },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
-    workflow_changed: { status: 409, data: zWorkflowChangedError },
   })
 
 export const preflight = {
@@ -448,8 +448,13 @@ export const reauthorize = {
   post: post8,
 }
 
+/**
+ * Disconnect locally and remove live selections. Old OAuth credentials are not sent to mutable plugin installations; users can revoke the remaining permission directly with the Provider.
+ */
 export const delete_ = oc
   .route({
+    description:
+      'Disconnect locally and remove live selections. Old OAuth credentials are not sent to mutable plugin installations; users can revoke the remaining permission directly with the Provider.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteConnectionsByConnectionId',
@@ -550,9 +555,9 @@ export const post9 = oc
       status: 503,
       data: zConnectionCredentialsUnavailableError,
     },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
-    workflow_changed: { status: 409, data: zWorkflowChangedError },
   })
 
 export const connections = {
@@ -1619,6 +1624,7 @@ export const post27 = oc
       data: zConnectionReauthorizationRequiredError,
     },
     connection_required: { status: 400, data: zConnectionRequiredError },
+    connection_revision_changed: { status: 409, data: zConnectionRevisionChangedError },
     credential_check_unavailable: { status: 503, data: zCredentialCheckUnavailableError },
     end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
@@ -1630,7 +1636,6 @@ export const post27 = oc
       status: 403,
       data: zTriggerWorkflowServiceModeUnavailableError,
     },
-    workflow_changed: { status: 409, data: zWorkflowChangedError },
   })
 
 export const run = {

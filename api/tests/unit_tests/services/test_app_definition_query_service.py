@@ -189,6 +189,7 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
                         "type": "tool",
                         "credential_source": "end_user",
                         "provider_id": "vendor/calendar/calendar",
+                        "tool_name": "read",
                         "end_user_auth": {"allowed_credential_types": ["api-key"], "purpose": "Read events"},
                     },
                 },

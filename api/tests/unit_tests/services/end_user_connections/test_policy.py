@@ -14,7 +14,7 @@ from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.policy import (
     connection_mutation_guard,
@@ -165,7 +165,7 @@ def test_creation_rejects_wrong_target_scope(
 def test_stale_workflow_reference_cannot_silently_resolve_new_node(
     context: WebConnectionContext, target: ToolConnectionTarget
 ) -> None:
-    with pytest.raises(ConnectionWorkflowChangedError):
+    with pytest.raises(ConnectionRevisionChangedError):
         require_creation_target(
             context,
             workflow_id="old-version",

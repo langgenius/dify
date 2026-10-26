@@ -23,7 +23,7 @@ from services.end_user_connections.errors import (
     ConnectionNotFoundError,
     ConnectionOAuthError,
     ConnectionReauthorizationRequiredError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from tests.helpers.end_user_api_key import PROVIDER
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
@@ -119,7 +119,7 @@ def test_callback_revalidates_context_after_redirect_and_external_io(
         mutate()
     else:
         harness.handler.on_exchange = mutate
-    error = {"client": ConnectionReauthorizationRequiredError, "workflow": ConnectionWorkflowChangedError}.get(
+    error = {"client": ConnectionReauthorizationRequiredError, "workflow": ConnectionRevisionChangedError}.get(
         change, ConnectionIdentityError
     )
     with pytest.raises(error):
@@ -384,7 +384,7 @@ def test_callback_rejects_changed_graph_client_selection_before_exchange(harness
         graph["nodes"][0]["data"]["end_user_auth"]["oauth_client_type"] = "default"
         workflow.graph = json.dumps(graph)
 
-    with pytest.raises(ConnectionConfigurationError):
+    with pytest.raises(ConnectionRevisionChangedError):
         harness.finish(started)
     assert harness.handler.exchanges == 0
 

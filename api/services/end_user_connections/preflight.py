@@ -74,6 +74,7 @@ class ConnectionPreflightStatus(BaseModel):
 class ConnectionPreflightView(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
+    workflow_id: str = Field(exclude=True)
     connection_revision: str = Field(description="Connection contract revision evaluated by this preflight.")
     connections: tuple[ConnectionPreflightStatus, ...]
 
@@ -87,12 +88,12 @@ class PreflightRequirements(Protocol):
     def resolve(
         self,
         context: WebConnectionContext,
-        workflow_id: str,
+        workflow_id: str | None,
         conversation_id: str | None,
         *,
         oauth_providers: frozenset[str],
         connection_revision: str,
-    ) -> tuple[ConnectionRequirement, ...]: ...
+    ) -> tuple[str, tuple[ConnectionRequirement, ...]]: ...
 
 
 class PreflightConnections(Protocol):
@@ -117,10 +118,10 @@ class ConnectionPreflightService:
         self._connections = connections
         self._checks = checks
 
-    def check(self, context: WebConnectionContext, command: ConnectionPreflightInput) -> ConnectionPreflightView:
+    def check(
+        self, context: WebConnectionContext, command: ConnectionPreflightInput, *, workflow_id: str | None = None
+    ) -> ConnectionPreflightView:
         conversation_id = str(command.conversation_id) if command.conversation_id is not None else None
-        workflow_id = str(command.workflow_id)
-        self._connections.validate_preflight_context(context, workflow_id, conversation_id)
         selections = {key: str(value) if value is not None else None for key, value in command.connections.items()}
         ids = frozenset(value for value in selections.values() if value is not None)
         if ids:
@@ -129,7 +130,7 @@ class ConnectionPreflightService:
         oauth_providers = frozenset(
             record.provider for record in records.values() if record.credential_type == ConnectionCredentialType.OAUTH2
         )
-        requirements = self._requirements.resolve(
+        workflow_id, requirements = self._requirements.resolve(
             context,
             workflow_id,
             conversation_id,
@@ -175,7 +176,7 @@ class ConnectionPreflightService:
 
         # Resolve again after external checks so Client changes cannot leave a
         # stale ready response. The final owner/revision read never loads secrets.
-        current_requirements = self._requirements.resolve(
+        _, current_requirements = self._requirements.resolve(
             context,
             workflow_id,
             conversation_id,
@@ -231,4 +232,6 @@ class ConnectionPreflightService:
                     check=check,
                 )
             )
-        return ConnectionPreflightView(connection_revision=command.connection_revision, connections=tuple(views))
+        return ConnectionPreflightView(
+            workflow_id=workflow_id, connection_revision=command.connection_revision, connections=tuple(views)
+        )

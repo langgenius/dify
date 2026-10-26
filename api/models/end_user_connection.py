@@ -82,6 +82,8 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
     # Already masked OAuth account identity, independent of the editable name.
     # None means unavailable identity metadata or an API-key connection.
     account_label: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    # Legacy grants without provenance must be reauthorized before use.
+    oauth_client_fingerprint: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None, repr=False)
     revision: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=1, server_default=sa.text("1"))
     last_active_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
@@ -99,8 +101,8 @@ class AppConnection(DefaultFieldsDCMixin, TypeBase):
     timing and ordering; row timestamps do not define the latest Run. Empty defaults
     have no rows. Run references never cascade into historical execution records.
     workflow_id and node_id identify the published graph version where this choice
-    was saved. A different execution version requires reconfirmation, even if node
-    IDs match. Callers validate Workflow ownership and node authentication requirements
+    was saved. Changed authorization requirements require reconfirmation; republishing the
+    same requirements preserves the choice. Callers validate Workflow ownership and node authentication requirements
     before replacing the saved version and choice; these rows are not version history.
     """
 
