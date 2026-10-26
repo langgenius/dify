@@ -382,9 +382,14 @@ class KnowledgeRetrievalRepository:
                 dataset_ids = [i.segment.dataset_id for i in records]
                 document_ids = [i.segment.document_id for i in records]
                 datasets = retrieval_session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
-                documents = retrieval_session.scalars(
-                    select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
-                ).all()
+                from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
+
+                documents = get_retrieval_source_documents(
+                    tenant_id=request.tenant_id,
+                    dataset_ids=available_datasets_ids,
+                    document_ids=document_ids,
+                    session=retrieval_session,
+                )
 
                 dataset_map = {i.id: i for i in datasets}
                 document_map = {i.id: i for i in documents}
