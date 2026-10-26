@@ -1,10 +1,10 @@
 {
   "skill": "difyctl",
   "fields": {
-    "display_name": "Dify",
-    "display_name_en": "Dify",
-    "description_zh": "在 WorkBuddy 里通过 difyctl 运行和搭建 Dify 应用，需先登录你自己的 Dify 服务器",
-    "description_en": "Run and build Dify apps from WorkBuddy with difyctl. Requires login to your own Dify server.",
+    "display_name": "Dify（测试版）",
+    "display_name_en": "Dify (Beta)",
+    "description_zh": "在 WorkBuddy 里用 difyctl 运行和搭建 Dify 应用。支持 Dify Cloud 和私有部署，登录时输入 Dify 控制台地址即可",
+    "description_en": "Run and build Dify apps with difyctl. For Dify Cloud or self-hosted, log in with your console URL.",
     "author": "LangGenius",
     "examples_zh": [
       "列出我在 Dify 上的应用",
