@@ -152,6 +152,7 @@ def test_legacy_duplicate_drafts_are_rejected_without_writes(
 
     def operate() -> None:
         if operation == "restore":
+            assert owner.app.workflow_id is not None
             service.restore_published_workflow_to_draft(
                 app_model=owner.app, workflow_id=owner.app.workflow_id, account=owner.account, session=session
             )
@@ -191,7 +192,7 @@ def test_missing_draft_requires_persisted_complete_app_owner(db_session_with_con
 
     session = db_session_with_containers
     owner = seed_owner(session, graph=None)
-    forged = App(id=owner.app.id, tenant_id=str(uuid4()), mode="workflow")
+    forged = App(id=owner.app.id, tenant_id=str(uuid4()), mode=AppMode.WORKFLOW)
     factory = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
     before = workflow_rows(factory)
     with pytest.raises(WorkflowNotFoundError):
@@ -298,6 +299,7 @@ def test_uncommitted_initialization_holds_owner_lock_until_caller_finishes(
 
     owner = seed_owner(db_session_with_containers, graph=None)
     app_id, account_id, source_id = owner.app.id, owner.account.id, owner.app.workflow_id
+    assert source_id is not None
     factory = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
     contender_pid: Queue[int] = Queue()
 
@@ -425,7 +427,7 @@ def test_draft_conflicts_are_served_by_framework_without_writes(
     owner = seed_owner(session, graph=None if operation == "missing-owner" else POPULATED_GRAPH)
     target = owner.app
     if operation == "missing-owner":
-        target = App(id=owner.app.id, tenant_id=str(uuid4()), mode="workflow")
+        target = App(id=owner.app.id, tenant_id=str(uuid4()), mode=AppMode.WORKFLOW)
     else:
         session.add(
             Workflow(

@@ -276,7 +276,7 @@ export default function ChatInputStarter({
     >
       <StarterGridTexture
         aria-hidden
-        className="pointer-events-none absolute top-0 right-0 select-none"
+        className="pointer-events-none absolute inset-e-0 top-0 select-none"
       />
       <div className="relative flex h-full flex-col overflow-x-hidden overflow-y-auto">
         <StarterContent key={props.mode} {...props} />

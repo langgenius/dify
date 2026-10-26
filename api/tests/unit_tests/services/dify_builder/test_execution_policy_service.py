@@ -229,7 +229,13 @@ def owned() -> Iterator[Owned]:
         db.flush()
         db.add(TenantAccountJoin(tenant_id=tenant, account_id=account.id, role=TenantAccountRole.OWNER))
         app = App(
-            id=app_id, tenant_id=tenant, mode="workflow", name="test", tracing=None, enable_site=False, enable_api=False
+            id=app_id,
+            tenant_id=tenant,
+            mode=AppMode.WORKFLOW,
+            name="test",
+            tracing=None,
+            enable_site=False,
+            enable_api=False,
         )
         workflow = Workflow(
             id=workflow_id,

@@ -31,6 +31,7 @@ from graphon.runtime import VariablePool
 from models.account import Account
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import EndUserType, PermissionEnum
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun, WorkflowType
 from services.app_generate_service import AppGenerateService
@@ -1467,7 +1468,7 @@ def paused_native_draft(
                 inputs={},
                 from_source=ConversationFromSource.CONSOLE,
                 from_account_id=ACCOUNT_A,
-                invoke_from=InvokeFrom.DEBUGGER,
+                invoke_from=ModelInvokeFrom.DEBUGGER,
             )
             message = Message(
                 id="eeeeeeee-0000-4000-8000-000000000004",
@@ -1482,7 +1483,7 @@ def paused_native_draft(
                 currency="USD",
                 from_source=ConversationFromSource.CONSOLE,
                 from_account_id=ACCOUNT_A,
-                invoke_from=InvokeFrom.DEBUGGER,
+                invoke_from=ModelInvokeFrom.DEBUGGER,
                 workflow_run_id=run_id,
                 app_mode=AppMode.ADVANCED_CHAT,
             )

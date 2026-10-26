@@ -36,6 +36,7 @@ describe('upload HTTP failure contract', () => {
     return xhr
   }
 
+  /* oxlint-disable typescript/no-deprecated -- These regressions exercise the legacy upload transport itself, which generated clients do not use. */
   it.each([200, 201])('resolves successful HTTP %s uploads', async (status) => {
     const response = { id: 'file-1' }
     await expect(
@@ -76,9 +77,11 @@ describe('upload HTTP failure contract', () => {
     })
     await expect(upload({ xhr, data: new FormData() })).rejects.toMatchObject({ name })
   })
+  /* oxlint-enable typescript/no-deprecated */
 })
 
 describe('HTTP failure contract', () => {
+  /* oxlint-disable typescript/no-deprecated -- These regressions exercise legacy transport errors and auth recovery; replacing the calls would bypass the owner under test. */
   it.each([400, 403, 404, 422, 429, 500, 503])(
     'exposes status %s as an Error with reusable metadata',
     async (status) => {
@@ -187,6 +190,38 @@ describe('HTTP failure contract', () => {
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
+  it('preserves the request body when retrying a Console request after token refresh', async () => {
+    const body = JSON.stringify({ name: 'Updated workflow' })
+    const originalRequest = new Request(`${window.location.origin}/console/api/test-errors`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    })
+    const receivedBodies: string[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (!(input instanceof Request)) throw new TypeError('Expected a Console Request')
+      receivedBodies.push(await input.text())
+      return receivedBodies.length === 1
+        ? Response.json({ code: 'unauthorized' }, { status: 401 })
+        : Response.json({ result: 'success' })
+    })
+    refresh.mockResolvedValue(undefined)
+
+    const response = await request<Response>(
+      originalRequest.url,
+      {},
+      {
+        fetchCompat: true,
+        request: originalRequest,
+        silent: true,
+      },
+    )
+
+    await expect(response.json()).resolves.toEqual({ result: 'success' })
+    expect(receivedBodies).toEqual([body, body])
+    expect(refresh).toHaveBeenCalledOnce()
+  })
+
   it.each([429, 503])(
     'keeps the session when token refresh fails with transient HTTP %s',
     async (status) => {
@@ -265,6 +300,8 @@ describe('HTTP failure contract', () => {
     expect(toast.error).not.toHaveBeenCalled()
     expect(window.location.href).toBe(initialUrl)
   })
+
+  /* oxlint-enable typescript/no-deprecated */
 
   it('preserves ORPCError through the generated Console client', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(

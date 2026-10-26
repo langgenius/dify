@@ -117,7 +117,7 @@ def test_posted_live_mode_cannot_select_builder_policy(
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    app = App(id="app", tenant_id="tenant", mode="workflow")
+    app = App(id="app", tenant_id="tenant", mode=AppMode.WORKFLOW)
     user = Account(name="Owner", email="owner@example.invalid")
     user.id = "account"
     workflow = Workflow(created_by="account")
@@ -183,7 +183,7 @@ def test_restricted_marker_cannot_enter_agent_dispatch_of_workflow_app(mocker: p
     from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
     from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
 
-    app = App(id="app", tenant_id="tenant", mode="workflow")
+    app = App(id="app", tenant_id="tenant", mode=AppMode.WORKFLOW)
     mocker.patch.object(app, "is_agent_with_session", return_value=True)
     agent = mocker.patch.object(module.AgentChatAppGenerator, "generate")
     with pytest.raises(BuilderExecutionPolicyError):

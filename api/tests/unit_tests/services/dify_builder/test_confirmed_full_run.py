@@ -125,7 +125,7 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> Generato
             )
         )
         session.add(saved)
-    app = App(id=ids["app"], tenant_id=ids["tenant"], mode="workflow")
+    app = App(id=ids["app"], tenant_id=ids["tenant"], mode=AppMode.WORKFLOW)
     draft = Workflow(
         tenant_id="tenant-1",
         graph=json.dumps(GRAPH),
