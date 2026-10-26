@@ -97,7 +97,7 @@ export default interface Resources {
     'resourceAccessToken.resources': 'Resources'
     'resourceAccessToken.searchPlaceholder': 'Search tokens...'
     'resourceAccessToken.searchResourcesPlaceholder': 'Search apps or knowledge bases...'
-    'resourceAccessToken.tabAll': 'All'
+    'resourceAccessToken.tabAllTypes': 'All Types'
     'resourceAccessToken.tabApps': 'Apps'
     'resourceAccessToken.tabKnowledgeBases': 'Knowledge bases'
     'resourceAccessToken.token': 'Token'
