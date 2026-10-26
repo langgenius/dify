@@ -70,8 +70,10 @@
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, JsonValue
 
+
 class FrozenDTO(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+
 
 class NativeTestContextRef(FrozenDTO):
     policy_version: Literal["builder-native-test-v1"] = "builder-native-test-v1"
@@ -79,10 +81,12 @@ class NativeTestContextRef(FrozenDTO):
     invocation_id: str
     context_digest: str
 
+
 class OperationKey(FrozenDTO):
     invocation_id: str
     occurrence_path: tuple[str, ...]
     cursor: int
+
 
 class EffectIntent(FrozenDTO):
     key: OperationKey
@@ -95,6 +99,7 @@ class EffectIntent(FrozenDTO):
     input_digest: str
     capability_digest: str
 
+
 class DispatchPermit(FrozenDTO):
     kind: Literal["dispatch"] = "dispatch"
     permit_id: str
@@ -102,27 +107,33 @@ class DispatchPermit(FrozenDTO):
     operation_id: str
     expires_at: str
 
+
 class ApprovalWait(FrozenDTO):
     kind: Literal["waiting"] = "waiting"
     pending_operation_id: str
     wait_reason: Literal["approval", "configuration", "interaction"] = "approval"
+
 
 class RecordedResult(FrozenDTO):
     kind: Literal["recorded"] = "recorded"
     operation_id: str
     result_ref: str
 
+
 class PolicyStop(FrozenDTO):
     kind: Literal["stop"] = "stop"
     reason_code: str
 
+
 EffectDecision = DispatchPermit | ApprovalWait | RecordedResult | PolicyStop
+
 
 class EffectReceipt(FrozenDTO):
     operation_id: str
     attempt_id: str
     outcome: Literal["completed", "failed", "unknown", "not_dispatched"]
     result_ref: str | None
+
 
 class CheckpointRef(FrozenDTO):
     checkpoint_id: str
@@ -287,6 +298,7 @@ class NativeTestStartPayload(BaseModel):
     mode: Literal["native", "mock"]
     idempotency_key: str
 
+
 class PendingActionDisclosure(BaseModel):
     pending_operation_id: str
     wait_reason: Literal["approval", "configuration", "interaction"]
@@ -299,6 +311,7 @@ class PendingActionDisclosure(BaseModel):
     risk_notice: str | None
     required_configuration: tuple[str, ...]
     native_form_ref: str | None
+
 
 class NativeTestPublicReceipt(BaseModel):
     schema_version: Literal["builder-native-test-v1"] = "builder-native-test-v1"
@@ -320,13 +333,17 @@ Controller response 将 receipt 包装为既有 `fields.base.ResponseModel`；do
 
 ```python
 def test_decision_cannot_replace_effect_parameters(console_case):
-    response = console_case.decide({
-        "schema_version": "builder-native-test-v1",
-        "pending_operation_id": console_case.pending_id,
-        "decision": "confirm", "scope_digest": console_case.scope_digest,
-        "expected_version": 1, "idempotency_key": "decision-1",
-        "parameters": {"recipient": "changed@example.invalid"},
-    })
+    response = console_case.decide(
+        {
+            "schema_version": "builder-native-test-v1",
+            "pending_operation_id": console_case.pending_id,
+            "decision": "confirm",
+            "scope_digest": console_case.scope_digest,
+            "expected_version": 1,
+            "idempotency_key": "decision-1",
+            "parameters": {"recipient": "changed@example.invalid"},
+        }
+    )
     assert response.status_code == 400
     assert console_case.dispatch_count() == 0
 ```

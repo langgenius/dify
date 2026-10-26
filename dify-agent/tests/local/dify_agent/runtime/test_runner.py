@@ -111,7 +111,7 @@ async def test_read_media_snapshot_events_and_next_turn_model_switch(monkeypatch
         )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(metadata)) as client:
-        services = Services(client, client)
+        services = Services(client, client, inner_api_key="test-inner-key")
         incoming = request(RunLayerSpec(name="read_media"))
         next(layer for layer in incoming.composition.layers if layer.name == "llm").config["supported_modalities"] = [
             "vision"
@@ -621,9 +621,7 @@ async def test_knowledge_user_context_is_captured_in_history_and_restored_cache(
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         # This direct runner fixture uses the explicit legacy ordinary API composition.
-        services = Services(
-            client, client, inner_api_url="http://ordinary-api.invalid", inner_api_key=inner_key
-        )
+        services = Services(client, client, inner_api_url="http://ordinary-api.invalid", inner_api_key=inner_key)
         first, _ = run_runner(request(knowledge, user=user), services, monkeypatch, stream)
         assert first.request.execution_mode == "ordinary"
         await first.run()
