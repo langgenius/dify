@@ -977,6 +977,23 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          annotations: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.annotations.key({
+                        input: { params: { app_id: variables.params.app_id } },
+                      }),
+                    }),
+                    context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() }),
+                  ])
+                },
+              },
+            },
+          },
           traceRuns: {
             bySourceKind: {
               bySourceId: {
