@@ -10,6 +10,7 @@ or terminate-grace budget does.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from typing import Any
@@ -218,7 +219,7 @@ class ShellctlClient:
             f"{self._jobs_prefix}/{self._job_id(job_id)}",
             headers=self._auth_headers(),
         )
-        return JobStatusView.model_validate(self._decode_response(response))
+        return JobStatusView.model_validate_json(json.dumps(self._decode_response(response)), strict=True)
 
     async def list_jobs(
         self,
