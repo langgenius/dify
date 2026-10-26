@@ -220,6 +220,7 @@ class WorkflowAgentBindingRepository:
                 workflow_version=binding.workflow_version,
                 node_id=binding.node_id,
                 binding_type=binding.binding_type,
+                node_job_config=binding.node_job_config,
                 created_by=binding.created_by,
             )
             self._session.add(row)
