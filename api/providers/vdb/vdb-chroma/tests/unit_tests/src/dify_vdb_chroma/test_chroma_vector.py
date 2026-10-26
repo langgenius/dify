@@ -2,6 +2,7 @@ import importlib
 import json
 import sys
 from collections import UserDict
+from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,28 +12,28 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-def _build_fake_chroma_modules():
+def _build_fake_chroma_modules() -> FakeModule:
     chroma = FakeModule("chromadb")
     chroma.DEFAULT_TENANT = "default_tenant"
     chroma.DEFAULT_DATABASE = "default_database"
 
     class Settings:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: object) -> None:
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
-    class QueryResult(UserDict):
+    class QueryResult(UserDict[str, object]):
         pass
 
     class _Collection:
-        def __init__(self):
+        def __init__(self) -> None:
             self.upsert = MagicMock()
             self.delete = MagicMock()
             self.query = MagicMock()
             self.get = MagicMock(return_value={})
 
     class _Client:
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs: object) -> None:
             self.kwargs = kwargs
             self.collection = _Collection()
             self.get_or_create_collection = MagicMock(return_value=self.collection)
@@ -45,7 +46,7 @@ def _build_fake_chroma_modules():
 
 
 @pytest.fixture
-def chroma_module(monkeypatch: pytest.MonkeyPatch):
+def chroma_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     fake_chroma = _build_fake_chroma_modules()
     monkeypatch.setitem(sys.modules, "chromadb", fake_chroma)
     import dify_vdb_chroma.chroma_vector as module
@@ -53,7 +54,7 @@ def chroma_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module)
 
 
-def test_chroma_config_to_params_builds_expected_payload(chroma_module):
+def test_chroma_config_to_params_builds_expected_payload(chroma_module: ModuleType) -> None:
     config = chroma_module.ChromaConfig(
         host="localhost",
         port=8000,
@@ -74,7 +75,9 @@ def test_chroma_config_to_params_builds_expected_payload(chroma_module):
     assert params["settings"].chroma_client_auth_credentials == "credentials"
 
 
-def test_create_collection_uses_redis_lock_and_cache(chroma_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_uses_redis_lock_and_cache(
+    chroma_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = None
@@ -92,7 +95,7 @@ def test_create_collection_uses_redis_lock_and_cache(chroma_module, monkeypatch:
     chroma_module.redis_client.set.assert_called_once()
 
 
-def test_create_with_empty_texts_is_noop(chroma_module):
+def test_create_with_empty_texts_is_noop(chroma_module: ModuleType) -> None:
     vector = chroma_module.ChromaVector(
         collection_name="collection_1",
         config=chroma_module.ChromaConfig(host="localhost", port=8000, tenant="t", database="d"),
@@ -101,7 +104,7 @@ def test_create_with_empty_texts_is_noop(chroma_module):
     vector._client.get_or_create_collection.assert_not_called()
 
 
-def test_create_with_texts_creates_collection_and_upserts(chroma_module):
+def test_create_with_texts_creates_collection_and_upserts(chroma_module: ModuleType) -> None:
     vector = chroma_module.ChromaVector(
         collection_name="collection_1",
         config=chroma_module.ChromaConfig(host="localhost", port=8000, tenant="t", database="d"),
@@ -113,7 +116,7 @@ def test_create_with_texts_creates_collection_and_upserts(chroma_module):
     vector._client.collection.upsert.assert_called_once()
 
 
-def test_delete_methods_and_text_exists(chroma_module):
+def test_delete_methods_and_text_exists(chroma_module: ModuleType) -> None:
     vector = chroma_module.ChromaVector(
         collection_name="collection_1",
         config=chroma_module.ChromaConfig(host="localhost", port=8000, tenant="t", database="d"),
@@ -130,24 +133,25 @@ def test_delete_methods_and_text_exists(chroma_module):
 
     vector._client.collection.get.return_value = {"ids": ["id-1"]}
     assert vector.text_exists("id-1") is True
-    vector._client.collection.get.return_value = {}
+    vector._client.collection.get.return_value = dict[str, list[str]]()
     assert vector.text_exists("id-2") is False
 
     vector.delete()
     vector._client.delete_collection.assert_called_once_with("collection_1")
 
 
-def test_search_by_vector_handles_empty_results(chroma_module):
+def test_search_by_vector_handles_empty_results(chroma_module: ModuleType) -> None:
     vector = chroma_module.ChromaVector(
         collection_name="collection_1",
         config=chroma_module.ChromaConfig(host="localhost", port=8000, tenant="t", database="d"),
     )
-    vector._client.collection.query.return_value = {"ids": [], "documents": [], "metadatas": [], "distances": []}
+    empty_result: dict[str, list[object]] = {"ids": [], "documents": [], "metadatas": [], "distances": []}
+    vector._client.collection.query.return_value = empty_result
 
     assert vector.search_by_vector([0.1, 0.2], top_k=2) == []
 
 
-def test_search_by_vector_applies_score_threshold_and_sorting(chroma_module):
+def test_search_by_vector_applies_score_threshold_and_sorting(chroma_module: ModuleType) -> None:
     vector = chroma_module.ChromaVector(
         collection_name="collection_1",
         config=chroma_module.ChromaConfig(host="localhost", port=8000, tenant="t", database="d"),
@@ -166,7 +170,7 @@ def test_search_by_vector_applies_score_threshold_and_sorting(chroma_module):
     assert docs[0].metadata["score"] == 0.9
 
 
-def test_search_by_full_text_returns_empty_list(chroma_module):
+def test_search_by_full_text_returns_empty_list(chroma_module: ModuleType) -> None:
     vector = chroma_module.ChromaVector(
         collection_name="collection_1",
         config=chroma_module.ChromaConfig(host="localhost", port=8000, tenant="t", database="d"),
@@ -174,7 +178,9 @@ def test_search_by_full_text_returns_empty_list(chroma_module):
     assert vector.search_by_full_text("query") == []
 
 
-def test_factory_init_vector_uses_existing_or_generated_collection(chroma_module, monkeypatch: pytest.MonkeyPatch):
+def test_factory_init_vector_uses_existing_or_generated_collection(
+    chroma_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory = chroma_module.ChromaVectorFactory()
     dataset_with_index = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING"}})
