@@ -246,7 +246,7 @@ export function ContactEmailConfigDialog({
                   required={!canRetainField(ContactImProviderField.SenderEmail)}
                   disabled={credentialsDisabled}
                   autoComplete="email"
-                  placeholder="sybil@dify.ai"
+                  placeholder="joe@example.com"
                   type="email"
                   value={values.senderEmail}
                   onChange={(event) => {
@@ -279,7 +279,7 @@ export function ContactEmailConfigDialog({
                   disabled={credentialsDisabled}
                   maxLength={255}
                   autoComplete="organization"
-                  placeholder="sybil"
+                  placeholder="joe"
                   value={values.senderName}
                   onChange={(event) => {
                     const senderName = event.currentTarget.value
