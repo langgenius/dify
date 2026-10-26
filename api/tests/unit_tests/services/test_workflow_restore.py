@@ -2,6 +2,7 @@ import json
 
 from models.account import Account
 from models.workflow import Workflow
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
 LEGACY_FEATURES = {
@@ -44,14 +45,14 @@ def _create_workflow(*, workflow_id: str, version: str, features: dict[str, obje
         id=workflow_id,
         tenant_id="tenant-id",
         app_id="app-id",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         version=version,
         graph=json.dumps({"nodes": [], "edges": []}),
-        features=json.dumps(features),
+        _features=json.dumps(features),
         created_by="account-id",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 
