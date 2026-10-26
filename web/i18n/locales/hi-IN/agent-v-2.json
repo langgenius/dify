@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Agent ज्ञान आधार लोड हो रहे हैं…",
   "agentDetail.configure.knowledgeFs.rebind": "आयातित लिंक: यह Agent ज्ञान आधार दोबारा चुनें या उपलब्ध Agent ज्ञान आधार से बदलें।",
   "agentDetail.configure.knowledgeFs.retry": "फिर कोशिश करें",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "इस परिनियोजन में Agent ज्ञान आधार से पुनर्प्राप्ति उपलब्ध नहीं है। इसे चालू करने के लिए व्यवस्थापक से कहें।",
   "agentDetail.configure.knowledgeFs.select": "अधिकतम 10 Agent ज्ञान आधार चुनें",
   "agentDetail.configure.knowledgeFs.title": "Agent ज्ञान आधार",
   "agentDetail.configure.knowledgeFs.unavailable": "यह Agent ज्ञान आधार उपलब्ध नहीं है या आपके पास इस एजेंट में इसका उपयोग करने की अनुमति नहीं है।",

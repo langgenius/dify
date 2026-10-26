@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Carregando bases de conhecimento Agent…",
   "agentDetail.configure.knowledgeFs.rebind": "Vínculo importado: selecione explicitamente esta base de conhecimento Agent de novo ou substitua-a por uma base de conhecimento Agent disponível.",
   "agentDetail.configure.knowledgeFs.retry": "Tentar novamente",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "A recuperação das bases de conhecimento Agent não está disponível nesta implantação. Peça a um administrador para habilitá-la.",
   "agentDetail.configure.knowledgeFs.select": "Selecionar até 10 bases de conhecimento Agent",
   "agentDetail.configure.knowledgeFs.title": "Base de conhecimento Agent",
   "agentDetail.configure.knowledgeFs.unavailable": "Esta base de conhecimento Agent não está disponível ou você não tem permissão para usá-la neste agente.",

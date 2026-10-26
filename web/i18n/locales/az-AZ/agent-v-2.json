@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Agent bilik bazaları yüklənir…",
   "agentDetail.configure.knowledgeFs.rebind": "İdxal edilmiş bağlantı: bu Agent bilik bazasını yenidən açıq şəkildə seçin və ya onu mövcud Agent bilik bazası ilə əvəz edin.",
   "agentDetail.configure.knowledgeFs.retry": "Yenidən cəhd et",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "Bu yerləşdirmədə Agent bilik bazası axtarışı əlçatan deyil. Onu aktivləşdirmək üçün administratora müraciət edin.",
   "agentDetail.configure.knowledgeFs.select": "Ən çox 10 Agent bilik bazası seçin",
   "agentDetail.configure.knowledgeFs.title": "Agent bilik bazası",
   "agentDetail.configure.knowledgeFs.unavailable": "Bu Agent bilik bazası əlçatan deyil və ya onu bu Agent-də istifadə etmək üçün icazəniz yoxdur.",
