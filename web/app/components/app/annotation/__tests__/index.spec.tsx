@@ -13,11 +13,16 @@ import {
   createModelCatalogFixture,
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import Annotation from '../index'
 
 const api = vi.hoisted(() => ({
+  features: vi.fn<typeof consoleClient.features.get>(),
   list: vi.fn<typeof consoleClient.apps.byAppId.annotations.get>(),
   add: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
   remove: vi.fn<typeof consoleClient.apps.byAppId.annotations.byAnnotationId.delete>(),
@@ -36,7 +41,9 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => api.features(),
       'apps.byAppId.annotations.count.get': () => ({ count: 0 }),
+      'apps.byAppId.annotations.post': (input) => api.add(input),
       'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.remove(input),
       'apps.byAppId.annotations.delete': (input) => api.batchRemove(input),
     }),
@@ -115,6 +122,7 @@ function setup(quota = { size: 0, limit: 10 }) {
       features: { annotation_quota_limit: quota },
     },
   )
+  api.features.mockResolvedValue(seedFeatures(queryClient, { annotation_quota_limit: quota }))
   return userEvent.setup()
 }
 
