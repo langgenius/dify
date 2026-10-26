@@ -1,7 +1,6 @@
 import json
 import logging
 from collections.abc import Callable, Generator
-from typing import Union
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -50,21 +49,17 @@ class MessageBasedAppGenerator(AppInputAdapter):
 
     def _handle_response(
         self,
-        application_generate_entity: Union[
-            ChatAppGenerateEntity,
-            CompletionAppGenerateEntity,
-            AgentChatAppGenerateEntity,
-        ],
+        application_generate_entity: ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity,
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         stream: bool = False,
-    ) -> Union[
-        ChatbotAppBlockingResponse,
-        CompletionAppBlockingResponse,
-        Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse], None, None],
-    ]:
+    ) -> (
+        ChatbotAppBlockingResponse
+        | CompletionAppBlockingResponse
+        | Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse]
+    ):
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -89,7 +84,7 @@ class MessageBasedAppGenerator(AppInputAdapter):
             return generate_task_pipeline.process()
         except ValueError as e:
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise GenerateTaskStoppedError()
+                raise GenerateTaskStoppedError() from e
             else:
                 logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
                 raise e
@@ -103,11 +98,7 @@ class MessageBasedAppGenerator(AppInputAdapter):
 
     def _init_generate_records(
         self,
-        application_generate_entity: Union[
-            ChatAppGenerateEntity,
-            CompletionAppGenerateEntity,
-            AgentChatAppGenerateEntity,
-        ],
+        application_generate_entity: ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity,
         conversation: Conversation | None = None,
     ) -> tuple[Conversation, Message]:
         """

@@ -3,7 +3,7 @@ import logging
 import uuid
 from collections.abc import Callable
 from decimal import Decimal
-from typing import Union, cast
+from typing import cast
 
 from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -265,10 +265,10 @@ class BaseAgentRunner(AppRunner):
         self,
         agent_thought_id: str,
         tool_name: str | None,
-        tool_input: Union[str, dict, None],
+        tool_input: str | dict | None,
         thought: str | None,
-        observation: Union[str, dict, None],
-        tool_invoke_meta: Union[str, dict, None],
+        observation: str | dict | None,
+        tool_invoke_meta: str | dict | None,
         answer: str | None,
         messages_ids: list[str],
         llm_usage: LLMUsage | None = None,
