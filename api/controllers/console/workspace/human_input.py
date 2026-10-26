@@ -868,7 +868,9 @@ class WorkspaceContactIMOverrideApi(Resource):
 class WorkspaceContactIMBindingsApi(Resource):
     @console_ns.doc(
         description=(
-            "Set an IM binding for a contact, replacing the existing default binding when the identity changes. "
+            "Set a default IM binding for a contact, atomically replacing any default binding for either "
+            "the contact or the selected identity. Identical assignments preserve their binding ID; "
+            "changed assignments receive a new binding ID. "
             "This endpoint is not used for creating workspace IM override. "
             "For that purpose, use WorkspaceContactIMOverrideApi.put instead."
         ),

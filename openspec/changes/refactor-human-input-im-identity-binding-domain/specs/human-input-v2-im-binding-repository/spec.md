@@ -55,12 +55,12 @@ Default Bindings MUST enforce uniqueness for `(channel_id, contact_id)` and `(ch
 
 ### Requirement: Binding assignments MUST separate requested state from persisted state
 
-`IMBindingAssignment` MUST carry Contact ID, Identity ID, and assignment timestamp. The Repository MUST generate a new Binding ID when it inserts a default Binding or workspace override. Updating an existing workspace override MUST preserve the persisted Binding ID and creation timestamp.
+`IMBindingAssignment` MUST carry Contact ID, Identity ID, and assignment timestamp. The Repository MUST generate a new Binding ID when it inserts a default Binding or workspace override. A Binding's Contact and Identity MUST remain immutable for its ID. Replacing either endpoint MUST delete the old Binding and create a new ID. An identical assignment MUST preserve its ID, timestamps, and configuring actor.
 
 #### Scenario: Workspace override is replaced
 - **WHEN** the target Contact already has an override and the caller assigns another current Identity
-- **THEN** the Writer MUST preserve the existing Binding ID and creation timestamp
-- **AND** it MUST update Identity ID, configuring actor, and update timestamp
+- **THEN** the Writer MUST delete the existing override and generate a new Binding ID
+- **AND** it MUST persist the requested Identity, configuring actor, and assignment timestamp as both timestamps
 
 #### Scenario: Workspace override is first created
 - **WHEN** the target Contact has no override
@@ -69,7 +69,7 @@ Default Bindings MUST enforce uniqueness for `(channel_id, contact_id)` and `(ch
 
 ### Requirement: IM Binding Repository MUST be Channel-bound
 
-`IMBindingRepository` MUST expose `get`, `list_all`, exact default `create/replace/delete`, workspace override `set_workspace_override/reset_workspace_override`, and `get_effective/get_effective_many`. Exact replace MUST return `IMBinding | None`, and default delete MUST return `None`. It MUST NOT expose a default-only Contact lookup; locating a default row by Contact for idempotent create or effective fallback remains a Repository implementation detail. Its methods MUST NOT accept Channel ID, owner, scope, workspace/deployment discriminator, Provider, raw owner key, Session, or ORM row. Methods MAY accept target `tenant_id` only when selecting a workspace override or effective workspace result. Default create/replace and workspace override set MUST accept optional `bound_by_account_id` as keyword-only metadata for that mutation.
+`IMBindingRepository` MUST expose `get`, `list_all`, default `create/replace/delete`, workspace override `set_workspace_override/reset_workspace_override`, and `get_effective/get_effective_many`. Default replace MUST return `IMBinding`, and exact default delete MUST return `None`. It MUST NOT expose a default-only Contact lookup; locating a default row by Contact for idempotent create or effective fallback remains a Repository implementation detail. Its methods MUST NOT accept Channel ID, owner, scope, workspace/deployment discriminator, Provider, raw owner key, Session, or ORM row. Methods MAY accept target `tenant_id` only when selecting a workspace override or effective workspace result. Default create/replace and workspace override set MUST accept optional `bound_by_account_id` as keyword-only metadata for that mutation.
 
 #### Scenario: Default Binding belongs to another Channel
 - **WHEN** the Repository receives a Binding ID that exists only under another Channel
@@ -84,6 +84,28 @@ Default Bindings MUST enforce uniqueness for `(channel_id, contact_id)` and `(ch
 #### Scenario: Default Binding conflicts
 - **WHEN** the Contact or Identity is already assigned to a different endpoint in the bound Channel
 - **THEN** create MUST raise `IMBindingConflictError`
+
+### Requirement: Manual default replacement MUST reassign both endpoints atomically
+
+`replace` MUST preserve an identical default assignment. Otherwise it MUST delete any current default Binding for the requested Contact and any current default Binding for the requested Identity in the bound Channel, then create the requested assignment with a new Binding ID. The caller MUST own the transaction covering both deletions and creation, and MUST roll back the complete write set on failure. `replace` MUST NOT modify workspace overrides or Bindings in another Channel. Automatic synchronization MUST retain its existing reconciliation rules rather than use manual replacement to take an occupied endpoint.
+
+#### Scenario: Contact changes Identity
+- **WHEN** Contact B has default Identity IM2 and `replace` assigns B to an unbound current Identity IM1
+- **THEN** the Repository MUST delete B-to-IM2 and create B-to-IM1 with a new Binding ID
+
+#### Scenario: Identity moves to another Contact
+- **WHEN** Identity IM1 has default Contact A and `replace` assigns IM1 to Contact B
+- **THEN** the Repository MUST delete A-to-IM1 and create B-to-IM1
+- **AND** it MUST delete B's previous default Binding, if present, in the same transaction
+- **AND** the new Binding ID MUST differ from both removed Binding IDs
+
+#### Scenario: Manual replacement is retried
+- **WHEN** the requested Contact-to-Identity default assignment already exists
+- **THEN** `replace` MUST return that Binding without changing its ID, timestamps, or configuring actor
+
+#### Scenario: Manual replacement fails after deletion
+- **WHEN** either deletion or the replacement insertion fails
+- **THEN** caller rollback MUST preserve both original default Bindings, including their IDs and metadata
 
 ### Requirement: Workspace override operations MUST receive their target tenant
 
@@ -133,12 +155,12 @@ Every default Binding and workspace override write MUST require an Identity curr
 
 ### Requirement: Binding writes MUST expose narrow stable conflicts
 
-Expected Binding persistence failures MUST derive from one `IMBindingRepositoryError` root that derives directly from `Exception`. Endpoint uniqueness conflicts MUST produce `IMBindingConflictError`; missing or foreign Identity endpoints MUST produce `IMBindingIdentityNotFoundError`. An exact replacement that no longer matches expected current state MUST return no Binding, and default Binding deletion MUST be idempotent. Unclassified SQLAlchemy, mapping, validation, and integrity failures MUST propagate unchanged.
+Expected Binding persistence failures MUST derive from one `IMBindingRepositoryError` root that derives directly from `Exception`. Endpoint uniqueness conflicts MUST produce `IMBindingConflictError`; missing or foreign Identity endpoints MUST produce `IMBindingIdentityNotFoundError`. A replacement whose observed Binding changed concurrently MUST raise `IMBindingConflictError`, and default Binding deletion MUST be idempotent. Unclassified SQLAlchemy, mapping, validation, and integrity failures MUST propagate unchanged.
 
 #### Scenario: Default Binding replacement is stale
-- **WHEN** replace no longer finds constructor-bound Channel ID, Binding ID, and expected Identity ID together
-- **THEN** it MUST return no Binding
-- **AND** it MUST not modify another Binding
+- **WHEN** replace cannot delete an observed Binding by its bound Channel ID, Binding ID, and Identity ID
+- **THEN** it MUST raise `IMBindingConflictError`
+- **AND** it MUST NOT delete the concurrent replacement or commit any partial reassignment
 
 #### Scenario: Missing default Binding is deleted
 - **WHEN** delete does not find the addressed Binding in the bound Channel

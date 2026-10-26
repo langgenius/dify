@@ -41,6 +41,7 @@ from models.human_input_v2 import (
     IMMessageEvent,
 )
 from models.workflow import WorkflowPause, WorkflowRun
+from repositories.human_input_v2.contact import ExternalContact
 from repositories.human_input_v2.delivery_repository import (
     DeliveryCreateParams,
     IMUserTargetSnapshot,
@@ -49,6 +50,7 @@ from repositories.human_input_v2.delivery_repository import (
 from repositories.human_input_v2.im_binding_repository import IMBindingAssignment, IMBindingKind
 from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelId, IMChannelStatus, WebhookId
 from repositories.human_input_v2.recipient_repository import ContactRecipientSubject
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelWriter
@@ -404,6 +406,8 @@ def test_worker_rechecks_current_channel_ownership(
         ("default", "binding_replaced", "Callback contact binding has changed since delivery."),
         ("default", "binding_round_trip", "Callback contact binding has changed since delivery."),
         ("default", "binding_recreated", "Callback contact binding has changed since delivery."),
+        ("default", "binding_transferred", "Callback contact has no effective IM binding for the channel."),
+        ("default", "binding_transferred_back", "Callback contact binding has changed since delivery."),
         ("default", "identity_removed", "Callback binding identity was not found in the channel."),
         ("default", "identity_channel_changed", "Callback binding identity was not found in the channel."),
         ("default", "identity_user_changed", "Callback user does not match the bound identity user."),
@@ -480,6 +484,22 @@ def test_worker_rejects_revoked_im_authorization(
                 session.add(
                     HumanInputIMBinding(channel_id=channel_id, contact_id=contact_id, im_identity_id=identity_id)
                 )
+            case "binding_transferred" | "binding_transferred_back":
+                target_contact_id = ContactId(str(uuid4()))
+                SQLAlchemyContactRepository(session).save_external_contact(
+                    TenantId(context.execution.tenant_id),
+                    ExternalContact(target_contact_id, "Other reviewer", "other@example.com", None, naive_utc_now()),
+                )
+                repository = SQLAlchemyIMBindingRepository(session, channel_id)
+                repository.replace(
+                    IMBindingAssignment(target_contact_id, IMIdentityId(identity_id), naive_utc_now()),
+                    bound_by_account_id=None,
+                )
+                if mutation == "binding_transferred_back":
+                    repository.replace(
+                        IMBindingAssignment(ContactId(contact_id), IMIdentityId(identity_id), naive_utc_now()),
+                        bound_by_account_id=None,
+                    )
             case "identity_removed":
                 session.delete(session.get_one(HumanInputIMIdentity, identity_id))
             case "identity_channel_changed":

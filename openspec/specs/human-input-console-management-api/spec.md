@@ -84,6 +84,36 @@ TBD - created by archiving change human-input-v2-api-contracts. Update Purpose a
 - **WHEN** a workspace admin tries to include one `workspace contact` in `POST /console/api/workspaces/current/human-input/contacts/remove`
 - **THEN** 系统 MUST 拒绝该条目或整个请求，并 MUST 要求改走 membership management 流程，而 MUST NOT 在 Human Input Contact API 中额外引入 workspace member removal
 
+### Requirement: CE manual default IM binding edits MUST replace occupied endpoints
+
+On CE, an authorized workspace owner or administrator MUST be able to set a Contact's default IM binding through `PUT /console/api/workspaces/current/human-input/contacts/<contact_id>/im-bindings`, including when the selected synchronized Identity is already bound to another Contact. `ContactIMBindingService` MUST delete the target Contact's old default and the selected Identity's old default, if present, and create the requested default in one transaction. An actual reassignment MUST generate a new Binding ID so cards carrying either removed Binding ID fail existing authorization checks. An identical request MUST preserve the Binding ID, timestamps, and configuring actor. Any failure MUST leave the original Bindings intact. The operation MUST remain limited to the current Channel's default Bindings; workspace override uniqueness, automatic synchronization rules, and EE authorization MUST remain unchanged.
+
+#### Scenario: Contact changes its default Identity
+
+- **WHEN** Contact B is bound to IM2 and an administrator selects an unbound IM1 for B
+- **THEN** the API MUST replace B-to-IM2 with B-to-IM1 and return B's effective binding projection
+
+#### Scenario: Identity moves between Contacts
+
+- **WHEN** IM1 is bound to Contact A and an administrator selects IM1 for Contact B
+- **THEN** the API MUST remove A-to-IM1 and create B-to-IM1 with a new Binding ID
+- **AND** it MUST remove B's previous default, if present, in the same transaction
+
+#### Scenario: Manual reassignment is retried
+
+- **WHEN** the same Contact-to-Identity assignment is submitted again
+- **THEN** the API MUST return the same effective binding projection without replacing the existing default Binding
+
+#### Scenario: Manual reassignment fails
+
+- **WHEN** a deletion or insertion fails while moving IM1 from A to B
+- **THEN** neither A's original default nor B's original default MAY be lost or modified
+
+#### Scenario: EE Workspace administrator attempts manual reassignment
+
+- **WHEN** a Workspace administrator calls the default-binding PUT endpoint on an EE deployment
+- **THEN** the API MUST reject the request before mutating any Binding
+
 ### Requirement: Draft human-input editor MUST expose preview, run, and message template test APIs
 系统 MUST 继续提供 draft `form/preview` 与 `form/run` API，并为 v2 新增独立 `message-template/test`。v1 `delivery-test`、完整 v1 node model 与 request contract MUST 保持不变；preview / run MUST 按 node version 使用独立逻辑，MUST NOT 让 v1 / v2 payload 交叉提交。v2 测试接口 MUST 使用 `DebugChannel` 作为 `channel` 参数，而 MUST NOT 依赖旧 `delivery_method_id`。
 

@@ -69,7 +69,7 @@ class IMBindingRepository(Protocol):
         *,
         bound_by_account_id: AccountId | None,
     ) -> IMBinding:
-        """Create an idempotent default Binding in the bound Channel."""
+        """Create an idempotent default Binding; reject conflicting assignments."""
         ...
 
     def replace(
@@ -78,10 +78,14 @@ class IMBindingRepository(Protocol):
         *,
         bound_by_account_id: AccountId | None,
     ) -> IMBinding:
-        """Bind the Contact, deleting its old Binding when the Identity changes.
+        """Manually reassign both default Binding endpoints in the bound Channel.
 
-        Create a Binding when absent and preserve an identical assignment.
-        The caller owns the transaction covering deletion and creation.
+        Preserve identical assignments, including ID, timestamps, and actor metadata.
+        Otherwise delete the Contact's old default and the Identity's old default,
+        if present, then create the requested assignment with a new Binding ID.
+        Never modify workspace overrides. Concurrent endpoint changes raise
+        IMBindingConflictError. The caller owns the transaction and must roll back
+        all deletions and creation on failure.
         """
         ...
 

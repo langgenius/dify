@@ -204,6 +204,64 @@ def test_replace_creates_reassigns_and_preserves_identical_bindings_within_its_c
         assert repository.get(replaced.id) is None
 
 
+@pytest.mark.parametrize("target_already_bound", [False, True])
+def test_replace_transfers_identity_and_preserves_other_channels_and_workspace_overrides(
+    sqlite_engine: Engine, target_already_bound: bool
+) -> None:
+    _seed_identities(sqlite_engine, _CHANNEL_ONE, _IDENTITY_ONE, _IDENTITY_TWO)
+    _seed_identities(sqlite_engine, _CHANNEL_TWO, _IDENTITY_THREE)
+    with Session(sqlite_engine, expire_on_commit=False) as session, session.begin():
+        repository = SQLAlchemyIMBindingRepository(session, _CHANNEL_ONE)
+        source = repository.create(_assignment(_CONTACT_ONE, _IDENTITY_ONE), bound_by_account_id=_ACCOUNT_ONE)
+        target = (
+            repository.create(_assignment(_CONTACT_TWO, _IDENTITY_TWO), bound_by_account_id=_ACCOUNT_ONE)
+            if target_already_bound
+            else None
+        )
+        foreign_repository = SQLAlchemyIMBindingRepository(session, _CHANNEL_TWO)
+        foreign = foreign_repository.create(
+            _assignment(_CONTACT_TWO, _IDENTITY_THREE), bound_by_account_id=_ACCOUNT_ONE
+        )
+        overrides = tuple(
+            (
+                tenant_id,
+                repository.set_workspace_override(
+                    tenant_id, _assignment(contact_id, identity_id), bound_by_account_id=_ACCOUNT_ONE
+                ),
+            )
+            for tenant_id, contact_id, identity_id in (
+                (_TENANT_ONE, _CONTACT_ONE, _IDENTITY_ONE),
+                (_TENANT_ONE, _CONTACT_TWO, _IDENTITY_TWO),
+                (_TENANT_TWO, _CONTACT_ONE, _IDENTITY_ONE),
+            )
+        )
+
+        transferred = repository.replace(
+            _assignment(_CONTACT_TWO, _IDENTITY_ONE, _LATER), bound_by_account_id=_ACCOUNT_TWO
+        )
+
+        assert transferred.id != source.id
+        if target is not None:
+            assert transferred.id != target.id
+        assert transferred == IMBinding(
+            transferred.id, IMBindingKind.DEFAULT, _CONTACT_TWO, _IDENTITY_ONE, _LATER, _LATER
+        )
+        assert repository.list_all() == (transferred,)
+        assert repository.get(source.id) is None
+        assert session.get_one(HumanInputIMBinding, str(transferred.id)).bound_by_account_id == str(_ACCOUNT_TWO)
+        assert foreign_repository.get(foreign.id) == foreign
+        for tenant_id, override in overrides:
+            assert repository.get_effective(tenant_id, override.contact_id) == override
+            assert session.get_one(HumanInputIMBindingWorkspaceOverride, str(override.id)).bound_by_account_id == str(
+                _ACCOUNT_ONE
+            )
+        assert (
+            repository.replace(_assignment(_CONTACT_TWO, _IDENTITY_ONE), bound_by_account_id=_ACCOUNT_ONE)
+            == transferred
+        )
+        assert session.get_one(HumanInputIMBinding, str(transferred.id)).bound_by_account_id == str(_ACCOUNT_TWO)
+
+
 def test_workspace_override_replacement_is_isolated_by_channel_and_tenant(
     sqlite_engine: Engine,
 ) -> None:

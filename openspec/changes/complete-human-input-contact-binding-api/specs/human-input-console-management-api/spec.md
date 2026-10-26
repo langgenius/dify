@@ -42,6 +42,36 @@ Synchronized IM identity search MUST call `IMSyncService.search_identities`. The
 - **THEN** the shared identity query MUST return persisted synchronized identities including identities without a current binding
 - **AND** the binding command MUST require a persisted identity reference rather than a free-text provider user ID
 
+### Requirement: CE manual default IM binding edits MUST replace occupied endpoints
+
+On CE, an authorized workspace owner or administrator MUST be able to set a Contact's default IM binding through `PUT /console/api/workspaces/current/human-input/contacts/<contact_id>/im-bindings`, including when the selected synchronized Identity is already bound to another Contact. `ContactIMBindingService` MUST delete the target Contact's old default and the selected Identity's old default, if present, and create the requested default in one transaction. An actual reassignment MUST generate a new Binding ID so cards carrying either removed Binding ID fail existing authorization checks. An identical request MUST preserve the Binding ID, timestamps, and configuring actor. Any failure MUST leave the original Bindings intact. The operation MUST remain limited to the current Channel's default Bindings; workspace override uniqueness, automatic synchronization rules, and EE authorization MUST remain unchanged.
+
+#### Scenario: Contact changes its default Identity
+
+- **WHEN** Contact B is bound to IM2 and an administrator selects an unbound IM1 for B
+- **THEN** the API MUST replace B-to-IM2 with B-to-IM1 and return B's effective binding projection
+
+#### Scenario: Identity moves between Contacts
+
+- **WHEN** IM1 is bound to Contact A and an administrator selects IM1 for Contact B
+- **THEN** the API MUST remove A-to-IM1 and create B-to-IM1 with a new Binding ID
+- **AND** it MUST remove B's previous default, if present, in the same transaction
+
+#### Scenario: Manual reassignment is retried
+
+- **WHEN** the same Contact-to-Identity assignment is submitted again
+- **THEN** the API MUST return the same effective binding projection without replacing the existing default Binding
+
+#### Scenario: Manual reassignment fails
+
+- **WHEN** a deletion or insertion fails while moving IM1 from A to B
+- **THEN** neither A's original default nor B's original default MAY be lost or modified
+
+#### Scenario: EE Workspace administrator attempts manual reassignment
+
+- **WHEN** a Workspace administrator calls the default-binding PUT endpoint on an EE deployment
+- **THEN** the API MUST reject the request before mutating any Binding
+
 ### Requirement: Workspace binding mutations MUST converge in ContactIMBindingService
 
 On CE and SaaS deployments, where the current workspace is the complete Organization, Workspace Organization binding create/delete and workspace override set/reset controllers MUST call the shared `ContactIMBindingService`. On EE deployments, Workspace controllers MUST NOT create or delete Organization bindings; that authorization belongs to the enterprise-administrator transport outside this change. Every permitted controller MUST restrict itself to authentication/authorization、trusted scope/actor construction、DTO mapping and stable error translation, and MUST NOT directly orchestrate repositories、locks、owner predicates or binding persistence.
