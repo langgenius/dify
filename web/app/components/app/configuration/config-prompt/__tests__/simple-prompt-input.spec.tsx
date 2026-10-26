@@ -146,7 +146,9 @@ it('validates an external tool in the real modal and inserts the saved variable 
   renderPrompt({ promptTemplate: 'Hello' })
   await user.click(screen.getByRole('textbox'))
   await replacePromptEditorText(screen.getByRole('textbox'), '/')
-  await user.click(await screen.findByText('common.promptEditor.variable.modal.addTool'))
+  await user.click(
+    await screen.findByRole('option', { name: 'common.promptEditor.variable.modal.addTool' }),
+  )
   const dialog = await screen.findByRole('dialog')
   await user.type(
     within(dialog).getByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
