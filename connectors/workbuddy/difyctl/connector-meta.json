@@ -1,0 +1,22 @@
+{
+  "name": "Dify",
+  "name_zh": "Dify",
+  "name_en": "Dify",
+  "description": "在 WorkBuddy 里通过 difyctl 运行和搭建 Dify 应用，需先登录你自己的 Dify 服务器",
+  "description_zh": "在 WorkBuddy 里通过 difyctl 运行和搭建 Dify 应用，需先登录你自己的 Dify 服务器",
+  "description_en": "Run and build Dify apps from WorkBuddy with difyctl. Requires login to your own Dify server.",
+  "source": "difyctl",
+  "type": "cli",
+  "version": "1.0.0",
+  "minWorkbuddyVersion": "4.24.0",
+  "examples_zh": [
+    "列出我在 Dify 上的应用",
+    "运行 Dify 里的客服工作流，问题是……",
+    "在 Dify 上建一个把网页总结成三点的工作流并发布"
+  ],
+  "examples_en": [
+    "List my apps on Dify",
+    "Run the customer support workflow in Dify. The question is...",
+    "Build a workflow on Dify that summarizes a web page in three points, then publish it"
+  ]
+}

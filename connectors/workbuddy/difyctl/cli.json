@@ -1,0 +1,7 @@
+{
+  "init": {
+    "darwin": "curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh",
+    "linux": "curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh",
+    "win32": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install.ps1 | iex\""
+  }
+}
