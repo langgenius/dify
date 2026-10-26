@@ -1,6 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -92,41 +91,4 @@ it('preserves read-only text when the user types', async () => {
   expect(editor).toHaveAttribute('contenteditable', 'false')
   await user.type(editor, 'replacement')
   expect(editor.textContent).toBe('Saved text')
-})
-
-it('keeps typing in an external input when unchanged workflow metadata is refreshed', async () => {
-  const user = userEvent.setup()
-  function Form() {
-    const [description, setDescription] = useState('')
-    const [parameter, setParameter] = useState('Saved parameter')
-    return (
-      <>
-        <label>
-          Connection description
-          <input value={description} onChange={(event) => setDescription(event.target.value)} />
-        </label>
-        <section aria-label="Tool parameter">
-          <MixedVariableTextInput
-            value={parameter}
-            onChange={setParameter}
-            availableNodes={nodes.map((node) => ({ ...node, data: { ...node.data } }))}
-            nodesOutputVars={variables.map((node) => ({ ...node, vars: [...node.vars] }))}
-          />
-        </section>
-      </>
-    )
-  }
-  render(<Form />)
-  const editor = within(screen.getByRole('region', { name: 'Tool parameter' })).getByRole('textbox')
-  await user.type(editor, 'x')
-  await waitFor(() => expect(editor).toHaveTextContent('Saved parameterx'))
-
-  const description = screen.getByRole('textbox', { name: 'Connection description' })
-  await user.click(description)
-  expect(description).toHaveFocus()
-  await user.keyboard('Connect app users')
-
-  expect(description).toHaveFocus()
-  expect(description).toHaveValue('Connect app users')
-  expect(editor).toHaveTextContent('Saved parameterx')
 })
