@@ -1064,8 +1064,9 @@ class DraftVariableSaver:
             return None
 
         original_length = None
-        if isinstance(value_seg.value, (list, dict)):
-            original_length = len(value_seg.value)
+        original_value = value_seg.value
+        if isinstance(original_value, (list, dict)):
+            original_length = len(original_value)
 
         # Prepare content for storage
         original_content_serialized: str
