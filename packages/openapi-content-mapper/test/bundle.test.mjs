@@ -4,6 +4,7 @@ import { Buffer } from 'node:buffer'
 import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
+import { pathToFileURL } from 'node:url'
 import { gzipSync } from 'node:zlib'
 import { build } from 'vite'
 import { parse, stringify } from 'yaml'
@@ -12,6 +13,95 @@ import { openapi } from '../dist/tooling/vite.js'
 
 const root = resolve(import.meta.dirname, '..')
 const fixture = parse(readFileSync(join(root, 'examples/petstore/pets.openapi.yaml'), 'utf8'))
+
+for (const mode of ['api', 'query'])
+  test(`${mode}: error chunks are shared per document and stay lazy with distinct maps`, async () => {
+    const dir = mkdtempSync(join(root, 'test/.shared-errors-'))
+    const loaded = `error-sidecars:${dir}`
+    globalThis[loaded] = []
+    try {
+      writeFileSync(join(dir, 'shared.ts'), `export const errorCode = index => 'ERROR_' + index;`)
+      for (const document of ['console', 'marketplace']) {
+        const paths = {}
+        const maps = [
+          `import { errorCode } from './shared'; globalThis[${JSON.stringify(loaded)}].push('${document}');`,
+        ]
+        for (let index = 0; index < 20; index++) {
+          paths[`/operation${index}`] = { get: { responses: { 200: { description: 'OK' } } } }
+          maps.push(
+            `const map${index} = { [errorCode(${index})]: { status: 409 } }; export { map${index} as 'GET /operation${index}' };`,
+          )
+        }
+        writeFileSync(join(dir, `${document}.openapi`), JSON.stringify({ openapi: '3.1.0', paths }))
+        writeFileSync(join(dir, `${document}.openapi.errors.ts`), maps.join('\n'))
+      }
+      writeFileSync(
+        join(dir, 'entry.ts'),
+        `
+import { createClient } from '@dify/openapi-content-mapper';
+export { errorCode } from './shared';
+import { ${mode} as console } from './console.openapi';
+import { ${mode} as marketplace } from './marketplace.openapi';
+export async function run(document, index, code) {
+  const client = createClient({ baseUrl: 'https://example.test', fetch: async () =>
+    code ? Response.json({ code }, { status: 409 }) : Response.json({ ok: true }) });
+  const operation = (document === 'console' ? console : marketplace)['operation' + index].get;
+  try {
+    return await ${mode === 'api' ? 'operation(undefined, { client })' : 'operation.call(undefined, { client })'};
+  } catch (error) { return { code: error.code, defined: error.defined }; }
+}
+`,
+      )
+      const result = await build({
+        configFile: false,
+        root: dir,
+        logLevel: 'silent',
+        plugins: [openapi()],
+        build: {
+          minify: true,
+          rolldownOptions: { preserveEntrySignatures: 'allow-extension' },
+          lib: { entry: join(dir, 'entry.ts'), formats: ['es'], fileName: 'entry' },
+        },
+      })
+      const chunks = (Array.isArray(result) ? result : [result])
+        .flatMap((output) => output.output)
+        .filter((file) => file.type === 'chunk')
+      const errorChunks = chunks.filter((chunk) =>
+        Object.keys(chunk.modules).some((id) => id.includes('?openapi-errors=')),
+      )
+      assert.equal(errorChunks.length, 2, 'Forty operations need only one error chunk per document')
+      for (const chunk of errorChunks) {
+        const documents = new Set(
+          Object.keys(chunk.modules)
+            .filter((id) => id.includes('?openapi-errors='))
+            .map((id) => id.split('?')[0]),
+        )
+        assert.equal(documents.size, 1, 'Independent documents must not share error chunks')
+      }
+      const entry = chunks.find((chunk) => chunk.isEntry)
+      const initial = new Set()
+      const visit = (file) => {
+        if (initial.has(file)) return
+        initial.add(file)
+        chunks.find((chunk) => chunk.fileName === file)?.imports.forEach(visit)
+      }
+      visit(entry.fileName)
+      assert(errorChunks.every((chunk) => !initial.has(chunk.fileName)))
+      const { run } = await import(pathToFileURL(join(dir, 'dist', entry.fileName)).href)
+      assert.deepEqual(globalThis[loaded], [])
+      assert.deepEqual(await run('console', 0), { ok: true })
+      assert.deepEqual(globalThis[loaded], [], 'Success must not load error validators')
+      assert.deepEqual(await run('console', 0, 'ERROR_0'), { code: 'ERROR_0', defined: true })
+      assert.deepEqual(await run('console', 1, 'ERROR_0'), { code: 'ERROR_0', defined: false })
+      assert.deepEqual(await run('console', 1, 'ERROR_1'), { code: 'ERROR_1', defined: true })
+      assert.deepEqual(globalThis[loaded], ['console'])
+      assert.deepEqual(await run('marketplace', 0, 'ERROR_0'), { code: 'ERROR_0', defined: true })
+      assert.deepEqual(globalThis[loaded], ['console', 'marketplace'])
+    } finally {
+      delete globalThis[loaded]
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 
 for (const mode of ['nested', 'query'])
   test(`${mode}: Vite browser bundle drops 1,000 unused operations and all schema metadata`, async (t) => {
@@ -126,6 +216,7 @@ for (const mode of ['api', 'query'])
           build: {
             write: false,
             minify: true,
+            rolldownOptions: { preserveEntrySignatures: 'allow-extension' },
             lib: { entry: join(dir, 'entry.ts'), formats: ['es'] },
           },
         })

@@ -1,7 +1,8 @@
 import type { Plugin, ViteDevServer } from 'vite'
+import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { readFile, realpath } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { dirname, relative, resolve } from 'node:path'
 import { errorsQuery, moduleQuery, queryQuery } from './router.js'
 import { compileRuntime } from './transform.js'
 
@@ -17,6 +18,7 @@ export function openapi(
   const realPaths = new Map<string, string>()
   let root = process.cwd()
   let server: ViteDevServer | undefined
+  let groupErrors = false
   const dependencies = new Map<string, string[]>()
   return {
     name: 'openapi-content-mapper',
@@ -86,6 +88,43 @@ export function openapi(
         // Generated namespaces have no source positions in the specification.
         // Stop downstream transforms from embedding the full document in every module's map.
         map: { mappings: '' },
+      }
+    },
+    options(input) {
+      // Rolldown requires extensible entry exports to group entries without moving dependencies.
+      groupErrors =
+        input.preserveEntrySignatures === false ||
+        input.preserveEntrySignatures === 'allow-extension'
+    },
+    outputOptions(output) {
+      // Keep static per-operation re-exports for tree-shaking, but coalesce their
+      // retained dynamic entries. Do not pull shared dependencies out of other chunks.
+      if (
+        !groupErrors ||
+        output.codeSplitting === false ||
+        output.manualChunks ||
+        output.advancedChunks
+      )
+        return output
+      const splitting = typeof output.codeSplitting === 'object' ? output.codeSplitting : {}
+      return {
+        ...output,
+        codeSplitting: {
+          ...splitting,
+          groups: [
+            ...(splitting.groups ?? []),
+            {
+              debugName: 'openapi-errors',
+              name: (id: string) =>
+                `openapi-errors-${createHash('sha256')
+                  .update(relative(root, id.split(errorsQuery)[0]!).replaceAll('\\', '/'))
+                  .digest('hex')
+                  .slice(0, 12)}`,
+              test: (id: string) => id.includes(errorsQuery),
+              includeDependenciesRecursively: false,
+            },
+          ],
+        },
       }
     },
     watchChange() {

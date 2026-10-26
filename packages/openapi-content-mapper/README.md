@@ -216,7 +216,10 @@ with a `code` envelope are converted to `ORPCError` when an error map is configu
 existing transport `ORPCError`s are preserved and validated.
 
 Each operation imports its own defaults and lazy error module. Error validators load
-on HTTP failure, and unused maps/defaults can be removed by the bundler. A validator
+on HTTP failure, and unused maps/defaults can be removed by the bundler. Vite
+application builds group retained error modules by document to avoid a tiny chunk per
+operation, while keeping validators lazy and respecting custom chunk groups. Strict library exports and legacy manual chunk
+configurations keep the bundler's existing chunking behavior. A validator
 chunk that fails to load leaves the original HTTP error undefined. Serve the emitted
 chunks together with the entry bundle. Keep validators free of module-level side
 effects; schema construction must be removable when its map is unused. Named
