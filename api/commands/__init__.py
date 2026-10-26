@@ -12,6 +12,7 @@ from .data_migration import (
     migration_data_wizard,
 )
 from .knowledge_fs import knowledge_fs_control_space
+from .oauth_client import oauth_client
 from .plugin import (
     backfill_plugin_auto_upgrade,
     extract_plugins,
@@ -95,6 +96,7 @@ __all__ = [
     "migrate_oss",
     "migrate_resource_whitelist_scopes_to_automatic_include",
     "migration_data_wizard",
+    "oauth_client",
     "old_metadata_migration",
     "remove_orphaned_files_on_storage",
     "reset_email",
