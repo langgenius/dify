@@ -1,17 +1,30 @@
 'use client'
 
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { KnowledgeModelReadinessBanner } from '../../components/knowledge-model-readiness-banner'
 import { DocumentsEmpty, DocumentsList } from '../list'
 import {
   DocumentPermissionRecoveryBoundary,
   DocumentReadPermissionRecovery,
 } from '../permission-recovery/recovery-boundary'
+import { useRemoveDocumentAction } from '../row-actions/use-document-row-actions'
 import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import {
   documentsAtom,
@@ -212,7 +225,11 @@ function DependencyRecoveryBoundary({ children }: { children: React.ReactNode })
   )
 }
 
-function DocumentCollectionState() {
+function DocumentCollectionState({
+  onRemove,
+}: {
+  onRemove: (documentId: string, row: HTMLTableRowElement | null) => void
+}) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const canRead = useAtomValueRawSync(documentCanReadAtom)
@@ -270,21 +287,101 @@ function DocumentCollectionState() {
         </Button>
       </div>
     )
-  return documents.length ? <DocumentsList /> : <DocumentsEmpty />
+  return documents.length ? <DocumentsList onRemove={onRemove} /> : <DocumentsEmpty />
 }
 
 export function DocumentResultsSurface() {
+  const { t } = useTranslation(['knowledgeSpace'])
+  const { t: tCommon } = useTranslation(['common'])
+  const listRef = useRef<HTMLDivElement>(null)
+  const [deleteDialog] = useState(() =>
+    createAlertDialogHandle<{
+      documentId: string
+      adjacentFocusTargets: HTMLElement[]
+      fallbackFocus: { current: HTMLElement | null }
+    }>(),
+  )
+  const { pending: deleting, run: removeDocument, reset } = useRemoveDocumentAction()
+
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   return (
-    <DocumentPermissionRecoveryBoundary>
-      <DocumentUploadSurface>
-        <KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId={knowledgeSpaceId} />
-        <ResultsAutoPagination />
-        <DocumentQueryRecoveryNotice />
-        <DependencyRecoveryBoundary>
-          <DocumentCollectionState />
-        </DependencyRecoveryBoundary>
-      </DocumentUploadSurface>
-    </DocumentPermissionRecoveryBoundary>
+    <div
+      ref={listRef}
+      tabIndex={-1}
+      role="region"
+      aria-label={t(($) => $.documents)}
+      className="flex min-h-0 flex-1 flex-col focus-visible:outline-2 focus-visible:outline-state-accent-solid"
+    >
+      <DocumentPermissionRecoveryBoundary>
+        <DocumentUploadSurface>
+          <KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId={knowledgeSpaceId} />
+          <ResultsAutoPagination />
+          <DocumentQueryRecoveryNotice />
+          <DependencyRecoveryBoundary>
+            <DocumentCollectionState
+              onRemove={(documentId, row) => {
+                const adjacentFocusTargets = getAdjacentFocusTargets(row, (sibling) =>
+                  sibling.querySelector<HTMLAnchorElement>('a[href]'),
+                )
+                deleteDialog.openWithPayload({
+                  documentId,
+                  adjacentFocusTargets,
+                  fallbackFocus: { current: null },
+                })
+              }}
+            />
+          </DependencyRecoveryBoundary>
+        </DocumentUploadSurface>
+      </DocumentPermissionRecoveryBoundary>
+      <AlertDialog
+        handle={deleteDialog}
+        onOpenChange={(open, details) => {
+          if (!open && deleting && details.reason !== 'imperative-action') details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) reset()
+        }}
+      >
+        {({ payload }) => (
+          <AlertDialogContent
+            finalFocus={() => {
+              const fallback = payload?.fallbackFocus.current
+              if (!fallback) return true
+              const target =
+                payload.adjacentFocusTargets.find((element) => element.isConnected) ?? fallback
+              target.focus({ preventScroll: true })
+              return false
+            }}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {tCommon(($) => $['operation.deleteConfirmTitle'])}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {tCommon(($) => $['operation.confirmAction'])}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancelButton disabled={deleting}>
+                {tCommon(($) => $['operation.cancel'])}
+              </AlertDialogCancelButton>
+              <AlertDialogConfirmButton
+                loading={deleting}
+                tone="destructive"
+                onClick={async () => {
+                  if (!payload || deleting) return
+                  if (await removeDocument(payload.documentId)) {
+                    payload.fallbackFocus.current = listRef.current
+                    deleteDialog.close()
+                  }
+                }}
+              >
+                {tCommon(($) => $['operation.delete'])}
+              </AlertDialogConfirmButton>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
+    </div>
   )
 }

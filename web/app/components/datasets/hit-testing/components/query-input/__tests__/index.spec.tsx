@@ -1,45 +1,72 @@
 import type { DatasetQueryContentResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
+import type { ComponentProps, ReactElement } from 'react'
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { fileUpload } from '@/app/components/base/file-uploader/utils'
+import DatasetDetailContext from '@/context/dataset-detail'
 import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { mockFixtureImageFetch } from '@/test/image-fetch'
 import { RETRIEVE_METHOD } from '@/types/app'
 import QueryInput from '../index'
 
-// Capture onChange callback so tests can trigger handleImageChange
-let capturedOnChange: ((files: FileEntity[]) => void) | null = null
-vi.mock(
-  '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing',
-  () => ({
-    default: ({
-      textArea,
-      actionButton,
-      onChange,
-    }: {
-      textArea: React.ReactNode
-      actionButton: React.ReactNode
-      onChange?: (files: FileEntity[]) => void
-    }) => {
-      capturedOnChange = onChange ?? null
-      return (
-        <div data-testid="image-uploader">
-          {textArea}
-          {actionButton}
-        </div>
-      )
-    },
-  }),
-)
-
-vi.mock('@/app/components/datasets/common/retrieval-method-info', () => ({
-  getIcon: () => '/test-icon.png',
+vi.mock('@/app/components/base/file-uploader/utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/file-uploader/utils')>()),
+  fileUpload: vi.fn(),
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.get': async () => ({
+        image_file_batch_limit: 10,
+        single_chunk_attachment_limit: 20,
+        attachment_image_file_size_limit: 15,
+      }),
+    }),
+  }
+})
 
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: () => false,
-}))
+const imageUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+const dataset = createDatasetFixture({ is_multimodal: true })
+function render(ui: ReactElement) {
+  const wrap = (view: ReactElement) => (
+    <DatasetDetailContext.Provider value={{ dataset }}>{view}</DatasetDetailContext.Provider>
+  )
+  const view = renderWithConsoleQuery(wrap(ui))
+  return { ...view, rerender: (next: ReactElement) => view.rerender(wrap(next)) }
+}
+
+function ControlledQuery(props: ComponentProps<typeof QueryInput>) {
+  const [queries, setQueries] = useState(props.queries)
+  return <QueryInput {...props} queries={queries} setQueries={setQueries} />
+}
+function uploadResponse(file: File) {
+  return {
+    id: 'uploaded-1',
+    name: file.name,
+    size: file.size,
+    mime_type: file.type,
+    extension: 'gif',
+    created_at: 0,
+    created_by: 'user-1',
+    preview_url: null,
+    source_url: '',
+  }
+}
+function imageFile() {
+  return new File(
+    [Uint8Array.from(atob(imageUrl.split(',')[1]!), (c) => c.charCodeAt(0))],
+    'pic.gif',
+    { type: 'image/gif' },
+  )
+}
 
 describe('QueryInput', () => {
   // Re-create per test to avoid cross-test mutation (handleTextChange mutates query objects)
@@ -73,7 +100,10 @@ describe('QueryInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     defaultProps = makeDefaultProps()
-    capturedOnChange = null
+    mockFixtureImageFetch()
+    vi.mocked(fileUpload).mockImplementation(({ file, onSuccessCallback }) =>
+      onSuccessCallback(uploadResponse(file)),
+    )
   })
 
   it('labels the query input and focuses it when its visible label is clicked', async () => {
@@ -192,29 +222,25 @@ describe('QueryInput', () => {
   })
 
   describe('Text Change Handling', () => {
-    it('should update existing text query on text change', () => {
-      render(<QueryInput {...defaultProps} />)
-
+    it.each([
+      {
+        queries: [
+          { content: 'test query', content_type: 'text_query', file_info: null },
+        ] satisfies DatasetQueryContentResponse[],
+        next: 'updated text',
+      },
+      { queries: [], next: 'new text' },
+    ])('saves $next in the live query and submitted request', async ({ queries, next }) => {
+      const user = userEvent.setup()
+      render(<ControlledQuery {...defaultProps} queries={queries} />)
       const textarea = screen.getByRole('textbox', { name: 'datasetHitTesting.input.title' })
-      fireEvent.change(textarea, { target: { value: 'updated text' } })
-
-      expect(defaultProps.setQueries).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ content: 'updated text', content_type: 'text_query' }),
-        ]),
-      )
-    })
-
-    it('should create new text query when none exists', () => {
-      render(<QueryInput {...defaultProps} queries={[]} />)
-
-      const textarea = screen.getByRole('textbox', { name: 'datasetHitTesting.input.title' })
-      fireEvent.change(textarea, { target: { value: 'new text' } })
-
-      expect(defaultProps.setQueries).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ content: 'new text', content_type: 'text_query' }),
-        ]),
+      await user.clear(textarea)
+      await user.type(textarea, next)
+      expect(textarea).toHaveValue(next)
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
+      expect(defaultProps.hitTestingMutation).toHaveBeenCalledWith(
+        expect.objectContaining({ query: next }),
+        expect.anything(),
       )
     })
   })
@@ -256,91 +282,52 @@ describe('QueryInput', () => {
   )
 
   describe('Image Change Handling', () => {
-    it('should update queries when images change', () => {
-      render(<QueryInput {...defaultProps} />)
-
-      const files: FileEntity[] = [
-        {
-          id: 'f-1',
-          name: 'pic.jpg',
-          size: 2048,
-          mimeType: 'image/jpeg',
-          extension: 'jpg',
-          sourceUrl: 'https://img.example.com/pic.jpg',
-          uploadedId: 'uploaded-1',
-          progress: 100,
-        },
-      ]
-
-      capturedOnChange!(files)
-
-      expect(defaultProps.setQueries).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ content_type: 'text_query' }),
-          expect.objectContaining({
-            content: 'https://img.example.com/pic.jpg',
-            content_type: 'image_query',
-            file_info: expect.objectContaining({ id: 'uploaded-1', name: 'pic.jpg' }),
-          }),
-        ]),
+    it('uploads an image and submits its saved identifier alongside the existing text', async () => {
+      const user = userEvent.setup()
+      const { container } = render(<ControlledQuery {...defaultProps} />)
+      const file = imageFile()
+      await user.upload(container.querySelector<HTMLInputElement>('input[type="file"]')!, file)
+      expect(await screen.findByRole('img', { name: 'Preview' })).toBeVisible()
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /input\.testing/ })).toBeEnabled(),
+      )
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
+      expect(fileUpload).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ file }))
+      expect(defaultProps.hitTestingMutation).toHaveBeenCalledWith(
+        expect.objectContaining({ query: 'test query', attachment_ids: ['uploaded-1'] }),
+        expect.anything(),
       )
     })
 
-    it('should handle files with missing sourceUrl and uploadedId', () => {
-      render(<QueryInput {...defaultProps} />)
-
-      const files: FileEntity[] = [
-        {
-          id: 'f-2',
-          name: 'no-url.jpg',
-          size: 512,
-          mimeType: 'image/jpeg',
-          extension: 'jpg',
-          progress: 100,
-          // sourceUrl and uploadedId are undefined
-        },
-      ]
-
-      capturedOnChange!(files)
-
-      expect(defaultProps.setQueries).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({
-            content: '',
-            content_type: 'image_query',
-            file_info: expect.objectContaining({ id: '', source_url: '' }),
-          }),
-        ]),
-      )
-    })
-
-    it('should replace all existing image queries with new ones', () => {
+    it('removes an existing image without losing the text query', async () => {
+      const user = userEvent.setup()
       const queries: DatasetQueryContentResponse[] = [
         { content: 'text', content_type: 'text_query', file_info: null },
         {
-          content: 'old-img',
+          content: imageUrl,
           content_type: 'image_query',
           file_info: {
             id: 'old',
-            name: 'old.png',
+            name: 'old.gif',
             size: 100,
-            mime_type: 'image/png',
-            extension: 'png',
-            source_url: '',
+            mime_type: 'image/gif',
+            extension: 'gif',
+            source_url: imageUrl,
           },
         },
       ]
-      render(<QueryInput {...defaultProps} queries={queries} />)
-
-      capturedOnChange!([])
-
-      // Should keep text query but remove all image queries
-      expect(defaultProps.setQueries).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ content_type: 'text_query' })]),
+      render(<ControlledQuery {...defaultProps} queries={queries} />)
+      expect(await screen.findByRole('img', { name: 'Preview' })).toBeVisible()
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      expect(screen.queryByRole('img', { name: 'Preview' })).not.toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'datasetHitTesting.input.title' })).toHaveValue(
+        'text',
       )
-      // Should not contain image_query
-      const calledWith = defaultProps.setQueries.mock.calls[0]![0] as DatasetQueryContentResponse[]
-      expect(calledWith.filter((q) => q.content_type === 'image_query')).toHaveLength(0)
+      await user.click(screen.getByRole('button', { name: /input\.testing/ }))
+      expect(defaultProps.hitTestingMutation).toHaveBeenCalledWith(
+        expect.objectContaining({ query: 'text', attachment_ids: [] }),
+        expect.anything(),
+      )
     })
   })
 
@@ -440,7 +427,7 @@ describe('QueryInput', () => {
       const queries: DatasetQueryContentResponse[] = [
         { content: 'test', content_type: 'text_query', file_info: null },
         {
-          content: 'img-url',
+          content: imageUrl,
           content_type: 'image_query',
           file_info: {
             id: 'img-id',
@@ -448,7 +435,7 @@ describe('QueryInput', () => {
             size: 100,
             mime_type: 'image/png',
             extension: 'png',
-            source_url: 'img-url',
+            source_url: imageUrl,
           },
         },
       ]

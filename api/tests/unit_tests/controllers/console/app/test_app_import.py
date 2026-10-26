@@ -180,7 +180,8 @@ class TestAppImportApiCases:
         completed = status in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}
         assert permissions == ([app_id] if completed and not overwrite else [])
         assert response["permission_keys"] == (["app.acl.view_layout"] if permissions else [])
-        assert access_updates == ([] if confirm else [(app_id, "private")])
+        # Overwrites keep the existing web app access mode; only completed creations get the private default.
+        assert access_updates == ([(app_id, "private")] if completed and not overwrite else [])
         assert status_code == (
             400 if status == ImportStatus.FAILED else 202 if status == ImportStatus.PENDING and not confirm else 200
         )
@@ -315,6 +316,7 @@ class Imports:
     packages: list[PreparedAppPackage] = field(default_factory=list)
     agent_calls: list[AgentImportCall] = field(default_factory=list)
     status: ImportStatus = ImportStatus.COMPLETED
+    app_created: bool = False
     warnings: list[DslImportWarning] = field(default_factory=list)
 
     def dsl(
@@ -326,7 +328,7 @@ class Imports:
             assert isinstance(package, PreparedAppPackage)
             assert not package.archive.closed
             self.packages.append(package)
-        return Import(id="import-1", status=self.status, app_id="app-1")
+        return Import(id="import-1", status=self.status, app_id="app-1", app_created=self.app_created)
 
     def agent(self, *, source: BinaryIO, tenant_id: str, account: Account) -> RosterAgentPackageImportResult:
         self.agent_calls.append(AgentImportCall(tenant_id, account, source.read()))
@@ -588,6 +590,37 @@ class TestRosterPackageRoutesCases:
             == AppImportParams(mode="yaml-content", yaml_content=dsl, name="Renamed", app_id=app_id).model_dump()
         )
         assert imports.agent_calls == []
+
+    @staticmethod
+    @pytest.mark.parametrize("from_url", [False, True])
+    @pytest.mark.parametrize("overwrite", [False, True])
+    def test_ordinary_package_import_keeps_access_mode_on_overwrite(
+        app: Flask, imports: Imports, monkeypatch: pytest.MonkeyPatch, overwrite: bool, from_url: bool
+    ) -> None:
+        imports.app_created = not overwrite
+        access_updates: list[tuple[str, str]] = []
+        monkeypatch.setattr("services.app.console_gateway.SystemFeatureService.is_webapp_auth_enabled", lambda: True)
+        monkeypatch.setattr(
+            EnterpriseService.WebAppAuth,
+            "update_app_access_mode",
+            lambda app_id, access_mode: access_updates.append((app_id, access_mode)),
+        )
+        app_id = "app-1" if overwrite else None
+        with AppPackageService().export(dsl="kind: app\napp:\n  mode: workflow\n", name="Workflow") as package:
+            if from_url:
+                _mock_download(monkeypatch, package.archive.read())
+                _data, code = _post(
+                    app,
+                    imports,
+                    json={"mode": "yaml-url", "yaml_url": "https://example.com/workflow.ifpkg", "app_id": app_id},
+                )
+            else:
+                form: dict[str, object] = {"file": (package.archive, "workflow.ifpkg")}
+                if app_id:
+                    form["app_id"] = app_id
+                _data, code = _post(app, imports, data=form)
+        assert code == 200
+        assert access_updates == ([] if overwrite else [("app-1", "private")])
 
     @staticmethod
     def test_export_query_rejects_conflicting_version_selectors() -> None:

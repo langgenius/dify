@@ -6169,7 +6169,7 @@ export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
     | ErrorResponse
   401: ErrorResponse
   403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
-  404: AppNotFoundError | ErrorResponse
+  404: AgentVersionNotFoundError | AppNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }

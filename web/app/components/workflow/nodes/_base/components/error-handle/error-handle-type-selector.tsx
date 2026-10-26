@@ -1,12 +1,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { ErrorHandleTypeEnum } from './types'
@@ -45,8 +45,8 @@ const ErrorHandleTypeSelector = ({
   const selectedOption = options.find((option) => option.value === value)
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
+    <Menu>
+      <MenuTrigger
         render={
           <Button
             size="small"
@@ -58,11 +58,11 @@ const ErrorHandleTypeSelector = ({
       >
         {selectedOption?.label}
         <RiArrowDownSLine className="size-3.5" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-70 p-1">
-        <DropdownMenuRadioGroup value={value} onValueChange={onSelected}>
+      </MenuTrigger>
+      <MenuContent className="w-70">
+        <MenuRadioGroup value={value} onValueChange={onSelected}>
           {availableOptions.map((option) => (
-            <DropdownMenuRadioItem
+            <MenuRadioItem
               key={option.value}
               value={option.value}
               closeOnClick
@@ -72,17 +72,17 @@ const ErrorHandleTypeSelector = ({
               }}
             >
               <div className="mr-1 w-4 shrink-0">
-                <DropdownMenuRadioItemIndicator />
+                <MenuRadioItemIndicator />
               </div>
               <div className="grow">
                 <div className="mb-0.5 system-sm-semibold text-text-secondary">{option.label}</div>
                 <div className="system-xs-regular text-text-tertiary">{option.description}</div>
               </div>
-            </DropdownMenuRadioItem>
+            </MenuRadioItem>
           ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </MenuRadioGroup>
+      </MenuContent>
+    </Menu>
   )
 }
 

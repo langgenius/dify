@@ -96,7 +96,7 @@ const CategoryMarketplacePanel = ({
         >
           <span
             aria-hidden
-            className={cn('i-ri-arrow-down-s-line size-4', collapsed && '-rotate-90')}
+            className={cn('i-ri-arrow-down-s-line size-4', collapsed && '-rotate-90 rtl:rotate-90')}
           />
           {t(($) => $['list.source.marketplace'], { ns: 'plugin' })}
         </button>
@@ -111,7 +111,10 @@ const CategoryMarketplacePanel = ({
             target="_blank"
           >
             {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-            <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
+            <span
+              aria-hidden
+              className="i-ri-arrow-right-up-line size-4 [&:dir(rtl)]:-scale-x-100"
+            />
           </Link>
         </div>
       </div>

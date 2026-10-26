@@ -134,9 +134,11 @@ class AppTransfers(Protocol):
         context: RequestContext,
         params: AppImportParams,
         *,
-        as_copy: bool = False,
         package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
     ) -> Import: ...
+
+    def import_copy(self, context: RequestContext, params: AppImportParams) -> Import: ...
 
     def confirm_import(self, context: RequestContext, import_id: str) -> tuple[Import, bool]: ...
 
@@ -283,22 +285,34 @@ class ConsoleAppService:
         self._access.require_import(context, "dsl")
         result = self._transfers.import_dsl(context, params, package=package)
         self._set_import_permissions(context, result, created=result.app_created)
-        if result.app_id:
-            self._access.initialize_import_access(result.app_id)
+        self._initialize_import_access(result, created=result.app_created)
         return result
 
     def confirm_import(self, context: RequestContext, import_id: str) -> Import:
         result, created = self._transfers.confirm_import(context, import_id)
         self._set_import_permissions(context, result, created=created)
+        self._initialize_import_access(result, created=created)
         return result
 
     def _set_import_permissions(self, context: RequestContext, result: Import, *, created: bool) -> None:
+        if app_id := self._created_app_id(result, created=created):
+            result.permission_keys = self._access.imported_permissions(context, app_id)
+
+    def _initialize_import_access(self, result: Import, *, created: bool) -> None:
+        # Only newly created apps get the default access mode; overwrites keep the target app's setting.
+        if app_id := self._created_app_id(result, created=created):
+            self._access.initialize_import_access(app_id)
+
+    @staticmethod
+    def _created_app_id(result: Import, *, created: bool) -> str | None:
+        """The app id when the import completed by creating a new app; None for overwrites and unfinished imports."""
         if (
             created
             and result.app_id
             and result.status in {ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS}
         ):
-            result.permission_keys = self._access.imported_permissions(context, result.app_id)
+            return result.app_id
+        return None
 
     def get_reference(self, context: RequestContext, app_id: str) -> AppReference:
         """Admit an existing console app without retaining its database session."""
@@ -401,10 +415,8 @@ class ConsoleAppService:
         dsl = self._transfers.export_dsl(
             context, app_id, AppExportOptions(include_secret=True, preserve_agent_bindings=True)
         )
-        result = self._transfers.import_dsl(
-            context,
-            AppImportParams(mode="yaml-content", yaml_content=dsl, **params.model_dump()),
-            as_copy=True,
+        result = self._transfers.import_copy(
+            context, AppImportParams(mode="yaml-content", yaml_content=dsl, **params.model_dump())
         )
         if result.status in {ImportStatus.FAILED, ImportStatus.PENDING}:
             return result, None

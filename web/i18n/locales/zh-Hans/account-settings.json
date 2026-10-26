@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "资源",
   "resourceAccessToken.searchPlaceholder": "搜索令牌…",
   "resourceAccessToken.searchResourcesPlaceholder": "搜索应用或知识库…",
-  "resourceAccessToken.tabAll": "全部",
+  "resourceAccessToken.tabAllTypes": "全部类型",
   "resourceAccessToken.tabApps": "应用",
   "resourceAccessToken.tabKnowledgeBases": "知识库",
   "resourceAccessToken.token": "令牌",

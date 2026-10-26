@@ -43,7 +43,7 @@ export default function ResourceAccessTokenTable({
 
   return (
     <div className="max-h-[min(32rem,60vh)] overflow-auto overscroll-contain">
-      <table className="w-full table-fixed text-left">
+      <table className="w-full min-w-150 table-fixed text-start">
         <colgroup>
           <col className="w-1/6" />
           <col className="w-1/4" />
@@ -53,21 +53,21 @@ export default function ResourceAccessTokenTable({
         </colgroup>
         <thead className="sticky top-0 z-10 bg-components-panel-bg system-xs-medium-uppercase text-text-tertiary">
           <tr className="border-b border-divider-subtle">
-            <th scope="col" className="pr-4 pb-3 font-medium">
+            <th scope="col" className="pe-4 pb-3 text-start font-medium">
               {t(($) => $['resourceAccessToken.name'], { ns: 'accountSettings' })}
             </th>
-            <th scope="col" className="pr-4 pb-3 font-medium">
+            <th scope="col" className="pe-4 pb-3 text-start font-medium">
               {t(($) => $['resourceAccessToken.token'], { ns: 'accountSettings' })}
             </th>
-            <th scope="col" className="pr-4 pb-3 font-medium">
+            <th scope="col" className="pe-4 pb-3 text-start font-medium">
               {t(($) => $['resourceAccessToken.accessibleResources'], {
                 ns: 'accountSettings',
               })}
             </th>
-            <th scope="col" className="pr-4 pb-3 font-medium">
+            <th scope="col" className="pe-4 pb-3 text-start font-medium">
               {t(($) => $['resourceAccessToken.createdColumn'], { ns: 'accountSettings' })}
             </th>
-            <th scope="col" className="pb-3 font-medium">
+            <th scope="col" className="pb-3 text-start font-medium">
               {t(($) => $['resourceAccessToken.actions'], { ns: 'accountSettings' })}
             </th>
           </tr>
