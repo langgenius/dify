@@ -9,7 +9,11 @@ import type {
   PickerValueProps,
 } from '../internal/picker-parts'
 import type { TimePanelLabels, TimePanelProps } from '../internal/time-panel'
-import { useControlled } from '@base-ui/utils/useControlled'
+import type {
+  PickerChangeEventDetails,
+  PickerChangeEventReason,
+} from '../internal/use-picker-value'
+import { createChangeEventDetails } from '@base-ui/react/internals/createBaseUIEventDetails'
 import { TZDate } from '@date-fns/tz'
 import * as React from 'react'
 import { Button } from '../../button'
@@ -25,20 +29,25 @@ import {
 } from '../internal/picker-parts'
 import { TimePanel } from '../internal/time-panel'
 import { formatTimeValue, requireTimeValue } from '../internal/time-value'
+import { usePickerValue } from '../internal/use-picker-value'
 
 type TimePickerLabels = TimePanelLabels & {
   title: string
+  close: string
   now: string
   apply: string
   unavailable: string
 }
+type TimePickerChangeEventReason = PickerChangeEventReason
+type TimePickerChangeEventDetails = PickerChangeEventDetails
+
 type TimePickerProps = PickerFieldProps &
   Pick<TimePanelProps, 'hourCycle' | 'minuteStep'> & {
     /** A 24-hour HH:mm wall time, independent of a date or time zone. */
     value?: string | null
     defaultValue?: string | null
     /** Called on OK, clearing or form reset; popup draft edits do not emit changes. */
-    onValueChange?: (value: string | null) => void
+    onValueChange?: (value: string | null, details: TimePickerChangeEventDetails) => void
     isTimeUnavailable?: (value: string) => boolean
     locale?: Intl.LocalesArgument
     /** IANA zone used for Now and the initial empty draft; it does not convert value. */
@@ -47,10 +56,11 @@ type TimePickerProps = PickerFieldProps &
   }
 type ContextValue = Omit<
   TimePickerProps,
-  'value' | 'defaultValue' | 'onValueChange' | 'children'
+  'value' | 'defaultValue' | 'onValueChange' | 'children' | 'labels'
 > & {
+  labels: TimePickerLabels
   value: Exclude<TimePickerProps['value'], undefined>
-  commit: NonNullable<TimePickerProps['onValueChange']>
+  commit: (value: string | null, details: TimePickerChangeEventDetails) => boolean
 }
 const Context = React.createContext<ContextValue | null>(null)
 function useContext() {
@@ -60,6 +70,7 @@ function useContext() {
 }
 const defaultLabels: TimePickerLabels = {
   title: 'Pick Time',
+  close: 'Close',
   hour: 'Hour',
   minute: 'Minute',
   period: 'Period',
@@ -77,9 +88,12 @@ function TimePicker({
   children,
   ...props
 }: TimePickerProps) {
-  const [value, setValue] = useControlled({
-    controlled: valueProp,
-    default: defaultValue,
+  const { value, commit } = usePickerValue<string>({
+    value: valueProp,
+    defaultValue,
+    onValueChange,
+    disabled: props.disabled,
+    readOnly: props.readOnly,
     name: 'TimePicker',
   })
   requireTimeValue(value)
@@ -87,23 +101,15 @@ function TimePicker({
     value &&
     (props.isTimeUnavailable?.(value) || Number(value.slice(3)) % (props.minuteStep ?? 1) !== 0),
   )
-  function commit(next: string | null) {
-    if (props.disabled || props.readOnly) return
-    if (next !== value) {
-      setValue(next)
-      onValueChange?.(next)
-    }
-  }
+
+  const labels = { ...defaultLabels, ...props.labels }
+
   return (
-    <Context.Provider value={{ ...props, value, commit }}>
+    <Context.Provider value={{ ...props, value, commit, labels }}>
       <PickerRoot
         {...props}
         invalid={props.invalid || unavailable}
-        validationMessage={
-          unavailable
-            ? (props.labels?.unavailable ?? defaultLabels.unavailable)
-            : props.validationMessage
-        }
+        validationMessage={unavailable ? labels.unavailable : props.validationMessage}
         placeholder={props.placeholder ?? 'Select time'}
         displayValue={
           value
@@ -115,12 +121,10 @@ function TimePicker({
               }).format(new Date(`2025-01-01T${value}:00Z`))
             : ''
         }
+        value={value}
         serializedValue={value ?? ''}
-        onClear={() => commit(null)}
-        onReset={() => {
-          setValue(defaultValue)
-          if (defaultValue !== value) onValueChange?.(defaultValue)
-        }}
+        onClear={(details) => commit(null, details)}
+        onReset={(details) => commit(defaultValue, details)}
       >
         {children}
       </PickerRoot>
@@ -151,9 +155,9 @@ const TimePickerClear = PickerClear
 const TimePickerLabel = PickerLabel
 const TimePickerValue = PickerValue
 function TimePickerContent(props: TimePickerContentProps) {
-  const { value, timeZone } = useContext()
+  const { value, timeZone, labels } = useContext()
   return (
-    <PickerContent {...props}>
+    <PickerContent {...props} closeLabel={labels.close}>
       <Session key={`${value ?? ''}-${timeZone ?? ''}`} />
     </PickerContent>
   )
@@ -176,9 +180,8 @@ function Session() {
     timeZone,
     minuteStep = 1,
   } = useContext()
-  const { close } = usePickerContext()
+  const { close, canEdit } = usePickerContext()
   const [draft, setDraft] = React.useState(() => value ?? currentTime(timeZone, minuteStep))
-  const text = { ...defaultLabels, ...labels }
   const unavailable = Boolean(
     isTimeUnavailable?.(draft) || Number(draft.slice(3)) % minuteStep !== 0,
   )
@@ -186,11 +189,11 @@ function Session() {
   const errorId = React.useId()
   return (
     <PickerPanel
-      header={<PickerPanelHeader>{text.title}</PickerPanelHeader>}
+      header={<PickerPanelHeader>{labels.title}</PickerPanelHeader>}
       message={
         unavailable && (
           <p id={errorId} role="status" className="px-2 system-xs-regular text-text-destructive">
-            {text.unavailable}
+            {labels.unavailable}
           </p>
         )
       }
@@ -204,7 +207,7 @@ function Session() {
               requestScroll()
             }}
           >
-            {text.now}
+            {labels.now}
           </Button>
           <Button
             variant="primary"
@@ -212,12 +215,18 @@ function Session() {
             size="small"
             disabled={unavailable}
             aria-describedby={unavailable ? errorId : undefined}
-            onClick={() => {
-              commit(draft)
-              close()
+            onClick={(event) => {
+              if (
+                canEdit() &&
+                commit(
+                  draft,
+                  createChangeEventDetails('item-press', event.nativeEvent, event.currentTarget),
+                )
+              )
+                close()
             }}
           >
-            {text.apply}
+            {labels.apply}
           </Button>
         </React.Fragment>
       }
@@ -227,7 +236,7 @@ function Session() {
         scrollRequest={scrollRequest}
         value={draft}
         onValueChange={setDraft}
-        labels={text}
+        labels={labels}
         locale={locale}
         hourCycle={hourCycle}
       />
@@ -244,6 +253,8 @@ export {
   TimePickerValue,
 }
 export type {
+  TimePickerChangeEventDetails,
+  TimePickerChangeEventReason,
   TimePickerClearProps,
   TimePickerContentProps,
   TimePickerLabelProps,

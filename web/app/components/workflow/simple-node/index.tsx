@@ -14,9 +14,7 @@ import { NodeTargetHandle } from '@/app/components/workflow/nodes/_base/componen
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 
-type SimpleNodeProps = NodeProps
-
-const SimpleNode: FC<SimpleNodeProps> = ({ id, data }) => {
+const SimpleNode: FC<NodeProps> = ({ id, data }) => {
   const { nodesReadOnly } = useNodesReadOnly()
 
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering

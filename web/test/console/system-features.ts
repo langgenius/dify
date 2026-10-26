@@ -15,6 +15,7 @@ export type DeepPartial<T> =
       : T
 
 const baseSystemFeatures = {
+  agent_tracing_api_collection_enabled: false,
   deployment_edition: 'COMMUNITY',
   enable_app_deploy: false,
   sso_enforced_for_signin: false,
@@ -56,7 +57,6 @@ const baseSystemFeatures = {
   enable_explore_banner: false,
   enable_learn_app: true,
   enable_step_by_step_tour: false,
-  knowledge_fs_enabled: false,
 } satisfies GetSystemFeaturesResponse
 
 const baseSystemFeaturesLicense = {

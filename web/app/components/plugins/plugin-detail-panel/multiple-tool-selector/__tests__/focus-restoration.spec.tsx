@@ -1,29 +1,12 @@
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { CollectionType } from '@/app/components/tools/types'
 import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import MultipleToolSelector from '../index'
-
-const mockTools = vi.hoisted(() => ({
-  builtIn: [] as ToolWithProvider[],
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockTools.builtIn, isFetched: true }),
-  useAllCustomTools: () => ({ data: [], isFetched: true }),
-  useAllMCPTools: () => ({ data: [], isFetched: true }),
-  useAllWorkflowTools: () => ({ data: [], isFetched: true }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
-}))
-
-vi.mock('@/service/use-plugins', () => ({
-  useCheckInstalled: () => ({ data: undefined }),
-  useInvalidateInstalledPluginList: () => vi.fn(),
-  usePluginManifestInfo: () => ({ data: undefined }),
-}))
 
 const createToolValue = (index: number): ToolValue => ({
   provider_name: `provider-${index}`,
@@ -32,34 +15,32 @@ const createToolValue = (index: number): ToolValue => ({
   enabled: true,
 })
 
-const createToolProvider = (value: ToolValue): ToolWithProvider => ({
-  id: value.provider_name,
-  name: value.provider_name,
-  author: 'Dify',
-  description: { en_US: '', zh_Hans: '' },
-  icon: 'icon.svg',
-  label: { en_US: value.provider_name, zh_Hans: value.provider_name },
-  type: CollectionType.builtIn,
-  team_credentials: {},
-  is_team_authorization: true,
-  allow_delete: false,
-  labels: [],
-  tools: [
-    {
-      name: value.tool_name,
-      author: 'Dify',
-      label: { en_US: value.tool_label, zh_Hans: value.tool_label },
-      description: { en_US: '', zh_Hans: '' },
-      parameters: [],
-      labels: [],
-      output_schema: {},
-    },
-  ],
-  meta: {} as ToolWithProvider['meta'],
-})
+const createToolProvider = (value: ToolValue) =>
+  createToolProviderFixture({
+    id: value.provider_name,
+    name: value.provider_name,
+    is_team_authorization: true,
+    allow_delete: false,
+    tools: [
+      {
+        name: value.tool_name,
+        author: 'Dify',
+        label: { en_US: value.tool_label },
+        description: { en_US: '' },
+        parameters: [],
+      },
+    ],
+  })
 
 function renderSelector(initialValue: ToolValue[]) {
-  mockTools.builtIn = initialValue.map(createToolProvider)
+  const queryClient = createConsoleQueryClient()
+  seedToolProviders(queryClient, {
+    builtInTools: initialValue.map(createToolProvider),
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  const onChange = vi.fn()
 
   function Harness() {
     const [value, setValue] = useState(initialValue)
@@ -69,7 +50,10 @@ function renderSelector(initialValue: ToolValue[]) {
         <MultipleToolSelector
           value={value}
           label="Tools"
-          onChange={setValue}
+          onChange={(next) => {
+            setValue(next)
+            onChange(next)
+          }}
           nodeOutputVars={[]}
           availableNodes={[]}
         />
@@ -77,7 +61,7 @@ function renderSelector(initialValue: ToolValue[]) {
     )
   }
 
-  return render(<Harness />)
+  return { ...renderWithConsoleQuery(<Harness />, { queryClient }), onChange }
 }
 
 describe('MultipleToolSelector focus restoration', () => {
@@ -102,14 +86,20 @@ describe('MultipleToolSelector focus restoration', () => {
     },
   ])('moves focus to $name', async ({ tools, deleteIndex, expectedFocusName }) => {
     const user = userEvent.setup()
-    renderSelector(tools)
+    const { onChange } = renderSelector(tools)
 
     const deleteButton = screen.getAllByRole('button', {
       name: 'common.operation.delete',
-    })[deleteIndex]
-    deleteButton?.focus()
+    })[deleteIndex]!
+    deleteButton.focus()
     await user.keyboard('{Enter}')
 
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(
+      tools.filter((_, index) => index !== deleteIndex),
+    )
+    expect(
+      screen.queryByRole('button', { name: tools[deleteIndex]!.tool_label }),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: expectedFocusName })).toHaveFocus()
   })
 })

@@ -23,7 +23,6 @@ import {
   getVarDisplayName,
   getVariableCategory,
   getVariableMeta,
-  getWidthAllocations,
   isShowAPartSelector,
 } from '../var-reference-picker.helpers'
 
@@ -217,23 +216,7 @@ describe('var-reference-picker.helpers', () => {
     ).toBe('rag')
   })
 
-  it('should calculate width allocations and tooltip behavior', () => {
-    expect(getWidthAllocations(240, 'Node', 'answer', 'string')).toEqual({
-      maxNodeNameWidth: expect.any(Number),
-      maxTypeWidth: expect.any(Number),
-      maxVarNameWidth: expect.any(Number),
-    })
-
-    expect(getWidthAllocations(240, '', 'sys.user_id', 'String')).toEqual({
-      maxNodeNameWidth: 0,
-      maxTypeWidth: 64,
-      maxVarNameWidth: 119,
-    })
-
-    expect(getWidthAllocations(240, 'User Input', 'aa', 'String')).toMatchObject({
-      maxVarNameWidth: 16,
-    })
-
+  it('selects the tooltip for a valid, invalid, or absent variable', () => {
     expect(getTooltipContent(true, true, true)).toBe('full-path')
     expect(getTooltipContent(true, false, false)).toBe('invalid-variable')
     expect(getTooltipContent(false, false, true)).toBeNull()

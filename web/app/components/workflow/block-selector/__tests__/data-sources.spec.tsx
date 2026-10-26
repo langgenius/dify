@@ -20,7 +20,8 @@ const { marketplaceQuery, language, trackEvent } = vi.hoisted(() => ({
   language: { value: 'en_US' },
   trackEvent: vi.fn(),
 }))
-vi.mock('@/app/components/plugins/marketplace/query', () => ({
+vi.mock('@/app/components/plugins/marketplace/query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/plugins/marketplace/query')>()),
   useMarketplacePlugins: marketplaceQuery,
 }))
 vi.mock('@/context/i18n', () => ({ useGetLanguage: () => language.value }))
@@ -44,6 +45,7 @@ const namedProvider = (name: string): RagPipelineDatasourceProviderResponse => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  marketplaceQuery.mockReturnValue({ data: undefined } as ReturnType<typeof useMarketplacePlugins>)
   language.value = 'en_US'
 })
 

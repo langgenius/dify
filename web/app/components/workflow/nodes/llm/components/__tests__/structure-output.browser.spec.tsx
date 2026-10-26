@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { Type } from '../../types'
 import { StructureOutput } from '../structure-output'
 
@@ -63,9 +62,14 @@ function renderOutput() {
     }).queryKey,
     { data: [] },
   )
-  queryClient.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
-    data: null,
-  })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: ModelTypeEnum.textGeneration } },
+    }),
+    {
+      data: null,
+    },
+  )
   return render(
     <QueryClientProvider client={queryClient}>
       <StructuredOutputFixture />

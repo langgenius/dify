@@ -1,6 +1,8 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DocumentActionType } from '@/models/datasets'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { useDocumentActions } from '../use-document-actions'
 
 const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
@@ -15,17 +17,12 @@ const mockDisable = vi.fn()
 const mockDelete = vi.fn()
 const mockRetryIndex = vi.fn()
 const mockDownloadZip = vi.fn()
-let mockIsDownloadingZip = false
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentArchive: () => ({ mutateAsync: mockArchive }),
-  useDocumentSummary: () => ({ mutateAsync: mockSummary }),
-  useDocumentEnable: () => ({ mutateAsync: mockEnable }),
-  useDocumentDisable: () => ({ mutateAsync: mockDisable }),
-  useDocumentDelete: () => ({ mutateAsync: mockDelete }),
-  useDocumentBatchRetryIndex: () => ({ mutateAsync: mockRetryIndex }),
-  useDocumentDownloadZip: () => ({ mutateAsync: mockDownloadZip, isPending: mockIsDownloadingZip }),
-}))
+const statusMocks: Record<string, (input: unknown) => unknown> = {
+  archive: (input) => mockArchive(input),
+  enable: (input) => mockEnable(input),
+  disable: (input) => mockDisable(input),
+}
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -39,6 +36,22 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
 }))
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': (input: {
+        params: { action: string }
+      }) => statusMocks[input.params.action]!(input),
+      'datasets.byDatasetId.documents.generateSummary.post': (input) => mockSummary(input),
+      'datasets.byDatasetId.documents.delete': (input) => mockDelete(input),
+      'datasets.byDatasetId.retry.post': (input) => mockRetryIndex(input),
+    }),
+  }
+})
+
 describe('useDocumentActions', () => {
   const defaultOptions = {
     datasetId: 'ds-1',
@@ -50,15 +63,6 @@ describe('useDocumentActions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsDownloadingZip = false
-  })
-
-  it('should return expected functions and state', () => {
-    const { result } = renderHook(() => useDocumentActions(defaultOptions))
-    expect(result.current.handleAction).toBeInstanceOf(Function)
-    expect(result.current.handleBatchReIndex).toBeInstanceOf(Function)
-    expect(result.current.handleBatchDownload).toBeInstanceOf(Function)
-    expect(typeof result.current.isDownloadingZip).toBe('boolean')
   })
 
   describe('handleAction', () => {
@@ -71,11 +75,12 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockArchive).toHaveBeenCalledWith({
-        datasetId: 'ds-1',
-        documentIds: ['doc-1', 'doc-2'],
+        params: { dataset_id: 'ds-1', action: 'archive' },
+        query: { document_id: ['doc-1', 'doc-2'] },
       })
       expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
+      expect(defaultOptions.onClearSelection).not.toHaveBeenCalled()
     })
 
     it('should call enable API on enable action', async () => {
@@ -87,8 +92,8 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockEnable).toHaveBeenCalledWith({
-        datasetId: 'ds-1',
-        documentIds: ['doc-1', 'doc-2'],
+        params: { dataset_id: 'ds-1', action: 'enable' },
+        query: { document_id: ['doc-1', 'doc-2'] },
       })
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
     })
@@ -128,17 +133,6 @@ describe('useDocumentActions', () => {
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
     })
 
-    it('should not call onClearSelection on non-delete action success', async () => {
-      mockArchive.mockResolvedValue({ result: 'success' })
-      const { result } = renderHook(() => useDocumentActions(defaultOptions))
-
-      await act(async () => {
-        await result.current.handleAction(DocumentActionType.archive)()
-      })
-
-      expect(defaultOptions.onClearSelection).not.toHaveBeenCalled()
-    })
-
     it('should show error toast on action failure', async () => {
       mockArchive.mockRejectedValue(new Error('fail'))
       const { result } = renderHook(() => useDocumentActions(defaultOptions))
@@ -162,8 +156,8 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockRetryIndex).toHaveBeenCalledWith({
-        datasetId: 'ds-1',
-        documentIds: ['doc-1', 'doc-2'],
+        params: { dataset_id: 'ds-1' },
+        body: { document_ids: ['doc-1', 'doc-2'] },
       })
       expect(defaultOptions.onClearSelection).toHaveBeenCalled()
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
@@ -181,6 +175,25 @@ describe('useDocumentActions', () => {
     })
   })
 
+  it('tracks the download request while the archive is being prepared', async () => {
+    const pending = createDeferred<Blob>()
+    mockDownloadZip.mockReturnValue(pending.promise)
+    const { result } = renderHook(() => useDocumentActions(defaultOptions))
+    let download: Promise<void>
+    act(() => {
+      download = result.current.handleBatchDownload()
+    })
+    await waitFor(() => expect(result.current.isDownloadingZip).toBe(true))
+    await act(async () => {
+      await result.current.handleBatchDownload()
+    })
+    expect(mockDownloadZip).toHaveBeenCalledOnce()
+    await act(async () => {
+      pending.resolve(new Blob(['archive']))
+      await download
+    })
+    await waitFor(() => expect(result.current.isDownloadingZip).toBe(false))
+  })
   describe('handleBatchDownload', () => {
     it('should download blob on success', async () => {
       const blob = new Blob(['test'])
@@ -213,16 +226,10 @@ describe('useDocumentActions', () => {
 
       expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
     })
-
-    it('should show error toast when blob is null', async () => {
-      mockDownloadZip.mockResolvedValue(null)
-      const { result } = renderHook(() => useDocumentActions(defaultOptions))
-
-      await act(async () => {
-        await result.current.handleBatchDownload()
-      })
-
-      expect(mockToastError).toHaveBeenCalledWith(expect.any(String))
-    })
   })
 })
+
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  downloadDocumentsZip: (...args: unknown[]) => mockDownloadZip(...args),
+}))

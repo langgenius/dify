@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import MagicMock
@@ -33,15 +34,12 @@ from services.errors.message import (
 from services.message_service import MessageService, attach_message_extra_contents
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     """Expose the SQLite engine and shared session through the production DB interface."""
 
     engine: Engine
     session: scoped_session[Session]
-
-    def __init__(self, engine: Engine, session: scoped_session[Session]) -> None:
-        self.engine = engine
-        self.session = session
 
 
 class MessageServiceTestDataFactory:

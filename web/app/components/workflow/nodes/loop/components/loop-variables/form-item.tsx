@@ -39,7 +39,7 @@ const FormItem = ({ nodeId, item, onChange }: FormItemProps) => {
   )
 
   const handleChange = useCallback(
-    (value: any) => {
+    (value: unknown) => {
       onChange(value)
     },
     [onChange],

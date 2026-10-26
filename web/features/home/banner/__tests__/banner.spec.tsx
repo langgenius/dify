@@ -127,32 +127,6 @@ vi.mock('@/app/components/base/carousel', () => ({
   },
 }))
 
-vi.mock('../banner-item', () => ({
-  BannerItem: ({
-    banner,
-    sort,
-    language,
-    accountId,
-    titleId,
-  }: {
-    banner: BannerResponse
-    sort: number
-    language: string
-    accountId?: string
-    titleId?: string
-  }) => (
-    <article
-      data-testid="banner-item"
-      data-banner-id={banner.id}
-      data-sort={sort}
-      data-language={language}
-      data-account-id={accountId}
-    >
-      <p id={titleId}>{banner.content.title}</p>
-    </article>
-  ),
-}))
-
 const createMockBanner = (
   id: string,
   status: BannerResponse['status'] = 'enabled',
@@ -203,7 +177,10 @@ describe('Banner', () => {
 
     expect(screen.getByRole('region', { name: 'banner.carouselLabel' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'pagination.pageNumber' })).toBeInTheDocument()
-    expect(screen.getAllByTestId('banner-item')).toHaveLength(2)
+    expect(screen.getByRole('link', { name: 'First banner' })).toHaveAttribute(
+      'href',
+      'https://example.com',
+    )
   })
 
   it('keeps only the active slide exposed to assistive technology and keyboard focus', () => {
@@ -221,6 +198,10 @@ describe('Banner', () => {
     expect(firstSlide).not.toHaveAttribute('inert')
     expect(secondSlide).toHaveAttribute('aria-hidden', 'true')
     expect(secondSlide).toHaveAttribute('inert')
+    act(() => setMockSelectedIndex(1))
+    expect(firstSlide).toHaveAttribute('inert')
+    expect(secondSlide).not.toHaveAttribute('inert')
+    expect(screen.getByRole('link', { name: 'Second banner' })).toBeInTheDocument()
   })
 
   it('names each slide with its visible title', () => {
@@ -446,7 +427,7 @@ describe('Banner', () => {
   it('does not render rotation controls for one banner', () => {
     render(<Banner banners={[createMockBanner('1', 'enabled', 'Only banner')]} />)
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Rotation/ })).not.toBeInTheDocument()
   })
 
   it('tracks each enabled banner impression once as selection changes', () => {
@@ -461,7 +442,12 @@ describe('Banner', () => {
 
     expect(mockTrackEvent).toHaveBeenCalledWith(
       'explore_banner_impression',
-      expect.objectContaining({ banner_id: '1', sort: 1 }),
+      expect.objectContaining({
+        banner_id: '1',
+        sort: 1,
+        language: 'en-US',
+        account_id: 'account-123',
+      }),
     )
 
     act(() => setMockSelectedIndex(1))
@@ -472,14 +458,6 @@ describe('Banner', () => {
 
     act(() => setMockSelectedIndex(0))
     expect(mockTrackEvent).toHaveBeenCalledTimes(2)
-  })
-
-  it('passes tracking context to each banner item', () => {
-    render(<Banner banners={[createMockBanner('1')]} />)
-
-    expect(screen.getByTestId('banner-item')).toHaveAttribute('data-sort', '1')
-    expect(screen.getByTestId('banner-item')).toHaveAttribute('data-language', 'en-US')
-    expect(screen.getByTestId('banner-item')).toHaveAttribute('data-account-id', 'account-123')
   })
 
   it('does not track impressions without an account id', () => {

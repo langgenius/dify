@@ -53,7 +53,9 @@ it('keeps a long group path between search and the next selectable row', async (
   const search = screen.getByRole('searchbox', { name: 'Search' }).element()
   const nextRow = screen.getByRole('button', { name: 'Child group 1' }).element()
 
-  for (const line of text.getClientRects()) {
+  const lines = Array.from(text.getClientRects())
+  expect(lines.length).toBeGreaterThan(0)
+  for (const line of lines) {
     expect(line.top).toBeGreaterThanOrEqual(search.getBoundingClientRect().bottom)
     expect(line.bottom).toBeLessThanOrEqual(nextRow.getBoundingClientRect().top)
     expect(line.left).toBeGreaterThanOrEqual(navigation.getBoundingClientRect().left)

@@ -23,7 +23,6 @@ import {
   useUpdateAppUserAccessSettings,
 } from '@/service/access-control/use-app-access-config'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 
 type AppAccessConfigPageProps = {
@@ -265,7 +264,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
     ],
   )
 
-  if (appDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig) return null
+  if (appDetail.mode === 'agent' || !appACLCapabilities.canAccessConfig) return null
 
   return <AppAccessConfigContent appId={appId} maintainerId={appDetail.maintainer} />
 }

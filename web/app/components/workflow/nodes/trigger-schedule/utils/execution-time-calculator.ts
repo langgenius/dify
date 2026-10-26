@@ -237,7 +237,7 @@ export const getNextExecutionTimes = (data: ScheduleTriggerNodeType, count: numb
         if (selectedDay === 'last') {
           targetDay = daysInMonth
         } else {
-          const dayNumber = selectedDay as number
+          const dayNumber = selectedDay
           if (dayNumber > daysInMonth) continue
 
           targetDay = dayNumber

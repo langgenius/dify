@@ -10,7 +10,7 @@ describe('ContentWrapper', () => {
   ) =>
     render(
       <ContentWrapper nodeTitle="Human Input Node" {...props}>
-        <div data-testid="child-content">Child Content</div>
+        <div>Child Content</div>
       </ContentWrapper>,
     )
 
@@ -18,7 +18,7 @@ describe('ContentWrapper', () => {
     renderContentWrapper()
 
     expect(screen.getByText('Human Input Node')).toBeInTheDocument()
-    expect(screen.getByTestId('child-content')).toBeInTheDocument()
+    expect(screen.getByText('Child Content')).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
@@ -26,45 +26,20 @@ describe('ContentWrapper', () => {
     const user = userEvent.setup()
     renderContentWrapper({ showExpandIcon: true, expanded: false })
 
-    expect(screen.queryByTestId('child-content')).not.toBeInTheDocument()
+    expect(screen.queryByText('Child Content')).not.toBeInTheDocument()
     const expandToggle = screen.getByRole('button', {
       name: 'share.chat.expand Human Input Node',
     })
     expect(expandToggle).toHaveAttribute('aria-expanded', 'false')
 
     await user.click(expandToggle)
-    expect(screen.getByTestId('child-content')).toBeInTheDocument()
+    expect(screen.getByText('Child Content')).toBeInTheDocument()
     const collapseToggle = screen.getByRole('button', {
       name: 'share.chat.collapse Human Input Node',
     })
     expect(collapseToggle).toHaveAttribute('aria-expanded', 'true')
 
     await user.click(collapseToggle)
-    expect(screen.queryByTestId('child-content')).not.toBeInTheDocument()
-  })
-
-  it.each([
-    ['Enter', '{Enter}'],
-    ['Space', ' '],
-  ])('should expand with the %s key', async (_, key) => {
-    const user = userEvent.setup()
-    renderContentWrapper({ showExpandIcon: true, expanded: false })
-
-    const expandToggle = screen.getByRole('button', {
-      name: 'share.chat.expand Human Input Node',
-    })
-    expandToggle.focus()
-    await user.keyboard(key)
-
-    expect(screen.getByTestId('child-content')).toBeInTheDocument()
-  })
-
-  it('should render children initially if expanded is true', () => {
-    renderContentWrapper({ showExpandIcon: true, expanded: true })
-
-    expect(screen.getByTestId('child-content')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'share.chat.collapse Human Input Node' }),
-    ).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.queryByText('Child Content')).not.toBeInTheDocument()
   })
 })

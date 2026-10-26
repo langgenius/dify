@@ -172,17 +172,13 @@ export type HumanInputFormPreviewPayload = {
 }
 
 export type HumanInputFormPreviewResponse = {
-  actions?: Array<{
-    [key: string]: unknown
-  }>
+  actions?: Array<UserActionConfig>
   display_in_ui?: boolean | null
   expiration_time?: number | null
   form_content: string
   form_id: string
   form_token?: string | null
-  inputs?: Array<{
-    [key: string]: unknown
-  }>
+  inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
   resolved_default_values?: {
@@ -190,7 +186,7 @@ export type HumanInputFormPreviewResponse = {
   }
 }
 
-export type HumanInputFormSubmitPayload = {
+export type HumanInputFormPreviewSubmitPayload = {
   action: string
   form_inputs: {
     [key: string]: unknown
@@ -210,7 +206,7 @@ export type IterationNodeRunPayload = {
   } | null
 }
 
-export type GeneratedAppResponse = JsonValue
+export type GeneratedAppResponse = ShallowJsonValue
 
 export type LoopNodeRunPayload = {
   inputs?: {
@@ -527,7 +523,7 @@ export type ConversationDetail = {
   id: string
   introduction?: string | null
   message_count: number
-  model_config?: ModelConfig | null
+  model_config?: ConversationModelConfig | null
   status: string
   updated_at?: number | null
   user_feedback_stats?: FeedbackStat | null
@@ -567,7 +563,7 @@ export type ConversationMessageDetail = {
   from_source: string
   id: string
   message?: MessageDetail | null
-  model_config?: ModelConfig | null
+  model_config?: ConversationModelConfig | null
   status: string
 }
 
@@ -632,7 +628,7 @@ export type RosterAgentPackageExportFailedError = ErrorResponse & {
   status: 500
 }
 
-export type MessageFeedbackPayload = {
+export type AppMessageFeedbackPayload = {
   content?: string | null
   message_id: string
   rating?: 'dislike' | 'like' | null
@@ -660,15 +656,16 @@ export type MessageDetailResponse = {
   from_source: string
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
-  message: JsonValue
+  message: AnyJsonValue
   message_files: Array<MessageFile>
   message_tokens: number
-  metadata: JsonValue
+  metadata: AnyJsonValue
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
+  retriever_resources?: Array<RetrievalSourceMetadata>
   status: string
   workflow_run_id?: string | null
 }
@@ -697,6 +694,36 @@ export type AppModelConfigPayload = {
 
 export type AppNamePayload = {
   name: string
+}
+
+export type AppNetworkAccessGroupResponse = {
+  app_id: string
+  available_access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  binding: AppNetworkAccessGroupBindingResponse | null
+  effective_enabled: boolean
+  entitled: boolean
+  tenant_id: string
+}
+
+export type AppNetworkAccessGroupUpdatePayload = {
+  access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  enabled: boolean
+  expected_version: number
+  group_id: string | null
+}
+
+export type AppNetworkAccessGroupMutationResponse = {
+  available_access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  binding: AppNetworkAccessGroupBindingResponse
+  effective_enabled: boolean
+}
+
+export type AppNetworkAccessGroupStatusResponse = {
+  available_count: number
+  configured: boolean
+  covered_count: number
+  enabled: boolean
+  entitled: boolean
 }
 
 export type RedirectUrlResponse = {
@@ -825,13 +852,22 @@ export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
 export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
 
 export type AppTraceResponse = {
+  capture_agent?: boolean
+  capture_content?: boolean
   enabled?: boolean
   tracing_provider?: string | null
 }
 
 export type AppTracePayload = {
+  capture_agent?: boolean
+  capture_content?: boolean
   enabled: boolean
   tracing_provider?: string | null
+}
+
+export type InvalidTracingConfigError = ErrorResponse & {
+  code: 'invalid_tracing_config'
+  status: 400
 }
 
 export type TracingProviderUnavailableError = ErrorResponse & {
@@ -849,9 +885,26 @@ export type TraceConfigNotFoundError = ErrorResponse & {
   status: 404
 }
 
+export type TracingConfigConflictError = ErrorResponse & {
+  code: 'tracing_config_conflict'
+  status: 409
+}
+
 export type TracingConfigProcessingFailedError = ErrorResponse & {
   code: 'tracing_config_processing_failed'
   status: 500
+}
+
+export type TraceProviderCapabilitiesResponse = {
+  agent_spans: boolean
+  api_collection_enabled: boolean
+  export_ack: 'accepted'
+  native_cost: boolean
+  native_usage: boolean
+  provider: string
+  session: boolean
+  span_url: boolean
+  trace_url: boolean
 }
 
 export type TraceAppConfigResponse = {
@@ -863,22 +916,18 @@ export type TraceAppConfigResponse = {
   is_active?: boolean | null
   result?: string | null
   tracing_config?: {
-    [key: string]: unknown
+    [key: string]: string | null
   } | null
   tracing_provider?: string | null
   updated_at?: string | null
 }
 
 export type TraceConfigPayload = {
+  activate?: boolean
   tracing_config: {
-    [key: string]: unknown
+    [key: string]: string | null
   }
   tracing_provider: string
-}
-
-export type InvalidTracingConfigError = ErrorResponse & {
-  code: 'invalid_tracing_config'
-  status: 400
 }
 
 export type TracingConfigVerificationFailedError = ErrorResponse & {
@@ -888,6 +937,68 @@ export type TracingConfigVerificationFailedError = ErrorResponse & {
 
 export type TraceConfigAlreadyExistsError = ErrorResponse & {
   code: 'trace_config_already_exists'
+  status: 409
+}
+
+export type TraceRunStatusResponse = {
+  accepted_at?: string | null
+  attempts?: number | null
+  capabilities?: TraceProviderSupportResponse | null
+  capture_agent?: boolean | null
+  capture_content?: boolean | null
+  config_revision?: string | null
+  error_code?: string | null
+  project_url?: string | null
+  provider?: string | null
+  queryable?: boolean | null
+  source_id: string
+  source_kind: TraceSourceKind
+  span_count?: number | null
+  span_url?: string | null
+  status:
+    | 'accepted'
+    | 'collecting'
+    | 'exporting'
+    | 'failed'
+    | 'not_collected'
+    | 'ready'
+    | 'retrying'
+    | 'uncertain'
+  trace_id?: string | null
+  trace_url?: string | null
+}
+
+export type TracingNodeNotFoundError = ErrorResponse & {
+  code: 'tracing_node_not_found'
+  status: 404
+}
+
+export type TracingSourceNotFoundError = ErrorResponse & {
+  code: 'tracing_source_not_found'
+  status: 404
+}
+
+export type TraceRunRetryPayload = {
+  acknowledge_possible_duplicates?: boolean
+}
+
+export type TracingRunNotFoundError = ErrorResponse & {
+  code: 'tracing_run_not_found'
+  status: 404
+}
+
+export type TracingAlreadyAcceptedError = ErrorResponse & {
+  code: 'tracing_already_accepted'
+  status: 409
+}
+
+export type TracingDuplicateAcknowledgementRequiredError = ErrorResponse & {
+  code: 'tracing_duplicate_acknowledgement_required'
+  status: 409
+}
+
+export type TracingRetryNotAllowedError = ErrorResponse & {
+  code: 'tracing_retry_not_allowed'
   status: 409
 }
 
@@ -906,6 +1017,11 @@ export type WorkflowTriggerResponse = {
   title: string
   trigger_type: string
   updated_at?: string | null
+}
+
+export type AppTriggerNotFoundError = ErrorResponse & {
+  code: 'app_trigger_not_found'
+  status: 404
 }
 
 export type WorkflowTriggerListResponse = {
@@ -947,6 +1063,10 @@ export type WorkflowRunDetailResponse = {
 
 export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
+}
+
+export type WorkflowToolNodeExecutionListResponse = {
+  data: Array<WorkflowToolNodeExecutionResponse>
 }
 
 export type SandboxListResponse = {
@@ -1091,9 +1211,7 @@ export type WorkflowPaginationResponse = {
   page: number
 }
 
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
+export type DefaultBlockConfigsResponse = Array<DefaultBlockConfigItemResponse>
 
 export type DefaultBlockConfigResponse = {
   [key: string]: unknown
@@ -1317,14 +1435,12 @@ export type WorkflowTriggerRunErrorResponse = {
 }
 
 export type DraftWorkflowRunPayload = {
-  datasource_info_list: Array<{
+  files?: Array<{
     [key: string]: unknown
-  }>
-  datasource_type: string
+  }> | null
   inputs: {
     [key: string]: unknown
   }
-  start_node_id: string
 }
 
 export type WorkflowRunSnapshotView = {
@@ -1390,7 +1506,7 @@ export type WorkflowDraftVariableResponse = {
   name: string
   selector: Array<string>
   type: string
-  value: JsonValue
+  value: RecursiveJsonValue
   value_type: string
   visible: boolean
 }
@@ -1401,9 +1517,6 @@ export type WorkflowDraftVariableUpdatePayload = {
 }
 
 export type PublishWorkflowPayload = {
-  knowledge_base_setting?: {
-    [key: string]: unknown
-  } | null
   marked_comment?: string | null
   marked_name?: string | null
 }
@@ -1421,6 +1534,11 @@ export type WebhookTriggerResponse = {
   webhook_debug_url: string
   webhook_id: string
   webhook_url: string
+}
+
+export type WebhookTriggerNotFoundError = ErrorResponse & {
+  code: 'webhook_trigger_not_found'
+  status: 404
 }
 
 export type WorkflowUpdatePayload = {
@@ -1442,6 +1560,7 @@ export type ApiKeyItem = {
   created_at?: number | null
   dataset_ids?: Array<string>
   id: string
+  knowledge_space_ids?: Array<string>
   last_used_at?: number | null
   token: string
   type: string
@@ -1601,7 +1720,7 @@ export type DslImportWarning = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
-  value: Github | Marketplace | Package
+  value: PluginDependencyGithub | PluginDependencyMarketplace | PluginDependencyPackage
 }
 
 export type RecentAppResponse = {
@@ -1639,7 +1758,27 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type JsonValue =
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type FormInputConfig =
+  | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+  | ({
+      type: 'select'
+    } & SelectInputConfig)
+  | ({
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
+
+export type ShallowJsonValue =
   | string
   | number
   | number
@@ -1763,13 +1902,13 @@ export type FeedbackStat = {
   like: number
 }
 
-export type ModelConfig = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode: LlmMode
-  name: string
-  provider: string
+export type ConversationModelConfig = {
+  agent_mode?: AnyJsonValue | null
+  model?: AnyJsonValue | null
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  suggested_questions?: AnyJsonValue | null
+  user_input_form?: AnyJsonValue | null
 }
 
 export type Conversation = {
@@ -1805,15 +1944,16 @@ export type MessageDetail = {
   from_source: string
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
-  message: JsonValue
+  message: AnyJsonValue
   message_files: Array<MessageFile>
   message_tokens: number
-  metadata: JsonValue
+  metadata: AnyJsonValue
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
+  retriever_resources?: Array<RetrievalSourceMetadata>
   status: string
   workflow_run_id?: string | null
 }
@@ -1840,7 +1980,7 @@ export type AgentThought = {
   thought?: string | null
   tool?: string | null
   tool_input?: string | null
-  tool_labels: JsonValue
+  tool_labels: AnyJsonValue
 }
 
 export type ConversationAnnotation = {
@@ -1873,6 +2013,8 @@ export type Feedback = {
   rating: string
 }
 
+export type AnyJsonValue = unknown
+
 export type MessageFile = {
   belongs_to?: string | null
   filename: string
@@ -1883,6 +2025,36 @@ export type MessageFile = {
   type: string
   upload_file_id?: string | null
   url?: string | null
+}
+
+export type RetrievalSourceMetadata = {
+  content?: string | null
+  data_source_type?: string | null
+  dataset_id?: string | null
+  dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: unknown
+  } | null
+  document_asset_id?: string | null
+  document_id?: string | null
+  document_name?: string | null
+  document_revision?: number | null
+  document_version?: number | null
+  files?: Array<{
+    [key: string]: unknown
+  }> | null
+  hit_count?: number | null
+  index_node_hash?: string | null
+  knowledge_fs_citation?: KnowledgeFsCitation | null
+  page?: number | null
+  position?: number | null
+  retriever_from?: string | null
+  score?: number | null
+  segment_id?: string | null
+  segment_position?: number | null
+  summary?: string | null
+  title?: string | null
+  word_count?: number | null
 }
 
 export type AppAgentModePayload = {
@@ -2079,6 +2251,19 @@ export type AppUserInputFormPayload =
   | AppCheckboxInputPayload
   | AppExternalDataInputPayload
 
+export type AppNetworkAccessGroupBindingResponse = {
+  access_points: Array<'mcp' | 'service_api' | 'trigger' | 'webapp'>
+  app_id: string
+  created_at: string
+  enabled: boolean
+  group_id?: string | null
+  id: string
+  tenant_id: string
+  updated_at: string
+  updated_by_account_id?: string | null
+  version: number
+}
+
 export type AppMcpServerStatus = 'active' | 'inactive' | 'normal'
 
 export type AverageResponseTimeStatisticItem = {
@@ -2128,6 +2313,19 @@ export type TextToSpeechVoiceResponse = {
   value: string
 }
 
+export type TraceProviderSupportResponse = {
+  agent_spans: boolean
+  export_ack: 'accepted'
+  native_cost: boolean
+  native_usage: boolean
+  provider: string
+  session: boolean
+  span_url: boolean
+  trace_url: boolean
+}
+
+export type TraceSourceKind = 'message' | 'node' | 'workflow'
+
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
   created_by_account?: SimpleAccountResponse | null
@@ -2166,6 +2364,33 @@ export type SimpleEndUser = {
   type: string
 }
 
+export type WorkflowToolNodeExecutionResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
+  created_by_role?: string | null
+  elapsed_time?: number | null
+  error?: string | null
+  execution_metadata?: unknown
+  extras?: unknown
+  finished_at?: number | null
+  id: string
+  index?: number | null
+  inputs?: unknown
+  inputs_truncated?: boolean | null
+  node_execution_id?: string | null
+  node_id?: string | null
+  node_type?: string | null
+  outputs?: unknown
+  outputs_truncated?: boolean | null
+  predecessor_node_id?: string | null
+  process_data?: unknown
+  process_data_truncated?: boolean | null
+  retry_index?: number | null
+  status?: string | null
+  title?: string | null
+}
+
 export type SandboxFileEntryResponse = {
   mtime?: number | null
   name: string
@@ -2201,9 +2426,7 @@ export type AccountWithRoleResponse = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
@@ -2246,6 +2469,13 @@ export type WorkflowDailyTerminalsStatisticItem = {
 export type WorkflowDailyTokenCostStatisticItem = {
   date: string
   token_count: number
+}
+
+export type DefaultBlockConfigItemResponse = {
+  config: {
+    [key: string]: unknown
+  }
+  type: string
 }
 
 export type WorkflowConversationVariableResponse = {
@@ -2550,6 +2780,17 @@ export type WorkflowDraftVariableFullContentResponse = {
   value_type: string
 }
 
+export type RecursiveJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: RecursiveJsonValue
+    }
+  | Array<RecursiveJsonValue>
+  | null
+
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -2615,7 +2856,7 @@ export type AppDatasetConfigsResponse = {
 
 export type AppEnabledExternalDataToolResponse = {
   config: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   enabled: true
   icon?: string
@@ -2628,7 +2869,7 @@ export type AppEnabledExternalDataToolResponse = {
 
 export type AppDisabledExternalDataToolResponse = {
   config?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   enabled: false
   icon?: string
@@ -2650,7 +2891,7 @@ export type AppFileUploadResponse = {
 
 export type AppModelSelectionResponse = {
   completion_params?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   mode?: LlmMode | ''
   name?: string
@@ -2666,9 +2907,9 @@ export type PromptType = 'advanced' | 'simple'
 
 export type AppSensitiveWordAvoidanceResponse = {
   config?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
-  configs?: Array<JsonValue2>
+  configs?: Array<JsonValue>
   enabled: boolean
   type?: string
   [key: string]: unknown
@@ -2727,19 +2968,19 @@ export type CustomizeTokenStrategy = 'allow' | 'must' | 'not_allow' | 'uuid'
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
-export type Github = {
+export type PluginDependencyGithub = {
   github_plugin_unique_identifier: string
   package: string
   repo: string
   version: string
 }
 
-export type Marketplace = {
+export type PluginDependencyMarketplace = {
   marketplace_plugin_unique_identifier: string
   version?: string | null
 }
 
-export type Package = {
+export type PluginDependencyPackage = {
   plugin_unique_identifier: string
   version?: string | null
 }
@@ -2750,15 +2991,55 @@ export type WorkflowOnlineUser = {
   username: string
 }
 
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
+}
+
 export type AgentToolCallResponse = {
   error?: string | null
   status: string
   time_cost: number | number
-  tool_icon?: unknown
+  tool_icon?:
+    | string
+    | {
+        [key: string]: string
+      }
+    | null
   tool_input: {
     [key: string]: unknown
   }
-  tool_label: string
+  tool_label:
+    | string
+    | {
+        [key: string]: string
+      }
   tool_name: string
   tool_output: {
     [key: string]: unknown
@@ -2769,7 +3050,7 @@ export type AgentToolCallResponse = {
 }
 
 export type SimpleModelConfig = {
-  model?: JsonValue | null
+  model?: AnyJsonValue | null
   pre_prompt?: string | null
 }
 
@@ -2780,12 +3061,10 @@ export type StatusCount = {
   success: number
 }
 
-export type LlmMode = 'chat' | 'completion'
-
 export type SimpleMessageDetail = {
   answer: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
   message: string
   query: string
@@ -2819,11 +3098,27 @@ export type HumanInputFormSubmissionData = {
   node_title: string
   rendered_content: string
   submitted_data?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   } | null
 }
 
 export type ExecutionContentType = 'human_input'
+
+export type KnowledgeFsCitation = {
+  artifact_hash: string
+  control_space_id: string
+  document_asset_id: string
+  document_title?: string | null
+  document_version?: number | null
+  end_offset?: number | null
+  id: string
+  node_id: string
+  page_number?: number | null
+  parse_artifact_id?: string | null
+  section_path?: Array<string>
+  space_name: string
+  start_offset?: number | null
+}
 
 export type AppConfigJsonValue =
   | string
@@ -3062,6 +3357,11 @@ export type WorkflowRunForLogResponse = {
   version?: string | null
 }
 
+export type MemberRoleSummaryResponse = {
+  id: string
+  name: string
+}
+
 export type WorkflowFileUploadPayload = {
   allowed_file_extensions?: Array<string> | null
   allowed_file_types?: Array<string> | null
@@ -3169,6 +3469,7 @@ export type AgentSoulHumanConfig = {
 
 export type AgentSoulKnowledgeConfig = {
   sets?: Array<AgentKnowledgeSetConfig>
+  spaces?: Array<AgentKnowledgeSpaceConfig>
 }
 
 export type AgentSoulMemoryConfig = {
@@ -3326,9 +3627,11 @@ export type AgentComposerDifyToolCandidateResponse = {
 }
 
 export type AgentComposerKnowledgeSetCandidateResponse = {
+  control_space_id?: string | null
   datasets?: Array<AgentComposerKnowledgeDatasetCandidateResponse>
   description?: string | null
   id: string
+  missing?: boolean
   missing_dataset_ids?: Array<string>
   name: string
 }
@@ -3356,7 +3659,7 @@ export type AppProviderAgentToolResponse = {
   tool_label?: string
   tool_name: string
   tool_parameters: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
@@ -3368,28 +3671,28 @@ export type AppLegacyDatasetToolResponse = {
 
 export type AppLegacyGoogleSearchToolResponse = {
   google_search: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
 
 export type AppLegacyWebReaderToolResponse = {
   web_reader: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
 
 export type AppLegacyWikipediaToolResponse = {
   wikipedia: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
 
 export type AppLegacyCurrentDatetimeToolResponse = {
   current_datetime: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
@@ -3443,7 +3746,7 @@ export type AppWeightsResponse = {
   [key: string]: unknown
 }
 
-export type JsonValue2 = unknown
+export type JsonValue = unknown
 
 export type AppImageUploadResponse = {
   detail?: 'high' | 'low' | null
@@ -3452,14 +3755,16 @@ export type AppImageUploadResponse = {
   transfer_methods?: Array<FileTransferMethod>
 }
 
+export type LlmMode = 'chat' | 'completion'
+
 export type AppUserInputFormConfigResponse = {
   allowed_file_extensions?: Array<string>
   allowed_file_types?: Array<FileType>
   allowed_file_upload_methods?: Array<FileTransferMethod>
   config?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
-  default?: JsonValue2
+  default?: JsonValue
   description?: string
   enabled?: boolean
   hide?: boolean
@@ -3468,7 +3773,7 @@ export type AppUserInputFormConfigResponse = {
   json_schema?:
     | string
     | {
-        [key: string]: JsonValue2
+        [key: string]: JsonValue
       }
     | null
   label: string
@@ -3480,25 +3785,17 @@ export type AppUserInputFormConfigResponse = {
   [key: string]: unknown
 }
 
-export type UserActionConfig = {
-  button_style?: ButtonStyle
-  id: string
-  title: string
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
 }
 
-export type FormInputConfig =
-  | ({
-      type: 'paragraph'
-    } & ParagraphInputConfig)
-  | ({
-      type: 'select'
-    } & SelectInputConfig)
-  | ({
-      type: 'file'
-    } & FileInputConfig)
-  | ({
-      type: 'file-list'
-    } & FileListInputConfig)
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
 
 export type AppProviderAgentToolPayload = {
   credential_id?: string | null
@@ -3851,6 +4148,14 @@ export type AgentKnowledgeSetConfig = {
   retrieval: AgentKnowledgeRetrievalConfig
 }
 
+export type AgentKnowledgeSpaceConfig = {
+  control_space_id: string
+  description?: string | null
+  id: string
+  is_missing?: boolean
+  name: string
+}
+
 export type AgentMemoryArtifactConfig = {
   id?: string | null
   name?: string | null
@@ -3869,7 +4174,7 @@ export type AgentSoulModelSettings = {
   frequency_penalty?: number | null
   max_tokens?: number | null
   presence_penalty?: number | null
-  response_format?: AgentModelResponseFormatConfig | null
+  response_format?: string | AgentModelResponseFormatConfig | null
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
@@ -4033,36 +4338,7 @@ export type AppVectorSettingResponse = {
   [key: string]: unknown
 }
 
-export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
-
-export type ParagraphInputConfig = {
-  default?: StringSource | null
-  output_variable_name: string
-  type?: 'paragraph'
-}
-
-export type SelectInputConfig = {
-  option_source: StringListSource
-  output_variable_name: string
-  type?: 'select'
-}
-
-export type FileInputConfig = {
-  allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<FileType>
-  allowed_file_upload_methods?: Array<FileTransferMethod>
-  output_variable_name: string
-  type?: 'file'
-}
-
-export type FileListInputConfig = {
-  allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<FileType>
-  allowed_file_upload_methods?: Array<FileTransferMethod>
-  number_limits?: number
-  output_variable_name: string
-  type?: 'file-list'
-}
+export type ValueSourceType = 'constant' | 'variable'
 
 export type AppLegacyDatasetSelectionPayload = {
   enabled?: boolean | null
@@ -4145,18 +4421,6 @@ export type AgentSoulDifyToolCredentialRef = {
   type?: 'provider' | 'tool'
 }
 
-export type StringSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: string
-}
-
-export type StringListSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: Array<string>
-}
-
 export type AgentModerationIoConfig = {
   enabled?: boolean
   preset_response?: string | null
@@ -4194,8 +4458,6 @@ export type AgentKnowledgeWeightedScoreConfig = {
   weight_type?: string | null
   [key: string]: unknown
 }
-
-export type ValueSourceType = 'constant' | 'variable'
 
 export type AgentKnowledgeMetadataCondition = {
   comparison_operator:
@@ -4265,7 +4527,7 @@ export type RecentAppListResponseWritable = {
   data: Array<RecentAppResponseWritable>
 }
 
-export type GeneratedAppResponseWritable = JsonValue
+export type GeneratedAppResponseWritable = ShallowJsonValue
 
 export type WorkflowCommentBasicListWritable = {
   data: Array<WorkflowCommentBasicWritable>
@@ -4387,9 +4649,7 @@ export type AccountWithRoleResponseWritable = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
@@ -4412,6 +4672,17 @@ export type WorkflowCommentReplyWritable = {
   created_by_account?: WorkflowCommentAccountWritable | null
   id: string
 }
+
+export type RecursiveJsonValueWritable =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: RecursiveJsonValueWritable
+    }
+  | Array<RecursiveJsonValueWritable>
+  | null
 
 export type AppConfigJsonValueWritable =
   | string
@@ -4558,6 +4829,7 @@ export type PostAppsImportsByImportIdConfirmData = {
 
 export type PostAppsImportsByImportIdConfirmErrors = {
   400: Import | ErrorResponse
+  409: ErrorResponse
   default: ErrorResponse
 }
 
@@ -4799,7 +5071,7 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
   PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
-  body: HumanInputFormSubmitPayload
+  body: HumanInputFormPreviewSubmitPayload
   path: {
     app_id: string
     node_id: string
@@ -5452,7 +5724,9 @@ export type DeleteAppsByAppIdAnnotationsData = {
   path: {
     app_id: string
   }
-  query?: never
+  query?: {
+    annotation_id?: Array<string>
+  }
   url: '/apps/{app_id}/annotations'
 }
 
@@ -6184,7 +6458,7 @@ export type GetAppsByAppIdExportResponse =
   GetAppsByAppIdExportResponses[keyof GetAppsByAppIdExportResponses]
 
 export type PostAppsByAppIdFeedbacksData = {
-  body: MessageFeedbackPayload
+  body: AppMessageFeedbackPayload
   path: {
     app_id: string
   }
@@ -6301,6 +6575,78 @@ export type PostAppsByAppIdNameResponses = {
 
 export type PostAppsByAppIdNameResponse =
   PostAppsByAppIdNameResponses[keyof PostAppsByAppIdNameResponses]
+
+export type GetAppsByAppIdNetworkAccessGroupData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/network-access-group'
+}
+
+export type GetAppsByAppIdNetworkAccessGroupErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdNetworkAccessGroupError =
+  GetAppsByAppIdNetworkAccessGroupErrors[keyof GetAppsByAppIdNetworkAccessGroupErrors]
+
+export type GetAppsByAppIdNetworkAccessGroupResponses = {
+  200: AppNetworkAccessGroupResponse
+}
+
+export type GetAppsByAppIdNetworkAccessGroupResponse =
+  GetAppsByAppIdNetworkAccessGroupResponses[keyof GetAppsByAppIdNetworkAccessGroupResponses]
+
+export type PutAppsByAppIdNetworkAccessGroupData = {
+  body: AppNetworkAccessGroupUpdatePayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/network-access-group'
+}
+
+export type PutAppsByAppIdNetworkAccessGroupErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdNetworkAccessGroupError =
+  PutAppsByAppIdNetworkAccessGroupErrors[keyof PutAppsByAppIdNetworkAccessGroupErrors]
+
+export type PutAppsByAppIdNetworkAccessGroupResponses = {
+  200: AppNetworkAccessGroupMutationResponse
+}
+
+export type PutAppsByAppIdNetworkAccessGroupResponse =
+  PutAppsByAppIdNetworkAccessGroupResponses[keyof PutAppsByAppIdNetworkAccessGroupResponses]
+
+export type GetAppsByAppIdNetworkAccessGroupStatusData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/network-access-group/status'
+}
+
+export type GetAppsByAppIdNetworkAccessGroupStatusErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdNetworkAccessGroupStatusError =
+  GetAppsByAppIdNetworkAccessGroupStatusErrors[keyof GetAppsByAppIdNetworkAccessGroupStatusErrors]
+
+export type GetAppsByAppIdNetworkAccessGroupStatusResponses = {
+  200: AppNetworkAccessGroupStatusResponse
+}
+
+export type GetAppsByAppIdNetworkAccessGroupStatusResponse =
+  GetAppsByAppIdNetworkAccessGroupStatusResponses[keyof GetAppsByAppIdNetworkAccessGroupStatusResponses]
 
 export type PostAppsByAppIdPublishToCreatorsPlatformData = {
   body?: never
@@ -6857,8 +7203,15 @@ export type PostAppsByAppIdTraceData = {
 }
 
 export type PostAppsByAppIdTraceErrors = {
-  400: TracingProviderUnavailableError | ErrorResponse
+  400:
+    | InvalidTracingConfigError
+    | TracingProviderUnavailableError
+    | UnsupportedTracingProviderError
+    | ErrorResponse
   403: ErrorResponse
+  404: AppNotFoundError | TraceConfigNotFoundError | ErrorResponse
+  409: TracingConfigConflictError | ErrorResponse
+  500: TracingConfigProcessingFailedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6870,6 +7223,32 @@ export type PostAppsByAppIdTraceResponses = {
 
 export type PostAppsByAppIdTraceResponse =
   PostAppsByAppIdTraceResponses[keyof PostAppsByAppIdTraceResponses]
+
+export type GetAppsByAppIdTraceCapabilitiesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    tracing_provider: string
+  }
+  url: '/apps/{app_id}/trace-capabilities'
+}
+
+export type GetAppsByAppIdTraceCapabilitiesErrors = {
+  400: UnsupportedTracingProviderError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdTraceCapabilitiesError =
+  GetAppsByAppIdTraceCapabilitiesErrors[keyof GetAppsByAppIdTraceCapabilitiesErrors]
+
+export type GetAppsByAppIdTraceCapabilitiesResponses = {
+  200: TraceProviderCapabilitiesResponse
+}
+
+export type GetAppsByAppIdTraceCapabilitiesResponse =
+  GetAppsByAppIdTraceCapabilitiesResponses[keyof GetAppsByAppIdTraceCapabilitiesResponses]
 
 export type DeleteAppsByAppIdTraceConfigData = {
   body?: never
@@ -6946,6 +7325,7 @@ export type PatchAppsByAppIdTraceConfigErrors = {
     | ErrorResponse
   403: ErrorResponse
   404: AppNotFoundError | TraceConfigNotFoundError | ErrorResponse
+  409: TracingConfigConflictError | ErrorResponse
   500: TracingConfigProcessingFailedError | ErrorResponse
   default: ErrorResponse
 }
@@ -6993,6 +7373,71 @@ export type PostAppsByAppIdTraceConfigResponses = {
 export type PostAppsByAppIdTraceConfigResponse =
   PostAppsByAppIdTraceConfigResponses[keyof PostAppsByAppIdTraceConfigResponses]
 
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdData = {
+  body?: never
+  path: {
+    app_id: string
+    source_id: string
+    source_kind: 'message' | 'node' | 'workflow'
+  }
+  query?: {
+    node_execution_id?: string
+  }
+  url: '/apps/{app_id}/trace-runs/{source_kind}/{source_id}'
+}
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdErrors = {
+  404: TracingNodeNotFoundError | TracingSourceNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdError =
+  GetAppsByAppIdTraceRunsBySourceKindBySourceIdErrors[keyof GetAppsByAppIdTraceRunsBySourceKindBySourceIdErrors]
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponses = {
+  200: TraceRunStatusResponse
+}
+
+export type GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponse =
+  GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponses[keyof GetAppsByAppIdTraceRunsBySourceKindBySourceIdResponses]
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryData = {
+  body: TraceRunRetryPayload
+  path: {
+    app_id: string
+    source_id: string
+    source_kind: 'message' | 'node' | 'workflow'
+  }
+  query?: {
+    node_execution_id?: string
+  }
+  url: '/apps/{app_id}/trace-runs/{source_kind}/{source_id}/retry'
+}
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryErrors = {
+  404:
+    | TracingNodeNotFoundError
+    | TracingRunNotFoundError
+    | TracingSourceNotFoundError
+    | ErrorResponse
+  409:
+    | TracingAlreadyAcceptedError
+    | TracingDuplicateAcknowledgementRequiredError
+    | TracingRetryNotAllowedError
+    | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryError =
+  PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryErrors[keyof PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryErrors]
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponses = {
+  200: TraceRunStatusResponse
+}
+
+export type PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponse =
+  PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponses[keyof PostAppsByAppIdTraceRunsBySourceKindBySourceIdRetryResponses]
+
 export type PostAppsByAppIdTriggerEnableData = {
   body: ParserEnable
   path: {
@@ -7003,7 +7448,7 @@ export type PostAppsByAppIdTriggerEnableData = {
 }
 
 export type PostAppsByAppIdTriggerEnableErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: AppNotFoundError | AppTriggerNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7214,6 +7659,32 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse =
   GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses]
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenData = {
+  body?: never
+  path: {
+    app_id: string
+    node_execution_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-runs/{run_id}/node-executions/{node_execution_id}/children'
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors = {
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenError =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenErrors]
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses = {
+  200: WorkflowToolNodeExecutionListResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponse =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsByNodeExecutionIdChildrenResponses]
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesData = {
   body?: never
@@ -7976,7 +8447,7 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewRespo
   PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses]
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
-  body: HumanInputFormSubmitPayload
+  body: HumanInputFormPreviewSubmitPayload
   path: {
     app_id: string
     node_id: string
@@ -8916,7 +9387,7 @@ export type GetAppsByAppIdWorkflowsTriggersWebhookData = {
 }
 
 export type GetAppsByAppIdWorkflowsTriggersWebhookErrors = {
-  404: AppNotFoundError | ErrorResponse
+  404: AppNotFoundError | WebhookTriggerNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

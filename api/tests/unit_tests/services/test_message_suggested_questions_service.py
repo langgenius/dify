@@ -55,7 +55,7 @@ from services.message_suggested_questions_service import (
     SuggestedQuestionsContext,
     SuggestedQuestionsInvokeFrom,
 )
-from tests.unit_tests.core.model_fixtures import make_model_instance
+from tests.helpers.unit.core.model_fixtures import make_model_instance
 
 
 @dataclass(frozen=True)
@@ -147,7 +147,7 @@ def harness(
             app_model_config_id=config.id,
             mode=AppMode.CHAT,
             name="End-user conversation",
-            inputs={},
+            _inputs={},
             from_source=ConversationFromSource.API,
             from_end_user_id=end_user.id,
         )
@@ -156,7 +156,7 @@ def harness(
         message = Message(
             app_id=target.id,
             conversation_id=conversation.id,
-            inputs={},
+            _inputs={},
             query="How does this work?",
             message={},
             message_unit_price=Decimal(0),

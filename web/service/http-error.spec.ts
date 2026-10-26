@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/client'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the HTTP transport and auth recovery together.
 import { get, post, request, upload } from './base'
@@ -12,7 +12,10 @@ vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 beforeEach(() => {
   window.history.replaceState({}, '', '/')
   refresh.mockReset()
+  vi.mocked(toast.error).mockClear()
 })
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('upload HTTP failure contract', () => {
   const createUpload = (status: number, response: unknown) => {

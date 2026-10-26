@@ -41,6 +41,8 @@ class ConsoleAuthWorkspaceQuery(Protocol):
 class ConsoleAuthInvitationGateway(Protocol):
     def resolve(self, *, email: str, token: str) -> LoginInvitation | None: ...
 
+    def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool: ...
+
 
 class ConsoleAuthPolicyGateway(Protocol):
     def get_email_freeze_type(self, email: str) -> str | None: ...
@@ -200,9 +202,12 @@ class ConsoleAuthenticationService:
             self._invalid_credentials(normalized_email, command.ip_address)
 
         if not self._workspaces.has_active_for_account(account.id):
-            if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
-                raise account_errors.LoginWorkspaceLimitError
-            return PasswordLoginResult(tokens=None, workspace_found=False)
+            if invitation_token is not None:
+                self._invitations.ensure_membership(account_id=account.id, email=command.email, token=invitation_token)
+            if not self._workspaces.has_active_for_account(account.id):
+                if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
+                    raise account_errors.LoginWorkspaceLimitError
+                return PasswordLoginResult(tokens=None, workspace_found=False)
 
         tokens = self._issue_session(
             account_id=account.id,

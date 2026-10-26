@@ -77,7 +77,7 @@ class WebAppRuntimeQueryService:
                 if record.site.icon_type == "image" and record.site.icon
                 else None
             )
-        except FileNotExistsError as exc:
+        except FileNotExistsError:
             logger.warning(
                 "Web app site icon is unavailable: app_id=%s tenant_id=%s file_id=%s",
                 record.app_id,

@@ -23,6 +23,8 @@ beforeEach(() => {
   })
 })
 
+afterEach(() => vi.restoreAllMocks())
+
 const createSchema = (overrides: Partial<CredentialFormSchema> = {}): CredentialFormSchema => ({
   name: 'config',
   variable: 'config',

@@ -1,4 +1,4 @@
-import { DocumentDetailPage } from '@/features/new-rag/document-detail-page'
+import { DocumentDetailPage } from '@/features/new-rag/documents/detail/page'
 
 export default async function Page({
   params,

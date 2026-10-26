@@ -25,57 +25,50 @@ import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import { BlockEnum, ErrorHandleMode } from '../types'
 
-const WHITE = 'WHITE'
-const GRAY = 'GRAY'
-const BLACK = 'BLACK'
-const isCyclicUtil = (
-  nodeId: string,
-  color: Record<string, string>,
-  adjList: Record<string, string[]>,
-  stack: string[],
-) => {
-  color[nodeId] = GRAY
-  stack.push(nodeId)
-
-  for (let i = 0; i < adjList[nodeId]!.length; ++i) {
-    const childId = adjList[nodeId]![i]
-
-    if (color[childId!] === GRAY) {
-      stack.push(childId!)
-      return true
-    }
-    if (color[childId!] === WHITE && isCyclicUtil(childId!, color, adjList, stack)) return true
-  }
-  color[nodeId] = BLACK
-  if (stack.length > 0 && stack[stack.length - 1] === nodeId) stack.pop()
-  return false
-}
-
+// An edge belongs to a cycle exactly when both endpoints belong to the same
+// strongly connected component. Ancestors and links between cycles must survive.
 const getCycleEdges = (nodes: Node[], edges: Edge[]) => {
-  const adjList: Record<string, string[]> = {}
-  const color: Record<string, string> = {}
+  const adjacency = new Map(nodes.map((node) => [node.id, [] as string[]]))
+  for (const edge of edges) {
+    if (adjacency.has(edge.target)) adjacency.get(edge.source)?.push(edge.target)
+  }
+  const indices = new Map<string, number>()
+  const lowLinks = new Map<string, number>()
+  const components = new Map<string, number>()
   const stack: string[] = []
-
-  for (const node of nodes) {
-    color[node.id] = WHITE
-    adjList[node.id] = []
-  }
-
-  for (const edge of edges) adjList[edge.source]?.push(edge.target)
-
-  for (let i = 0; i < nodes.length; i++) {
-    if (color[nodes[i]!.id] === WHITE) isCyclicUtil(nodes[i]!.id, color, adjList, stack)
-  }
-
-  const cycleEdges = []
-  if (stack.length > 0) {
-    const cycleNodes = new Set(stack)
-    for (const edge of edges) {
-      if (cycleNodes.has(edge.source) && cycleNodes.has(edge.target)) cycleEdges.push(edge)
+  const onStack = new Set<string>()
+  let nextIndex = 0
+  let component = 0
+  const visit = (id: string) => {
+    indices.set(id, nextIndex)
+    lowLinks.set(id, nextIndex++)
+    stack.push(id)
+    onStack.add(id)
+    for (const target of adjacency.get(id)!) {
+      if (!indices.has(target)) {
+        visit(target)
+        lowLinks.set(id, Math.min(lowLinks.get(id)!, lowLinks.get(target)!))
+      } else if (onStack.has(target)) {
+        lowLinks.set(id, Math.min(lowLinks.get(id)!, indices.get(target)!))
+      }
+    }
+    if (lowLinks.get(id) === indices.get(id)) {
+      let member: string
+      do {
+        member = stack.pop()!
+        onStack.delete(member)
+        components.set(member, component)
+      } while (member !== id)
+      component++
     }
   }
-
-  return cycleEdges
+  for (const node of nodes) {
+    if (!indices.has(node.id)) visit(node.id)
+  }
+  return edges.filter(
+    (edge) =>
+      components.has(edge.source) && components.get(edge.source) === components.get(edge.target),
+  )
 }
 
 export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
@@ -106,7 +99,7 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     const currentNode = nodes[i] as Node<IterationNodeType | LoopNodeType>
 
     if (currentNode.data.type === BlockEnum.Iteration) {
-      if (currentNode.data.start_node_id) {
+      if (currentNode.data.start_node_id && nodesMap[currentNode.data.start_node_id]) {
         if (nodesMap[currentNode.data.start_node_id]?.type !== CUSTOM_ITERATION_START_NODE)
           iterationNodesWithStartNode.push(currentNode)
       } else {
@@ -115,7 +108,7 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     }
 
     if (currentNode.data.type === BlockEnum.Loop) {
-      if (currentNode.data.start_node_id) {
+      if (currentNode.data.start_node_id && nodesMap[currentNode.data.start_node_id]) {
         if (nodesMap[currentNode.data.start_node_id]?.type !== CUSTOM_LOOP_START_NODE)
           loopNodesWithStartNode.push(currentNode)
       } else {

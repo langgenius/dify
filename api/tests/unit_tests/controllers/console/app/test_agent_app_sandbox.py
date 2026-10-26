@@ -26,8 +26,8 @@ from services.app.agent_app_contracts import (
     WorkflowSandboxAppNotFoundError,
     WorkflowSandboxCaller,
 )
-from tests.unit_tests.controllers.error_body import raised_error
-from tests.unit_tests.controllers.rbac_introspection import rbac_checks
+from tests.helpers.unit.controllers.error_body import raised_error
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RESOURCE_ID = UUID("11111111-1111-1111-1111-111111111111")

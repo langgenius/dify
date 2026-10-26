@@ -1,147 +1,88 @@
-import type { TFunction } from 'i18next'
+import { ORPCError } from '@orpc/client'
 import { waitFor } from '@testing-library/react'
-import { upload } from '@/service/base'
-import { createHttpError } from '@/service/http-error'
-import { withSelectorKey } from '@/test/i18n-mock'
+import { createInstance } from 'i18next'
 import { getImageUploadErrorMessage, imageUpload } from '../utils'
 
-vi.mock('@/service/base', () => ({
-  upload: vi.fn(),
+const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  upload,
 }))
-
-describe('image-uploader utils', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('getImageUploadErrorMessage', () => {
-    it('should return backend message when error code is forbidden', () => {
-      const translate = vi.fn((key: string, _options?: Record<string, unknown>) => key)
-      const t = withSelectorKey(translate) as unknown as TFunction<['common']>
-
-      const result = getImageUploadErrorMessage(
-        createHttpError(new Response(null, { status: 400 }), {
-          code: 'forbidden',
-          message: 'Forbidden by policy',
-        }),
-        'Default error',
-        t,
-      )
-
-      expect(result).toBe('Forbidden by policy')
-      expect(translate).not.toHaveBeenCalled()
-    })
-
-    it('should return translated message when error code is file_extension_blocked', () => {
-      const translate = vi.fn(() => 'common.fileUploader.fileExtensionBlocked')
-      const t = withSelectorKey(translate) as unknown as TFunction<['common']>
-
-      const result = getImageUploadErrorMessage(
-        createHttpError(new Response(null, { status: 400 }), { code: 'file_extension_blocked' }),
-        'Default error',
-        t,
-      )
-
-      expect(result).toBe('common.fileUploader.fileExtensionBlocked')
-      expect(translate).toHaveBeenCalledWith('fileUploader.fileExtensionBlocked', { ns: 'common' })
-    })
-
-    it('should return default message when error code is unknown', () => {
-      const translate = vi.fn((key: string, _options?: Record<string, unknown>) => key)
-      const t = withSelectorKey(translate) as unknown as TFunction<['common']>
-
-      const result = getImageUploadErrorMessage(
-        createHttpError(new Response(null, { status: 400 }), { code: 'unexpected_error' }),
-        'Default error',
-        t,
-      )
-
-      expect(result).toBe('Default error')
-      expect(translate).not.toHaveBeenCalled()
-    })
-
-    it('should return default message when error is missing response code', () => {
-      const translate = vi.fn((key: string, _options?: Record<string, unknown>) => key)
-      const t = withSelectorKey(translate) as unknown as TFunction<['common']>
-
-      const result = getImageUploadErrorMessage(undefined, 'Default error', t)
-
-      expect(result).toBe('Default error')
-      expect(translate).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('imageUpload', () => {
-    const createCallbacks = () => ({
-      onProgressCallback: vi.fn<(progress: number) => void>(),
-      onSuccessCallback: vi.fn<(res: { id: string }) => void>(),
-      onErrorCallback: vi.fn<(error?: unknown) => void>(),
-    })
-
-    it('should upload file and call success callback', async () => {
-      const file = new File(['hello'], 'image.png', { type: 'image/png' })
-      const callbacks = createCallbacks()
-      vi.mocked(upload).mockResolvedValue({ id: 'uploaded-id' })
-
-      imageUpload({ file, ...callbacks }, true, '/files/upload')
-
-      expect(upload).toHaveBeenCalledTimes(1)
-
-      const [options, isPublic, url] = (vi.mocked(upload).mock.calls[0] ?? []) as [any, any, any]
-      expect(isPublic).toBe(true)
-      expect(url).toBe('/files/upload')
-      expect(options.xhr).toBeInstanceOf(XMLHttpRequest)
-      expect(options.data).toBeInstanceOf(FormData)
-      expect((options.data as FormData).get('file')).toBe(file)
-
-      await waitFor(() => {
-        expect(callbacks.onSuccessCallback).toHaveBeenCalledWith({ id: 'uploaded-id' })
-      })
-      expect(callbacks.onErrorCallback).not.toHaveBeenCalled()
-    })
-
-    it('should call error callback when upload fails', async () => {
-      const file = new File(['hello'], 'image.png', { type: 'image/png' })
-      const callbacks = createCallbacks()
-      const error = new Error('Upload failed')
-      vi.mocked(upload).mockRejectedValue(error)
-
-      imageUpload({ file, ...callbacks })
-
-      await waitFor(() => {
-        expect(callbacks.onErrorCallback).toHaveBeenCalledWith(error)
-      })
-      expect(callbacks.onSuccessCallback).not.toHaveBeenCalled()
-    })
-
-    it('should report progress percentage when progress is computable', () => {
-      const file = new File(['hello'], 'image.png', { type: 'image/png' })
-      const callbacks = createCallbacks()
-      vi.mocked(upload).mockImplementation(
-        (options: { onprogress?: (e: ProgressEvent) => void }) => {
-          options.onprogress?.({ lengthComputable: true, loaded: 5, total: 8 } as ProgressEvent)
-          return Promise.resolve({ id: 'uploaded-id' })
-        },
-      )
-
-      imageUpload({ file, ...callbacks })
-
-      expect(callbacks.onProgressCallback).toHaveBeenCalledWith(62)
-    })
-
-    it('should not report progress when length is not computable', () => {
-      const file = new File(['hello'], 'image.png', { type: 'image/png' })
-      const callbacks = createCallbacks()
-      vi.mocked(upload).mockImplementation(
-        (options: { onprogress?: (e: ProgressEvent) => void }) => {
-          options.onprogress?.({ lengthComputable: false, loaded: 5, total: 8 } as ProgressEvent)
-          return Promise.resolve({ id: 'uploaded-id' })
-        },
-      )
-
-      imageUpload({ file, ...callbacks })
-
-      expect(callbacks.onProgressCallback).not.toHaveBeenCalled()
-    })
+const i18n = createInstance()
+beforeAll(async () => {
+  await i18n.init({
+    lng: 'en',
+    resources: {
+      en: { common: { fileUploader: { fileExtensionBlocked: 'This file type is blocked.' } } },
+    },
   })
 })
+beforeEach(() => {
+  upload.mockReset().mockResolvedValue({ id: 'uploaded-id' })
+})
+
+it.each([
+  {
+    error: new ORPCError('forbidden', { message: 'Forbidden by policy' }),
+    expected: 'Forbidden by policy',
+  },
+  { error: new ORPCError('file_extension_blocked'), expected: 'This file type is blocked.' },
+  { error: new ORPCError('unexpected_error'), expected: 'Upload failed' },
+  { error: new Error('Network unavailable'), expected: 'Upload failed' },
+])('returns the user-facing error for $error.code / $error.message', ({ error, expected }) => {
+  expect(getImageUploadErrorMessage(error, 'Upload failed', i18n.getFixedT('en', ['common']))).toBe(
+    expected,
+  )
+})
+
+const file = () => new File(['image'], 'image.png', { type: 'image/png' })
+const callbacks = () => ({
+  onProgressCallback: vi.fn<(progress: number) => void>(),
+  onSuccessCallback: vi.fn<(res: { id: string }) => void>(),
+  onErrorCallback: vi.fn<(error?: unknown) => void>(),
+})
+
+it('passes the file and upload destination to the service and reports the server result', async () => {
+  const selected = file()
+  const events = callbacks()
+  imageUpload({ file: selected, ...events }, true, '/files/upload')
+  expect(upload).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ data: expect.any(FormData) }),
+    true,
+    '/files/upload',
+  )
+  expect(upload.mock.calls[0]![0].data.get('file')).toBe(selected)
+  await waitFor(() =>
+    expect(events.onSuccessCallback).toHaveBeenCalledExactlyOnceWith({ id: 'uploaded-id' }),
+  )
+  expect(events.onErrorCallback).not.toHaveBeenCalled()
+})
+
+it('forwards a failed upload without reporting success', async () => {
+  const error = new Error('Upload failed')
+  upload.mockRejectedValue(error)
+  const events = callbacks()
+  imageUpload({ file: file(), ...events })
+  await waitFor(() => expect(events.onErrorCallback).toHaveBeenCalledExactlyOnceWith(error))
+  expect(events.onSuccessCallback).not.toHaveBeenCalled()
+})
+
+it.each([true, false])(
+  'only reports a progress percentage when the total is known (%s)',
+  async (lengthComputable) => {
+    upload.mockImplementation(async (options) => {
+      options.onprogress?.call(
+        options.xhr,
+        new ProgressEvent('progress', { lengthComputable, loaded: 5, total: 8 }),
+      )
+      return { id: 'uploaded-id' }
+    })
+    const events = callbacks()
+    imageUpload({ file: file(), ...events })
+    if (lengthComputable) expect(events.onProgressCallback).toHaveBeenCalledExactlyOnceWith(62)
+    else expect(events.onProgressCallback).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(events.onSuccessCallback).toHaveBeenCalledExactlyOnceWith({ id: 'uploaded-id' }),
+    )
+  },
+)

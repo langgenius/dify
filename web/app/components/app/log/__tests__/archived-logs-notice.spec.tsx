@@ -1,8 +1,9 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { render as renderWithoutUrlState } from '@/test/console/render'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ArchivedLogsNotice } from '../archived-logs-notice'
 
 vi.mock('@/context/workspace-state', async () => {
@@ -13,13 +14,10 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-const setSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, setSettingsDestination] }
-})
-
 let plan: CloudPlan = 'professional'
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 describe('ArchivedLogsNotice', () => {
   const renderNotice = () => {
@@ -45,7 +43,11 @@ describe('ArchivedLogsNotice', () => {
     expect(within(notice).getByText('appLog.archives.notice.description')).toBeInTheDocument()
 
     await user.click(within(notice).getByRole('button', { name: 'appLog.archives.notice.action' }))
-    expect(setSettingsDestination).toHaveBeenCalledWith('workflow-log-archives')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(
+        'workflow-log-archives',
+      ),
+    )
   })
 
   it('should not show notice for sandbox workspaces', () => {

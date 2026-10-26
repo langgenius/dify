@@ -148,10 +148,10 @@ class MessageListApi(Resource):
             return MessageInfiniteScrollPagination(
                 limit=pagination.limit, has_more=pagination.has_more, data=items
             ).model_dump(mode="json")
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFoundError("Conversation Not Exists.")
-        except FirstMessageNotExistsError:
-            raise NotFoundError("First Message Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFoundError("Conversation Not Exists.") from caught_error
+        except FirstMessageNotExistsError as caught_error:
+            raise NotFoundError("First Message Not Exists.") from caught_error
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
@@ -198,8 +198,8 @@ class MessageFeedbackApi(Resource):
                 content=payload.content,
                 session=db.session(),
             )
-        except MessageNotExistsError:
-            raise NotFoundError("Message Not Exists.")
+        except MessageNotExistsError as caught_error:
+            raise NotFoundError("Message Not Exists.") from caught_error
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -323,8 +323,8 @@ class MessageSuggestedApi(Resource):
             raise AppUnavailableError() from None
         except MessageActorNotFoundError:
             raise NotFoundError("End user not found") from None
-        except MessageNotExistsError:
-            raise NotFoundError("Message Not Exists.")
+        except MessageNotExistsError as caught_error:
+            raise NotFoundError("Message Not Exists.") from caught_error
         except ConversationNotExistsError:
             raise NotFoundError("Conversation not found") from None
         except SuggestedQuestionsAfterAnswerDisabledError:
@@ -341,8 +341,8 @@ class MessageSuggestedApi(Resource):
             # The legacy Agent config reader still owns this HTTP error.
             # Remove this compatibility case when it exposes a domain error.
             raise
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
         return dump_response(SimpleResultStringListResponse, {"result": "success", "data": questions})

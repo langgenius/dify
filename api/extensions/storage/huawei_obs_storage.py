@@ -45,9 +45,7 @@ class HuaweiObsStorage(BaseStorage):
     @override
     def exists(self, filename):
         res = self._get_meta(filename)
-        if res is None:
-            return False
-        return True
+        return res is not None
 
     @override
     def delete(self, filename: str):

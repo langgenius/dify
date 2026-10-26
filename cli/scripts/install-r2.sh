@@ -6,6 +6,7 @@
 #   DIFYCTL_R2_BASE  (required)  R2 public base, e.g. https://pub-….r2.dev
 #   DIFYCTL_CHANNEL  (default edge)
 #   DIFYCTL_INSTALL_DIR  (default $HOME/.local/bin)  directory the binary is written to as <dir>/difyctl
+#   DIFYCTL_PREFIX   the folder above the bin folder; <prefix>/bin is used when DIFYCTL_INSTALL_DIR is unset
 #   DIFYCTL_VERSION  pin an exact published version (e.g. 0.1.0-edge.ce4af868)
 #   DIFYCTL_COMMIT   pin by git commit (short or full sha); resolved via index.json
 #   DIFYCTL_R2_PREFIX      (default difyctl)       key root for pointer JSONs
@@ -21,12 +22,33 @@ trap 'rm -f "$tmp_m" "${tmp_c:-}" "${tmp_b:-}"' EXIT INT TERM
 err() { printf '%s\n' "install-r2: $*" >&2; }
 die() { err "$*"; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
+# print_skill_hint BIN: the hint names a v2 command, so a binary without it (any v1 build) gets none.
+print_skill_hint() {
+  "$1" install skills --help >/dev/null 2>&1 || return 0
+  printf '%s\n' 'AI agents: run `difyctl install skills <skills root>` after each install or upgrade; the skill ships inside the binary.'
+}
+
+# DIFYCTL_INSTALL_DIR names the bin folder itself; DIFYCTL_PREFIX the folder above it.
+bin_dir_for() {
+  printf '%s' "${DIFYCTL_INSTALL_DIR:-${DIFYCTL_PREFIX:-${HOME}/.local}/bin}"
+}
+
+# install_binary SRC DEST: stage the copy next to DEST, then rename it over DEST, so a
+# running difyctl keeps its old file and DEST is never half written.
+install_binary() {
+  _stage="$(dirname "$2")/.difyctl.install.$$"
+  if cp "$1" "$_stage" && chmod 0755 "$_stage" && mv -f "$_stage" "$2"; then
+    return 0
+  fi
+  rm -f "$_stage"
+  die "cannot write $2"
+}
 
 detect_target() {
   case "$(uname -s)" in
     Linux*)  _os=linux ;;
     Darwin*) _os=darwin ;;
-    *)       die "unsupported OS: $(uname -s) (use install.ps1 on Windows)" ;;
+    *)       die "unsupported OS: $(uname -s) (use install-r2.ps1 on Windows)" ;;
   esac
   case "$(uname -m)" in
     x86_64|amd64)  _arch=x64 ;;
@@ -90,12 +112,11 @@ fetch_verify_install() {
   sha256_check "$tmp_b" "$2"
 
   mkdir -p "$install_dir"
-  chmod +x "$tmp_b"
-  mv "$tmp_b" "${install_dir}/difyctl" 2>/dev/null || { cp "$tmp_b" "${install_dir}/difyctl"; rm -f "$tmp_b"; }
+  install_binary "$tmp_b" "${install_dir}/difyctl"
 
   printf 'difyctl %s (channel %s) installed: %s\n' "$3" "$4" "${install_dir}/difyctl"
   case ":${PATH}:" in
-    *":${install_dir}:"*) ;;
+    *":${install_dir}:"*) print_skill_hint "${install_dir}/difyctl" ;;
     *) printf 'note: add %s to your PATH\n' "$install_dir" ;;
   esac
 }
@@ -147,7 +168,7 @@ install_main() {
   channel="${DIFYCTL_CHANNEL:-edge}"
   prefix="${DIFYCTL_R2_PREFIX:-difyctl}"
   bin_prefix="${DIFYCTL_R2_BIN_PREFIX:-${prefix}/bin}"
-  install_dir="${DIFYCTL_INSTALL_DIR:-${HOME}/.local/bin}"
+  install_dir="$(bin_dir_for)"
   target="$(detect_target)"
 
   if [ -n "${DIFYCTL_VERSION:-}" ] || [ -n "${DIFYCTL_COMMIT:-}" ]; then
