@@ -1572,6 +1572,35 @@ describe('KnowledgeSettingsPage workflows', () => {
     )
   })
 
+  it.each(['unavailable', 'binding_missing'] as const)(
+    'does not show model setup warnings for an active configuration with a %s publication',
+    async (code) => {
+      await renderForm({
+        settings: {
+          ...settings,
+          capabilities: {
+            ...settings.capabilities,
+            deep: false,
+            query: false,
+            research: false,
+          },
+          issues: [{ code, field: 'publication', retryable: code === 'unavailable' }],
+        },
+      })
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'knowledgeSettings.settings.embeddingModelLabel' }),
+      ).toHaveTextContent(settings.embedding.model)
+      expect(
+        screen.getByRole('button', {
+          name: 'knowledgeSettings.settings.systemReasoningModelLabel',
+        }),
+      ).toHaveTextContent(settings.retrieval.reasoning_model.model)
+      expectNoWrites()
+    },
+  )
+
   it('keeps active-profile controls enabled when a replacement candidate fails validation', async () => {
     await renderForm({
       settings: {
