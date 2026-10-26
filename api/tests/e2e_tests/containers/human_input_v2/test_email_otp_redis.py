@@ -1,41 +1,33 @@
-"""CI-only OTP behavior through the service with real Redis and migrated PostgreSQL."""
+"""CI-only OTP behavior through the service with real Redis and PostgreSQL."""
 
 from __future__ import annotations
 
-import runpy
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import timedelta
 from hashlib import sha256
-from pathlib import Path
 from threading import Barrier
 from uuid import uuid4
 
 import pytest
-from alembic.migration import MigrationContext
-from alembic.operations import Operations
-from flask import Flask
-from sqlalchemy import Engine, create_engine, delete, func, select, text
+from sqlalchemy import Engine, delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import ContactId, NormalizedEmail, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input_v2.entities import OnetimeEmail
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.redis_names import serialize_redis_name
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
-from models.account import Account, Tenant, TenantAccountJoin
+from models.account import Tenant
 from models.human_input_v2 import (
     HumanInputAuditEvent,
-    HumanInputContactIdentity,
     HumanInputDelivery,
     HumanInputExternalContactProfile,
     HumanInputForm,
-    HumanInputPlatformContactWorkspaceEntry,
     HumanInputRecipient,
 )
 from models.model import App, AppMode
@@ -231,49 +223,10 @@ class OtpCase:
         )
 
 
-@pytest.fixture
-def migrated_otp_engine(flask_app_with_containers: Flask) -> Iterator[Engine]:
-    # Business acceptance uses the migration-created schema rather than letting
-    # metadata.create_all conceal a missing production table or column.
-    with flask_app_with_containers.app_context():
-        admin_engine = db.engine
-    schema = "otp_" + uuid4().hex
-    with admin_engine.begin() as connection:
-        connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-    engine = create_engine(admin_engine.url, connect_args={"options": f"-csearch_path={schema},public"})
-    try:
-        # App and Tenant are unrelated prerequisites already migrated by Dify.
-        for model in (
-            Tenant,
-            App,
-            Account,
-            TenantAccountJoin,
-            HumanInputContactIdentity,
-            HumanInputExternalContactProfile,
-            HumanInputPlatformContactWorkspaceEntry,
-        ):
-            model.metadata.tables[model.__tablename__].create(engine)
-        migrations = Path(__file__).resolve().parents[4] / "migrations" / "versions"
-        names = (
-            "2026_09_09_1200-a7c9e1f3b5d8_add_human_input_v2_forms.py",
-            "2026_09_10_1200-b8d0f2a4c6e9_add_human_input_v2_recipients.py",
-            "2026_09_21_1200-f3c5e7a9b1d2_add_human_input_v2_delivery_runtime.py",
-            "2026_09_23_1200-a8d2f4b6c0e3_add_human_input_v2_audit_events.py",
-        )
-        with engine.begin() as connection, Operations.context(MigrationContext.configure(connection)):
-            for name in names:
-                migration = runpy.run_path(str(migrations / name))
-                migration["upgrade"]()
-        yield engine
-    finally:
-        engine.dispose()
-        with admin_engine.begin() as connection:
-            connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
-
-
 @pytest.fixture(params=["email", "external_contact"])
-def otp_case(migrated_otp_engine: Engine, request: pytest.FixtureRequest) -> Iterator[OtpCase]:
-    engine = migrated_otp_engine
+def otp_case(db_session_with_containers: Session, request: pytest.FixtureRequest) -> Iterator[OtpCase]:
+    engine = db_session_with_containers.get_bind()
+    assert isinstance(engine, Engine)
     sessions = sessionmaker(engine, expire_on_commit=False)
     tenant_id, app_id, token = TenantId(str(uuid4())), str(uuid4()), str(uuid4())
     now = naive_utc_now()

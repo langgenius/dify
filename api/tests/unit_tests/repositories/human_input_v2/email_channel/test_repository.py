@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.helper import encrypter
 from core.human_input_v2.shared import AccountId, EmailProviderId, NormalizedEmail, TenantId, WorkspaceScope
 from models.account import Tenant
-from models.human_input_v2 import HumanInputEmailProvider
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.email_channel import (
     CreateEmailConfigurationStatus,
@@ -70,11 +69,6 @@ def _configuration(
 
 @pytest.fixture
 def sessions(sqlite_engine: Engine) -> sessionmaker[Session]:
-    tables = [
-        Tenant.metadata.tables[Tenant.__tablename__],
-        HumanInputEmailProvider.metadata.tables[HumanInputEmailProvider.__tablename__],
-    ]
-    HumanInputEmailProvider.metadata.create_all(sqlite_engine, tables=tables)
     session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
     with session_maker.begin() as session:
         tenant = Tenant(name="Workspace")

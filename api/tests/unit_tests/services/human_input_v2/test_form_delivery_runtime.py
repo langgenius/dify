@@ -1,8 +1,7 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import timedelta
-from pathlib import Path
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -28,9 +27,7 @@ from graphon.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import CreatorUserRole
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
-from models.base import TypeBase
 from models.enums import EndUserType, WorkflowRunTriggeredFrom
-from models.human_input import HumanInputForm as LegacyHumanInputForm
 from models.human_input_v2 import (
     ContactSubjectType,
     FormViewEvent,
@@ -189,11 +186,11 @@ def test_factory_runs_v2_and_reuses_persisted_approval(context: Context, monkeyp
 
 
 @pytest.fixture
-def context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Context]:
+def context(sqlite_engine: sa.Engine, monkeypatch: pytest.MonkeyPatch) -> Context:
     from tasks.human_input_im_card_tasks import update_human_input_im_card_task
 
     monkeypatch.setattr(update_human_input_im_card_task, "apply_async", Mock())
-    engine = sa.create_engine(f"sqlite:///{tmp_path / 'runtime.sqlite'}", connect_args={"timeout": 15})
+    engine = sqlite_engine
 
     @sa.event.listens_for(engine, "connect")
     def setup_connection(connection, _record):
@@ -205,36 +202,6 @@ def context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Context
         # its writer at begin so concurrent calls can wait for serialized commits.
         connection.exec_driver_sql("BEGIN IMMEDIATE")
 
-    for model in (
-        Account,
-        EndUser,
-        Tenant,
-        TenantAccountJoin,
-        HumanInputContactIdentity,
-        HumanInputExternalContactProfile,
-        HumanInputPlatformContactWorkspaceEntry,
-        WorkflowRun,
-        WorkflowPause,
-        HumanInputEmailProvider,
-        HumanInputIMChannel,
-        HumanInputIMIdentity,
-        HumanInputIMBinding,
-        HumanInputIMBindingWorkspaceOverride,
-    ):
-        model.__table__.create(engine)
-    # Exercise business behavior against the actual runtime migrations.
-    from importlib import import_module
-
-    from alembic.migration import MigrationContext
-    from alembic.operations import Operations
-
-    with engine.begin() as connection, Operations.context(MigrationContext.configure(connection)):
-        import_module("migrations.versions.2025_11_18_1859-7bb281b7a422_add_workflow_pause_reasons_table").upgrade()
-        import_module("migrations.versions.2026_09_09_1200-a7c9e1f3b5d8_add_human_input_v2_forms").upgrade()
-        import_module("migrations.versions.2026_09_10_1200-b8d0f2a4c6e9_add_human_input_v2_recipients").upgrade()
-        import_module("migrations.versions.2026_09_21_1200-f3c5e7a9b1d2_add_human_input_v2_delivery_runtime").upgrade()
-        import_module("migrations.versions.2026_09_23_1200-a8d2f4b6c0e3_add_human_input_v2_audit_events").upgrade()
-        import_module("migrations.versions.2026_10_09_1200-6a8c0e2f4b7d_add_human_input_v2_deadline_indexes").upgrade()
     sessions = sessionmaker(engine, expire_on_commit=False)
     monkeypatch.setattr("core.db.session_factory.session_factory.get_session_maker", lambda: sessions)
     with sessions.begin() as session:
@@ -272,8 +239,7 @@ def context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Context
         initiator=AccountInitiator(_ACCOUNT),
         debugging_account_id=None,
     )
-    yield Context(sessions, HumanInputFormService(session_factory=sessions, context=execution), execution)
-    engine.dispose()
+    return Context(sessions, HumanInputFormService(session_factory=sessions, context=execution), execution)
 
 
 @pytest.fixture
@@ -283,7 +249,6 @@ def timeout_publications(context: Context, monkeypatch: pytest.MonkeyPatch) -> M
     from tasks import human_input_timeout_tasks
 
     with context.sessions() as session:
-        TypeBase.metadata.tables[LegacyHumanInputForm.__tablename__].create(session.get_bind())
         monkeypatch.setattr(human_input_timeout_tasks, "db", SimpleNamespace(engine=session.get_bind()))
     monkeypatch.setattr("core.db.session_factory.session_factory.create_session", context.sessions)
     publish = Mock()
@@ -1344,7 +1309,6 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     from graphon.entities import WorkflowStartReason
     from graphon.runtime import RuntimeState
     from models.human_input import HumanInputForm as LegacyForm
-    from models.human_input import HumanInputFormRecipient
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services import workflow_event_snapshot_service
     from services.human_input_v2.composition import build_human_input_delivery_service
@@ -1353,9 +1317,6 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
         _workflow_response_converter_human_input_build_converter as _build_converter,
     )
 
-    with context.sessions() as session:
-        for model in (LegacyForm, HumanInputFormRecipient):
-            model.__table__.create(session.get_bind())
     monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", Mock())
     prepared = DifyHumanInputRuntime(
         form_service=context.service,
@@ -1384,8 +1345,6 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     monkeypatch.setattr(
         "repositories.sqlalchemy_api_workflow_run_repository.storage.load", Mock(return_value=state.encode())
     )
-    with context.sessions() as session:
-        WorkflowPauseReason.__table__.drop(session.get_bind())
     repository.create_workflow_pause(
         workflow_run_id=_RUN, state_owner_user_id=_ACCOUNT, state=state, pause_reasons=[reason]
     )
@@ -1469,15 +1428,12 @@ def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(context: Con
     from graphon.entities.pause_reason import HitlRequired, SchedulingPause
     from graphon.runtime import RuntimeState
     from models.human_input import HumanInputForm as LegacyForm
-    from models.human_input import HumanInputFormRecipient
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services.workflow_pause_service import load_workflow_pause_snapshot
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     legacy_id = str(uuid4())
     with context.sessions.begin() as session:
-        for model in (LegacyForm, HumanInputFormRecipient):
-            model.__table__.create(session.connection())
         legacy = LegacyForm(
             tenant_id=_TENANT,
             app_id=_APP,
@@ -1570,8 +1526,6 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(contex
 
     legacy_id = str(uuid4())
     with context.sessions.begin() as session:
-        for model in (LegacyForm, HumanInputFormRecipient):
-            model.__table__.create(session.connection())
         session.add(
             LegacyForm(
                 id=legacy_id,
@@ -1658,13 +1612,8 @@ def test_console_pause_details_do_not_fall_back_when_checkpoint_is_invalid(conte
 
 def test_missing_v1_pause_form_does_not_fall_back_to_v2(context: Context, monkeypatch):
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-    from models.human_input import HumanInputForm as LegacyForm
-    from models.human_input import HumanInputFormRecipient
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
-    with context.sessions() as session:
-        for model in (LegacyForm, HumanInputFormRecipient):
-            model.__table__.create(session.get_bind())
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", Mock())
     repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
@@ -1924,7 +1873,6 @@ def created_im_cards(context: Context, console_approval, providers, monkeypatch)
 
     form_id, token = console_approval
     with context.sessions.begin() as session:
-        App.__table__.create(session.get_bind())
         session.add(
             App(
                 id=_APP, tenant_id=_TENANT, name="IM approval", mode=AppMode.WORKFLOW, enable_api=True, enable_site=True
@@ -2641,7 +2589,6 @@ def test_console_approval_validates_files_and_persists_typed_segments(
 
     form_id, token = console_approval
     with context.sessions.begin() as session:
-        UploadFile.__table__.create(session.connection())
         upload = UploadFile(
             tenant_id=str(uuid4()) if scenario == "foreign_file" else _TENANT,
             storage_type=StorageType.LOCAL,
@@ -2973,8 +2920,7 @@ def web_app_approval(context: Context, monkeypatch):
     from core.db.session_factory import session_factory
     from libs.external_api import ExternalApi
     from libs.passport import PassportService
-    from models.agent import Agent, AgentConfigRevision, AgentConfigSnapshot
-    from models.model import App, AppMode, AppModelConfig, CustomizeTokenStrategy, Site
+    from models.model import App, AppMode, CustomizeTokenStrategy, Site
     from models.workflow import Workflow
     from repositories.human_input_v2.delivery_repository import (
         DeliveryCreateParams,
@@ -2987,8 +2933,6 @@ def web_app_approval(context: Context, monkeypatch):
 
     end_user_id = str(uuid4())
     with context.sessions.begin() as session:
-        for model in (App, Site, AppModelConfig, Workflow, AgentConfigSnapshot, AgentConfigRevision, Agent):
-            model.__table__.create(session.get_bind())
         session.add_all(
             [
                 App(
@@ -3350,7 +3294,6 @@ def public_form_approval(context: Context, monkeypatch, request):
     from extensions.redis_names import serialize_redis_name
     from libs.external_api import ExternalApi
     from libs.helper import RateLimiter
-    from models.human_input_v2 import HumanInputAuditEvent
     from models.model import App, AppMode
     from repositories.human_input_v2.contact import ExternalContact
     from repositories.human_input_v2.delivery_repository import (
@@ -3363,8 +3306,6 @@ def public_form_approval(context: Context, monkeypatch, request):
     from services.human_input_v2.email_otp_service import EmailOtpService, OtpMail
 
     with context.sessions.begin() as session:
-        App.__table__.create(session.get_bind())
-        HumanInputAuditEvent.__table__.create(session.get_bind(), checkfirst=True)
         session.add(
             App(id=_APP, tenant_id=_TENANT, name="Email form", mode=AppMode.WORKFLOW, enable_api=True, enable_site=True)
         )

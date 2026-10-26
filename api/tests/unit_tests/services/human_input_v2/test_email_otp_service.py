@@ -1,12 +1,9 @@
-import json
-
 """OTP authorization and audit transactions against actual SQLite persistence."""
 
-from collections.abc import Iterator
+import json
 from dataclasses import dataclass
 from datetime import timedelta
 from hashlib import sha256
-from pathlib import Path
 from sqlite3 import Connection as SQLiteConnection
 from unittest.mock import MagicMock, Mock, create_autospec
 from uuid import uuid4
@@ -25,15 +22,13 @@ from core.workflow.nodes.human_input_v2.entities import DynamicEmail, OnetimeEma
 from extensions.ext_redis import RedisClientWrapper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
-from models.account import Account, Tenant, TenantAccountJoin
+from models.account import Account, Tenant
 from models.human_input_v2 import (
     HumanInputAuditEvent,
     HumanInputContactIdentity,
     HumanInputDelivery,
     HumanInputExternalContactProfile,
     HumanInputForm,
-    HumanInputPlatformContactWorkspaceEntry,
-    HumanInputRecipient,
     OtpSendEvent,
     OtpVerificationEvent,
 )
@@ -78,8 +73,8 @@ class Context:
 
 
 @pytest.fixture(params=["email", "dynamic_email", "external_contact"])
-def context(request: pytest.FixtureRequest, tmp_path: Path) -> Iterator[Context]:
-    engine = sa.create_engine(f"sqlite:///{tmp_path / 'otp.sqlite3'}", connect_args={"timeout": 10})
+def context(request: pytest.FixtureRequest, sqlite_engine: sa.Engine) -> Context:
+    engine = sqlite_engine
     # Explicit BEGIN keeps repository savepoints inside the caller's transaction.
 
     @event.listens_for(engine, "connect")
@@ -90,20 +85,6 @@ def context(request: pytest.FixtureRequest, tmp_path: Path) -> Iterator[Context]
     def begin(connection: Connection) -> None:
         connection.exec_driver_sql("BEGIN")
 
-    for model in (
-        App,
-        Tenant,
-        Account,
-        TenantAccountJoin,
-        HumanInputForm,
-        HumanInputRecipient,
-        HumanInputDelivery,
-        HumanInputAuditEvent,
-        HumanInputContactIdentity,
-        HumanInputExternalContactProfile,
-        HumanInputPlatformContactWorkspaceEntry,
-    ):
-        model.metadata.tables[model.__tablename__].create(engine)
     sessions = sessionmaker(engine, expire_on_commit=False)
     tenant, app_id, token = TenantId(str(uuid4())), str(uuid4()), "form-secret"
     now = naive_utc_now()
@@ -183,8 +164,7 @@ def context(request: pytest.FixtureRequest, tmp_path: Path) -> Iterator[Context]
         limiter=limiter,
         mail=OtpMail(available=lambda: True, send=send),
     )
-    yield Context(sessions, service, redis, limiter, send, delivery, form, token)
-    engine.dispose()
+    return Context(sessions, service, redis, limiter, send, delivery, form, token)
 
 
 def test_send_uses_frozen_email_and_six_digit_code_without_tokens(context: Context) -> None:
@@ -399,10 +379,16 @@ def test_cleanup_failure_does_not_undo_submission_or_log_secrets(
 def test_audit_failure_does_not_repeat_verification_or_restore_budget(context: Context) -> None:
     from sqlalchemy.exc import OperationalError
 
-    with context.sessions.begin() as session:
-        session.execute(sa.text("DROP TABLE hitlv2_audit_events"))
-    with pytest.raises(OperationalError):
-        context.service.verify(context.token, challenge_token="proof", otp_code="000000", ip_address=None)
+    def fail_audit_write(session: Session, _flush_context: object, _instances: object) -> None:
+        if any(isinstance(record, HumanInputAuditEvent) for record in session.new):
+            raise OperationalError("INSERT", {}, OSError("audit storage unavailable"))
+
+    event.listen(context.sessions, "before_flush", fail_audit_write)
+    try:
+        with pytest.raises(OperationalError):
+            context.service.verify(context.token, challenge_token="proof", otp_code="000000", ip_address=None)
+    finally:
+        event.remove(context.sessions, "before_flush", fail_audit_write)
     context.redis.incr_if_exists.assert_called_once()
 
 
@@ -552,7 +538,6 @@ def test_deleted_tenant_email_channel_does_not_block_deployment_otp(context: Con
     from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 
     with context.sessions.begin() as session:
-        HumanInputEmailProvider.metadata.tables[HumanInputEmailProvider.__tablename__].create(session.connection())
         channel = HumanInputEmailProvider(
             tenant_id=context.form.tenant_id,
             provider=EmailProviderType.RESEND,

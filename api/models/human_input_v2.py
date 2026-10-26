@@ -367,16 +367,15 @@ class HumanInputPlatformContactWorkspaceEntry(DefaultFieldsDCMixin, TypeBase):
     )
 
 
-class IMMessageInbox(TypeBase):
+class IMMessageEvent(TypeBase):
     """Authenticated callback facts and successful processing time."""
 
-    __tablename__ = "im_message_inbox"
+    __tablename__ = "im_message_event"
     __table_args__ = (
         sa.UniqueConstraint(
             "provider",
-            "provider_tenant_id",
-            "provider_event_id",
-            name="im_message_inbox_provider_event_uq",
+            "event_id",
+            name="im_message_event_provider_event_uq",
         ),
         {"comment": "Durable authenticated IM callback records."},
     )
@@ -410,13 +409,13 @@ class IMMessageInbox(TypeBase):
         kw_only=True,
         comment="Authenticated Provider discriminator.",
     )
-    provider_tenant_id: Mapped[str] = mapped_column(
+    tenant_id: Mapped[str] = mapped_column(
         sa.String(IM_INBOX_PROVIDER_METADATA_MAX_LENGTH),
         nullable=False,
         kw_only=True,
         comment="Stable authenticated Provider tenant identifier.",
     )
-    provider_event_id: Mapped[str | None] = mapped_column(
+    event_id: Mapped[str | None] = mapped_column(
         sa.String(IM_INBOX_PROVIDER_METADATA_MAX_LENGTH),
         nullable=True,
         default=None,
@@ -1461,7 +1460,7 @@ __all__ = [
     "IMBindingReconciliationSnapshot",
     "IMIdentityRawPayload",
     "IMIdentityReconciliationSnapshot",
-    "IMMessageInbox",
+    "IMMessageEvent",
     "IMReconciliationChangeSnapshot",
     "IMSyncContactSnapshot",
     "IMSyncDirectoryEntryPayload",

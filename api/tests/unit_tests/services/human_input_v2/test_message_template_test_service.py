@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from unittest.mock import Mock
@@ -13,7 +12,8 @@ from urllib.parse import urlsplit
 
 import pytest
 from pydantic import JsonValue
-from sqlalchemy import create_engine, delete, event
+from sqlalchemy import delete, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -27,21 +27,17 @@ from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInput
 from graphon.variables.segments import ArrayStringSegment, StringSegment
 from graphon.variables.variables import StringVariable
 from libs.datetime_utils import naive_utc_now
-from models import ToolFile, UploadFile
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input_v2 import (
     ContactSubjectType,
-    HumanInputAuditEvent,
     HumanInputContactIdentity,
     HumanInputDelivery,
     HumanInputEmailProvider,
-    HumanInputExternalContactProfile,
     HumanInputForm,
     HumanInputIMBinding,
     HumanInputIMBindingWorkspaceOverride,
     HumanInputIMChannel,
     HumanInputIMIdentity,
-    HumanInputPlatformContactWorkspaceEntry,
     HumanInputRecipient,
     IMIdentityRawPayload,
 )
@@ -136,31 +132,8 @@ class _Context:
 
 
 @pytest.fixture
-def context(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Context]:
-    engine = create_engine("sqlite://")
-    models = (
-        Workflow,
-        Account,
-        Tenant,
-        TenantAccountJoin,
-        HumanInputContactIdentity,
-        HumanInputExternalContactProfile,
-        HumanInputPlatformContactWorkspaceEntry,
-        HumanInputEmailProvider,
-        HumanInputIMChannel,
-        HumanInputIMIdentity,
-        HumanInputIMBinding,
-        HumanInputIMBindingWorkspaceOverride,
-        HumanInputAuditEvent,
-        HumanInputForm,
-        HumanInputRecipient,
-        HumanInputDelivery,
-        WorkflowDraftVariable,
-        ToolFile,
-        UploadFile,
-    )
-    for model in models:
-        model.metadata.tables[model.__tablename__].create(engine)
+def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
+    engine = sqlite_engine
     sessions = sessionmaker(engine, expire_on_commit=False)
     gateway = Mock(spec=ResendProviderGateway)
     adapter = Mock(spec=IMProviderAdapter)
@@ -257,10 +230,7 @@ def context(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Context]:
     adapter.messaging.send_text.side_effect = accepted
     result = _Context(service, sessions, gateway, adapter, adapter_factory)
     result.template("Review {{#start.name#}}", "Please review {{#url#}}")
-    try:
-        yield result
-    finally:
-        engine.dispose()
+    return result
 
 
 def test_email_renders_and_sends_only_to_editor_with_a_real_test_form(context: _Context) -> None:

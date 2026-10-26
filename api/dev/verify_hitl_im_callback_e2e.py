@@ -35,7 +35,7 @@ from models.human_input_v2 import (
     HumanInputForm,
     HumanInputIMChannel,
     HumanInputRecipient,
-    IMMessageInbox,
+    IMMessageEvent,
 )
 from models.model import App, AppMode, IconType
 from models.workflow import Workflow, WorkflowPause, WorkflowRun
@@ -259,7 +259,7 @@ def _wait_processed(sessions: sessionmaker[Session], phase: str, expected_count:
     while time.monotonic() < deadline:
         with sessions() as session:
             records = session.scalars(
-                sa.select(IMMessageInbox).where(IMMessageInbox.payload.contains(phase, autoescape=True))
+                sa.select(IMMessageEvent).where(IMMessageEvent.payload.contains(phase, autoescape=True))
             ).all()
             if len(records) == expected_count and all(record.processed_at is not None for record in records):
                 return
@@ -349,9 +349,9 @@ def _cleanup(sessions: sessionmaker[Session], fixture: Fixture, token: str) -> N
         session.execute(sa.delete(HumanInputRecipient).where(HumanInputRecipient.form_id.in_(form_ids)))
         session.execute(sa.delete(HumanInputForm).where(HumanInputForm.id.in_(form_ids)))
         session.execute(
-            sa.delete(IMMessageInbox).where(
-                IMMessageInbox.integration_id == fixture.channel_id,
-                IMMessageInbox.payload.contains(token, autoescape=True),
+            sa.delete(IMMessageEvent).where(
+                IMMessageEvent.integration_id == fixture.channel_id,
+                IMMessageEvent.payload.contains(token, autoescape=True),
             )
         )
     with sessions() as session:

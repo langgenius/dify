@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Generator
 from dataclasses import FrozenInstanceError, fields, replace
 from datetime import datetime
-from pathlib import Path
 from typing import Literal
 
 import pytest
@@ -47,19 +45,8 @@ _OwnerKind = Literal["workspace", "deployment"]
 
 
 @pytest.fixture
-def channel_engine(tmp_path: Path) -> Generator[Engine, None, None]:
-    database_path = tmp_path / "im-channel.sqlite3"
-    engine = sa.create_engine(f"sqlite:///{database_path}")
-    channel_table = HumanInputIMChannel.metadata.tables[HumanInputIMChannel.__tablename__]
-    email_table = HumanInputEmailProvider.metadata.tables[HumanInputEmailProvider.__tablename__]
-    HumanInputIMChannel.metadata.create_all(
-        engine,
-        tables=[channel_table, email_table],
-    )
-    try:
-        yield engine
-    finally:
-        engine.dispose()
+def channel_engine(sqlite_engine: Engine) -> Engine:
+    return sqlite_engine
 
 
 def _channel(
