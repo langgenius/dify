@@ -43,17 +43,22 @@ def is_valid_logo_uri(uri: str) -> bool:
 
 def _loopback_ip_port_stripped(uri: str) -> tuple[str, str, str, str] | None:
     """Return (scheme, host, path, query) for an http loopback IP literal URI, else None."""
+    # urlsplit cleans its input (lowercases scheme, strips control chars, drops an empty "?"), so check the raw text.
+    if not uri.startswith(f"{HTTP_SCHEME}://"):
+        return None
+    if any(char.isspace() or not char.isprintable() for char in uri):
+        return None
     try:
         parts = urlsplit(uri)
         host = parts.hostname
-        _ = parts.port
+        _ = parts.port  # raises ValueError on an invalid port
     except ValueError:
         return None
-    if parts.scheme != HTTP_SCHEME or host not in LOOPBACK_IP_LITERALS:
+    if host not in LOOPBACK_IP_LITERALS:
         return None
-    if parts.fragment or "#" in uri or parts.username is not None or parts.password is not None:
+    if parts.fragment or "#" in uri or "@" in parts.netloc:
         return None
-    if "@" in parts.netloc:
+    if "?" in uri and not parts.query:
         return None
     return parts.scheme, host, parts.path, parts.query
 
