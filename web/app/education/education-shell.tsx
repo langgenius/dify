@@ -10,12 +10,12 @@ type EducationShellProps = {
 }
 
 export default function EducationShell({ children }: EducationShellProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['education'])
   const pageTitle = t(($) => $.toVerified, { ns: 'education' })
   useDocumentTitle(pageTitle)
 
   return (
-    <main className="h-full overflow-y-auto bg-background-body p-6">
+    <main className="min-h-dvh bg-background-body p-6">
       <div className="mx-auto w-full max-w-352 rounded-2xl border border-effects-highlight bg-background-default-subtle">
         <div
           className="h-87.25 w-full overflow-hidden rounded-t-2xl bg-cover bg-center bg-no-repeat"

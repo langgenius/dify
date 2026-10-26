@@ -8,6 +8,21 @@ vi.mock('@/hooks/use-i18n', () => ({
 }))
 
 describe('useGetValidators', () => {
+  it('accepts numeric zero but rejects a cleared required number field', () => {
+    const { result } = renderHook(() => useGetValidators())
+    const validators = result.current.getValidators({
+      name: 'amount',
+      label: 'Amount',
+      required: true,
+      type: FormTypeEnum.textNumber,
+    })
+
+    for (const validate of [validators?.onMount, validators?.onChange, validators?.onBlur]) {
+      expect(validate?.({ value: 0 })).toBeUndefined()
+      expect(validate?.({ value: null })).toContain('common.errorMsg.fieldRequired')
+    }
+  })
+
   it('should create required validators when field is required without custom validators', () => {
     const { result } = renderHook(() => useGetValidators())
     const validators = result.current.getValidators({
@@ -17,12 +32,10 @@ describe('useGetValidators', () => {
       type: FormTypeEnum.textInput,
     })
 
-    const mountMessage = validators?.onMount?.({ value: '' })
-    const blurMessage = validators?.onBlur?.({ value: '' })
-
-    expect(mountMessage).toContain('common.errorMsg.fieldRequired')
-    expect(mountMessage).toContain('"field":"Username"')
-    expect(blurMessage).toContain('common.errorMsg.fieldRequired')
+    for (const validate of [validators?.onMount, validators?.onChange, validators?.onBlur]) {
+      expect(validate?.({ value: '' })).toContain('"field":"Username"')
+      expect(validate?.({ value: 'Alice' })).toBeUndefined()
+    }
   })
 
   it('should keep existing validators when custom validators are provided', () => {
@@ -39,7 +52,9 @@ describe('useGetValidators', () => {
       validators: customValidators,
     })
 
-    expect(validators).toBe(customValidators)
+    expect(validators?.onChange?.({ value: '' })).toBe('custom error')
+    expect(validators?.onMount).toBeUndefined()
+    expect(validators?.onBlur).toBeUndefined()
   })
 
   it('should fallback to field name when label is a react element', () => {
@@ -76,58 +91,18 @@ describe('useGetValidators', () => {
     expect(nonRequiredValidators).toBeUndefined()
   })
 
-  it('should return undefined when value is truthy (onMount, onChange, onBlur)', () => {
-    const { result } = renderHook(() => useGetValidators())
-    const validators = result.current.getValidators({
-      name: 'username',
-      label: 'Username',
-      required: true,
-      type: FormTypeEnum.textInput,
-    })
-
-    expect(validators?.onMount?.({ value: 'some value' })).toBeUndefined()
-    expect(validators?.onChange?.({ value: 'some value' })).toBeUndefined()
-    expect(validators?.onBlur?.({ value: 'some value' })).toBeUndefined()
-  })
-
   it('should handle null/missing labels correctly', () => {
     const { result } = renderHook(() => useGetValidators())
 
     // Explicitly test fallback to name when label is missing
     const validators = result.current.getValidators({
       name: 'id_field',
-      label: null as unknown as string,
+      label: null,
       required: true,
       type: FormTypeEnum.textInput,
     })
 
     const mountMessage = validators?.onMount?.({ value: '' })
     expect(mountMessage).toContain('"field":"id_field"')
-  })
-
-  it('should handle onChange message with fallback to name', () => {
-    const { result } = renderHook(() => useGetValidators())
-    const validators = result.current.getValidators({
-      name: 'desc',
-      label: createElement('span'), // results in '' label
-      required: true,
-      type: FormTypeEnum.textInput,
-    })
-
-    const changeMessage = validators?.onChange?.({ value: '' })
-    expect(changeMessage).toContain('"field":"desc"')
-  })
-
-  it('should handle onBlur message specifically', () => {
-    const { result } = renderHook(() => useGetValidators())
-    const validators = result.current.getValidators({
-      name: 'email',
-      label: 'Email Address',
-      required: true,
-      type: FormTypeEnum.textInput,
-    })
-
-    const blurMessage = validators?.onBlur?.({ value: '' })
-    expect(blurMessage).toContain('"field":"Email Address"')
   })
 })

@@ -14,7 +14,7 @@ const PluginAuthInDataSourceNode = ({
   isAuthorized,
   onJumpToDataSourcePage,
 }: PluginAuthInDataSourceNodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   return (
     <>
       {!isAuthorized && (

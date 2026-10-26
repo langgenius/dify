@@ -1,5 +1,10 @@
 {
   "extends": "@dify/tsconfig/node.json",
   "include": ["*.ts", "generated/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true
+  }
 }

@@ -55,7 +55,7 @@ class PasswordResetRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -65,7 +65,7 @@ class EmailRegisterRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -75,7 +75,7 @@ class EmailChangeRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -85,7 +85,7 @@ class OwnerTransferRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 1):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -137,7 +137,7 @@ class EmailCodeLoginRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 5):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -147,7 +147,7 @@ class EmailCodeAccountDeletionRateLimitExceededError(BaseHTTPException):
     code = 429
 
     def __init__(self, minutes: int = 5):
-        description = self.description.format(minutes=int(minutes)) if self.description else None
+        description = self.description.format(minutes=minutes) if self.description else None
         super().__init__(description=description)
 
 
@@ -173,6 +173,11 @@ class EmailAlreadyInUseError(BaseHTTPException):
     error_code = "email_already_in_use"
     description = "A user with this email already exists."
     code = 400
+
+
+class NormalizedEmailAlreadyInUseError(EmailAlreadyInUseError):
+    error_code = "normalized_email_already_in_use"
+    description = "An account with an equivalent email address already exists."
 
 
 class OwnerTransferLimitError(BaseHTTPException):

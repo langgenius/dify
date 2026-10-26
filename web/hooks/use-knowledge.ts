@@ -6,7 +6,7 @@ type IndexingTechnique = I18nKeysByPrefix<'dataset', 'indexingTechnique.'>
 type IndexingMethod = I18nKeysByPrefix<'dataset', 'indexingMethod.'>
 
 export const useKnowledge = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
 
   const formatIndexingTechnique = useCallback(
     (indexingTechnique: IndexingTechnique) => {

@@ -234,6 +234,14 @@ class ComposerConfigValidator:
         cls._reject_plaintext_secrets(dumped, path="agent_soul")
         cls._validate_shell_config(dumped)
 
+    @classmethod
+    def validate_importable_agent_soul(cls, agent_soul: AgentSoulConfig) -> None:
+        """Validate persisted draft safety without requiring all assets to be publishable."""
+
+        dumped = agent_soul.model_dump(mode="json")
+        cls._reject_plaintext_secrets(dumped, path="agent_soul")
+        cls._validate_shell_config(dumped)
+
     @staticmethod
     def _reject_missing_config_assets(agent_soul: AgentSoulConfig) -> None:
         missing = [f"skill:{item.name}" for item in agent_soul.config_skills if item.is_missing]
@@ -252,6 +260,10 @@ class ComposerConfigValidator:
         stay in the publish validator so invalid runtime configs are still
         blocked before a version can be published or executed.
         """
+        if any(space.is_missing for space in agent_soul.knowledge.spaces):
+            raise InvalidComposerConfigError(
+                "knowledge_fs_rebind_required: reselect unavailable or imported Agent Knowledge Bases before publishing"
+            )
         for knowledge_set in agent_soul.knowledge.sets:
             if (
                 knowledge_set.query.mode == AgentKnowledgeQueryMode.USER_QUERY

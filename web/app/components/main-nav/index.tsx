@@ -2,23 +2,22 @@
 
 import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo, useRef } from 'react'
+import { lazy, Suspense, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
-import { useProviderContextSelector } from '@/context/provider-context'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
+import { useCanViewSkills } from '@/features/skills/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import AccountSection from './components/account-section'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
@@ -26,10 +25,10 @@ import { MainNavSearchButton } from './components/search-button'
 import { WorkspaceCard } from './components/workspace-card'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 
-const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { ssr: false })
+const WebAppsSection = lazy(() => import('./components/web-apps-section'))
 
-export function MainNav({ className }: MainNavProps) {
-  const { t } = useTranslation()
+export function MainNav({ className, initialPlatform }: MainNavProps) {
+  const { t } = useTranslation(['common', 'navigation'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -38,8 +37,12 @@ export function MainNav({ className }: MainNavProps) {
     select: (data) => data.meta.currentEnv,
   })
   const agentV2Enabled = isAgentV2Enabled()
-  const canManageAgents = useCanManageAgents()
-  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
+  const canViewSkills = useCanViewSkills()
+  const { data: enableSkill } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.enable_skill,
+    }),
+  )
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
   const helpMenuTriggerRef = useRef<HTMLButtonElement>(null)
 
@@ -48,21 +51,21 @@ export function MainNav({ className }: MainNavProps) {
       MAIN_NAV_ROUTES.filter((route) =>
         isMainNavRouteVisible(route, {
           agentV2Enabled,
-          canManageAgents,
+          canViewSkills,
           isCurrentWorkspaceDatasetOperator,
           marketplaceEnabled: systemFeatures.enable_marketplace,
-          skillEnabled: enableSkill,
+          skillEnabled: enableSkill === true,
         }),
       ).map((route) => ({
         href: route.href,
-        label: 'label' in route ? route.label : t(($) => $[route.labelKey], { ns: 'common' }),
+        label: 'label' in route ? route.label : t(($) => $[route.labelKey], { ns: 'navigation' }),
         active: route.active,
         icon: route.icon,
         activeIcon: route.activeIcon,
       })),
     [
       agentV2Enabled,
-      canManageAgents,
+      canViewSkills,
       enableSkill,
       isCurrentWorkspaceDatasetOperator,
       systemFeatures.enable_marketplace,
@@ -98,33 +101,40 @@ export function MainNav({ className }: MainNavProps) {
   return (
     <aside
       className={cn(
-        'relative flex h-full w-62 shrink-0 flex-col overflow-hidden bg-background-body p-1 transition-all',
+        'relative flex h-full w-60 shrink-0 flex-col overflow-hidden bg-background-body transition-all',
         className,
       )}
     >
       <div className="flex min-h-0 w-60 flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
+        <div className="flex items-center justify-between ps-4 pe-2 pt-3 pb-2">
           {renderLogo()}
-          <MainNavSearchButton />
+          <MainNavSearchButton initialPlatform={initialPlatform} />
         </div>
         <div className="p-2">
           <WorkspaceCard />
         </div>
-        <nav className="isolate flex flex-col gap-px p-2">
+        <nav
+          aria-label={t(($) => $['navigation.primary'], { ns: 'common' })}
+          className="isolate flex flex-col gap-px p-2"
+        >
           {navItems.map((item) => (
             <MainNavLink key={item.href} item={item} pathname={pathname}>
               {item.href === '/agents' && (
                 <Badge
                   size="xs"
                   variant="dimm"
-                  text={t(($) => $['menus.status'], { ns: 'common' })}
-                  className="ml-auto shrink-0"
+                  text={t(($) => $['menus.status'], { ns: 'navigation' })}
+                  className="ms-auto shrink-0"
                 />
               )}
             </MainNavLink>
           ))}
         </nav>
-        {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+        {!isCurrentWorkspaceDatasetOperator && (
+          <Suspense fallback={null}>
+            <WebAppsSection />
+          </Suspense>
+        )}
         {showEnvTag && (
           <div className="mt-auto shrink-0 px-3 pb-2">
             <EnvNav />
@@ -134,9 +144,9 @@ export function MainNav({ className }: MainNavProps) {
       <div className="isolate w-60 shrink-0">
         <StepByStepTourMount
           recoveryAnchorRef={systemFeatures.branding.enabled ? undefined : helpMenuTriggerRef}
-          className="relative z-1 -mb-1 ml-2.5 h-8 w-45.75 overflow-visible"
+          className="relative z-1 ms-2.5 -mb-1 h-8 w-45.75 overflow-visible"
         />
-        <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
+        <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]">
           <div className="flex min-w-0 items-center gap-1 overflow-hidden">
             <AccountSection />
           </div>

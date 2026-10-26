@@ -1,9 +1,9 @@
 import type { DeliveryMethod, DeliveryMethodType, FormInputItem } from '../../types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { useNodesSyncDraft } from '../../../../hooks/use-nodes-sync-draft'
 import MethodItem from './method-item'
 import MethodSelector from './method-selector'
@@ -32,7 +32,9 @@ const DeliveryMethodForm: React.FC<Props> = ({
   onChange,
   readonly,
 }) => {
-  const { t } = useTranslation()
+  const deliveryLabelId = React.useId()
+
+  const { t } = useTranslation(['workflowHumanInput'])
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleMethodChange = (target: DeliveryMethod) => {
@@ -63,13 +65,14 @@ const DeliveryMethodForm: React.FC<Props> = ({
     <div className="px-4 py-2">
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
-          <div className="system-sm-semibold-uppercase text-text-secondary">
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflow' })}
+          <div id={deliveryLabelId} className="system-sm-semibold-uppercase text-text-secondary">
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.title`], { ns: 'workflowHumanInput' })}
           </div>
-          <Infotip
-            aria-label={t(($) => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflow' })}
-          >
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflow' })}
+          <Infotip>
+            <InfotipTrigger aria-labelledby={deliveryLabelId} />
+            <InfotipContent aria-labelledby={deliveryLabelId}>
+              {t(($) => $[`${i18nPrefix}.deliveryMethod.tooltip`], { ns: 'workflowHumanInput' })}
+            </InfotipContent>
           </Infotip>
         </div>
         {!readonly && (
@@ -84,7 +87,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
       </div>
       {!value.length && (
         <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">
-          {t(($) => $[`${i18nPrefix}.deliveryMethod.emptyTip`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.deliveryMethod.emptyTip`], { ns: 'workflowHumanInput' })}
         </div>
       )}
       {value.length > 0 && (

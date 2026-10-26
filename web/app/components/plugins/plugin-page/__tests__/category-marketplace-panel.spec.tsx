@@ -1,184 +1,235 @@
-import type { PluginCategoryEnum } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { PluginCategoryEnum as Category } from '../../types'
-import { getCategoryMarketplaceId } from '../category-marketplace'
+import type { ComponentProps } from 'react'
+import type { consoleClient } from '@/service/console'
+import type { marketplaceClient } from '@/service/marketplace'
+import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
+import { zGetWorkspacesCurrentPluginMarketplacePkgResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ThemeProvider } from 'next-themes'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createMarketplacePluginFixture, createPluginEntity } from '@/test/fixtures/plugin'
+import { PluginCategoryEnum as Category, PermissionType } from '../../types'
 import CategoryMarketplacePanel from '../category-marketplace-panel'
 
-const mocks = vi.hoisted(() => ({
-  canInstallPlugin: true,
-  fetchNextPage: vi.fn(),
-  installedPluginIds: ['installed/plugin'] as string[] | undefined,
-  installedPluginIdsError: false,
-  installedPluginIdsRefetch: vi.fn(),
-  searchParams: undefined as unknown,
+const { getInstalledIds, search, declaration } = vi.hoisted(() => ({
+  getInstalledIds: vi.fn<typeof consoleClient.workspaces.current.plugin.installedIds.get>(),
+  search: vi.fn<typeof marketplaceClient.searchAdvanced>(),
+  declaration: vi.fn<typeof consoleClient.workspaces.current.plugin.marketplace.pkg.get>(),
 }))
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => ({
-    data: mocks.installedPluginIds,
-    isError: mocks.installedPluginIdsError,
-    isFetching: false,
-    isPending: false,
-    refetch: mocks.installedPluginIdsRefetch,
-  }),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.installedIds.get': getInstalledIds,
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.permission.fetch.get': async () => ({
+        install_permission: PermissionType.everyone,
+        debug_permission: PermissionType.everyone,
+      }),
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.marketplace.pkg.get': declaration,
+    }),
+  }
+})
+
+vi.mock('@/service/marketplace', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/marketplace')>()),
+  marketplaceClient: { searchAdvanced: search },
 }))
 
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: 'light' }),
-}))
+const calendar = createMarketplacePluginFixture({
+  org: 'langgenius',
+  name: 'calendar',
+  plugin_id: 'langgenius/calendar',
+  label: { 'en-US': 'Calendar' },
+  brief: { 'en-US': 'Calendar events' },
+  latest_package_identifier: 'langgenius/calendar:1.0.0@checksum',
+  category: Category.trigger,
+})
+const installed = createMarketplacePluginFixture({
+  plugin_id: 'installed/plugin',
+  label: { 'en-US': 'Installed plugin' },
+  category: Category.trigger,
+})
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        plugin: {
-          installedIds: {
-            get: {
-              queryOptions: () => ({}),
-            },
-          },
-        },
+const setup = (
+  props: Partial<ComponentProps<typeof CategoryMarketplacePanel>> = {},
+  options: ConsoleQueryTestOptions = {},
+) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  const rendered = renderWithConsoleQuery(
+    <ThemeProvider defaultTheme="light" forcedTheme="light" enableSystem={false}>
+      <CategoryMarketplacePanel category={Category.trigger} searchText="calendar" {...props} />
+    </ThemeProvider>,
+    {
+      queryClient,
+      accountProfileMeta: { currentVersion: '1.0.0' },
+      workspacePermissionKeys: ['plugin.install'],
+      systemFeatures: {
+        deployment_edition: 'CLOUD',
+        rbac_enabled: true,
+        enable_marketplace: true,
       },
-    },
-  },
-}))
-
-vi.mock('@/app/components/plugins/marketplace/query', () => ({
-  useMarketplacePlugins: (searchParams: unknown) => {
-    mocks.searchParams = searchParams
-    return {
-      data: {
-        pages: [
-          {
-            plugins: [
-              { name: 'Installed plugin', plugin_id: 'installed/plugin', type: 'plugin' },
-              { name: 'Calendar', plugin_id: 'langgenius/calendar', type: 'plugin' },
-            ],
-          },
-        ],
-      },
-      fetchNextPage: mocks.fetchNextPage,
-      hasNextPage: true,
-      isFetchingNextPage: false,
-      isPending: false,
-    }
-  },
-}))
-
-vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
-  usePluginSettingsAccess: () => ({ canInstallPlugin: mocks.canInstallPlugin }),
-}))
-
-vi.mock('@/app/components/plugins/marketplace/utils', () => ({
-  getMarketplaceCategoryUrl: (category: PluginCategoryEnum) =>
-    `https://marketplace.test/plugins/${category}`,
-}))
-
-vi.mock('@/app/components/plugins/marketplace/list', () => ({
-  default: ({
-    cardRender,
-    plugins,
-    showInstallButton,
-  }: {
-    cardRender: (plugin: { name: string; plugin_id: string; type: string }) => React.ReactNode
-    plugins: { name: string; plugin_id: string; type: string }[]
-    showInstallButton: boolean
-  }) => (
-    <div data-can-install={showInstallButton ? 'true' : 'false'} data-testid="marketplace-list">
-      {plugins.map((plugin) => (
-        <div key={plugin.plugin_id}>{cardRender(plugin)}</div>
-      ))}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/provider-card', () => ({
-  default: ({ payload }: { payload: { name: string } }) => <div>{payload.name}</div>,
-}))
-
-describe('CategoryMarketplacePanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.canInstallPlugin = true
-    mocks.installedPluginIds = ['installed/plugin']
-    mocks.installedPluginIdsError = false
-    mocks.searchParams = undefined
-  })
-
-  it.each([Category.trigger, Category.agent, Category.extension] as const)(
-    'queries and links to the scoped %s marketplace',
-    async (category) => {
-      render(<CategoryMarketplacePanel category={category} searchText="calendar" />)
-
-      await waitFor(() => {
-        expect(mocks.searchParams).toEqual({
-          category,
-          exclude: ['installed/plugin'],
-          page_size: 30,
-          query: 'calendar',
-          sort_by: 'install_count',
-          sort_order: 'DESC',
-          type: 'plugin',
-        })
-      })
-      expect(
-        screen.getByRole('link', { name: /plugin\.marketplace\.difyMarketplace/ }),
-      ).toHaveAttribute('href', `https://marketplace.test/plugins/${category}`)
-      expect(document.getElementById(getCategoryMarketplaceId(category))).toBeInTheDocument()
-      expect(screen.getByText('Calendar')).toBeInTheDocument()
-      expect(screen.queryByText('Installed plugin')).not.toBeInTheDocument()
+      ...options,
     },
   )
+  return { ...rendered, user: userEvent.setup() }
+}
 
-  it('passes selected tags to the trigger marketplace search', async () => {
-    render(
-      <CategoryMarketplacePanel
-        category={Category.trigger}
-        searchText="calendar"
-        tags={['search']}
-      />,
-    )
-
-    await waitFor(() => {
-      expect(mocks.searchParams).toMatchObject({
+beforeEach(() => {
+  getInstalledIds.mockReset().mockResolvedValue({ plugin_ids: [installed.plugin_id] })
+  search.mockReset().mockResolvedValue({ data: { plugins: [installed, calendar], total: 2 } })
+  declaration.mockReset().mockResolvedValue(
+    zGetWorkspacesCurrentPluginMarketplacePkgResponse.parse({
+      manifest: {
+        ...createPluginEntity().declaration,
+        name: calendar.name,
         category: Category.trigger,
-        tags: ['search'],
-      })
+      },
+    }),
+  )
+})
+
+it.each([Category.trigger, Category.agent, Category.extension])(
+  'searches the %s category with selected tags and excludes installed plugins',
+  async (category) => {
+    search.mockResolvedValue({
+      data: {
+        plugins: [
+          { ...installed, category },
+          { ...calendar, category },
+        ],
+        total: 2,
+      },
     })
-  })
+    setup({ category, tags: ['search'] })
 
-  it('keeps browsing available but hides install actions without permission', () => {
-    mocks.canInstallPlugin = false
+    expect(await screen.findByRole('article', { name: 'Calendar' })).toBeVisible()
+    expect(screen.queryByRole('article', { name: 'Installed plugin' })).not.toBeInTheDocument()
+    expect(getInstalledIds).toHaveBeenCalledWith({ query: { category } })
+    expect(search).toHaveBeenCalledWith(
+      {
+        params: { kind: 'plugins' },
+        body: {
+          category,
+          query: 'calendar',
+          tags: ['search'],
+          page: 1,
+          page_size: 30,
+          sort_by: 'install_count',
+          sort_order: 'DESC',
+        },
+      },
+      expect.anything(),
+    )
+    const link = screen.getByRole('link', { name: 'plugin.marketplace.difyMarketplace' })
+    const url = new URL(link.getAttribute('href')!, window.location.origin)
+    expect(url.pathname).toBe(`/plugins/${category}`)
+    expect(url.searchParams.get('theme')).toBe('light')
+  },
+)
 
-    render(<CategoryMarketplacePanel category={Category.trigger} searchText="" />)
+it('shows provider information and opens the selected package in the real installer', async () => {
+  const { user } = setup()
+  const card = within(await screen.findByRole('article', { name: 'Calendar' }))
+  expect(card.getByRole('heading', { name: 'Calendar' })).toBeVisible()
+  expect(card.getByText('langgenius')).toBeVisible()
+  expect(card.getByText('Calendar events')).toBeVisible()
+  expect(card.getByText('42')).toBeVisible()
+  expect(card.getByText('search')).toBeVisible()
+  expect(card.getByText('agent')).toBeVisible()
+  await user.click(
+    card.getByRole('button', { name: 'plugin.detailPanel.operation.install Calendar' }),
+  )
+  const dialog = await screen.findByRole('dialog', { name: 'plugin.installModal.installPlugin' })
+  expect(within(dialog).getByText('Calendar')).toBeVisible()
+  await waitFor(() =>
+    expect(declaration).toHaveBeenCalledWith({
+      query: { plugin_unique_identifier: calendar.latest_package_identifier },
+    }),
+  )
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(
+    card.getByRole('button', { name: 'plugin.detailPanel.operation.install Calendar' }),
+  ).toBeVisible()
+})
 
-    expect(screen.getByTestId('marketplace-list')).toHaveAttribute('data-can-install', 'false')
-    expect(screen.getByText('Calendar')).toBeInTheDocument()
-  })
+it.each(['CLOUD', 'COMMUNITY', 'ENTERPRISE'] as const)(
+  'links provider details to the appropriate destination for %s',
+  async (edition) => {
+    setup({}, { systemFeatures: { deployment_edition: edition, rbac_enabled: true } })
+    const card = within(await screen.findByRole('article', { name: 'Calendar' }))
+    const link = card.getByRole('link', { name: 'plugin.detailPanel.operation.detail Calendar' })
+    const url = new URL(link.getAttribute('href')!, window.location.origin)
+    expect(url.pathname).toBe(`${edition === 'CLOUD' ? '/plugins' : '/plugin'}/langgenius/calendar`)
+    expect(url.searchParams.get('language')).toBe('en-US')
+    expect(url.searchParams.get('theme')).toBe('light')
+    if (edition !== 'CLOUD') {
+      expect(url.origin).toBe('https://marketplace.dify.ai')
+      expect(url.searchParams.get('source')).toBe(window.location.origin)
+    }
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  },
+)
 
-  it('shows a retry action when installed plugin IDs cannot be loaded', () => {
-    mocks.installedPluginIds = undefined
-    mocks.installedPluginIdsError = true
+it('keeps provider details available but hides installation without workspace permission', async () => {
+  setup({}, { workspacePermissionKeys: [] })
+  const card = within(await screen.findByRole('article', { name: 'Calendar' }))
+  expect(
+    card.getByRole('link', { name: 'plugin.detailPanel.operation.detail Calendar' }),
+  ).toBeVisible()
+  expect(
+    card.queryByRole('button', { name: /plugin.detailPanel.operation.install/ }),
+  ).not.toBeInTheDocument()
+})
 
-    render(<CategoryMarketplacePanel category={Category.trigger} searchText="" />)
+it('waits for installed IDs and resumes search after retrying a failed request', async () => {
+  getInstalledIds.mockRejectedValueOnce(new Error('Unavailable'))
+  const { user } = setup()
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.errorBoundary.title')
+  expect(search).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByRole('article', { name: 'Calendar' })).toBeVisible()
+  expect(screen.queryByRole('article', { name: 'Installed plugin' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
 
-    expect(screen.getByRole('alert')).toHaveTextContent('common.errorBoundary.title')
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(mocks.installedPluginIdsRefetch).toHaveBeenCalledTimes(1)
-    expect(mocks.searchParams).toBeUndefined()
-  })
-
-  it('supports collapsing and loading the next marketplace page', () => {
-    render(<CategoryMarketplacePanel category={Category.extension} searchText="" />)
-
-    const toggle = screen.getByRole('button', { name: 'plugin.list.source.marketplace' })
-    fireEvent.click(toggle)
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByTestId('marketplace-list')).not.toBeInTheDocument()
-
-    fireEvent.click(toggle)
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
-    expect(mocks.fetchNextPage).toHaveBeenCalledTimes(1)
-  })
+it('restores collapsed results and appends the next marketplace page', async () => {
+  const firstPage = Array.from({ length: 30 }, (_, index) =>
+    createMarketplacePluginFixture({
+      ...calendar,
+      plugin_id: `langgenius/calendar-${index}`,
+      name: `calendar-${index}`,
+      label: { 'en-US': `Calendar ${index + 1}` },
+    }),
+  )
+  search
+    .mockResolvedValueOnce({ data: { plugins: firstPage, total: 31 } })
+    .mockResolvedValue({ data: { plugins: [calendar], total: 31 } })
+  const { user } = setup()
+  await screen.findByRole('article', { name: 'Calendar 1' })
+  const toggle = screen.getByRole('button', { name: 'plugin.list.source.marketplace' })
+  await user.click(toggle)
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('article')).not.toBeInTheDocument()
+  await user.click(toggle)
+  expect(await screen.findByRole('article', { name: 'Calendar 1' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
+  expect(await screen.findByRole('article', { name: 'Calendar' })).toBeVisible()
+  expect(screen.getAllByRole('article')).toHaveLength(31)
+  expect(search).toHaveBeenLastCalledWith(
+    expect.objectContaining({ body: expect.objectContaining({ page: 2 }) }),
+    expect.anything(),
+  )
+  expect(screen.queryByRole('button', { name: 'workflow.common.loadMore' })).not.toBeInTheDocument()
 })

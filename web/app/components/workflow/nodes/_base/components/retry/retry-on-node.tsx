@@ -7,7 +7,7 @@ import { NodeRunningStatus } from '@/app/components/workflow/types'
 
 type RetryOnNodeProps = Pick<Node, 'id' | 'data'>
 const RetryOnNode = ({ data }: RetryOnNodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const { retry_config } = data
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
   const { isRunning, isSuccessful, isException, isFailed } = useMemo(() => {

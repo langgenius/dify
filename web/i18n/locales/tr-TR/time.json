@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "DD/MM/YYYY HH:mm",
+  "dateFormats.withSeconds": "DD/MM/YYYY HH:mm:ss",
+  "operation.cancel": "İptal",
+  "operation.now": "Şimdi",
+  "operation.ok": "Tamam",
+  "operation.pickDate": "Tarih Seç",
+  "picker.chooseMonthAndYear": "Ay ve yıl seçin",
+  "picker.endDate": "Bitiş tarihi",
+  "picker.hour": "Saat",
+  "picker.minute": "Dakika",
+  "picker.month": "Ay",
+  "picker.nextMonth": "Sonraki ay",
+  "picker.period": "ÖÖ/ÖS",
+  "picker.previousMonth": "Önceki ay",
+  "picker.required": "Bir değer seçin.",
+  "picker.requiredLabel": "Zorunlu",
+  "picker.startDate": "Başlangıç tarihi",
+  "picker.unavailable": "Bu tarih veya saat kullanılamıyor.",
+  "picker.year": "Yıl",
+  "title.pickTime": "Zamanı Seç"
+}

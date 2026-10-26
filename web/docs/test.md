@@ -13,20 +13,17 @@ Write or update a test when a change affects a stable, observable contract:
 - Business logic or a reusable utility with meaningful input/output behavior.
 - A bug fix whose regression can be reproduced through a public boundary.
 
-Do not add a test only because:
+Do not add tests merely for file/prop coverage, render-without-crashing checks, React implementation choices, or inputs excluded by TypeScript and the product contract.
 
-- A component, hook, prop, branch, or file exists.
-- A component can be rendered without crashing.
-- An implementation uses `useState`, `useEffect`, `useMemo`, or `useCallback`.
-- A coverage report shows an uncovered line.
-- TypeScript already makes an input impossible.
-- A change only adjusts classes, spacing, colors, or responsive layout without changing behavior.
-
-For visual-only changes, verify the real UI at representative widths and states. Use browser, screenshot, Storybook, or end-to-end coverage when the risk justifies automation.
+Decide whether a regression needs lasting automated coverage before choosing its boundary or runtime. Check existing tests first. For visual-only changes, default to reviewing the real UI at representative widths and states; record the result without adding a permanent test. Automate a stable visual requirement or meaningful regression risk, not every design adjustment. Do not move a low-value test to another runner or a screenshot suite merely to keep coverage.
 
 ### Coverage
 
 Coverage is a diagnostic signal, not a quality target. This guide defines no required percentage and reviewers should not request tests solely to increase coverage. Use a report to find suspicious gaps, then decide whether each gap represents a product risk worth protecting.
+
+The unit coverage report includes authored JavaScript and TypeScript throughout `web/`, including runtime entry points, scripts, plugins, and files that no test imports. It excludes test infrastructure, stories, declarations, generated sources, tool configuration, build output, and vendored static code. TypeScript modules containing only erased types have no executable statements and are not meaningful zero-coverage findings. Local coverage runs also produce an HTML report at `coverage/index.html`.
+
+Run the full `unit` project before using coverage to identify untested modules. A focused run measures only the selected tests. CI collects Browser Mode coverage separately and combines it with unit coverage under the same Codecov `web` flag. Zero unit coverage does not imply that Browser Mode or E2E never exercises the file; E2E does not contribute to the coverage report. Anonymous VM scripts and subprocesses can also execute code without attributing coverage to its source file. Check existing tests and separate product modules from development tooling when prioritizing the findings.
 
 ## Choose the Right Boundary
 
@@ -36,22 +33,28 @@ Use the smallest boundary that includes the behavior owner and proves the produc
 - Test hooks directly only when the hook itself exposes a reusable public contract. Otherwise, exercise the hook through its owning component or feature.
 - Use React Testing Library for component and feature behavior visible through the DOM or external side effects.
 - Use integration tests for behavior that crosses meaningful module boundaries.
-- Use a real browser for layout, responsive behavior, browser-specific APIs, animation, and focus behavior that `happy-dom` cannot represent faithfully.
+- Use the `browser` project when it adds meaningful browser evidence under [Browser Mode Admission].
 - Follow the [Dify UI testing contract] for the Storybook and Vitest boundary of Dify UI primitives.
 
 Test the behavior owner. Barrel exports, pass-through wrappers, and purely presentational children do not need separate tests when the owning feature already proves their contract. Do not repeat generic behavior already owned by Base UI, React Aria, or the browser; test Dify's integration, overrides, and known regressions.
 
 ### Browser Mode Admission
 
-`happy-dom` is the default choice for tests under `web/`. Use the `unit` project for pure logic, hooks, and DOM-observable component or feature behavior that does not depend on a browser's rendering engine. This split follows [Vitest test projects] and [Why Browser Mode].
+Web defaults to the `unit` project in `happy-dom`. This is a project tradeoff, not a Vitest restriction: [Vitest component testing] recommends Browser Mode, and [Vitest visual regression testing] supports visual contracts.
 
-Use the `browser` project only when the asserted contract depends on browser-owned behavior that `happy-dom` cannot represent faithfully, such as:
+A new browser test must establish all three:
 
-- Layout geometry, CSS hit testing, responsive behavior, or pointer targeting.
-- Native focus, selection, scrolling, keyboard, or pointer behavior.
-- Browser APIs, observers, or animation lifecycles whose real implementation affects the result.
+- **Value:** name the user-visible failure or stable visual requirement worth protecting. Layout, focus, portals, observers, and “happy-dom cannot do this” alone are not justification; neither are primitive or native defaults such as focus returning to the trigger that opened an overlay or Space activating a button.
+- **Additional evidence:** identify what existing owner tests miss and what real rendering or browser interaction adds. Do not repeat a state matrix just because a browser fixture exists; a viewport, theme, key, or variant row needs its own failure mode, otherwise keep the hardest row.
+- **Faithful boundary:** exercise the production owner and assert the claimed result. A copied layout cannot prove page integration; cursor or hover styling cannot prove that clicking performs an action.
 
-Rendering UI, reducing mocks, increasing confidence, or raising coverage is not enough reason to use Browser Mode. Each `*.browser.spec.{ts,tsx}` test under `web/app/` must name the browser-owned behavior and why `happy-dom` is insufficient, exercise the smallest owner through semantic locators, and justify its additional runtime. Do not use forced interaction, fixed sleeps, private DOM or CSS assertions, or real network requests.
+Use the smallest scenario that supplies that evidence. Native selection, focus restoration to CSS-hidden controls, hit testing, scrolling, and animation completion can justify browser coverage. Ordinary event handling and DOM state usually belong in `unit`. Synthetic events can test handler responses but do not prove native gesture generation, capture, or event ordering; use the [Vitest Interactivity API] when those are the contract.
+
+Do not add permanent tests solely to freeze decorative spacing, radii, or artwork dimensions from a one-off visual adjustment. Geometry and computed styles are appropriate when they prove the chosen contract, such as readable content, unobstructed controls, or visible keyboard focus. Visual baselines need an explicit stable requirement and controlled rendering environment.
+
+Each `*.browser.spec.{ts,tsx}` must make its regression and additional evidence clear from its scenario and assertions; add a short explanation only when needed. Do not use forced interaction, fixed sleeps, private DOM assertions, or real network requests.
+
+Browser input is real and nothing waits between keys. Split a `userEvent.keyboard` sequence wherever a later key depends on state an earlier key produces, such as an opened menu or moved focus, and await that state with `expect.element` before continuing.
 
 Browser Mode remains a focused component or feature test and currently proves Chromium only. Use the end-to-end suite for a running application, authentication, real routing, backend APIs, persistence, or complete journeys.
 
@@ -59,11 +62,13 @@ Browser Mode remains a focused component or feature test and currently proves Ch
 
 - Drive state transitions through props, user interaction, URL changes, or public APIs.
 - Assert rendered UI, ARIA state, navigation, persistence, network-boundary calls, or another observable result.
+- For a reset-or-persistence regression in a hidden surface, exercise the public transition: open, modify, close and wait for the surface to disappear, then reopen. Assert the intended behavior without coupling the test to hook placement, component names, keys, or private mount structure.
 - Do not inspect React state, refs, hook call order, effect dependencies, or private DOM structure.
 - Test referential identity only when identity is itself a documented public contract.
 - One test should describe one behavior. It may contain multiple assertions when they jointly prove that behavior.
 - Test only input states supported by the type and product contract. Do not manufacture `null`, `undefined`, or extreme values without a reachable scenario.
-- Avoid snapshots and CSS class assertions unless the serialized output or class contract is intentionally public and stable.
+- Do not assert CSS class names or mechanically translate them into computed-style assertions. Assert the required outcome; use visual review for incidental styling.
+- Use DOM or data snapshots only when serialized output is itself an intentionally public, stable contract. Visual baselines follow Browser Mode Admission.
 
 ## Queries, Interaction, and Accessibility
 
@@ -79,9 +84,7 @@ When repeated content creates ambiguity, narrow to a semantic container, then qu
 If an interactive control cannot be found semantically, first check whether the production markup needs a real button, link, label, landmark, or accessible name.
 
 - In React Testing Library tests, use a `userEvent.setup()` instance inside the test. Use `fireEvent` only when the low-level event itself is the contract.
-- In Browser Mode, interact through awaited locators. Use `.element()` only for DOM APIs that locators do not expose.
-- Test keyboard and focus behavior when they are part of the interaction contract.
-- Assert accessible names and ARIA state when they communicate product state.
+- In Browser Mode, interact through awaited locators. Use `.element()` only for DOM APIs that locators do not expose; it does not wait, so await the element with `expect.element` first.
 - Semantic queries and automated checks do not constitute complete accessibility conformance.
 - Exact copy assertions are valid when the copy or translation key is the contract; otherwise prefer a semantic query or resilient match.
 - In React Testing Library, use `queryBy*` for synchronous absence, `findBy*` for asynchronous appearance, and `waitForElementToBeRemoved` or `waitFor` for asynchronous disappearance. In Browser Mode, use `expect.element` for eventual assertions.
@@ -107,15 +110,16 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 
 - Await user interactions, promises, `findBy*`, and `waitFor`.
 - Wait for observable state changes. Do not use fixed sleeps or broad retries to hide incorrect timing.
-- Use `findBy*` for an element that appears asynchronously and `waitFor` for an eventually true external assertion.
 - Use fake timers only when timer behavior is part of the contract. Restore real timers after the test.
 - Control time, randomness, network responses, and shared stores so tests are deterministic.
 - `web/vitest.setup.ts` already runs Testing Library cleanup and resets Zustand stores after each test.
-- Call `vi.clearAllMocks()` in `beforeEach` when a suite relies on mock call history. Do not use `afterEach` to prepare the next test.
+- Vitest 5 clears mock call history before each test. This does not reset mock implementations or external state; set those up explicitly for each case. Do not use `afterEach` to prepare the next test.
 
 ## Dify Test Setup
 
-- Following [Vite+ testing configuration], tests under `web/` use two explicit projects in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `app/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
+- Following [Vite+ testing configuration], tests under `web/` use two explicit projects in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `{app,features}/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
+- Browser string locators use Vitest 5's exact, case-sensitive matching. Use a regular expression or a per-locator `{ exact: false }` only when partial matching protects the intended behavior. Node tests use `@testing-library/jest-dom/vitest`; a regular-expression check against rendered text can use `expect(element.textContent).toMatch(pattern)` when the Vitest 5 browser matcher types conflict with jest-dom's `toHaveTextContent` overload.
+- Tests in one browser file share a page. `web/vitest.browser.setup.ts` resets the viewport and pointer before each test; set the viewport a test depends on inside that test.
 - Browser failures keep screenshots and Playwright traces under `web/.vitest-browser/`. CI uploads that directory only when failure artifacts exist; Browser Mode does not own coverage or report merging.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
 - The shared `react-i18next` mock is loaded globally. Use `createReactI18nextMock` from `web/test/i18n-mock` only when a test needs custom translations.
@@ -124,15 +128,9 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 
 ## Workflow
 
-1. Read the behavior owner, its public dependencies, and nearby tests.
-1. State the contract and regression risk before deciding to add tests.
-1. Choose the smallest boundary that proves the contract.
-1. For a behavior change or bug fix, establish the failing case first when practical.
-1. Implement one coherent scenario, run its focused spec, and fix failures before expanding scope.
-1. Run the affected suite and the relevant repository checks.
-1. Remove redundant assertions, unnecessary mocks, and tests that only mirror implementation.
+Use the behavior owner and nearby tests to identify a realistic regression and the assertion that would catch it. For a behavior change or bug fix, establish the failing case first when practical. Remove redundant tests and assertions as readily as adding missing coverage.
 
-When working across several files, order the work by dependency and verify each coherent slice before continuing. Do not create one test file per source file by default.
+Run the focused spec and the affected suite when it adds coverage beyond that spec, plus the required [static checks]. Once these pass, broaden or repeat verification only for new changes, failures, or unresolved concerns. Diagnose CI-only failures from the failing job and reproduce them locally when possible; reruns do not replace diagnosis or reporting.
 
 ## Commands
 
@@ -154,17 +152,6 @@ vp test run --project unit --coverage path/to/spec-or-directory
 
 Always pass `--project unit` or `--project browser`. Bare `vp test` runs both registered projects and is not the standard Web test command.
 
-## Review Checklist
-
-- Does each test protect a reachable product contract or meaningful regression?
-- Is the behavior exercised through a public boundary?
-- Are semantic queries and accessibility contracts used where relevant?
-- Are mocks placed at intentional boundaries and faithful to those boundaries?
-- Is the suite deterministic, focused, and cheaper to maintain than the regression it prevents?
-- Would the test survive a refactor that preserves behavior?
-- Can the reviewer name one realistic regression and the assertion that would fail?
-- For Browser Mode, is the browser-owned contract explicit, impossible to prove faithfully in `happy-dom`, and worth the additional runtime?
-
 ## References
 
 - [Vitest documentation]
@@ -178,17 +165,24 @@ Always pass `--project unit` or `--project browser`. Bare `vp test` runs both re
 - [React Testing Library documentation]
 - [Testing Library query guidance]
 - [Testing Library user-event guidance]
+- [Testing Library user-event convenience APIs]
 
+[Browser Mode Admission]: #browser-mode-admission
 [Dify UI testing contract]: ../../packages/dify-ui/docs/testing.md
 [React Testing Library documentation]: https://testing-library.com/docs/react-testing-library/intro
 [Storybook Vitest addon]: https://storybook.js.org/docs/writing-tests/integrations/vitest-addon
 [Testing Library guiding principles]: https://testing-library.com/docs/guiding-principles
 [Testing Library query guidance]: https://testing-library.com/docs/queries/about
+[Testing Library user-event convenience APIs]: https://testing-library.com/docs/user-event/convenience
 [Testing Library user-event guidance]: https://testing-library.com/docs/user-event/intro
 [Vite+ testing configuration]: https://viteplus.dev/guide/test
-[Vitest Browser Mode documentation]: https://v4.vitest.dev/guide/browser
-[Vitest Browser Mode locators]: https://v4.vitest.dev/api/browser/locators
-[Vitest Browser Mode traces]: https://v4.vitest.dev/guide/browser/trace-view
-[Vitest documentation]: https://v4.vitest.dev/guide
-[Vitest test projects]: https://v4.vitest.dev/guide/projects
-[Why Browser Mode]: https://v4.vitest.dev/guide/browser/why
+[Vitest Browser Mode documentation]: https://vitest.dev/guide/browser
+[Vitest Browser Mode locators]: https://vitest.dev/api/browser/locators
+[Vitest Browser Mode traces]: https://vitest.dev/guide/browser/trace-view
+[Vitest Interactivity API]: https://vitest.dev/api/browser/interactivity
+[Vitest component testing]: https://vitest.dev/guide/browser/component-testing
+[Vitest documentation]: https://vitest.dev/guide
+[Vitest test projects]: https://vitest.dev/guide/projects
+[Vitest visual regression testing]: https://vitest.dev/guide/browser/visual-regression-testing
+[Why Browser Mode]: https://vitest.dev/guide/browser/why
+[static checks]: lint.md

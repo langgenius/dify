@@ -83,7 +83,7 @@
 ## استخدام Dify
 
 - **سحابة </br>**
-  نحن نستضيف [خدمة Dify Cloud](https://dify.ai) لأي شخص لتجربتها بدون أي إعدادات. توفر كل قدرات النسخة التي تمت استضافتها ذاتيًا، وتتضمن 200 أمر GPT-4 مجانًا في خطة الصندوق الرملي.
+  جرّب [Dify Cloud](https://cloud.dify.ai) دون إدارة خادم. راجع [صفحة الأسعار](https://dify.ai/pricing) للاطلاع على الخطط وحصص الاستخدام الحالية.
 
 - **استضافة ذاتية لنسخة المجتمع Dify</br>**
   ابدأ سريعًا في تشغيل Dify في بيئتك باستخدام \[دليل البدء السريع\](#البدء السريع).
@@ -129,7 +129,7 @@ docker compose up -d
 
 - **الشفرة البرمجية**: اقرأ [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)، ثم تصفح [المشكلات المناسبة للمساهمين الجدد](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
 - **الأفكار والملاحظات**: ابدأ أو انضم إلى [مناقشة على GitHub](https://github.com/langgenius/dify/discussions).
-- **الترجمات**: اتبع [دليل التدويل](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) لإضافة لغة أو تحديثها.
+- **الترجمات**: اتبع [دليل التدويل](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) لإضافة لغة أو تحديثها.
 - **المجتمع**: شارك التطبيقات التي تبنيها، وساعد المستخدمين الآخرين، وساهم في نشر Dify.
 
 ### المساهمون
@@ -148,11 +148,11 @@ docker compose up -d
 - [X](https://x.com/dify_ai): لمتابعة أخبار الإصدارات وتحديثات المشروع.
 ## تاريخ النجمة
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## الكشف عن الأمان
 
-لحماية خصوصيتك، يرجى تجنب نشر مشكلات الأمان على GitHub. بدلاً من ذلك، أرسل أسئلتك إلى <security@dify.ai> وسنقدم لك إجابة أكثر تفصيلاً.
+أبلغ عن الثغرات بشكل خاص عبر GitHub Security Advisories وفقًا [لسياسة الأمان](../../SECURITY.md). لا تفصح عنها في المشكلات أو المناقشات أو طلبات السحب العامة.
 
 ## الرخصة
 

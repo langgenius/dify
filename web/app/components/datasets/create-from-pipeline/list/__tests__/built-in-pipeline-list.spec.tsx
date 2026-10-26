@@ -1,245 +1,75 @@
-import type { ReactElement } from 'react'
-import { screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import type { PipelineTemplateListResponse } from '@dify/contracts/api/console/rag/types.gen'
+import { act, screen, waitFor } from '@testing-library/react'
+import { ChunkingMode } from '@/models/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import BuiltInPipelineList from '../built-in-pipeline-list'
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
-    systemFeatures: { enable_marketplace: true },
-  })
-
-vi.mock('../create-card', () => ({
-  default: () => <div data-testid="create-card">CreateCard</div>,
+const { getTemplates } = vi.hoisted(() => ({ getTemplates: vi.fn() }))
+let locale = 'en-US'
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => locale,
 }))
-
-vi.mock('../template-card', () => ({
-  default: ({
-    type,
-    pipeline,
-    showMoreOperations,
-  }: {
-    type: string
-    pipeline: { name: string }
-    showMoreOperations?: boolean
-  }) => (
-    <div data-testid="template-card" data-type={type} data-show-more={String(showMoreOperations)}>
-      {pipeline.name}
-    </div>
-  ),
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
+  usePluginDependencies: () => ({ handleCheckPluginDependencies: vi.fn() }),
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipeline.templates.get': getTemplates,
+    }),
+  }
+})
 
-// Configurable locale mock
-let mockLocale = 'en-US'
+beforeEach(() => {
+  locale = 'en-US'
+  getTemplates.mockResolvedValue({ pipeline_templates: [] })
+})
 
-vi.mock('@/context/i18n', () => ({
-  useLocale: () => mockLocale,
-}))
-
-const mockUsePipelineTemplateList = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  usePipelineTemplateList: (...args: unknown[]) => mockUsePipelineTemplateList(...args),
-}))
-
-// BuiltInPipelineList Component Tests
-
-describe('BuiltInPipelineList', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockLocale = 'en-US'
-  })
-
-  describe('Rendering', () => {
-    it('should always render CreateCard', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: null,
-        isLoading: true,
-      })
-
-      render(<BuiltInPipelineList />)
-      expect(screen.getByTestId('create-card')).toBeInTheDocument()
-    })
-  })
-
-  // Loading State Tests
-  describe('Loading State', () => {
-    it('should not render TemplateCards when loading', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: {
-          pipeline_templates: [{ name: 'Pipeline 1' }],
+it('shows built-in templates after loading without custom-template management actions', async () => {
+  const pending = createDeferred<PipelineTemplateListResponse>()
+  getTemplates.mockReturnValue(pending.promise)
+  render(<BuiltInPipelineList />, { systemFeatures: { enable_marketplace: true } })
+  expect(screen.queryByText('Legal documents')).not.toBeInTheDocument()
+  await act(async () =>
+    pending.resolve({
+      pipeline_templates: [
+        {
+          id: 'template-1',
+          name: 'Legal documents',
+          description: 'Process legal documents',
+          chunk_structure: ChunkingMode.text,
+          position: 1,
+          icon: { icon_type: 'emoji', icon: '📚', icon_background: '#FFF4ED' },
         },
-        isLoading: true,
-      })
+      ],
+    }),
+  )
+  expect(await screen.findByText('Legal documents')).toBeInTheDocument()
+  expect(
+    screen.getByRole('button', { name: 'datasetPipeline.operations.choose' }),
+  ).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+})
 
-      render(<BuiltInPipelineList />)
-      expect(screen.queryByTestId('template-card')).not.toBeInTheDocument()
-    })
-  })
+it.each([
+  ['zh-Hans', 'zh-Hans'],
+  ['ja-JP', 'ja-JP'],
+  ['fr-FR', 'en-US'],
+])('requests %s templates using %s', async (requested, language) => {
+  locale = requested
+  render(<BuiltInPipelineList />, { systemFeatures: { enable_marketplace: true } })
+  await waitFor(() =>
+    expect(getTemplates).toHaveBeenCalledWith({ query: { type: 'built-in', language } }),
+  )
+})
 
-  // Rendering with Data Tests
-  describe('Rendering with Data', () => {
-    it('should render TemplateCard for each pipeline when not loading', () => {
-      const mockPipelines = [{ name: 'Pipeline 1' }, { name: 'Pipeline 2' }]
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: mockPipelines },
-        isLoading: false,
-      })
-
-      render(<BuiltInPipelineList />)
-      const cards = screen.getAllByTestId('template-card')
-      expect(cards).toHaveLength(2)
-    })
-
-    it('should pass correct props to TemplateCard', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: {
-          pipeline_templates: [{ name: 'Test Pipeline' }],
-        },
-        isLoading: false,
-      })
-
-      render(<BuiltInPipelineList />)
-      const card = screen.getByTestId('template-card')
-      expect(card).toHaveAttribute('data-type', 'built-in')
-      expect(card).toHaveAttribute('data-show-more', 'false')
-    })
-
-    it('should render CreateCard as first element', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: {
-          pipeline_templates: [{ name: 'Pipeline 1' }],
-        },
-        isLoading: false,
-      })
-
-      const { container } = render(<BuiltInPipelineList />)
-      const grid = container.querySelector('.grid')
-      const firstChild = grid?.firstChild as HTMLElement
-      expect(firstChild).toHaveAttribute('data-testid', 'create-card')
-    })
-  })
-
-  // API Call Tests
-  describe('API Call', () => {
-    it('should call usePipelineTemplateList with type built-in', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: null,
-        isLoading: true,
-      })
-
-      render(<BuiltInPipelineList />)
-      expect(mockUsePipelineTemplateList).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'built-in' }),
-        expect.any(Boolean),
-      )
-    })
-  })
-
-  describe('Layout', () => {
-    it('should have grid layout', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: [] },
-        isLoading: false,
-      })
-
-      const { container } = render(<BuiltInPipelineList />)
-      const grid = container.querySelector('.grid')
-      expect(grid).toHaveClass('grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'gap-3', 'py-2')
-      expect(grid).not.toHaveClass(
-        'grid-cols-1',
-        'sm:grid-cols-2',
-        'md:grid-cols-3',
-        'lg:grid-cols-4',
-      )
-    })
-  })
-
-  // Locale Handling Tests (Branch Coverage)
-  describe('Locale Handling', () => {
-    it('should use zh-Hans locale when set', () => {
-      mockLocale = 'zh-Hans'
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: [] },
-        isLoading: false,
-      })
-
-      render(<BuiltInPipelineList />)
-
-      expect(mockUsePipelineTemplateList).toHaveBeenCalledWith(
-        expect.objectContaining({ language: 'zh-Hans' }),
-        expect.any(Boolean),
-      )
-    })
-
-    it('should use ja-JP locale when set', () => {
-      mockLocale = 'ja-JP'
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: [] },
-        isLoading: false,
-      })
-
-      render(<BuiltInPipelineList />)
-
-      expect(mockUsePipelineTemplateList).toHaveBeenCalledWith(
-        expect.objectContaining({ language: 'ja-JP' }),
-        expect.any(Boolean),
-      )
-    })
-
-    it('should fallback to default language for unsupported locales', () => {
-      mockLocale = 'fr-FR'
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: [] },
-        isLoading: false,
-      })
-
-      render(<BuiltInPipelineList />)
-
-      // Should fall back to LanguagesSupported[0] which is 'en-US'
-      expect(mockUsePipelineTemplateList).toHaveBeenCalledWith(
-        expect.objectContaining({ language: 'en-US' }),
-        expect.any(Boolean),
-      )
-    })
-
-    it('should fallback to default language for en-US locale', () => {
-      mockLocale = 'en-US'
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: [] },
-        isLoading: false,
-      })
-
-      render(<BuiltInPipelineList />)
-
-      expect(mockUsePipelineTemplateList).toHaveBeenCalledWith(
-        expect.objectContaining({ language: 'en-US' }),
-        expect.any(Boolean),
-      )
-    })
-  })
-
-  // Empty Data Tests
-  describe('Empty Data', () => {
-    it('should handle null pipeline_templates', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: null },
-        isLoading: false,
-      })
-
-      render(<BuiltInPipelineList />)
-      expect(screen.getByTestId('create-card')).toBeInTheDocument()
-      expect(screen.queryByTestId('template-card')).not.toBeInTheDocument()
-    })
-
-    it('should handle undefined data', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: undefined,
-        isLoading: false,
-      })
-
-      render(<BuiltInPipelineList />)
-      expect(screen.getByTestId('create-card')).toBeInTheDocument()
-      expect(screen.queryByTestId('template-card')).not.toBeInTheDocument()
-    })
-  })
+it('does not request marketplace templates when the marketplace is disabled', () => {
+  render(<BuiltInPipelineList />, { systemFeatures: { enable_marketplace: false } })
+  expect(getTemplates).not.toHaveBeenCalled()
 })

@@ -2,13 +2,12 @@
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SkillFileMutationCoordinator } from './shared'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import {
-  getAsyncSkillErrorPayload,
   getErrorCode,
   getErrorDetailString,
   invalidateSkillDetail,
@@ -31,8 +30,8 @@ export function SkillDisplayNameEditor({
   readonly: boolean
   skillId: string
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
   const submittingRef = useRef(false)
@@ -101,14 +100,13 @@ export function SkillDisplayNameEditor({
       })
       setDraftName(nextDisplayName)
       onEditingChange(false)
-      toast.success(t(($) => $['skillManagement.detail.renameSkillSuccess']))
     } catch (error) {
       setDraftName(displayName)
-      const errorPayload = await getAsyncSkillErrorPayload(error)
-      if (getErrorCode(errorPayload ?? error) === 'skill_name_conflict') {
+
+      if (getErrorCode(error) === 'skill_name_conflict') {
         toast.error(
           t(($) => $['skillManagement.errors.nameConflict'], {
-            name: getErrorDetailString(errorPayload ?? error, 'name') ?? '',
+            name: getErrorDetailString(error, 'name') ?? '',
           }),
         )
       } else {

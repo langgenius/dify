@@ -2,10 +2,10 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 
 const variants = cva([], {
   variants: {
@@ -40,6 +40,8 @@ const OptionCard: FC<Props> = ({
   align = 'center',
   tooltip,
 }) => {
+  const titleId = React.useId()
+
   const handleSelect = useCallback(() => {
     if (selected || disabled) return
     onSelect()
@@ -59,12 +61,25 @@ const OptionCard: FC<Props> = ({
         variants({ align }),
         className,
       )}
-      onClick={handleSelect}
     >
-      <span>{title}</span>
+      <button
+        type="button"
+        disabled={disabled}
+        aria-pressed={selected}
+        onClick={handleSelect}
+        className={cn(
+          'flex min-w-0 flex-1 items-center self-stretch rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+          variants({ align }),
+        )}
+      >
+        <span id={titleId}>{title}</span>
+      </button>
       {tooltip && (
-        <Infotip aria-label={tooltip} popupClassName="w-[240px]">
-          {tooltip}
+        <Infotip>
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-60">
+            {tooltip}
+          </InfotipContent>
         </Infotip>
       )}
     </div>

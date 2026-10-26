@@ -1,101 +1,27 @@
+import type { WorkflowCommentDetail } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { WorkflowCommentDetail } from '@/app/components/workflow/comment/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
-import { render as renderWithConsoleState } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { renderWorkflowFlowComponent } from '../__tests__/workflow-test-env'
 import { CommentThread } from './thread'
 
-const mockSetCommentPreviewHovering = vi.hoisted(() => vi.fn())
-const mockFlowToScreenPosition = vi.hoisted(() =>
-  vi.fn(({ x, y }: { x: number; y: number }) => ({ x, y })),
-)
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: {
-    id: 'user-1',
-    name: 'Alice',
-    avatar_url: 'alice.png',
-  },
-}))
-
-const render = (ui: ReactElement) =>
-  renderWithConsoleState(ui, {
-    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+const render = (ui: ReactElement) => {
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { id: 'user-1', name: 'Alice', avatar_url: 'alice.png' },
   })
-
-const storeState = vi.hoisted(() => ({
-  mentionableUsersCache: {
-    'app-1': [
-      { id: 'user-1', name: 'Alice', email: 'alice@example.com', avatar_url: 'alice.png' },
-      { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: 'bob.png' },
-    ],
-  } as Record<string, Array<{ id: string; name: string; email: string; avatar_url: string }>>,
-  setCommentPreviewHovering: (...args: unknown[]) => mockSetCommentPreviewHovering(...args),
-}))
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ appId: 'app-1' }),
-}))
-
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({
-    formatTimeFromNow: () => 'just now',
-  }),
-}))
-
-vi.mock('reactflow', () => ({
-  useReactFlow: () => ({
-    flowToScreenPosition: mockFlowToScreenPosition,
-  }),
-  useViewport: () => ({ x: 0, y: 0, zoom: 1 }),
-}))
-
-vi.mock('../store', () => ({
-  useStore: (selector: (state: typeof storeState) => unknown) => selector(storeState),
-}))
-
-vi.mock('@/app/components/workflow/collaboration/utils/user-color', () => ({
-  getUserColor: () => '#22c55e',
-}))
-
-vi.mock('@/app/components/base/divider', () => ({
-  default: () => <div data-testid="divider" />,
-}))
-
-vi.mock('@/app/components/base/inline-delete-confirm', () => ({
-  default: ({ onConfirm }: { onConfirm: () => void }) => (
-    <button type="button" data-testid="confirm-delete-reply" onClick={onConfirm}>
-      confirm delete
-    </button>
-  ),
-}))
-
-vi.mock('./mention-input', () => ({
-  MentionInput: ({
-    placeholder,
-    value,
-    onSubmit,
-    onCancel,
-  }: {
-    placeholder?: string
-    value: string
-    onSubmit: (content: string, mentionedUserIds: string[]) => void
-    onCancel?: () => void
-  }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() => onSubmit(value || `content:${placeholder ?? 'default'}`, ['user-2'])}
-      >
-        {`submit-${placeholder ?? 'default'}`}
-      </button>
-      {onCancel && (
-        <button type="button" onClick={onCancel}>
-          {`cancel-${placeholder ?? 'default'}`}
-        </button>
-      )}
-    </div>
-  ),
-}))
+  return renderWorkflowFlowComponent(<div id="workflow-container">{ui}</div>, {
+    queryClient,
+    initialStoreState: {
+      mentionableUsersCache: {
+        'app-1': [
+          { id: 'user-1', name: 'Alice', email: 'alice@example.com', avatar_url: 'alice.png' },
+          { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: 'bob.png' },
+        ],
+      },
+    },
+  })
+}
 
 const createComment = (): WorkflowCommentDetail => ({
   id: 'comment-1',
@@ -132,13 +58,10 @@ const createComment = (): WorkflowCommentDetail => ({
 describe('CommentThread', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    document.body.innerHTML = ''
-    const workflowContainer = document.createElement('div')
-    workflowContainer.id = 'workflow-container'
-    document.body.appendChild(workflowContainer)
   })
 
-  it('triggers header actions and closes on Escape', () => {
+  it('triggers header actions and closes on Escape', async () => {
+    const user = userEvent.setup()
     const onClose = vi.fn()
     const onDelete = vi.fn()
     const onResolve = vi.fn()
@@ -158,13 +81,15 @@ describe('CommentThread', () => {
       />,
     )
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.deleteComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.resolveComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.previousComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.nextComment'))
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.closeComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.deleteComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.resolveComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.previousComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.nextComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.closeComment'))
 
-    fireEvent.keyDown(document, { key: 'Escape' })
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
 
     expect(onDelete).toHaveBeenCalledTimes(1)
     expect(onResolve).toHaveBeenCalledTimes(1)
@@ -173,58 +98,46 @@ describe('CommentThread', () => {
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 
-  it('does not nest header action buttons inside tooltip trigger buttons', () => {
-    const { container } = render(
-      <CommentThread
-        comment={createComment()}
-        onClose={vi.fn()}
-        onDelete={vi.fn()}
-        onResolve={vi.fn()}
-        onPrev={vi.fn()}
-        onNext={vi.fn()}
-        canGoPrev
-        canGoNext
-      />,
-    )
-
-    expect(container.querySelector('button button')).toBeNull()
-  })
-
   it('supports editing the root comment when the current user owns the thread', async () => {
+    const user = userEvent.setup()
     const onCommentEdit = vi.fn()
 
     render(
       <CommentThread comment={createComment()} onClose={vi.fn()} onCommentEdit={onCommentEdit} />,
     )
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.commentActions'))
-    fireEvent.click(screen.getByText('workflow.comments.actions.editComment'))
-    fireEvent.click(screen.getByText('submit-workflow.comments.placeholder.editComment'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.commentActions'))
+    await user.click(screen.getByText('workflowComments.comments.actions.editComment'))
+    const editor = screen.getByPlaceholderText('workflowComments.comments.placeholder.editComment')
+    await user.clear(editor)
+    await user.type(editor, 'Updated root comment')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
-      expect(onCommentEdit).toHaveBeenCalledWith('@Alice original comment', ['user-2'])
+      expect(onCommentEdit).toHaveBeenCalledWith('Updated root comment', [])
     })
   })
 
   it('submits reply and updates preview hovering state on mouse enter/leave', async () => {
+    const user = userEvent.setup()
     const onReply = vi.fn()
-    const { container } = render(
+    const { store } = render(
       <CommentThread comment={createComment()} onClose={vi.fn()} onReply={onReply} />,
     )
 
-    fireEvent.mouseEnter(container.firstElementChild as Element)
-    fireEvent.mouseLeave(container.firstElementChild as Element)
+    const dialog = screen.getByRole('dialog')
+    fireEvent.mouseEnter(dialog)
+    expect(store.getState().isCommentPreviewHovering).toBe(true)
+    fireEvent.mouseLeave(dialog)
+    expect(store.getState().isCommentPreviewHovering).toBe(false)
 
-    expect(mockSetCommentPreviewHovering).toHaveBeenNthCalledWith(1, true)
-    expect(mockSetCommentPreviewHovering).toHaveBeenNthCalledWith(2, false)
-
-    fireEvent.click(screen.getByText('submit-workflow.comments.placeholder.reply'))
-
-    await waitFor(() => {
-      expect(onReply).toHaveBeenCalledWith('content:workflow.comments.placeholder.reply', [
-        'user-2',
-      ])
-    })
+    const input = screen.getByPlaceholderText('workflowComments.comments.placeholder.reply')
+    await user.type(input, '@Bo')
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(input).toHaveValue('@Bob '))
+    await user.type(input, 'please review')
+    await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+    await waitFor(() => expect(onReply).toHaveBeenCalledWith('@Bob please review', ['user-2']))
   })
 
   it('supports editing and direct deleting an existing reply', async () => {
@@ -241,20 +154,25 @@ describe('CommentThread', () => {
       />,
     )
 
-    await user.click(screen.getByLabelText('workflow.comments.aria.replyActions'))
-    await user.click(await screen.findByText('workflow.comments.actions.editReply'))
-    await user.click(screen.getByText('submit-workflow.comments.placeholder.editReply'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.replyActions'))
+    await user.click(await screen.findByText('workflowComments.comments.actions.editReply'))
+    const editor = screen.getByPlaceholderText('workflowComments.comments.placeholder.editReply')
+    await user.clear(editor)
+    await user.type(editor, 'Updated reply')
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     await waitFor(() => {
-      expect(onReplyEdit).toHaveBeenCalledWith('reply-1', 'first reply', ['user-2'])
+      expect(onReplyEdit).toHaveBeenCalledWith('reply-1', 'Updated reply', [])
     })
 
     await waitFor(() => {
-      expect(screen.getByLabelText('workflow.comments.aria.replyActions')).toBeInTheDocument()
+      expect(
+        screen.getByLabelText('workflowComments.comments.aria.replyActions'),
+      ).toBeInTheDocument()
     })
-    await user.click(screen.getByLabelText('workflow.comments.aria.replyActions'))
-    await user.click(await screen.findByText('workflow.comments.actions.deleteReply'))
-    await user.click(screen.getByTestId('confirm-delete-reply'))
+    await user.click(screen.getByLabelText('workflowComments.comments.aria.replyActions'))
+    await user.click(await screen.findByText('workflowComments.comments.actions.deleteReply'))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
 
     expect(onReplyDeleteDirect).toHaveBeenCalledWith('reply-1')
   })

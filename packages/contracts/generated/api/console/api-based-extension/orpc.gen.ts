@@ -13,7 +13,7 @@ import {
   zPostApiBasedExtensionByIdPath,
   zPostApiBasedExtensionByIdResponse,
   zPostApiBasedExtensionResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Delete API-based extension

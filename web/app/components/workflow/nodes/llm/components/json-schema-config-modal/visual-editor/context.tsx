@@ -1,5 +1,6 @@
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { noop } from 'es-toolkit/function'
-import { createContext, use, useRef } from 'react'
+import { createContext, use } from 'react'
 import { useMitt } from '@/hooks/use-mitt'
 import { createVisualEditorStore } from './store'
 
@@ -14,9 +15,7 @@ type VisualEditorProviderProps = {
 export const VisualEditorContext = createContext<VisualEditorContextType>(null)
 
 export const VisualEditorContextProvider = ({ children }: VisualEditorProviderProps) => {
-  const storeRef = useRef<VisualEditorStore | null>(null)
-
-  if (!storeRef.current) storeRef.current = createVisualEditorStore()
+  const storeRef = useRefWithInit(createVisualEditorStore)
 
   return (
     <VisualEditorContext.Provider value={storeRef.current}>{children}</VisualEditorContext.Provider>

@@ -5,7 +5,7 @@ import { BLOCKS } from './constants'
 import { TabType, ToolType } from './types'
 
 export const useBlocks = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return BLOCKS.map((block) => {
     return {
@@ -36,7 +36,7 @@ export const useTabs = ({
   disableStartTab?: boolean
   forceEnableStartTab?: boolean
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const shouldShowStartTab = !noStart
   const shouldDisableStartTab = disableStartTab || (!forceEnableStartTab && hasStartPlaceholderNode)
   const startDisabledTip: ReactNode = disableStartTab
@@ -107,7 +107,7 @@ export const useTabs = ({
 }
 
 export const useToolTabs = (isHideMCPTools?: boolean) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const tabs: Array<{ key: ToolType; name: string }> = [
     {
       key: ToolType.All,

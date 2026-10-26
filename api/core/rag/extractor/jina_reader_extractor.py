@@ -2,7 +2,7 @@ from typing import override
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from services.website_service import WebsiteService
+from services.data_source.website_service import WebsiteService
 
 
 class JinaReaderWebExtractor(BaseExtractor):
@@ -17,8 +17,11 @@ class JinaReaderWebExtractor(BaseExtractor):
         tenant_id: str,
         mode: str = "crawl",
         only_main_content: bool = False,
+        *,
+        website_service: WebsiteService,
     ):
         """Initialize with url, api_key, base_url and mode."""
+        self._website_service = website_service
         self._url = url
         self.job_id = job_id
         self.tenant_id = tenant_id
@@ -30,7 +33,7 @@ class JinaReaderWebExtractor(BaseExtractor):
         """Extract content from the URL."""
         documents = []
         if self.mode == "crawl":
-            crawl_data = WebsiteService.get_crawl_url_data(self.job_id, "jinareader", self._url, self.tenant_id)
+            crawl_data = self._website_service.get_crawl_url_data(self.job_id, "jinareader", self._url, self.tenant_id)
             if crawl_data is None:
                 return []
             document = Document(

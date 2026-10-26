@@ -1,24 +1,46 @@
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Literal
 
-from pydantic import Field, field_validator
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, field_validator
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
+from services.data_source.entities.notion_import import NotionPageType
+
+
+class NotionEstimatePagePayload(BaseModel):
+    page_id: str = Field(min_length=1)
+    page_type: NotionPageType = Field(alias="type")
+
+
+class NotionEstimateWorkspacePayload(BaseModel):
+    workspace_id: str = Field(min_length=1)
+    credential_id: str = Field(min_length=1)
+    pages: list[NotionEstimatePagePayload] = Field(min_length=1)
+
+
+MetadataValueType = Literal["string", "number", "time"]
+# Mirror models.enums.PermissionEnum / DataSourceType / DatasetRuntimeMode; response schemas do not
+# import models.
+DatasetPermission = Literal["only_me", "all_team_members", "partial_members"]
+DatasetDataSourceType = Literal[
+    "upload_file", "notion_import", "website_crawl", "local_file", "online_document", "online_drive"
+]
+DatasetRuntimeMode = Literal["general", "rag_pipeline"]
 
 
 class DatasetMetadataResponse(ResponseModel):
     id: str
-    type: str
+    type: MetadataValueType
     name: str
 
 
 class DatasetMetadataListItemResponse(ResponseModel):
     id: str
     name: str
-    type: str
+    type: MetadataValueType
     count: int = 0
 
 
@@ -29,7 +51,7 @@ class DatasetMetadataListResponse(ResponseModel):
 
 class DatasetMetadataBuiltInFieldResponse(ResponseModel):
     name: str
-    type: str
+    type: MetadataValueType
 
 
 class DatasetMetadataBuiltInFieldsResponse(ResponseModel):
@@ -73,7 +95,7 @@ class DatasetWeightedScoreResponse(ResponseModel):
 
 
 class DatasetRetrievalModelResponse(ResponseModel):
-    search_method: str
+    search_method: RetrievalMethod
     reranking_enable: bool
     reranking_mode: str | None = None
     reranking_model: DatasetRerankingModelResponse = Field(
@@ -120,7 +142,7 @@ class DatasetExternalRetrievalModelResponse(ResponseModel):
 class DatasetDocMetadataResponse(ResponseModel):
     id: str
     name: str
-    type: str
+    type: MetadataValueType
 
 
 class DatasetIconInfoResponse(ResponseModel):
@@ -135,9 +157,10 @@ class DatasetDetailResponse(ResponseModel):
     name: str
     description: str | None
     provider: str
-    permission: str
-    data_source_type: str | None
-    indexing_technique: str | None
+    permission: DatasetPermission
+    data_source_type: DatasetDataSourceType | None
+    indexing_technique: IndexTechniqueType | None
+    keyword_number: int | None = Field(default=None, description="Keywords extracted per chunk by the economy index.")
     app_count: int
     document_count: int
     word_count: int
@@ -169,7 +192,7 @@ class DatasetDetailResponse(ResponseModel):
     doc_metadata: list[DatasetDocMetadataResponse]
     built_in_field_enabled: bool
     pipeline_id: str | None
-    runtime_mode: str | None
+    runtime_mode: DatasetRuntimeMode | None
     chunk_structure: str | None
     icon_info: DatasetIconInfoResponse = Field(
         default_factory=DatasetIconInfoResponse,
@@ -192,62 +215,3 @@ class DatasetDetailResponse(ResponseModel):
     @classmethod
     def _expand_null_nested(cls, value: object) -> object:
         return {} if value is None else value
-
-
-@dataclass(frozen=True)
-class DatasetDetailResponseSource:
-    """Expose session-backed dataset fields during response validation."""
-
-    dataset: Any
-    session: Session
-
-    @property
-    def app_count(self) -> int:
-        return self.dataset.get_app_count(session=self.session)
-
-    @property
-    def document_count(self) -> int:
-        return self.dataset.get_document_count(session=self.session)
-
-    @property
-    def word_count(self) -> int:
-        return self.dataset.get_word_count(session=self.session)
-
-    @property
-    def author_name(self) -> str | None:
-        return self.dataset.get_author_name(session=self.session)
-
-    @property
-    def tags(self) -> Any:
-        return self.dataset.get_tags(session=self.session)
-
-    @property
-    def doc_form(self) -> str | None:
-        return self.dataset.get_doc_form(session=self.session)
-
-    @property
-    def external_knowledge_info(self) -> Any:
-        return self.dataset.get_external_knowledge_info(session=self.session)
-
-    @property
-    def doc_metadata(self) -> Any:
-        return self.dataset.get_doc_metadata(session=self.session)
-
-    @property
-    def is_published(self) -> bool:
-        return self.dataset.get_is_published(session=self.session)
-
-    @property
-    def total_documents(self) -> int:
-        return self.dataset.get_total_documents(session=self.session)
-
-    @property
-    def total_available_documents(self) -> int:
-        return self.dataset.get_total_available_documents(session=self.session)
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.dataset, name)  # guard-ignore: no-new-getattr -- delegates model fields
-
-
-def dataset_detail_response_source(dataset: Any, *, session: Session) -> DatasetDetailResponseSource:
-    return DatasetDetailResponseSource(dataset=dataset, session=session)

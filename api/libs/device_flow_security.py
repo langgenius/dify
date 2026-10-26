@@ -1,51 +1,19 @@
-"""Device-flow security primitives: enterprise_only gate, approval-grant
-cookie mint/verify/consume, and anti-framing headers.
-"""
+"""Device-flow approval-grant security and anti-framing primitives."""
 
 from __future__ import annotations
 
 import logging
 import secrets
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from functools import wraps
 
 from flask import Blueprint
-from pydantic import ValidationError
-from werkzeug.exceptions import NotFound
+from pydantic import BaseModel, Field, ValidationError
 
 from libs import jws
 from libs.token import is_secure
-from services.entities.feature_entities import LicenseStatus
-from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
-
-
-# ============================================================================
-# enterprise_only decorator
-# ============================================================================
-
-
-# Fail-closed: any non-EE-active status (default NONE on CE, plus INACTIVE / EXPIRED / LOST)
-# is denied. Future LicenseStatus values default to denial unless explicitly admitted.
-_EE_ENABLED_STATUSES = {LicenseStatus.ACTIVE, LicenseStatus.EXPIRING}
-
-
-def enterprise_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    """404 on CE, passthrough on EE. Apply before rate-limit so CE
-    responses don't consume the bucket.
-    """
-
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
-        settings = FeatureService.get_system_features()
-        if settings.license.status not in _EE_ENABLED_STATUSES:
-            raise NotFound()
-        return view(*args, **kwargs)
-
-    return decorated
 
 
 # ============================================================================
@@ -69,6 +37,17 @@ class ApprovalGrantClaims:
     nonce: str
     csrf_token: str
     expires_at: datetime
+
+
+_EMAIL_FIELD = Field(min_length=3, max_length=320, pattern=r"^[^@\s]+@[^@\s]+$")
+
+
+class _ApprovalGrantClaimsPayload(BaseModel):
+    subject_email: str = _EMAIL_FIELD
+    subject_issuer: str = Field(min_length=1, max_length=255)
+    user_code: str = Field(min_length=1, max_length=32)
+    nonce: str = Field(min_length=1, max_length=128)
+    csrf_token: str = Field(min_length=1, max_length=128)
 
 
 def mint_approval_grant(
@@ -109,12 +88,9 @@ def mint_approval_grant(
 
 def verify_approval_grant(keyset: jws.KeySet, token: str) -> ApprovalGrantClaims:
     """Sig + aud + exp only — nonce consumption is the caller's job."""
-    # lazy import: breaks libs → controllers cycle
-    from controllers.openapi._models import ApprovalGrantClaimsPayload
-
     raw = jws.verify(keyset, token, expected_aud=jws.AUD_APPROVAL_GRANT)
     try:
-        parsed = ApprovalGrantClaimsPayload.model_validate(raw)
+        parsed = _ApprovalGrantClaimsPayload.model_validate(raw)
     except ValidationError as e:
         raise jws.VerifyError(f"claim shape invalid: {e}") from e
 
@@ -125,19 +101,6 @@ def verify_approval_grant(keyset: jws.KeySet, token: str) -> ApprovalGrantClaims
         nonce=parsed.nonce,
         csrf_token=parsed.csrf_token,
         expires_at=datetime.fromtimestamp(raw["exp"], tz=UTC),
-    )
-
-
-def consume_approval_grant_nonce(redis_client, nonce: str) -> bool:
-    if not nonce:
-        return False
-    return bool(
-        redis_client.set(
-            NONCE_KEY_FMT.format(nonce=nonce),
-            "1",
-            nx=True,
-            ex=NONCE_TTL_SECONDS,
-        )
     )
 
 

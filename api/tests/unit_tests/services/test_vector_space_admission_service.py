@@ -1,5 +1,6 @@
 import json
 import threading
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
 from unittest.mock import call, patch
@@ -8,7 +9,6 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
@@ -18,6 +18,7 @@ from services.vector_space_admission_service import (
     VECTOR_SPACE_ADMISSION_ERROR_CODE,
     VectorSpaceAdmissionError,
     VectorSpaceAdmissionService,
+    VectorSpaceAdmissionUnavailableError,
     VectorStorageWorkload,
     build_document_workload,
     build_pipeline_workload,
@@ -26,9 +27,18 @@ from services.vector_space_admission_service import (
     get_vector_space_admission_error_fields,
     parse_vector_space_estimate_limits,
 )
+from tests.helpers.unit.model_factories import make_dataset
 
 _MEBIBYTE = 1024 * 1024
 _ESTIMATE_LIMITS = "sandbox:60,professional:6400,team:25600"
+
+
+@pytest.fixture(autouse=True)
+def _vector_admission_config(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        TIDB_ON_QDRANT_ESTIMATED_STORAGE_LIMITS_MB=_ESTIMATE_LIMITS,
+    )
 
 
 class _FakeRedisLock:
@@ -66,10 +76,8 @@ class _FakeRedis:
 
 
 def _dataset(session: Session) -> Dataset:
-    dataset = Dataset(
-        id=str(uuid4()),
-        tenant_id="tenant-1",
-        name="Dataset",
+    dataset = make_dataset(
+        dataset_id=str(uuid4()),
         created_by=str(uuid4()),
         indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider="provider",
@@ -101,11 +109,6 @@ def _check_estimate(
     with (
         patch.object(service, "_get_plan", return_value=plan),
         patch.object(service, "_get_embedding_dimension", return_value=3072),
-        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-        patch(
-            "services.vector_space_admission_service.dify_config.TIDB_ON_QDRANT_ESTIMATED_STORAGE_LIMITS_MB",
-            _ESTIMATE_LIMITS,
-        ),
         patch(
             "services.vector_space_admission_service.Vector.resolve_vector_type",
             return_value=VectorType.TIDB_ON_QDRANT,
@@ -237,10 +240,10 @@ def test_pipeline_qa_workload_counts_question_vectors_without_summaries() -> Non
     assert workload.summary_points == 0
 
 
-def test_admission_is_cloud_only(sqlite_session: Session) -> None:
+def test_admission_is_cloud_only(sqlite_session: Session, config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     service = VectorSpaceAdmissionService()
     with (
-        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         patch("services.vector_space_admission_service.Vector.resolve_vector_type") as resolve_vector_type,
         patch("services.vector_space_admission_service.BillingService.get_info") as get_info,
     ):
@@ -258,7 +261,6 @@ def test_admission_is_cloud_only(sqlite_session: Session) -> None:
 def test_admission_skips_non_tidb_vector_backends(sqlite_session: Session) -> None:
     service = VectorSpaceAdmissionService()
     with (
-        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         patch("services.vector_space_admission_service.Vector.resolve_vector_type", return_value=VectorType.QDRANT),
         patch("services.vector_space_admission_service.BillingService.get_info") as get_info,
     ):
@@ -363,11 +365,6 @@ def test_usage_lookup_is_refreshed_for_each_document(sqlite_session: Session) ->
     with (
         patch.object(service, "_get_plan", return_value=CloudPlan.SANDBOX),
         patch.object(service, "_get_embedding_dimension", return_value=3072),
-        patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-        patch(
-            "services.vector_space_admission_service.dify_config.TIDB_ON_QDRANT_ESTIMATED_STORAGE_LIMITS_MB",
-            _ESTIMATE_LIMITS,
-        ),
         patch(
             "services.vector_space_admission_service.Vector.resolve_vector_type",
             return_value=VectorType.TIDB_ON_QDRANT,
@@ -552,9 +549,103 @@ def test_billing_plan_lookup_excludes_vector_space_and_is_cached() -> None:
     service = VectorSpaceAdmissionService()
     with patch(
         "services.vector_space_admission_service.BillingService.get_info",
-        return_value={"enabled": True, "subscription": {"plan": "professional"}},
+        return_value={"subscription": {"plan": "professional"}},
     ) as get_info:
         assert service._get_plan("tenant-1") == CloudPlan.PROFESSIONAL
         assert service._get_plan("tenant-1") == CloudPlan.PROFESSIONAL
 
     get_info.assert_called_once_with("tenant-1", exclude_vector_space=True)
+
+
+def test_unknown_billing_plan_is_not_logged(caplog: pytest.LogCaptureFixture) -> None:
+    service = VectorSpaceAdmissionService()
+    upstream_plan = "unexpected-private-plan"
+    with patch(
+        "services.vector_space_admission_service.BillingService.get_info",
+        return_value={"subscription": {"plan": upstream_plan}},
+    ):
+        assert service._get_plan("tenant-1") is None
+
+    assert "unknown plan tenant_id=tenant-1" in caplog.text
+    assert upstream_plan not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "quota",
+    [
+        {"size": 0, "limit": 50, "usage_unknown": True},
+        {"size": 0, "limit": -1, "usage_unknown": True},
+        {"size": -0.1, "limit": 50},
+        {"size": float("nan"), "limit": 50},
+        {"size": float("inf"), "limit": 50},
+        {"size": float("-inf"), "limit": 50},
+        {"size": "invalid", "limit": 50},
+        {"size": 0, "limit": -2},
+        {"size": 0, "limit": "invalid"},
+        {"limit": 50},
+        {"size": 0},
+    ],
+)
+def test_unavailable_billing_quota_fails_before_embedding_or_reservation(
+    sqlite_session: Session, quota: dict[str, object]
+) -> None:
+    service = VectorSpaceAdmissionService()
+    with (
+        patch.object(service, "_get_plan", return_value=CloudPlan.SANDBOX),
+        patch(
+            "services.vector_space_admission_service.Vector.resolve_vector_type",
+            return_value=VectorType.TIDB_ON_QDRANT,
+        ),
+        patch("services.vector_space_admission_service.BillingService.get_vector_space", return_value=quota),
+        patch.object(service, "_get_embedding_dimension") as dimension,
+        patch.object(service, "_reserve_projected_usage") as reserve,
+    ):
+        with pytest.raises(VectorSpaceAdmissionUnavailableError, match="Unable to verify vector storage usage"):
+            service._ensure_can_write(
+                dataset=_dataset(sqlite_session),
+                document_id="document-1",
+                workload=_workload(),
+                session=sqlite_session,
+            )
+
+    dimension.assert_not_called()
+    reserve.assert_not_called()
+
+
+def test_billing_request_failure_is_unavailable() -> None:
+    with patch(
+        "services.vector_space_admission_service.BillingService.get_vector_space", side_effect=RuntimeError("offline")
+    ):
+        with pytest.raises(VectorSpaceAdmissionUnavailableError, match="Unable to verify vector storage usage"):
+            VectorSpaceAdmissionService()._get_usage_and_limit_mb("tenant-1")
+
+
+def test_watermark_failure_is_unavailable() -> None:
+    with patch("services.vector_space_admission_service.redis_client.lock", side_effect=RuntimeError("offline")):
+        with pytest.raises(VectorSpaceAdmissionUnavailableError, match="Unable to reserve estimated vector storage"):
+            VectorSpaceAdmissionService()._reserve_projected_usage(
+                tenant_id="tenant-1",
+                document_id="document-1",
+                current_usage_bytes=0,
+                document_estimate_bytes=1,
+                estimate_limit_bytes=50 * _MEBIBYTE,
+            )
+
+
+def test_watermark_is_isolated_by_tenant() -> None:
+    redis = _FakeRedis()
+    with patch("services.vector_space_admission_service.redis_client", redis):
+        for tenant_id in ("tenant-1", "tenant-2"):
+            assert VectorSpaceAdmissionService()._reserve_projected_usage(
+                tenant_id=tenant_id,
+                document_id="same-document",
+                current_usage_bytes=40 * _MEBIBYTE,
+                document_estimate_bytes=10 * _MEBIBYTE,
+                estimate_limit_bytes=50 * _MEBIBYTE,
+            ) == (40 * _MEBIBYTE, 50 * _MEBIBYTE)
+
+    assert len(redis.values) == 2
+    for tenant_id in ("tenant-1", "tenant-2"):
+        state = json.loads(redis.values[f"tenant:{tenant_id}:vector_space_estimate_watermark"])
+        assert state["projected_usage_bytes"] == 50 * _MEBIBYTE
+        assert state["document_ids"] == ["same-document"]

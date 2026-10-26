@@ -1,17 +1,18 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../types'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
 import {
   ModelFeatureEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { consoleQuery } from '@/service/console'
 
 type Params = {
   id: string
   model: LLMNodeType['model']
-  inputRef: MutableRefObject<LLMNodeType>
+  inputRef: RefObject<LLMNodeType>
   setInputs: (inputs: LLMNodeType) => void
   deleteNodeInspectorVars: (nodeId: string) => void
 }
@@ -23,7 +24,12 @@ const useLLMStructuredOutputConfig = ({
   setInputs,
   deleteNodeInspectorVars,
 }: Params) => {
-  const { data: modelList } = useModelList(ModelTypeEnum.textGeneration)
+  const { data: modelList = [] } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+      select: (response) => response.data,
+    }),
+  )
   const isModelSupportStructuredOutput = modelList
     ?.find((providerItem) => providerItem.provider === model?.provider)
     ?.models.find((modelItem) => modelItem.model === model?.name)

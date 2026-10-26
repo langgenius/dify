@@ -15,23 +15,21 @@ import type {
 import type { AgentProviderToolDefaultValue } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { cn } from '@langgenius/dify-ui/cn'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
+import { getProviderReference, matchesProviderReference } from '@/utils/provider-reference'
 import { useAgentPromptToolIconResolver } from './hooks'
 
 export type SlashMenuView = 'main' | 'skills' | 'files' | 'tools' | 'knowledge'
@@ -83,7 +81,11 @@ const isCliToolItem = (
 const isKnowledgeRetrievalItem = (
   item: AgentOrchestrateAddedItem,
 ): item is AgentKnowledgeRetrievalItem =>
-  'queryMode' in item || 'customQuery' in item || 'selectedDatasets' in item || 'nameKey' in item
+  'controlSpaceId' in item ||
+  'queryMode' in item ||
+  'customQuery' in item ||
+  'selectedDatasets' in item ||
+  'nameKey' in item
 
 export function AgentPromptSlashMenu({
   view,
@@ -102,7 +104,7 @@ export function AgentPromptSlashMenu({
   onOpenCategory,
   onInsertToken,
 }: AgentPromptSlashMenuProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const title = categories.find((category) => category.key === view)?.label
   const handleAddFromFooter = (skillSource?: 'library' | 'upload') => {
     if (view === 'skills') {
@@ -231,20 +233,23 @@ export function AgentPromptSlashMenu({
           />
         </div>
       ) : (
-        <div className="border-t border-divider-subtle p-1">
-          <button
-            type="button"
-            {...agentPromptSlashMenuItemProps}
-            className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
-            onClick={() => handleAddFromFooter()}
-          >
-            <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
-            <span className="system-sm-regular text-text-secondary">
-              {view === 'files' && t(($) => $['agentDetail.configure.files.add'])}
-              {view === 'knowledge' && t(($) => $['agentDetail.configure.knowledgeRetrieval.add'])}
-            </span>
-          </button>
-        </div>
+        (view !== 'knowledge' || onAddKnowledge !== undefined) && (
+          <div className="border-t border-divider-subtle p-1">
+            <button
+              type="button"
+              {...agentPromptSlashMenuItemProps}
+              className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+              onClick={() => handleAddFromFooter()}
+            >
+              <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
+              <span className="system-sm-regular text-text-secondary">
+                {view === 'files' && t(($) => $['agentDetail.configure.files.add'])}
+                {view === 'knowledge' &&
+                  t(($) => $['agentDetail.configure.knowledgeRetrieval.add'])}
+              </span>
+            </button>
+          </div>
+        )
       )}
     </AgentPromptSlashPanel>
   )
@@ -356,15 +361,27 @@ function AgentPromptToolRows({
   onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
   onInsertToken: (token: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const language = useGetLanguage()
   const { getProviderIcon, getProviderIcons } = useAgentPromptToolIconResolver()
   const [activeTab, setActiveTab] = useState<ToolPromptTab>('all')
   const [expandedProviderIds, setExpandedProviderIds] = useState<Set<string>>(() => new Set())
-  const { data: builtInTools = [] } = useAllBuiltInTools()
-  const { data: customTools = [] } = useAllCustomTools()
-  const { data: workflowTools = [] } = useAllWorkflowTools()
-  const { data: mcpTools = [] } = useAllMCPTools()
+  const { data: builtInTools = [] } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools = [] } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools = [] } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools = [] } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const configuredCliTools = ENABLE_AGENT_CLI_TOOLS
     ? configuredTools.filter((tool) => tool.kind === 'cli')
     : []
@@ -422,7 +439,11 @@ function AgentPromptToolRows({
       provider.tools.map((tool) => toToolDefaultValue(provider, tool, language, icon, iconDark)),
     )
     onInsertToken(
-      createReferenceToken('tool', `${provider.id}/*`, getProviderLabel(provider, language)),
+      createReferenceToken(
+        'tool',
+        `${getProviderReference(provider)}/*`,
+        getProviderLabel(provider, language),
+      ),
     )
   }
 
@@ -431,7 +452,11 @@ function AgentPromptToolRows({
     const selectedTool = toToolDefaultValue(provider, tool, language, icon, iconDark)
     selectTools([selectedTool])
     onInsertToken(
-      createReferenceToken('tool', `${provider.id}/${tool.name}`, selectedTool.tool_label),
+      createReferenceToken(
+        'tool',
+        `${getProviderReference(provider)}/${tool.name}`,
+        selectedTool.tool_label,
+      ),
     )
   }
 
@@ -549,7 +574,7 @@ function toToolDefaultValue(
   const providerLabel = getLocalizedText(provider.label, language) || provider.name
 
   return {
-    provider_id: provider.id,
+    provider_id: getProviderReference(provider),
     provider_type: parseToolProviderType(provider.type),
     provider_name: provider.name,
     provider_show_name: providerLabel,
@@ -574,7 +599,7 @@ function isToolSelected(selectedTools: ToolValue[], provider: ToolWithProvider, 
   return selectedTools.some(
     (selectedTool) =>
       (selectedTool.provider_name === provider.name ||
-        selectedTool.provider_name === provider.id) &&
+        matchesProviderReference(provider, selectedTool.provider_name)) &&
       selectedTool.tool_name === tool.name,
   )
 }
@@ -583,7 +608,7 @@ function getProviderLabel(provider: ToolWithProvider, language: string) {
   return getLocalizedText(provider.label, language) || provider.name
 }
 
-function getProviderTypeLabel(provider: ToolWithProvider, t: TFunction<'agentV2'>) {
+function getProviderTypeLabel(provider: ToolWithProvider, t: TFunction<['agentV2']>) {
   if (provider.type === CollectionType.workflow)
     return t(($) => $['agentDetail.configure.tools.toolTabs.workflow'])
   if (provider.type === CollectionType.custom)
@@ -669,7 +694,7 @@ function AgentPromptProviderIcon({
 }
 
 function AgentPromptToolFooter({ onAddCliTool }: { onAddCliTool?: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['agentV2', 'plugin'])
 
   return (
     <div className="border-t border-divider-subtle p-1">
@@ -735,7 +760,7 @@ function AgentPromptCliToolRow({
   tool: Extract<AgentTool, { kind: 'cli' }>
   onClick: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <button
@@ -766,7 +791,7 @@ function AgentPromptKnowledgeRows({
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   onInsertToken: (token: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
 
   return (
     <>
@@ -792,7 +817,7 @@ function AgentPromptKnowledgeRows({
 
 function getKnowledgeRetrievalName(
   retrieval: AgentKnowledgeRetrievalItem,
-  t: TFunction<'agentV2'>,
+  t: TFunction<['agentV2']>,
 ) {
   const nameKey = retrieval.nameKey
   return retrieval.name ?? (nameKey ? t(($) => $[nameKey]) : retrieval.id)

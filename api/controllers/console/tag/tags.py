@@ -7,13 +7,12 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.wraps import enforce_rbac_access
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     model_validate,
 )
 from extensions.ext_application_services import application_services
@@ -102,12 +101,10 @@ def _enforce_snippet_tag_rbac_if_needed(tag_type: TagType | str | None, context:
     if not dify_config.RBAC_ENABLED:
         return
 
-    enforce_rbac_access(
-        tenant_id=_workspace_id(context),
+    enforce_rbac_checks(
+        tenant_id=context.active_workspace_id,
         account_id=context.account_id,
-        resource_type=RBACResourceScope.WORKSPACE,
-        scene=RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
-        resource_required=False,
+        checks=[RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace())],
     )
 
 
@@ -117,12 +114,6 @@ def _enforce_snippet_tag_rbac_by_tag_id(tag_id: str, context: RequestContext) ->
 
     tag_type = application_services().tags.get_tag_type(context, tag_id)
     _enforce_snippet_tag_rbac_if_needed(tag_type, context)
-
-
-def _workspace_id(context: RequestContext) -> str:
-    if context.active_workspace_id is None:
-        raise RuntimeError("Console account admission did not resolve an active workspace")
-    return context.active_workspace_id
 
 
 def _require_tag_edit_permission(*, allow_dataset_editor: bool) -> None:
@@ -136,9 +127,9 @@ def _require_tag_edit_permission(*, allow_dataset_editor: bool) -> None:
 
 @console_ns.route("/tags")
 class TagListApi(Resource):
-    @console_account_admission()
     @console_ns.doc(params=query_params_from_model(TagListQueryParam))
     @console_ns.response(200, "Success", console_ns.models[TagListResponse.__name__])
+    @console_account_admission()
     @model_validate(TagListQueryParam)
     def get(self, req_data: TagListQueryParam, request_context: RequestContext):
         tags = application_services().tags.list_tags(request_context, req_data.type, req_data.keyword)
@@ -190,8 +181,8 @@ class TagUpdateDeleteApi(Resource):
 
         return dump_response(TagResponse, tag), 200
 
-    @console_account_admission()
     @console_ns.response(204, "Tag deleted successfully")
+    @console_account_admission()
     def delete(self, request_context: RequestContext, tag_id: UUID):
         tag_id_str = str(tag_id)
 

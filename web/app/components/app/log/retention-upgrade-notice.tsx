@@ -5,7 +5,7 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useCloudSandboxPlanStatus } from './cloud-sandbox-retention'
 
 export function RetentionUpgradeNotice() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog'])
   const planState = useCloudSandboxPlanStatus()
 
   if (planState !== 'sandbox') return null

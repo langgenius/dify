@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * VectorSpaceLimitationModel
  */
 export const zVectorSpaceLimitationModel = z.object({
@@ -79,12 +95,13 @@ export const zSubscriptionModel = z.object({
  * BillingModel
  */
 export const zBillingModel = z.object({
-  enabled: z.boolean().default(false),
   subscription: zSubscriptionModel.default({ interval: '', plan: 'sandbox' }),
 })
 
 /**
  * FeatureModel
+ *
+ * Effective feature availability and limits for the current workspace.
  */
 export const zFeatureModel = z.object({
   annotation_quota_limit: zLimitationModel.default({ limit: 10, size: 0 }),
@@ -94,29 +111,21 @@ export const zFeatureModel = z.object({
     usage: 0,
   }),
   apps: zLimitationModel.default({ limit: 10, size: 0 }),
-  billing: zBillingModel.default({
-    enabled: false,
-    subscription: { interval: '', plan: 'sandbox' },
-  }),
+  billing: zBillingModel.default({ subscription: { interval: '', plan: 'sandbox' } }),
   can_replace_logo: z.boolean().default(false),
-  dataset_operator_enabled: z.boolean().default(false),
-  docs_processing: z.string().default('standard'),
   documents_upload_quota: zLimitationModel.default({ limit: 50, size: 0 }),
   education: zEducationModel.default({ activated: false, enabled: false }),
   enable_skill: z.boolean().default(true),
   human_input_email_delivery_enabled: z.boolean().default(false),
   is_allow_transfer_workspace: z.boolean().default(true),
   knowledge_pipeline: zKnowledgePipeline.default({ publish_enabled: false }),
-  knowledge_rate_limit: z.int().default(10),
   members: zLimitationModel.default({ limit: 1, size: 0 }),
   model_load_balancing_enabled: z.boolean().default(false),
-  next_credit_reset_date: z.int().default(0),
   trigger_event: zQuota.default({
     limit: 3000,
     reset_date: 0,
     usage: 0,
   }),
-  vector_space: zLimitationModel.nullable().default({ limit: 5, size: 0 }),
   webapp_copyright_enabled: z.boolean().default(false),
   workspace_members: zLicenseLimitationModel.default({
     enabled: false,

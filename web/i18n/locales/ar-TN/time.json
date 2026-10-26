@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
+  "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
+  "operation.cancel": "إلغاء",
+  "operation.now": "الآن",
+  "operation.ok": "موافق",
+  "operation.pickDate": "اختر التاريخ",
+  "picker.chooseMonthAndYear": "اختر الشهر والسنة",
+  "picker.endDate": "تاريخ الانتهاء",
+  "picker.hour": "الساعة",
+  "picker.minute": "الدقيقة",
+  "picker.month": "الشهر",
+  "picker.nextMonth": "الشهر التالي",
+  "picker.period": "صباحًا/مساءً",
+  "picker.previousMonth": "الشهر السابق",
+  "picker.required": "اختر قيمة.",
+  "picker.requiredLabel": "مطلوب",
+  "picker.startDate": "تاريخ البدء",
+  "picker.unavailable": "هذا التاريخ أو الوقت غير متاح.",
+  "picker.year": "السنة",
+  "title.pickTime": "اختر الوقت"
+}

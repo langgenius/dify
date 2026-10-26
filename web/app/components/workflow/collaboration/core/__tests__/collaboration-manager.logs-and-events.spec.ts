@@ -1,395 +1,242 @@
-import type { LoroMap } from 'loro-crdt'
-import type { OnlineUser } from '../../types/collaboration'
+import type { CollaborationManager } from '../collaboration-manager'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
-import type { Edge, Node } from '@/app/components/workflow/types'
-import { LoroDoc } from 'loro-crdt'
+import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { CollaborationManager } from '../collaboration-manager'
-import { webSocketClient } from '../websocket-manager'
-import { attachCrdtRuntime } from './test-crdt-runtime'
+import { captureDownloads } from '@/test/download'
+import {
+  createCollaborationTestEnvironment,
+  createEdge,
+  createNode,
+} from './test-collaboration-session'
 
-type ReactFlowStore = {
-  getState: () => {
-    getNodes: () => Node[]
-    setNodes: (nodes: Node[]) => void
-    getEdges: () => Edge[]
-    setEdges: (edges: Edge[]) => void
+const { createSession, setup, cleanup } = createCollaborationTestEnvironment()
+beforeEach(setup)
+afterEach(cleanup)
+
+it('refreshes the graph synchronously while preserving local selection', async () => {
+  const node = createNode('n-1')
+  const target = createNode('n-2')
+  const edge = createEdge('e-1', node.id, target.id)
+  const { manager, state } = await createSession({ nodes: [node, target], edges: [edge] })
+  state.setNodes([{ ...node, data: { ...node.data, selected: true } }, target])
+  const imported = vi.fn()
+  manager.onGraphImport(imported)
+  manager.refreshGraphSynchronously()
+  expect(imported).toHaveBeenCalledExactlyOnceWith({
+    nodes: [
+      expect.objectContaining({ id: node.id, data: { ...node.data, selected: true } }),
+      expect.objectContaining(target),
+    ],
+    edges: [edge],
+  })
+})
+
+it('seeds the full loaded canvas before its first partial edit', async () => {
+  const start = createNode('start')
+  const note: Node<NoteNodeType> = {
+    id: 'note',
+    type: 'custom-note',
+    position: { x: 100, y: 100 },
+    data: {
+      type: BlockEnum.Start,
+      title: '',
+      desc: '',
+      text: 'A note',
+      theme: 'yellow',
+      author: 'Dify',
+      showAuthor: true,
+    },
   }
-}
-
-type UndoManagerLike = {
-  canUndo: () => boolean
-  canRedo: () => boolean
-  undo: () => boolean
-  redo: () => boolean
-  clear: () => void
-}
-
-type CollaborationManagerInternals = {
-  doc: LoroDoc | null
-  nodesMap: LoroMap | null
-  edgesMap: LoroMap | null
-  undoManager: UndoManagerLike | null
-  currentAppId: string | null
-  reactFlowStore: ReactFlowStore | null
-  leaderId: string | null
-  isLeader: boolean
-  graphViewActive: boolean | null
-  crdtTrusted: boolean
-  pendingInitialSync: boolean
-  onlineUsers: OnlineUser[]
-  graphImportLogs: unknown[]
-  setNodesAnomalyLogs: unknown[]
-  graphSyncDiagnostics: unknown[]
-  pendingImportLog: unknown | null
-}
-
-const getManagerInternals = (manager: CollaborationManager): CollaborationManagerInternals =>
-  manager as unknown as CollaborationManagerInternals
-
-const createNode = (id: string): Node => ({
-  id,
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    type: BlockEnum.Start,
-    title: `Node-${id}`,
-    desc: '',
-  },
+  const edge = createEdge('e-1', start.id, note.id)
+  const { manager, state } = await createSession()
+  // The HTTP canvas finishes loading after the initial collaboration handshake.
+  state.setNodes([start, note])
+  state.setEdges([edge])
+  manager.setNodes([start, note], [start, { ...note, data: { ...note.data, selected: true } }])
+  expect(
+    manager
+      .getNodes()
+      .map((node) => node.id)
+      .sort(),
+  ).toEqual(['note', 'start'])
+  expect(manager.getEdges()).toEqual([edge])
 })
 
-const createEdge = (id: string, source: string, target: string): Edge => ({
-  id,
-  source,
-  target,
-  type: 'default',
-  data: {
-    sourceType: BlockEnum.Start,
-    targetType: BlockEnum.End,
-  },
+it('replaces only the matching workflow with its committed draft and clears undo history', async () => {
+  const old = createNode('old')
+  const oldTarget = createNode('old-target')
+  const oldEdge = createEdge('old-edge', old.id, oldTarget.id)
+  const { manager } = await createSession({ nodes: [old, oldTarget], edges: [oldEdge] })
+  manager.clearUndoStack()
+  manager.setNodes([old, oldTarget], [createNode('old', 'Edited'), oldTarget])
+  expect(manager.canUndo()).toBe(true)
+  const imported = createNode('imported')
+  const target = createNode('imported-target')
+  const edge = createEdge('imported-edge', imported.id, target.id)
+  expect(manager.replaceGraphFromCommittedDraft('another-app', [imported, target], [edge])).toBe(
+    false,
+  )
+  expect(
+    manager
+      .getNodes()
+      .map((node) => node.id)
+      .sort(),
+  ).toEqual(['old', 'old-target'])
+  expect(manager.getEdges()).toEqual([oldEdge])
+  expect(manager.canUndo()).toBe(true)
+
+  expect(manager.replaceGraphFromCommittedDraft('app-1', [imported, target], [edge])).toBe(true)
+  const refreshed = vi.fn()
+  manager.onGraphImport(refreshed)
+  manager.refreshGraphSynchronously()
+  expect(refreshed).toHaveBeenCalledExactlyOnceWith({
+    nodes: expect.arrayContaining([
+      expect.objectContaining(imported),
+      expect.objectContaining(target),
+    ]),
+    edges: [edge],
+  })
+  expect(manager.getNodes()).toHaveLength(2)
+  expect(manager.canUndo()).toBe(false)
+  expect(manager.canRedo()).toBe(false)
 })
 
-const setupManagerWithDoc = () => {
-  const manager = new CollaborationManager()
-  attachCrdtRuntime(manager)
-  const doc = new LoroDoc()
-  const internals = getManagerInternals(manager)
-  internals.doc = doc
-  internals.nodesMap = doc.getMap('nodes')
-  internals.edgesMap = doc.getMap('edges')
-  internals.crdtTrusted = true
-  return { manager, internals }
-}
+it('does not reintroduce an old canvas when committing a draft into an empty graph', async () => {
+  const { manager, state } = await createSession()
+  state.setNodes([createNode('old-canvas')])
+  expect(manager.replaceGraphFromCommittedDraft('app-1', [createNode('imported')], [])).toBe(true)
+  expect(manager.getNodes().map((node) => node.id)).toEqual(['imported'])
+})
 
-describe('CollaborationManager logs and event helpers', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+it('exports diagnostic logs from a remote graph change and clears the exported history', async () => {
+  vi.useFakeTimers()
+  const node = createNode('n-1', 'Before')
+  const target = createNode('n-2')
+  const edge = createEdge('e-1', node.id, target.id)
+  const remote = await createSession({ appId: 'remote', nodes: [node, target], edges: [edge] })
+  const local = await createSession({
+    appId: 'app-export',
+    role: 'follower',
+    nodes: [node, target],
+    edges: [edge],
   })
+  local.receive('graph_update', remote.snapshot())
+  await vi.runAllTimersAsync()
+  local.manager.clearGraphImportLog()
+  local.receive('online_users', {
+    users: [{ user_id: 'user-1', username: 'Alice', avatar: '', sid: 'socket-remote' }],
+    leader: 'socket-remote',
+  })
+  const updated = createNode(node.id, 'After')
+  remote.manager.setNodes(remote.manager.getNodes(), [updated])
+  remote.manager.setEdges([edge], [])
+  local.receive('graph_update', remote.snapshot())
+  await vi.runAllTimersAsync()
 
-  it('refreshGraphSynchronously emits merged graph with local selected node state', () => {
-    const { manager, internals } = setupManagerWithDoc()
-    const node = createNode('n-1')
-    const edge = createEdge('e-1', 'n-1', 'n-2')
+  const entries = local.manager.getGraphImportLog()
+  expect(entries).toHaveLength(1)
+  expect(entries[0]).toMatchObject({
+    appId: 'app-export',
+    before: {
+      nodes: expect.arrayContaining([
+        expect.objectContaining(node),
+        expect.objectContaining(target),
+      ]),
+      edges: [edge],
+    },
+    after: { nodes: [expect.objectContaining(updated)], edges: [] },
+  })
+  const downloads = captureDownloads()
+  const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+  local.manager.downloadGraphImportLog()
+  expect(downloads).toHaveLength(1)
+  expect(downloads[0]!.filename).toMatch(/^workflow-graph-import-log-app-export-.*\.json$/)
+  expect(downloads[0]!.blob.type).toBe('application/json')
+  const payload = JSON.parse(await downloads[0]!.blob.text())
+  expect(payload).toMatchObject({
+    appId: 'app-export',
+    entries,
+    summary: {
+      logCount: 1,
+      leaderId: 'socket-remote',
+      isLeader: false,
+      isConnected: true,
+      onlineUsersCount: 1,
+      crdtCounts: { nodes: 1, edges: 0 },
+      reactFlowCounts: { nodes: 1, edges: 0 },
+    },
+  })
+  expect(payload.setNodesAnomalies.length).toBeGreaterThan(0)
+  expect(payload.syncDiagnostics.length).toBeGreaterThan(0)
+  expect(revoke).toHaveBeenCalledWith('blob:test-download-0')
 
-    manager.setNodes([], [node])
-    manager.setEdges([], [edge])
+  local.manager.clearGraphImportLog()
+  expect(local.manager.getGraphImportLog()).toEqual([])
+  local.manager.downloadGraphImportLog()
+  const cleared = JSON.parse(await downloads[1]!.blob.text())
+  expect(cleared).toMatchObject({
+    entries: [],
+    setNodesAnomalies: [],
+    syncDiagnostics: [],
+    summary: { logCount: 0, setNodesAnomalyCount: 0, syncDiagnosticCount: 0 },
+  })
+})
 
-    internals.reactFlowStore = {
-      getState: () => ({
-        getNodes: () => [
-          {
-            ...node,
-            data: {
-              ...node.data,
-              selected: true,
-            },
-          },
-        ],
-        setNodes: vi.fn(),
-        getEdges: () => [edge],
-        setEdges: vi.fn(),
+it.each([
+  {
+    type: 'comments_update',
+    send: (manager: CollaborationManager) => manager.emitCommentsUpdate('app-1'),
+    data: { appId: 'app-1', timestamp: expect.any(Number) },
+  },
+  {
+    type: 'workflow_history_action',
+    send: (manager: CollaborationManager) => manager.emitHistoryAction('redo'),
+    data: { action: 'redo' },
+  },
+  {
+    type: 'workflow_restore_intent',
+    send: (manager: CollaborationManager) =>
+      manager.emitRestoreIntent({
+        versionId: 'v1',
+        initiatorUserId: 'user-1',
+        initiatorName: 'Alice',
       }),
-    }
+    data: { versionId: 'v1', initiatorUserId: 'user-1', initiatorName: 'Alice' },
+  },
+  {
+    type: 'workflow_restore_complete',
+    send: (manager: CollaborationManager) =>
+      manager.emitRestoreComplete({ versionId: 'v1', success: false, error: 'failed' }),
+    data: { versionId: 'v1', success: false, error: 'failed' },
+  },
+])('sends $type only while connected', async ({ type, send, data }) => {
+  const { manager, emit, receive } = await createSession()
+  send(manager)
+  expect(emit).toHaveBeenCalledExactlyOnceWith(
+    'collaboration_event',
+    expect.objectContaining({ type, data }),
+    expect.any(Function),
+  )
+  receive('disconnect', 'transport close')
+  emit.mockClear()
+  send(manager)
+  expect(emit).not.toHaveBeenCalled()
+})
 
-    const graphPayloads: Array<{ nodes: Node[]; edges: Edge[] }> = []
-    manager.onGraphImport((graph) => {
-      graphPayloads.push(graph)
-    })
-
-    manager.refreshGraphSynchronously()
-
-    expect(graphPayloads).toHaveLength(1)
-    const payload = graphPayloads[0]
-    if (!payload) throw new Error('graph import payload should exist')
-    expect(payload.nodes).toHaveLength(1)
-    expect(payload.edges).toHaveLength(1)
-    expect(payload.nodes[0]?.data.selected).toBe(true)
+it('moves a remote client between panels and removes it when the panel closes', async () => {
+  const { manager, update } = await createSession()
+  const presence = vi.fn()
+  manager.onNodePanelPresenceUpdate(presence)
+  const viewer = {
+    user: { userId: 'user-1', username: 'Dana' },
+    clientId: 'client-1',
+    timestamp: 1000,
+  }
+  update('node_panel_presence', { ...viewer, nodeId: 'node-a', action: 'open' })
+  update('node_panel_presence', { ...viewer, nodeId: 'node-b', action: 'open' })
+  expect(presence).toHaveBeenLastCalledWith({
+    'node-b': { 'client-1': { ...viewer.user, clientId: viewer.clientId, timestamp: 1000 } },
   })
-
-  it('seeds the full reactflow graph before applying a partial local node update to an empty CRDT', () => {
-    const { manager, internals } = setupManagerWithDoc()
-    const startNode = createNode('n-start')
-    const noteNode: Node<NoteNodeType> = {
-      id: 'n-note',
-      type: 'custom-note',
-      position: { x: 100, y: 100 },
-      data: {
-        type: BlockEnum.Start,
-        title: '',
-        desc: '',
-        text: 'note',
-        theme: 'yellow',
-        author: 'Dify',
-        showAuthor: true,
-      },
-    }
-    const edge = createEdge('e-start-note', 'n-start', 'n-note')
-
-    const oldNodes = [startNode, noteNode]
-    const nextNodes: Node[] = [
-      startNode,
-      {
-        ...noteNode,
-        data: {
-          ...noteNode.data,
-          selected: true,
-        },
-      },
-    ]
-
-    internals.reactFlowStore = {
-      getState: () => ({
-        getNodes: () => oldNodes,
-        setNodes: vi.fn(),
-        getEdges: () => [edge],
-        setEdges: vi.fn(),
-      }),
-    }
-
-    manager.setNodes(oldNodes, nextNodes, 'test:partial-note-update')
-
-    expect(
-      manager
-        .getNodes()
-        .map((node) => node.id)
-        .sort(),
-    ).toEqual(['n-note', 'n-start'])
-    expect(manager.getEdges().map((currentEdge) => currentEdge.id)).toEqual(['e-start-note'])
-  })
-
-  it('clearGraphImportLog clears logs and pending import snapshot', () => {
-    const { manager, internals } = setupManagerWithDoc()
-    internals.graphImportLogs = [{ id: 1 }]
-    internals.setNodesAnomalyLogs = [{ id: 2 }]
-    internals.graphSyncDiagnostics = [{ id: 3 }]
-    internals.pendingImportLog = { id: 4 }
-
-    manager.clearGraphImportLog()
-
-    expect(manager.getGraphImportLog()).toEqual([])
-    expect(internals.setNodesAnomalyLogs).toEqual([])
-    expect(internals.graphSyncDiagnostics).toEqual([])
-    expect(internals.pendingImportLog).toBeNull()
-  })
-
-  it('downloadGraphImportLog exports a JSON snapshot and triggers browser download', async () => {
-    const { manager, internals } = setupManagerWithDoc()
-    const node = createNode('n-export')
-    const edge = createEdge('e-export', 'n-export', 'n-target')
-
-    manager.setNodes([], [node])
-    manager.setEdges([], [edge])
-
-    internals.currentAppId = 'app-export'
-    internals.leaderId = 'leader-1'
-    internals.isLeader = true
-    internals.graphViewActive = true
-    internals.pendingInitialSync = false
-    internals.onlineUsers = [{ user_id: 'u-1', username: 'Alice', avatar: '', sid: 'sid-1' }]
-    internals.graphImportLogs = [{ timestamp: 1 }]
-    internals.setNodesAnomalyLogs = [{ timestamp: 2 }]
-    internals.graphSyncDiagnostics = [{ timestamp: 3 }]
-    internals.reactFlowStore = {
-      getState: () => ({
-        getNodes: () => [createNode('rf-1'), createNode('rf-2')],
-        setNodes: vi.fn(),
-        getEdges: () => [createEdge('rf-e', 'rf-1', 'rf-2')],
-        setEdges: vi.fn(),
-      }),
-    }
-
-    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:workflow-log')
-    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
-    const anchor = document.createElement('a')
-    const clickSpy = vi.spyOn(anchor, 'click').mockImplementation(() => {})
-    const originalCreateElement = document.createElement.bind(document)
-    const createElementSpy = vi
-      .spyOn(document, 'createElement')
-      .mockImplementation((tagName: string): HTMLElement => {
-        if (tagName === 'a') return anchor
-        return originalCreateElement(tagName)
-      })
-
-    manager.downloadGraphImportLog()
-
-    expect(createObjectURLSpy).toHaveBeenCalledTimes(1)
-    expect(clickSpy).toHaveBeenCalledTimes(1)
-    expect(anchor.download).toContain('workflow-graph-import-log-app-export-')
-    expect(anchor.download).toMatch(/\.json$/)
-    expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:workflow-log')
-
-    const blobArg = createObjectURLSpy.mock.calls[0]?.[0]
-    expect(blobArg).toBeInstanceOf(Blob)
-    const payload = JSON.parse(await (blobArg as Blob).text()) as {
-      appId: string | null
-      summary: {
-        logCount: number
-        setNodesAnomalyCount: number
-        syncDiagnosticCount: number
-        onlineUsersCount: number
-        crdtCounts: { nodes: number; edges: number }
-        reactFlowCounts: { nodes: number; edges: number }
-      }
-    }
-
-    expect(payload.appId).toBe('app-export')
-    expect(payload.summary.logCount).toBe(1)
-    expect(payload.summary.setNodesAnomalyCount).toBe(1)
-    expect(payload.summary.syncDiagnosticCount).toBe(1)
-    expect(payload.summary.onlineUsersCount).toBe(1)
-    expect(payload.summary.crdtCounts).toEqual({ nodes: 1, edges: 1 })
-    expect(payload.summary.reactFlowCounts).toEqual({ nodes: 2, edges: 1 })
-
-    createElementSpy.mockRestore()
-    clickSpy.mockRestore()
-  })
-
-  it('emits collaboration events only when current app is connected', () => {
-    const { manager, internals } = setupManagerWithDoc()
-    const sendSpy = vi
-      .spyOn(
-        manager as unknown as { sendCollaborationEvent: (payload: unknown) => void },
-        'sendCollaborationEvent',
-      )
-      .mockImplementation(() => {})
-    const isConnectedSpy = vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(false)
-
-    manager.emitCommentsUpdate('app-1')
-    manager.emitHistoryAction('undo')
-    manager.emitRestoreIntent({
-      versionId: 'version-1',
-      versionName: 'Version One',
-      initiatorUserId: 'u-1',
-      initiatorName: 'Alice',
-    })
-    manager.emitRestoreComplete({ versionId: 'version-1', success: true })
-    expect(sendSpy).not.toHaveBeenCalled()
-
-    internals.currentAppId = 'app-1'
-
-    manager.emitCommentsUpdate('app-1')
-    manager.emitHistoryAction('undo')
-    expect(sendSpy).not.toHaveBeenCalled()
-
-    isConnectedSpy.mockReturnValue(true)
-    manager.emitCommentsUpdate('app-1')
-    manager.emitHistoryAction('redo')
-    manager.emitRestoreIntent({
-      versionId: 'version-2',
-      initiatorUserId: 'u-2',
-      initiatorName: 'Bob',
-    })
-    manager.emitRestoreComplete({ versionId: 'version-2', success: false, error: 'failed' })
-
-    const eventTypes = sendSpy.mock.calls.map((call) => (call[0] as { type: string }).type)
-    expect(eventTypes).toEqual([
-      'comments_update',
-      'workflow_history_action',
-      'workflow_restore_intent',
-      'workflow_restore_complete',
-    ])
-  })
-
-  it('returns leader state through public getters', () => {
-    const { manager, internals } = setupManagerWithDoc()
-    internals.leaderId = 'leader-123'
-    internals.isLeader = true
-
-    expect(manager.getLeaderId()).toBe('leader-123')
-    expect(manager.getIsLeader()).toBe(true)
-  })
-
-  it('undo and redo apply CRDT graph to ReactFlow store and emit undo/redo state', () => {
-    const { manager, internals } = setupManagerWithDoc()
-    const updatedNode = createNode('n-after-undo-redo')
-    const updatedEdge = createEdge('e-after-undo-redo', 'n-after-undo-redo', 'n-target')
-    internals.nodesMap?.set(updatedNode.id, updatedNode as unknown as Record<string, unknown>)
-    internals.edgesMap?.set(updatedEdge.id, updatedEdge as unknown as Record<string, unknown>)
-
-    const setNodesSpy = vi.fn()
-    const setEdgesSpy = vi.fn()
-    internals.reactFlowStore = {
-      getState: () => ({
-        getNodes: () => [createNode('old-node')],
-        setNodes: setNodesSpy,
-        getEdges: () => [createEdge('old-edge', 'old-node', 'old-target')],
-        setEdges: setEdgesSpy,
-      }),
-    }
-
-    const undoManager: UndoManagerLike = {
-      canUndo: vi.fn(() => true),
-      canRedo: vi.fn(() => true),
-      undo: vi.fn(() => true),
-      redo: vi.fn(() => true),
-      clear: vi.fn(),
-    }
-    internals.undoManager = undoManager
-
-    const rafSpy = vi
-      .spyOn(globalThis, 'requestAnimationFrame')
-      .mockImplementation((callback: FrameRequestCallback) => {
-        callback(0)
-        return 1
-      })
-
-    const historyStates: Array<{ canUndo: boolean; canRedo: boolean }> = []
-    manager.onUndoRedoStateChange((state) => {
-      historyStates.push(state)
-    })
-
-    expect(manager.undo()).toBe(true)
-    expect(manager.redo()).toBe(true)
-    expect(setNodesSpy).toHaveBeenCalledTimes(2)
-    expect(setEdgesSpy).toHaveBeenCalledTimes(2)
-    expect(historyStates).toEqual([
-      { canUndo: true, canRedo: true },
-      { canUndo: true, canRedo: true },
-    ])
-
-    rafSpy.mockRestore()
-  })
-
-  it('exposes undo stack state helpers and supports clearing the stack', () => {
-    const { manager, internals } = setupManagerWithDoc()
-
-    expect(manager.canUndo()).toBe(false)
-    expect(manager.canRedo()).toBe(false)
-    expect(manager.undo()).toBe(false)
-    expect(manager.redo()).toBe(false)
-
-    const undoManager: UndoManagerLike = {
-      canUndo: vi.fn(() => false),
-      canRedo: vi.fn(() => true),
-      undo: vi.fn(() => false),
-      redo: vi.fn(() => false),
-      clear: vi.fn(),
-    }
-    internals.undoManager = undoManager
-
-    expect(manager.canUndo()).toBe(false)
-    expect(manager.canRedo()).toBe(true)
-    manager.clearUndoStack()
-    expect(undoManager.clear).toHaveBeenCalledTimes(1)
-  })
+  update('node_panel_presence', { ...viewer, nodeId: 'node-b', action: 'close' })
+  expect(presence).toHaveBeenLastCalledWith({})
 })

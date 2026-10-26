@@ -1,19 +1,21 @@
 import type { FC } from 'react'
 import type { EndNodeType } from './types'
-import type { NodeProps, Variable } from '@/app/components/workflow/types'
+import type { NodeProps } from '@/app/components/workflow/types'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { VariableLabelInNode } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useIsChatMode, useWorkflow } from '../../hooks/use-workflow'
+import { useWorkflow } from '../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../hooks/use-workflow-variables'
 
 const Node: FC<NodeProps<EndNodeType>> = ({ id, data }) => {
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const availableNodes = getBeforeNodesInSameBranch(id)
   const { getCurrentVariableType } = useWorkflowVariables()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
 
-  const startNode = availableNodes.find((node: any) => {
+  const startNode = availableNodes.find((node) => {
     return node.data.type === BlockEnum.Start
   })
 
@@ -22,9 +24,7 @@ const Node: FC<NodeProps<EndNodeType>> = ({ id, data }) => {
   }
 
   const { outputs } = data
-  const filteredOutputs = (outputs as Variable[]).filter(
-    ({ value_selector }) => value_selector.length > 0,
-  )
+  const filteredOutputs = outputs.filter(({ value_selector }) => value_selector.length > 0)
 
   if (!filteredOutputs.length) return null
 
@@ -35,7 +35,7 @@ const Node: FC<NodeProps<EndNodeType>> = ({ id, data }) => {
         const varType = getCurrentVariableType({
           valueSelector: value_selector,
           availableNodes,
-          isChatMode,
+          isChatflow,
         })
 
         return (

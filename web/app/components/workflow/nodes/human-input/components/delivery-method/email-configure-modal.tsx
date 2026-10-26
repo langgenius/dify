@@ -1,15 +1,23 @@
 import type { EmailConfig } from '../../types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiBugLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useId, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
@@ -33,7 +41,11 @@ const EmailConfigureModal = ({
   nodesOutputVars = [],
   availableNodes = [],
 }: EmailConfigureModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'workflowHumanInput'])
+  const subjectId = useId()
+  const bodyLabelId = useId()
+  const debugModeId = useId()
+  const debugDescriptionId = useId()
   const { data: email } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
@@ -49,21 +61,23 @@ const EmailConfigureModal = ({
     if (!subject.trim()) {
       toast.error(
         t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectRequired`], {
-          ns: 'workflow',
+          ns: 'workflowHumanInput',
         }),
       )
       return false
     }
     if (!body.trim()) {
       toast.error(
-        t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.bodyRequired`], { ns: 'workflow' }),
+        t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.bodyRequired`], {
+          ns: 'workflowHumanInput',
+        }),
       )
       return false
     }
     if (!/\{\{#url#\}\}/.test(body.trim())) {
       toast.error(
         t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.bodyMustContainRequestURL`], {
-          ns: 'workflow',
+          ns: 'workflowHumanInput',
           field: t(($) => $['promptEditor.requestURL.item.title'], { ns: 'common' }),
         }),
       )
@@ -72,7 +86,7 @@ const EmailConfigureModal = ({
     if (!recipients || (recipients.items.length === 0 && !recipients.whole_workspace)) {
       toast.error(
         t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.recipientsRequired`], {
-          ns: 'workflow',
+          ns: 'workflowHumanInput',
         }),
       )
       return false
@@ -92,50 +106,52 @@ const EmailConfigureModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-64px)]! w-180!">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="space-y-1 pr-8">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.title`], { ns: 'workflow' })}
-          </DialogTitle>
-          <div className="system-xs-regular text-text-tertiary">
-            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.description`], {
-              ns: 'workflow',
+      <DialogContent className="max-h-[calc(100dvh-64px)] w-180">
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.title`], {
+              ns: 'workflowHumanInput',
             })}
-          </div>
-        </div>
-        <div className="mt-6 space-y-5">
+          </DialogTitle>
+          <DialogDescription>
+            {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.description`], {
+              ns: 'workflowHumanInput',
+            })}
+          </DialogDescription>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="space-y-5">
           <div>
-            <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+            <label
+              htmlFor={subjectId}
+              className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+            >
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subject`], {
-                ns: 'workflow',
+                ns: 'workflowHumanInput',
               })}
-            </div>
+            </label>
             <Input
+              id={subjectId}
               className="w-full"
               value={subject}
-              onChange={(e) => setSubject(e.target.value)}
+              onValueChange={setSubject}
               placeholder={t(
                 ($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.subjectPlaceholder`],
-                { ns: 'workflow' },
+                { ns: 'workflowHumanInput' },
               )}
             />
           </div>
           <div>
-            <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
-              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.body`], { ns: 'workflow' })}
+            <div
+              id={bodyLabelId}
+              className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+            >
+              {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.body`], {
+                ns: 'workflowHumanInput',
+              })}
             </div>
             <MailBodyInput
+              aria-labelledby={bodyLabelId}
               value={body}
               onChange={setBody}
               nodesOutputVars={nodesOutputVars}
@@ -145,7 +161,7 @@ const EmailConfigureModal = ({
           <div>
             <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
               {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`], {
-                ns: 'workflow',
+                ns: 'workflowHumanInput',
               })}
             </div>
             <Recipient data={recipients} onChange={setRecipients} />
@@ -155,15 +171,18 @@ const EmailConfigureModal = ({
               <RiBugLine className="size-3.5 text-text-primary-on-surface" />
             </div>
             <div className="grow space-y-1">
-              <div className="system-sm-medium text-text-secondary">
+              <label
+                htmlFor={debugModeId}
+                className="cursor-pointer system-sm-medium text-text-secondary"
+              >
                 {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`], {
-                  ns: 'workflow',
+                  ns: 'workflowHumanInput',
                 })}
-              </div>
-              <div className="body-xs-regular text-text-tertiary">
+              </label>
+              <div id={debugDescriptionId} className="body-xs-regular text-text-tertiary">
                 <Trans
                   i18nKey={($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`]}
-                  ns="workflow"
+                  ns="workflowHumanInput"
                   components={{
                     email: <span className="body-md-medium text-text-primary">{email}</span>,
                   }}
@@ -171,22 +190,27 @@ const EmailConfigureModal = ({
                 />
                 <div>
                   {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`], {
-                    ns: 'workflow',
+                    ns: 'workflowHumanInput',
                   })}
                 </div>
               </div>
             </div>
-            <Switch checked={debugMode} onCheckedChange={(checked) => setDebugMode(checked)} />
+            <Switch
+              id={debugModeId}
+              aria-describedby={debugDescriptionId}
+              checked={debugMode}
+              onCheckedChange={(checked) => setDebugMode(checked)}
+            />
           </div>
-        </div>
-        <div className="mt-6 flex flex-row-reverse gap-2">
-          <Button variant="primary" className="w-18" onClick={handleConfirm}>
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
+        </DialogBody>
+        <DialogFooter>
           <Button className="w-18" onClick={() => onOpenChange(false)}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
-        </div>
+          <Button variant="primary" className="w-18" onClick={handleConfirm}>
+            {t(($) => $['operation.save'], { ns: 'common' })}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

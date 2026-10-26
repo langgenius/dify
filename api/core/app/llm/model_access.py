@@ -9,7 +9,7 @@ from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.provider_manager import ProviderManager
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey, ModelType
 from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.llm.exc import LLMModeRequiredError, ModelNotExistError
 from graphon.nodes.llm.protocols import CredentialsProvider
@@ -147,6 +147,18 @@ def resolve_model_context_window(
     if isinstance(context_window, bool) or not isinstance(context_window, int) or context_window <= 0:
         return None
     return context_window
+
+
+def resolve_model_supports_vision(
+    *,
+    run_context: DifyRunContext,
+    provider_name: str,
+    model_name: str,
+) -> bool:
+    """Return whether the credential-bound model advertises vision support."""
+
+    model_instance = DifyModelFactory(run_context=run_context).init_model_instance(provider_name, model_name)
+    return ModelFeature.VISION in (model_instance.get_model_schema().features or [])
 
 
 def _normalize_completion_params(completion_params: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:

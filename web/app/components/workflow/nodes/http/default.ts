@@ -39,7 +39,7 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
       retry_interval: 100,
     },
   },
-  checkValid(payload: HttpNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: HttpNodeType, t: TFunction<['workflow']>) {
     let errorMessages = ''
 
     if (!errorMessages && !payload.url)

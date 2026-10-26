@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -10,6 +9,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { toast } from '@/app/notifications'
 import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
@@ -49,7 +49,7 @@ const WaterCrawl: FC<Props> = ({
   crawlOptions,
   onCrawlOptionsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const [step, setStep] = useState<Step>(Step.init)
   const controlFoldOptions = STEP_CONTROL_FOLD_OPTIONS[step]
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -131,21 +131,7 @@ const WaterCrawl: FC<Props> = ({
         await sleep(2500)
         return await waitForCrawlFinished(jobId)
       } catch (error: unknown) {
-        let errorMessage = ''
-        const maybeErrorWithJson = error as {
-          json?: () => Promise<unknown>
-          message?: unknown
-        } | null
-        if (maybeErrorWithJson?.json) {
-          try {
-            const errorBody = (await maybeErrorWithJson.json()) as {
-              message?: unknown
-            } | null
-            if (typeof errorBody?.message === 'string') errorMessage = errorBody.message
-          } catch {}
-        }
-        if (!errorMessage && typeof maybeErrorWithJson?.message === 'string')
-          errorMessage = maybeErrorWithJson.message
+        const errorMessage = error instanceof Error ? error.message : ''
         return {
           isError: true,
           errorMessage,

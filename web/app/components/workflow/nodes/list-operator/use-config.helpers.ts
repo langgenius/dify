@@ -32,12 +32,14 @@ export const getItemVarTypeShowName = (itemVarType?: VarType, hasVariable?: bool
 export const supportsSubVariable = (varType?: VarType) => varType === WorkflowVarType.arrayFile
 
 export const canFilterVariable = (varPayload: Var) => {
-  return [
+  const supportedVariableTypes: readonly WorkflowVarType[] = [
     WorkflowVarType.arrayNumber,
     WorkflowVarType.arrayString,
     WorkflowVarType.arrayBoolean,
     WorkflowVarType.arrayFile,
-  ].includes(varPayload.type)
+  ]
+
+  return supportedVariableTypes.includes(varPayload.type)
 }
 
 export const buildFilterCondition = ({

@@ -1,15 +1,17 @@
 'use client'
-import type { FC } from 'react'
-import type { SelfHostedPlanOption } from './types'
+import type { SelfHostedPlan } from '../../../config'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
-import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
-import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
-import Button from './button'
-import List from './list'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
+import { SELF_HOSTED_PLAN_URLS } from '../../../config'
+import Community from '../../assets/community'
+import Enterprise from '../../assets/enterprise'
+import EnterpriseNoise from '../../assets/enterprise-noise'
+import Premium from '../../assets/premium'
+import PremiumNoise from '../../assets/premium-noise'
+import { SelfHostedPlanFeatures } from './list'
 
 const STYLE_MAP = {
   community: {
@@ -37,32 +39,15 @@ const STYLE_MAP = {
   },
 }
 
-type SelfHostedPlanItemProps = {
-  plan: SelfHostedPlanOption
-}
-
-const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
-  const { t } = useTranslation()
+export function SelfHostedPlanItem({ plan }: { plan: SelfHostedPlan }) {
+  const { t } = useTranslation(['billing'])
+  const { theme } = useTheme()
   const i18nPrefix = `plans.${plan}` as const
   const isFreePlan = plan === 'community'
   const isPremiumPlan = plan === 'premium'
-  const isEnterprisePlan = plan === 'enterprise'
-
-  const handleGetPayUrl = useCallback(() => {
-    if (isFreePlan) {
-      window.location.href = getStartedWithCommunityUrl
-      return
-    }
-    if (isPremiumPlan) {
-      window.location.href = getWithPremiumUrl
-      return
-    }
-
-    if (isEnterprisePlan) window.location.href = contactSalesUrl
-  }, [isFreePlan, isPremiumPlan, isEnterprisePlan])
 
   return (
-    <div className="relative flex flex-1 flex-col overflow-hidden">
+    <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
       <div className={cn('absolute inset-0 -z-10', STYLE_MAP[plan].bg)} />
       {/* Noise Effect */}
       {STYLE_MAP[plan].noise}
@@ -70,16 +55,16 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
         <div className="flex flex-col gap-y-6 px-1 pt-10">
           {STYLE_MAP[plan].icon}
           <div className="flex min-h-26 flex-col gap-y-2">
-            <div className="text-[30px] leading-[1.2] font-medium text-text-primary">
+            <h3 className="text-[30px] leading-[1.2] font-medium text-text-primary">
               {t(($) => $[`${i18nPrefix}.name`], { ns: 'billing' })}
-            </div>
-            <div className="line-clamp-2 system-md-regular text-text-secondary">
+            </h3>
+            <div className="system-md-regular text-text-secondary xl:line-clamp-2">
               {t(($) => $[`${i18nPrefix}.description`], { ns: 'billing' })}
             </div>
           </div>
         </div>
         {/* Price */}
-        <div className="flex items-end gap-x-2 px-1 pt-4 pb-8">
+        <div className="flex flex-wrap items-end gap-x-2 px-1 pt-4 pb-8">
           <div className="shrink-0 title-4xl-semi-bold text-text-primary">
             {t(($) => $[`${i18nPrefix}.price`], { ns: 'billing' })}
           </div>
@@ -89,17 +74,50 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
             </span>
           )}
         </div>
-        <Button plan={plan} handleGetPayUrl={handleGetPayUrl} />
+        <a
+          href={SELF_HOSTED_PLAN_URLS[plan]}
+          data-plan={plan}
+          className={cn(
+            buttonVariants({ variant: 'tertiary', size: null }),
+            'h-auto min-h-12 w-full justify-start gap-x-2 rounded-none bg-components-button-tertiary-bg py-3 pr-4 pl-5 system-xl-semibold whitespace-normal text-text-primary hover:bg-components-button-tertiary-bg-hover data-[plan=enterprise]:bg-saas-dify-blue-static data-[plan=enterprise]:text-text-primary-on-surface data-[plan=enterprise]:hover:bg-saas-dify-blue-static-hover data-[plan=premium]:bg-saas-background-inverted data-[plan=premium]:py-2 data-[plan=premium]:text-background-default data-[plan=premium]:hover:bg-saas-background-inverted-hover xl:whitespace-nowrap',
+          )}
+        >
+          <span className="flex min-w-0 grow flex-wrap items-center gap-x-2 xl:flex-nowrap">
+            <span>{t(($) => $[`${i18nPrefix}.btnText`], { ns: 'billing' })}</span>
+            {isPremiumPlan && (
+              <span className="sr-only">
+                {' '}
+                {t(($) => $['plans.premium.marketplaceName'], { ns: 'billing' })}
+              </span>
+            )}
+            {isPremiumPlan && (
+              <span aria-hidden className="pt-1.75 pb-px">
+                {theme === Theme.light ? (
+                  <span
+                    aria-hidden
+                    className="i-custom-public-billing-aws-marketplace-light h-6 w-31.5"
+                  />
+                ) : (
+                  <span
+                    aria-hidden
+                    className="i-custom-public-billing-aws-marketplace-dark h-6 w-31.5"
+                  />
+                )}
+              </span>
+            )}
+          </span>
+          <span aria-hidden className="i-ri-arrow-right-line size-5 shrink-0" />
+        </a>
       </div>
-      <List plan={plan} />
+      <SelfHostedPlanFeatures plan={plan} />
       {isPremiumPlan && (
         <div className="flex grow flex-col justify-end gap-y-2 p-6 pt-0">
           <div className="flex items-center gap-x-1">
             <div className="flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default shadow-xs shadow-shadow-shadow-3">
-              <Azure />
+              <span aria-hidden className="i-custom-public-billing-azure h-5 w-5.25" />
             </div>
             <div className="flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default shadow-xs shadow-shadow-shadow-3">
-              <GoogleCloud />
+              <span aria-hidden className="i-custom-public-billing-google-cloud h-4.5 w-5.5" />
             </div>
           </div>
           <span className="system-xs-regular text-text-tertiary">
@@ -110,4 +128,3 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
     </div>
   )
 }
-export default React.memo(SelfHostedPlanItem)

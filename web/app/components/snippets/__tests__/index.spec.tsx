@@ -1,226 +1,157 @@
-import type { SnippetDetailPayload } from '@/models/snippet'
-import { render, screen } from '@testing-library/react'
+import type { SnippetWorkflow } from '@/types/snippet'
+import { act, screen, waitFor } from '@testing-library/react'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { WorkflowInitializationProbe } from '@/app/components/workflow/__tests__/workflow-initialization-probe'
+import codeNodeDefault from '@/app/components/workflow/nodes/code/default'
+import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import SnippetPage from '..'
 
-const mockUseSnippetInit = vi.fn()
-let capturedWorkflowDefaultContextProps:
-  | {
-      nodes: unknown[]
-      edges: unknown[]
-    }
-  | undefined
-
-vi.mock('../hooks/use-snippet-init', () => ({
-  useSnippetInit: (snippetId: string) => mockUseSnippetInit(snippetId),
+const requests = vi.hoisted(() => ({
+  detail: vi.fn(),
+  draft: vi.fn(),
+  defaults: vi.fn(),
+  published: vi.fn(),
 }))
 
-vi.mock('../components/snippet-main', () => ({
-  default: ({
-    hasPublishedWorkflow,
-    snippetId,
-  }: {
-    hasPublishedWorkflow: boolean
-    snippetId: string
-  }) => <div data-testid="snippet-main">{`${snippetId}:${String(hasPublishedWorkflow)}`}</div>,
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    replace: vi.fn(),
-    push: vi.fn(),
-  }),
-}))
-
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => 'desktop',
-  MediaType: { mobile: 'mobile', desktop: 'desktop' },
-}))
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow', () => ({
-  default: ({
-    children,
-    nodes,
-    edges,
-  }: {
-    children: React.ReactNode
-    nodes: unknown[]
-    edges: unknown[]
-  }) => {
-    capturedWorkflowDefaultContextProps = {
-      nodes,
-      edges,
-    }
-
-    return <div data-testid="workflow-default-context">{children}</div>
-  },
-}))
-
-vi.mock('@/app/components/workflow/context', () => ({
-  WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => children,
-}))
-
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    initialNodes: (nodes: unknown[]) => nodes,
-    initialEdges: (edges: unknown[]) => edges,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'snippets.bySnippetId.workflows.draft.get': requests.draft,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.customizedSnippets.bySnippetId.get': requests.detail,
+      'snippets.bySnippetId.workflows.defaultWorkflowBlockConfigs.get': requests.defaults,
+      'snippets.bySnippetId.workflows.publish.get': requests.published,
+    }),
   }
 })
 
-vi.mock('@/app/components/app-sidebar', () => ({
-  default: ({
-    renderHeader,
-    renderNavigation,
-  }: {
-    renderHeader?: (modeState: string) => React.ReactNode
-    renderNavigation?: (modeState: string) => React.ReactNode
-  }) => (
-    <div data-testid="app-sidebar">
-      <div data-testid="app-sidebar-header">{renderHeader?.('expand')}</div>
-      <div data-testid="app-sidebar-navigation">{renderNavigation?.('expand')}</div>
-    </div>
+// SnippetMain owns editing and publishing; this page owns fetching and choosing the initial graph.
+vi.mock('../components/snippet-main', () => ({
+  default: ({ hasPublishedWorkflow }: { hasPublishedWorkflow: boolean }) => (
+    <>
+      <WorkflowInitializationProbe />
+      <output aria-label="Published workflow">{String(hasPublishedWorkflow)}</output>
+    </>
   ),
 }))
 
-vi.mock('@/app/components/app-sidebar/nav-link', () => ({
-  default: ({ name, onClick }: { name: string; onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>
-      {name}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/app-sidebar/snippet-info', () => ({
-  default: () => <div data-testid="snippet-info" />,
-}))
-
-const createSnippetDetailPayload = (nodeId: string, edgeId: string): SnippetDetailPayload => ({
-  snippet: {
-    id: 'snippet-1',
-    name: 'Tone Rewriter',
-    description: 'A static snippet mock.',
-    updatedAt: 'Updated 2h ago',
-    usage: 'Used 19 times',
-    tags: [],
-    status: 'Draft',
-  },
+const workflow = (version: string): SnippetWorkflow => ({
+  id: version,
   graph: {
-    viewport: { x: 0, y: 0, zoom: 1 },
     nodes: [
-      {
-        id: nodeId,
-        position: { x: 0, y: 0 },
-        data: { title: nodeId },
-      },
-    ] as SnippetDetailPayload['graph']['nodes'],
-    edges: [
-      {
-        id: edgeId,
-        source: nodeId,
-        target: `${nodeId}-target`,
-      },
-    ] as SnippetDetailPayload['graph']['edges'],
+      createNode({
+        id: `${version}-source`,
+        data: {
+          ...codeNodeDefault.defaultValue,
+          code: 'def main(): return {}',
+          title: `${version} source`,
+        },
+      }),
+      createNode({
+        id: `${version}-target`,
+        data: {
+          ...codeNodeDefault.defaultValue,
+          code: 'def main(): return {}',
+          title: `${version} target`,
+        },
+      }),
+    ],
+    edges: [createEdge({ source: `${version}-source`, target: `${version}-target` })],
+    viewport: { x: 0, y: 0, zoom: 1 },
   },
-  inputFields: [],
-  uiMeta: {
-    inputFieldCount: 0,
-    checklistCount: 0,
-    autoSavedAt: 'Auto-saved · a few seconds ago',
-  },
+  features: {},
+  input_fields: [],
+  hash: `${version}-hash`,
+  created_at: 1_712_300_000,
+  updated_at: 1_712_345_678,
 })
 
-const mockPublishedSnippetDetail = createSnippetDetailPayload('published-node', 'published-edge')
-const mockDraftSnippetDetail = createSnippetDetailPayload('draft-node', 'draft-edge')
+beforeEach(() => {
+  requests.detail.mockReset().mockResolvedValue({
+    id: 'snippet-1',
+    name: 'Tone Rewriter',
+    description: 'Rewrites a draft.',
+    type: 'node',
+    is_published: true,
+    version: '1',
+    use_count: 0,
+    tags: [],
+    created_at: 1_712_300_000,
+    created_by: 'user-1',
+    updated_at: 1_712_300_000,
+    updated_by: 'user-1',
+  })
+  requests.defaults.mockReset().mockResolvedValue({})
+  requests.draft.mockReset().mockResolvedValue(workflow('draft'))
+  requests.published.mockReset().mockResolvedValue(workflow('published'))
+})
+
+const expectGraph = async (version: string) => {
+  expect(await screen.findByRole('status', { name: 'Initialized nodes' })).toHaveTextContent(
+    `${version}-source:${version} source,${version}-target:${version} target`,
+  )
+  expect(screen.getByRole('status', { name: 'Initialized edges' })).toHaveTextContent(
+    `${version}-source->${version}-target`,
+  )
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+}
 
 describe('SnippetPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    capturedWorkflowDefaultContextProps = undefined
-    mockUseSnippetInit.mockReturnValue({
-      data: {
-        snippet: mockDraftSnippetDetail.snippet,
-        published: mockPublishedSnippetDetail,
-        draft: mockDraftSnippetDetail,
-        draftWorkflow: {
-          hash: 'draft-hash',
-        },
-        publishedWorkflow: {
-          hash: 'published-hash',
-        },
-        hasDraftChanges: true,
-      },
-      isLoading: false,
-    })
-  })
+  it.each([
+    { published: true, version: 'published' },
+    { published: false, version: 'draft' },
+  ])(
+    'initializes the $version graph in the real workflow provider',
+    async ({ published, version }) => {
+      if (!published) requests.published.mockResolvedValue(null)
+      renderWithConsoleQuery(<SnippetPage snippetId="snippet-1" />)
 
-  it('should render the orchestrate route shell without owning the main landmark', () => {
-    render(<SnippetPage snippetId="snippet-1" />)
+      await expectGraph(version)
+      expect(screen.getByRole('status', { name: 'Published workflow' })).toHaveTextContent(
+        String(published),
+      )
+      expect(requests.draft).toHaveBeenCalledWith(
+        { params: { snippet_id: 'snippet-1' } },
+        expect.anything(),
+      )
+    },
+  )
 
-    expect(screen.getByTestId('workflow-default-context')).toBeInTheDocument()
-    expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1')
-    expect(screen.queryByRole('main')).not.toBeInTheDocument()
-  })
-
-  it('should initialize workflow context with published graph data when the published workflow exists', () => {
-    render(<SnippetPage snippetId="snippet-1" />)
-
-    expect(capturedWorkflowDefaultContextProps?.nodes).toEqual(
-      mockPublishedSnippetDetail.graph.nodes,
+  it('keeps the loading fallback when the snippet is unavailable', async () => {
+    requests.detail.mockRejectedValue(
+      createHttpError(new Response(null, { status: 404 }), { message: 'Not found' }),
     )
-    expect(capturedWorkflowDefaultContextProps?.edges).toEqual(
-      mockPublishedSnippetDetail.graph.edges,
+    const { queryClient } = renderWithConsoleQuery(<SnippetPage snippetId="missing-snippet" />)
+
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryState(
+          consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.queryKey({
+            input: { params: { snippet_id: 'missing-snippet' } },
+          }),
+        )?.status,
+      ).toBe('error'),
     )
-    expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1:true')
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: 'Initialized nodes' })).not.toBeInTheDocument()
   })
 
-  it('should initialize workflow context with draft graph data when the published workflow is empty', () => {
-    mockUseSnippetInit.mockReturnValue({
-      data: {
-        snippet: mockDraftSnippetDetail.snippet,
-        published: mockPublishedSnippetDetail,
-        draft: mockDraftSnippetDetail,
-        draftWorkflow: {
-          hash: 'draft-hash',
-        },
-        publishedWorkflow: undefined,
-        hasDraftChanges: true,
-      },
-      isLoading: false,
-    })
+  it('keeps the route shell gated until the draft arrives', async () => {
+    const pending = createDeferred<SnippetWorkflow>()
+    requests.draft.mockReturnValue(pending.promise)
+    renderWithConsoleQuery(<SnippetPage snippetId="snippet-1" />)
 
-    render(<SnippetPage snippetId="snippet-1" />)
-
-    expect(capturedWorkflowDefaultContextProps?.nodes).toEqual(mockDraftSnippetDetail.graph.nodes)
-    expect(capturedWorkflowDefaultContextProps?.edges).toEqual(mockDraftSnippetDetail.graph.edges)
-    expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1:false')
-  })
-
-  it('should render loading fallback when orchestrate data is unavailable', () => {
-    mockUseSnippetInit.mockReturnValue({
-      data: null,
-      isLoading: false,
-    })
-
-    render(<SnippetPage snippetId="missing-snippet" />)
-
-    expect(screen.getByRole('status')).toBeInTheDocument()
-  })
-
-  it('should keep the detail route shell while orchestrate data is loading', () => {
-    mockUseSnippetInit.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-    })
-
-    render(<SnippetPage snippetId="snippet-1" />)
-
-    expect(screen.getByRole('status')).toBeInTheDocument()
-    expect(screen.queryByRole('main')).not.toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: 'Initialized nodes' })).not.toBeInTheDocument()
+    await act(async () => pending.resolve(workflow('draft')))
+    await expectGraph('published')
   })
 })

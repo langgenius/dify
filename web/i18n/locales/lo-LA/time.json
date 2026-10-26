@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
+  "dateFormats.withSeconds": "DD/MM/YYYY hh:mm:ss A",
+  "operation.cancel": "ຍົກເລີກ",
+  "operation.now": "ດຽວນີ້",
+  "operation.ok": "ຕົກລົງ",
+  "operation.pickDate": "ເລືອກວັນທີ",
+  "picker.chooseMonthAndYear": "ເລືອກເດືອນ ແລະ ປີ",
+  "picker.endDate": "ວັນທີສິ້ນສຸດ",
+  "picker.hour": "ຊົ່ວໂມງ",
+  "picker.minute": "ນາທີ",
+  "picker.month": "ເດືອນ",
+  "picker.nextMonth": "ເດືອນຖັດໄປ",
+  "picker.period": "ກ່ອນທ່ຽງ/ຫຼັງທ່ຽງ",
+  "picker.previousMonth": "ເດືອນກ່ອນ",
+  "picker.required": "ກະລຸນາເລືອກຄ່າ.",
+  "picker.requiredLabel": "ຈຳເປັນ",
+  "picker.startDate": "ວັນທີເລີ່ມ",
+  "picker.unavailable": "ວັນທີ ຫຼື ເວລານີ້ບໍ່ພ້ອມໃຊ້.",
+  "picker.year": "ປີ",
+  "title.pickTime": "ເລືອກເວລາ"
+}

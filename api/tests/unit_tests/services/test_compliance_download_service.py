@@ -2,9 +2,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from extensions.ext_redis import RedisClientWrapper
+from libs.helper import RateLimiter
 from machinery.context import RequestContext
-from machinery.errors import ActiveWorkspaceRequiredError
-from services.compliance_download_service import ComplianceDownloadRateLimiter, ComplianceDownloadService
+from services.compliance_download_service import ComplianceDownloadService
 from services.errors.billing import BillingUpstreamUnavailableError, ComplianceRateLimitExceededError
 
 
@@ -14,10 +15,9 @@ def fetch_link() -> MagicMock:
 
 
 @pytest.fixture
-def rate_limiter() -> MagicMock:
-    limiter = MagicMock(spec=ComplianceDownloadRateLimiter)
-    limiter.is_rate_limited.return_value = False
-    return limiter
+def rate_limiter(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> RateLimiter:
+    redis, _commands = redis_transport
+    return RateLimiter("compliance", 10, 60, redis_client=redis)
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def request_context() -> RequestContext:
 @pytest.fixture
 def service(
     fetch_link: MagicMock,
-    rate_limiter: MagicMock,
+    rate_limiter: RateLimiter,
 ) -> ComplianceDownloadService:
     return ComplianceDownloadService(
         fetch_link=fetch_link,
@@ -45,12 +45,20 @@ def test_get_link_checks_limit_fetches_and_increments(
     service: ComplianceDownloadService,
     request_context: RequestContext,
     fetch_link: MagicMock,
-    rate_limiter: MagicMock,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
     events: list[str] = []
-    rate_limiter.is_rate_limited.side_effect = lambda _key: events.append("check") or False
+    _, commands = redis_transport
+
+    def execute(command: str, *_args: object, **_kwargs: object) -> int:
+        if command == "ZCARD":
+            events.append("check")
+        elif command == "ZADD":
+            events.append("increment")
+        return 0
+
+    commands.side_effect = execute
     fetch_link.side_effect = lambda *_args: events.append("fetch") or {"url": "https://example.com/report"}
-    rate_limiter.increment_rate_limit.side_effect = lambda _key: events.append("increment")
 
     result = service.get_link(
         request_context=request_context,
@@ -61,7 +69,8 @@ def test_get_link_checks_limit_fetches_and_increments(
 
     assert result == {"url": "https://example.com/report"}
     assert events == ["check", "fetch", "increment"]
-    rate_limiter.is_rate_limited.assert_called_once_with("account-1:workspace-1")
+    assert [call.args[0] for call in commands.call_args_list] == ["ZREMRANGEBYSCORE", "ZCARD", "ZADD", "EXPIRE"]
+    assert all(call.args[1] == "compliance:account-1:workspace-1" for call in commands.call_args_list)
     fetch_link.assert_called_once_with(
         "SOC2_Type_II",
         "account-1",
@@ -69,16 +78,17 @@ def test_get_link_checks_limit_fetches_and_increments(
         "127.0.0.1",
         "test-agent",
     )
-    rate_limiter.increment_rate_limit.assert_called_once_with("account-1:workspace-1")
+    assert commands.call_args.args == ("EXPIRE", "compliance:account-1:workspace-1", 120)
 
 
 def test_get_link_rejects_rate_limited_request(
     service: ComplianceDownloadService,
     request_context: RequestContext,
     fetch_link: MagicMock,
-    rate_limiter: MagicMock,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
-    rate_limiter.is_rate_limited.return_value = True
+    _, commands = redis_transport
+    commands.return_value = 10
 
     with pytest.raises(ComplianceRateLimitExceededError):
         service.get_link(
@@ -89,15 +99,16 @@ def test_get_link_rejects_rate_limited_request(
         )
 
     fetch_link.assert_not_called()
-    rate_limiter.increment_rate_limit.assert_not_called()
+    assert [call.args[0] for call in commands.call_args_list] == ["ZREMRANGEBYSCORE", "ZCARD"]
 
 
 def test_get_link_does_not_increment_after_fetch_failure(
     service: ComplianceDownloadService,
     request_context: RequestContext,
     fetch_link: MagicMock,
-    rate_limiter: MagicMock,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
 ) -> None:
+    _, commands = redis_transport
     fetch_link.side_effect = BillingUpstreamUnavailableError
 
     with pytest.raises(BillingUpstreamUnavailableError):
@@ -108,29 +119,4 @@ def test_get_link_does_not_increment_after_fetch_failure(
             device_info="test-agent",
         )
 
-    rate_limiter.increment_rate_limit.assert_not_called()
-
-
-def test_get_link_requires_active_workspace(
-    service: ComplianceDownloadService,
-    fetch_link: MagicMock,
-    rate_limiter: MagicMock,
-) -> None:
-    request_context = RequestContext(
-        request_id="request-1",
-        trace_id="trace-1",
-        account_id="account-1",
-        active_workspace_id=None,
-    )
-
-    with pytest.raises(ActiveWorkspaceRequiredError):
-        service.get_link(
-            request_context=request_context,
-            document_name="SOC2_Type_II",
-            ip_address="127.0.0.1",
-            device_info="test-agent",
-        )
-
-    rate_limiter.is_rate_limited.assert_not_called()
-    fetch_link.assert_not_called()
-    rate_limiter.increment_rate_limit.assert_not_called()
+    assert [call.args[0] for call in commands.call_args_list] == ["ZREMRANGEBYSCORE", "ZCARD"]

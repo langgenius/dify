@@ -1,4 +1,7 @@
-import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  DeclaredOutputConfig,
+  WorkflowOutputRoutes,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentBinding } from '@/app/components/workflow/block-selector/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -6,6 +9,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 export type AgentV2NodeType = CommonNodeType & {
   agent_binding?: AgentBinding
   agent_declared_outputs?: DeclaredOutputConfig[]
+  agent_output_routes?: WorkflowOutputRoutes
   agent_node_kind: 'dify_agent'
   agent_task?: string
   version: '2'
@@ -48,4 +52,8 @@ export function needsInlineAgentBindingCreation(data: AgentV2NodeType) {
 
 export function hasValidAgentBinding(data: AgentV2NodeType) {
   return hasValidInlineAgentBinding(data) || hasValidRosterAgentBinding(data)
+}
+
+export function hasAgentV2OutputRoutes(data: CommonNodeType): data is AgentV2NodeType {
+  return isAgentV2NodeData(data) && !!data.agent_output_routes?.enabled
 }

@@ -143,10 +143,13 @@ func TestDockerfileBuildsAndCopiesAllBinaries(t *testing.T) {
 		"CMD":    `CMD ["shellctl", "serve", "--listen", "0.0.0.0:5004"]`,
 		"EXPOSE": "EXPOSE 5004",
 		"USER":   "USER dify",
-		"bash":   "bash",
-		"git":    "git",
-		"jq":     "jq",
-		"tmux":   "tmux",
+		"bash": "bash",
+		"git":  "git",
+		// iproute2 is required by the OpenShell runtime backend: its sandbox
+		// supervisor needs the ip helper for network-namespace isolation.
+		"iproute2": "iproute2",
+		"jq":       "jq",
+		"tmux":     "tmux",
 	}
 	for name, expected := range assertions {
 		if !strings.Contains(content, expected) {

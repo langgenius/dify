@@ -1,13 +1,14 @@
 import type { CommonNodeType, OnSelectBlock } from '@/app/components/workflow/types'
-import { Button } from '@langgenius/dify-ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuPopup,
-  DropdownMenuPortal,
-  DropdownMenuPositioner,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuPortal,
+  MenuPositioner,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { intersection } from 'es-toolkit/array'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,7 +23,7 @@ type ChangeItemProps = {
   sourceHandle: string
 }
 const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const { handleNodeChange } = useNodesInteractions()
   const nodeCatalogType = getNodeCatalogType(data)
@@ -39,15 +40,26 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
   )
 
   const triggerElement = (
-    <Button variant="ghost" size="medium" className="w-full justify-start px-2">
+    <MenuItem
+      nativeButton
+      render={<button type="button" />}
+      closeOnClick={false}
+      className={buttonVariants({
+        variant: 'ghost',
+        size: 'medium',
+        className:
+          'w-[calc(100%-8px)] justify-start px-2 data-highlighted:bg-components-button-ghost-bg-hover',
+      })}
+    >
       {t(($) => $['panel.change'], { ns: 'workflow' })}
-    </Button>
+    </MenuItem>
   )
 
   return (
     <BlockSelector
       onSelect={handleSelect}
-      placement="top-end"
+      side="top"
+      align="end"
       sideOffset={6}
       alignOffset={8}
       trigger={triggerElement}
@@ -67,12 +79,12 @@ type OperatorProps = {
   sourceHandle: string
 }
 const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const { handleNodeDelete, handleNodeDisconnect } = useNodesInteractions()
 
   return (
-    <DropdownMenu open={open} onOpenChange={onOpenChange}>
-      <DropdownMenuTrigger
+    <Menu open={open} onOpenChange={onOpenChange}>
+      <MenuTrigger
         render={
           <IconButton
             variant="secondary"
@@ -84,38 +96,36 @@ const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorPr
           </IconButton>
         }
       />
-      <DropdownMenuPortal>
-        <DropdownMenuPositioner placement="bottom-end" sideOffset={4} alignOffset={-4}>
-          <DropdownMenuPopup>
+      <MenuPortal>
+        <MenuPositioner sideOffset={4} align="end" alignOffset={-4}>
+          <MenuPopup>
             <div className="min-w-30 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
-              <div className="p-1">
+              <div className="py-1">
                 <ChangeItem data={data} nodeId={nodeId} sourceHandle={sourceHandle} />
-                <div
-                  className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                <MenuItem
                   onClick={() => {
                     onOpenChange(false)
                     handleNodeDisconnect(nodeId)
                   }}
                 >
                   {t(($) => $['common.disconnect'], { ns: 'workflow' })}
-                </div>
+                </MenuItem>
               </div>
-              <div className="p-1">
-                <div
-                  className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+              <div className="py-1">
+                <MenuItem
                   onClick={() => {
                     onOpenChange(false)
                     handleNodeDelete(nodeId)
                   }}
                 >
                   {t(($) => $['operation.delete'], { ns: 'common' })}
-                </div>
+                </MenuItem>
               </div>
             </div>
-          </DropdownMenuPopup>
-        </DropdownMenuPositioner>
-      </DropdownMenuPortal>
-    </DropdownMenu>
+          </MenuPopup>
+        </MenuPositioner>
+      </MenuPortal>
+    </Menu>
   )
 }
 

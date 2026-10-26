@@ -13,7 +13,7 @@ const SupportedFileTypes = z.enum(['image', 'document', 'video', 'audio', 'custo
 
 export const createInputFieldSchema = (
   type: PipelineInputVarType,
-  t: TFunction,
+  t: TFunction<['appDebug']>,
   options: SchemaOptions,
 ) => {
   const { maxFileUploadLimit } = options
@@ -57,8 +57,8 @@ export const createInputFieldSchema = (
         maxLength: z.number().min(1).max(TEXT_MAX_LENGTH),
         default: z.string().optional(),
       })
-      .merge(commonSchema)
-      .passthrough()
+      .extend(commonSchema.shape)
+      .loose()
   }
   if (type === PipelineInputVarType.number) {
     return z
@@ -67,8 +67,8 @@ export const createInputFieldSchema = (
         unit: z.string().optional(),
         placeholder: z.string().optional(),
       })
-      .merge(commonSchema)
-      .passthrough()
+      .extend(commonSchema.shape)
+      .loose()
   }
   if (type === PipelineInputVarType.select) {
     return z
@@ -83,8 +83,8 @@ export const createInputFieldSchema = (
           }),
         default: z.string().optional(),
       })
-      .merge(commonSchema)
-      .passthrough()
+      .extend(commonSchema.shape)
+      .loose()
   }
   if (type === PipelineInputVarType.singleFile) {
     return z
@@ -95,8 +95,8 @@ export const createInputFieldSchema = (
           allowedFileTypes: z.array(SupportedFileTypes),
         }),
       })
-      .merge(commonSchema)
-      .passthrough()
+      .extend(commonSchema.shape)
+      .loose()
   }
   if (type === PipelineInputVarType.multiFiles) {
     return z
@@ -108,8 +108,8 @@ export const createInputFieldSchema = (
         }),
         maxLength: z.number().min(1).max(maxFileUploadLimit),
       })
-      .merge(commonSchema)
-      .passthrough()
+      .extend(commonSchema.shape)
+      .loose()
   }
-  return commonSchema.passthrough()
+  return commonSchema.loose()
 }

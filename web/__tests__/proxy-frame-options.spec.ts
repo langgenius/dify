@@ -4,6 +4,7 @@ import { canEmbedPath, proxy } from '@/proxy'
 const mockEnv = vi.hoisted(() => ({
   NEXT_PUBLIC_ALLOW_EMBED: false,
   NEXT_PUBLIC_CSP_WHITELIST: 'https://example.com',
+  NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: '',
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: '',
 }))
 
@@ -21,13 +22,14 @@ const createRequest = (url: string) => {
   } as Parameters<typeof proxy>[0]
 }
 
-describe('proxy frame options', () => {
-  afterEach(() => {
-    mockEnv.NEXT_PUBLIC_ALLOW_EMBED = false
-    mockEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = ''
-    vi.unstubAllEnvs()
-  })
+afterEach(() => {
+  mockEnv.NEXT_PUBLIC_ALLOW_EMBED = false
+  mockEnv.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX = ''
+  mockEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = ''
+  vi.unstubAllEnvs()
+})
 
+describe('proxy frame options', () => {
   it('should allow embedded share routes', () => {
     expect(canEmbedPath('/chatbot/token')).toBe(true)
     expect(canEmbedPath('/workflow/token')).toBe(true)
@@ -48,9 +50,9 @@ describe('proxy frame options', () => {
     expect(canEmbedPath('/apps')).toBe(false)
   })
 
-  it('should enforce frame ancestors on protected document routes', () => {
+  it('should enforce frame ancestors on protected document routes', async () => {
     vi.stubEnv('NODE_ENV', 'production')
-    const response = proxy(createRequest('https://cloud.dify.ai/device'))
+    const response = await proxy(createRequest('https://cloud.dify.ai/device'))
     const contentSecurityPolicy = response.headers.get('content-security-policy')
 
     expect(response.headers.get('x-frame-options')).toBe('DENY')
@@ -58,9 +60,9 @@ describe('proxy frame options', () => {
     expect(contentSecurityPolicy).toContain("frame-ancestors 'none'")
   })
 
-  it('should keep published app routes embeddable', () => {
+  it('should keep published app routes embeddable', async () => {
     vi.stubEnv('NODE_ENV', 'production')
-    const response = proxy(createRequest('https://udify.app/chat/test-token'))
+    const response = await proxy(createRequest('https://udify.app/chat/test-token'))
     const contentSecurityPolicy = response.headers.get('content-security-policy')
 
     expect(response.headers.get('x-frame-options')).toBeNull()
@@ -68,29 +70,78 @@ describe('proxy frame options', () => {
     expect(contentSecurityPolicy).not.toContain('frame-ancestors')
   })
 
-  it('should allow Cloudflare Turnstile resources when its site key is configured', () => {
+  it('should allow Cloudflare Turnstile resources when its site key is configured', async () => {
     vi.stubEnv('NODE_ENV', 'production')
     mockEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'site-key-for-tests'
 
-    const response = proxy(createRequest('https://cloud.dify.ai/signin'))
+    const response = await proxy(createRequest('https://cloud.dify.ai/signin'))
 
     expect(response.headers.get('content-security-policy')).toContain(
       'https://challenges.cloudflare.com',
     )
   })
 
-  it('should protect device routes when global embedding is enabled', () => {
+  it('should protect device routes when global embedding is enabled', async () => {
     mockEnv.NEXT_PUBLIC_ALLOW_EMBED = true
-    const response = proxy(createRequest('https://cloud.dify.ai/device/code'))
+    const response = await proxy(createRequest('https://cloud.dify.ai/device/code'))
 
     expect(response.headers.get('x-frame-options')).toBe('DENY')
     expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
   })
+
+  it('should deny framing for the Marketplace OAuth authorize route', async () => {
+    const response = await proxy(
+      createRequest('https://cloud.dify.ai/account/oauth/authorize?client_id=marketplace-client'),
+    )
+
+    expect(response.headers.get('x-frame-options')).toBe('DENY')
+    expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
+  })
+
+  it('should allow framing Marketplace pages when a Marketplace origin is configured', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    mockEnv.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX = 'https://marketplace.dify.ai'
+
+    const response = await proxy(createRequest('https://cloud.dify.ai/marketplace'))
+
+    expect(response.headers.get('content-security-policy') ?? '').toMatch(
+      /frame-src[^;]*https:\/\/marketplace\.dify\.ai/,
+    )
+  })
+
+  it('should not add a Marketplace frame origin when the prefix is unset', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+
+    const response = await proxy(createRequest('https://cloud.dify.ai/marketplace'))
+    const contentSecurityPolicy = response.headers.get('content-security-policy') ?? ''
+
+    expect(contentSecurityPolicy).toContain('frame-src')
+    expect(contentSecurityPolicy).not.toContain('https://marketplace.dify.ai')
+  })
+})
+
+describe('proxy CookieYes consent logging', () => {
+  it('should allow CookieYes logging requests only through connect-src', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const response = await proxy(createRequest('https://cloud.dify.ai/signin'))
+    const contentSecurityPolicy = response.headers.get('content-security-policy')!
+    const directives = Object.fromEntries(
+      contentSecurityPolicy
+        .split(';')
+        .map((directive) => directive.trim().split(/\s+/))
+        .filter(([name]) => name)
+        .map(([name, ...sources]) => [name, sources]),
+    )
+
+    expect(directives['connect-src']).toContain('https://log.cookieyes.com')
+    for (const directive of ['default-src', 'script-src', 'style-src', 'worker-src', 'media-src'])
+      expect(directives[directive]).not.toContain('https://log.cookieyes.com')
+  })
 })
 
 describe('proxy education entry normalization', () => {
-  it('redirects the legacy education action without leaking it into the canonical URL', () => {
-    const response = proxy(
+  it('redirects the legacy education action without leaking it into the canonical URL', async () => {
+    const response = await proxy(
       createRequest('https://cloud.dify.ai/?action=getEducationVerify&utm_source=education-site'),
     )
 
@@ -100,9 +151,9 @@ describe('proxy education entry normalization', () => {
     )
   })
 
-  it('does not redirect unrelated actions or paths', () => {
-    const unrelatedAction = proxy(createRequest('https://cloud.dify.ai/?action=showSettings'))
-    const unrelatedPath = proxy(
+  it('does not redirect unrelated actions or paths', async () => {
+    const unrelatedAction = await proxy(createRequest('https://cloud.dify.ai/?action=showSettings'))
+    const unrelatedPath = await proxy(
       createRequest('https://cloud.dify.ai/apps?action=getEducationVerify'),
     )
 

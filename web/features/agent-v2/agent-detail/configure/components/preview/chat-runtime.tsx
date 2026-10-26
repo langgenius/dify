@@ -1,30 +1,23 @@
 'use client'
 
-import type { AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode, Ref } from 'react'
 import type { AgentChatMessageSender, AgentPreviewChatController } from './chat-conversation'
 import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
-import Loading from '@/app/components/base/loading'
-import { consoleQuery } from '@/service/client'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { consoleQuery } from '@/service/console'
 import { getFormattedAgentDebugChatTree } from './chat-history'
 import { AgentPreviewChatSession } from './chat-session'
 
 export type AgentChatRuntimeEmptyStateProps = {
-  agentIcon?: string | null
-  agentIconBackground?: string | null
-  agentIconType?: AgentIconType | null
-  agentName?: string
   showUnconfiguredNotice: boolean
 }
 
 export type AgentChatRuntimeProps = {
   agentId: string
   answerActionPosition?: AnswerActionPosition
-  agentIcon?: string | null
-  agentIconBackground?: string | null
-  agentIconType?: AgentIconType | null
   agentName?: string
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
@@ -49,9 +42,6 @@ export type AgentChatRuntimeProps = {
 export function AgentChatRuntime({
   agentId,
   answerActionPosition,
-  agentIcon,
-  agentIconBackground,
-  agentIconType,
   agentName,
   agentSoulConfig,
   clearChatList,
@@ -103,11 +93,7 @@ export function AgentChatRuntime({
     [historyQuery.data?.data],
   )
   if (conversationId && historyQuery.isPending && !conversationBelongsToCurrentSession) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loading type="app" />
-      </div>
-    )
+    return <LoadingPlaceholder className="h-full" />
   }
   const inputSessionKey =
     !conversationId || conversationBelongsToCurrentSession ? 'current-session' : conversationId
@@ -122,9 +108,6 @@ export function AgentChatRuntime({
       conversationSessionKey={conversationSessionKey}
       agentId={agentId}
       answerActionPosition={answerActionPosition}
-      agentIcon={agentIcon}
-      agentIconBackground={agentIconBackground}
-      agentIconType={agentIconType}
       agentName={agentName}
       agentSoulConfig={agentSoulConfig}
       clearChatList={clearChatList}

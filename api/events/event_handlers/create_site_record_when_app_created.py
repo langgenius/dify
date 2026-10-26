@@ -1,27 +1,17 @@
 from sqlalchemy.orm import Session
 
 from events.app_event import app_was_created
-from models.enums import CustomizeTokenStrategy
-from models.model import Site
+from services.app_creation_records import create_site_record
 
 
 @app_was_created.connect
-def handle(sender, *, session: Session, **kwargs) -> None:
-    """Create site record when an app is created."""
+def handle(sender, *, session: Session | None = None, created_records_initialized: bool = False, **kwargs) -> None:
+    """Create the site in the caller's transaction unless it was already initialized."""
+    if created_records_initialized:
+        return
+    if session is None:
+        raise TypeError("session is required to initialize app creation records")
     app = sender
     account = kwargs.get("account")
     if account is not None:
-        site = Site(
-            app_id=app.id,
-            title=app.name,
-            icon_type=app.icon_type,
-            icon=app.icon,
-            icon_background=app.icon_background,
-            default_language=account.interface_language,
-            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
-            code=Site.generate_code(16, session=session),
-            created_by=app.created_by,
-            updated_by=app.updated_by,
-        )
-        session.add(site)
-        session.flush()
+        create_site_record(app=app, account=account, session=session)

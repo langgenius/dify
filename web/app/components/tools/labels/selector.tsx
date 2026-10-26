@@ -5,7 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '@/app/components/plugins/hooks'
 
@@ -15,11 +14,8 @@ type LabelSelectorProps = {
 }
 
 function LabelSelector({ value, onChange }: LabelSelectorProps) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
+  const { t } = useTranslation(['common', 'tools'])
   const { tags: labelList } = useTags()
-
   const [keywords, setKeywords] = useState('')
   const debouncedKeywords = useDebouncedValue(keywords, 500)
   const searchKeywords = keywords ? debouncedKeywords : ''
@@ -28,11 +24,11 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
   const selectedLabels = value.map((v) => labelList.find((l) => l.name === v)?.label).join(', ')
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <div className="relative">
         <PopoverTrigger
           className={cn(
-            'flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3 text-left hover:bg-components-input-bg-hover',
+            'flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3 text-start hover:bg-components-input-bg-hover',
             'data-popup-open:bg-components-input-bg-hover data-popup-open:hover:bg-components-input-bg-hover',
           )}
         >
@@ -45,12 +41,12 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
             {!value.length && t(($) => $['createTool.toolInput.labelPlaceholder'], { ns: 'tools' })}
             {!!value.length && selectedLabels}
           </div>
-          <div className="ml-1 shrink-0 text-text-secondary opacity-60">
+          <div className="ms-1 shrink-0 text-text-secondary opacity-60">
             <span className="i-ri-arrow-down-s-line size-4" />
           </div>
         </PopoverTrigger>
         <PopoverContent
-          placement="bottom-start"
+          align="start"
           sideOffset={4}
           className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
         >
@@ -67,7 +63,7 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
               {filteredLabelList.map((label) => (
                 <label
                   key={label.name}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg py-1.5 pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg py-1.5 ps-3 pe-2 hover:bg-components-panel-on-panel-item-bg-hover"
                 >
                   <Checkbox className="shrink-0" value={label.name} />
                   <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
@@ -75,7 +71,10 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
-                  <Tag03 className="size-6 text-text-quaternary" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-financeAndECommerce-tag-03 size-6 text-text-quaternary"
+                  />
                   <div className="text-xs leading-3.5 text-text-tertiary">
                     {t(($) => $['tag.noTag'], { ns: 'common' })}
                   </div>

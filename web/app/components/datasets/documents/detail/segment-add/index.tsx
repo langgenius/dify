@@ -1,16 +1,14 @@
 'use client'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { useProviderContext } from '@/context/provider-context'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 import { segmentImportStatus } from '@/types/dataset'
 
 type SegmentAddProps = {
@@ -28,17 +26,24 @@ export function SegmentAdd({
   showBatchModal,
   embedding,
 }: SegmentAddProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'datasetDocuments'])
   const [isPlanUpgradeModalOpen, setIsPlanUpgradeModalOpen] = useState(false)
-  const { plan, enableBilling } = useProviderContext()
-  const canAddChunks = !enableBilling || plan.type !== 'sandbox'
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: plan } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.billing.subscription.plan,
+    }),
+  )
+  const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined
 
   const textColor = embedding
     ? 'text-components-button-secondary-accent-text-disabled'
     : 'text-components-button-secondary-accent-text'
 
   const openSegmentDialog = (openDialog: () => void) => {
-    if (!canAddChunks) {
+    if (isPlanUnavailable) return
+    if (deploymentEdition === 'CLOUD' && plan === 'sandbox') {
       setIsPlanUpgradeModalOpen(true)
       return
     }
@@ -123,7 +128,7 @@ export function SegmentAdd({
         type="button"
         className={`inline-flex items-center rounded-l-lg border-0 border-r border-r-divider-subtle bg-transparent px-2.5 py-2 text-left hover:bg-state-base-hover disabled:cursor-not-allowed disabled:hover:bg-transparent`}
         onClick={() => openSegmentDialog(showNewSegmentModal)}
-        disabled={embedding}
+        disabled={embedding || isPlanUnavailable}
       >
         <span aria-hidden className={cn('i-ri-add-line size-4', textColor)} />
         <span
@@ -132,25 +137,22 @@ export function SegmentAdd({
           {t(($) => $['list.action.addButton'], { ns: 'datasetDocuments' })}
         </span>
       </button>
-      <DropdownMenu>
-        <DropdownMenuTrigger
+      <Menu>
+        <MenuTrigger
           aria-label={t(($) => $['list.action.batchAdd'], { ns: 'datasetDocuments' })}
-          disabled={embedding}
+          disabled={embedding || isPlanUnavailable}
           className={cn(
             `rounded-l-none rounded-r-lg border-0 bg-transparent p-2 backdrop-blur-[5px] hover:bg-state-base-hover disabled:cursor-not-allowed disabled:bg-transparent disabled:hover:bg-transparent data-popup-open:bg-state-base-hover`,
           )}
         >
           <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4', textColor)} />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[120px]">
-          <DropdownMenuItem
-            className="system-md-regular"
-            onClick={() => openSegmentDialog(showBatchModal)}
-          >
+        </MenuTrigger>
+        <MenuContent align="end" className="min-w-30">
+          <MenuItem className="system-md-regular" onClick={() => openSegmentDialog(showBatchModal)}>
             {t(($) => $['list.action.batchAdd'], { ns: 'datasetDocuments' })}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </MenuItem>
+        </MenuContent>
+      </Menu>
       {isPlanUpgradeModalOpen && (
         <PlanUpgradeModal
           show

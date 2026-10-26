@@ -1,14 +1,16 @@
 'use client'
 import type { NotionPage } from '@/models/common'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Notion } from '@/app/components/base/icons/src/public/common'
 import { Markdown } from '@/app/components/base/markdown'
+import { selectOnlineDocumentPreview } from '@/app/components/rag-pipeline/utils/query-select'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { usePreviewOnlineDocument } from '@/service/use-pipeline'
+import { DatasourceType } from '@/models/pipeline'
+import { consoleQuery } from '@/service/console'
 import { formatNumberAbbreviated } from '@/utils/format'
 import { useDataSourceStore } from '../data-source/store'
 import Loading from './loading'
@@ -24,26 +26,32 @@ const OnlineDocumentPreview = ({
   datasourceNodeId,
   hidePreview,
 }: OnlineDocumentPreviewProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const [content, setContent] = useState('')
   const pipelineId = useDatasetDetailContextWithSelector((state) => state.dataset?.pipeline_id)
-  const { mutateAsync: getOnlineDocumentContent, isPending } = usePreviewOnlineDocument()
+  const { mutate: getOnlineDocumentContent, isPending } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.preview.post.mutationOptions(),
+  )
   const dataSourceStore = useDataSourceStore()
 
   useEffect(() => {
     const { currentCredentialId } = dataSourceStore.getState()
     getOnlineDocumentContent(
       {
-        workspaceID: currentPage.workspace_id,
-        pageID: currentPage.page_id,
-        pageType: currentPage.type,
-        pipelineId: pipelineId || '',
-        datasourceNodeId,
-        credentialId: currentCredentialId,
+        params: { pipeline_id: pipelineId || '', node_id: datasourceNodeId },
+        body: {
+          datasource_type: DatasourceType.onlineDocument,
+          credential_id: currentCredentialId,
+          inputs: {
+            workspace_id: currentPage.workspace_id,
+            page_id: currentPage.page_id,
+            type: currentPage.type,
+          },
+        },
       },
       {
         onSuccess(data) {
-          setContent(data.content)
+          setContent(selectOnlineDocumentPreview(data).content)
         },
         onError(error) {
           toast.error(error.message)
@@ -59,9 +67,9 @@ const OnlineDocumentPreview = ({
           <div className="system-2xs-semibold-uppercase text-text-accent">
             {t(($) => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}
           </div>
-          <div className="text-tex-primary title-md-semi-bold">{currentPage?.page_name}</div>
+          <div className="title-md-semi-bold">{currentPage?.page_name}</div>
           <div className="flex items-center gap-x-1 system-xs-medium text-text-tertiary">
-            <Notion className="size-3.5" />
+            <span aria-hidden className="i-custom-public-common-notion size-3.5" />
             <span>{currentPage.type}</span>
             <span>·</span>
             <span>{`${formatNumberAbbreviated(content.length)} ${t(($) => $['addDocuments.characters'], { ns: 'datasetPipeline' })}`}</span>

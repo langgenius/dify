@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SuggestedAction from '../suggested-action'
 
@@ -34,7 +34,8 @@ describe('SuggestedAction', () => {
     expect(link).toHaveAccessibleDescription('Push versions to environments')
   })
 
-  it('should use native disabled button semantics for unavailable links', () => {
+  it('should use native disabled button semantics for unavailable links', async () => {
+    const user = userEvent.setup()
     const handleClick = vi.fn()
 
     render(
@@ -49,7 +50,7 @@ describe('SuggestedAction', () => {
     )
 
     const action = screen.getByRole('button', { name: 'Disabled action' })
-    fireEvent.click(action)
+    await user.click(action)
 
     expect(action).toBeDisabled()
     expect(screen.queryByRole('link', { name: /Disabled action/ })).not.toBeInTheDocument()
@@ -76,7 +77,8 @@ describe('SuggestedAction', () => {
     expect(handleClick).not.toHaveBeenCalled()
   })
 
-  it('should render and trigger an enabled button action', () => {
+  it('should render and trigger an enabled button action', async () => {
+    const user = userEvent.setup()
     const handleClick = vi.fn()
 
     render(
@@ -85,12 +87,13 @@ describe('SuggestedAction', () => {
       </SuggestedAction>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Workflow as Tool' }))
+    await user.click(screen.getByRole('button', { name: 'Workflow as Tool' }))
 
     expect(handleClick).toHaveBeenCalledTimes(1)
   })
 
-  it('should keep the main link separate from a trailing action button', () => {
+  it('should keep the main link separate from a trailing action button', async () => {
+    const user = userEvent.setup()
     const handleActionClick = vi.fn()
 
     render(
@@ -112,11 +115,12 @@ describe('SuggestedAction', () => {
       'https://example.com/app',
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Configure action' }))
+    await user.click(screen.getByRole('button', { name: 'Configure action' }))
     expect(handleActionClick).toHaveBeenCalledTimes(1)
   })
 
-  it('should disable both controls when an action with a trailing button is unavailable', () => {
+  it('should disable both controls when an action with a trailing button is unavailable', async () => {
+    const user = userEvent.setup()
     const handleActionClick = vi.fn()
 
     render(
@@ -137,7 +141,7 @@ describe('SuggestedAction', () => {
     expect(screen.getByRole('button', { name: 'Open web app' })).toBeDisabled()
 
     const actionButton = screen.getByRole('button', { name: 'Configure action' })
-    fireEvent.click(actionButton)
+    await user.click(actionButton)
     expect(actionButton).toBeDisabled()
     expect(handleActionClick).not.toHaveBeenCalled()
   })

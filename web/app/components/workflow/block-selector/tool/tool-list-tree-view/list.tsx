@@ -27,7 +27,7 @@ export const ToolListTreeView = memo(
     onSelectMultiple,
     selectedTools,
   }: Props) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow'])
     const getGroupName = (group: ToolGroup) => {
       if (group.kind === 'author') return group.author
 
@@ -36,8 +36,6 @@ export const ToolListTreeView = memo(
           return t(($) => $['tabs.customTool'], { ns: 'workflow' })
         case 'workflow':
           return t(($) => $['tabs.workflowTool'], { ns: 'workflow' })
-        case 'data-source':
-          return t(($) => $['tabs.sources'], { ns: 'workflow' })
         case 'mcp':
           return 'MCP'
       }

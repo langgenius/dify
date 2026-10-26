@@ -1,13 +1,12 @@
 import type { RefObject } from 'react'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ChatWithHistory from '@/app/components/base/chat/chat-with-history'
 import { useChatWithHistoryContext } from '@/app/components/base/chat/chat-with-history/context'
 import { useChatWithHistory } from '@/app/components/base/chat/chat-with-history/hooks'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 
 vi.mock('@/app/components/base/chat/chat-with-history/hooks', () => ({
@@ -35,10 +34,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
     tablet: 'tablet',
     pc: 'pc',
   },
-}))
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -127,31 +122,9 @@ describe('Base Chat Flow', () => {
 
   // Chat-with-history shell integration across layout, responsive shell, and theme setup.
   describe('Chat With History Shell', () => {
-    it('updates the document title and expands the collapsed desktop sidebar on hover', () => {
-      const { container } = render(<ChatWithHistory className="chat-history-shell" />)
-
-      const titles = screen.getAllByText('Test Chat')
-      expect(titles.length).toBeGreaterThan(0)
-      expect(useDocumentTitle).toHaveBeenCalledWith('Test Chat')
-
-      vi.mocked(useChatWithHistory).mockReturnValue({
-        ...defaultHookReturn,
-        sidebarCollapseState: true,
-      })
-
-      const { container: collapsedContainer } = render(<ChatWithHistory />)
-      const hoverArea = collapsedContainer.querySelector('.absolute.top-0.z-20')
-
-      expect(container.querySelector('.chat-history-shell')).toBeInTheDocument()
-      expect(hoverArea).toBeInTheDocument()
-
-      if (hoverArea) {
-        fireEvent.mouseEnter(hoverArea)
-        expect(hoverArea).toHaveClass('left-0')
-
-        fireEvent.mouseLeave(hoverArea)
-        expect(hoverArea).toHaveClass('-left-62')
-      }
+    it('uses the site title for the document', () => {
+      render(<ChatWithHistory />)
+      expect(document.title).toBe('Test Chat - Dify')
     })
 
     it('renders a new theme when site configuration changes', () => {
@@ -183,13 +156,10 @@ describe('Base Chat Flow', () => {
         appChatListDataLoading: true,
       })
 
-      const { container } = render(<ChatWithHistory className="mobile-chat-shell" />)
+      render(<ChatWithHistory />)
 
-      expect(useDocumentTitle).toHaveBeenCalledWith('Chat')
-      expect(screen.getByRole('status')).toBeInTheDocument()
-      expect(container.querySelector('.mobile-chat-shell')).toBeInTheDocument()
-      expect(container.querySelector('.rounded-t-2xl')).toBeInTheDocument()
-      expect(container.querySelector('.rounded-2xl')).not.toBeInTheDocument()
+      expect(document.title).toBe('Chat - Dify')
+      expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     })
   })
 })

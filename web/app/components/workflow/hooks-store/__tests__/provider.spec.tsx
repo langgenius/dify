@@ -1,74 +1,50 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { use } from 'react'
-import { HooksStoreContext, HooksStoreContextProvider } from '../provider'
-
-const mockRefreshAll = vi.fn()
-const mockStore = {
-  getState: () => ({
-    refreshAll: mockRefreshAll,
-  }),
-}
-
-let mockReactflowState = {
-  d3Selection: null as object | null,
-  d3Zoom: null as object | null,
-}
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { HooksStoreContextProvider } from '../provider'
+import { useHooksStore } from '../store'
 
 vi.mock('reactflow', () => ({
-  useStore: (selector: (state: typeof mockReactflowState) => unknown) =>
-    selector(mockReactflowState),
+  useStore: (selector: (state: { d3Selection: null; d3Zoom: null }) => unknown) =>
+    selector({ d3Selection: null, d3Zoom: null }),
 }))
 
-vi.mock('../store', async () => {
-  const actual = await vi.importActual<typeof import('../store')>('../store')
-  return {
-    ...actual,
-    createHooksStore: vi.fn(() => mockStore),
-  }
-})
-
-const Consumer = () => {
-  const store = use(HooksStoreContext)
-  return <div>{store ? 'has-hooks-store' : 'missing-hooks-store'}</div>
+const ExportButton = () => {
+  const isExporting = useHooksStore((state) => state.isExporting)
+  const handleExportDSL = useHooksStore((state) => state.handleExportDSL)
+  return (
+    <button disabled={isExporting} onClick={() => handleExportDSL?.()}>
+      Export
+    </button>
+  )
 }
 
 describe('hooks-store provider', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockReactflowState = {
-      d3Selection: null,
-      d3Zoom: null,
-    }
-  })
-
-  it('should provide the hooks store context without refreshing when the canvas handles are missing', () => {
-    render(
-      <HooksStoreContextProvider>
-        <Consumer />
+  it('propagates export pending state and the latest handler independently of canvas initialization', async () => {
+    const user = userEvent.setup()
+    const firstExport = vi.fn().mockResolvedValue(true)
+    const retryExport = vi.fn().mockResolvedValue(true)
+    const { rerender } = render(
+      <HooksStoreContextProvider handleExportDSL={firstExport} isExporting={false}>
+        <ExportButton />
       </HooksStoreContextProvider>,
     )
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+    expect(firstExport).toHaveBeenCalledTimes(1)
 
-    expect(screen.getByText('has-hooks-store')).toBeInTheDocument()
-    expect(mockRefreshAll).not.toHaveBeenCalled()
-  })
-
-  it('should refresh the hooks store when both d3Selection and d3Zoom are available', async () => {
-    const handleRun = vi.fn()
-    mockReactflowState = {
-      d3Selection: {},
-      d3Zoom: {},
-    }
-
-    render(
-      <HooksStoreContextProvider handleRun={handleRun}>
-        <Consumer />
+    rerender(
+      <HooksStoreContextProvider handleExportDSL={firstExport} isExporting>
+        <ExportButton />
       </HooksStoreContextProvider>,
     )
+    expect(screen.getByRole('button', { name: 'Export' })).toBeDisabled()
 
-    await waitFor(() => {
-      expect(mockRefreshAll).toHaveBeenCalledWith({
-        handleRun,
-      })
-    })
+    rerender(
+      <HooksStoreContextProvider handleExportDSL={retryExport} isExporting={false}>
+        <ExportButton />
+      </HooksStoreContextProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+    expect(retryExport).toHaveBeenCalledTimes(1)
+    expect(firstExport).toHaveBeenCalledTimes(1)
   })
 })

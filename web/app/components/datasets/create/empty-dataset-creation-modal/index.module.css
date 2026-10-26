@@ -1,32 +1,7 @@
 @reference "../../../../styles/globals.css";
 
-.modalHeader {
-  @apply flex h-8 place-content-between items-center;
-}
-.modalHeader .title {
-  @apply grow text-text-primary;
-  font-weight: 600;
-  font-size: 20px;
-  line-height: 32px;
-}
-.modalHeader .close {
-  @apply h-4 w-4 shrink-0 cursor-pointer bg-center bg-no-repeat;
-  background-image: url(../assets/close.svg);
-  background-size: 16px;
-}
-
-.tip {
-  @apply mt-1 mb-8 text-text-tertiary;
-  font-weight: 400;
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.form {
-  @apply mb-8;
-}
-.form .label {
-  @apply py-0 text-text-primary;
+.label {
+  @apply text-text-primary;
   font-weight: 500;
   font-size: 14px;
   line-height: 20px;

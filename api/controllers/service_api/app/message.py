@@ -2,7 +2,6 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, WithJsonSchema
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
@@ -11,6 +10,7 @@ import services
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.fields import SimpleResultStringListResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.schema import expect_with_user
@@ -20,6 +20,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
+from libs.external_api import error_responses
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.message import (
@@ -71,6 +72,7 @@ register_response_schema_models(
 
 @service_api_ns.route("/messages")
 class MessageListApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc("list_messages")
     @service_api_ns.doc(
         summary="List Conversation Messages",
@@ -101,7 +103,8 @@ class MessageListApi(Resource):
         service_api_ns.models[MessageInfiniteScrollPagination.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    def get(self, app_model: App, end_user: EndUser):
+    @model_validate(MessageListQuery)
+    def get(self, query_args: MessageListQuery, app_model: App, end_user: EndUser):
         """List messages in a conversation.
 
         Retrieves messages with pagination support using first_id.
@@ -110,7 +113,6 @@ class MessageListApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        query_args = MessageListQuery.model_validate(request.args.to_dict())
         conversation_id = query_args.conversation_id
         first_id = query_args.first_id or None
 
@@ -127,10 +129,10 @@ class MessageListApi(Resource):
             return MessageInfiniteScrollPagination(
                 limit=pagination.limit, has_more=pagination.has_more, data=items
             ).model_dump(mode="json")
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except FirstMessageNotExistsError as caught_error:
+            raise NotFound("First Message Not Exists.") from caught_error
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
@@ -160,14 +162,13 @@ class MessageFeedbackApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, message_id: UUID):
+    @model_validate(MessageFeedbackPayload)
+    def post(self, payload: MessageFeedbackPayload, app_model: App, end_user: EndUser, message_id: UUID):
         """Submit feedback for a message.
 
         Allows users to rate messages as like/dislike and provide optional feedback content.
         """
         message_id_str = str(message_id)
-
-        payload = MessageFeedbackPayload.model_validate(service_api_ns.payload or {})
 
         try:
             MessageService.create_feedback(
@@ -178,8 +179,8 @@ class MessageFeedbackApi(Resource):
                 content=payload.content,
                 session=db.session(),
             )
-        except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+        except MessageNotExistsError as caught_error:
+            raise NotFound("Message Not Exists.") from caught_error
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -212,12 +213,12 @@ class AppGetFeedbacksApi(Resource):
         service_api_ns.models[AppFeedbackListResponse.__name__],
     )
     @validate_app_token
-    def get(self, app_model: App):
+    @model_validate(FeedbackListQuery)
+    def get(self, query_args: FeedbackListQuery, app_model: App):
         """Get all feedbacks for the application.
 
         Returns paginated list of all feedback submitted for messages in this app.
         """
-        query_args = FeedbackListQuery.model_validate(request.args.to_dict())
         feedbacks = MessageService.get_all_messages_feedbacks(
             app_model, page=query_args.page, limit=query_args.limit, session=db.session()
         )
@@ -226,6 +227,7 @@ class AppGetFeedbacksApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")
 class MessageSuggestedApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc("get_suggested_questions")
     @service_api_ns.doc(
         summary="Get Next Suggested Questions",
@@ -276,12 +278,12 @@ class MessageSuggestedApi(Resource):
                 invoke_from=InvokeFrom.SERVICE_API,
                 session=db.session(),
             )
-        except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
-        except SuggestedQuestionsAfterAnswerDisabledError:
-            raise BadRequest("Suggested Questions Is Disabled.")
-        except Exception:
+        except MessageNotExistsError as caught_error:
+            raise NotFound("Message Not Exists.") from caught_error
+        except SuggestedQuestionsAfterAnswerDisabledError as caught_error:
+            raise BadRequest("Suggested Questions Is Disabled.") from caught_error
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
         return SimpleResultStringListResponse(result="success", data=questions).model_dump(mode="json")

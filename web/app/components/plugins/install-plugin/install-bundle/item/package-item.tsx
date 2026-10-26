@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { PackageDependency, Plugin } from '../../../types'
-import type { VersionProps } from '@/app/components/plugins/types'
+import type { PackageDependency, Plugin, VersionProps } from '../../../types'
 import * as React from 'react'
 import LoadingError from '../../base/loading-error'
 import { pluginManifestToCardPluginProps } from '../../utils'

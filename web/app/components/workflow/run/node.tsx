@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalTraceRun } from './external-trace-row'
 import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
@@ -7,6 +8,7 @@ import type {
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
@@ -17,11 +19,13 @@ import {
   RiLoader2Line,
   RiPauseCircleFill,
 } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { use, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
+import { isBoundAgentV2Execution } from '@/app/components/workflow/nodes/agent-v2/execution'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import { useDocLink } from '@/context/i18n'
@@ -29,9 +33,11 @@ import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
 import { AgentLogTrigger } from './agent-log/agent-log-trigger'
+import { ExternalTraceRow } from './external-trace-row'
 import { IterationLogTrigger } from './iteration-log'
 import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
+import { WorkflowToolTracingContext } from './workflow-tool-tracing-context'
 
 type Props = {
   readonly className?: string
@@ -53,6 +59,7 @@ type Props = {
   readonly onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
   readonly notShowIterationNav?: boolean
   readonly notShowLoopNav?: boolean
+  externalTraceRun?: ExternalTraceRun
 }
 
 const NodePanel: FC<Props> = ({
@@ -68,7 +75,9 @@ const NodePanel: FC<Props> = ({
   onShowAgentOrToolLog,
   notShowIterationNav,
   notShowLoopNav,
+  externalTraceRun,
 }) => {
+  const workflowToolTracing = use(WorkflowToolTracingContext)
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
   const setCollapseState = useCallback(
     (state: boolean) => {
@@ -77,8 +86,19 @@ const NodePanel: FC<Props> = ({
     },
     [hideProcessDetail],
   )
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowLogic', 'workflowHumanInput', 'runLog'])
   const docLink = useDocLink()
+  const detailsId = useId()
+  const Header = hideProcessDetail ? 'div' : 'button'
+  const statusLabels: Record<string, string> = {
+    succeeded: t(($) => $['tracing.status.succeeded'], { ns: 'workflow' }),
+    failed: t(($) => $['tracing.status.failed'], { ns: 'workflow' }),
+    stopped: t(($) => $['tracing.status.stopped'], { ns: 'workflow' }),
+    paused: t(($) => $['tracing.status.paused'], { ns: 'workflow' }),
+    exception: t(($) => $['tracing.status.exception'], { ns: 'workflow' }),
+    retry: t(($) => $['nodes.common.retry.retrying'], { ns: 'workflow' }),
+    running: t(($) => $['common.running'], { ns: 'workflow' }),
+  }
 
   const getTime = (time: number) => {
     if (time < 1) return `${(time * 1000).toFixed(3)} ms`
@@ -103,216 +123,267 @@ const NodePanel: FC<Props> = ({
   const isAgentNode = nodeInfo.node_type === BlockEnum.Agent && !!nodeInfo.agentLog?.length
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
 
+  const localizedError = localizeKnowledgeRetrievalV2Error(nodeInfo.error, (key) =>
+    t(($) => $[key], { ns: 'workflow' }),
+  )
+
   const inputsTitle = useMemo(() => {
-    let text = t(($) => $['common.input'], { ns: 'workflow' })
+    let text: string = t(($) => $['common.input'], { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t(($) => $['nodes.loop.initialLoopVariables'], { ns: 'workflow' })
+      text = t(($) => $['nodes.loop.initialLoopVariables'], { ns: 'workflowLogic' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
   const processDataTitle = t(($) => $['common.processData'], { ns: 'workflow' }).toLocaleUpperCase()
   const outputTitle = useMemo(() => {
-    let text = t(($) => $['common.output'], { ns: 'workflow' })
+    let text: string = t(($) => $['common.output'], { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t(($) => $['nodes.loop.finalLoopVariables'], { ns: 'workflow' })
+      text = t(($) => $['nodes.loop.finalLoopVariables'], { ns: 'workflowLogic' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
 
   return (
     <div className={cn('px-2 py-1', className)}>
       <div className="group rounded-[10px] border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md">
-        <div
-          className={cn(
-            'flex cursor-pointer items-center pr-3 pl-1',
-            hideInfo ? 'py-2 pl-2' : 'py-1.5',
-            !collapseState && (hideInfo ? 'pb-1!' : 'pb-1.5!'),
-          )}
-          onClick={() => setCollapseState(!collapseState)}
-        >
-          {!hideProcessDetail && (
-            <RiArrowRightSLine
-              className={cn(
-                'mr-1 size-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
-                !collapseState && 'rotate-90',
-              )}
-            />
-          )}
-          <BlockIcon
-            size={inMessage ? 'xs' : 'sm'}
-            className={cn('mr-2 shrink-0', inMessage && 'mr-1!')}
-            type={nodeInfo.node_type}
-            toolIcon={nodeInfo.extras?.icon || nodeInfo.extras}
-          />
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <div
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Header
+                type={hideProcessDetail ? undefined : 'button'}
+                aria-expanded={hideProcessDetail ? undefined : !collapseState}
+                aria-controls={hideProcessDetail ? undefined : detailsId}
+                className={cn(
+                  'flex w-full items-center rounded-[10px] pr-3 pl-1 text-left',
+                  !hideProcessDetail &&
+                    'cursor-pointer focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                  hideInfo ? 'py-2 pl-2' : 'py-1.5',
+                  !collapseState && (hideInfo ? 'pb-1!' : 'pb-1.5!'),
+                )}
+                onClick={hideProcessDetail ? undefined : () => setCollapseState(!collapseState)}
+              >
+                {!hideProcessDetail && (
+                  <RiArrowRightSLine
+                    aria-hidden="true"
+                    className={cn(
+                      'mr-1 size-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                      !collapseState && 'rotate-90',
+                    )}
+                  />
+                )}
+                <BlockIcon
+                  size={inMessage ? 'xs' : 'sm'}
+                  className={cn('mr-2 shrink-0', inMessage && 'mr-1!')}
+                  type={nodeInfo.node_type}
+                  toolIcon={nodeInfo.extras?.icon || nodeInfo.extras}
+                />
+                <span
                   className={cn(
                     'min-w-0 grow truncate system-xs-semibold-uppercase text-text-secondary',
                     hideInfo && 'text-xs!',
                   )}
                 >
                   {nodeInfo.title}
-                </div>
-              }
-            />
-            <TooltipContent>
-              <div className="max-w-xs">{nodeInfo.title}</div>
-            </TooltipContent>
-          </Tooltip>
-          {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
-            <div className="shrink-0 system-xs-regular text-text-tertiary">
-              {nodeInfo.execution_metadata?.total_tokens
-                ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · `
-                : ''}
-              {`${getTime(nodeInfo.elapsed_time || 0)}`}
-            </div>
-          )}
-          {nodeInfo.status === 'succeeded' && (
-            <RiCheckboxCircleFill className="ml-2 size-3.5 shrink-0 text-text-success" />
-          )}
-          {nodeInfo.status === 'failed' && (
-            <RiErrorWarningFill className="ml-2 size-3.5 shrink-0 text-text-destructive" />
-          )}
-          {nodeInfo.status === 'stopped' && (
-            <RiAlertFill
-              className={cn(
-                'ml-2 size-4 shrink-0 text-text-warning-secondary',
-                inMessage && 'size-3.5',
-              )}
-            />
-          )}
-          {nodeInfo.status === 'paused' && (
-            <RiPauseCircleFill
-              className={cn(
-                'ml-2 size-4 shrink-0 text-text-warning-secondary',
-                inMessage && 'size-3.5',
-              )}
-            />
-          )}
-          {nodeInfo.status === 'exception' && (
-            <RiAlertFill
-              className={cn(
-                'ml-2 size-4 shrink-0 text-text-warning-secondary',
-                inMessage && 'size-3.5',
-              )}
-            />
-          )}
-          {nodeInfo.status === 'running' && (
-            <div className="flex shrink-0 items-center text-[13px] leading-4 font-medium text-text-accent">
-              <span className="mr-2 text-xs font-normal">Running</span>
-              <RiLoader2Line className="size-3.5 animate-spin" />
-            </div>
-          )}
-        </div>
-        {!collapseState && !hideProcessDetail && (
-          <div className="px-1 pb-1">
-            {/* The nav to the iteration detail */}
-            {isIterationNode && !notShowIterationNav && onShowIterationDetail && (
-              <IterationLogTrigger
-                nodeInfo={nodeInfo}
-                allExecutions={allExecutions}
-                onShowIterationResultList={onShowIterationDetail}
-              />
-            )}
-            {/* The nav to the Loop detail */}
-            {isLoopNode && !notShowLoopNav && onShowLoopDetail && (
-              <LoopLogTrigger
-                nodeInfo={nodeInfo}
-                allExecutions={allExecutions}
-                onShowLoopResultList={onShowLoopDetail}
-              />
-            )}
-            {isRetryNode && onShowRetryDetail && (
-              <RetryLogTrigger nodeInfo={nodeInfo} onShowRetryResultList={onShowRetryDetail} />
-            )}
-            {(isAgentNode || isToolNode) && onShowAgentOrToolLog && (
-              <AgentLogTrigger nodeInfo={nodeInfo} onShowAgentOrToolLog={onShowAgentOrToolLog} />
-            )}
-            <div className={cn('mb-1', hideInfo && 'px-2! py-0.5!')}>
-              {nodeInfo.status === 'stopped' && (
-                <StatusContainer status="stopped">
-                  {t(($) => $['tracing.stopBy'], {
-                    ns: 'workflow',
-                    user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A',
-                  })}
-                </StatusContainer>
-              )}
-              {nodeInfo.status === 'exception' && (
-                <StatusContainer status="stopped">
-                  {nodeInfo.error}
-                  <a
-                    href={docLink('/use-dify/debug/error-type')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-text-accent"
-                  >
-                    {t(($) => $['common.learnMore'], { ns: 'workflow' })}
-                  </a>
-                </StatusContainer>
-              )}
-              {nodeInfo.status === 'failed' && (
-                <StatusContainer status="failed">{nodeInfo.error}</StatusContainer>
-              )}
-              {nodeInfo.status === 'retry' && (
-                <StatusContainer status="failed">{nodeInfo.error}</StatusContainer>
-              )}
-              {nodeInfo.status === 'paused' && (
-                <StatusContainer status="paused">
-                  <div className="system-xs-regular text-text-warning">
-                    {t(($) => $['nodes.humanInput.log.reasonContent'], { ns: 'workflow' })}
+                </span>
+                {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
+                  <div className="shrink-0 system-xs-regular text-text-tertiary">
+                    {nodeInfo.execution_metadata?.total_tokens
+                      ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · `
+                      : ''}
+                    {`${getTime(nodeInfo.elapsed_time || 0)}`}
                   </div>
-                </StatusContainer>
-              )}
-            </div>
-            {nodeInfo.inputs && (
-              <div className={cn('mb-1')}>
-                <CodeEditor
-                  readOnly
-                  title={<div>{inputsTitle}</div>}
-                  language={CodeLanguage.json}
-                  value={nodeInfo.inputs}
-                  isJSONStringifyBeauty
-                  footer={
-                    nodeInfo.inputs_truncated && (
-                      <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />
-                    )
-                  }
-                />
-              </div>
-            )}
-            {nodeInfo.process_data && (
-              <div className={cn('mb-1')}>
-                <CodeEditor
-                  readOnly
-                  showFileList
-                  title={<div>{processDataTitle}</div>}
-                  language={CodeLanguage.json}
-                  value={nodeInfo.process_data}
-                  isJSONStringifyBeauty
-                />
-              </div>
-            )}
-            {nodeInfo.outputs && (
-              <div>
-                <CodeEditor
-                  readOnly
-                  showFileList
-                  title={<div>{outputTitle}</div>}
-                  language={CodeLanguage.json}
-                  value={nodeInfo.outputs}
-                  isJSONStringifyBeauty
-                  tip={<ErrorHandleTip type={nodeInfo.execution_metadata?.error_strategy} />}
-                  footer={
-                    nodeInfo.outputs_truncated && (
-                      <LargeDataAlert
-                        textHasNoExport
-                        downloadUrl={nodeInfo.outputs_full_content?.download_url}
-                        className="mx-1 mt-2 mb-1 h-7"
-                      />
-                    )
-                  }
-                />
-              </div>
+                )}
+                {nodeInfo.status !== 'running' && statusLabels[nodeInfo.status] && (
+                  <span className="sr-only">{statusLabels[nodeInfo.status]}</span>
+                )}
+                {nodeInfo.status === 'succeeded' && (
+                  <RiCheckboxCircleFill
+                    aria-hidden="true"
+                    className="ml-2 size-3.5 shrink-0 text-text-success"
+                  />
+                )}
+                {nodeInfo.status === 'failed' && (
+                  <RiErrorWarningFill
+                    aria-hidden="true"
+                    className="ml-2 size-3.5 shrink-0 text-text-destructive"
+                  />
+                )}
+                {nodeInfo.status === 'stopped' && (
+                  <RiAlertFill
+                    aria-hidden="true"
+                    className={cn(
+                      'ml-2 size-4 shrink-0 text-text-warning-secondary',
+                      inMessage && 'size-3.5',
+                    )}
+                  />
+                )}
+                {nodeInfo.status === 'paused' && (
+                  <RiPauseCircleFill
+                    aria-hidden="true"
+                    className={cn(
+                      'ml-2 size-4 shrink-0 text-text-warning-secondary',
+                      inMessage && 'size-3.5',
+                    )}
+                  />
+                )}
+                {nodeInfo.status === 'exception' && (
+                  <RiAlertFill
+                    aria-hidden="true"
+                    className={cn(
+                      'ml-2 size-4 shrink-0 text-text-warning-secondary',
+                      inMessage && 'size-3.5',
+                    )}
+                  />
+                )}
+                {nodeInfo.status === 'running' && (
+                  <div className="flex shrink-0 items-center text-[13px] leading-4 font-medium text-text-accent">
+                    <span className="mr-2 text-xs font-normal">{statusLabels.running}</span>
+                    <RiLoader2Line aria-hidden="true" className="size-3.5 animate-spin" />
+                  </div>
+                )}
+              </Header>
+            }
+          />
+          <TooltipContent>{nodeInfo.title}</TooltipContent>
+        </Tooltip>
+        {!hideProcessDetail && (
+          <div id={detailsId} hidden={collapseState} className="px-1 pb-1">
+            {!collapseState && (
+              <>
+                {/* The nav to the iteration detail */}
+                {isIterationNode && !notShowIterationNav && onShowIterationDetail && (
+                  <IterationLogTrigger
+                    nodeInfo={nodeInfo}
+                    allExecutions={allExecutions}
+                    onShowIterationResultList={onShowIterationDetail}
+                  />
+                )}
+                {/* The nav to the Loop detail */}
+                {isLoopNode && !notShowLoopNav && onShowLoopDetail && (
+                  <LoopLogTrigger nodeInfo={nodeInfo} onShowLoopResultList={onShowLoopDetail} />
+                )}
+                {isRetryNode && onShowRetryDetail && (
+                  <RetryLogTrigger nodeInfo={nodeInfo} onShowRetryResultList={onShowRetryDetail} />
+                )}
+                {(isAgentNode || isToolNode) && onShowAgentOrToolLog && (
+                  <AgentLogTrigger
+                    nodeInfo={nodeInfo}
+                    onShowAgentOrToolLog={onShowAgentOrToolLog}
+                  />
+                )}
+                {/* ponytail: enable retry drilldown when traces carry invocation identity. */}
+                {nodeInfo.node_type === BlockEnum.Tool &&
+                  nodeInfo.status !== 'retry' &&
+                  nodeInfo.extras?.workflow_tool === true &&
+                  workflowToolTracing && (
+                    <Button
+                      variant="ghost"
+                      className="mb-1 w-full justify-between"
+                      onClick={() => workflowToolTracing.onShowWorkflowTool(nodeInfo)}
+                    >
+                      {t(($) => $.tracing, { ns: 'runLog' })}
+                      <span aria-hidden className="i-ri-arrow-right-line size-4" />
+                    </Button>
+                  )}
+                {isBoundAgentV2Execution(nodeInfo) && externalTraceRun && (
+                  <dl>
+                    <ExternalTraceRow
+                      source={{
+                        ...externalTraceRun,
+                        kind: 'workflow',
+                        nodeExecutionId: nodeInfo.id,
+                      }}
+                      subject={nodeInfo.title}
+                    />
+                  </dl>
+                )}
+                <div className={cn('mb-1', hideInfo && 'px-2! py-0.5!')}>
+                  {nodeInfo.status === 'stopped' && (
+                    <StatusContainer status="stopped">
+                      {t(($) => $['tracing.stopBy'], {
+                        ns: 'workflow',
+                        user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A',
+                      })}
+                    </StatusContainer>
+                  )}
+                  {nodeInfo.status === 'exception' && (
+                    <StatusContainer status="stopped">
+                      {localizedError}
+                      <a
+                        href={docLink('/use-dify/debug/error-type')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-text-accent"
+                      >
+                        {t(($) => $['common.learnMore'], { ns: 'workflow' })}
+                      </a>
+                    </StatusContainer>
+                  )}
+                  {nodeInfo.status === 'failed' && (
+                    <StatusContainer status="failed">{localizedError}</StatusContainer>
+                  )}
+                  {nodeInfo.status === 'retry' && (
+                    <StatusContainer status="failed">{localizedError}</StatusContainer>
+                  )}
+                  {nodeInfo.status === 'paused' && (
+                    <StatusContainer status="paused">
+                      <div className="system-xs-regular text-text-warning">
+                        {t(($) => $['nodes.humanInput.log.reasonContent'], {
+                          ns: 'workflowHumanInput',
+                        })}
+                      </div>
+                    </StatusContainer>
+                  )}
+                </div>
+                {nodeInfo.inputs && (
+                  <div className={cn('mb-1')}>
+                    <CodeEditor
+                      readOnly
+                      title={<div>{inputsTitle}</div>}
+                      language={CodeLanguage.json}
+                      value={nodeInfo.inputs}
+                      isJSONStringifyBeauty
+                      footer={
+                        nodeInfo.inputs_truncated && (
+                          <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />
+                        )
+                      }
+                    />
+                  </div>
+                )}
+                {nodeInfo.process_data && (
+                  <div className={cn('mb-1')}>
+                    <CodeEditor
+                      readOnly
+                      showFileList
+                      title={<div>{processDataTitle}</div>}
+                      language={CodeLanguage.json}
+                      value={nodeInfo.process_data}
+                      isJSONStringifyBeauty
+                    />
+                  </div>
+                )}
+                {nodeInfo.outputs && (
+                  <div>
+                    <CodeEditor
+                      readOnly
+                      showFileList
+                      title={<div>{outputTitle}</div>}
+                      language={CodeLanguage.json}
+                      value={nodeInfo.outputs}
+                      isJSONStringifyBeauty
+                      tip={<ErrorHandleTip type={nodeInfo.execution_metadata?.error_strategy} />}
+                      footer={
+                        nodeInfo.outputs_truncated && (
+                          <LargeDataAlert
+                            textHasNoExport
+                            downloadUrl={nodeInfo.outputs_full_content?.download_url}
+                            className="mx-1 mt-2 mb-1 h-7"
+                          />
+                        )
+                      }
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

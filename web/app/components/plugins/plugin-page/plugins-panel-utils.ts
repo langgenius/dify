@@ -1,5 +1,5 @@
 import type { Collection } from '@/app/components/tools/types'
-import { renderI18nObject } from '@/i18n-config'
+import { renderI18nObject } from '@/i18n/metadata'
 
 export const EMPTY_BUILTIN_TOOLS: Collection[] = []
 

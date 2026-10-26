@@ -20,7 +20,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
   isOpen = false,
   className,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['pluginTrigger'])
   const { subscriptions } = useSubscriptionList()
 
   const statusConfig = useMemo(() => {
@@ -113,7 +113,7 @@ export const SubscriptionSelectorEntry = ({
         )}
       />
       <PopoverContent
-        placement="bottom-start"
+        align="start"
         sideOffset={4}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >

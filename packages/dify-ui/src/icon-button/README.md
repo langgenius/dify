@@ -10,8 +10,9 @@ icon-specific appearance, size, and tone variants.
 ## Accessible name and glyph
 
 Every icon button must provide exactly one accessible-name source: `aria-label` or
-`aria-labelledby`, preserving its [name, role, and value]. A tooltip is a visual enhancement, not
-the button's accessible name.
+`aria-labelledby`, preserving its [name, role, and value]. Follow [Accessible names and
+descriptions] when choosing between those sources. A tooltip is a visual enhancement, not the
+button's accessible name.
 
 Pass exactly one React element containing the decorative glyph and hide that glyph from the
 accessibility tree:
@@ -30,6 +31,17 @@ appearance variant.
 Omit `variant` for the IconButton-specific neutral appearance. The other appearance names align
 with `Button`. Use `tone="destructive"` for destructive intent.
 
+For an icon-only link, keep the native anchor or router link and apply `iconButtonVariants`
+from `@langgenius/dify-ui/icon-button`. The link owns its accessible name and navigation:
+
+```tsx
+<a href="/help" aria-label="Help" className={iconButtonVariants({ size: 'md' })}>
+  <span aria-hidden="true" className="i-ri-book-open-line size-4" />
+</a>
+```
+
+Do not render navigation through `IconButton`: its Base UI button behavior is for commands.
+
 ## Composition
 
 When Toggle, Menu, Popover, Tooltip, or Collapsible owns the interaction state, keep that
@@ -40,8 +52,12 @@ the icon button.
 ## Related guides
 
 - Read [`Button`] for visible-label actions, submit semantics, and loading state.
+- Read [Accessible names and descriptions] for the cross-component naming and description contract.
+- Read [Styling] for state styles, callbacks, and their composition boundary.
 - Read [Base UI Button] for the upstream interaction and composition contract.
 
+[Accessible names and descriptions]: ../../docs/accessible-names-and-descriptions.md
 [Base UI Button]: https://base-ui.com/react/components/button
+[Styling]: ../../docs/styling.md
 [`Button`]: ../button/README.md
 [name, role, and value]: https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html

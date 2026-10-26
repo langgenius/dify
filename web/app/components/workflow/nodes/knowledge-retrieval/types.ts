@@ -1,16 +1,15 @@
 import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetDocMetadataResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type {
   CommonNodeType,
   ModelConfig,
   Node,
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
-import type {
-  DataSet,
-  MetadataInDoc,
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
+import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import type { RETRIEVE_TYPE } from '@/types/app'
 
 export type MultipleRetrievalConfig = {
@@ -39,56 +38,66 @@ export type SingleRetrievalConfig = {
   model: ModelConfig
 }
 
-export enum LogicalOperator {
-  and = 'and',
-  or = 'or',
-}
+export const LogicalOperator = {
+  and: 'and',
+  or: 'or',
+} as const
 
-export enum ComparisonOperator {
-  contains = 'contains',
-  notContains = 'not contains',
-  startWith = 'start with',
-  endWith = 'end with',
-  is = 'is',
-  isNot = 'is not',
-  empty = 'empty',
-  notEmpty = 'not empty',
-  equal = '=',
-  notEqual = '≠',
-  largerThan = '>',
-  lessThan = '<',
-  largerThanOrEqual = '≥',
-  lessThanOrEqual = '≤',
-  isNull = 'is null',
-  isNotNull = 'is not null',
-  in = 'in',
-  notIn = 'not in',
-  allOf = 'all of',
-  exists = 'exists',
-  notExists = 'not exists',
-  before = 'before',
-  after = 'after',
-}
+export type LogicalOperator = (typeof LogicalOperator)[keyof typeof LogicalOperator]
 
-export enum MetadataFilteringModeEnum {
-  disabled = 'disabled',
-  automatic = 'automatic',
-  manual = 'manual',
-}
+export const ComparisonOperator = {
+  contains: 'contains',
+  notContains: 'not contains',
+  startWith: 'start with',
+  endWith: 'end with',
+  is: 'is',
+  isNot: 'is not',
+  empty: 'empty',
+  notEmpty: 'not empty',
+  equal: '=',
+  notEqual: '≠',
+  largerThan: '>',
+  lessThan: '<',
+  largerThanOrEqual: '≥',
+  lessThanOrEqual: '≤',
+  isNull: 'is null',
+  isNotNull: 'is not null',
+  in: 'in',
+  notIn: 'not in',
+  allOf: 'all of',
+  exists: 'exists',
+  notExists: 'not exists',
+  before: 'before',
+  after: 'after',
+} as const
 
-export enum MetadataFilteringVariableType {
-  string = 'string',
-  number = 'number',
-  time = 'time',
-  select = 'select',
-}
+export type ComparisonOperator = (typeof ComparisonOperator)[keyof typeof ComparisonOperator]
+
+export const MetadataFilteringModeEnum = {
+  disabled: 'disabled',
+  automatic: 'automatic',
+  manual: 'manual',
+} as const
+
+export type MetadataFilteringModeEnum =
+  (typeof MetadataFilteringModeEnum)[keyof typeof MetadataFilteringModeEnum]
+
+export const MetadataFilteringVariableType = {
+  string: 'string',
+  number: 'number',
+  time: 'time',
+  select: 'select',
+} as const
+
+export type MetadataFilteringVariableType =
+  (typeof MetadataFilteringVariableType)[keyof typeof MetadataFilteringVariableType]
 
 export type MetadataFilteringCondition = {
   id: string
   name: string
   metadata_id?: string
   comparison_operator: ComparisonOperator
-  value?: string | number
+  value?: string | number | string[] | null
 }
 
 export type MetadataFilteringConditions = {
@@ -103,19 +112,19 @@ export type KnowledgeRetrievalNodeType = CommonNodeType & {
   retrieval_mode: RETRIEVE_TYPE
   multiple_retrieval_config?: MultipleRetrievalConfig
   single_retrieval_config?: SingleRetrievalConfig
-  _datasets?: DataSet[]
+  _datasets?: DatasetDetailWithPartialMembersResponse[]
   metadata_filtering_mode?: MetadataFilteringModeEnum
   metadata_filtering_conditions?: MetadataFilteringConditions
   metadata_model_config?: ModelConfig
 }
 
-export type HandleAddCondition = (metadataItem: MetadataInDoc) => void
+export type HandleAddCondition = (metadataItem: DatasetDocMetadataResponse) => void
 export type HandleRemoveCondition = (id: string) => void
 export type HandleUpdateCondition = (id: string, newCondition: MetadataFilteringCondition) => void
 export type HandleToggleConditionLogicalOperator = () => void
 
 export type MetadataShape = {
-  metadataList?: MetadataInDoc[]
+  metadataList?: DatasetDocMetadataResponse[]
   selectedDatasetsLoaded?: boolean
   metadataFilteringConditions?: MetadataFilteringConditions
   handleAddCondition: HandleAddCondition

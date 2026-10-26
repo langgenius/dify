@@ -1,18 +1,20 @@
 'use client'
+import type { DrawerPopupProps } from '@langgenius/dify-ui/drawer'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 
-type IFloatRightContainerProps = {
+type IFloatRightContainerProps = Pick<DrawerPopupProps, 'finalFocus'> & {
   isMobile: boolean
   isOpen: boolean
   onClose: () => void
@@ -32,8 +34,9 @@ const FloatRightContainer = ({
   panelClassName,
   title,
   mask = true,
+  finalFocus,
 }: IFloatRightContainerProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <>
@@ -50,6 +53,7 @@ const FloatRightContainer = ({
             <DrawerBackdrop className={cn(!mask && 'bg-transparent')} />
             <DrawerViewport>
               <DrawerPopup
+                finalFocus={finalFocus}
                 className={cn(
                   'data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm',
                   panelClassName,
@@ -64,9 +68,15 @@ const FloatRightContainer = ({
                         </DrawerTitle>
                       )}
                       {showClose && (
-                        <DrawerCloseButton
-                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                          className="size-6 rounded-md"
+                        <DrawerClose
+                          render={
+                            <IconButton
+                              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                              size="md"
+                            >
+                              <span aria-hidden="true" className="i-ri-close-line size-4" />
+                            </IconButton>
+                          }
                         />
                       )}
                     </div>

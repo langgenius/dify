@@ -1,16 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ChecklistItem } from '../../../hooks/use-checklist'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '../../../types'
 import { ChecklistNodeGroup } from '../node-group'
 
-vi.mock('../../../block-icon', () => ({
-  default: () => <div data-testid="block-icon" />,
-}))
-
-vi.mock('../item-indicator', () => ({
-  ItemIndicator: () => <div data-testid="item-indicator" />,
-}))
-
-const createItem = (overrides: Record<string, unknown> = {}) => ({
+const createItem = (overrides: Partial<ChecklistItem> = {}): ChecklistItem => ({
   id: 'node-1',
   type: BlockEnum.LLM,
   title: 'Broken Node',
@@ -22,12 +16,13 @@ const createItem = (overrides: Record<string, unknown> = {}) => ({
 })
 
 describe('ChecklistNodeGroup', () => {
-  it('should render errors and the connection warning, and allow navigation when go-to is enabled', () => {
+  it('should render errors and the connection warning, and allow navigation when go-to is enabled', async () => {
+    const user = userEvent.setup()
     const onItemClick = vi.fn()
 
     render(
       <ChecklistNodeGroup
-        item={createItem({ unConnected: true }) as never}
+        item={createItem({ unConnected: true })}
         showGoTo={true}
         onItemClick={onItemClick}
       />,
@@ -41,23 +36,24 @@ describe('ChecklistNodeGroup', () => {
       'Needs configuration',
     )
 
-    fireEvent.click(screen.getByText('Needs configuration'))
+    await user.click(screen.getByText('Needs configuration'))
 
     expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'node-1' }))
   })
 
-  it('should not allow navigation when go-to is disabled', () => {
+  it('should not allow navigation when go-to is disabled', async () => {
+    const user = userEvent.setup()
     const onItemClick = vi.fn()
 
     render(
       <ChecklistNodeGroup
-        item={createItem({ disableGoTo: true }) as never}
+        item={createItem({ disableGoTo: true })}
         showGoTo={true}
         onItemClick={onItemClick}
       />,
     )
 
-    fireEvent.click(screen.getByText('Needs configuration'))
+    await user.click(screen.getByText('Needs configuration'))
 
     expect(onItemClick).not.toHaveBeenCalled()
     expect(screen.queryByText(/goToFix/i)).not.toBeInTheDocument()

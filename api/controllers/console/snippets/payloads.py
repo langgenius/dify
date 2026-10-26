@@ -110,7 +110,7 @@ class SnippetWorkflowListQuery(BaseModel):
     limit: int = Field(default=10, ge=1, le=100)
 
 
-class WorkflowRunQuery(BaseModel):
+class SnippetWorkflowRunQuery(BaseModel):
     """Query parameters for workflow runs."""
 
     last_id: str | None = None
@@ -144,7 +144,7 @@ class SnippetLoopNodeRunPayload(BaseModel):
     inputs: dict[str, Any] | None = Field(default=None)
 
 
-class PublishWorkflowPayload(BaseModel):
+class SnippetPublishWorkflowPayload(BaseModel):
     """Payload for publishing snippet workflow."""
 
     knowledge_base_setting: dict[str, Any] | None = Field(default=None)

@@ -78,7 +78,7 @@ jobs:
       ws2_app_id: ${{ steps.out.outputs.DIFY_E2E_WS2_APP_ID }}
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
@@ -87,10 +87,9 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
-          package_json_field: packageManager
-          run_install: false
+          install: false
 
       - name: Install CLI dependencies
         working-directory: cli
@@ -112,7 +111,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-framework-output-error:
     name: 'Suite: framework + output + error-handling'
-    if: ${{ inputs.suite_framework_output_error != 'false' }}
+    if: ${{ inputs.suite_framework_output_error }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -122,17 +121,15 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
-      - run: pnpm install --frozen-lockfile
+        with:
+          bun-version: latest
       - run: pnpm tree:gen
 
       - name: Run framework + output + error-handling
@@ -159,7 +156,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-discovery:
     name: 'Suite: discovery'
-    if: ${{ inputs.suite_discovery != 'false' }}
+    if: ${{ inputs.suite_discovery }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -169,17 +166,15 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
-      - run: pnpm install --frozen-lockfile
+        with:
+          bun-version: latest
       - run: pnpm tree:gen
 
       - name: Run discovery suite
@@ -207,7 +202,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-run:
     name: 'Suite: run / ${{ matrix.name }}'
-    if: ${{ inputs.suite_run != 'false' }}
+    if: ${{ inputs.suite_run }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -232,17 +227,15 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
-      - run: pnpm install --frozen-lockfile
+        with:
+          bun-version: latest
       - run: pnpm tree:gen
 
       - name: 'Run run/${{ matrix.name }}'
@@ -273,7 +266,7 @@ jobs:
 
       - name: Upload results on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-run-${{ matrix.name }}-${{ github.run_id }}
           path: cli/test-results/
@@ -284,7 +277,7 @@ jobs:
   # ════════════════════════════════════════════════════════════════════════════
   suite-auth-safe:
     name: 'Suite: auth (login / status / whoami)'
-    if: ${{ inputs.suite_auth != 'false' }}
+    if: ${{ inputs.suite_auth }}
     needs: provision
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -294,17 +287,15 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
-      - run: pnpm install --frozen-lockfile
+        with:
+          bun-version: latest
       - run: pnpm tree:gen
 
       - name: Run auth/login + status + whoami
@@ -333,7 +324,7 @@ jobs:
   suite-last:
     name: 'Suite: auth-use + devices + logout + agent (last, serial)'
     # Runs when auth is selected; also runs after all parallel jobs finish
-    if: ${{ inputs.suite_auth != 'false' || inputs.suite_agent != 'false' }}
+    if: ${{ inputs.suite_auth || inputs.suite_agent }}
     needs:
       - provision
       - suite-framework-output-error
@@ -350,17 +341,15 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.cli_ref || github.ref }}
           persist-credentials: false
 
       - uses: ./.github/actions/setup-web
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
-      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-        with: { package_json_field: packageManager, run_install: false }
-      - run: pnpm install --frozen-lockfile
+        with:
+          bun-version: latest
       - run: pnpm tree:gen
 
       - name: Run use / devices / logout / agent (serial)
@@ -407,7 +396,7 @@ jobs:
 
       - name: Upload results on failure
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-last-${{ github.run_id }}
           path: cli/test-results/

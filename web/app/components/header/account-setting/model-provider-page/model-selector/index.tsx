@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -5,7 +6,13 @@ import type {
   ModelSelectorValue,
 } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent, PopoverTitle } from '@langgenius/dify-ui/popover'
+import {
+  Popover,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverTitle,
+} from '@langgenius/dify-ui/popover'
 import { useQueryState } from 'nuqs'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +24,10 @@ import { getCurrentProviderAndModel } from '../hooks'
 import { ModelSelectorTrigger } from './model-selector-trigger'
 import Popup from './popup'
 
+// The popup scrolls within --available-height, so keep it above or below the
+// trigger instead of letting a tall list fall back beside it.
+const MODEL_SELECTOR_COLLISION_AVOIDANCE = { fallbackAxisSide: 'none' } as const
+
 const getModelProviderPluginId = (provider: string) => {
   const [organization, pluginName] = provider.split('/').filter(Boolean)
 
@@ -26,13 +37,22 @@ const getModelProviderPluginId = (provider: string) => {
 }
 
 type ModelSelectorBaseProps = {
+  ariaDescribedBy?: string
+  ariaInvalid?: boolean
+  ariaLabelledBy?: string
+  ariaRequired?: boolean
+  triggerRef?: Ref<HTMLButtonElement>
+  'aria-labelledby'?: string
   value?: ModelSelectorValue
   models: ModelSelectorProvider[]
   className?: string
   popupClassName?: string
   onValueChange?: (model: ModelSelectorValue) => void
+  onClear?: () => void
+  clearLabel?: string
   onHide?: () => void
   disabled?: boolean
+  loading?: boolean
   scopeFeatures?: readonly string[]
   showDeprecatedWarnIcon?: boolean
   hideProviderSettingsFooter?: boolean
@@ -51,13 +71,22 @@ type SplitModelSelectorProps = ModelSelectorBaseProps & {
 }
 
 function ModelSelectorRoot({
+  ariaDescribedBy,
+  ariaInvalid,
+  ariaLabelledBy,
+  ariaRequired,
+  triggerRef,
+  'aria-labelledby': labelledBy,
   value,
   models,
   className,
   popupClassName,
   onValueChange,
+  onClear,
+  clearLabel,
   onHide,
   disabled,
+  loading,
   size,
   surface,
   shape,
@@ -74,7 +103,7 @@ function ModelSelectorRoot({
   surface: 'default' | 'workflow'
   shape: 'standalone' | 'split'
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [settingsDestination, setSettingsDestination] = useQueryState(
@@ -85,12 +114,12 @@ function ModelSelectorRoot({
 
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
-      if (disabled && newOpen) return
+      if ((disabled || loading) && newOpen) return
 
       setOpen(newOpen)
       if (!newOpen) setInputValue('')
     },
-    [disabled],
+    [disabled, loading],
   )
 
   const handleSelect = useCallback(
@@ -137,10 +166,18 @@ function ModelSelectorRoot({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <ModelSelectorTrigger
+        ref={triggerRef}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid || undefined}
+        aria-labelledby={ariaLabelledBy || labelledBy}
+        aria-required={ariaRequired}
         currentProvider={currentProvider}
         currentModel={currentModel}
         defaultModel={value}
-        disabled={disabled}
+        onClear={onClear}
+        clearLabel={clearLabel}
+        disabled={disabled || loading}
+        loading={loading}
         size={size}
         surface={surface}
         shape={shape}
@@ -153,35 +190,38 @@ function ModelSelectorRoot({
             : undefined
         }
       />
-      <PopoverContent
-        placement="bottom-start"
-        className={cn(
-          'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-          popupClassName,
-        )}
-      >
-        <PopoverTitle className="sr-only">
-          {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
-        </PopoverTitle>
-        <Popup
-          defaultModel={value}
-          inputValue={inputValue}
-          modelList={models}
-          scopeFeatures={scopeFeatures}
-          modelPredicate={modelPredicate}
-          modelSuggestionPredicate={modelSuggestionPredicate}
-          onOpenProviderSettings={
-            !hideProviderSettingsFooter && settingsDestination !== 'provider'
-              ? handleOpenSettings
-              : undefined
-          }
-          onConfigureEmptyState={handleConfigureEmptyState}
-          onOpenMarketplace={onOpenMarketplace}
-          onInputValueChange={setInputValue}
-          onSelect={handleSelect}
-          onHide={handleHide}
-        />
-      </PopoverContent>
+      <PopoverPortal>
+        <PopoverPositioner align="start" collisionAvoidance={MODEL_SELECTOR_COLLISION_AVOIDANCE}>
+          <PopoverPopup
+            className={cn(
+              'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+              popupClassName,
+            )}
+          >
+            <PopoverTitle className="sr-only">
+              {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
+            </PopoverTitle>
+            <Popup
+              defaultModel={value}
+              inputValue={inputValue}
+              modelList={models}
+              scopeFeatures={scopeFeatures}
+              modelPredicate={modelPredicate}
+              modelSuggestionPredicate={modelSuggestionPredicate}
+              onOpenProviderSettings={
+                !hideProviderSettingsFooter && settingsDestination !== 'provider'
+                  ? handleOpenSettings
+                  : undefined
+              }
+              onConfigureEmptyState={handleConfigureEmptyState}
+              onOpenMarketplace={onOpenMarketplace}
+              onInputValueChange={setInputValue}
+              onSelect={handleSelect}
+              onHide={handleHide}
+            />
+          </PopoverPopup>
+        </PopoverPositioner>
+      </PopoverPortal>
     </Popover>
   )
 }

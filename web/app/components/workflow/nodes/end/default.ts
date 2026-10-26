@@ -15,7 +15,7 @@ const nodeDefault: NodeDefault<EndNodeType> = {
   defaultValue: {
     outputs: [],
   },
-  checkValid(payload: EndNodeType, t: TFunction<'workflow'>) {
+  checkValid(payload: EndNodeType, t: TFunction<['workflow']>) {
     const outputs = payload.outputs || []
 
     let errorMessage = ''

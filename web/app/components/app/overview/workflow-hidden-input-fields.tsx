@@ -1,5 +1,6 @@
-import type { ChangeEvent } from 'react'
 import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from './app-card-utils'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -8,7 +9,6 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import Input from '@/app/components/base/input'
 import { InputVarType } from '@/app/components/workflow/types'
 
 type WorkflowHiddenInputFieldsProps = {
@@ -52,14 +52,10 @@ const WorkflowHiddenInputFields = ({
     if (variable.type === InputVarType.checkbox) {
       return (
         <label className="flex min-h-10 w-full cursor-pointer items-center gap-3 rounded-lg bg-components-input-bg-normal px-3 py-2">
-          <input
+          <Checkbox
             id={fieldId}
-            type="checkbox"
             checked={Boolean(fieldValue)}
-            onChange={(event: ChangeEvent<HTMLInputElement>) =>
-              onValueChange(variable.variable, event.target.checked)
-            }
-            className="size-4 rounded border-divider-subtle"
+            onCheckedChange={(checked) => onValueChange(variable.variable, checked)}
           />
           <span className="system-sm-regular text-text-secondary">{label}</span>
         </label>
@@ -88,9 +84,7 @@ const WorkflowHiddenInputFields = ({
         id={fieldId}
         type={variable.type === InputVarType.number ? 'number' : 'text'}
         value={typeof fieldValue === 'string' ? fieldValue : ''}
-        onChange={(event: ChangeEvent<HTMLInputElement>) =>
-          onValueChange(variable.variable, event.target.value)
-        }
+        onValueChange={(value) => onValueChange(variable.variable, value)}
         placeholder={label}
         maxLength={variable.max_length}
       />

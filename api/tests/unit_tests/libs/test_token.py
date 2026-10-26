@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import cast
 from unittest.mock import MagicMock
 
@@ -11,18 +12,12 @@ from libs import token
 from libs.token import extract_access_token, extract_webapp_access_token, set_csrf_token_to_cookie
 
 
+@dataclass(eq=False, repr=False)
 class MockRequest:
-    def __init__(
-        self,
-        headers: dict[str, str],
-        cookies: dict[str, str],
-        args: dict[str, str],
-        path: str = "/console/api/test",
-    ):
-        self.headers: dict[str, str] = headers
-        self.cookies: dict[str, str] = cookies
-        self.args: dict[str, str] = args
-        self.path = path
+    headers: dict[str, str]
+    cookies: dict[str, str]
+    args: dict[str, str]
+    path: str = "/console/api/test"
 
 
 def test_extract_access_token():
@@ -95,6 +90,38 @@ def test_workflow_run_archive_download_file_bypasses_csrf():
 
 def test_non_whitelisted_path_requires_csrf():
     request = cast(Request, MockRequest(headers={}, cookies={}, args={}, path="/console/api/test"))
+
+    with pytest.raises(Unauthorized):
+        token.check_csrf_token(request, "account-1")
+
+
+def test_exact_workflow_draft_path_bypasses_csrf():
+    request = cast(
+        Request,
+        MockRequest(
+            headers={},
+            cookies={},
+            args={},
+            path="/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft",
+        ),
+    )
+
+    token.check_csrf_token(request, "account-1")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/variables",
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/nodes/node-1/variables",
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/conversation-variables",
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/iteration/nodes/node-1/run",
+        "/console/api/apps/5923ce20-2914-44af-45f0-580fb49f1cc9/workflows/draft/loop/nodes/node-1/run",
+        "/console/api/workflow-run-archives/downloads/5923ce20291444af45f0580fb49f1cc9/file/extra",
+    ],
+)
+def test_whitelist_prefix_paths_still_require_csrf(path: str):
+    request = cast(Request, MockRequest(headers={}, cookies={}, args={}, path=path))
 
     with pytest.raises(Unauthorized):
         token.check_csrf_token(request, "account-1")

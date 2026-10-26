@@ -11,9 +11,9 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import * as React from 'react'
-import { languages } from '@/i18n-config/language'
+import { languages } from '@/i18n/language'
 
-export type ILanguageSelectProps = {
+type ILanguageSelectProps = {
   currentLanguage: string
   onSelect: (language: string) => void
   disabled?: boolean
@@ -41,7 +41,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({ currentLanguage, onSelect, d
       >
         <SelectValue placeholder={<span>&nbsp;</span>} />
       </SelectTrigger>
-      <SelectContent placement="bottom-start" sideOffset={4} className="w-max">
+      <SelectContent className="w-max">
         {supportedLanguages.map(({ prompt_name }) => (
           <SelectItem key={prompt_name} value={prompt_name}>
             <SelectItemText>{prompt_name}</SelectItemText>

@@ -32,8 +32,7 @@ List these key names in your `OpsTraceProviderConfigMap` entry so encrypt/decryp
 Subclass `BaseTraceInstance` and implement:
 
 ```python
-def trace(self, trace_info: BaseTraceInfo) -> None:
-    ...
+def trace(self, trace_info: BaseTraceInfo) -> None: ...
 ```
 
 Dispatch on the concrete type with `isinstance` (see `trace_langfuse` or `trace_langsmith` for full patterns). Payload types are defined in `core/ops/entities/trace_entity.py`, including:

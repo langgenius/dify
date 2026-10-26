@@ -1,4 +1,5 @@
 import collections
+import importlib.util
 import json
 import logging
 import os
@@ -19,6 +20,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.helper.trace_id_helper import ParentTraceContext
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.ops.entities.config_entity import (
     BaseTracingConfig,
     TracingProviderEnum,
@@ -39,6 +41,7 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
+from core.ops.exceptions import TraceProviderNotInstalledError
 from core.ops.unified_trace.registry import UnifiedProviderConfigEntry, unified_provider_config_map
 from core.ops.utils import JSON_DICT_ADAPTER, get_message_data
 from extensions.ext_database import db
@@ -335,8 +338,10 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
 
                 case _:
                     raise KeyError(f"Unsupported tracing provider: {key}")
-        except ImportError:
-            raise ImportError(f"Provider {key} is not installed.")
+        except ModuleNotFoundError as error:
+            if error.name is None or importlib.util.find_spec(error.name.partition(".")[0]) is not None:
+                raise
+            raise TraceProviderNotInstalledError(key, error.name) from error
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -386,7 +391,11 @@ class OpsTraceManager:
         # Encrypt necessary keys
         for key in secret_keys:
             if key in tracing_config:
-                if "*" in tracing_config[key]:
+                if tracing_config[key] is None:
+                    # Preserve explicit clearing for optional credentials; the
+                    # provider model still rejects null on a required secret.
+                    new_config[key] = None
+                elif "*" in tracing_config[key]:
                     # If the key contains '*', retain the original value from the current config
                     if current_trace_config:
                         new_config[key] = current_trace_config.get(key, tracing_config[key])
@@ -435,11 +444,13 @@ class OpsTraceManager:
                 provider_config_map[tracing_provider]["secret_keys"],
                 provider_config_map[tracing_provider]["other_keys"],
             )
-            new_config: dict[str, Any] = {}
-            keys_to_decrypt = [key for key in secret_keys if key in tracing_config]
+            new_config: dict[str, Any] = {
+                key: None for key in secret_keys if key in tracing_config and tracing_config[key] is None
+            }
+            keys_to_decrypt = [key for key in secret_keys if tracing_config.get(key) is not None]
             if keys_to_decrypt:
                 decrypted_values = batch_decrypt_token(tenant_id, [tracing_config[key] for key in keys_to_decrypt])
-                new_config.update(zip(keys_to_decrypt, decrypted_values))
+                new_config.update(zip(keys_to_decrypt, decrypted_values, strict=False))
 
             for key in other_keys:
                 new_config[key] = tracing_config.get(key, "")
@@ -558,8 +569,8 @@ class OpsTraceManager:
         return tracing_instance
 
     @classmethod
-    def get_app_config_through_message_id(cls, message_id: str):
-        app_model_config = None
+    def get_app_config_through_message_id(cls, message_id: str) -> AppModelConfig | str | None:
+        app_model_config: AppModelConfig | str | None = None
         message_stmt = select(Message).where(Message.id == message_id)
         message_data = db.session.scalar(message_stmt)
         if not message_data:
@@ -577,48 +588,6 @@ class OpsTraceManager:
             app_model_config = conversation_data.override_model_configs
 
         return app_model_config
-
-    @classmethod
-    def update_app_tracing_config(cls, app_id: str, enabled: bool, tracing_provider: str | None):
-        """
-        Update app tracing config
-        :param app_id: app id
-        :param enabled: enabled
-        :param tracing_provider: tracing provider (None when disabling)
-        :return:
-        """
-        # auth check
-        if tracing_provider is not None:
-            try:
-                provider_config_map[tracing_provider]
-            except KeyError:
-                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
-
-        app_config: App | None = db.session.get(App, app_id)
-        if not app_config:
-            raise ValueError("App not found")
-        app_config.tracing = json.dumps(
-            {
-                "enabled": enabled,
-                "tracing_provider": tracing_provider,
-            }
-        )
-        db.session.commit()
-
-    @classmethod
-    def get_app_tracing_config(cls, app_id: str, session: Session):
-        """
-        Get app tracing config
-        :param app_id: app id
-        :return:
-        """
-        app: App | None = session.get(App, app_id)
-        if not app:
-            raise ValueError("App not found")
-        if not app.tracing:
-            return {"enabled": False, "tracing_provider": None}
-        app_trace_config = _app_tracing_config_adapter.validate_json(app.tracing)
-        return app_trace_config
 
     @staticmethod
     def check_trace_config_is_effective(tracing_config: dict[str, Any], tracing_provider: str):
@@ -934,7 +903,7 @@ class TraceTask:
     def message_trace(self, message_id: str | None, **kwargs):
         if not message_id:
             return {}
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         conversation_mode_stmt = select(Conversation.mode).where(Conversation.id == message_data.conversation_id)
@@ -996,7 +965,7 @@ class TraceTask:
         message_trace_info = MessageTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             conversation_model=conversation_mode,
             message_tokens=message_tokens,
             answer_tokens=message_data.answer_tokens,
@@ -1024,7 +993,7 @@ class TraceTask:
         if not moderation_result:
             return {}
         inputs = kwargs.get("inputs")
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         metadata = {
@@ -1048,7 +1017,7 @@ class TraceTask:
             trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
             inputs=inputs,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             flagged=moderation_result.flagged,
             action=moderation_result.action,
             preset_response=moderation_result.preset_response,
@@ -1062,7 +1031,7 @@ class TraceTask:
 
     def suggested_question_trace(self, message_id, timer, **kwargs):
         suggested_question = kwargs.get("suggested_question", [])
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         metadata = {
@@ -1090,7 +1059,7 @@ class TraceTask:
         suggested_question_trace_info = SuggestedQuestionTraceInfo(
             trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             inputs=message_data.message,
             outputs=message_data.answer,
             start_time=timer.get("start"),
@@ -1113,7 +1082,7 @@ class TraceTask:
 
     def dataset_retrieval_trace(self, message_id, timer, **kwargs):
         documents = kwargs.get("documents")
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
 
@@ -1188,12 +1157,12 @@ class TraceTask:
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            inputs=message_data.query or message_data.inputs,
+            inputs=message_data.query or message_data.inputs_with_session(session=db.session()),
             documents=doc_list,
             start_time=timer.get("start"),
             end_time=timer.get("end"),
             metadata=metadata,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             error=kwargs.get("error"),
         )
 
@@ -1203,7 +1172,7 @@ class TraceTask:
         tool_name = kwargs.get("tool_name", "")
         tool_inputs = kwargs.get("tool_inputs", {})
         tool_outputs = kwargs.get("tool_outputs", {})
-        message_data = get_message_data(message_id)
+        message_data = get_message_data(message_id, db.session)
         if not message_data:
             return {}
         tool_config = {}
@@ -1212,7 +1181,7 @@ class TraceTask:
         tool_parameters = {}
         created_time = message_data.created_at
         end_time = message_data.updated_at
-        agent_thoughts = message_data.agent_thoughts
+        agent_thoughts = message_data.agent_thoughts_with_session(session=db.session())
         for agent_thought in agent_thoughts:
             if tool_name in agent_thought.tools:
                 created_time = agent_thought.created_at
@@ -1258,7 +1227,7 @@ class TraceTask:
         tool_trace_info = ToolTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
-            message_data=message_data.to_dict(),
+            message_data=message_data.to_dict(session=db.session()),
             tool_name=tool_name,
             start_time=timer.get("start") if timer else created_time,
             end_time=timer.get("end") if timer else end_time,
@@ -1515,7 +1484,15 @@ class TraceQueueManager:
 
         self.app_id = app_id
         self.user_id = user_id
-        self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
+        self.trace_instance = None
+        self._application_tracing_enabled = False
+        if dify_config.OPS_AGENT_TRACE_ENABLED:
+            tracing_hooks = application_tracing_hooks()
+            self._application_tracing_enabled = (
+                tracing_hooks.queue_enabled_at_start(app_id) if tracing_hooks is not None else False
+            )
+        else:
+            self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()  # type: ignore
 
         from core.telemetry.gateway import is_enterprise_telemetry_enabled
@@ -1527,7 +1504,7 @@ class TraceQueueManager:
     def add_trace_task(self, trace_task: TraceTask):
         global trace_manager_timer, trace_manager_queue
         try:
-            if self._enterprise_telemetry_enabled or self.trace_instance:
+            if self._enterprise_telemetry_enabled or self._application_tracing_enabled or self.trace_instance:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception:
@@ -1573,10 +1550,6 @@ class TraceQueueManager:
         return None
 
     def persist_trace_task(self, task: TraceTask, *, file_id: str | None = None) -> dict[str, str] | None:
-        if not (self._enterprise_telemetry_enabled or self.trace_instance):
-            return None
-
-        task.app_id = self.app_id
         storage_id = self._resolve_storage_id(task)
         if storage_id is None:
             return None

@@ -1,7 +1,7 @@
-import type { ConsoleClient } from '../support/api/console-client'
+import type { ConsoleClient } from '../support/api/console-client.ts'
 import { ORPCError } from '@orpc/client'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { bootstrapMarketplacePlugins } from '../support/marketplace-plugins'
+import { bootstrapMarketplacePlugins } from '../support/marketplace-plugins.ts'
 
 const createMarketplaceConsoleClient = (installError: unknown) => {
   const installMarketplace = vi.fn().mockRejectedValue(installError)

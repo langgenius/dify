@@ -29,29 +29,33 @@ export type LLMNodeType = CommonNodeType & {
   reasoning_format?: 'tagged' | 'separated'
 }
 
-export enum Type {
-  string = 'string',
-  number = 'number',
-  boolean = 'boolean',
-  object = 'object',
-  array = 'array',
-  arrayString = 'array[string]',
-  arrayNumber = 'array[number]',
-  arrayObject = 'array[object]',
-  file = 'file',
-  enumType = 'enum',
-}
+export const Type = {
+  string: 'string',
+  number: 'number',
+  boolean: 'boolean',
+  object: 'object',
+  array: 'array',
+  arrayString: 'array[string]',
+  arrayNumber: 'array[number]',
+  arrayObject: 'array[object]',
+  file: 'file',
+  enumType: 'enum',
+} as const
 
-export enum ArrayType {
-  string = 'array[string]',
-  number = 'array[number]',
-  boolean = 'array[boolean]',
-  object = 'array[object]',
-}
+export type Type = (typeof Type)[keyof typeof Type]
+
+export const ArrayType = {
+  string: 'array[string]',
+  number: 'array[number]',
+  boolean: 'array[boolean]',
+  object: 'array[object]',
+} as const
+
+export type ArrayType = (typeof ArrayType)[keyof typeof ArrayType]
 
 export type TypeWithArray = Type | ArrayType
 
-type ArrayItemType = Exclude<Type, Type.array>
+type ArrayItemType = Exclude<Type, typeof Type.array>
 export type ArrayItems = Omit<Field, 'type'> & { type: ArrayItemType }
 
 export type SchemaEnumType = string[] | number[]
@@ -75,7 +79,7 @@ export type StructuredOutput = {
 }
 
 export type SchemaRoot = {
-  type: Type.object
+  type: typeof Type.object
   properties: Record<string, Field>
   required?: string[]
   additionalProperties: false

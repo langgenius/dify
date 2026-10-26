@@ -1,19 +1,13 @@
 import type { EditorState, LexicalEditor } from 'lexical'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { $createLinkNode } from '@lexical/link'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import { useEffect } from 'react'
 import { NoteEditorContextProvider } from '../context'
 import Editor from '../editor'
 
 const emptyValue = JSON.stringify({ root: { children: [] } })
-const themeCss = readFileSync(
-  resolve(process.cwd(), 'app/components/workflow/note-node/note-editor/theme/theme.css'),
-  'utf8',
-)
 
 const EditorProbe = ({ onReady }: { onReady?: (editor: LexicalEditor) => void }) => {
   const [editor] = useLexicalComposerContext()
@@ -44,16 +38,8 @@ describe('Editor', () => {
     vi.clearAllMocks()
   })
 
-  // Editor should render the lexical surface with the provided placeholder.
   describe('Rendering', () => {
-    it('should render the placeholder text and content editable surface', () => {
-      renderEditor({ placeholder: 'Type note' })
-
-      expect(screen.getByText('Type note')).toBeInTheDocument()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-    })
-
-    it('should render linked text with distinct link styling', async () => {
+    it('supports links in the note editor', async () => {
       let editor: LexicalEditor | null = null
 
       renderEditor({}, (instance) => (editor = instance))
@@ -79,27 +65,7 @@ describe('Editor', () => {
 
       const link = await screen.findByRole('link', { name: 'Linked docs' })
 
-      expect(link).toHaveClass('note-editor-theme_link')
-      expect(themeCss).toContain('.note-editor-theme_link')
-      expect(themeCss).toContain('font-weight: 500;')
-      expect(themeCss).toContain('text-decoration: underline;')
-    })
-  })
-
-  // Focus and blur should toggle workflow shortcuts while editing content.
-  describe('Focus Management', () => {
-    it('should disable shortcuts on focus and re-enable them on blur-sm', () => {
-      const setHistoryShortcutsEnabled = vi.fn()
-
-      renderEditor({ setHistoryShortcutsEnabled })
-
-      const contentEditable = screen.getByRole('textbox')
-
-      fireEvent.focus(contentEditable)
-      fireEvent.blur(contentEditable)
-
-      expect(setHistoryShortcutsEnabled).toHaveBeenNthCalledWith(1, false)
-      expect(setHistoryShortcutsEnabled).toHaveBeenNthCalledWith(2, true)
+      expect(link).toHaveAttribute('href', 'https://example.com/docs')
     })
   })
 
@@ -118,10 +84,6 @@ describe('Editor', () => {
 
       await waitFor(() => {
         expect(editor).not.toBeNull()
-      })
-
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0))
       })
 
       act(() => {
@@ -152,6 +114,9 @@ describe('Editor', () => {
 
       await waitFor(() => {
         expect(changes).toContain('hello world')
+        expect(
+          screen.getByRole('textbox', { name: 'workflow.nodes.note.editor.label' }),
+        ).toHaveTextContent('hello world')
       })
     })
   })

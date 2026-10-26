@@ -1,41 +1,21 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import StepIndicator from '../step-indicator'
 
 describe('StepIndicator', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render all step labels and highlight the current step', () => {
-    const { container } = render(
-      <StepIndicator
-        currentStep={2}
-        steps={[
-          { label: 'Select source', value: 'source' },
-          { label: 'Process docs', value: 'process' },
-          { label: 'Run test', value: 'run' },
-        ]}
-      />,
-    )
-
-    expect(screen.getByText('Select source')).toBeInTheDocument()
-    expect(screen.getByText('Process docs')).toBeInTheDocument()
-    expect(screen.getByText('Run test')).toBeInTheDocument()
-    expect(container.querySelector('.bg-state-accent-solid')).toBeInTheDocument()
-    expect(screen.getByText('Process docs').parentElement).toHaveClass('text-state-accent-solid')
-  })
-
-  it('should keep inactive steps in the tertiary state', () => {
-    render(
-      <StepIndicator
-        currentStep={1}
-        steps={[
-          { label: 'Select source', value: 'source' },
-          { label: 'Process docs', value: 'process' },
-        ]}
-      />,
-    )
-
-    expect(screen.getByText('Process docs').parentElement).toHaveClass('text-text-tertiary')
+  it('identifies the current step in the ordered preparation flow', () => {
+    const steps = [
+      { label: 'Select source', value: 'source' },
+      { label: 'Process docs', value: 'process' },
+      { label: 'Run test', value: 'run' },
+    ]
+    const { rerender } = render(<StepIndicator currentStep={2} steps={steps} />)
+    const items = within(screen.getByRole('list')).getAllByRole('listitem')
+    expect(items).toHaveLength(3)
+    expect(items[1]).toHaveAttribute('aria-current', 'step')
+    expect(items[1]).toHaveTextContent('Process docs')
+    expect(items[0]).not.toHaveAttribute('aria-current')
+    rerender(<StepIndicator currentStep={3} steps={steps} />)
+    expect(items[1]).not.toHaveAttribute('aria-current')
+    expect(items[2]).toHaveAttribute('aria-current', 'step')
   })
 })

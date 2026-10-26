@@ -185,6 +185,7 @@ docker/volumes/minio/*
 docker/volumes/milvus/*
 docker/volumes/chroma/*
 docker/volumes/opensearch/data/*
+docker/volumes/openshell-mtls/*
 docker/volumes/myscale/data/*
 docker/volumes/myscale/log/*
 docker/volumes/unstructured/*

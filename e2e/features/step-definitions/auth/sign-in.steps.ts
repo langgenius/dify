@@ -1,6 +1,6 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { When } from '@cucumber/cucumber'
-import { adminCredentials } from '../../../fixtures/auth'
+import { adminCredentials } from '../../../fixtures/auth.ts'
 
 When('I open the sign-in page', async function (this: DifyWorld) {
   await this.getPage().goto('/signin')

@@ -1,9 +1,9 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
-import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 
-export const getPublisherAppMode = (mode?: AppModeEnum) => {
-  if (mode !== AppModeEnum.COMPLETION && mode !== AppModeEnum.WORKFLOW) return AppModeEnum.CHAT
+export const getPublisherAppMode = (mode?: AppMode) => {
+  if (mode !== 'completion' && mode !== 'workflow') return 'chat'
 
   return mode
 }
@@ -15,7 +15,7 @@ export const getPublisherAppUrl = ({
 }: {
   appBaseUrl: string
   accessToken: string
-  mode?: AppModeEnum
+  mode?: AppMode
 }) => `${appBaseUrl}${basePath}/${getPublisherAppMode(mode)}/${accessToken}`
 
 export const getDisabledFunctionTooltip = ({
@@ -24,7 +24,7 @@ export const getDisabledFunctionTooltip = ({
   missingStartNode,
   noAccessPermission,
 }: {
-  t: TFunction
+  t: TFunction<['app']>
   publishedAt?: number
   missingStartNode: boolean
   noAccessPermission: boolean

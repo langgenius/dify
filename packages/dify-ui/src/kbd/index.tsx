@@ -1,12 +1,12 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
 import { cn } from '../cn'
 
 const kbdVariants = cva(
-  'pointer-events-none inline-flex h-4 min-w-4 items-center justify-center rounded-sm px-px font-sans system-kbd capitalize not-italic select-none',
+  'pointer-events-none inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-sm px-px font-sans system-kbd capitalize not-italic select-none',
   {
     variants: {
       color: {
@@ -43,7 +43,10 @@ type KbdGroupProps = React.ComponentProps<'span'>
 
 function KbdGroup({ className, ...props }: KbdGroupProps) {
   return (
-    <span className={cn('inline-flex items-center gap-0.5 align-middle', className)} {...props} />
+    <span
+      className={cn('inline-flex shrink-0 items-center gap-0.5 align-middle', className)}
+      {...props}
+    />
   )
 }
 

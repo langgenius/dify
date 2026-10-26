@@ -1,72 +1,49 @@
-import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
-import { isVerbose } from '@/framework/context'
-import { redactBearer } from '@/http/sanitize'
-import { colorEnabled, colorScheme } from '@/sys/io/color'
+import type { ErrorDetail, ErrorEnvelope } from './base'
+import type { Hint } from '@/protocol/hint'
+import type { ColorScheme } from '@/sys/io/color'
+import { LOC_SEPARATOR } from '@/errors/base'
+import { redactBearer } from '@/errors/sanitize'
+import { spacedId } from '@/protocol/op-id'
+import { BINARY } from '@/version/info'
 
-const RAW_RESPONSE_HINT = 'run again with -v to see the raw server response'
+const RAW_RESPONSE_HINT = 'run again with --verbose to see the raw server response'
 
-export type FormatErrorOptions = {
-  readonly format?: string
-  readonly isErrTTY?: boolean
-}
-
-export type ErrorEnvelope = {
-  error: {
-    code: string
-    message: string
-    hint?: string
-    http_status?: number
-    method?: string
-    url?: string
-    raw_response?: string
-    server?: ErrorBody
-  }
-}
-
-export type PrintableError = {
-  toEnvelope: () => ErrorEnvelope
-}
-
-export function formatErrorForCli(err: PrintableError, opts: FormatErrorOptions = {}): string {
-  const env = err.toEnvelope()
-  if (opts.format === 'json') return renderEnvelope(env)
-  return renderHuman(env, opts.isErrTTY ?? false)
-}
-
-function renderEnvelope(env: ErrorEnvelope): string {
-  const raw = env.error.raw_response
-  if (raw === undefined) return JSON.stringify(env)
-  if (!isVerbose()) {
-    delete env.error.raw_response
-    return JSON.stringify(env)
-  }
-  env.error.raw_response = redactBearer(raw)
-  return JSON.stringify(env)
-}
+type RenderOptions = { readonly verbose: boolean }
 
 // CLI-authored hint wins: it knows local remediation (e.g. which command to
 // run); the server hint fills in when the CLI has nothing for this error.
-function resolveHint(e: ErrorEnvelope['error']): string | undefined {
+function resolveHint(e: ErrorEnvelope['error'], opts: RenderOptions): string | undefined {
   if (e.hint !== undefined) return e.hint
   if (e.server?.hint != null) return e.server.hint
-  const rawHiddenAndUnparsed = e.server === undefined && Boolean(e.raw_response) && !isVerbose()
+  const rawHiddenAndUnparsed = e.server === undefined && Boolean(e.raw_response) && !opts.verbose
   return rawHiddenAndUnparsed ? RAW_RESPONSE_HINT : undefined
 }
 
-function renderHuman(env: ErrorEnvelope, isErrTTY: boolean): string {
-  const cs = colorScheme(colorEnabled(isErrTTY))
+function detailLine(d: ErrorDetail): string {
+  if (d.field !== undefined) return `${d.field}: ${d.msg}`
+  const loc = (d.loc ?? []).join(LOC_SEPARATOR)
+  return `${loc ? `${loc}: ` : ''}${d.msg} (${d.type})`
+}
+
+function nextLine(h: Hint, style: ColorScheme): string {
+  return `${style.magenta('next:')} ${style.cyan(`${BINARY} ${spacedId(h.op)}`)} — ${h.summary}`
+}
+
+export function renderEnvelope(
+  env: ErrorEnvelope,
+  style: ColorScheme,
+  opts: RenderOptions,
+): string {
   const e = env.error
   const server = e.server
   const headerCode = server?.code ?? e.code
   const lines: string[] = [`${headerCode}: ${e.message}`]
-  for (const d of server?.details ?? []) {
-    const loc = (d.loc ?? []).join('.')
-    lines.push(`  - ${loc ? `${loc}: ` : ''}${d.msg} (${d.type})`)
-  }
-  const hint = resolveHint(e)
-  if (hint !== undefined) lines.push(`${cs.magenta('hint:')} ${cs.cyan(hint)}`)
+  for (const d of e.details ?? server?.details ?? []) lines.push(`  - ${detailLine(d)}`)
+  const hint = resolveHint(e, opts)
+  if (hint !== undefined) lines.push(`${style.magenta('hint:')} ${style.cyan(hint)}`)
+  for (const h of server?.hints ?? []) lines.push(nextLine(h, style))
   if (e.method !== undefined && e.url !== undefined) lines.push(`request: ${e.method} ${e.url}`)
   if (e.http_status !== undefined) lines.push(`http_status: ${e.http_status}`)
-  if (isVerbose() && e.raw_response) lines.push(`raw_response: ${redactBearer(e.raw_response)}`)
+  if (opts.verbose && e.raw_response) lines.push(`raw_response: ${redactBearer(e.raw_response)}`)
   return lines.join('\n')
 }

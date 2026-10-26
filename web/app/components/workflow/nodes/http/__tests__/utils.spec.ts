@@ -13,28 +13,12 @@ describe('transformToBodyPayload', () => {
 
   // form-data / x-www-form-urlencoded bodies are stored as `key:value` lines.
   describe('when hasKey is true', () => {
-    it('should split a simple key:value pair', () => {
-      const result = transformToBodyPayload('name:alice', true)
-
-      expect(result).toEqual([{ key: 'name', type: BodyPayloadValueType.text, value: 'alice' }])
-    })
-
-    it('should keep colons that belong to the value', () => {
-      const result = transformToBodyPayload('url:https://host:8080/path', true)
-
-      expect(result[0]).toEqual({
-        key: 'url',
-        type: BodyPayloadValueType.text,
-        value: 'https://host:8080/path',
-      })
-    })
-
     it('should parse each line independently', () => {
-      const result = transformToBodyPayload('a:1\nb:2:3', true)
+      const result = transformToBodyPayload('name:alice\nurl:https://host:8080/path', true)
 
       expect(result).toEqual([
-        { key: 'a', type: BodyPayloadValueType.text, value: '1' },
-        { key: 'b', type: BodyPayloadValueType.text, value: '2:3' },
+        { key: 'name', type: BodyPayloadValueType.text, value: 'alice' },
+        { key: 'url', type: BodyPayloadValueType.text, value: 'https://host:8080/path' },
       ])
     })
 

@@ -1,10 +1,8 @@
-import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
+import type { TagResponse } from '@dify/contracts/api/console/tags/types.gen'
 
 type SnippetType = 'node' | 'group'
 
 type SnippetInputField = Record<string, unknown>
-
-type SnippetTag = Tag
 
 type SnippetAccount = {
   id: string
@@ -21,7 +19,7 @@ export type SnippetListItem = {
   version: number
   use_count: number
   icon_info?: Record<string, unknown> | null
-  tags: SnippetTag[]
+  tags: TagResponse[]
   created_at: number
   created_by: string | null
   author_name?: string | null

@@ -16,3 +16,4 @@ test/**/*.js.map
 test/**/*.js
 test/**/*.d.ts
 .token-cache.json
+.vitest/

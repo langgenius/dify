@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
+  "dateFormats.withSeconds": "DD/MM/YYYY hh:mm:ss A",
+  "operation.cancel": "Anulează",
+  "operation.now": "Acum",
+  "operation.ok": "Bine",
+  "operation.pickDate": "Alege o dată",
+  "picker.chooseMonthAndYear": "Alege luna și anul",
+  "picker.endDate": "Data de sfârșit",
+  "picker.hour": "Oră",
+  "picker.minute": "Minut",
+  "picker.month": "Lună",
+  "picker.nextMonth": "Luna următoare",
+  "picker.period": "AM/PM",
+  "picker.previousMonth": "Luna precedentă",
+  "picker.required": "Alege o valoare.",
+  "picker.requiredLabel": "Obligatoriu",
+  "picker.startDate": "Data de început",
+  "picker.unavailable": "Această dată sau oră nu este disponibilă.",
+  "picker.year": "An",
+  "title.pickTime": "Alegeți timpul"
+}

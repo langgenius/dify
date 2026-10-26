@@ -2,9 +2,10 @@ import type { RefObject } from 'react'
 import type { StartNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { InputVarType } from '@/app/components/workflow/types'
-import { useIsChatMode } from '../../hooks/use-workflow'
 
 type Params = {
   id: string
@@ -16,8 +17,8 @@ type Params = {
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: Params) => {
-  const { t } = useTranslation()
-  const isChatMode = useIsChatMode()
+  const { t } = useTranslation(['workflowModels'])
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const forms = (() => {
     const forms: FormProps[] = []
@@ -28,7 +29,7 @@ const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: 
       }
     })
 
-    if (isChatMode) {
+    if (isChatflow) {
       inputs.push({
         label: 'sys.query',
         variable: '#sys.query#',
@@ -45,7 +46,7 @@ const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: 
     })
 
     forms.push({
-      label: t(($) => $['nodes.llm.singleRun.variable'], { ns: 'workflow' })!,
+      label: t(($) => $['nodes.llm.singleRun.variable'], { ns: 'workflowModels' })!,
       inputs,
       values: runInputData,
       onChange: setRunInputData,
@@ -60,7 +61,7 @@ const useSingleRunFormParams = ({ id, payload, runInputData, setRunInputData }: 
     })
     const vars: ValueSelector[] = [...inputVars, ['sys', 'files']]
 
-    if (isChatMode) vars.push(['sys', 'query'])
+    if (isChatflow) vars.push(['sys', 'query'])
 
     return vars
   }

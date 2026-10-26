@@ -1,32 +1,37 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import {
   ContextMenu,
   ContextMenuCheckboxItem,
   ContextMenuCheckboxItemIndicator,
   ContextMenuContent,
   ContextMenuGroup,
+  ContextMenuGroupLabel,
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuLinkItem,
+  ContextMenuPopup,
+  ContextMenuPortal,
+  ContextMenuPositioner,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
   ContextMenuRadioItemIndicator,
   ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
+  ContextMenuSubmenu,
+  ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
 } from '.'
 
-const TriggerArea = ({ label = 'Right-click inside this area' }: { label?: string }) => (
-  <ContextMenuTrigger
-    aria-label="context menu trigger area"
-    className="flex h-44 w-80 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center text-sm text-text-tertiary select-none"
-  >
-    {label}
-  </ContextMenuTrigger>
-)
+function TriggerArea({ label = 'Right-click inside this area' }: { label?: string }) {
+  return (
+    <ContextMenuTrigger
+      aria-label="context menu trigger area"
+      className="flex h-44 w-80 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center text-sm text-text-tertiary select-none"
+    >
+      {label}
+    </ContextMenuTrigger>
+  )
+}
 
 const meta = {
   title: 'Base/UI/ContextMenu',
@@ -67,14 +72,14 @@ export const WithSubmenu: Story = {
         <ContextMenuItem>Copy</ContextMenuItem>
         <ContextMenuItem>Paste</ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>Share</ContextMenuSubTrigger>
-          <ContextMenuSubContent className="w-36">
+        <ContextMenuSubmenu>
+          <ContextMenuSubmenuTrigger>Share</ContextMenuSubmenuTrigger>
+          <ContextMenuContent className="w-36">
             <ContextMenuItem>Email</ContextMenuItem>
             <ContextMenuItem>Slack</ContextMenuItem>
             <ContextMenuItem>Copy link</ContextMenuItem>
-          </ContextMenuSubContent>
-        </ContextMenuSub>
+          </ContextMenuContent>
+        </ContextMenuSubmenu>
       </ContextMenuContent>
     </ContextMenu>
   ),
@@ -86,13 +91,13 @@ export const WithGroupLabel: Story = {
       <TriggerArea />
       <ContextMenuContent className="w-44">
         <ContextMenuGroup>
-          <ContextMenuLabel>Actions</ContextMenuLabel>
+          <ContextMenuGroupLabel>Actions</ContextMenuGroupLabel>
           <ContextMenuItem>Rename</ContextMenuItem>
           <ContextMenuItem>Duplicate</ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
-          <ContextMenuLabel>Danger Zone</ContextMenuLabel>
+          <ContextMenuGroupLabel>Danger Zone</ContextMenuGroupLabel>
           <ContextMenuItem variant="destructive">Delete</ContextMenuItem>
         </ContextMenuGroup>
       </ContextMenuContent>
@@ -102,7 +107,7 @@ export const WithGroupLabel: Story = {
 
 type Density = 'compact' | 'comfortable' | 'spacious'
 
-const WithRadioItemsDemo = () => {
+function WithRadioItemsDemo() {
   const [density, setDensity] = React.useState<Density>('comfortable')
 
   return (
@@ -132,7 +137,7 @@ export const WithRadioItems: Story = {
   render: () => <WithRadioItemsDemo />,
 }
 
-const WithCheckboxItemsDemo = () => {
+function WithCheckboxItemsDemo() {
   const [showToolbar, setShowToolbar] = React.useState(true)
   const [showSidebar, setShowSidebar] = React.useState(false)
   const [showStatusBar, setShowStatusBar] = React.useState(true)
@@ -205,17 +210,17 @@ export const Complex: Story = {
           Duplicate
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuSub>
-          <ContextMenuSubTrigger>
+        <ContextMenuSubmenu>
+          <ContextMenuSubmenuTrigger>
             <span aria-hidden className="i-ri-share-line size-4 shrink-0 text-text-tertiary" />
             Share
-          </ContextMenuSubTrigger>
-          <ContextMenuSubContent className="w-36">
+          </ContextMenuSubmenuTrigger>
+          <ContextMenuContent className="w-36">
             <ContextMenuItem>Email</ContextMenuItem>
             <ContextMenuItem>Slack</ContextMenuItem>
             <ContextMenuItem>Copy Link</ContextMenuItem>
-          </ContextMenuSubContent>
-        </ContextMenuSub>
+          </ContextMenuContent>
+        </ContextMenuSubmenu>
         <ContextMenuSeparator />
         <ContextMenuItem variant="destructive">
           <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
@@ -224,4 +229,71 @@ export const Complex: Story = {
       </ContextMenuContent>
     </ContextMenu>
   ),
+}
+
+function ExplicitAnatomyDemo() {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const anchorRef = React.useRef<HTMLDivElement>(null)
+  const [action, setAction] = React.useState('No action selected')
+
+  return (
+    <div>
+      <ContextMenu>
+        <ContextMenuTrigger
+          ref={anchorRef}
+          tabIndex={0}
+          className="rounded-xl border border-divider-subtle p-6"
+        >
+          Right-click for anchored actions
+        </ContextMenuTrigger>
+        <ContextMenuPortal container={containerRef}>
+          <ContextMenuPositioner anchor={anchorRef} side="bottom" align="start" sideOffset={8}>
+            <ContextMenuPopup
+              aria-label="Anchored actions"
+              className="min-w-40 scroll-py-1 rounded-lg border border-divider-subtle bg-background-default py-1 shadow-md"
+            >
+              <ContextMenuSubmenu>
+                <ContextMenuSubmenuTrigger>Share</ContextMenuSubmenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem onClick={() => setAction('Link copied')}>
+                    Copy link
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenuSubmenu>
+            </ContextMenuPopup>
+          </ContextMenuPositioner>
+        </ContextMenuPortal>
+      </ContextMenu>
+      <div ref={containerRef} role="region" aria-label="Menu portal" />
+      <p role="status">{action}</p>
+    </div>
+  )
+}
+
+export const ExplicitAnatomy: Story = {
+  render: () => <ExplicitAnatomyDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const trigger = canvas.getByText('Right-click for anchored actions')
+    trigger.focus()
+    await userEvent.pointer({ target: trigger, keys: '[MouseRight]' })
+    const popup = await within(canvas.getByRole('region', { name: 'Menu portal' })).findByRole(
+      'menu',
+      { name: 'Anchored actions' },
+    )
+    await waitFor(() =>
+      expect(popup.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+        trigger.getBoundingClientRect().bottom + 7,
+      ),
+    )
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(() => expect(body.getByRole('menuitem', { name: 'Share' })).toHaveFocus())
+    await userEvent.keyboard('{ArrowRight}')
+    await waitFor(() => expect(body.getByRole('menuitem', { name: 'Copy link' })).toHaveFocus())
+    await userEvent.keyboard('{Enter}')
+    await waitFor(() => expect(canvas.getByRole('status')).toHaveTextContent('Link copied'))
+    await waitFor(() => expect(body.queryByRole('menu')).not.toBeInTheDocument())
+    await expect(trigger).toHaveFocus()
+  },
 }

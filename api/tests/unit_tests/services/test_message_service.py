@@ -1,5 +1,6 @@
 import json
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import MagicMock
@@ -65,15 +66,12 @@ pytestmark = [
 ]
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     """Expose the SQLite engine and shared session through the production DB interface."""
 
     engine: Engine
     session: scoped_session[Session]
-
-    def __init__(self, engine: Engine, session: scoped_session[Session]) -> None:
-        self.engine = engine
-        self.session = session
 
 
 class MessageServiceTestDataFactory:
@@ -949,6 +947,32 @@ class TestMessageServiceSuggestedQuestions:
             instruction_prompt="published prompt",
             model_config=None,
         )
+
+    def test_agent_unavailable_default_model_returns_empty_questions(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory: MessageServiceTestDataFactory,
+        sqlite_session: Session,
+    ) -> None:
+        conversation = factory.create_conversation()
+        conversation.mode = AppMode.AGENT
+        model_manager, memory, llm_generator = self._chat_boundaries(monkeypatch, conversation)
+        model_manager.get_default_model_instance.side_effect = ValueError("unsupported default model")
+        roster_service = MagicMock()
+        roster_service.return_value.get_published_agent_soul_for_app.return_value = self._agent_soul()
+        monkeypatch.setattr("services.agent.roster_service.AgentRosterService", roster_service)
+
+        result = MessageService.get_suggested_questions_after_answer(
+            app_model=factory.create_app(mode=AppMode.AGENT),
+            user=factory.create_end_user(),
+            message_id="msg-123",
+            invoke_from=InvokeFrom.SERVICE_API,
+            session=sqlite_session,
+        )
+
+        assert result == []
+        memory.assert_not_called()
+        llm_generator.generate_suggested_questions_after_answer.assert_not_called()
 
     def test_historical_agent_without_soul_uses_current_app_model_config(
         self,

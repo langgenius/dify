@@ -1,22 +1,8 @@
-import type { SelectorParam, TFunction } from 'i18next'
+import type { TFunction } from 'i18next'
 import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-export type WorkflowTranslate = <const Selector extends SelectorParam<'workflow'>>(
-  selector: Selector,
-  options: { ns: 'workflow' },
-) => ReturnType<TFunction>
-
-const translateWorkflowString = <const Selector extends SelectorParam<'workflow'>>(
-  t: WorkflowTranslate,
-  selector: Selector,
-): string => {
-  const result = t(selector, { ns: 'workflow' })
-  if (typeof result !== 'string')
-    throw new TypeError('Expected workflow translation selector to return a string')
-
-  return result
-}
+export type WorkflowTranslate = TFunction<['workflow']>
 
 function findLastIndex<T>(list: T[], predicate: (item: T) => boolean): number {
   for (let index = list.length - 1; index >= 0; index--) {
@@ -76,7 +62,7 @@ function addTitle(
 
     if (isParallelStartNode) {
       node.parallelDetail!.isParallelStartNode = true
-      node.parallelDetail!.parallelTitle = `${translateWorkflowString(t, ($) => $['common.parallel'])}-${parallelIndexInfo}`
+      node.parallelDetail!.parallelTitle = `${t(($) => $['common.parallel'], { ns: 'workflow' })}-${parallelIndexInfo}`
     }
 
     const isBrachStartNode = parallel_start_node_id === node.node_id
@@ -89,7 +75,7 @@ function addTitle(
         }
       }
 
-      node.parallelDetail!.branchTitle = `${translateWorkflowString(t, ($) => $['common.branch'])}-${belongParallelIndexInfo}-${branchLetter}`
+      node.parallelDetail!.branchTitle = `${t(($) => $['common.branch'], { ns: 'workflow' })}-${belongParallelIndexInfo}-${branchLetter}`
     }
 
     if (node.parallelDetail?.children && node.parallelDetail.children.length > 0) {

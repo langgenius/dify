@@ -5,7 +5,7 @@ import type {
 import type { FileTreeNode } from '../shared'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { FileTreeItem, FileTreeNameInput } from '../file-tree-items'
 
 const skillFile: SkillFileResponse = {
@@ -157,7 +157,10 @@ describe('FileTreeItem', () => {
     await user.click(button)
     await user.dblClick(button)
 
-    expect(props.onItemSelect).toHaveBeenCalledWith(expect.anything(), expect.anything())
+    expect(props.onItemSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'scripts/example.ts' }),
+      expect.anything(),
+    )
     expect(props.onSelect).toHaveBeenCalledWith('scripts/example.ts', 'preview')
     expect(props.onSelect).toHaveBeenCalledWith('scripts/example.ts', 'pinned')
   })
@@ -203,7 +206,8 @@ describe('FileTreeItem', () => {
 
     const folder = screen.getByText('scripts').closest('[data-skill-file-tree-item]')
     expect(folder).toBeInstanceOf(HTMLElement)
-    await user.dblClick(folder as HTMLElement)
+    const folderButton = screen.getByRole('button', { name: 'scripts' })
+    await user.dblClick(folderButton)
     expect(props.onToggleFolder).toHaveBeenCalledWith('scripts')
 
     await user.click(
@@ -221,6 +225,19 @@ describe('FileTreeItem', () => {
 
     expect(props.onCreate).toHaveBeenCalledWith('file', 'scripts')
     expect(props.onCreate).toHaveBeenCalledWith('directory', 'scripts')
+  })
+
+  it('selects folders from the keyboard without including their action menu', async () => {
+    const user = userEvent.setup()
+    const { props } = renderFileTreeItem({ selectedPaths: ['scripts'] }, createFolderNode())
+    const folder = screen.getByRole('button', { name: 'scripts' })
+    folder.focus()
+    await user.keyboard('{Enter}')
+    expect(props.onItemSelect).toHaveBeenCalledTimes(1)
+    await user.keyboard(' ')
+    expect(props.onItemSelect).toHaveBeenCalledTimes(2)
+    await user.tab()
+    expect(screen.getAllByRole('button', { name: 'common.operation.more' })[0]).toHaveFocus()
   })
 
   it('renders a rename input for the active inline action', async () => {

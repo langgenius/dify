@@ -13,6 +13,7 @@ export const DebugWithMultipleModelContextProvider = ({
   multipleModelConfigs,
   onDebugWithMultipleModelChange,
   checkCanSend,
+  onOpenLog,
 }: DebugWithMultipleModelContextProviderProps) => {
   return (
     <DebugWithMultipleModelContext.Provider
@@ -21,6 +22,7 @@ export const DebugWithMultipleModelContextProvider = ({
         multipleModelConfigs,
         onDebugWithMultipleModelChange,
         checkCanSend,
+        onOpenLog,
       }}
     >
       {children}

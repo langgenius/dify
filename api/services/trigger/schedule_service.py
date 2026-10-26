@@ -18,7 +18,7 @@ from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
 from models.trigger import WorkflowSchedulePlan
 from models.workflow import Workflow
-from services.errors.account import AccountNotFoundError
+from services.account_errors import AccountNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +218,7 @@ class ScheduleService:
         try:
             graph_data = workflow.graph_dict
         except (json.JSONDecodeError, TypeError, AttributeError) as e:
-            raise ScheduleConfigError(f"Failed to parse workflow graph: {e}")
+            raise ScheduleConfigError(f"Failed to parse workflow graph: {e}") from e
 
         if not graph_data:
             raise ScheduleConfigError("Workflow graph is empty")

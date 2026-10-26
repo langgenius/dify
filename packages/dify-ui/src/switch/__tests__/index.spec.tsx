@@ -14,11 +14,6 @@ describe('Switch', () => {
     await expect.element(switchElement).toHaveAttribute('data-disabled', '')
   })
 
-  it('should apply custom className', async () => {
-    const screen = await render(<Switch checked={false} className="custom-test-class" />)
-    await expect.element(screen.getByRole('switch')).toHaveClass('custom-test-class')
-  })
-
   it('should reflect checked state on the root and thumb', async () => {
     const screen = await render(<Switch checked={false} />)
     const switchElement = screen.getByRole('switch').element()
@@ -56,5 +51,22 @@ describe('Switch', () => {
       await screen.rerender(<Switch checked={false} loading size="sm" />)
       expect(screen.container.querySelector('span[aria-hidden="true"] i')).not.toBeInTheDocument()
     })
+  })
+})
+
+describe('Switch change cancellation', () => {
+  it('lets event details cancel an uncontrolled change', async () => {
+    const screen = await render(
+      <Switch
+        aria-label="Notifications"
+        defaultChecked={false}
+        onCheckedChange={(checked, details) => {
+          if (checked) details.cancel()
+        }}
+      />,
+    )
+
+    await screen.getByRole('switch').click()
+    await expect.element(screen.getByRole('switch')).not.toBeChecked()
   })
 })

@@ -2,28 +2,29 @@
 
 import type { ReactNode } from 'react'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLinkItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuLinkItem,
+  MenuSeparator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { useDocLink } from '@/context/i18n'
 
-type DropdownItemProps = {
+type GuideMenuItemProps = {
   href: string
   icon: ReactNode
   text: string
 }
 
-function DropdownItem({ href, icon, text }: DropdownItemProps) {
+function GuideMenuItem({ href, icon, text }: GuideMenuItemProps) {
   return (
-    <DropdownMenuLinkItem
+    <MenuLinkItem
       href={href}
       target="_blank"
       rel="noopener noreferrer"
@@ -32,7 +33,7 @@ function DropdownItem({ href, icon, text }: DropdownItemProps) {
       {icon}
       <span className="system-sm-medium text-text-secondary">{text}</span>
       <span className="ml-auto i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary" />
-    </DropdownMenuLinkItem>
+    </MenuLinkItem>
   )
 }
 
@@ -71,44 +72,61 @@ function getOptions(docLink: (path: DocPathWithoutLang) => string): {
   ]
 }
 
-type SubmitRequestDropdownProps = {
+type SubmitRequestMenuProps = {
   dividerAfterFirst?: boolean
 }
 
-export function SubmitRequestDropdown({ dividerAfterFirst }: SubmitRequestDropdownProps) {
-  const { t } = useTranslation()
+type SubmitRequestMenuViewProps = SubmitRequestMenuProps & {
+  docLink: (path: DocPathWithoutLang) => string
+}
+
+// Presentational menu. Callers that cannot use useDocLink() -- standalone
+// Marketplace SSR -- pass a locale-composed docLink instead.
+export function SubmitRequestMenuView({ dividerAfterFirst, docLink }: SubmitRequestMenuViewProps) {
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
-  const docLink = useDocLink()
   const options = getOptions(docLink)
+  const guideLabel = t(($) => $['marketplace.home.guide'], { ns: 'plugin' })
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger
-        render={
-          <IconButton
-            aria-label={t(($) => $.requestSubmit, {
-              ns: 'plugin',
-              defaultValue: t(($) => $.requestAPlugin, { ns: 'plugin' }),
-            })}
-            size="lg"
-            className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
-          >
-            <span aria-hidden className="i-ri-book-open-line size-4 shrink-0" />
-          </IconButton>
-        }
-      />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[200px] p-1">
+    <Menu open={open} onOpenChange={setOpen}>
+      <Tooltip disabled={open}>
+        <MenuTrigger
+          render={
+            <TooltipTrigger
+              render={
+                <IconButton
+                  aria-label={guideLabel}
+                  size="lg"
+                  className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+                >
+                  <span aria-hidden className="i-ri-book-open-line size-4 shrink-0" />
+                </IconButton>
+              }
+            />
+          }
+        />
+        <TooltipContent side="bottom" role="tooltip">
+          {guideLabel}
+        </TooltipContent>
+      </Tooltip>
+      <MenuContent className="min-w-50">
         {options.map((option, index) => (
           <Fragment key={option.href}>
-            {dividerAfterFirst && index === 1 && <DropdownMenuSeparator className="my-1" />}
-            <DropdownItem
+            {dividerAfterFirst && index === 1 && <MenuSeparator className="my-1" />}
+            <GuideMenuItem
               href={option.href}
               icon={option.icon}
               text={t(($) => $[option.labelKey], { ns: 'plugin' })}
             />
           </Fragment>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuContent>
+    </Menu>
   )
+}
+
+export function SubmitRequestMenu({ dividerAfterFirst }: SubmitRequestMenuProps) {
+  const docLink = useDocLink()
+  return <SubmitRequestMenuView dividerAfterFirst={dividerAfterFirst} docLink={docLink} />
 }

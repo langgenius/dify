@@ -1,115 +1,121 @@
-import type { Node } from '../types'
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { fullWorkflowAccessControl } from '../hooks-store'
 import { NodeContextmenu } from '../node-contextmenu'
+import { BlockEnum } from '../types'
+import { CANVAS_NODES_STATUS_NAME, CanvasNodesCatalogProbe } from './canvas-nodes-catalog-probe'
+import { createNode } from './fixtures'
+import { renderWorkflowFlowComponent } from './workflow-test-env'
 
-const mockUseNodes = vi.hoisted(() => vi.fn())
-const mockUseStore = vi.hoisted(() => vi.fn())
-const mockUseNodeActionsMenuModel = vi.hoisted(() => vi.fn())
+function ControlledNodeMenu({ onClose }: { onClose: () => void }) {
+  const [open, setOpen] = useState(true)
 
-vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
-  __esModule: true,
-  default: () => mockUseNodes(),
-}))
+  return (
+    <>
+      <ContextMenu open={open}>
+        <NodeContextmenu
+          onClose={() => {
+            setOpen(false)
+            onClose()
+          }}
+        />
+      </ContextMenu>
+      <CanvasNodesCatalogProbe />
+    </>
+  )
+}
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (
-    selector: (state: { contextMenuTarget?: { type: 'node'; nodeId: string } }) => unknown,
-  ) => mockUseStore(selector),
-}))
+function renderNodeContextmenu(nodeId?: string) {
+  const nodes = [
+    createNode({
+      id: 'node-1',
+      width: 240,
+      height: 80,
+      data: { type: BlockEnum.Code, title: 'Node 1' },
+    }),
+  ]
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  const onClose = vi.fn()
+  const rendered = renderWorkflowFlowComponent(<ControlledNodeMenu onClose={onClose} />, {
+    nodes,
+    edges: [],
+    queryClient,
+    hooksStoreProps: {
+      accessControl: fullWorkflowAccessControl,
+      doSyncWorkflowDraft: vi.fn().mockResolvedValue(undefined),
+    },
+    initialStoreState: nodeId
+      ? { nodes, contextMenuTarget: { type: 'node', nodeId } }
+      : { nodes, contextMenuTarget: undefined },
+    reactFlowProps: { fitView: false },
+  })
 
-vi.mock('@/app/components/workflow/node-actions-menu/use-node-actions-menu-model', () => ({
-  useNodeActionsMenuModel: (props: unknown) => mockUseNodeActionsMenuModel(props),
-}))
+  return { ...rendered, onClose }
+}
+
+function canvasNodeIds() {
+  return (
+    screen.getByRole('status', { name: CANVAS_NODES_STATUS_NAME }).textContent?.split(',') ?? []
+  ).filter(Boolean)
+}
 
 describe('NodeContextmenu', () => {
-  const mockClose = vi.fn()
-  let contextMenuTarget: { type: 'node'; nodeId: string } | undefined
-  let nodes: Node[]
+  it.each([
+    { key: 'c', action: 'copy' },
+    { key: 'd', action: 'duplicate' },
+    { key: 'Delete', action: 'delete' },
+  ] as const)('routes $key through the real $action action', async ({ key, action }) => {
+    const user = userEvent.setup()
+    const { onClose, store } = renderNodeContextmenu('node-1')
+    await screen.findByRole('menu')
+    await user.keyboard('{ArrowDown}')
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    contextMenuTarget = undefined
-    nodes = [
-      {
-        id: 'node-1',
-        type: 'custom',
-        position: { x: 0, y: 0 },
-        data: {
-          title: 'Node 1',
-          desc: '',
-          type: 'code' as never,
-        },
-      } as Node,
-    ]
+    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    await user.keyboard(key.length === 1 ? `{${mod}>}${key}{/${mod}}` : `{${key}}`)
 
-    mockUseNodes.mockImplementation(() => nodes)
-    mockUseStore.mockImplementation(
-      (selector: (state: { contextMenuTarget?: { type: 'node'; nodeId: string } }) => unknown) =>
-        selector({ contextMenuTarget }),
-    )
-    mockUseNodeActionsMenuModel.mockImplementation(
-      (props: { id: string; data: Node['data']; onClose: () => void }) => ({
-        about: {
-          author: 'Dify',
-          description: 'Node actions',
-        },
-        canChangeBlock: false,
-        canRun: false,
-        data: props.data,
-        handleCopy: props.onClose,
-        handleDelete: props.onClose,
-        handleDuplicate: props.onClose,
-        handleRun: props.onClose,
-        helpLinkUri: undefined,
-        id: props.id,
-        isSingleton: false,
-        isUndeletable: false,
-        nodesReadOnly: false,
-        sourceHandle: 'source',
-        workflowAppHref: undefined,
-      }),
-    )
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+    expect(onClose).toHaveBeenCalledOnce()
+
+    if (action === 'copy') {
+      expect(store.getState().clipboardElements.map((node) => node.id)).toEqual(['node-1'])
+      await waitFor(async () => {
+        const clipboard = JSON.parse(await navigator.clipboard.readText()) as {
+          nodes: Array<{ id: string }>
+        }
+        expect(clipboard.nodes.map((node) => node.id)).toEqual(['node-1'])
+      })
+      expect(canvasNodeIds()).toEqual(['node-1'])
+    } else if (action === 'duplicate') {
+      await waitFor(() => expect(canvasNodeIds()).toHaveLength(2))
+      expect(canvasNodeIds()).toContain('node-1')
+      expect(new Set(canvasNodeIds())).toHaveLength(2)
+    } else {
+      await waitFor(() => expect(canvasNodeIds()).toEqual([]))
+    }
   })
 
-  const renderNodeContextmenu = () =>
-    render(
-      <ContextMenu open>
-        <NodeContextmenu onClose={mockClose} />
-      </ContextMenu>,
-    )
-
-  it('should stay hidden when the node menu is absent', () => {
+  it('stays hidden when the node menu is absent', () => {
     renderNodeContextmenu()
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-    expect(mockUseNodeActionsMenuModel).not.toHaveBeenCalled()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('should stay hidden when the referenced node cannot be found', () => {
-    contextMenuTarget = { type: 'node', nodeId: 'missing-node' }
+  it('stays hidden when the referenced node cannot be found', () => {
+    renderNodeContextmenu('missing-node')
 
-    renderNodeContextmenu()
-
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-    expect(mockUseNodeActionsMenuModel).not.toHaveBeenCalled()
-  })
-
-  it('should render the node actions and close from content actions', () => {
-    contextMenuTarget = { type: 'node', nodeId: 'node-1' }
-    renderNodeContextmenu()
-
-    expect(screen.getByText('WORKFLOW.PANEL.ABOUT')).toBeInTheDocument()
-    expect(mockUseNodeActionsMenuModel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'node-1',
-        data: expect.objectContaining({ title: 'Node 1' }),
-        showHelpLink: true,
-      }),
-    )
-
-    fireEvent.click(screen.getByRole('menuitem', { name: /workflow\.common\.copy/i }))
-
-    expect(mockClose).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 })

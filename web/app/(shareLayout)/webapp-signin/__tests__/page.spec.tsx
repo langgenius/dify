@@ -38,8 +38,9 @@ vi.mock('@/service/webapp-auth', () => ({
   webAppLogout: vi.fn(),
 }))
 
+const originalUrl = window.location.href
 afterEach(() => {
-  window.history.replaceState({}, '', '/')
+  window.history.replaceState({}, '', originalUrl)
 })
 
 describe('WebSSOForm redirect security', () => {
@@ -84,7 +85,7 @@ describe('WebSSOForm environment access modes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     navigationMocks.searchParams = new URLSearchParams({
-      redirect_url: '/env/workflow/workflow-app',
+      redirect_url: '/environment/workflow/workflow-app',
     })
   })
 
@@ -105,7 +106,7 @@ describe('WebSSOForm environment access modes', () => {
     await waitFor(() => {
       expect(serviceMocks.fetchWebSAMLSSOUrl).toHaveBeenCalledWith(
         'workflow-app',
-        '/env/workflow/workflow-app',
+        '/environment/workflow/workflow-app',
       )
     })
     expect(navigationMocks.push).toHaveBeenCalledWith('https://idp.example/authorize')

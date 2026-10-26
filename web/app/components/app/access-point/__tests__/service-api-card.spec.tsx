@@ -1,18 +1,46 @@
-import type { AccessPointAppInfo } from '../shared/utils'
-import { screen } from '@testing-library/react'
+import type { AppDetailWithSite, AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import { QueryClientProvider, useSuspenseQuery } from '@tanstack/react-query'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { render } from '@/test/console/render'
-import { AppModeEnum } from '@/types/app'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
 import { ServiceApiAccessPointCard } from '../built-in-access-points/service-api-card'
 
 const mocks = vi.hoisted(() => ({
+  appInfo: null as AppDetailWithSite | null,
   apiSecretKeyButtonProps: vi.fn(),
+  apiEnable: vi.fn(),
 }))
+
+vi.mock('@/app/notifications', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}))
+
+vi.mock('@/service/base', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/base')>()
+  return {
+    ...actual,
+    request: async (url: string, _init: RequestInit, options: { request: Request }) => {
+      if (options.request.method === 'GET') return Response.json(mocks.appInfo)
+      const body = await options.request.json()
+      const updatedApp = await mocks.apiEnable({ params: { app_id: 'app-1' }, body })
+      mocks.appInfo = { ...mocks.appInfo, ...updatedApp }
+      return Response.json(mocks.appInfo)
+    },
+  }
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
 }))
 
-vi.mock('../shared/api-secret-key-button', () => ({
+vi.mock('../built-in-access-points/api-secret-key-button', () => ({
   ApiSecretKeyButton: (props: { canManage: boolean; disabled?: boolean }) => {
     mocks.apiSecretKeyButtonProps(props)
     return (
@@ -24,40 +52,86 @@ vi.mock('../shared/api-secret-key-button', () => ({
 }))
 
 function createAppInfo(
-  mode: AppModeEnum,
-  overrides: Partial<AccessPointAppInfo> = {},
-): AccessPointAppInfo {
-  return {
+  mode: AppMode,
+  overrides: Partial<AppDetailWithSite> = {},
+): AppDetailWithSite {
+  return createAppDetailFixture({
     api_base_url: 'https://api.example.test/v1',
     enable_api: true,
     id: 'app-1',
     mode,
     ...overrides,
-  } as AccessPointAppInfo
+  })
+}
+
+function renderCard(
+  mode: AppMode,
+  availability: 'available' | 'loading' | 'unavailable' = 'available',
+  canManage = true,
+  overrides: Partial<AppDetailWithSite> = {},
+) {
+  mocks.appInfo = createAppInfo(mode, overrides)
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppInfo(mode, overrides),
+  )
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <QueryConnectedServiceApiCard availability={availability} canManage={canManage} />
+    </QueryClientProvider>,
+  )
+}
+
+function QueryConnectedServiceApiCard({
+  availability,
+  canManage,
+}: {
+  availability: 'available' | 'loading' | 'unavailable'
+  canManage: boolean
+}) {
+  const { data: appInfo } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: 'app-1' } } }),
+  )
+  if (!appInfo) return null
+
+  return (
+    <ServiceApiAccessPointCard
+      appInfo={appInfo}
+      availability={availability}
+      canManage={canManage}
+    />
+  )
+}
+
+function createDeferredPromise<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, reject, resolve }
 }
 
 describe('ServiceApiAccessPointCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.apiEnable.mockResolvedValue(createAppDetailFixture({ enable_api: true }))
   })
 
   it.each([
-    [AppModeEnum.ADVANCED_CHAT, '/api-reference/guides/chatflow'],
-    [AppModeEnum.WORKFLOW, '/api-reference/guides/workflow'],
-    [AppModeEnum.CHAT, '/api-reference/guides/chat'],
-    [AppModeEnum.AGENT_CHAT, '/api-reference/guides/chat'],
-    [AppModeEnum.COMPLETION, '/api-reference/guides/completion'],
-  ])('links %s apps to the matching external API reference', (mode, path) => {
-    render(
-      <ServiceApiAccessPointCard
-        appInfo={createAppInfo(mode)}
-        availability="available"
-        canManage
-        onChangeStatus={vi.fn().mockResolvedValue(undefined)}
-      />,
-    )
+    ['advanced-chat', '/api-reference/guides/chatflow'],
+    ['workflow', '/api-reference/guides/workflow'],
+    ['chat', '/api-reference/guides/chat'],
+    ['agent-chat', '/api-reference/guides/chat'],
+    ['completion', '/api-reference/guides/completion'],
+  ] as const)('links %s apps to the matching external API reference', (mode, path) => {
+    renderCard(mode)
 
-    const apiReferenceLink = screen.getByRole('button', { name: /apiInfo\.doc/ })
+    const apiReferenceLink = screen.getByRole('link', { name: /apiInfo\.doc/ })
 
     expect(apiReferenceLink).toHaveAttribute('href', `https://docs.example.test/en${path}`)
     expect(apiReferenceLink).toHaveAttribute('target', '_blank')
@@ -65,14 +139,7 @@ describe('ServiceApiAccessPointCard', () => {
   })
 
   it('shows loading without reporting an environment failure', () => {
-    render(
-      <ServiceApiAccessPointCard
-        appInfo={createAppInfo(AppModeEnum.WORKFLOW)}
-        availability="loading"
-        canManage
-        onChangeStatus={vi.fn().mockResolvedValue(undefined)}
-      />,
-    )
+    renderCard('workflow', 'loading')
 
     const card = screen.getByRole('region', { name: /serviceApi\.title/ })
     expect(card).toHaveAttribute('aria-busy', 'true')
@@ -83,52 +150,73 @@ describe('ServiceApiAccessPointCard', () => {
   })
 
   it('keeps API keys and external documentation available when the API is stopped', () => {
-    render(
-      <ServiceApiAccessPointCard
-        appInfo={createAppInfo(AppModeEnum.WORKFLOW, { enable_api: false })}
-        availability="available"
-        canManage
-        onChangeStatus={vi.fn().mockResolvedValue(undefined)}
-      />,
-    )
+    renderCard('workflow', 'available', true, { enable_api: false })
 
     expect(screen.getByRole('button', { name: 'api-secret-keys' })).toBeEnabled()
-    const apiReferenceLink = screen.getByRole('button', { name: /apiInfo\.doc/ })
-    expect(apiReferenceLink).not.toHaveAttribute('aria-disabled')
+    const apiReferenceLink = screen.getByRole('link', { name: /apiInfo\.doc/ })
     expect(apiReferenceLink).toHaveAttribute(
       'href',
       'https://docs.example.test/en/api-reference/guides/workflow',
     )
   })
 
-  it('disables API management without release permission', () => {
-    render(
-      <ServiceApiAccessPointCard
-        appInfo={createAppInfo(AppModeEnum.WORKFLOW)}
-        availability="available"
-        canManage={false}
-        onChangeStatus={vi.fn().mockResolvedValue(undefined)}
-      />,
-    )
+  it('disables API management without Access Point management permission', () => {
+    renderCard('workflow', 'available', false)
 
     expect(screen.getByRole('button', { name: 'api-secret-keys' })).toBeDisabled()
     expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('disables API keys and external documentation when the access point is unavailable', () => {
-    render(
-      <ServiceApiAccessPointCard
-        appInfo={createAppInfo(AppModeEnum.WORKFLOW)}
-        availability="unavailable"
-        canManage
-        onChangeStatus={vi.fn().mockResolvedValue(undefined)}
-      />,
-    )
+    renderCard('workflow', 'unavailable')
 
     expect(screen.getByRole('button', { name: 'api-secret-keys' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(screen.getByRole('button', { name: /apiInfo\.doc/ })).toBeDisabled()
+  })
+
+  it('rolls back a failed status change and shows only an error toast', async () => {
+    const user = userEvent.setup()
+    const toggle = createDeferredPromise<{ enable_api: boolean }>()
+    mocks.apiEnable.mockReturnValueOnce(toggle.promise)
+    renderCard('workflow')
+
+    const accessSwitch = screen.getByRole('switch')
+    await user.click(accessSwitch)
+
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+
+    await waitFor(() => {
+      expect(mocks.apiEnable).toHaveBeenCalledWith({
+        params: { app_id: 'app-1' },
+        body: { enable_api: false },
+      })
+    })
+
+    toggle.reject(new Error('request failed'))
+
+    await waitFor(() => {
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+    })
+    expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('keeps successful status changes silent', async () => {
+    const user = userEvent.setup()
+    mocks.apiEnable.mockResolvedValueOnce(createAppDetailFixture({ enable_api: false }))
+    renderCard('workflow')
+
+    const accessSwitch = screen.getByRole('switch')
+    await user.click(accessSwitch)
+
+    await waitFor(() => {
+      expect(screen.getByRole('switch')).not.toBeChecked()
+    })
+    expect(mocks.apiEnable).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+      body: { enable_api: false },
+    })
+    expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+    expect(toast.success).not.toHaveBeenCalled()
   })
 })

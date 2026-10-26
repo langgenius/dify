@@ -1,17 +1,21 @@
 'use client'
 
-import type { AccessPointAvailability } from '../shared/access-point-status'
-import type { AccessPointAppInfo } from '../shared/utils'
-import { getAccessPointStatus } from '../shared/access-point-status'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
+import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+import { getAccessPointStatus } from '@/app/components/base/access-point/status'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
 import { getBuiltInAccessUrls } from '../shared/utils'
+import { ApiSecretKeyButton } from './api-secret-key-button'
 
 type ServiceApiAccessPointCardProps = {
-  appInfo: AccessPointAppInfo
+  appInfo: AppDetailWithSite
   availability: AccessPointAvailability
   canManage: boolean
   highlighted?: boolean
-  onChangeStatus: (enabled: boolean) => Promise<void>
 }
 
 export function ServiceApiAccessPointCard({
@@ -19,26 +23,56 @@ export function ServiceApiAccessPointCard({
   availability,
   canManage,
   highlighted,
-  onChangeStatus,
 }: ServiceApiAccessPointCardProps) {
+  const { t } = useTranslation(['common'])
+  const toggleApiMutation = useMutation(
+    consoleQuery.apps.byAppId.apiEnable.post.mutationOptions({
+      scope: {
+        id: `app-service-api-toggle:${appInfo.id}`,
+      },
+      onError: () => {
+        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      },
+    }),
+  )
   const { api: apiUrl } = getBuiltInAccessUrls(appInfo)
-  const running = availability === 'available' && appInfo.enable_api
+  const pendingEnabled = toggleApiMutation.variables?.body.enable_api
+  const optimisticEnabled =
+    toggleApiMutation.isPending && pendingEnabled !== undefined
+      ? pendingEnabled
+      : appInfo.enable_api
+  const running = availability === 'available' && optimisticEnabled
   const status = getAccessPointStatus(availability, running)
+
+  const handleEnabledChange = (enabled: boolean) => {
+    if (!canManage) return
+
+    toggleApiMutation.mutate({
+      params: {
+        app_id: appInfo.id,
+      },
+      body: {
+        enable_api: enabled,
+      },
+    })
+  }
 
   return (
     <ServiceApiCardView
-      apiKeyButtonProps={{
-        appId: appInfo.id,
-        canManage,
-        disabled: availability !== 'available',
-      }}
+      apiKeyAction={
+        <ApiSecretKeyButton
+          appId={appInfo.id}
+          canManage={canManage}
+          disabled={availability !== 'available'}
+        />
+      }
       apiUrl={apiUrl}
       appMode={appInfo.mode}
       available={availability === 'available'}
       status={status}
       highlighted={highlighted}
       switchDisabled={!canManage}
-      onEnabledChange={availability === 'available' ? onChangeStatus : undefined}
+      onEnabledChange={availability === 'available' ? handleEnabledChange : undefined}
     />
   )
 }

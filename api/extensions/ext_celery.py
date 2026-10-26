@@ -1,6 +1,7 @@
+import logging
 import ssl
 from datetime import timedelta
-from typing import Any
+from typing import Any, NotRequired
 
 import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
@@ -14,6 +15,8 @@ from enums import DeploymentEdition
 from extensions.redis_names import normalize_redis_key_prefix
 from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
 
+logger = logging.getLogger(__name__)
+
 
 class _CelerySentinelKwargsDict(TypedDict):
     socket_timeout: float | None
@@ -24,6 +27,7 @@ class CelerySentinelTransportDict(TypedDict, total=False):
     master_name: str | None
     sentinel_kwargs: _CelerySentinelKwargsDict
     global_keyprefix: str
+    visibility_timeout: int
 
 
 class CelerySSLOptionsDict(TypedDict):
@@ -36,6 +40,8 @@ class CelerySSLOptionsDict(TypedDict):
 class CeleryBeatScheduleEntry(TypedDict):
     task: str
     schedule: crontab | timedelta
+    kwargs: NotRequired[dict[str, str]]
+    options: NotRequired[dict[str, Any]]
 
 
 def _enqueue_initial_community_telemetry_heartbeat(sender: Any, **_: Any) -> None:
@@ -100,6 +106,19 @@ def get_celery_broker_transport_options() -> CelerySentinelTransportDict | dict[
     if global_keyprefix:
         transport_options["global_keyprefix"] = global_keyprefix
 
+    visibility = dify_config.CELERY_BROKER_VISIBILITY_TIMEOUT
+    if isinstance(visibility, int) and not isinstance(visibility, bool):
+        transport_options["visibility_timeout"] = visibility
+    if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
+        broker = dify_config.CELERY_BROKER_URL or ""
+        if not broker:
+            raise ValueError("KnowledgeFS workers require an explicit CELERY_BROKER_URL")
+        if broker.startswith(("redis://", "rediss://", "sentinel://")) and (
+            not isinstance(visibility, int)
+            or visibility <= dify_config.KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS + 30
+        ):
+            raise ValueError("KnowledgeFS workers require CELERY_BROKER_VISIBILITY_TIMEOUT above their hard task limit")
+
     return transport_options
 
 
@@ -147,6 +166,9 @@ def init_app(app: DifyApp) -> Celery:
             result_backend_transport_options=broker_transport_options,
         )
 
+    if "visibility_timeout" in broker_transport_options:
+        celery_app.conf.visibility_timeout = broker_transport_options["visibility_timeout"]
+
     # Apply SSL configuration if enabled
     ssl_options = get_celery_ssl_options()
     if ssl_options:
@@ -166,22 +188,91 @@ def init_app(app: DifyApp) -> Celery:
     setup_workflow_warm_shutdown_handler()
 
     imports = [
+        "schedule.collect_agent_sandbox_usage",  # optional background provider accounting
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.collect_agent_resources_task",  # retired Agent resource collection
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.rag_pipeline.rag_pipeline_run_task",  # regular RAG pipeline execution
+        "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
         "tasks.install_default_plugins_task",  # tenant default plugin installation
-        "tasks.new_agent_beta_task",  # New Agent Beta eligibility checks
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
-        "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
+        "tasks.knowledge_fs_initial_source_preview_tasks",  # datasource previews use the standard dataset queue
+        "tasks.knowledge_fs_agent_investigation_tasks",
+        "tasks.knowledge_fs_failed_retrieval_tasks",  # best-effort Workflow quality capture uses dataset workers
+        "tasks.knowledge_fs_upgrade_tasks",  # legacy Dataset upgrades use a dedicated queue and worker
+        "tasks.knowledge_fs_background_tasks",  # local-engine tasks on dedicated prefork queues
+        "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
+        from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
+
+        interval = dify_config.KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS
+        for operation, queue in OPERATION_QUEUES.items():
+            beat_schedule[f"knowledge_fs_background_{operation}"] = {
+                "task": OPERATION_TASK,
+                "schedule": timedelta(seconds=interval),
+                "kwargs": {"operation": operation},
+                # These are recoverable database sweeps, not document messages. Expired wakeups
+                # must not replay a backlog of timer ticks after an extended worker outage.
+                "options": {"queue": queue, "expires": max(30, interval * 2)},
+            }
+    from services.knowledge_fs.lifecycle_readiness import get_configured_knowledge_fs_lifecycle_worker_readiness
+
+    if get_configured_knowledge_fs_lifecycle_worker_readiness().ready:
+        imports.extend(
+            [
+                "tasks.knowledge_fs_initial_source_tasks",
+                "tasks.knowledge_fs_lifecycle_tasks",
+                "tasks.knowledge_fs_source_import_tasks",
+            ]
+        )
+        beat_schedule["knowledge_fs_lifecycle_worker"] = {
+            "task": "tasks.knowledge_fs_lifecycle_tasks.run_knowledge_fs_lifecycle_worker",
+            "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
+        beat_schedule["knowledge_fs_staged_upload_cleanup"] = {
+            "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
+            "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
+        beat_schedule["knowledge_fs_upgrade_recovery"] = {
+            "task": "tasks.knowledge_fs_upgrade_tasks.recover_stalled_knowledge_fs_upgrades",
+            "schedule": timedelta(seconds=60),
+            "options": {"expires": 60},
+        }
+        beat_schedule["knowledge_fs_upgrade_file_cleanup"] = {
+            "task": "tasks.knowledge_fs_upgrade_tasks.cleanup_deferred_knowledge_fs_upgrade_files",
+            "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
+    if dify_config.OPS_AGENT_TRACE_ENABLED:
+        imports.append("tasks.application_trace_task")
+    if dify_config.OPS_AGENT_TRACE_ENABLED and dify_config.ENABLE_APPLICATION_TRACE_RECONCILE_TASK:
+        beat_schedule["reconcile_application_traces"] = {
+            "task": "tasks.application_trace_task.reconcile_application_traces",
+            "schedule": timedelta(seconds=30),
+            "options": {"expires": 25},
+        }
+    if dify_config.AGENT_SANDBOX_METERING_ENABLED:
+        try:
+            interval = int(dify_config.AGENT_SANDBOX_METERING_INTERVAL_SECONDS)
+            if interval < 1:
+                raise ValueError("collection interval must be positive")
+            collection_schedule = timedelta(seconds=interval)
+        except (ValueError, OverflowError):
+            logger.warning("Skipping sandbox usage schedule: interval must be a valid positive number of seconds")
+        else:
+            beat_schedule["collect_agent_sandbox_usage"] = {
+                "task": "schedule.collect_agent_sandbox_usage.collect_agent_sandbox_usage",
+                "schedule": collection_schedule,
+                "options": {"expires": interval},
+            }
     if dify_config.ENABLE_CONVERSATION_CLEANUP_TASK:
         imports.append("tasks.delete_conversation_task")
         beat_schedule["conversation_cleanup_sweeper"] = {
@@ -237,8 +328,7 @@ def init_app(app: DifyApp) -> Celery:
             "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
         }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
-        imports.append("schedule.check_upgradable_plugin_task")
-        imports.append("tasks.process_tenant_plugin_autoupgrade_check_task")
+        imports.extend(("schedule.check_upgradable_plugin_task", "tasks.process_tenant_plugin_autoupgrade_check_task"))
         beat_schedule["check_upgradable_plugin_task"] = {
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
             "schedule": crontab(minute="*/15"),

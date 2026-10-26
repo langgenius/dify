@@ -21,7 +21,7 @@ export function FileTabs({
   previewPath: string | undefined
   selectedPath: string
 }) {
-  const { t } = useTranslation('skill')
+  const { t } = useTranslation(['skill'])
 
   return (
     <div className="flex h-11 shrink-0 items-stretch overflow-hidden rounded-t-lg border-b-[0.5px] border-divider-subtle bg-components-panel-bg-alt">
@@ -36,9 +36,9 @@ export function FileTabs({
               <div
                 key={file.path}
                 className={cn(
-                  'group/tab flex h-11 max-w-[214px] shrink-0 items-center border-r-[0.5px] border-divider-subtle',
+                  'group/tab flex h-11 max-w-53.5 shrink-0 items-center border-r-[0.5px] border-divider-subtle',
                   selected && 'bg-components-panel-bg',
-                  !closable && 'w-[106px]',
+                  !closable && 'w-26.5',
                 )}
               >
                 <button

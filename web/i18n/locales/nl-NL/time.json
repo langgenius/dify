@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
+  "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
+  "operation.cancel": "Cancel",
+  "operation.now": "Now",
+  "operation.ok": "OK",
+  "operation.pickDate": "Pick Date",
+  "picker.chooseMonthAndYear": "Kies maand en jaar",
+  "picker.endDate": "Einddatum",
+  "picker.hour": "Uur",
+  "picker.minute": "Minuut",
+  "picker.month": "Maand",
+  "picker.nextMonth": "Volgende maand",
+  "picker.period": "AM/PM",
+  "picker.previousMonth": "Vorige maand",
+  "picker.required": "Kies een waarde.",
+  "picker.requiredLabel": "Verplicht",
+  "picker.startDate": "Begindatum",
+  "picker.unavailable": "Deze datum of tijd is niet beschikbaar.",
+  "picker.year": "Jaar",
+  "title.pickTime": "Pick Time"
+}

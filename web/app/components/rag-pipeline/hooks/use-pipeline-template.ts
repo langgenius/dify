@@ -5,7 +5,7 @@ import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base
 import { generateNewNode } from '@/app/components/workflow/utils'
 
 export const usePipelineTemplate = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const { newNode: knowledgeBaseNode } = generateNewNode({
     id: 'knowledgeBase',

@@ -2,8 +2,15 @@
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
@@ -27,10 +34,8 @@ export const CommonCreateModal = ({ open = true, onClose, createType, builder }:
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
-          'flex max-h-[80%] min-h-90 flex-col overflow-hidden p-0 shadow-xs',
-          createType === SupportedCreationMethods.MANUAL
-            ? 'w-160 max-w-[calc(100vw-2rem)]'
-            : 'w-120 max-w-[calc(100vw-2rem)]',
+          'max-h-[80%] min-h-90',
+          createType === SupportedCreationMethods.MANUAL && 'w-160',
         )}
       >
         <CommonCreateModalContent createType={createType} builder={builder} onClose={onClose} />
@@ -40,7 +45,7 @@ export const CommonCreateModal = ({ open = true, onClose, createType, builder }:
 }
 
 function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 'open'>) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
 
   const {
     currentStep,
@@ -67,33 +72,17 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
   const isVerifyStep = currentStep === ApiKeyStep.Verify
   const isConfigurationStep = currentStep === ApiKeyStep.Configuration
   const isDisabled = isVerifyingCredentials || isBuilding
-  const modalSize = createType === SupportedCreationMethods.MANUAL ? 'md' : 'sm'
 
   return (
-    <div
-      className="flex min-h-0 flex-1 flex-col"
-      data-testid="modal"
-      data-size={modalSize}
-      data-disabled={isDisabled}
-    >
-      <div className="relative shrink-0 p-6 pr-14 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+    <>
+      <DialogHeader>
+        <DialogTitle>
           {t(($) => $[MODAL_TITLE_KEY_MAP[createType]], { ns: 'pluginTrigger' })}
         </DialogTitle>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-5 right-5"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-      </div>
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+      <DialogBody>
         {isApiKeyType && <MultiSteps currentStep={currentStep} />}
 
         {isVerifyStep && (
@@ -120,30 +109,22 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
             provider={detail?.provider || ''}
           />
         )}
-      </div>
+      </DialogBody>
 
-      <div className="flex shrink-0 justify-end p-6 pt-5">
-        <div className="flex items-center">
-          <Button disabled={isDisabled} onClick={onClose}>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button
-            className="ml-2"
-            variant="primary"
-            disabled={isDisabled}
-            data-testid="modal-confirm"
-            onClick={handleConfirm}
-          >
-            {confirmButtonText}
-          </Button>
-        </div>
-      </div>
-
-      {isVerifyStep && (
-        <div className="shrink-0">
-          <EncryptedBottom />
-        </div>
-      )}
-    </div>
+      <DialogFooter>
+        <Button disabled={isDisabled} onClick={onClose}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </Button>
+        <Button
+          variant="primary"
+          disabled={isDisabled}
+          data-testid="modal-confirm"
+          onClick={handleConfirm}
+        >
+          {confirmButtonText}
+        </Button>
+      </DialogFooter>
+      {isVerifyStep && <EncryptedBottom />}
+    </>
   )
 }

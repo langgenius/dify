@@ -3,9 +3,10 @@ import type {
   TriggerProviderApiEntity,
   TriggerSubscription,
 } from '@/app/components/workflow/block-selector/types'
-import { render, screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { CreateSubscriptionButton } from '../index'
 import { CreateButtonType } from '../types'
 
@@ -14,68 +15,69 @@ const toastMocks = vi.hoisted(() => ({
   error: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks,
 }))
 
-vi.mock('../../../store', () => ({
-  usePluginStore: (selector: (state: { detail: { provider: string } }) => unknown) =>
-    selector({ detail: { provider: 'test-provider' } }),
-}))
+vi.mock('../../../store', () => {
+  const detail = {
+    provider: 'test-provider',
+    plugin_id: 'test/plugin',
+    name: 'Test plugin',
+    declaration: {
+      trigger: {
+        subscription_schema: [],
+        subscription_constructor: { credentials_schema: [], parameters: [] },
+      },
+    },
+  }
+  return {
+    usePluginStore: (selector: (state: { detail: typeof detail }) => unknown) =>
+      selector({ detail }),
+  }
+})
 
 const mockSubscriptions: TriggerSubscription[] = []
 vi.mock('../../use-subscription-list', () => ({
-  useSubscriptionList: () => ({ subscriptions: mockSubscriptions }),
+  useSubscriptionList: () => ({ subscriptions: mockSubscriptions, refetch: vi.fn() }),
 }))
 
 let mockProviderInfo: TriggerProviderApiEntity | undefined
 let mockOAuthConfig: TriggerOAuthConfig | undefined
 const mockRefetchOAuthConfig = vi.fn()
-const mockInitiateOAuth = vi.fn()
+const { mockInitiateOAuth, mockCreateBuilder, mockBuildSubscription } = vi.hoisted(() => ({
+  mockInitiateOAuth: vi.fn(),
+  mockCreateBuilder: vi.fn(),
+  mockBuildSubscription: vi.fn(),
+}))
 
-vi.mock('@/service/use-triggers', () => ({
+vi.mock('@/service/use-triggers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-triggers')>()),
   useTriggerProviderInfo: () => ({ data: mockProviderInfo }),
   useTriggerOAuthConfig: () => ({ data: mockOAuthConfig, refetch: mockRefetchOAuthConfig }),
-  useInitiateTriggerOAuth: () => ({ mutate: mockInitiateOAuth }),
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get':
+        mockInitiateOAuth,
+      'workspaces.current.triggerProvider.byProvider.subscriptions.builder.create.post':
+        mockCreateBuilder,
+      'workspaces.current.triggerProvider.byProvider.subscriptions.builder.build.bySubscriptionBuilderId.post':
+        mockBuildSubscription,
+      'workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get':
+        async () => ({ logs: [] }),
+    }),
+  }
+})
 
 const mockOpenOAuthPopup = vi.fn()
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: (...args: unknown[]) => mockOpenOAuthPopup(...args),
-}))
-
-vi.mock('../common-modal', () => ({
-  CommonCreateModal: ({
-    open,
-    createType,
-    builder,
-    onClose,
-  }: {
-    open: boolean
-    createType: SupportedCreationMethods
-    builder?: { id: string }
-    onClose: () => void
-  }) =>
-    open ? (
-      <div role="dialog" data-create-type={createType} data-builder-id={builder?.id}>
-        <button onClick={onClose}>Close create modal</button>
-      </div>
-    ) : null,
-}))
-
-vi.mock('../oauth-client', () => ({
-  OAuthClientSettingsModal: ({
-    open,
-    onOpenChange,
-  }: {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-  }) =>
-    open ? (
-      <div role="dialog" aria-label="OAuth client settings">
-        <button onClick={() => onOpenChange(false)}>Close OAuth settings</button>
-      </div>
-    ) : null,
 }))
 
 const providerInfo = (
@@ -95,6 +97,19 @@ describe('CreateSubscriptionButton', () => {
     mockSubscriptions.splice(0)
     mockProviderInfo = providerInfo([SupportedCreationMethods.MANUAL])
     mockOAuthConfig = undefined
+    mockCreateBuilder.mockResolvedValue({
+      subscription_builder: {
+        id: 'new-builder',
+        provider: 'test-provider',
+        name: '',
+        credentials: {},
+        parameters: {},
+        properties: {},
+        endpoint: 'https://example.com/callback',
+        workflows_in_use: 0,
+      },
+    })
+    mockBuildSubscription.mockResolvedValue({})
   })
 
   it('does not render without a supported creation method', () => {
@@ -111,10 +126,18 @@ describe('CreateSubscriptionButton', () => {
 
     await user.click(screen.getByRole('button', { name: /subscription\.createButton\.manual/ }))
 
-    expect(await screen.findByRole('dialog')).toHaveAttribute(
-      'data-create-type',
-      SupportedCreationMethods.MANUAL,
+    const dialog = await screen.findByRole('dialog', { name: 'pluginTrigger.modal.manual.title' })
+    await waitFor(() =>
+      expect(mockCreateBuilder).toHaveBeenCalledWith({
+        params: { provider: 'test-provider' },
+        body: { credential_type: 'unauthorized' },
+      }),
     )
+    expect(
+      within(dialog).getByRole('textbox', { name: /subscriptionName.label/ }),
+    ).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('uses the real select to choose among multiple methods', async () => {
@@ -133,9 +156,15 @@ describe('CreateSubscriptionButton', () => {
       }),
     )
 
-    expect(await screen.findByRole('dialog')).toHaveAttribute(
-      'data-create-type',
-      SupportedCreationMethods.APIKEY,
+    const dialog = await screen.findByRole('dialog', { name: 'pluginTrigger.modal.apiKey.title' })
+    expect(
+      within(dialog).getByRole('button', { name: 'pluginTrigger.modal.common.verify' }),
+    ).toBeInTheDocument()
+    await waitFor(() =>
+      expect(mockCreateBuilder).toHaveBeenCalledWith({
+        params: { provider: 'test-provider' },
+        body: { credential_type: 'api-key' },
+      }),
     )
   })
 
@@ -153,7 +182,9 @@ describe('CreateSubscriptionButton', () => {
       }),
     )
 
-    expect(await screen.findByRole('dialog', { name: 'OAuth client settings' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('dialog', { name: 'pluginTrigger.modal.oauth.title' }),
+    ).toBeInTheDocument()
   })
 
   it('refetches OAuth configuration when settings close', async () => {
@@ -166,7 +197,8 @@ describe('CreateSubscriptionButton', () => {
     await user.click(
       screen.getByLabelText('pluginTrigger.subscription.addType.options.oauth.clientSettings'),
     )
-    await user.click(await screen.findByRole('button', { name: 'Close OAuth settings' }))
+    const settings = await screen.findByRole('dialog', { name: 'pluginTrigger.modal.oauth.title' })
+    await user.click(within(settings).getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(mockRefetchOAuthConfig).toHaveBeenCalledTimes(1)
   })
@@ -175,13 +207,19 @@ describe('CreateSubscriptionButton', () => {
     const user = userEvent.setup()
     mockProviderInfo = providerInfo([SupportedCreationMethods.OAUTH])
     mockOAuthConfig = oauthConfig(true)
-    mockInitiateOAuth.mockImplementationOnce(
-      (_provider: string, { onSuccess }: { onSuccess: (response: unknown) => void }) =>
-        onSuccess({
-          authorization_url: 'https://example.com/oauth',
-          subscription_builder: { id: 'builder-1' },
-        }),
-    )
+    mockInitiateOAuth.mockResolvedValueOnce({
+      authorization_url: 'https://example.com/oauth',
+      subscription_builder: {
+        id: 'builder-1',
+        provider: 'test-provider',
+        name: '',
+        credential_type: 'oauth2',
+        credentials: {},
+        endpoint: 'https://example.com/callback',
+        parameters: {},
+        properties: {},
+      },
+    })
     mockOpenOAuthPopup.mockImplementationOnce((_url: string, callback: (data: unknown) => void) =>
       callback({ success: true }),
     )
@@ -194,7 +232,20 @@ describe('CreateSubscriptionButton', () => {
       }),
     )
 
-    expect(await screen.findByRole('dialog')).toHaveAttribute('data-builder-id', 'builder-1')
+    const dialog = await screen.findByRole('dialog', { name: 'pluginTrigger.modal.oauth.title' })
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /subscriptionName.label/ }),
+      'OAuth updates',
+    )
+    await user.click(
+      within(dialog).getByRole('button', { name: 'pluginTrigger.modal.common.create' }),
+    )
+    await waitFor(() =>
+      expect(mockBuildSubscription).toHaveBeenCalledWith({
+        params: { provider: 'test-provider', subscription_builder_id: 'builder-1' },
+        body: { name: 'OAuth updates' },
+      }),
+    )
     expect(toastMocks.success).toHaveBeenCalledTimes(1)
   })
 

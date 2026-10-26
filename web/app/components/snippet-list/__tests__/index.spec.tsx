@@ -1,84 +1,44 @@
-import { fireEvent, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
+import { SnippetDetailTop } from '@/app/components/snippets/components/snippet-detail-top'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { renderWithNuqs } from '@/test/nuqs-testing'
 import SnippetList from '..'
 
 const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
-const mockSetKeywords = vi.hoisted(() => vi.fn())
-const mockSetTagIDs = vi.hoisted(() => vi.fn())
-const mockSetCreatorIDs = vi.hoisted(() => vi.fn())
-const mockQueryState = vi.hoisted(() => ({
-  tagIDs: [] as string[],
-  keywords: '',
-  creatorIDs: [] as string[],
-}))
-
-vi.mock('@/service/use-snippets', () => ({
-  useCreateSnippetMutation: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-  }),
-  useDeleteSnippetMutation: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-  }),
-  useExportSnippetMutation: () => ({
-    mutateAsync: vi.fn(),
-  }),
-  useImportSnippetDSLMutation: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-  }),
-  useConfirmSnippetImportMutation: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-  }),
+vi.mock('@/service/use-snippets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-snippets')>()),
   useInfiniteSnippetList: (params: unknown, options: unknown) =>
     mockUseInfiniteSnippetList(params, options),
-  useUpdateSnippetMutation: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-  }),
 }))
 
-vi.mock('../hooks/use-snippets-query-state', () => ({
-  useSnippetsQueryState: () => ({
-    query: mockQueryState,
-    setKeywords: mockSetKeywords,
-    setTagIDs: mockSetTagIDs,
-    setCreatorIDs: mockSetCreatorIDs,
-  }),
-}))
+const mockBindTags = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'tagBindings.post': mockBindTags,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.members.get': async () => ({
+        accounts: [
+          { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
+          { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
+        ],
+      }),
+      'tags.get': async () => [
+        { id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: '0' },
+        { id: 'tag-2', name: 'Support', type: 'snippet', binding_count: '0' },
+      ],
+    }),
+  }
+})
 
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    systemFeatures: vi.fn(),
-  },
-  consoleQuery: {
-    account: {
-      profile: {
-        get: {
-          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-        },
-      },
-    },
-    tags: {
-      list: {
-        queryOptions: (options: unknown) => options,
-      },
-    },
-    systemFeatures: {
-      get: {
-        queryKey: () => ['console', 'systemFeatures', 'get'],
-      },
-    },
-  },
-}))
-
-const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
-const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
 
 vi.mock('@/context/workspace-state', async () => {
@@ -100,23 +60,12 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
-        { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
-      ],
-    },
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(''),
 }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => {
     return function MockDynamicComponent(props: {
       show: boolean
@@ -144,60 +93,30 @@ vi.mock('@/next/dynamic', () => ({
   },
 }))
 
-vi.mock('@/features/tag-management/components/tag-filter', () => ({
-  TagFilter: ({ onOpenTagManagement }: { onOpenTagManagement: () => void }) => (
-    <button type="button" onClick={onOpenTagManagement}>
-      common.tag.placeholder
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
-  CreateSnippetDialog: () => null,
-}))
-
-vi.mock('@/features/tag-management/components/tag-selector', () => ({
-  TagSelector: ({
-    onOpenTagManagement,
-    onTagsChange,
-  }: {
-    onOpenTagManagement: () => void
-    onTagsChange: () => void
-  }) => (
-    <div data-testid="snippet-card-tags">
-      <button type="button" onClick={onOpenTagManagement}>
-        open card tags
-      </button>
-      <button type="button" onClick={onTagsChange}>
-        refresh card tags
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/hooks/use-document-title', () => ({
-  default: vi.fn(),
-}))
-
 let intersectionCallback: IntersectionObserverCallback | undefined
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
 
-beforeAll(() => {
-  globalThis.IntersectionObserver = class MockIntersectionObserver {
-    constructor(callback: IntersectionObserverCallback) {
-      intersectionCallback = callback
-    }
+beforeEach(() => {
+  intersectionCallback = undefined
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class MockIntersectionObserver {
+      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+        if (options?.root) intersectionCallback = callback
+      }
 
-    observe = mockObserve
-    disconnect = mockDisconnect
-    unobserve = vi.fn()
-    root = null
-    rootMargin = ''
-    thresholds = []
-    takeRecords = () => []
-  } as unknown as typeof IntersectionObserver
+      observe = mockObserve
+      disconnect = mockDisconnect
+      unobserve = vi.fn()
+      root = null
+      rootMargin = ''
+      thresholds = []
+      takeRecords = () => []
+    } as unknown as typeof IntersectionObserver,
+  )
 })
+afterEach(() => vi.unstubAllGlobals())
 
 const mockRefetch = vi.fn()
 const mockFetchNextPage = vi.fn()
@@ -236,30 +155,39 @@ const mockSnippetListState = {
 }
 
 const renderList = ({
-  brandingEnabled = false,
+  searchParams = '',
 }: {
-  brandingEnabled?: boolean
+  searchParams?: string
 } = {}) => {
   const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     accountProfile: { id: 'creator-1' },
-    systemFeatures: { branding: { enabled: brandingEnabled } },
   })
-
-  return renderWithNuqs(
+  const onUrlUpdate = vi.fn()
+  const createRoute = (path: string, params: string, content: ReactNode) => (
     <ConsoleQueryWrapper>
-      <SnippetList />
-    </ConsoleQueryWrapper>,
+      <NuqsTestingAdapter key={path} searchParams={params} hasMemory onUrlUpdate={onUrlUpdate}>
+        {content}
+      </NuqsTestingAdapter>
+    </ConsoleQueryWrapper>
   )
+  const createList = () => createRoute('/snippets', searchParams, <SnippetList />)
+  const rendered = render(createList())
+
+  return {
+    ...rendered,
+    onUrlUpdate,
+    rerenderList: () => rendered.rerender(createList()),
+    showDetail: () =>
+      rendered.rerender(createRoute('/snippets/snippet-1/orchestrate', '', <SnippetDetailTop />)),
+    showList: (href: string) =>
+      rendered.rerender(createRoute('/snippets', href.split('?')[1] ?? '', <SnippetList />)),
+  }
 }
 
 describe('SnippetList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockQueryState.tagIDs = []
-    mockQueryState.keywords = ''
-    mockQueryState.creatorIDs = []
-    mockIsCurrentWorkspaceEditor.mockReturnValue(true)
-    mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
+    mockBindTags.mockResolvedValue({ result: 'success' })
     mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
     mockUseInfiniteSnippetList.mockReturnValue({
       ...mockSnippetListState,
@@ -272,8 +200,17 @@ describe('SnippetList', () => {
   it('renders the dedicated snippets list layout', () => {
     renderList()
 
-    expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
+    expect(screen.getByRole('link', { name: 'navigation.menus.apps' })).toHaveAttribute(
+      'href',
+      '/apps',
+    )
     expect(screen.getByRole('heading', { name: 'workflow.tabs.snippets' })).toBeInTheDocument()
+    const path = within(screen.getByRole('navigation', { name: 'workflow.tabs.snippets' }))
+    expect(path.getByRole('link', { name: 'navigation.menus.apps' })).toHaveAttribute(
+      'href',
+      '/apps',
+    )
+    expect(path.getByText('workflow.tabs.snippets')).toHaveAttribute('aria-current', 'page')
     expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
@@ -288,121 +225,162 @@ describe('SnippetList', () => {
     expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
   })
 
-  it('lays out snippet cards with auto-fill grid columns', () => {
-    renderList()
-
-    const card = screen.getByRole('link', { name: /Sales Snippet/ }).closest('article')
-    const grid = card?.parentElement
-
-    expect(grid).toHaveClass('grid', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]')
+  it('combines URL search and tags with the selected creator when requesting snippets', async () => {
+    const user = userEvent.setup()
+    renderList({ searchParams: '?tagIDs=tag-1;tag-2&keywords=sales' })
+    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+    await user.click(await screen.findByRole('option', { name: /Bob/ }))
+    await waitFor(() =>
+      expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+        {
+          page: 1,
+          limit: 30,
+          keyword: 'sales',
+          tag_ids: ['tag-1', 'tag-2'],
+          creator_ids: ['creator-2'],
+        },
+        { enabled: true },
+      ),
+    )
   })
 
-  it('passes creator, tag, and search filters to the snippets list query', () => {
-    mockQueryState.tagIDs = ['tag-1', 'tag-2']
-    mockQueryState.keywords = 'sales'
-    mockQueryState.creatorIDs = ['creator-1', 'creator-2']
-
-    renderList()
-
-    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(
+  it('restores creator, tag and publication filters from the URL', () => {
+    renderList({
+      searchParams:
+        '?creatorIDs=creator-1;creator-2&tagIDs=tag-1;tag-2&keywords=sales&publishStatus=draft',
+    })
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
       {
         page: 1,
         limit: 30,
         keyword: 'sales',
-        tag_ids: ['tag-1', 'tag-2'],
         creator_ids: ['creator-1', 'creator-2'],
+        tag_ids: ['tag-1', 'tag-2'],
+        is_published: false,
       },
-      {
-        enabled: true,
-      },
+      { enabled: true },
     )
+    expect(screen.getByRole('button', { name: 'snippet.draft' })).toBeInTheDocument()
   })
 
-  it('does not pass published state to the snippets list query by default', () => {
-    renderList()
-
-    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(
-      expect.not.objectContaining({
-        is_published: expect.any(Boolean),
-      }),
-      {
-        enabled: true,
-      },
+  it('retains creator, tag and publication selections through the snippet return link', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate, showDetail, showList } = renderList()
+    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+    await user.click(await screen.findByRole('option', { name: /Alice/ }))
+    await user.click(screen.getByRole('option', { name: /Bob/ }))
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('combobox', { name: 'common.tag.placeholder' }))
+    await user.click(await screen.findByRole('option', { name: 'Sales' }))
+    await user.keyboard('{Escape}')
+    await user.click(
+      screen.getByRole('button', { name: 'workflow.common.published / snippet.draft' }),
     )
-  })
-
-  it('passes published state when selecting the published filter', () => {
-    renderList()
-
-    fireEvent.click(
-      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
+    await user.click(await screen.findByRole('menuitemradio', { name: 'snippet.draft' }))
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('publishStatus')).toBe('draft'),
     )
-    fireEvent.click(screen.getByRole('menuitemradio', { name: /workflow\.common\.published/i }))
 
+    showDetail()
+    const href = screen.getByRole('link', { name: 'workflow.tabs.snippets' }).getAttribute('href')!
+    const params = new URLSearchParams(href.split('?')[1])
+    expect(params.get('creatorIDs')).toBe('creator-1;creator-2')
+    expect(params.get('tagIDs')).toBe('tag-1')
+    expect(params.get('publishStatus')).toBe('draft')
+    showList(href)
+    expect(screen.getByRole('button', { name: 'snippet.draft' })).toBeInTheDocument()
+    expect(await screen.findByRole('combobox', { name: 'Sales' })).toBeInTheDocument()
+    await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
+    expect(await screen.findByRole('option', { name: /Alice/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByRole('option', { name: /Bob/ })).toHaveAttribute('aria-selected', 'true')
     expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        is_published: true,
-      }),
-      {
-        enabled: true,
-      },
-    )
-  })
-
-  it('passes draft state when selecting the draft filter', () => {
-    renderList()
-
-    fireEvent.click(
-      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
-    )
-    fireEvent.click(screen.getByRole('menuitemradio', { name: /snippet\.draft/i }))
-
-    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
-      expect.objectContaining({
+        creator_ids: ['creator-1', 'creator-2'],
+        tag_ids: ['tag-1'],
         is_published: false,
       }),
-      {
-        enabled: true,
-      },
+      { enabled: true },
     )
   })
 
-  it('updates the search query state from the search input', () => {
-    renderList()
-
-    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'summary' } })
-
-    expect(mockSetKeywords).toHaveBeenCalledWith('summary')
-  })
-
-  it('clears the search query state and returns focus to the search input', async () => {
+  it('does not restore cleared creators, tags or publication status', async () => {
     const user = userEvent.setup()
-    mockQueryState.keywords = 'summary'
-
-    renderList()
-
-    const searchInput = screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' })
+    const { onUrlUpdate, showDetail, showList } = renderList({
+      searchParams: '?creatorIDs=creator-1&tagIDs=tag-1&publishStatus=published',
+    })
+    await user.click(screen.getByRole('button', { name: 'app.studio.filters.reset' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-
-    expect(mockSetKeywords).toHaveBeenCalledWith('')
-    expect(searchInput).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: 'workflow.common.published' }))
+    await user.click(await screen.findByRole('menuitemradio', { name: 'app.types.all' }))
+    await waitFor(() => expect(onUrlUpdate.mock.lastCall?.[0].searchParams.toString()).toBe(''))
+    showDetail()
+    expect(screen.getByRole('link', { name: 'workflow.tabs.snippets' })).toHaveAttribute(
+      'href',
+      '/snippets',
+    )
+    showList('/snippets')
+    expect(
+      screen.queryByRole('button', { name: 'app.studio.filters.reset' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'common.tag.placeholder' })).toBeInTheDocument()
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+      { page: 1, limit: 30, keyword: '' },
+      { enabled: true },
+    )
   })
 
-  it('updates the creator query state as a multi creator filter', () => {
+  it.each([
+    { label: 'workflow.common.published', published: true },
+    { label: 'snippet.draft', published: false },
+  ])('filters $label and returns to all statuses', async ({ label, published }) => {
+    const user = userEvent.setup()
     renderList()
-
-    fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.creators' }))
-    fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
-
-    expect(mockSetCreatorIDs).toHaveBeenCalledWith(['creator-2'])
+    await user.click(
+      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
+    )
+    await user.click(await screen.findByRole('menuitemradio', { name: label }))
+    expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+      expect.objectContaining({ is_published: published }),
+      { enabled: true },
+    )
+    await user.click(screen.getByRole('button', { name: label }))
+    await user.click(await screen.findByRole('menuitemradio', { name: 'app.types.all' }))
+    expect(
+      screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
+    ).toBeInTheDocument()
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ is_published: expect.any(Boolean) }),
+      { enabled: true },
+    )
   })
 
-  it('hides the create button without snippet create permission', () => {
-    mockWorkspacePermissionKeys.mockReturnValue([])
-
-    renderList()
-
-    expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
+  it('searches and clears the filter through actual query state', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = renderList()
+    const search = screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' })
+    await user.type(search, 'summary')
+    expect(search).toHaveValue('summary')
+    await waitFor(() =>
+      expect(mockUseInfiniteSnippetList.mock.lastCall?.[0].keyword).toBe('summary'),
+    )
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('keywords')).toBe('summary'),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    expect(search).toHaveValue('')
+    await waitFor(() =>
+      expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(
+        expect.objectContaining({ keyword: '' }),
+        { enabled: true },
+      ),
+    )
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('keywords')).toBe(false),
+    )
   })
 
   it('fetches snippets without create action for users with snippet management permission', () => {
@@ -420,22 +398,16 @@ describe('SnippetList', () => {
   it('does not fetch or render snippets without snippet list permissions', () => {
     mockWorkspacePermissionKeys.mockReturnValue([])
 
-    renderList()
+    const { container } = renderList()
+    const list = container.querySelector<HTMLElement>('[aria-busy]')
+    if (!list) throw new Error('Snippet list did not render its result owner')
 
     expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
       enabled: false,
     })
     expect(screen.queryByRole('link', { name: /Sales Snippet/ })).not.toBeInTheDocument()
-    expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
-  })
-
-  it('shows the create button for users with snippet create permission even when they are not workspace editors', () => {
-    mockIsCurrentWorkspaceEditor.mockReturnValue(false)
-    mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
-
-    renderList()
-
-    expect(screen.getByRole('button', { name: 'snippet.create' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
+    expect(within(list).getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
   })
 
   it('shows an empty state when no snippets are returned', () => {
@@ -456,24 +428,186 @@ describe('SnippetList', () => {
       fetchNextPage: mockFetchNextPage,
     })
 
-    renderList()
+    const { container } = renderList()
+    const list = container.querySelector<HTMLElement>('[aria-busy]')
+    if (!list) throw new Error('Snippet list did not render its result owner')
 
-    expect(screen.getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+    expect(within(list).getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('workflow.tabs.noSnippetsFound')
   })
 
-  it('renders loading and next-page skeleton cards', () => {
+  it('announces request failures and preserves retry focus while refetching', async () => {
+    const user = userEvent.setup()
+    const requestError = new Error('Request failed')
     mockUseInfiniteSnippetList.mockReturnValue({
       ...mockSnippetListState,
       data: { pages: [] },
+      error: requestError,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+
+    const { rerenderList } = renderList()
+    const status = screen.getByRole('status')
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(status).toHaveTextContent('common.errorBoundary.title')
+    expect(status).not.toHaveTextContent('workflow.tabs.noSnippetsFound')
+
+    await user.click(retryButton)
+
+    expect(mockRefetch).toHaveBeenCalledTimes(1)
+    expect(retryButton).toHaveFocus()
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: { pages: [] },
+      error: requestError,
+      isFetching: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBe(retryButton)
+    expect(retryButton).toHaveFocus()
+    expect(status).toHaveTextContent('common.loading')
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: { pages: [] },
+      error: requestError,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBe(retryButton)
+    expect(retryButton).toHaveFocus()
+    expect(status).toHaveTextContent('common.errorBoundary.title')
+  })
+
+  it('announces the total result count when only the first page is loaded', () => {
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: {
+        pages: [
+          {
+            ...mockSnippetListState.data.pages[0]!,
+            total: 80,
+            has_more: true,
+          },
+        ],
+      },
+      hasNextPage: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+
+    renderList()
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'common.operation.searchCount:{"count":80,"content":"workflow.tabs.snippets"}',
+    )
+  })
+
+  it('announces kept-data refreshes when the result count stays the same', () => {
+    const { rerenderList } = renderList()
+    const status = screen.getByRole('status')
+    const grid = screen.getByRole('link', { name: /Sales Snippet/ }).closest('[aria-busy]')
+
+    expect(status.closest('[aria-busy]')).toBeNull()
+    expect(status).toHaveTextContent(
+      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+    )
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      isFetching: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('common.loading')
+    expect(grid).toHaveAttribute('aria-busy', 'true')
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: {
+        pages: [
+          {
+            ...mockSnippetListState.data.pages[0]!,
+            data: [
+              {
+                ...mockSnippetListState.data.pages[0]!.data[0]!,
+                id: 'snippet-2',
+                name: 'Support Snippet',
+              },
+            ],
+          },
+        ],
+      },
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent(
+      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+    )
+    expect(screen.getByRole('link', { name: /Support Snippet/ })).toBeInTheDocument()
+    expect(grid).toHaveAttribute('aria-busy', 'false')
+  })
+
+  it('mounts an empty live region before announcing initial results', () => {
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      data: { pages: [] },
+      isFetching: true,
       isLoading: true,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+
+    const { container, rerenderList } = renderList()
+    const status = screen.getByRole('status')
+
+    expect(status).toBeEmptyDOMElement()
+    expect(status.closest('[aria-busy]')).toBeNull()
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
+      refetch: mockRefetch,
+      fetchNextPage: mockFetchNextPage,
+    })
+    rerenderList()
+
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent(
+      'common.operation.searchCount:{"count":1,"content":"workflow.tabs.snippets"}',
+    )
+  })
+
+  it('keeps current results available while the next page is loading', () => {
+    mockUseInfiniteSnippetList.mockReturnValue({
+      ...mockSnippetListState,
       isFetchingNextPage: true,
       refetch: mockRefetch,
       fetchNextPage: mockFetchNextPage,
     })
 
-    const { container } = renderList()
+    renderList()
+    const card = screen.getByRole('link', { name: /Sales Snippet/ })
+    const list = card.closest('[aria-busy]')
 
-    expect(container.querySelectorAll('.animate-pulse')).toHaveLength(9)
+    expect(card).toBeInTheDocument()
+    expect(list).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
   })
 
   it('fetches the next page when the scroll anchor intersects', () => {
@@ -494,16 +628,6 @@ describe('SnippetList', () => {
     expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
   })
 
-  it('fetches snippets for dataset operators when they have snippet list permissions', () => {
-    mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(true)
-
-    renderList()
-
-    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
-      enabled: true,
-    })
-  })
-
   it('does not register infinite scroll without snippet list permissions', () => {
     mockWorkspacePermissionKeys.mockReturnValue([])
 
@@ -516,24 +640,29 @@ describe('SnippetList', () => {
     expect(mockFetchNextPage).not.toHaveBeenCalled()
   })
 
-  it('opens tag management from filters and snippet cards and forwards tag refreshes', () => {
+  it('opens tag management from real filters and cards and refreshes after a binding change', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.mockReturnValue([
+      'snippets.create_and_modify',
+      'snippets.management',
+    ])
     renderList()
-
-    expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'false')
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.tag.placeholder' }))
-
+    await user.click(screen.getByRole('combobox', { name: 'common.tag.placeholder' }))
+    await user.click(await screen.findByRole('button', { name: 'common.tag.manageTags' }))
     expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'true')
-
-    fireEvent.click(screen.getByRole('button', { name: 'close tag modal' }))
-
+    await user.click(screen.getByRole('button', { name: 'close tag modal' }))
     expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'false')
-
-    fireEvent.click(screen.getByRole('button', { name: 'open card tags' }))
-    fireEvent.click(screen.getByRole('button', { name: 'refresh card tags' }))
-    fireEvent.click(screen.getByRole('button', { name: 'refresh tags' }))
-
+    await user.click(screen.getByRole('combobox', { name: 'common.tag.addTag: Sales Snippet' }))
+    await user.click(await screen.findByRole('option', { name: 'Sales' }))
+    await user.click(screen.getByRole('button', { name: 'common.tag.manageTags' }))
+    expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'true')
+    await waitFor(() =>
+      expect(mockBindTags).toHaveBeenCalledExactlyOnceWith({
+        body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
+      }),
+    )
+    await waitFor(() => expect(mockRefetch).toHaveBeenCalledOnce())
+    await user.click(screen.getByRole('button', { name: 'refresh tags' }))
     expect(mockRefetch).toHaveBeenCalledTimes(2)
-    expect(screen.getByTestId('tag-management-modal')).toHaveAttribute('data-show', 'true')
   })
 })

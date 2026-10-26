@@ -1,7 +1,8 @@
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AppSourceType } from '@/service/share'
 import { Resolution, TransferMethod } from '@/types/app'
 import TextGenerationResultPanel from '../text-generation-result-panel'
@@ -115,7 +116,8 @@ describe('TextGenerationResultPanel', () => {
     expect(screen.queryByTestId('res-download-mock')).not.toBeInTheDocument()
   })
 
-  it('should render batch results, download entry, loading area, and retry banner', () => {
+  it('should render batch results, download entry, loading area, and retry banner', async () => {
+    const user = userEvent.setup()
     const handleRetryAllFailedTask = vi.fn()
 
     render(
@@ -131,8 +133,7 @@ describe('TextGenerationResultPanel', () => {
 
     expect(screen.getByTestId('res-1'))!.toBeInTheDocument()
     expect(screen.getByTestId('res-2'))!.toBeInTheDocument()
-    expect(resPropsSpy).toHaveBeenNthCalledWith(
-      1,
+    expect(resPropsSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         inputs: { name: 'Alpha' },
         isError: false,
@@ -141,8 +142,7 @@ describe('TextGenerationResultPanel', () => {
         onRunControlChange: undefined,
       }),
     )
-    expect(resPropsSpy).toHaveBeenNthCalledWith(
-      2,
+    expect(resPropsSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         inputs: { name: 'Beta' },
         isError: true,
@@ -162,13 +162,14 @@ describe('TextGenerationResultPanel', () => {
     expect(
       screen.getByRole('button', { name: 'share.generation.batchFailed.retry' }),
     )!.toBeInTheDocument()
-    expect(screen.getByRole('status', { name: 'appApi.loading' }))!.toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' }))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'share.generation.batchFailed.retry' }))
+    await user.click(screen.getByRole('button', { name: 'share.generation.batchFailed.retry' }))
     expect(handleRetryAllFailedTask).toHaveBeenCalledTimes(1)
   })
 
-  it('should toggle mobile result panel handle between show and hide actions', () => {
+  it('should toggle mobile result panel handle between show and hide actions', async () => {
+    const user = userEvent.setup()
     const onHideResultPanel = vi.fn()
     const onShowResultPanel = vi.fn()
     const { rerender } = render(
@@ -181,7 +182,7 @@ describe('TextGenerationResultPanel', () => {
       />,
     )
 
-    fireEvent.click(document.querySelector('.cursor-grab') as HTMLElement)
+    await user.click(document.querySelector('.cursor-grab') as HTMLElement)
     expect(onHideResultPanel).toHaveBeenCalledTimes(1)
 
     rerender(
@@ -194,7 +195,7 @@ describe('TextGenerationResultPanel', () => {
       />,
     )
 
-    fireEvent.click(document.querySelector('.cursor-grab') as HTMLElement)
+    await user.click(document.querySelector('.cursor-grab') as HTMLElement)
     expect(onShowResultPanel).toHaveBeenCalledTimes(1)
   })
 })

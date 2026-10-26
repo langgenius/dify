@@ -14,7 +14,7 @@ type ImageItemProps = {
   onPreview?: (fileId: string) => void
 }
 const ImageItem = ({ file, showDeleteAction, onRemove, onReUpload, onPreview }: ImageItemProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'custom'])
   const { id, progress, base64Url, sourceUrl } = file
 
   const handlePreview = useCallback(

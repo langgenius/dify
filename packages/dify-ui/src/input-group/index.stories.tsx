@@ -2,14 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect, spyOn, waitFor, waitForElementToBeRemoved, within } from 'storybook/test'
 import { Button } from '../button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../dropdown-menu'
-import { Field, FieldDescription, FieldLabel } from '../field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '../field'
 import { IconButton } from '../icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '../menu'
 import { InputGroup, InputGroupAddon, InputGroupInput } from './index'
 
 const meta = {
@@ -142,8 +137,8 @@ function InputGroupDropdownDemo() {
       <InputGroup>
         <InputGroupInput defaultValue="report.md" />
         <InputGroupAddon align="inline-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger
+          <Menu>
+            <MenuTrigger
               render={
                 <IconButton
                   size="md"
@@ -154,11 +149,11 @@ function InputGroupDropdownDemo() {
                 </IconButton>
               }
             />
-            <DropdownMenuContent placement="bottom-end" sideOffset={8}>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Copy path</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <MenuContent side="bottom" align="end" sideOffset={8}>
+              <MenuItem>Settings</MenuItem>
+              <MenuItem>Copy path</MenuItem>
+            </MenuContent>
+          </Menu>
         </InputGroupAddon>
       </InputGroup>
     </Field>
@@ -214,5 +209,25 @@ export const WithDropdownAction: Story = {
     await waitFor(async () => {
       await expect(trigger).toHaveFocus()
     })
+  },
+}
+
+export const Invalid: Story = {
+  render: () => (
+    <Field invalid className="w-80">
+      <FieldLabel>Repository URL</FieldLabel>
+      <InputGroup>
+        <InputGroupInput defaultValue="invalid repository" />
+        <InputGroupAddon className="pe-0">https://</InputGroupAddon>
+      </InputGroup>
+      <FieldError match>Please enter a valid repository URL.</FieldError>
+    </Field>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    const input = canvas.getByRole('textbox', { name: 'Repository URL' })
+    await userEvent.click(input)
+    await expect(input).toHaveFocus()
+    await expect(input).toHaveAttribute('aria-invalid', 'true')
+    await expect(input).toHaveAccessibleDescription('Please enter a valid repository URL.')
   },
 }

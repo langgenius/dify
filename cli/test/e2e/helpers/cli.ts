@@ -8,7 +8,6 @@
  * withTempConfig) to prevent session state leaking between tests.
  */
 
-import type { TokenDoc } from '@/store/token-store'
 import { Buffer } from 'node:buffer'
 import { execSync, spawn } from 'node:child_process'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
@@ -88,9 +87,6 @@ export function run(argv: string[], opts: RunOptions = {}): Promise<RunResult> {
       // Suppress interactive prompts in all E2E tests.
       CI: '1',
       NO_COLOR: '1',
-      // Force file-based token storage to avoid macOS keychain UI prompts
-      // blocking child processes spawned by vitest workers.
-      DIFY_E2E_NO_KEYRING: '1',
       // Point the CLI at the isolated config directory.
       ...(opts.configDir !== undefined ? { DIFY_CONFIG_DIR: opts.configDir } : {}),
       ...opts.env,
@@ -171,7 +167,7 @@ export type AuthInjectionOptions = {
   workspaceId: string
   workspaceName: string
   workspaceRole?: string
-  /** Full available workspace list. Defaults to the primary workspace only. */
+  /** Full available get workspace. Defaults to the primary workspace only. */
   availableWorkspaces?: Array<{ id: string; name: string; role: string }>
   /**
    * Server-side session UUID (OAuthAccessToken.id).
@@ -204,6 +200,11 @@ function splitHost(host: string): { bare: string; scheme: string } {
     }
   })()
   return { bare, scheme }
+}
+
+type TokenDoc = {
+  version: number
+  tokens: Record<string, Record<string, string>>
 }
 
 async function writeFileToken(
@@ -294,8 +295,7 @@ export async function injectAuth(configDir: string, opts: AuthInjectionOptions):
     const account = `tokens.${bare}.${email}`
     new Entry('difyctl', account).setPassword(JSON.stringify(opts.bearer))
   } else {
-    // Fall back to tokens.yml — FileTokenStore uses getTyped<TokenDoc>()
-    // which expects flat tokens[host][email] with version: 1.
+    // Fall back to tokens.yml, which FileTokenStore reads as tokens[host][email].
     await writeFileToken(configDir, bare, email, opts.bearer)
   }
 }

@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   verifyAndUpdate: vi.fn().mockResolvedValue({ verified: false }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     workspaces: {
       current: {
@@ -101,6 +101,16 @@ const createGeneratedTriggerProvider = (): GeneratedTriggerProvider => ({
 })
 
 describe('trigger provider normalization', () => {
+  it('preserves Portuguese metadata alongside the existing UI locale spelling', () => {
+    const provider = createGeneratedTriggerProvider()
+    provider.label = { en_US: 'Provider', pt_BR: 'Provedor' }
+    const normalized = normalizeTriggerProvider(provider)
+
+    expect(normalized.label.pt_BR).toBe('Provedor')
+    expect(normalized.label['pt-BR']).toBe('Provedor')
+    expect(normalized.description.pt_BR).toBe('GitHub trigger provider')
+  })
+
   it('should preserve falsy event parameter defaults', () => {
     const normalizedProvider = normalizeTriggerProvider(createGeneratedTriggerProvider())
     const triggerWithProvider = convertToTriggerWithProvider(normalizedProvider)

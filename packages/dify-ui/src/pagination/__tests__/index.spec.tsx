@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import {
@@ -194,42 +195,69 @@ describe('Pagination primitive', () => {
       .toBeInTheDocument()
   })
 
-  it('commits the page input editing mode with Enter', async () => {
-    const { screen } = await renderPagination()
+  it.each([
+    {
+      name: 'Enter and restores summary focus',
+      key: 'Enter',
+      focusedButton: 'Edit page number, current page 2 of 200',
+    },
+    { name: 'Tab and moves focus forward', key: 'Tab', focusedButton: 'Next page' },
+  ])('commits the edited page with $name', async ({ key, focusedButton }) => {
+    const { screen, onPageChange } = await renderPagination()
 
     await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
-    await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
-    const input = asHTMLElement(
-      screen.getByRole('textbox', { name: 'Page number' }).element(),
-    ) as HTMLInputElement
+    const input = screen.getByRole('textbox', { name: 'Page number' })
+    await input.fill('7')
+    await expect.element(input).toHaveFocus()
+    const inputElement = input.element()
+    expect(onPageChange).not.toHaveBeenCalled()
 
-    await vi.waitFor(() => {
-      expect(document.activeElement).toBe(input)
-    })
+    await userEvent.keyboard(`{${key}}`)
 
-    await userEvent.keyboard('{Enter}')
+    expect(onPageChange).toHaveBeenCalledExactlyOnceWith(7)
+    await expect.element(screen.getByRole('button', { name: focusedButton })).toHaveFocus()
+    expect(inputElement).not.toBeInTheDocument()
+  })
 
-    const summaryButton = screen.getByRole('button', {
-      name: 'Edit page number, current page 2 of 200',
-    })
-    await expect.element(summaryButton).toBeInTheDocument()
-    await vi.waitFor(() => {
-      expect(document.activeElement).toBe(summaryButton.element())
-    })
+  it('commits the edited page without interrupting an outside button click', async () => {
+    const onPageChange = vi.fn()
+    const onClick = vi.fn()
+    const screen = await render(
+      <React.Fragment>
+        <PaginationRoot page={2} totalPages={200} onPageChange={onPageChange}>
+          <PaginationPageJump />
+        </PaginationRoot>
+        <button type="button" onClick={onClick}>
+          Outside action
+        </button>
+      </React.Fragment>,
+    )
+
+    await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
+    const input = screen.getByRole('textbox', { name: 'Page number' })
+    await input.fill('7')
+    await expect.element(input).toHaveFocus()
+    expect(onPageChange).not.toHaveBeenCalled()
+    expect(onClick).not.toHaveBeenCalled()
+
+    const outsideButton = screen.getByRole('button', { name: 'Outside action' })
+    await outsideButton.click()
+
+    expect(onPageChange).toHaveBeenCalledExactlyOnceWith(7)
+    expect(onClick).toHaveBeenCalledOnce()
+    await expect.element(outsideButton).toHaveFocus()
+    await expect
+      .element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }))
+      .toBeInTheDocument()
   })
 
   it('cancels the page input editing mode with Escape', async () => {
     const { screen, onPageChange } = await renderPagination()
 
     await screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).click()
-    await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toBeInTheDocument()
-    const input = asHTMLElement(
-      screen.getByRole('textbox', { name: 'Page number' }).element(),
-    ) as HTMLInputElement
-
-    await vi.waitFor(() => {
-      expect(document.activeElement).toBe(input)
-    })
+    const input = screen.getByRole('textbox', { name: 'Page number' })
+    await input.fill('7')
+    await expect.element(input).toHaveFocus()
 
     await userEvent.keyboard('{Escape}')
 
@@ -343,9 +371,7 @@ describe('Pagination primitive', () => {
       <PaginationRoot page={3} totalPages={5} onPageChange={onPageChange}>
         <ol>
           <li>
-            <PaginationPage page={4} className="custom-page">
-              Four
-            </PaginationPage>
+            <PaginationPage page={4}>Four</PaginationPage>
           </li>
         </ol>
       </PaginationRoot>,
@@ -353,9 +379,6 @@ describe('Pagination primitive', () => {
 
     await screen.getByRole('button', { name: 'Go to page 4' }).click()
 
-    await expect
-      .element(screen.getByRole('button', { name: 'Go to page 4' }))
-      .toHaveClass('custom-page')
     expect(onPageChange).toHaveBeenCalledWith(4)
   })
 
@@ -364,4 +387,23 @@ describe('Pagination primitive', () => {
 
     await expect.element(screen.getByTestId('skeleton')).toHaveAttribute('aria-hidden', 'true')
   })
+})
+
+it('keeps the public page-jump ref usable after editing and focus restoration', async () => {
+  const ref = React.createRef<HTMLButtonElement>()
+  const screen = await render(
+    <PaginationRoot page={2} totalPages={10} onPageChange={() => {}}>
+      <PaginationPageJump ref={ref} />
+    </PaginationRoot>,
+  )
+
+  expect(ref.current).toBe(screen.getByRole('button').element())
+  ref.current?.focus()
+  await expect.element(screen.getByRole('button')).toHaveFocus()
+  await screen.getByRole('button').click()
+  await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toHaveFocus()
+  expect(ref.current).toBeNull()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(screen.getByRole('button')).toHaveFocus()
+  expect(ref.current).toBe(screen.getByRole('button').element())
 })

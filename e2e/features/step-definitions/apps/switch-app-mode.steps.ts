@@ -1,8 +1,8 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp } from '../../../support/api/apps'
-import { createE2EResourceName } from '../../../support/naming'
+import { createTestApp } from '../../../support/api/apps.ts'
+import { createE2EResourceName } from '../../../support/naming.ts'
 
 Given(
   'there is an existing E2E completion app available for testing',

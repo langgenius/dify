@@ -5,13 +5,14 @@ import sqlalchemy as sa
 from flask_login import current_user
 from flask_sqlalchemy.session import Session as FlaskSession
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import NotFound
 
 from models.dataset import Dataset
 from models.enums import TagType
+from models.knowledge_fs import KnowledgeFSSpaceTagBinding
 from models.model import App, Tag, TagBinding
 from models.skill import Skill
 from models.snippet import CustomizedSnippet
@@ -48,8 +49,20 @@ class TagService:
 
     @staticmethod
     def get_tags(tag_type: _TagTypeLike, current_tenant_id: str, keyword: str | None = None, *, session: Session):
+        binding_count: sa.ColumnElement[int] = func.count(TagBinding.id)
+        if tag_type == TagType.KNOWLEDGE:
+            knowledge_fs_binding_count = (
+                select(func.count(KnowledgeFSSpaceTagBinding.id))
+                .where(
+                    KnowledgeFSSpaceTagBinding.tag_id == Tag.id,
+                    KnowledgeFSSpaceTagBinding.tenant_id == current_tenant_id,
+                )
+                .correlate(Tag)
+                .scalar_subquery()
+            )
+            binding_count += knowledge_fs_binding_count
         stmt = (
-            select(Tag.id, Tag.type, Tag.name, func.count(TagBinding.id).label("binding_count"))
+            select(Tag.id, Tag.type, Tag.name, binding_count.label("binding_count"))
             .outerjoin(TagBinding, Tag.id == TagBinding.tag_id)
             .where(Tag.type == tag_type, Tag.tenant_id == current_tenant_id)
         )
@@ -179,7 +192,12 @@ class TagService:
             )
             if existing:
                 raise ValueError("Tag name already exists")
-        tag.name = payload.name
+        session.execute(
+            update(Tag)
+            .where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id)
+            .values(name=payload.name)
+            .execution_options(synchronize_session="fetch")
+        )
         session.commit()
         return tag
 
@@ -194,6 +212,16 @@ class TagService:
         if tag_type is not None:
             stmt = stmt.where(Tag.type == tag_type)
         count = session.scalar(stmt) or 0
+        if tag_type in {None, TagType.KNOWLEDGE}:
+            count += (
+                session.scalar(
+                    select(func.count(KnowledgeFSSpaceTagBinding.id)).where(
+                        KnowledgeFSSpaceTagBinding.tag_id == tag_id,
+                        KnowledgeFSSpaceTagBinding.tenant_id == current_tenant_id,
+                    )
+                )
+                or 0
+            )
         return count
 
     @staticmethod

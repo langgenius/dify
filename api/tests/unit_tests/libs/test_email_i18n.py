@@ -44,11 +44,8 @@ class MockBrandingService:
         self.application_title = application_title
 
     def get_branding_config(self) -> BrandingModel:
-        """Return mock branding configuration"""
-        branding_model = MagicMock(spec=BrandingModel)
-        branding_model.enabled = self.enabled
-        branding_model.application_title = self.application_title
-        return branding_model
+        """Return branding configuration with the requested test settings."""
+        return BrandingModel(enabled=self.enabled, application_title=self.application_title)
 
 
 class MockEmailSender:

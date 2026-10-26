@@ -1,5 +1,5 @@
-import type { DifyWorld } from '../../../support/world'
-import { failFixturePrerequisite } from './common'
+import type { DifyWorld } from '../../../support/world.ts'
+import { failFixturePrerequisite } from './common.ts'
 
 const isTruthyEnv = (value: string | undefined) => value === '1' || value === 'true'
 

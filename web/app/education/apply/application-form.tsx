@@ -10,17 +10,17 @@ import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Field, FieldDescription, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import Link from '@/next/link'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import UserInfo from '../user-info'
 import AppliedEducationContent from './applied-education-content'
 import InstitutionField from './institution-field'
@@ -40,7 +40,7 @@ type EducationApplyPageProps = {
 }
 
 const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
   const queryClient = useQueryClient()
   const [schoolName, setSchoolName] = useState('')
   const [role, setRole] = useState<EducationRole>('Student')
@@ -244,19 +244,19 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
               </FieldDescription>
               <div className="py-2 system-md-regular text-text-primary">
                 <FieldItem>
-                  <FieldLabel className="mb-2 flex items-start gap-2 py-0">
+                  <FieldLabel className="mb-2 flex cursor-pointer items-start gap-2 py-0">
                     <Checkbox value="age" />
                     {t(($) => $['form.terms.option.age'], { ns: 'education' })}
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
-                  <FieldLabel className="mb-2 flex items-start gap-2 py-0">
+                  <FieldLabel className="mb-2 flex cursor-pointer items-start gap-2 py-0">
                     <Checkbox value="inSchool" />
                     {t(($) => $['form.terms.option.inSchool'], { ns: 'education' })}
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
-                  <FieldLabel className="flex items-start gap-2 py-0">
+                  <FieldLabel className="flex cursor-pointer items-start gap-2 py-0">
                     <Checkbox value="personalUse" />
                     {t(($) => $['form.terms.option.personalUse'], { ns: 'education' })}
                   </FieldLabel>

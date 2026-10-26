@@ -1,5 +1,6 @@
 'use client'
 
+import type { ComponentPropsWithRef } from 'react'
 import type { ToolSettingTarget } from '../types'
 import type {
   AgentProviderTool,
@@ -8,12 +9,7 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -57,7 +53,7 @@ function UnauthorizedCredentialStatus({
     credentialType?: AgentProviderTool['credentialType'],
   ) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const [isOpen, setIsOpen] = useState(false)
   const pluginPayload = useMemo(
     () => ({
@@ -87,8 +83,9 @@ function UnauthorizedCredentialStatus({
     [credentials, onCredentialChange, tool.credentialType],
   )
   const renderTrigger = useCallback(
-    (open?: boolean) => (
+    (open: boolean, triggerProps: ComponentPropsWithRef<'button'>) => (
       <Button
+        {...triggerProps}
         variant="secondary"
         size="small"
         className={cn('shrink-0', open && 'bg-components-button-secondary-bg-hover')}
@@ -109,8 +106,8 @@ function UnauthorizedCredentialStatus({
       renderTrigger={renderTrigger}
       isOpen={isOpen}
       onOpenChange={setIsOpen}
-      offset={4}
-      placement="bottom-end"
+      sideOffset={4}
+      align="end"
       triggerPopupSameWidth={false}
       popupClassName="w-[360px]"
       disableSetDefault
@@ -131,7 +128,7 @@ function UninstalledPluginStatus({
   extraIdentifiers: string[]
   onInstall: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   if (installInfo) {
     return (
@@ -215,7 +212,7 @@ const ProviderToolActionItem = memo(
     onConfigureAction: (target: ToolSettingTarget) => void
     onRemoveAction: (actionId: string) => void
   }) => {
-    const { t } = useTranslation('agentV2')
+    const { t } = useTranslation(['agentV2'])
     const readOnly = useAgentOrchestrateReadOnly()
     const handleConfigureAction = useCallback(() => {
       onConfigureAction({ actionId: action.id, toolId: tool.id })
@@ -286,7 +283,7 @@ export const AgentProviderToolItem = memo(
       credentialType?: AgentProviderTool['credentialType'],
     ) => void
   }) => {
-    const { t } = useTranslation('agentV2')
+    const { t } = useTranslation(['agentV2'])
     const readOnly = useAgentOrchestrateReadOnly()
     const { theme } = useTheme()
     const shouldFetchPluginManifest =
@@ -312,7 +309,7 @@ export const AgentProviderToolItem = memo(
         className="overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
       >
         <div className="flex min-h-7 items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-1">
-          <CollapsibleTrigger className="group min-h-0 min-w-0 flex-1 justify-start gap-2 rounded-md px-0 pr-1 text-left hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary">
+          <CollapsibleTrigger className="group/collapsible flex min-h-0 w-full min-w-0 flex-1 touch-manipulation items-center justify-start gap-2 rounded-md pr-1 text-left system-sm-medium text-text-secondary select-none">
             <ProviderIcon icon={icon} iconClassName={tool.iconClassName} />
             <span className="flex min-w-0 items-center">
               <span className="min-w-0 truncate system-sm-medium text-text-primary">
@@ -321,35 +318,26 @@ export const AgentProviderToolItem = memo(
               <span
                 aria-hidden
                 className={cn(
-                  'i-custom-vender-solid-arrows-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-data-panel-open:rotate-0 motion-reduce:transition-none',
+                  'i-custom-vender-solid-arrows-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-data-panel-open/collapsible:rotate-0 motion-reduce:transition-none',
                 )}
               />
             </span>
           </CollapsibleTrigger>
           {!readOnly && (
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger
-                aria-label={t(($) => $['agentDetail.configure.tools.moreActions'], {
-                  name: tool.name,
-                })}
-                className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
-              >
+            <Menu modal={false}>
+              <MenuTrigger className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover">
                 <span className="sr-only">
                   {t(($) => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}
                 </span>
                 <span aria-hidden className="i-ri-more-fill size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-44">
-                <DropdownMenuItem
-                  variant="destructive"
-                  className="gap-2"
-                  onClick={onRemoveProvider}
-                >
+              </MenuTrigger>
+              <MenuContent align="end" className="w-44">
+                <MenuItem variant="destructive" className="gap-2" onClick={onRemoveProvider}>
                   <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
                   <span>{t(($) => $['agentDetail.configure.tools.removeProvider'])}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </MenuItem>
+              </MenuContent>
+            </Menu>
           )}
           {isInstalled === false && (
             <div className="shrink-0">

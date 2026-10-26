@@ -1,10 +1,9 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
-import Divider from '@/app/components/base/divider'
-import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = Readonly<{
@@ -13,7 +12,7 @@ type Props = Readonly<{
 }>
 
 const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const { isMobile, currentConversationId, handleStartChat, allInputsHidden, theme, inputsForms } =
     useChatWithHistoryContext()
 
@@ -34,7 +33,7 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
             isMobile && 'px-4 py-3',
           )}
         >
-          <Message3Fill className="size-6 shrink-0" />
+          <span aria-hidden className="i-custom-public-other-message-3-fill size-6 shrink-0" />
           <div className="grow system-xl-semibold text-text-secondary">
             {t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}
           </div>
@@ -85,8 +84,8 @@ const InputsFormNode = ({ collapsed, setCollapsed }: Props) => {
       </div>
       {collapsed && (
         <div className="flex w-full max-w-180 items-center py-4">
-          <Divider bgStyle="gradient" className="h-px basis-1/2 rotate-180" />
-          <Divider bgStyle="gradient" className="h-px basis-1/2" />
+          <Separator decorative variant="gradient" className="my-2 basis-1/2 rotate-180" />
+          <Separator decorative variant="gradient" className="my-2 basis-1/2" />
         </div>
       )}
     </div>

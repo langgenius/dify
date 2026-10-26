@@ -4,17 +4,12 @@ import type { AgentConfigApiContext } from '../config-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useQueryClient } from '@tanstack/react-query'
+import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import { MissingReferenceWarning } from '../common/missing-reference-warning'
 import { AgentSkillDetailDialog } from './detail-dialog'
@@ -22,30 +17,45 @@ import { useAgentSkillDetail } from './use-skill-detail'
 
 export function AgentSkillItem({
   apiContext,
+  canDownload,
   canRemove,
   skill,
   onRemove,
 }: {
   apiContext: AgentConfigApiContext
+  canDownload: boolean
   canRemove: boolean
   skill: AgentSkill
   onRemove: (skillId: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isRemoveHighlighted, setIsRemoveHighlighted] = useState(false)
   const handleRemove = useCallback(() => {
     onRemove(skill.id)
   }, [onRemove, skill.id])
-  const handleDownload = useCallback(async () => {
+  const downloadSkill = useCallback(async () => {
     if (skill.isMissing) return
 
+    if (apiContext.trialAppId) {
+      const result = await queryClient.query({
+        ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.download.get.queryOptions({
+          input: {
+            params: { app_id: apiContext.trialAppId, name: skill.name },
+            query: { version_id: apiContext.versionId },
+          },
+        }),
+        staleTime: 0,
+      })
+      downloadUrl({ url: result.url, fileName: skill.name })
+      return
+    }
+
     if (apiContext.workflow) {
-      const result = await queryClient.fetchQuery(
-        consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
+      const result = await queryClient.query({
+        ...consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
           input: {
             params: {
               app_id: apiContext.workflow.appId,
@@ -58,13 +68,14 @@ export function AgentSkillItem({
             },
           },
         }),
-      )
+        staleTime: 0,
+      })
       downloadUrl({ url: result.url, fileName: skill.name })
       return
     }
 
-    const result = await queryClient.fetchQuery(
-      consoleQuery.agent.byAgentId.config.skills.byName.download.get.queryOptions({
+    const result = await queryClient.query({
+      ...consoleQuery.agent.byAgentId.config.skills.byName.download.get.queryOptions({
         input: {
           params: {
             agent_id: apiContext.agentId,
@@ -76,9 +87,15 @@ export function AgentSkillItem({
           },
         },
       }),
-    )
+      staleTime: 0,
+    })
     downloadUrl({ url: result.url, fileName: skill.name })
   }, [apiContext, queryClient, skill.isMissing, skill.name])
+  const handleDownload = useCallback(() => {
+    void downloadSkill().catch(noop)
+  }, [downloadSkill])
+  const onDownloadSkill = canDownload ? handleDownload : undefined
+  const hasActions = (!skill.isMissing && !!onDownloadSkill) || canRemove
   const handleOpenPreview = useCallback(() => {
     if (skill.isMissing) return
 
@@ -86,6 +103,7 @@ export function AgentSkillItem({
   }, [skill.isMissing])
   const detail = useAgentSkillDetail({
     apiContext,
+    canDownload,
     description: skill.description ?? t(($) => $['agentDetail.configure.skills.tip']),
     isOpen: isPreviewOpen,
     skill,
@@ -120,8 +138,9 @@ export function AgentSkillItem({
           ) : (
             <span
               className={cn(
-                'shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary group-focus-within:opacity-0 group-hover:opacity-0',
-                isActionsOpen && 'opacity-0',
+                'shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary',
+                hasActions && 'group-focus-within:opacity-0 group-hover:opacity-0',
+                'group-has-data-popup-open:opacity-0',
               )}
             >
               {t(($) => $['agentDetail.configure.skills.addMenu.upload.badge'])}
@@ -134,40 +153,39 @@ export function AgentSkillItem({
             label={t(($) => $['agentDetail.configure.skills.missing'])}
           />
         )}
-        {(!skill.isMissing || canRemove) && (
-          <DropdownMenu
+        {hasActions && (
+          <Menu
             modal={false}
             onOpenChange={(open) => {
-              setIsActionsOpen(open)
               if (!open) setIsRemoveHighlighted(false)
             }}
           >
-            <DropdownMenuTrigger
+            <MenuTrigger
               data-agent-skill-actions
               aria-label={t(($) => $['agentDetail.configure.skills.moreActions'], {
                 name: skill.name,
               })}
               className={cn(
-                'pointer-events-none absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
+                'pointer-events-none absolute top-1/2 right-1 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary data-popup-open:opacity-100',
                 isRemoveHighlighted && 'text-text-destructive!',
               )}
               onClick={(event) => event.stopPropagation()}
             >
               <span aria-hidden className="i-ri-more-fill size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-48">
-              {!skill.isMissing && (
-                <DropdownMenuItem className="gap-2" onClick={handleDownload}>
+            </MenuTrigger>
+            <MenuContent align="end" className="w-48">
+              {!skill.isMissing && onDownloadSkill && (
+                <MenuItem className="gap-2" onClick={onDownloadSkill}>
                   <span
                     aria-hidden
                     className="i-ri-download-line size-4 shrink-0 text-text-tertiary"
                   />
                   <span>{tCommon(($) => $['operation.download'])}</span>
-                </DropdownMenuItem>
+                </MenuItem>
               )}
-              {!skill.isMissing && canRemove && <DropdownMenuSeparator />}
+              {!skill.isMissing && onDownloadSkill && canRemove && <MenuSeparator />}
               {canRemove && (
-                <DropdownMenuItem
+                <MenuItem
                   data-agent-skill-remove-button
                   className="group gap-2 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
                   onClick={handleRemove}
@@ -181,10 +199,10 @@ export function AgentSkillItem({
                     className="i-ri-delete-bin-line size-4 shrink-0 text-text-tertiary group-data-highlighted:text-text-destructive"
                   />
                   <span>{tCommon(($) => $['operation.delete'])}</span>
-                </DropdownMenuItem>
+                </MenuItem>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </MenuContent>
+          </Menu>
         )}
       </div>
       {isPreviewOpen && <AgentSkillDetailDialog skillName={skill.name} detail={detail} />}

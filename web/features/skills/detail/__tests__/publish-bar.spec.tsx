@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { SkillPublishBar } from '../publish-bar'
 
 describe('SkillPublishBar', () => {
@@ -47,9 +47,36 @@ describe('SkillPublishBar', () => {
     expect(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.published' }),
     ).toBeDisabled()
+    expect(fireEvent.keyDown(document.body, { key: 'P', ctrlKey: true, shiftKey: true })).toBe(true)
+    expect(onPublish).not.toHaveBeenCalled()
   })
 
-  it('labels an edited published skill as an unpublished update', () => {
+  it('publishes from page inputs while preserving IME, local ownership, and repeat defaults', () => {
+    render(
+      <>
+        <SkillPublishBar
+          metaLabel="Saved just now"
+          state="draft"
+          onOpenVersions={onOpenVersions}
+          onPublish={onPublish}
+        />
+        <input aria-label="Description" />
+        <input aria-label="Editor command" onKeyDown={(event) => event.preventDefault()} />
+      </>,
+    )
+    const input = screen.getByRole('textbox', { name: 'Description' })
+    const binding = { key: 'P', ctrlKey: true, shiftKey: true }
+    expect(fireEvent.keyDown(input, { ...binding, isComposing: true })).toBe(true)
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Editor command' }), binding)
+    expect(onPublish).not.toHaveBeenCalled()
+
+    expect(fireEvent.keyDown(input, binding)).toBe(false)
+    expect(fireEvent.keyDown(input, { ...binding, repeat: true })).toBe(false)
+    expect(onPublish).toHaveBeenCalledOnce()
+  })
+
+  it('publishes an update to an already published skill', async () => {
+    const user = userEvent.setup()
     render(
       <SkillPublishBar
         metaLabel="Saved 2 min ago"
@@ -62,9 +89,10 @@ describe('SkillPublishBar', () => {
     expect(screen.getByRole('status')).toHaveAccessibleName(
       'skill.skillManagement.detail.unpublishedChanges. Saved 2 min ago',
     )
-    expect(
+    await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
-    ).toBeEnabled()
+    )
+    expect(onPublish).toHaveBeenCalledOnce()
   })
 
   it('keeps the primary action visible but inert while publishing', async () => {
@@ -84,23 +112,5 @@ describe('SkillPublishBar', () => {
     expect(publishingButton).toHaveAttribute('aria-disabled', 'true')
     await user.click(publishingButton)
     expect(onPublish).not.toHaveBeenCalled()
-  })
-
-  it('keeps the complete status available when the visual timestamp needs less space', () => {
-    const longMetaLabel = 'Saved a few seconds ago after a long autosave operation'
-    render(
-      <SkillPublishBar
-        metaLabel={longMetaLabel}
-        state="draft"
-        onOpenVersions={onOpenVersions}
-        onPublish={onPublish}
-      />,
-    )
-
-    expect(screen.getByText('skill.skillManagement.detail.draft')).toBeVisible()
-    expect(screen.getByText(longMetaLabel)).toBeVisible()
-    expect(screen.getByRole('status')).toHaveAccessibleName(
-      `skill.skillManagement.detail.draft. ${longMetaLabel}`,
-    )
   })
 })

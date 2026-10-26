@@ -1,11 +1,9 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import { defaultPlan } from '@/app/components/billing/config'
-import { useProviderContext } from '@/context/provider-context'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { render as renderWithoutUrlState } from '@/test/console/render'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ArchivedLogsNotice } from '../archived-logs-notice'
 
 vi.mock('@/context/workspace-state', async () => {
@@ -16,45 +14,23 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: vi.fn(),
-  }
-})
+let plan: CloudPlan = 'professional'
 
-const setSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, setSettingsDestination] }
-})
-
-const mockUseProviderContext = vi.mocked(useProviderContext)
-
-function mockProviderPlan(planType: CloudPlan) {
-  mockUseProviderContext.mockReturnValue(
-    createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        ...defaultPlan,
-        type: planType,
-      },
-    }),
-  )
-}
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 describe('ArchivedLogsNotice', () => {
   const renderNotice = () => {
     const { wrapper } = createConsoleQueryWrapper({
       systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { billing: { subscription: { plan } } },
     })
     return render(<ArchivedLogsNotice />, { wrapper })
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockProviderPlan('professional')
+    plan = 'professional'
   })
 
   it('should show an accessible notice for paid workspace managers', async () => {
@@ -67,11 +43,15 @@ describe('ArchivedLogsNotice', () => {
     expect(within(notice).getByText('appLog.archives.notice.description')).toBeInTheDocument()
 
     await user.click(within(notice).getByRole('button', { name: 'appLog.archives.notice.action' }))
-    expect(setSettingsDestination).toHaveBeenCalledWith('workflow-log-archives')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe(
+        'workflow-log-archives',
+      ),
+    )
   })
 
   it('should not show notice for sandbox workspaces', () => {
-    mockProviderPlan('sandbox')
+    plan = 'sandbox'
 
     renderNotice()
 

@@ -3,28 +3,25 @@
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillArchiveBlob } from '../client'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './skill-metadata'
@@ -50,8 +47,8 @@ function SkillDetailDeleteDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -71,19 +68,13 @@ function SkillDetailDeleteDialog({
   })
   const references = referencesQuery.data?.data ?? []
   const referenceCount = Math.max(detail.reference_count ?? 0, references.length)
-  const isDeleteDisabled =
-    deleteMutation.isPending ||
+  const isDeleteUnavailable =
     (open && (referencesQuery.isFetching || !referencesQuery.isSuccess)) ||
     (referenceCount > 0 && confirmDeleteInput !== detail.display_name)
+  const isDeleteDisabled = deleteMutation.isPending || isDeleteUnavailable
   const description =
     referenceCount > 0
-      ? t(
-          ($) =>
-            referenceCount === 1
-              ? $['skillManagement.deleteDialog.referencedDescription_one']
-              : $['skillManagement.deleteDialog.referencedDescription_other'],
-          { count: referenceCount },
-        )
+      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], { count: referenceCount })
       : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
@@ -121,15 +112,21 @@ function SkillDetailDeleteDialog({
       }}
     >
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.deleteDialog.title'], { name: detail.display_name })}
-          </AlertDialogTitle>
-          <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-            {description}
-          </AlertDialogDescription>
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleDelete()
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['skillManagement.deleteDialog.title'], { name: detail.display_name })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{description}</AlertDialogDescription>
+          </AlertDialogHeader>
           {referenceCount > 0 && (
-            <div className="mt-4">
+            <AlertDialogBody className="flex flex-col gap-2">
               {referencesQuery.isPending ? (
                 <SkillReferencesListSkeleton compact />
               ) : (
@@ -141,57 +138,58 @@ function SkillDetailDeleteDialog({
                   visibleLimit={5}
                 />
               )}
-            </div>
+              <Field name="confirm-skill-name">
+                <FieldLabel>
+                  <Trans
+                    i18nKey={($) => $['skillManagement.deleteDialog.confirmInputLabel']}
+                    ns="skill"
+                    values={{ skillName: detail.display_name }}
+                    components={{
+                      skillName: (
+                        <span className="system-sm-semibold text-text-primary" translate="no" />
+                      ),
+                    }}
+                  />
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder={t(
+                      ($) => $['skillManagement.deleteDialog.confirmInputPlaceholder'],
+                    )}
+                    value={confirmDeleteInput}
+                    onValueChange={setConfirmDeleteInput}
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <Button
+                      variant="tertiary"
+                      size="small"
+                      onClick={() => setConfirmDeleteInput(detail.display_name)}
+                    >
+                      {tCommon(($) => $['operation.fill'])}
+                    </Button>
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
+            </AlertDialogBody>
           )}
-          {referenceCount > 0 && (
-            <Field name="confirm-skill-name" className="mt-2">
-              <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
-                <Trans
-                  i18nKey={($) => $['skillManagement.deleteDialog.confirmInputLabel']}
-                  ns="skill"
-                  values={{ skillName: detail.display_name }}
-                  components={{
-                    skillName: (
-                      <span className="system-sm-semibold text-text-primary" translate="no" />
-                    ),
-                  }}
-                />
-              </FieldLabel>
-              <InputGroup>
-                <InputGroupInput
-                  type="text"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder={t(($) => $['skillManagement.deleteDialog.confirmInputPlaceholder'])}
-                  value={confirmDeleteInput}
-                  onValueChange={setConfirmDeleteInput}
-                />
-                <InputGroupAddon align="inline-end">
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteInput(detail.display_name)}
-                    className="rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
-                  >
-                    {tCommon(($) => $['operation.fill'])}
-                  </button>
-                </InputGroupAddon>
-              </InputGroup>
-            </Field>
-          )}
-        </div>
-        <AlertDialogActions>
-          <AlertDialogCancelButton disabled={deleteMutation.isPending}>
-            {tCommon(($) => $['operation.cancel'])}
-          </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            tone="destructive"
-            loading={deleteMutation.isPending}
-            disabled={isDeleteDisabled}
-            onClick={handleDelete}
-          >
-            {tCommon(($) => (referenceCount > 0 ? $['operation.confirm'] : $['operation.delete']))}
-          </AlertDialogConfirmButton>
-        </AlertDialogActions>
+          <AlertDialogFooter>
+            <AlertDialogCancelButton disabled={deleteMutation.isPending}>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              loading={deleteMutation.isPending}
+              disabled={isDeleteUnavailable}
+              type="submit"
+            >
+              {tCommon(($) =>
+                referenceCount > 0 ? $['operation.confirm'] : $['operation.delete'],
+              )}
+            </AlertDialogConfirmButton>
+          </AlertDialogFooter>
+        </form>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -208,10 +206,11 @@ export function SkillDetailSidebarActions({
   detail: SkillDetailResponse
   onRename: () => void
 }) {
-  const { t } = useTranslation('skill')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['skill'])
+  const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const router = useRouter()
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
   )
@@ -235,9 +234,9 @@ export function SkillDetailSidebarActions({
         },
       },
       {
-        onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.duplicateSuccess']))
+        onSuccess: (copiedSkill) => {
           invalidateSkillListQueries(queryClient)
+          router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
         onError: () => {
           toast.error(t(($) => $['skillManagement.duplicateFailed']))
@@ -248,60 +247,54 @@ export function SkillDetailSidebarActions({
 
   return (
     <>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger
+      <Menu modal={false}>
+        <MenuTrigger
           aria-label={t(($) => $['skillManagement.moreActions'], {
             name: detail.display_name,
           })}
-          className="mt-px flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+          className="mt-px flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
         >
           <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
+        </MenuTrigger>
+        <MenuContent align="end" className="w-40">
           {canEdit && (
-            <DropdownMenuItem className="gap-2" onClick={onRename}>
+            <MenuItem className="gap-2" onClick={onRename}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span>{tCommon(($) => $['operation.rename'])}</span>
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {canEdit && (
-            <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
+            <MenuItem className="gap-2" onClick={handleDuplicate}>
               <span
                 aria-hidden
                 className="i-ri-file-copy-2-line size-4 shrink-0 text-text-tertiary"
               />
               <span>{tCommon(($) => $['operation.duplicate'])}</span>
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-          {detail.latest_published_version_id && (
-            <DropdownMenuItem
-              className="gap-2"
-              onClick={() => {
-                if (!exportMutation.isPending) exportMutation.mutate()
-              }}
-            >
-              <span
-                aria-hidden
-                className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
-              />
-              <span>{tCommon(($) => $['operation.export'])}</span>
-            </DropdownMenuItem>
-          )}
+          <MenuItem
+            className="gap-2"
+            onClick={() => {
+              if (!exportMutation.isPending) exportMutation.mutate()
+            }}
+          >
+            <span
+              aria-hidden
+              className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
+            />
+            <span>{tCommon(($) => $['operation.export'])}</span>
+          </MenuItem>
           {canDelete && (
             <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                className="gap-2"
-                onClick={() => setDeleteOpen(true)}
-              >
+              <MenuSeparator />
+              <MenuItem variant="destructive" className="gap-2" onClick={() => setDeleteOpen(true)}>
                 <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
                 <span>{tCommon(($) => $['operation.delete'])}</span>
-              </DropdownMenuItem>
+              </MenuItem>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       <SkillDetailDeleteDialog detail={detail} open={deleteOpen} onOpenChange={setDeleteOpen} />
     </>
   )

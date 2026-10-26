@@ -24,6 +24,7 @@ import SuggestedQuestions from './suggested-questions'
 import WorkflowProcessItem from './workflow-process'
 
 type AnswerProps = {
+  footer?: ReactNode
   answerActionPosition?: AnswerActionPosition
   item: ChatItem
   question: string
@@ -31,7 +32,6 @@ type AnswerProps = {
   config?: ChatConfig
   answerIcon?: ReactNode
   responding?: boolean
-  showPromptLog?: boolean
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   appData?: AppData
@@ -46,6 +46,7 @@ type AnswerProps = {
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
+  footer,
   answerActionPosition,
   item,
   question,
@@ -53,7 +54,6 @@ const Answer: FC<AnswerProps> = ({
   config,
   answerIcon,
   responding,
-  showPromptLog,
   chatAnswerContainerInner,
   hideProcessDetail,
   appData,
@@ -63,7 +63,7 @@ const Answer: FC<AnswerProps> = ({
   renderAgentContent,
   onHumanInputFormSubmit,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const {
     content,
     citation,
@@ -195,7 +195,6 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
-                  showPromptLog={showPromptLog}
                   noChatInput={noChatInput}
                 />
               )}
@@ -256,7 +255,6 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
-                  showPromptLog={showPromptLog}
                   noChatInput={noChatInput}
                 />
               )}
@@ -333,7 +331,6 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
-                  showPromptLog={showPromptLog}
                   noChatInput={noChatInput}
                 />
               )}
@@ -399,6 +396,12 @@ const Answer: FC<AnswerProps> = ({
           </div>
         )}
         <More more={more} />
+        {item.isError && (
+          <p role="alert" className="system-sm-regular text-text-destructive">
+            {t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+        )}
+        {footer}
       </div>
     </div>
   )

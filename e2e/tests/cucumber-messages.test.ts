@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import {
   assertCucumberScenariosStarted,
   countStartedCucumberScenarios,
-} from '../support/cucumber-messages'
+} from '../support/cucumber-messages.ts'
 
 describe('countStartedCucumberScenarios', () => {
   it('counts test case start messages', () => {

@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 const McpToolNotSupportTooltip: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const tip = t(($) => $['detailPanel.toolSelector.unsupportedMCPTool'], { ns: 'plugin' })
 
   return (

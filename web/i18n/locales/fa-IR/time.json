@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "MM/DD/YYYY HH:mm",
+  "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
+  "operation.cancel": "لغو",
+  "operation.now": "حالا",
+  "operation.ok": "خوب",
+  "operation.pickDate": "تاریخ را انتخاب کنید",
+  "picker.chooseMonthAndYear": "ماه و سال را انتخاب کنید",
+  "picker.endDate": "تاریخ پایان",
+  "picker.hour": "ساعت",
+  "picker.minute": "دقیقه",
+  "picker.month": "ماه",
+  "picker.nextMonth": "ماه بعد",
+  "picker.period": "قبل‌ازظهر/بعدازظهر",
+  "picker.previousMonth": "ماه قبل",
+  "picker.required": "یک مقدار انتخاب کنید.",
+  "picker.requiredLabel": "الزامی",
+  "picker.startDate": "تاریخ شروع",
+  "picker.unavailable": "این تاریخ یا زمان در دسترس نیست.",
+  "picker.year": "سال",
+  "title.pickTime": "زمان انتخاب کنید"
+}

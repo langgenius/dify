@@ -3,14 +3,15 @@ import type { LLMNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, PromptItem, Var, Variable } from '@/app/components/workflow/types'
 import { noop } from 'es-toolkit/function'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
+import {
+  editorResourceKindAtom,
+  isChatflowAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import useConfigVision from '../../hooks/use-config-vision'
-import { useIsChatMode } from '../../hooks/use-workflow'
 import { EditionType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -39,12 +40,12 @@ const useSingleRunFormParams = ({
   setRunInputData,
   toVarInputs,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowModels'])
   const { inputs } = useNodeCrud<LLMNodeType>(id, payload)
   const getVarInputs = getInputVars
-  const isChatMode = useIsChatMode()
-  const flowType = useHooksStore((s) => s.configsMap?.flowType)
-  const isSnippetFlow = flowType === FlowType.snippet
+  const isChatflow = useAtomValue(isChatflowAtom)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
+  const isSnippetFlow = resourceKind === 'snippet'
 
   const contexts = runInputData['#context#']
   const setContexts = useCallback(
@@ -71,7 +72,7 @@ const useSingleRunFormParams = ({
   // model
   const model = inputs.model
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === AppModeEnum.CHAT
+  const isChatModel = modelMode === 'chat'
   const { isVisionModel } = useConfigVision(model, {
     payload: inputs.vision,
     onChange: noop,
@@ -87,7 +88,7 @@ const useSingleRunFormParams = ({
   })()
 
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
-    return [
+    const supportedVariableTypes: readonly VarType[] = [
       VarType.arrayObject,
       VarType.array,
       VarType.number,
@@ -97,7 +98,9 @@ const useSingleRunFormParams = ({
       VarType.arrayNumber,
       VarType.file,
       VarType.arrayFile,
-    ].includes(varPayload.type)
+    ]
+
+    return supportedVariableTypes.includes(varPayload.type)
   }, [])
 
   const { availableVars } = useAvailableVarList(id, {
@@ -111,9 +114,9 @@ const useSingleRunFormParams = ({
           .filter((item) => item.edition_type !== EditionType.jinja2)
           .map((item) => item.text)
       : [(inputs.prompt_template as PromptItem).text]
-    if (!isSnippetFlow && isChatMode && isChatModel && !!inputs.memory) arr.push('{{#sys.query#}}')
+    if (!isSnippetFlow && isChatflow && isChatModel && !!inputs.memory) arr.push('{{#sys.query#}}')
 
-    if (isChatMode && isChatModel && !!inputs.memory) arr.push(inputs.memory.query_prompt_template)
+    if (isChatflow && isChatModel && !!inputs.memory) arr.push(inputs.memory.query_prompt_template)
 
     return arr
   })()
@@ -157,7 +160,7 @@ const useSingleRunFormParams = ({
 
     if (varInputs.length > 0) {
       forms.push({
-        label: t(($) => $[`${i18nPrefix}.singleRun.variable`], { ns: 'workflow' })!,
+        label: t(($) => $[`${i18nPrefix}.singleRun.variable`], { ns: 'workflowModels' })!,
         inputs: varInputs,
         values: inputVarValues,
         onChange: setInputVarValues,
@@ -166,7 +169,7 @@ const useSingleRunFormParams = ({
 
     if (inputs.context?.variable_selector && inputs.context?.variable_selector.length > 0) {
       forms.push({
-        label: t(($) => $[`${i18nPrefix}.context`], { ns: 'workflow' })!,
+        label: t(($) => $[`${i18nPrefix}.context`], { ns: 'workflowModels' })!,
         inputs: [
           {
             label: '',
@@ -186,7 +189,7 @@ const useSingleRunFormParams = ({
       )
 
       forms.push({
-        label: t(($) => $[`${i18nPrefix}.vision`], { ns: 'workflow' })!,
+        label: t(($) => $[`${i18nPrefix}.vision`], { ns: 'workflowModels' })!,
         inputs: [
           {
             label: currentVariable?.variable as any,

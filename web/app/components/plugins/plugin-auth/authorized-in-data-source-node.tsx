@@ -13,7 +13,7 @@ const AuthorizedInDataSourceNode = ({
   authorizationsNum,
   onJumpToDataSourcePage,
 }: AuthorizedInDataSourceNodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
 
   return (
     <Button size="small" onClick={onJumpToDataSourcePage}>

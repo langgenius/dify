@@ -1,0 +1,22 @@
+{
+  "dateFormats.compact": "DD/MM/YYYY HH:mm",
+  "dateFormats.withSeconds": "MM/DD/YYYY hh:mm:ss A",
+  "operation.cancel": "Annulla",
+  "operation.now": "Ora",
+  "operation.ok": "OK",
+  "operation.pickDate": "Seleziona Data",
+  "picker.chooseMonthAndYear": "Scegli mese e anno",
+  "picker.endDate": "Data di fine",
+  "picker.hour": "Ora",
+  "picker.minute": "Minuto",
+  "picker.month": "Mese",
+  "picker.nextMonth": "Mese successivo",
+  "picker.period": "AM/PM",
+  "picker.previousMonth": "Mese precedente",
+  "picker.required": "Scegli un valore.",
+  "picker.requiredLabel": "Obbligatorio",
+  "picker.startDate": "Data di inizio",
+  "picker.unavailable": "Questa data o ora non è disponibile.",
+  "picker.year": "Anno",
+  "title.pickTime": "Scegli Tempo"
+}

@@ -1,83 +1,46 @@
-import type { ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { ChunkStructureEnum } from '../../../types'
 import ChunkStructure from '../index'
 
-const mockUseChunkStructure = vi.hoisted(() => vi.fn())
-
-vi.mock('@/app/components/workflow/nodes/_base/components/layout', () => ({
-  Field: ({
-    children,
-    fieldTitleProps,
-  }: {
-    children: ReactNode
-    fieldTitleProps: { title: string; warningDot?: boolean; operation?: ReactNode }
-  }) => (
-    <div data-testid="field" data-warning-dot={String(!!fieldTitleProps.warningDot)}>
-      <div>{fieldTitleProps.title}</div>
-      {fieldTitleProps.operation}
-      {children}
-    </div>
-  ),
-}))
-
-vi.mock('../hooks', () => ({
-  useChunkStructure: mockUseChunkStructure,
-}))
-
-vi.mock('../../option-card', () => ({
-  default: ({ title }: { title: string }) => <div data-testid="option-card">{title}</div>,
-}))
-
-vi.mock('../selector', () => ({
-  default: ({ trigger, value }: { trigger?: ReactNode; value?: string }) => (
-    <div data-testid="selector">
-      {value ?? 'no-value'}
-      {trigger}
-    </div>
-  ),
-}))
-
-vi.mock('../instruction', () => ({
-  default: ({ className }: { className?: string }) => (
-    <div data-testid="instruction" className={className}>
-      Instruction
-    </div>
-  ),
-}))
-
-describe('ChunkStructure', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseChunkStructure.mockReturnValue({
-      options: [{ value: ChunkStructureEnum.general, label: 'General' }],
-      optionMap: {
-        [ChunkStructureEnum.general]: {
-          title: 'General Chunk Structure',
-        },
-      },
-    })
-  })
-
-  it('should render the selected option and warning dot metadata when a chunk structure is chosen', () => {
-    render(
+it('selects an initial chunk structure and changes it through the selected-card action', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  function Harness() {
+    const [structure, setStructure] = useState<ChunkStructureEnum>()
+    return (
       <ChunkStructure
-        chunkStructure={ChunkStructureEnum.general}
-        warningDot
-        onChunkStructureChange={vi.fn()}
-      />,
+        chunkStructure={structure}
+        onChunkStructureChange={(next) => {
+          setStructure(next)
+          onChange(next)
+        }}
+      />
     )
+  }
+  render(<Harness />)
+  await user.click(
+    screen.getByRole('button', { name: 'workflow.nodes.knowledgeBase.chooseChunkStructure' }),
+  )
+  await user.click(screen.getByRole('button', { name: /datasetCreation.stepTwo.general/ }))
+  expect(onChange).toHaveBeenLastCalledWith(ChunkStructureEnum.general)
+  await waitFor(() =>
+    expect(
+      screen.queryByText('workflow.nodes.knowledgeBase.changeChunkStructure'),
+    ).not.toBeInTheDocument(),
+  )
+  expect(screen.getByText('datasetCreation.stepTwo.general')).toBeInTheDocument()
 
-    expect(screen.getByTestId('field')).toHaveAttribute('data-warning-dot', 'true')
-    expect(screen.getByTestId('selector')).toHaveTextContent(ChunkStructureEnum.general)
-    expect(screen.getByTestId('option-card')).toHaveTextContent('General Chunk Structure')
-    expect(screen.queryByTestId('instruction')).not.toBeInTheDocument()
-  })
-
-  it('should render the add trigger and instruction when no chunk structure is selected', () => {
-    render(<ChunkStructure onChunkStructureChange={vi.fn()} />)
-
-    expect(screen.getByRole('button', { name: /chooseChunkStructure/i })).toBeInTheDocument()
-    expect(screen.getByTestId('instruction')).toBeInTheDocument()
-  })
+  await user.click(screen.getByRole('button', { name: 'workflow.panel.change' }))
+  await user.click(screen.getByRole('button', { name: /datasetCreation.stepTwo.parentChild/ }))
+  expect(onChange).toHaveBeenLastCalledWith(ChunkStructureEnum.parent_child)
+  await waitFor(() =>
+    expect(
+      screen.queryByText('workflow.nodes.knowledgeBase.changeChunkStructure'),
+    ).not.toBeInTheDocument(),
+  )
+  expect(screen.getByText('datasetCreation.stepTwo.parentChild')).toBeInTheDocument()
+  expect(screen.queryByText('datasetCreation.stepTwo.general')).not.toBeInTheDocument()
 })

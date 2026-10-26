@@ -62,7 +62,7 @@ const VariableTag = ({ valueSelector, varType, isShort, availableNodes }: Variab
     })
   }, [node, reactflow, store])
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   return (
     <VariableLabelInSelect
       variables={valueSelector}

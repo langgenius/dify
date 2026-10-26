@@ -541,7 +541,7 @@ async function provisionApps(
       body: JSON.stringify({ tenant_id: wsId }),
       signal: AbortSignal.timeout(10_000),
     })
-    if (!r.ok) throw new Error(`workspace switch to ${wsId} failed: HTTP ${r.status}`)
+    if (!r.ok) throw new Error(`switch workspace to ${wsId} failed: HTTP ${r.status}`)
   }
 
   async function findAppByName(name: string): Promise<string | null> {

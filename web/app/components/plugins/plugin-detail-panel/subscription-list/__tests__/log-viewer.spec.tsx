@@ -1,26 +1,8 @@
 import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import LogViewer from '../log-viewer'
-
-const mockToastNotify = vi.fn()
-const mockWriteText = vi.fn()
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(
-    (message: string, options?: { type?: string }) =>
-      mockToastNotify({ type: options?.type, message }),
-    {
-      success: (message: string) => mockToastNotify({ type: 'success', message }),
-      error: (message: string) => mockToastNotify({ type: 'error', message }),
-      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-      info: (message: string) => mockToastNotify({ type: 'info', message }),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    },
-  ),
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ value }: { value: unknown }) => (
@@ -64,16 +46,6 @@ const createLog = (overrides: Partial<TriggerLogEntity> = {}): TriggerLogEntity 
   ...overrides,
 })
 
-beforeEach(() => {
-  vi.clearAllMocks()
-  Object.defineProperty(navigator, 'clipboard', {
-    value: {
-      writeText: mockWriteText,
-    },
-    configurable: true,
-  })
-})
-
 describe('LogViewer', () => {
   it('should render nothing when logs are empty', () => {
     const { container } = render(<LogViewer logs={[]} />)
@@ -81,92 +53,57 @@ describe('LogViewer', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('should render collapsed log entries', () => {
+  it('expands parsed request and response payloads and collapses them again', async () => {
+    const user = userEvent.setup()
     render(<LogViewer logs={[createLog()]} />)
 
-    expect(screen.getByText(/pluginTrigger\.modal\.manual\.logs\.request/)).toBeInTheDocument()
-    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
-  })
-
-  it('should expand and render request/response payloads', () => {
-    render(<LogViewer logs={[createLog()]} />)
-
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
     )
 
     const editors = screen.getAllByTestId('code-editor')
     expect(editors.length).toBe(2)
     expect(editors[0]).toHaveTextContent('"foo":"bar"')
-  })
-
-  it('should collapse expanded content when clicked again', () => {
-    render(<LogViewer logs={[createLog()]} />)
-
-    const trigger = screen.getByRole('button', {
-      name: /pluginTrigger\.modal\.manual\.logs\.request/,
-    })
-    fireEvent.click(trigger)
-    expect(screen.getAllByTestId('code-editor').length).toBe(2)
-
-    fireEvent.click(trigger)
+    expect(editors[1]).toHaveTextContent('"status_code":200')
+    await user.click(
+      screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
+    )
     expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
   })
 
-  it('should render raw response text and allow copying', () => {
-    const rawLog = {
-      ...createLog(),
-      response: 'plain response',
-    } as unknown as TriggerLogEntity
-
-    render(<LogViewer logs={[rawLog]} />)
-
-    const toggleButton = screen.getByRole('button', {
-      name: /pluginTrigger\.modal\.manual\.logs\.request/,
-    })
-    fireEvent.click(toggleButton)
-
-    expect(screen.getByText('plain response')).toBeInTheDocument()
-
-    const copyButton = screen
-      .getAllByRole('button')
-      .find((button) => button !== toggleButton) as HTMLElement
-    expect(copyButton).toBeTruthy()
-    fireEvent.click(copyButton)
-    expect(mockWriteText).toHaveBeenCalledWith('plain response')
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
-  })
-
-  it('should parse request data when it is raw JSON', () => {
+  it('should parse request data when it is raw JSON', async () => {
+    const user = userEvent.setup()
     const log = createLog({ request: { ...createLog().request, data: '{"hello":1}' } })
 
     render(<LogViewer logs={[log]} />)
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
     )
 
     expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('"hello":1')
   })
 
-  it('should fallback to raw payload when decoding fails', () => {
+  it('should fallback to raw payload when decoding fails', async () => {
+    const user = userEvent.setup()
     const log = createLog({ request: { ...createLog().request, data: 'payload=%E0%A4%A' } })
 
     render(<LogViewer logs={[log]} />)
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
     )
 
     expect(screen.getAllByTestId('code-editor')[0]).toHaveTextContent('payload=%E0%A4%A')
   })
 
-  it('should keep request data string when JSON parsing fails', () => {
+  it('should keep request data string when JSON parsing fails', async () => {
+    const user = userEvent.setup()
     const log = createLog({ request: { ...createLog().request, data: '{invalid}' } })
 
     render(<LogViewer logs={[log]} />)
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /pluginTrigger\.modal\.manual\.logs\.request/ }),
     )
 
@@ -181,13 +118,5 @@ describe('LogViewer', () => {
 
     expect(screen.getByText(/#1/)).toBeInTheDocument()
     expect(screen.getByText(/#2/)).toBeInTheDocument()
-  })
-
-  it('should use index-based key when id is missing', () => {
-    const log = { ...createLog(), id: '' }
-
-    render(<LogViewer logs={[log]} />)
-
-    expect(screen.getByText(/#1/)).toBeInTheDocument()
   })
 })

@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
-import { Infotip } from '@/app/components/base/infotip'
 
 type Props = Readonly<{
   className?: string
@@ -13,6 +13,8 @@ type Props = Readonly<{
 }>
 
 const ItemPanel: FC<Props> = ({ className, icon, name, description, children }) => {
+  const titleId = React.useId()
+
   return (
     <div
       className={cn(
@@ -22,9 +24,14 @@ const ItemPanel: FC<Props> = ({ className, icon, name, description, children }) 
     >
       <div className="flex items-center">
         {icon}
-        <div className="mr-1 ml-3 text-sm/6 font-semibold text-text-secondary">{name}</div>
-        <Infotip aria-label={description} popupClassName="w-[180px]">
-          {description}
+        <div id={titleId} className="mr-1 ml-3 text-sm/6 font-semibold text-text-secondary">
+          {name}
+        </div>
+        <Infotip>
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-45">
+            {description}
+          </InfotipContent>
         </Infotip>
       </div>
       <div>{children}</div>
