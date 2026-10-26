@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "‘{{name}}’ is nu een Agent-kennisbank",
+  "upgrade.completeTitle": "Upgrade voltooid",
+  "upgrade.contactSupport": "Contact opnemen met support",
+  "upgrade.dialogAvailability": "Na de upgrade <strong>blijven zowel de klassieke kennisbank als de Agent-kennisbank beschikbaar</strong>",
+  "upgrade.dialogDescription": "Upgrade deze <legacy>klassieke kennisbank</legacy> naar een <new>Agent-kennisbank</new>, met behoud van alle documenten, instellingen en app-koppelingen. Je wordt automatisch naar de Agent-kennisbank gebracht.",
+  "upgrade.dialogDuration": "Duurt enkele minuten tot enkele uren, afhankelijk van de grootte. De voortgang staat op de kennisbankkaart",
+  "upgrade.dialogLinkedApps": "Gekoppelde apps blijven tijdens de upgrade gegevens ophalen",
+  "upgrade.dialogTitle": "Upgraden naar een Agent-kennisbank?",
+  "upgrade.failedDescription": "Upgrade mislukt — er is niets gewijzigd. Je klassieke kennisbank blijft beschikbaar.",
+  "upgrade.failedTitle": "Upgrade mislukt",
+  "upgrade.failedToastDescription": "‘{{name}}’ blijft een klassieke kennisbank; er zijn geen gegevens gewijzigd",
+  "upgrade.justNow": "Zojuist",
+  "upgrade.menuLabel": "Upgraden naar Agent-kennisbank",
+  "upgrade.migratingDocuments": "Documenten migreren…",
+  "upgrade.modelCostDescription": "Bij het upgraden verwerken modellen de documenten in deze kennisbank en verbruiken ze tokens. Meer documentinhoud betekent meestal meer verbruik en kan aanzienlijke kosten met zich meebrengen. De werkelijke kosten hangen af van de facturering van het gebruikte model.",
+  "upgrade.start": "Upgrade starten",
+  "upgrade.startFailed": "De upgrade kon niet worden gestart. Probeer het opnieuw.",
+  "upgrade.statusFailed": "Upgrade mislukt",
+  "upgrade.statusUpgrading": "Bezig met upgraden",
+  "upgrade.summary": "Kennisbank: {{name}}",
+  "upgrade.upgradedJustNow": "Zojuist geüpgraded"
+}

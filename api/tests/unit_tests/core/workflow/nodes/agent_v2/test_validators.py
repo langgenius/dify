@@ -22,7 +22,7 @@ from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, 
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.workflow import Workflow
-from tests.unit_tests.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_workflow
 
 
 def _workflow(graph: dict) -> Workflow:

@@ -7,17 +7,22 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import Annotation from '../index'
 
 const api = vi.hoisted(() => ({
+  features: vi.fn<typeof consoleClient.features.get>(),
   list: vi.fn<typeof consoleClient.apps.byAppId.annotations.get>(),
   add: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
   remove: vi.fn<typeof consoleClient.apps.byAppId.annotations.byAnnotationId.delete>(),
@@ -36,7 +41,9 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => api.features(),
       'apps.byAppId.annotations.count.get': () => ({ count: 0 }),
+      'apps.byAppId.annotations.post': (input) => api.add(input),
       'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.remove(input),
       'apps.byAppId.annotations.delete': (input) => api.batchRemove(input),
     }),
@@ -107,7 +114,7 @@ function setup(quota = { size: 0, limit: 10 }) {
   renderWithConsoleQuery(
     <NuqsTestingAdapter>
       <Annotation appDetail={createAppDetailFixture({ id: 'app-id', mode: 'chat' })} />
-      <AppToastHost />
+      <AppToaster />
     </NuqsTestingAdapter>,
     {
       queryClient,
@@ -115,6 +122,7 @@ function setup(quota = { size: 0, limit: 10 }) {
       features: { annotation_quota_limit: quota },
     },
   )
+  api.features.mockResolvedValue(seedFeatures(queryClient, { annotation_quota_limit: quota }))
   return userEvent.setup()
 }
 
@@ -188,6 +196,7 @@ it('creates an annotation from the empty page and displays the saved record', as
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(await screen.findByRole('checkbox', { name: 'New question' })).toBeVisible()
   expect(screen.getByRole('cell', { name: 'New answer' })).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   expect(api.add).toHaveBeenCalledExactlyOnceWith({
     params: { app_id: 'app-id' },
     body: { question: 'New question', answer: 'New answer' },
@@ -226,6 +235,7 @@ it('keeps a failed batch deletion open for retry and clears the selection after 
   await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
   expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
   expect(screen.queryByText('appAnnotation.batchAction.selected')).not.toBeInTheDocument()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   expect(api.batchRemove).toHaveBeenCalledTimes(2)
   expect(api.batchRemove).toHaveBeenLastCalledWith({
     params: { app_id: 'app-id' },
@@ -255,6 +265,7 @@ it('saves edits from the detail drawer and shows them when reopened', async () =
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(await screen.findByRole('checkbox', { name: 'Edited question' })).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
   expect(
     within(
@@ -279,6 +290,7 @@ it('removes an annotation through its detail drawer and closes it', async () => 
   await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
+  expect(screen.queryByText('common.api.actionSuccess')).not.toBeInTheDocument()
   expect(api.remove).toHaveBeenCalledExactlyOnceWith({
     params: { app_id: 'app-id', annotation_id: item.id },
   })

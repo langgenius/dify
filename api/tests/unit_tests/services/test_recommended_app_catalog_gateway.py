@@ -22,7 +22,7 @@ from services.recommended_app_query_service import (
     RecommendedAppInfoRecord,
     RecommendedAppRecord,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _page_payload(*app_ids: str, learn_dify_ids: frozenset[str] = frozenset()) -> dict[str, object]:

@@ -15,7 +15,7 @@ type CalendarGridProps = {
     nextMonth: string
   }
   value: string | null
-  onSelect: (value: string) => void
+  onSelect: (value: string, event: React.MouseEvent<Element> | React.KeyboardEvent<Element>) => void
   displayMonth: string
   onDisplayMonthChange: (value: string) => void
   locale?: DayPickerProps['locale']
@@ -150,7 +150,7 @@ function CalendarGrid({
           required
           dir={direction}
           selected={selected}
-          onSelect={(date) => {
+          onSelect={(date, _selectedDay, _modifiers, event) => {
             if (!date) return
             const next = fromCalendarDate(date)
             const nextMonth = `${next.slice(0, 7)}-01`
@@ -158,7 +158,7 @@ function CalendarGrid({
               restoreSelectionFocusRef.current = true
               onDisplayMonthChange(nextMonth)
             }
-            onSelect(next)
+            onSelect(next, event)
           }}
           month={toCalendarDate(displayMonth)}
           onMonthChange={(month) =>

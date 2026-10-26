@@ -81,7 +81,11 @@ const isCliToolItem = (
 const isKnowledgeRetrievalItem = (
   item: AgentOrchestrateAddedItem,
 ): item is AgentKnowledgeRetrievalItem =>
-  'queryMode' in item || 'customQuery' in item || 'selectedDatasets' in item || 'nameKey' in item
+  'controlSpaceId' in item ||
+  'queryMode' in item ||
+  'customQuery' in item ||
+  'selectedDatasets' in item ||
+  'nameKey' in item
 
 export function AgentPromptSlashMenu({
   view,
@@ -229,20 +233,23 @@ export function AgentPromptSlashMenu({
           />
         </div>
       ) : (
-        <div className="border-t border-divider-subtle p-1">
-          <button
-            type="button"
-            {...agentPromptSlashMenuItemProps}
-            className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
-            onClick={() => handleAddFromFooter()}
-          >
-            <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
-            <span className="system-sm-regular text-text-secondary">
-              {view === 'files' && t(($) => $['agentDetail.configure.files.add'])}
-              {view === 'knowledge' && t(($) => $['agentDetail.configure.knowledgeRetrieval.add'])}
-            </span>
-          </button>
-        </div>
+        (view !== 'knowledge' || onAddKnowledge !== undefined) && (
+          <div className="border-t border-divider-subtle p-1">
+            <button
+              type="button"
+              {...agentPromptSlashMenuItemProps}
+              className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden data-agent-prompt-menu-active:bg-state-base-hover"
+              onClick={() => handleAddFromFooter()}
+            >
+              <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
+              <span className="system-sm-regular text-text-secondary">
+                {view === 'files' && t(($) => $['agentDetail.configure.files.add'])}
+                {view === 'knowledge' &&
+                  t(($) => $['agentDetail.configure.knowledgeRetrieval.add'])}
+              </span>
+            </button>
+          </div>
+        )
       )}
     </AgentPromptSlashPanel>
   )

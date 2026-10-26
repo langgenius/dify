@@ -7,6 +7,8 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentMonitoringPage } from '../page'
 
+vi.mock('../tracing-configuration', () => ({ AgentTracingConfiguration: () => null }))
+
 const mocks = vi.hoisted(() => ({
   statisticsQueryFn: vi.fn(),
   logSourcesQueryFn: vi.fn(),

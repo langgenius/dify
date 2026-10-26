@@ -1,5 +1,4 @@
 import type {
-  AppMode,
   WorkflowDraftVariableResponse,
   WorkflowDraftVariableWithoutValueResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
@@ -44,6 +43,7 @@ export type AgentLogItemWithChildren = AgentLogItem & {
 
 export type NodeTracing = {
   id: string
+  node_execution_id?: string | null
   index: number
   predecessor_node_id: string
   node_id: string
@@ -352,7 +352,7 @@ export type HumanInputFormData = {
   inputs: FormInputItem[]
   actions: UserAction[]
   form_token: string | null
-  resolved_default_values: Record<string, HumanInputResolvedValue>
+  resolved_default_values: Record<string, unknown>
   display_in_ui: boolean
   expiration_time: number | null
 }
@@ -369,6 +369,7 @@ export type HumanInputFormValue = string | FileResponse | FileResponse[]
 export type HumanInputResolvedValue = string | FileResponse | FileResponse[]
 
 export type HumanInputFilledFormData = {
+  form_id: string
   node_id: string
   node_title: string
   rendered_content: string
@@ -387,6 +388,7 @@ export type HumanInputFormFilledResponse = {
 }
 
 export type HumanInputFormTimeoutData = {
+  form_id: string
   node_id: string
   node_title: string
   expiration_time: number
@@ -428,37 +430,11 @@ export type WorkflowRunHistoryResponse = {
   data: WorkflowRunHistory[]
 }
 
-export type NodesDefaultConfigsResponse = {
-  type: string
-  config: any
-}[]
-
-export type ConversationVariableResponse = {
-  data: (ConversationVariable & { updated_at: number; created_at: number })[]
-  has_more: boolean
-  limit: number
-  total: number
-  page: number
-}
-
 export type IterationDurationMap = Record<string, number>
 export type LoopDurationMap = Record<string, number>
 export type LoopVariableMap = Record<string, any>
 
-export type WorkflowConfigResponse = {
-  parallel_depth_limit: number
-}
-
 export type PublishWorkflowParams = {
-  url: string
-  title: string
-  releaseNotes: string
-}
-
-export type UpdateWorkflowParams = {
-  appId?: string
-  appMode?: AppMode
-  url: string
   title: string
   releaseNotes: string
 }

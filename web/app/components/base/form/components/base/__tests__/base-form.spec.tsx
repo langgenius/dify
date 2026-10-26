@@ -1,5 +1,5 @@
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
-import { useForm, useStore } from '@tanstack/react-form'
+import { useForm, useSelector } from '@tanstack/react-form'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
@@ -95,7 +95,7 @@ describe('BaseForm', () => {
     const user = userEvent.setup()
     const ExternalForm = () => {
       const form = useForm({ defaultValues: { kind: 'show', title: 'External title' } })
-      const kind = useStore(form.store, (state) => state.values.kind)
+      const kind = useSelector(form.store, (state) => state.values.kind)
       return (
         <>
           <BaseForm formSchemas={baseSchemas} formFromProps={form} />

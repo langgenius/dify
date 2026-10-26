@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from models.model import App, AppMode, AppModelConfig
-from tests.unit_tests.model_factories import make_app
+from tests.helpers.unit.model_factories import make_app
 
 
 def _app() -> App:
