@@ -24,7 +24,7 @@ import tempfile
 import time
 import traceback
 from pathlib import Path
-from typing import Any
+from typing import Any, Never
 
 API_ROOT = Path(__file__).resolve().parents[1]
 TIMEOUT = 90
@@ -146,26 +146,36 @@ def preload() -> tuple[bool, dict[str, tuple[int, int, int]]]:
     return safe, dependencies
 
 
+def export_worker(write_fd: int) -> Never:
+    """Run the isolated exporter and keep its pipe open through process exit."""
+    try:
+        from dev.export_console_openapi import main
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            main()
+        payload = b"OK\n" + output.getvalue().encode()
+    except BaseException:
+        payload = b"ERROR\n" + traceback.format_exc().encode()
+    try:
+        with os.fdopen(write_fd, "wb") as pipe:
+            pipe.write(payload)
+            pipe.flush()
+            # Keep the pipe open through process exit. Closing it first lets
+            # the parent kill a successful worker while exit instrumentation
+            # (for example, subprocess coverage) is still flushing its data.
+            os._exit(0)
+    finally:
+        os._exit(1)
+
+
 def fork_export() -> bytes:
     """Export from a clean controller registry; the parent snapshot is never mutated."""
     read_fd, write_fd = os.pipe()
     pid = os.fork()
     if pid == 0:
         os.close(read_fd)
-        try:
-            from dev.export_console_openapi import main
-
-            output = io.StringIO()
-            with contextlib.redirect_stdout(output):
-                main()
-            payload = b"OK\n" + output.getvalue().encode()
-        except BaseException:
-            payload = b"ERROR\n" + traceback.format_exc().encode()
-        try:
-            with os.fdopen(write_fd, "wb") as pipe:
-                pipe.write(payload)
-        finally:
-            os._exit(0)
+        export_worker(write_fd)
     os.close(write_fd)
     chunks: list[bytes] = []
     size = 0

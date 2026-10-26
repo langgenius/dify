@@ -201,7 +201,8 @@ if (await load(undefined, {client: (await import('@dify/openapi-content-mapper')
 })
 
 test('Vite refreshes command sources when a new backend input is added', async (t) => {
-  const { directory } = fixture(t)
+  const { directory, file, content } = fixture(t)
+  writeFileSync(file, JSON.stringify({ ...JSON.parse(content), optionalInputs: ['.env'] }))
   const exporter = join(directory, 'export.mjs')
   writeFileSync(
     exporter,
@@ -218,7 +219,11 @@ test('Vite refreshes command sources when a new backend input is added', async (
     server: { port: 0 },
   })
   t.after(() => server.close())
+  // A new file created during Chokidar's initial scan is not an `add` event
+  // when ignoreInitial is enabled (notably on Linux).
+  const watcherReady = new Promise((resolve) => server.watcher.once('ready', resolve))
   await server.listen()
+  await watcherReady
   await server.transformRequest('/entry.ts')
   await server.transformRequest('/pets.openapi-source')
   const url = '/pets.openapi-source?openapi-router=%5B%5D'

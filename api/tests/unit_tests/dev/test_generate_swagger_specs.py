@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from jsonschema import Draft202012Validator
 
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -71,6 +72,7 @@ def _reset_schema_cache(api):
     api.__dict__.pop("__schema__", None)
 
 
+@pytest.mark.timeout(150)  # Two cold, coverage-instrumented CLI exports each have a 60-second limit.
 def test_console_stdout_export_contains_both_surfaces_without_spec_files(tmp_path: Path):
     script = Path(__file__).resolve().parents[3] / "dev" / "export_console_openapi.py"
     result = subprocess.run(

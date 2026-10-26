@@ -89,7 +89,10 @@ export function openapi(
       }
       dependencies.set(fileName, render.dependencies)
       for (const dependency of render.dependencies) {
-        if (server && statSync(dependency).isDirectory()) server.watcher.add(dependency)
+        const stat = statSync(dependency, { throwIfNoEntry: false })
+        // Vite treats addWatchFile as an implicit import. Missing optional
+        // inputs and directories belong to the watcher, not its module graph.
+        if (server && (!stat || stat.isDirectory())) server.watcher.add(dependency)
         else this.addWatchFile(dependency)
       }
       server?.watcher.add([`${fileName}.queries.ts`, `${fileName}.errors.ts`])

@@ -177,7 +177,9 @@ def test_workspace_matrix_documents_pagination_and_language(apis: rbac_mod._Reso
 
     from controllers.console import api
 
-    operation = Swagger(api).serialize_resource(console_ns, apis.workspace_matrix, "/workspace/access-policy")["get"]
+    resource = Swagger(api).serialize_resource(console_ns, apis.workspace_matrix, "/workspace/access-policy")
+    assert resource is not None
+    operation = resource["get"]
     parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
     assert {"page", "limit", "reverse", "language"} <= parameters.keys()
     assert all(parameters[name]["in"] == "query" for name in ("page", "limit", "language"))

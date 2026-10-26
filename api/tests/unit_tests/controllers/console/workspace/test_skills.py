@@ -1501,9 +1501,9 @@ def test_skill_import_documents_required_multipart_file() -> None:
 
     from controllers.console import api
 
-    operation = Swagger(api).serialize_resource(
-        console_ns, WorkspaceSkillImportApi, "/workspaces/current/skills/import"
-    )["post"]
+    resource = Swagger(api).serialize_resource(console_ns, WorkspaceSkillImportApi, "/workspaces/current/skills/import")
+    assert resource is not None
+    operation = resource["post"]
     body = operation["requestBody"]
     assert body["required"] is True
     schema = body["content"]["multipart/form-data"]["schema"]

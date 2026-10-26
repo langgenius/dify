@@ -69,6 +69,12 @@ export function inspectSource(content: string, fileName: string) {
       continue
     }
     if (!stat) throw new Error(`Source input disappeared: ${dependency}`)
+    // Tiny optional configuration files can be rewritten within one filesystem
+    // timestamp tick. Their contents must distinguish same-size rapid edits.
+    if (optional.has(dependency) && stat.isFile()) {
+      hash.update(dependency).update(readFileSync(dependency))
+      continue
+    }
     hash.update(
       JSON.stringify(
         stat.isDirectory()
