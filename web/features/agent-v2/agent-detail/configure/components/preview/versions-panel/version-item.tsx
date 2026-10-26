@@ -1,12 +1,7 @@
 import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -101,8 +96,8 @@ export function VersionItem({
         </div>
       </button>
       {(onExport || onRestore) && (
-        <DropdownMenu>
-          <DropdownMenuTrigger
+        <Menu>
+          <MenuTrigger
             render={
               <IconButton
                 aria-label={t(($) => $['roster.moreActions'], { ns: 'agentRoster', name: label })}
@@ -113,9 +108,9 @@ export function VersionItem({
               </IconButton>
             }
           />
-          <DropdownMenuContent className="min-w-40">
+          <MenuContent align="end" className="min-w-40">
             {onRestore && (
-              <DropdownMenuItem
+              <MenuItem
                 disabled={restoreDisabled}
                 onClick={() => onRestore(version)}
                 className="gap-2"
@@ -127,10 +122,10 @@ export function VersionItem({
                     {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
                   </PremiumBadge>
                 )}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
             {onExport && (
-              <DropdownMenuItem
+              <MenuItem
                 disabled={exportDisabled}
                 onClick={() => onExport(version.id)}
                 className="gap-2"
@@ -142,10 +137,10 @@ export function VersionItem({
                     {t(($) => $['upgradeBtn.encourageShort'], { ns: 'billing' })}
                   </PremiumBadge>
                 )}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </MenuContent>
+        </Menu>
       )}
     </div>
   )

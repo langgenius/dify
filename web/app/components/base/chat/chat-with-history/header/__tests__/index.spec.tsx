@@ -1,350 +1,195 @@
-import type { ChatWithHistoryContextValue } from '../../context'
-import type { AppData, ConversationItem } from '@/models/share'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { InputVarType } from '@/app/components/workflow/types'
-import { ChatWithHistoryContext, useChatWithHistoryContext } from '../../context'
+import {
+  AppSourceType,
+  delConversation,
+  fetchChatList,
+  fetchConversations,
+  pinConversation,
+  renameConversation,
+  unpinConversation,
+} from '@/service/share'
+import { createChatConfigFixture } from '@/test/fixtures/chat'
+import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
+import { conversation, renderChatHistory } from '../../__tests__/chat-history-test-env'
 import Header from '../index'
 
-const mockAppData: AppData = {
-  app_id: 'app-1',
-  site: {
-    title: 'Test App',
-    icon_type: 'emoji',
-    icon: '🤖',
-    icon_background: '#fff',
-    icon_url: '',
-  },
-  end_user_id: 'user-1',
-  custom_config: null,
-  can_replace_logo: false,
-}
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  fetchChatList: vi.fn(),
+  fetchConversations: vi.fn(),
+  pinConversation: vi.fn(),
+  unpinConversation: vi.fn(),
+  renameConversation: vi.fn(),
+  delConversation: vi.fn(),
+}))
 
-const mockContextDefaults: Partial<ChatWithHistoryContextValue> = {
-  appData: mockAppData,
-  currentConversationId: '',
-  currentConversationItem: undefined,
-  inputsForms: [],
-  pinnedConversationList: [],
-  handlePinConversation: vi.fn(),
-  handleUnpinConversation: vi.fn(),
-  handleRenameConversation: vi.fn(),
-  handleDeleteConversation: vi.fn(),
-  handleNewConversation: vi.fn(),
-  sidebarCollapseState: true,
-  handleSidebarCollapse: vi.fn(),
-  isResponding: false,
-  conversationRenaming: false,
-}
-
-const conversation = (overrides: Partial<ConversationItem> = {}): ConversationItem => ({
-  id: 'conv-1',
-  name: 'My Chat',
-  inputs: {},
-  introduction: '',
-  ...overrides,
+beforeEach(() => {
+  vi.mocked(fetchChatList).mockResolvedValue({ data: [] })
+  vi.mocked(fetchConversations).mockResolvedValue({ data: [], has_more: false, limit: 100 })
+  vi.mocked(pinConversation).mockResolvedValue(undefined)
+  vi.mocked(unpinConversation).mockResolvedValue(undefined)
+  vi.mocked(renameConversation).mockResolvedValue(undefined)
+  vi.mocked(delConversation).mockResolvedValue(undefined)
 })
-const setup = (overrides: Partial<ChatWithHistoryContextValue> = {}) => {
-  function Provider() {
-    const defaults = useChatWithHistoryContext()
-    return (
-      <ChatWithHistoryContext.Provider
-        value={{ ...defaults, ...mockContextDefaults, ...overrides }}
-      >
-        <Header />
-      </ChatWithHistoryContext.Provider>
-    )
-  }
-  return render(<Provider />)
+afterEach(() => {
+  localStorage.removeItem(CONVERSATION_ID_INFO)
+  sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
+  localStorage.removeItem('webappSidebarCollapse')
+})
+
+async function operate(user: ReturnType<typeof userEvent.setup>, action: string) {
+  await user.click(await screen.findByRole('button', { name: 'My Chat' }))
+  await user.click(
+    await screen.findByRole('menuitem', { name: `explore.sidebar.action.${action}` }),
+  )
 }
 
-describe('Header Component', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+it('resets the selected conversation and persists New Chat from the reset button', async () => {
+  const user = userEvent.setup()
+  renderChatHistory(<Header />)
+  await user.click(screen.getByRole('button', { name: 'share.chat.resetChat' }))
+  expect(await screen.findByText('Test Chat')).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'My Chat' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'share.chat.resetChat' })).not.toBeInTheDocument()
+  expect(JSON.parse(sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)!)).toEqual({
+    'app-1': { 'user-1': '' },
   })
-
-  afterEach(() => vi.restoreAllMocks())
-
-  describe('Rendering', () => {
-    it('opens chat settings with the conversation inputs', async () => {
-      const user = userEvent.setup()
-      const mockConv = conversation()
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        inputsForms: [
-          { type: InputVarType.textInput, label: 'Topic', variable: 'topic', required: false },
-        ],
-        currentConversationInputs: { topic: 'Travel' },
-      })
-
-      await user.click(screen.getByRole('button', { name: 'share.chat.viewChatSettings' }))
-      expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('Travel')
-      await user.keyboard('{Escape}')
-      expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
-    })
+  expect(JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO)!)).toEqual({
+    'app-1': { 'user-1': '' },
   })
+})
 
-  describe('Interactions', () => {
-    it('should handle new conversation', async () => {
-      const user = userEvent.setup()
-      const handleNewConversation = vi.fn()
-      setup({ handleNewConversation, sidebarCollapseState: true, currentConversationId: 'conv-1' })
+it('expands and persists the sidebar, removing the collapsed-header actions', async () => {
+  const user = userEvent.setup()
+  renderChatHistory(<Header />)
+  await user.click(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }))
+  expect(
+    screen.queryByRole('button', { name: 'layout.sidebar.expandSidebar' }),
+  ).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'My Chat' })).not.toBeInTheDocument()
+  expect(localStorage.getItem('webappSidebarCollapse')).toBe('expanded')
+})
 
-      const resetChatBtn = screen.getByRole('button', { name: 'share.chat.resetChat' })
-      await user.click(resetChatBtn)
-
-      expect(handleNewConversation).toHaveBeenCalled()
-    })
-
-    it('should handle sidebar toggle', async () => {
-      const user = userEvent.setup()
-      const handleSidebarCollapse = vi.fn()
-      setup({ handleSidebarCollapse, sidebarCollapseState: true })
-
-      const sidebarBtn = screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })
-      await user.click(sidebarBtn)
-
-      expect(handleSidebarCollapse).toHaveBeenCalledWith(false)
-    })
-
-    it('should render operation menu and handle pin', async () => {
-      const user = userEvent.setup()
-      const handlePinConversation = vi.fn()
-      const mockConv = conversation()
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        handlePinConversation,
-        sidebarCollapseState: true,
-      })
-
-      const trigger = screen.getByText('My Chat')
-      await user.click(trigger)
-
-      const pinBtn = await screen.findByText('explore.sidebar.action.pin')
-      expect(pinBtn)!.toBeInTheDocument()
-
-      await user.click(pinBtn)
-
-      expect(handlePinConversation).toHaveBeenCalledWith('conv-1')
-    })
-
-    it('should handle unpin', async () => {
-      const user = userEvent.setup()
-      const handleUnpinConversation = vi.fn()
-      const mockConv = conversation()
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        handleUnpinConversation,
-        pinnedConversationList: [conversation()],
-        sidebarCollapseState: true,
-      })
-
-      await user.click(screen.getByText('My Chat'))
-
-      const unpinBtn = await screen.findByText('explore.sidebar.action.unpin')
-      await user.click(unpinBtn)
-
-      expect(handleUnpinConversation).toHaveBeenCalledWith('conv-1')
-    })
-
-    it('should handle rename cancellation', async () => {
-      const user = userEvent.setup()
-      const mockConv = conversation()
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        sidebarCollapseState: true,
-      })
-
-      await user.click(screen.getByText('My Chat'))
-
-      const renameMenuBtn = await screen.findByText('explore.sidebar.action.rename')
-      await user.click(renameMenuBtn)
-
-      const cancelBtn = await screen.findByText('common.operation.cancel')
-      await user.click(cancelBtn)
-
-      await waitFor(() => {
-        expect(screen.queryByText('common.chat.renameConversation')).not.toBeInTheDocument()
-      })
-      expect(mockContextDefaults.handleRenameConversation).not.toHaveBeenCalled()
-    })
-
-    it('should handle rename success flow', async () => {
-      const user = userEvent.setup()
-      const handleRenameConversation = vi.fn()
-      const mockConv = conversation()
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        handleRenameConversation,
-        sidebarCollapseState: true,
-      })
-
-      await user.click(screen.getByText('My Chat'))
-
-      const renameMenuBtn = await screen.findByText('explore.sidebar.action.rename')
-      await user.click(renameMenuBtn)
-
-      expect(await screen.findByText('common.chat.renameConversation'))!.toBeInTheDocument()
-
-      const input = screen.getByDisplayValue('My Chat')
-      await user.clear(input)
-      await user.type(input, 'New Name')
-
-      const saveBtn = await screen.findByText('common.operation.save')
-      await user.click(saveBtn)
-
-      expect(handleRenameConversation).toHaveBeenCalledWith(
-        'conv-1',
-        'New Name',
-        expect.any(Object),
-      )
-
-      const successCallback = handleRenameConversation.mock.calls[0]![2].onSuccess
-      await act(async () => {
-        successCallback()
-      })
-
-      await waitFor(() => {
-        expect(screen.queryByText('common.chat.renameConversation')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should handle delete flow', async () => {
-      const user = userEvent.setup()
-      const handleDeleteConversation = vi.fn()
-      const mockConv = conversation()
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        handleDeleteConversation,
-        sidebarCollapseState: true,
-      })
-
-      await user.click(screen.getByText('My Chat'))
-
-      const deleteMenuBtn = await screen.findByText('explore.sidebar.action.delete')
-      await user.click(deleteMenuBtn)
-
-      expect(handleDeleteConversation).not.toHaveBeenCalled()
-      expect(await screen.findByText('share.chat.deleteConversation.title'))!.toBeInTheDocument()
-
-      const confirmBtn = await screen.findByText('common.operation.confirm')
-      await user.click(confirmBtn)
-
-      expect(handleDeleteConversation).toHaveBeenCalledWith('conv-1', expect.any(Object))
-
-      const successCallback = handleDeleteConversation.mock.calls[0]![1].onSuccess
-      await act(async () => {
-        successCallback()
-      })
-
-      await waitFor(() => {
-        expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
-      })
-    })
-
-    it('should handle delete cancellation', async () => {
-      const user = userEvent.setup()
-      const mockConv = conversation()
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        sidebarCollapseState: true,
-      })
-
-      await user.click(screen.getByText('My Chat'))
-
-      const deleteMenuBtn = await screen.findByText('explore.sidebar.action.delete')
-      await user.click(deleteMenuBtn)
-
-      const cancelBtn = await screen.findByText('common.operation.cancel')
-      await user.click(cancelBtn)
-
-      await waitFor(() => {
-        expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
-      })
-      expect(mockContextDefaults.handleDeleteConversation).not.toHaveBeenCalled()
-    })
+it.each([false, true])('refreshes the pin action after saving pinned=%s', async (pinned) => {
+  const user = userEvent.setup()
+  const { queryClient, listKey } = renderChatHistory(<Header />, {
+    conversations: pinned ? [] : [conversation],
+    pinnedConversations: pinned ? [conversation] : [],
   })
+  vi.mocked(fetchConversations).mockImplementation(
+    async (_source, _app, _last, requestedPinned) => ({
+      data: requestedPinned === !pinned ? [conversation] : [],
+      has_more: false,
+      limit: 100,
+    }),
+  )
+  await operate(user, pinned ? 'unpin' : 'pin')
+  await waitFor(() =>
+    expect(queryClient.getQueryData(listKey(!pinned))).toMatchObject({ data: [conversation] }),
+  )
+  await user.click(await screen.findByRole('button', { name: 'My Chat' }))
+  expect(
+    await screen.findByRole('menuitem', {
+      name: `explore.sidebar.action.${pinned ? 'pin' : 'unpin'}`,
+    }),
+  ).toBeVisible()
+  expect(pinned ? unpinConversation : pinConversation).toHaveBeenCalledExactlyOnceWith(
+    AppSourceType.webApp,
+    'app-1',
+    'conversation-1',
+  )
+})
 
-  describe('Edge Cases', () => {
-    it('should not render inputs form dropdown if inputsForms is empty', () => {
-      const mockConv = conversation()
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        inputsForms: [],
-      })
+it('saves the edited conversation name and closes the dialog through the real owner', async () => {
+  const user = userEvent.setup()
+  renderChatHistory(<Header />)
+  await operate(user, 'rename')
+  const input = await screen.findByRole('textbox', { name: 'common.chat.conversationName' })
+  await user.clear(input)
+  await user.type(input, 'Renamed conversation')
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  expect(await screen.findByRole('button', { name: 'Renamed conversation' })).toBeVisible()
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(renameConversation).toHaveBeenCalledExactlyOnceWith(
+    AppSourceType.webApp,
+    'app-1',
+    'conversation-1',
+    'Renamed conversation',
+  )
+})
 
+it.each(['rename', 'delete'])(
+  'cancels %s without changing the selected conversation',
+  async (action) => {
+    const user = userEvent.setup()
+    renderChatHistory(<Header />)
+    await operate(user, action)
+    if (action === 'rename') await user.type(await screen.findByRole('textbox'), ' unsaved')
+    await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() =>
       expect(
-        screen.queryByRole('button', { name: 'share.chat.viewChatSettings' }),
-      ).not.toBeInTheDocument()
-    })
+        screen.queryByRole(action === 'rename' ? 'dialog' : 'alertdialog'),
+      ).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('button', { name: 'My Chat' })).toBeVisible()
+    expect(renameConversation).not.toHaveBeenCalled()
+    expect(delConversation).not.toHaveBeenCalled()
+  },
+)
 
-    it('should render system title if conversation id is missing', () => {
-      setup({ currentConversationId: '', sidebarCollapseState: true })
-      const titleEl = screen.getByText('Test App')
-      expect(titleEl).toBeInTheDocument()
-    })
-
-    it('should render app icon from URL when icon_url is provided', () => {
-      vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
-      vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(32)
-      const { container } = setup({
-        appData: {
-          ...mockAppData,
-          site: {
-            ...mockAppData.site,
-            icon_type: 'image',
-            icon_url: 'https://example.com/icon.png',
-          },
-        },
-      })
-      expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/icon.png')
-      expect(screen.queryByRole('img')).not.toBeInTheDocument()
-    })
-
-    it('should handle New Chat button state when currentConversationId is present but isResponding is true', () => {
-      setup({
-        isResponding: true,
-        sidebarCollapseState: true,
-        currentConversationId: 'conv-1',
-      })
-
-      const newChatBtn = screen.getByRole('button', { name: 'share.chat.newChatTip' })
-      expect(newChatBtn).toBeDisabled()
-    })
-
-    it('should handle New Chat button state when currentConversationId is missing and isResponding is false', () => {
-      setup({
-        isResponding: false,
-        sidebarCollapseState: true,
-        currentConversationId: '',
-      })
-
-      const newChatBtn = screen.getByRole('button', { name: 'share.chat.newChatTip' })
-      expect(newChatBtn).toBeDisabled()
-    })
-
-    it('should not render operation menu if conversation id is missing', () => {
-      setup({ currentConversationId: '', sidebarCollapseState: true })
-      expect(screen.queryByText('My Chat')).not.toBeInTheDocument()
-    })
-
-    it('should not render operation menu if sidebar is NOT collapsed', () => {
-      const mockConv = conversation()
-      setup({
-        currentConversationId: 'conv-1',
-        currentConversationItem: mockConv,
-        sidebarCollapseState: false,
-      })
-      expect(screen.queryByText('My Chat')).not.toBeInTheDocument()
-    })
+it('deletes the selected conversation, refreshes the list and returns to New Chat', async () => {
+  const user = userEvent.setup()
+  const { queryClient, listKey } = renderChatHistory(<Header />)
+  await operate(user, 'delete')
+  expect(delConversation).not.toHaveBeenCalled()
+  await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
+  expect(await screen.findByText('Test Chat')).toBeVisible()
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  await waitFor(() => expect(queryClient.getQueryData(listKey(false))).toMatchObject({ data: [] }))
+  expect(delConversation).toHaveBeenCalledExactlyOnceWith(
+    AppSourceType.webApp,
+    'app-1',
+    'conversation-1',
+  )
+  expect(JSON.parse(sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)!)).toEqual({
+    'app-1': { 'user-1': '' },
   })
+})
+
+it('opens chat settings with the configured inputs and closes with Escape', async () => {
+  const user = userEvent.setup()
+  renderChatHistory(<Header />, {
+    appParams: createChatConfigFixture({
+      user_input_form: [
+        { 'text-input': { label: 'Topic', variable: 'topic', required: false, default: 'Travel' } },
+      ],
+    }),
+  })
+  await user.click(await screen.findByRole('button', { name: 'share.chat.viewChatSettings' }))
+  expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('Travel')
+  await user.keyboard('{Escape}')
+  expect(screen.queryByRole('textbox', { name: 'Topic' })).not.toBeInTheDocument()
+})
+
+it.each([
+  { currentConversationId: '', responding: false },
+  { currentConversationId: 'conversation-1', responding: true },
+])(
+  'disables New Chat for selection=$currentConversationId and responding=$responding',
+  ({ currentConversationId, responding }) => {
+    renderChatHistory(<Header />, {
+      currentConversationId,
+      ownerProps: { isResponding: responding },
+    })
+    expect(screen.getByRole('button', { name: 'share.chat.newChatTip' })).toBeDisabled()
+    expect(
+      screen.queryByRole('button', { name: 'share.chat.viewChatSettings' }),
+    ).not.toBeInTheDocument()
+  },
+)
+
+it('hides conversation operations while the sidebar is expanded', () => {
+  renderChatHistory(<Header />, { sidebarCollapsed: false })
+  expect(screen.queryByRole('button', { name: 'My Chat' })).not.toBeInTheDocument()
 })

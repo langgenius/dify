@@ -1937,6 +1937,32 @@ describe('DocumentsPage', () => {
     )
   })
 
+  it('discards a cancelled rename draft before reopening', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    const open = async () => {
+      await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
+      await user.click(await screen.findByRole('menuitem', { name: 'common.operation.rename' }))
+    }
+    await open()
+    const name = screen.getByRole('textbox', { name: 'knowledgeSpace.documentColumn' })
+    const original = (name as HTMLInputElement).value
+    await user.clear(name)
+    await user.type(name, 'Unsaved draft')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'common.operation.rename' }),
+      ).not.toBeInTheDocument(),
+    )
+    await open()
+    expect(screen.getByRole('textbox', { name: 'knowledgeSpace.documentColumn' })).toHaveValue(
+      original,
+    )
+    expect(renameDocumentMutation).not.toHaveBeenCalled()
+  })
+
   it('renames a document through its user-facing display metadata', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }

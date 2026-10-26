@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { DirectionProvider } from '../../../direction-provider'
 import {
   DateTimePicker,
   DateTimePickerContent,
@@ -126,15 +127,13 @@ it.each(['ltr', 'rtl'] as const)(
   'keeps focused time options visible after switching a height-limited %s popup',
   async (direction) => {
     const screen = await render(
-      <DateTimePicker
-        direction={direction}
-        timeZone="UTC"
-        defaultValue={new Date('2025-01-15T13:30:00Z')}
-      >
-        <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
-        <DateTimePickerTrigger />
-        <DateTimePickerContent style={{ maxHeight: 210 }} />
-      </DateTimePicker>,
+      <DirectionProvider direction={direction}>
+        <DateTimePicker timeZone="UTC" defaultValue={new Date('2025-01-15T13:30:00Z')}>
+          <DateTimePickerLabel className="sr-only">Meeting</DateTimePickerLabel>
+          <DateTimePickerTrigger />
+          <DateTimePickerContent style={{ maxHeight: 210 }} />
+        </DateTimePicker>
+      </DirectionProvider>,
     )
     await screen.getByRole('button', { name: /^Meeting / }).click()
     const calendarPopup = screen.getByRole('dialog', { name: 'Meeting', exact: true }).element()

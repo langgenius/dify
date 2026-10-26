@@ -65,6 +65,12 @@ line-length = 120
 target-version = "py312"
 include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
 
+[tool.uv]
+# unstructured caps filelock<4; Agent FileLock/WeakFileLock compatibility was verified with 4.2.1.
+# Override the stale upper bound to take the required security fixes.
+# TODO: Remove this override once unstructured permits filelock>=4.2.1.
+override-dependencies = ["filelock==4.2.1"]
+
 [dependency-groups]
 dev = [
     "fakeredis[lua]>=2.31.0",

@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from jsonschema import Draft202012Validator
 
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -71,6 +72,39 @@ def _reset_schema_cache(api):
     api.__dict__.pop("__schema__", None)
 
 
+@pytest.mark.timeout(150)  # Two cold, coverage-instrumented CLI exports each have a 60-second limit.
+def test_console_stdout_export_contains_both_surfaces_without_spec_files(tmp_path: Path):
+    script = Path(__file__).resolve().parents[3] / "dev" / "export_console_openapi.py"
+    result = subprocess.run(
+        [sys.executable, str(script)], cwd=tmp_path, capture_output=True, text=True, check=True, timeout=60
+    )
+    documents = json.loads(result.stdout)
+    assert set(documents) == {"console", "fast"}
+    for document in documents.values():
+        assert document["openapi"].startswith("3.")
+        assert document["paths"]
+        for item in document["paths"].values():
+            for operation in item.values():
+                if not isinstance(operation, dict) or "responses" not in operation:
+                    continue
+                origin = operation["x-source-location"]
+                source_line = Path(origin["file"]).read_text().splitlines()[origin["line"] - 1].lstrip()
+                assert source_line.startswith(("def ", "async def "))
+    datasets = documents["console"]["paths"]["/datasets"]["get"]["x-source-location"]
+    assert datasets["file"].endswith("/controllers/console/datasets/datasets.py")
+    cached_script = script.with_name("cached_console_openapi.py")
+    try:
+        cached = subprocess.run(
+            [sys.executable, str(cached_script)], cwd=tmp_path, capture_output=True, text=True, check=True, timeout=60
+        )
+        assert json.loads(cached.stdout) == documents
+    finally:
+        subprocess.run(
+            [sys.executable, str(cached_script), "--stop"], cwd=tmp_path, capture_output=True, check=True, timeout=10
+        )
+    assert not list(tmp_path.rglob("*.json"))
+
+
 def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
@@ -102,6 +136,11 @@ def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
     }
     assert "Bearer" not in inner_payload["components"]["securitySchemes"]
     assert "/enterprise/apps/{app_id}/dsl" in inner_payload["paths"]
+
+
+def test_console_only_export_matches_the_full_export():
+    module = _load_generate_swagger_specs_module()
+    assert module.export_console_spec() == module.export_specs()["console-openapi.json"]
 
 
 def test_generate_specs_match_live_openapi_payloads(tmp_path: Path):
@@ -294,6 +333,29 @@ def test_finalize_openapi_payload_only_marks_explicit_binary_responses():
     assert content["application/problem+json"] == {}
     assert content["text/plain"] == {}
     assert "x-dify-binary-response-media-types" not in operation
+
+
+def test_console_file_and_audio_responses_declare_binary_success_and_json_errors(tmp_path: Path):
+    module = _load_generate_swagger_specs_module()
+    module.generate_specs(tmp_path)
+    payload = json.loads((tmp_path / "console-openapi.json").read_text(encoding="utf-8"))
+    audio_media = {"audio/aac", "audio/flac", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm"}
+    operations = [
+        ("/workspaces/current/plugin/asset", "get", {"application/octet-stream"}),
+        ("/workspaces/current/plugin/icon", "get", {"*/*"}),
+        ("/workspaces/current/skills/{skill_id}/files/content", "get", {"*/*"}),
+        ("/installed-apps/{installed_app_id}/text-to-audio", "post", audio_media),
+        ("/trial-apps/{app_id}/text-to-audio", "post", audio_media),
+    ]
+    for path, method, media_types in operations:
+        responses = payload["paths"][path][method]["responses"]
+        assert responses["200"]["content"] == {
+            media_type: {"schema": {"type": "string", "format": "binary"}} for media_type in media_types
+        }, path
+        errors = {status: response for status, response in responses.items() if status.startswith(("4", "5"))}
+        assert errors, path
+        for status, response in errors.items():
+            assert set(response["content"]) == {"application/json"}, (path, status)
 
 
 def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):

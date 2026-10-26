@@ -1,6 +1,8 @@
 import importlib
 import json
 import sys
+from types import ModuleType
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,8 +12,11 @@ from core.rag.datasource.vdb.vector_integration_test_support import FakeModule
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
+if TYPE_CHECKING:
+    from dify_vdb_hologres.hologres_vector import HologresVectorConfig
 
-def _build_fake_hologres_modules():
+
+def _build_fake_hologres_modules() -> dict[str, FakeModule]:
     holo_module = FakeModule("holo_search_sdk")
     holo_types_module = FakeModule("holo_search_sdk.types")
 
@@ -19,7 +24,7 @@ def _build_fake_hologres_modules():
     holo_types_module.DistanceType = str
     holo_types_module.TokenizerType = str
 
-    def _connect(**kwargs):
+    def _connect(**kwargs: Any) -> MagicMock:
         client = MagicMock()
         client.kwargs = kwargs
         client.connect = MagicMock()
@@ -38,7 +43,7 @@ def _build_fake_hologres_modules():
 
 
 @pytest.fixture
-def hologres_module(monkeypatch: pytest.MonkeyPatch):
+def hologres_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     for name, module in _build_fake_hologres_modules().items():
         monkeypatch.setitem(sys.modules, name, module)
 
@@ -47,7 +52,7 @@ def hologres_module(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(module)
 
 
-def _valid_config(module):
+def _valid_config(module: ModuleType) -> "HologresVectorConfig":
     return module.HologresVectorConfig(
         host="localhost",
         port=80,
@@ -72,7 +77,7 @@ def _valid_config(module):
         ("access_key_secret", "", "config HOLOGRES_ACCESS_KEY_SECRET is required"),
     ],
 )
-def test_hologres_config_validation(hologres_module, field, value, message):
+def test_hologres_config_validation(hologres_module: ModuleType, field: str, value: str | int, message: str) -> None:
     values = _valid_config(hologres_module).model_dump()
     values[field] = value
 
@@ -80,7 +85,7 @@ def test_hologres_config_validation(hologres_module, field, value, message):
         hologres_module.HologresVectorConfig.model_validate(values)
 
 
-def test_init_client_and_get_type(hologres_module):
+def test_init_client_and_get_type(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("Collection_One", _valid_config(hologres_module))
 
     hologres_module.holo.connect.assert_called_once_with(
@@ -96,7 +101,7 @@ def test_init_client_and_get_type(hologres_module):
     assert vector.get_type() == hologres_module.VectorType.HOLOGRES
 
 
-def test_create_delegates_collection_creation_and_upsert(hologres_module):
+def test_create_delegates_collection_creation_and_upsert(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
     vector._create_collection = MagicMock()
     vector.add_texts = MagicMock()
@@ -109,14 +114,14 @@ def test_create_delegates_collection_creation_and_upsert(hologres_module):
     vector.add_texts.assert_called_once_with(docs, [[0.1, 0.2]])
 
 
-def test_add_texts_returns_empty_for_empty_documents(hologres_module):
+def test_add_texts_returns_empty_for_empty_documents(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
 
     assert vector.add_texts([], []) == []
     vector._client.open_table.assert_not_called()
 
 
-def test_add_texts_batches_and_serializes_metadata(hologres_module):
+def test_add_texts_batches_and_serializes_metadata(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
     table = vector._client.open_table.return_value
     documents = [
@@ -144,7 +149,7 @@ def test_add_texts_batches_and_serializes_metadata(hologres_module):
     assert second_call["values"][0][2] == "{}"
 
 
-def test_text_exists_handles_missing_and_present_tables(hologres_module):
+def test_text_exists_handles_missing_and_present_tables(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
     vector._client.check_table_exist.side_effect = [False, True]
     vector._client.execute.return_value = [(1,)]
@@ -154,15 +159,15 @@ def test_text_exists_handles_missing_and_present_tables(hologres_module):
     vector._client.execute.assert_called_once()
 
 
-def test_get_ids_by_metadata_field_returns_ids_or_none(hologres_module):
+def test_get_ids_by_metadata_field_returns_ids_or_none(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
-    vector._client.execute.side_effect = [[("id-1",), ("id-2",)], []]
+    vector._client.execute.side_effect = [[("id-1",), ("id-2",)], list[tuple[str]]()]
 
     assert vector.get_ids_by_metadata_field("document_id", "doc-1") == ["id-1", "id-2"]
     assert vector.get_ids_by_metadata_field("document_id", "doc-1") is None
 
 
-def test_delete_by_ids_branches(hologres_module):
+def test_delete_by_ids_branches(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
 
     vector.delete_by_ids([])
@@ -177,7 +182,7 @@ def test_delete_by_ids_branches(hologres_module):
     vector._client.execute.assert_called_once()
 
 
-def test_delete_by_metadata_field_branches(hologres_module):
+def test_delete_by_metadata_field_branches(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
     vector._client.check_table_exist.return_value = False
 
@@ -189,14 +194,14 @@ def test_delete_by_metadata_field_branches(hologres_module):
     vector._client.execute.assert_called_once()
 
 
-def test_search_by_vector_returns_empty_when_table_missing(hologres_module):
+def test_search_by_vector_returns_empty_when_table_missing(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
     vector._client.check_table_exist.return_value = False
 
     assert vector.search_by_vector([0.1, 0.2]) == []
 
 
-def test_search_by_vector_applies_filter_and_processes_results(hologres_module):
+def test_search_by_vector_applies_filter_and_processes_results(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
     vector._client.check_table_exist.return_value = True
     table = vector._client.open_table.return_value
@@ -225,14 +230,14 @@ def test_search_by_vector_applies_filter_and_processes_results(hologres_module):
     query.where.assert_called_once()
 
 
-def test_search_by_full_text_returns_empty_when_table_missing(hologres_module):
+def test_search_by_full_text_returns_empty_when_table_missing(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
     vector._client.check_table_exist.return_value = False
 
     assert vector.search_by_full_text("query") == []
 
 
-def test_search_by_full_text_applies_filter_and_processes_results(hologres_module):
+def test_search_by_full_text_applies_filter_and_processes_results(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
     vector._client.check_table_exist.return_value = True
     table = vector._client.open_table.return_value
@@ -255,7 +260,7 @@ def test_search_by_full_text_applies_filter_and_processes_results(hologres_modul
     search_query.where.assert_called_once()
 
 
-def test_delete_handles_existing_and_missing_tables(hologres_module):
+def test_delete_handles_existing_and_missing_tables(hologres_module: ModuleType) -> None:
     vector = hologres_module.HologresVector("collection_one", _valid_config(hologres_module))
     vector._client.check_table_exist.side_effect = [False, True]
 
@@ -266,7 +271,9 @@ def test_delete_handles_existing_and_missing_tables(hologres_module):
     vector._client.drop_table.assert_called_once_with(vector.table_name)
 
 
-def test_create_collection_returns_early_when_cache_hits(hologres_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_returns_early_when_cache_hits(
+    hologres_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = False
@@ -281,7 +288,9 @@ def test_create_collection_returns_early_when_cache_hits(hologres_module, monkey
     hologres_module.redis_client.set.assert_not_called()
 
 
-def test_create_collection_creates_table_and_indexes(hologres_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_creates_table_and_indexes(
+    hologres_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = False
@@ -313,7 +322,9 @@ def test_create_collection_creates_table_and_indexes(hologres_module, monkeypatc
     hologres_module.redis_client.set.assert_called_once()
 
 
-def test_create_collection_raises_when_table_never_becomes_ready(hologres_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_collection_raises_when_table_never_becomes_ready(
+    hologres_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock = MagicMock()
     lock.__enter__.return_value = None
     lock.__exit__.return_value = False
@@ -331,7 +342,9 @@ def test_create_collection_raises_when_table_never_becomes_ready(hologres_module
     hologres_module.redis_client.set.assert_not_called()
 
 
-def test_hologres_factory_uses_existing_or_generated_collection(hologres_module, monkeypatch: pytest.MonkeyPatch):
+def test_hologres_factory_uses_existing_or_generated_collection(
+    hologres_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     factory = hologres_module.HologresVectorFactory()
     dataset_with_index = Dataset(
         id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "existing_collection"}})

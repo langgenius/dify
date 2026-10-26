@@ -60,6 +60,7 @@ from models.agent_config_entities import (
     AgentKnowledgeMetadataFilteringConfig,
     AgentKnowledgeModelConfig,
     AgentKnowledgeRetrievalConfig,
+    AgentKnowledgeSpaceConfig,
     AgentSoulConfig,
     AgentSoulToolsConfig,
     DeclaredArrayItem,
@@ -192,6 +193,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 user_id=context.dify_context.user_id,
                 tools=agent_soul.tools,
                 invoke_from=context.dify_context.invoke_from,
+                knowledge_fs_spaces=tuple(agent_soul.knowledge.spaces),
             )
         except WorkflowAgentDifyToolsBuildError as error:
             raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error
@@ -309,6 +311,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         user_id: str | None,
         tools: AgentSoulToolsConfig,
         invoke_from: InvokeFrom,
+        knowledge_fs_spaces: tuple[AgentKnowledgeSpaceConfig, ...],
     ) -> WorkflowAgentToolLayers:
         # Production workflow runs intentionally keep existing plugin configs on
         # the direct `dify.plugin.tools` route. This builder emits plugin tools
@@ -319,6 +322,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             user_id=user_id,
             tools=tools,
             invoke_from=invoke_from,
+            knowledge_fs_spaces=knowledge_fs_spaces,
         )
 
     @staticmethod
