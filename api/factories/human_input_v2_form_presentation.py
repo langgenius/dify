@@ -46,9 +46,13 @@ def build_form_presentation(form: ResolvedForm) -> FormPresentation:
         seen.add(name)
         match part:
             case ParagraphInput():
-                default = None
+                # Shared form controls require a concrete paragraph default,
+                # including when the frozen form has no configured default.
+                default = StringSource(
+                    type=ValueSourceType.CONSTANT,
+                    value=part.default_value if part.default_value is not None else "",
+                )
                 if part.default_value is not None:
-                    default = StringSource(type=ValueSourceType.CONSTANT, value=part.default_value)
                     defaults[name] = part.default_value
                 inputs.append(ParagraphInputConfig(output_variable_name=name, default=default))
             case SelectInput():

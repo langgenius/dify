@@ -146,27 +146,29 @@ class SQLAlchemyIMBindingRepository(IMBindingRepository):
         bound_by_account_id: AccountId | None,
     ) -> IMBinding:
         self._require_identity(assignment.identity_id)
-        record = self._get_default_for_contact(assignment.contact_id)
-        if record is not None and record.im_identity_id == str(assignment.identity_id):
-            return _default_binding_from_record(record)
-        if self._get_default_for_identity(assignment.identity_id) is not None:
-            raise IMBindingConflictError("IM Identity already has a different default Contact")
-        if record is None:
-            return self._insert_default(assignment, bound_by_account_id=bound_by_account_id)
-        # Delete only the observed Binding so a concurrent replacement is not lost.
-        # The caller's transaction keeps deletion and creation atomic.
-        deleted_id = self._session.scalar(
-            sa.delete(HumanInputIMBinding)
-            .where(
-                HumanInputIMBinding.channel_id == str(self._channel_id),
-                HumanInputIMBinding.id == record.id,
-                HumanInputIMBinding.im_identity_id == record.im_identity_id,
-            )
-            .returning(HumanInputIMBinding.id)
-            .execution_options(autoflush=False)
+        contact_binding = self._get_default_for_contact(assignment.contact_id)
+        if contact_binding is not None and contact_binding.im_identity_id == str(assignment.identity_id):
+            return _default_binding_from_record(contact_binding)
+        identity_binding = self._get_default_for_identity(assignment.identity_id)
+        # Free both endpoints for a manual reassignment. Delete only observed
+        # Bindings so a concurrent replacement is not lost; the caller owns rollback.
+        previous_bindings = sorted(
+            (binding for binding in (contact_binding, identity_binding) if binding is not None),
+            key=lambda binding: binding.id,
         )
-        if deleted_id is None:
-            raise IMBindingConflictError("Default IM Binding changed concurrently")
+        for record in previous_bindings:
+            deleted_id = self._session.scalar(
+                sa.delete(HumanInputIMBinding)
+                .where(
+                    HumanInputIMBinding.channel_id == str(self._channel_id),
+                    HumanInputIMBinding.id == record.id,
+                    HumanInputIMBinding.im_identity_id == record.im_identity_id,
+                )
+                .returning(HumanInputIMBinding.id)
+                .execution_options(autoflush=False)
+            )
+            if deleted_id is None:
+                raise IMBindingConflictError("Default IM Binding changed concurrently")
         return self._insert_default(assignment, bound_by_account_id=bound_by_account_id)
 
     @override

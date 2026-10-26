@@ -876,6 +876,9 @@ describe('Contact IM binding controls', () => {
           im_bindings: [{ id: 'organization-binding', provider: 'feishu', scope: 'organization' }],
         }
       }),
+      unbindIMBinding: vi.fn(async () => {
+        contact = { ...contact, im_bindings: [], im_binding_details: [] }
+      }),
     }
     return { scenario, repository, contact, listIMChannels }
   }
@@ -1074,6 +1077,9 @@ describe('Contact IM binding controls', () => {
     renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
     const dialog = await openEditor(user, contact)
     const picker = within(dialog).getByRole('combobox', { name: 'contacts.imBinding.contactLabel' })
+    expect(
+      within(dialog).queryByRole('button', { name: 'contacts.imBinding.remove' }),
+    ).not.toBeInTheDocument()
     await user.click(picker)
     const option = await screen.findByRole('option', { name: /Synced Member/ })
     expect(option).toHaveTextContent(identity.email!)
@@ -1083,6 +1089,90 @@ describe('Contact IM binding controls', () => {
     expect(picker).toHaveTextContent(identity.display_name!)
     expect(picker).toHaveTextContent(identity.email!)
     expect(picker).toHaveTextContent(identity.provider_user_id)
+  })
+
+  it('unbinds the selected binding and refreshes contact details after a recoverable failure', async () => {
+    const { scenario, repository, contact } = setup('organization', false)
+    vi.mocked(repository.unbindIMBinding).mockRejectedValueOnce(
+      new ContactIMRequestError('im_write_unavailable'),
+    )
+    const user = userEvent.setup()
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const details = await findLoadedDetails(contact.name)
+    const dialog = await openEditor(user, contact)
+    const unbind = within(dialog).getByRole('button', { name: 'contacts.imBinding.remove' })
+    await user.click(unbind)
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('contacts.imBinding.failed')
+    expect(within(details).queryByText('contacts.imBinding.notBound')).not.toBeInTheDocument()
+    expect(repository.unbindIMBinding).toHaveBeenCalledWith({
+      contactId: contact.id,
+      bindingId: contact.im_bindings[0]!.id,
+    })
+    await user.click(unbind)
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await within(details).findByText('contacts.imBinding.notBound')).toBeInTheDocument()
+    expect(repository.unbindIMBinding).toHaveBeenCalledTimes(2)
+    expect(repository.removeIMBinding).not.toHaveBeenCalled()
+    expect(repository.setIMBinding).not.toHaveBeenCalled()
+  })
+
+  it('submits a legacy binding ID without resetting its override when the server rejects unbinding', async () => {
+    const { scenario, repository, contact } = setup('workspace', false)
+    vi.mocked(repository.unbindIMBinding).mockRejectedValue(
+      new ContactIMRequestError('im_binding_not_found'),
+    )
+    const user = userEvent.setup()
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const details = await findLoadedDetails(contact.name)
+    const dialog = await openEditor(user, contact)
+    const unbind = within(dialog).getByRole('button', { name: 'contacts.imBinding.remove' })
+    await user.click(unbind)
+
+    expect(repository.unbindIMBinding).toHaveBeenCalledWith({
+      contactId: contact.id,
+      bindingId: contact.im_bindings[0]!.id,
+    })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'contacts.imBinding.notFound',
+    )
+    expect(unbind).toBeEnabled()
+    expect(within(details).queryByText('contacts.imBinding.notBound')).not.toBeInTheDocument()
+    expect(repository.removeIMBinding).not.toHaveBeenCalled()
+    expect(repository.setIMBinding).not.toHaveBeenCalled()
+  })
+
+  it('prevents duplicate unbinds, saves, and dismissal while deleting the binding', async () => {
+    const { scenario, repository, contact } = setup('organization', false)
+    let finishUnbind: (() => void) | undefined
+    vi.mocked(repository.unbindIMBinding).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishUnbind = resolve
+        }),
+    )
+    const user = userEvent.setup()
+    renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
+    const dialog = await openEditor(user, contact)
+    const unbind = within(dialog).getByRole('button', { name: 'contacts.imBinding.remove' })
+    await user.click(unbind)
+    await user.click(unbind)
+
+    expect(unbind).toHaveAttribute('aria-disabled', 'true')
+    expect(within(dialog).getByRole('button', { name: 'contacts.action.cancel' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'contacts.action.close' })).toBeDisabled()
+    expect(
+      within(dialog).getByRole('button', { name: 'contacts.imBinding.saveBinding' }),
+    ).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    expect(repository.unbindIMBinding).toHaveBeenCalledOnce()
+    expect(repository.removeIMBinding).not.toHaveBeenCalled()
+    expect(repository.setIMBinding).not.toHaveBeenCalled()
+
+    await act(async () => finishUnbind?.())
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('replaces a legacy workspace override with a normal binding and retries a failed override reset before closing', async () => {
@@ -1199,6 +1289,9 @@ describe('Contact IM binding controls', () => {
     const user = userEvent.setup()
     renderDirectory(scenario, `?contact_id=${contact.id}`, repository)
     const dialog = await openEditor(user, contact)
+    expect(
+      within(dialog).queryByRole('button', { name: 'contacts.imBinding.remove' }),
+    ).not.toBeInTheDocument()
     const organization = within(dialog).getByRole('radio', {
       name: 'contacts.imBinding.organizationMode',
     })

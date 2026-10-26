@@ -20,6 +20,7 @@ import type {
   RemoveMemberCommand,
   RemoveMemberResult,
   SetContactIMBindingCommand,
+  UnbindContactIMBindingCommand,
   UpdateExternalContactCommand,
   UpdateExternalContactResult,
   UpgradeExternalContactsToWorkspaceCommand,
@@ -46,6 +47,7 @@ export type ContactsManagementRepository = {
   }) => Promise<ContactPage<ContactIMIdentity>>
   setIMBinding: (command: SetContactIMBindingCommand) => Promise<ContactView>
   removeIMBinding: (command: RemoveContactIMBindingCommand) => Promise<void>
+  unbindIMBinding: (command: UnbindContactIMBindingCommand) => Promise<void>
   addPlatformContacts: (command: AddPlatformContactsCommand) => Promise<AddPlatformContactsResult>
   createExternalContact: (
     command: CreateExternalContactCommand,
@@ -233,6 +235,17 @@ export function createContactsApiRepository(
           )
         }
       })
+    },
+    async unbindIMBinding(command) {
+      await requestContactIM(() =>
+        client.contacts.byContactId.imBindings.delete(
+          {
+            params: { contact_id: command.contactId },
+            query: { binding_id: command.bindingId },
+          },
+          { context: { silent: true } },
+        ),
+      )
     },
     async listContacts(query) {
       const result = await client.contacts.get(

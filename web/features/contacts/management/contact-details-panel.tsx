@@ -7,6 +7,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
+  ComboboxIcon,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxItem,
@@ -44,6 +45,7 @@ import {
   useContactIMIdentities,
   useRemoveContactIMBinding,
   useSetContactIMBinding,
+  useUnbindContactIMBinding,
 } from './hooks'
 import { formatContactRelativeTime } from './relative-time'
 import { ContactIMRequestError } from './repository'
@@ -171,7 +173,7 @@ function IMIdentityDetails({ identity }: { identity: IMIdentityOption }) {
     (value) => value && value !== name,
   )
   return (
-    <span className="flex min-w-0 flex-1 flex-col gap-0.5 whitespace-normal">
+    <span className="flex min-w-0 flex-1 flex-col gap-0.5 text-start whitespace-normal">
       <span className="system-sm-medium wrap-anywhere">{name}</span>
       {identifiers.length > 0 && (
         <span className="system-xs-regular wrap-anywhere text-text-tertiary">
@@ -187,17 +189,21 @@ function ContactIMBindingEditor({
   provider,
   binding,
   saving,
+  unbinding,
   error,
   onSave,
   onRestore,
+  onUnbind,
 }: {
   contact: ContactView
   provider: string
   binding?: ContactIMBinding
   saving: boolean
+  unbinding: boolean
   error: unknown
   onSave: (identityId: string) => void
   onRestore: () => void
+  onUnbind?: () => void
 }) {
   const { t } = useTranslation(['contacts'])
   const { imBindingCentrallyManaged: centrallyManaged } = useContactsFeatureContext()
@@ -329,20 +335,21 @@ function ContactIMBindingEditor({
             >
               <ComboboxTrigger
                 aria-label={t(($) => $['imBinding.contactLabel'])}
-                className="h-auto min-h-9 gap-2 rounded-lg py-1.5 ps-1.5 pe-2.5"
+                className="flex h-auto min-h-9 w-full min-w-0 items-center gap-2 rounded-lg bg-components-input-bg-normal py-1.5 ps-1.5 pe-2.5 text-start text-components-input-text-filled transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-popup-open:bg-state-base-hover-alt motion-reduce:transition-none"
               >
                 {identity ? (
-                  <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="flex min-w-0 flex-1 items-center gap-1.5">
                     <IMIdentityAvatar identity={identity} />
                     <IMIdentityDetails identity={identity} />
                   </span>
                 ) : (
-                  <span className="px-2 text-components-input-text-placeholder">
+                  <span className="min-w-0 flex-1 px-2 text-components-input-text-placeholder">
                     {binding?.scope === 'workspace'
                       ? t(($) => $['imBinding.currentWorkspaceIdentity'])
                       : t(($) => $['imBinding.select'])}
                   </span>
                 )}
+                <ComboboxIcon className="text-text-quaternary" />
               </ComboboxTrigger>
               <ComboboxPortal>
                 <ComboboxPositioner>
@@ -434,6 +441,18 @@ function ContactIMBindingEditor({
         )}
       </div>
       <div className="flex h-19 items-center justify-end gap-2 px-6 pt-4 pb-6">
+        {onUnbind && (
+          <Button
+            className="me-auto"
+            variant="ghost"
+            tone="destructive"
+            loading={unbinding}
+            disabled={saving && !unbinding}
+            onClick={onUnbind}
+          >
+            {t(($) => $['imBinding.remove'])}
+          </Button>
+        )}
         <DialogClose render={<Button className="min-w-18" disabled={saving} />}>
           {t(($) => $['action.cancel'])}
         </DialogClose>
@@ -441,7 +460,7 @@ function ContactIMBindingEditor({
           type="submit"
           className="min-w-18"
           variant="primary"
-          loading={saving}
+          loading={saving && !unbinding}
           disabled={!canSave || saving}
         >
           {t(($) => $['imBinding.saveBinding'])}
@@ -467,13 +486,14 @@ function ContactIMChannels({
   const [open, setOpen] = useState(false)
   const save = useSetContactIMBinding()
   const remove = useRemoveContactIMBinding()
+  const unbind = useUnbindContactIMBinding()
   const canBind =
     canManage &&
     context.imBindingCentrallyManaged !== undefined &&
     repository.supportsIMBindings === true &&
     contact.type !== 'external'
   const configured = useContactIMChannels(canBind)
-  const busy = save.isPending || remove.isPending || removing
+  const busy = save.isPending || remove.isPending || unbind.isPending || removing
   const bindings = contact.type === 'external' ? [] : contact.im_bindings
   const providers = [
     ...new Set([
@@ -486,6 +506,7 @@ function ContactIMChannels({
   function openEditor(provider: string) {
     save.reset()
     remove.reset()
+    unbind.reset()
     setEditingProvider(provider)
     setOpen(true)
   }
@@ -613,9 +634,24 @@ function ContactIMChannels({
               provider={editingProvider}
               binding={editingBinding}
               saving={busy}
-              error={save.error || remove.error}
+              unbinding={unbind.isPending}
+              error={save.error || remove.error || unbind.error}
+              onUnbind={
+                context.imBindingCentrallyManaged === false && editingBinding
+                  ? () => {
+                      if (!canBind || busy) return
+                      save.reset()
+                      remove.reset()
+                      unbind.mutate(
+                        { contactId: contact.id, bindingId: editingBinding.id },
+                        { onSuccess: () => setOpen(false) },
+                      )
+                    }
+                  : undefined
+              }
               onSave={(identityId) => {
                 if (!canBind || context.imBindingCentrallyManaged === undefined) return
+                unbind.reset()
                 save.mutate(
                   {
                     contactId: contact.id,

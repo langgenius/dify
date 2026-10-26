@@ -458,8 +458,65 @@ def test_put_replaces_default_binding_and_retries_are_idempotent(
         assert reset.im_bindings[0].identity_id == _OTHER_IDENTITY_ID
 
 
-@pytest.mark.parametrize("occupied", [False, True])
-@pytest.mark.parametrize("workspace_override", [False, True])
+@pytest.mark.parametrize("target_already_bound", [False, True])
+def test_put_transfers_identity_from_another_contact(
+    binding_context: _BindingContext,
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    target_already_bound: bool,
+) -> None:
+    with binding_context.sessions.begin() as session:
+        SQLAlchemyContactRepository(session).save_external_contact(
+            _TENANT_ID, ExternalContact(_OTHER_CONTACT_ID, "External", "external@example.com", None, _NOW)
+        )
+    source = binding_context.service.set_organization_binding(
+        organization_scope=_OWNER_SCOPE,
+        tenant_id=_TENANT_ID,
+        contact_id=_OTHER_CONTACT_ID,
+        identity_id=_OTHER_IDENTITY_ID,
+        bound_by_account_id=_OTHER_ACCOUNT_ID,
+    ).im_bindings[0]
+    target = None
+    if target_already_bound:
+        target = binding_context.service.set_organization_binding(
+            organization_scope=_OWNER_SCOPE,
+            tenant_id=_TENANT_ID,
+            contact_id=_CONTACT_ID,
+            identity_id=_IDENTITY_ID,
+            bound_by_account_id=_OTHER_ACCOUNT_ID,
+        ).im_bindings[0]
+    monkeypatch.setattr(
+        human_input,
+        "build_im_contact_sync_application",
+        lambda: SimpleNamespace(binding_service=binding_context.service),
+    )
+    with binding_context.sessions() as session:
+        account = session.get_one(Account, str(_ACCOUNT_ID))
+
+    def put() -> object:
+        with app.test_request_context(method="PUT", json={"identity_id": str(_OTHER_IDENTITY_ID)}):
+            return unwrap(WorkspaceContactIMBindingsApi.put)(
+                WorkspaceContactIMBindingsApi(), str(_TENANT_ID), account, str(_CONTACT_ID)
+            )
+
+    response = put()
+    assert isinstance(response, dict)
+    binding_id = response["contact"]["im_bindings"][0]["id"]
+    assert response["contact"]["id"] == str(_CONTACT_ID)
+    assert binding_id != str(source.id)
+    if target is not None:
+        assert binding_id != str(target.id)
+    assert put() == response
+    with binding_context.sessions() as session:
+        record = session.scalars(sa.select(HumanInputIMBinding)).one()
+        assert record.id == binding_id
+        assert record.contact_id == str(_CONTACT_ID)
+        assert record.im_identity_id == str(_OTHER_IDENTITY_ID)
+        assert record.bound_by_account_id == str(_ACCOUNT_ID)
+        assert SQLAlchemyIMBindingRepository(session, _CHANNEL_ID).get_effective(_TENANT_ID, _OTHER_CONTACT_ID) is None
+
+
+@pytest.mark.parametrize(("occupied", "workspace_override"), [(False, False), (False, True), (True, True)])
 def test_failed_replacement_preserves_original_binding(
     binding_context: _BindingContext, occupied: bool, workspace_override: bool
 ) -> None:
@@ -504,9 +561,9 @@ def test_failed_replacement_preserves_original_binding(
         assert record.bound_by_account_id == str(_ACCOUNT_ID)
 
 
-@pytest.mark.parametrize("workspace_override", [False, True])
-def test_replacement_insert_failure_rolls_back_deleted_binding(
-    binding_context: _BindingContext, workspace_override: bool
+@pytest.mark.parametrize(("occupied", "workspace_override"), [(False, False), (True, False), (False, True)])
+def test_replacement_insert_failure_rolls_back_deleted_bindings(
+    binding_context: _BindingContext, occupied: bool, workspace_override: bool
 ) -> None:
     assign = (
         binding_context.service.set_workspace_override
@@ -521,28 +578,41 @@ def test_replacement_insert_failure_rolls_back_deleted_binding(
         identity_id=_IDENTITY_ID,
         bound_by_account_id=_ACCOUNT_ID,
     ).im_bindings[0]
-    with binding_context.sessions.begin() as session:
-        session.execute(
-            sa.text(f"""
-            CREATE TRIGGER reject_binding_insert BEFORE INSERT ON {model.__tablename__}
-            BEGIN
-                SELECT RAISE(ABORT, 'binding insert unavailable');
-            END
-        """)
-        )
+    source = None
+    if occupied:
+        with binding_context.sessions.begin() as session:
+            source = SQLAlchemyIMBindingRepository(session, _CHANNEL_ID).create(
+                IMBindingAssignment(_OTHER_CONTACT_ID, _OTHER_IDENTITY_ID, _NOW),
+                bound_by_account_id=_OTHER_ACCOUNT_ID,
+            )
 
-    with pytest.raises(IntegrityError, match="binding insert unavailable"):
-        assign(
-            organization_scope=_OWNER_SCOPE,
-            tenant_id=_TENANT_ID,
-            contact_id=_CONTACT_ID,
-            identity_id=_OTHER_IDENTITY_ID,
-            bound_by_account_id=_OTHER_ACCOUNT_ID,
-        )
+    def reject_binding_insert(_mapper: object, _connection: object, _target: object) -> None:
+        raise IntegrityError("INSERT", {}, Exception("binding insert unavailable"))
+
+    event.listen(model, "before_insert", reject_binding_insert)
+    try:
+        with pytest.raises(IntegrityError, match="binding insert unavailable"):
+            assign(
+                organization_scope=_OWNER_SCOPE,
+                tenant_id=_TENANT_ID,
+                contact_id=_CONTACT_ID,
+                identity_id=_OTHER_IDENTITY_ID,
+                bound_by_account_id=_OTHER_ACCOUNT_ID,
+            )
+    finally:
+        event.remove(model, "before_insert", reject_binding_insert)
 
     with binding_context.sessions() as session:
-        record = session.scalars(sa.select(model)).one()
-        assert record.id == str(original.id)
+        records = session.scalars(sa.select(model)).all()
+        assert {record.id for record in records} == (
+            {str(original.id), str(source.id)} if source is not None else {str(original.id)}
+        )
+        if source is not None:
+            source_record = session.get_one(model, str(source.id))
+            assert source_record.contact_id == str(_OTHER_CONTACT_ID)
+            assert source_record.im_identity_id == str(_OTHER_IDENTITY_ID)
+            assert source_record.bound_by_account_id == str(_OTHER_ACCOUNT_ID)
+        record = session.get_one(model, str(original.id))
         assert record.im_identity_id == str(_IDENTITY_ID)
         assert record.bound_by_account_id == str(_ACCOUNT_ID)
 

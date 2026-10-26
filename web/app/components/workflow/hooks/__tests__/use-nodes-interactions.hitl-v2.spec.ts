@@ -162,58 +162,81 @@ describe('useNodesInteractions', () => {
     runtimeNodesMetaDataMap.value = {}
   })
 
-  it('creates Human Input v2 from its catalog identity with persisted Human Input type', () => {
-    currentNodes = [
-      createNode({
-        id: 'node-1',
-        width: 100,
-        data: { type: BlockEnum.Code, title: 'Code', desc: '' },
-      }),
-    ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
-    rfState.edges = []
-    rfState.setNodes.mockImplementation((nextNodes) => {
-      rfState.nodes = nextNodes
-    })
-    runtimeNodesMetaDataMap.value = {
-      [BlockEnum.HumanInputV2]: {
-        defaultValue: {
-          type: BlockEnum.HumanInput,
-          title: 'Human Input v2',
-          desc: '',
-          version: '2',
-          recipients_spec: [],
-          message_template: { subject: '', body: '' },
-          debug_mode: { enabled: false, channels: [] },
-          form_content: '',
-          inputs: [],
-          user_actions: [],
-          timeout: 36,
-          timeout_unit: 'hour',
+  it.each([undefined, BlockEnum.Iteration, BlockEnum.Loop])(
+    'creates Human Input v2 with persisted type in container %s',
+    (containerType) => {
+      const parentId = containerType ? 'container-node' : undefined
+      currentNodes = [
+        createNode({
+          id: 'node-1',
+          parentId,
+          width: 100,
+          data: { type: BlockEnum.Code, title: 'Code', desc: '' },
+        }),
+      ]
+      if (containerType) {
+        currentNodes.unshift(
+          createNode({
+            id: parentId,
+            width: 500,
+            height: 400,
+            data: { type: containerType, title: 'Container', desc: '' },
+          }),
+        )
+      }
+      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.edges = []
+      rfState.setNodes.mockImplementation((nextNodes) => {
+        rfState.nodes = nextNodes
+      })
+      runtimeNodesMetaDataMap.value = {
+        [BlockEnum.HumanInputV2]: {
+          defaultValue: {
+            type: BlockEnum.HumanInput,
+            title: 'Human Input v2',
+            desc: '',
+            version: '2',
+            recipients_spec: [],
+            message_template: { subject: '', body: '' },
+            debug_mode: { enabled: false, channels: [] },
+            form_content: '',
+            inputs: [],
+            user_actions: [],
+            timeout: 36,
+            timeout_unit: 'hour',
+          },
+          metaData: { isSingleton: false },
         },
-        metaData: { isSingleton: false },
-      },
-    }
+      }
 
-    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
-      historyStore: { nodes: currentNodes, edges: [] },
-    })
+      const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+        historyStore: { nodes: currentNodes, edges: [] },
+      })
 
-    act(() => {
-      result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInputV2 }, { prevNodeId: 'node-1' })
-    })
+      act(() => {
+        result.current.handleNodeAdd({ nodeType: BlockEnum.HumanInputV2 }, { prevNodeId: 'node-1' })
+      })
 
-    const node = rfState.nodes.find((node) => node.data.version === '2')
-    expect(node?.data).toMatchObject({
-      type: BlockEnum.HumanInput,
-      version: '2',
-      recipients_spec: [],
-      timeout: 36,
-      timeout_unit: 'hour',
-    })
-    expect(node?.data).not.toHaveProperty('delivery_methods')
-    expect(node?.data._connectedSourceHandleIds).toEqual([])
-  })
+      const node = rfState.nodes.find((node) => node.data.version === '2')
+      expect(node?.data).toMatchObject({
+        type: BlockEnum.HumanInput,
+        version: '2',
+        recipients_spec: [],
+        timeout: 36,
+        timeout_unit: 'hour',
+      })
+      expect(node?.data).not.toHaveProperty('delivery_methods')
+      expect(node?.data._connectedSourceHandleIds).toEqual([])
+      expect(node?.parentId).toBe(parentId)
+      if (containerType) {
+        expect(node?.data).toMatchObject({
+          isInIteration: containerType === BlockEnum.Iteration,
+          isInLoop: containerType === BlockEnum.Loop,
+          [containerType === BlockEnum.Iteration ? 'iteration_id' : 'loop_id']: parentId,
+        })
+      }
+    },
+  )
 
   it('blocks quick-add Human Input while a legacy node remains in the draft', () => {
     currentNodes = [

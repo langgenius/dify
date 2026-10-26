@@ -49,6 +49,12 @@ class ContactIMBindingService:
         identity_id: IMIdentityId,
         bound_by_account_id: AccountId | None,
     ) -> ContactIMBindingView:
+        """Atomically replace either occupied default endpoint for a manual edit.
+
+        Identical assignments preserve the Binding ID and metadata. A changed
+        assignment creates a new ID, invalidating cards for replaced defaults.
+        Controller authorization determines whether default bindings are editable.
+        """
         return self._mutate(
             organization_scope,
             tenant_id,

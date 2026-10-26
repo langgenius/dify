@@ -1,4 +1,4 @@
-"""Behavior tests for rendering accepted Human Input v2 form values."""
+"""Behavior tests for presenting and rendering Human Input v2 form values."""
 
 import pytest
 
@@ -11,7 +11,9 @@ from core.human_input_v2.resolved_form import (
     ResolvedForm,
     SelectInput,
 )
-from factories.human_input_v2_form_presentation import render_filled_content
+from core.workflow.nodes.human_input.entities import ParagraphInputConfig
+from core.workflow.nodes.human_input.enums import ValueSourceType
+from factories.human_input_v2_form_presentation import build_form_presentation, render_filled_content
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment, NoneSegment, Segment, StringSegment
 
@@ -33,6 +35,30 @@ def attachment() -> File:
         mime_type="application/pdf",
         size=100,
     )
+
+
+@pytest.mark.parametrize(
+    ("default_value", "expected_value", "expected_resolved_defaults"),
+    [(None, "", {}), ("", "", {"answer": ""}), ("Preset answer", "Preset answer", {"answer": "Preset answer"})],
+)
+def test_paragraph_presentation_supplies_a_concrete_default_for_shared_form_controls(
+    form: ResolvedForm,
+    default_value: str | None,
+    expected_value: str,
+    expected_resolved_defaults: dict[str, str],
+) -> None:
+    form = form.model_copy(
+        update={"parts": (ParagraphInput(output_variable_name="answer", default_value=default_value),)}
+    )
+
+    presentation = build_form_presentation(form)
+
+    (paragraph,) = presentation.inputs
+    assert isinstance(paragraph, ParagraphInputConfig)
+    assert paragraph.default is not None
+    assert paragraph.default.type == ValueSourceType.CONSTANT
+    assert paragraph.default.value == expected_value
+    assert presentation.resolved_default_values == expected_resolved_defaults
 
 
 def test_render_follows_source_order_without_reinterpreting_submitted_markers(form: ResolvedForm) -> None:
