@@ -2,12 +2,16 @@
 
 from dataclasses import dataclass
 
+from shellctl.client import ShellctlClientError
+
 from dify_agent.protocol import (
     CreateExecutionBindingRequest,
     CreateExecutionBindingResponse,
     DestroyExecutionBindingRequest,
     KeepAliveExecutionBindingRequest,
     KeepAliveExecutionBindingResponse,
+    ReadExecutionBindingJobRequest,
+    ReadExecutionBindingJobResponse,
 )
 from dify_agent.runtime_backend import (
     BindingCapacityExhaustedError,
@@ -68,6 +72,34 @@ class ExecutionBindingService:
             binding_ref=allocation.binding_ref,
             workspace_ref=allocation.workspace_ref,
         )
+
+    async def read_job(self, request: ReadExecutionBindingJobRequest) -> ReadExecutionBindingJobResponse:
+        """Expose only coherent job evidence from supported direct read connections."""
+        if not isinstance(self.backend, (LocalExecutionBindingBackend, EnterpriseExecutionBindingBackend)) or (
+            request.binding_ref.startswith("native:")
+        ):
+            raise ExecutionBindingServiceError(
+                "binding_job_status_unsupported", "job status unsupported", status_code=409
+            )
+        try:
+            result = await self.backend.read_job_status(request.binding_ref, request.job_id)
+            if result.job_id != request.job_id:
+                raise ValueError("job identity mismatch")
+            return ReadExecutionBindingJobResponse.model_validate(
+                {"job_id": result.job_id, "status": result.status, "done": result.done, "exit_code": result.exit_code}
+            )
+        except ShellctlClientError as error:
+            if error.status_code == 404:
+                raise ExecutionBindingServiceError(
+                    "binding_job_not_found", "job unavailable", status_code=404
+                ) from None
+            raise ExecutionBindingServiceError(
+                "binding_job_status_failed", "job status unavailable", status_code=502
+            ) from None
+        except Exception:
+            raise ExecutionBindingServiceError(
+                "binding_job_status_failed", "job status unavailable", status_code=502
+            ) from None
 
     async def keep_alive(self, request: KeepAliveExecutionBindingRequest) -> KeepAliveExecutionBindingResponse:
         """Refresh one supported existing binding without allocating or running a job."""

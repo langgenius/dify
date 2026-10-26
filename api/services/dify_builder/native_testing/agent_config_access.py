@@ -31,7 +31,7 @@ def validate_config_read(
     Stub request. This consumes no second dispatch permission and grants no
     config writes or access to another Agent/snapshot.
     """
-    current = operations.validate_claimed_shell(envelope=envelope)
+    current = operations.validate_config_read_shell(envelope=envelope)
     if current.ref != context.ref or current.config != context.config or current.native_test_profile != "confirmed":
         raise BuilderExecutionPolicyError("native_agent_config_mismatch")
     config = context.config.config
