@@ -35,7 +35,7 @@ from services.app.generation.adapters import agent_app
 from services.app.generation.adapters.agent_app import AgentAppGenerator
 from services.app.generation.adapters.agent_runner import AgentAppRunner
 from services.tools.provider_queries import ToolProviders
-from tests.unit_tests.model_factories import make_account, make_app
+from tests.helpers.unit.model_factories import make_account, make_app
 from tests.unit_tests.repositories.agent.test_app_execution_repository import seed_agent
 
 

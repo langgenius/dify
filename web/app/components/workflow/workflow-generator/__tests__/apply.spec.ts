@@ -17,18 +17,34 @@ const mockDeleteApp = vi.fn()
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
-    if (request.method === 'POST') return Response.json(await mockCreateApp(await request.json()))
+    if (request.method === 'GET' && new URL(request.url).pathname.endsWith('/workflows/draft')) {
+      const draft = await mockFetchWorkflowDraft(
+        new URL(request.url).pathname.replace(/^.*\/apps\//, 'apps/'),
+      )
+      return draft
+        ? Response.json(draft)
+        : Response.json(
+            { code: 'draft_workflow_not_exist', message: 'Draft not found', status: 404 },
+            { status: 404 },
+          )
+    }
+    if (request.method === 'POST') {
+      if (new URL(request.url).pathname.endsWith('/workflows/draft')) {
+        return Response.json(
+          await mockSyncWorkflowDraft({
+            url: new URL(request.url).pathname.replace(/^.*\/apps\//, 'apps/'),
+            body: await request.json(),
+          }),
+        )
+      }
+      return Response.json(await mockCreateApp(await request.json()))
+    }
     if (request.method === 'DELETE') {
       await mockDeleteApp(new URL(request.url).pathname.split('/').at(-1))
       return new Response(null, { status: 204 })
     }
     throw new Error(`Unexpected request: ${request.method} ${request.url}`)
   },
-}))
-
-vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
-  syncWorkflowDraft: (params: unknown) => mockSyncWorkflowDraft(params),
 }))
 
 const makeGraph = (): GeneratedGraph => ({
@@ -92,7 +108,7 @@ describe('applyToNewApp', () => {
     )
     expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
       url: 'apps/new-app-1/workflows/draft',
-      params: {
+      body: {
         graph,
         features: {},
         conversation_variables: [],
@@ -131,7 +147,7 @@ describe('applyToNewApp', () => {
       instruction: 'Summarize a URL',
     })
 
-    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].body.graph
     expect(savedGraph.nodes[1].data).not.toHaveProperty('memory')
   })
 
@@ -144,7 +160,7 @@ describe('applyToNewApp', () => {
       instruction: 'Answer questions in a conversation',
     })
 
-    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].body.graph
     expect(savedGraph.nodes[1].data).toHaveProperty('memory')
     expect(savedGraph).toEqual(graph)
   })
@@ -269,7 +285,7 @@ describe('applyToCurrentApp', () => {
       graph: makeGraphWithMemory(),
     })
 
-    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].body.graph
     expect(savedGraph.nodes[1].data).not.toHaveProperty('memory')
   })
 
@@ -280,7 +296,7 @@ describe('applyToCurrentApp', () => {
 
       await applyToCurrentApp({ appId: 'app-42', appMode, graph })
 
-      const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+      const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].body.graph
       expect(savedGraph.nodes[1].data).toHaveProperty('memory')
       expect(savedGraph).toEqual(graph)
     },
@@ -303,7 +319,7 @@ describe('applyToCurrentApp', () => {
     expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('apps/app-42/workflows/draft')
     expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
       url: 'apps/app-42/workflows/draft',
-      params: expect.objectContaining({
+      body: expect.objectContaining({
         graph,
         features: { file_upload: { enabled: true } },
         hash: 'h-existing',
@@ -311,7 +327,7 @@ describe('applyToCurrentApp', () => {
     })
     // Environment variables are preserved server-side; conversation variables
     // must still be forwarded verbatim.
-    const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
+    const params = mockSyncWorkflowDraft.mock.calls[0]![0].body
     expect(params).not.toHaveProperty('environment_variables')
     expect(params.conversation_variables).toEqual([
       { id: 'c1', name: 'memory', value_type: 'string', value: '' },
@@ -319,7 +335,7 @@ describe('applyToCurrentApp', () => {
   })
 
   // First-apply path: a freshly created Workflow app has no draft yet, so the
-  // fetch resolves to undefined and we must sync without a hash field so the
+  // fetch returns 404 and we must sync without a hash field so the
   // backend lazy-creates the draft instead of raising.
   it('should sync without a hash when no draft yet exists', async () => {
     mockFetchWorkflowDraft.mockResolvedValue(undefined)
@@ -327,7 +343,7 @@ describe('applyToCurrentApp', () => {
     await applyToCurrentApp({ appId: 'fresh-app', graph: makeGraph() })
 
     expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-    const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
+    const params = mockSyncWorkflowDraft.mock.calls[0]![0].body
     expect(params).not.toHaveProperty('hash')
     expect(params.features).toEqual({})
     expect(params).not.toHaveProperty('environment_variables')
@@ -342,7 +358,7 @@ describe('applyToCurrentApp', () => {
     await applyToCurrentApp({ appId: 'app-7', graph: makeGraph() })
 
     expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-    const params = mockSyncWorkflowDraft.mock.calls[0]![0].params
+    const params = mockSyncWorkflowDraft.mock.calls[0]![0].body
     expect(params).not.toHaveProperty('hash')
   })
 

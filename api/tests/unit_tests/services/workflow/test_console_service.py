@@ -37,7 +37,7 @@ from services.workflow.contracts import (
     WorkflowTriggerEvent,
 )
 from services.workflow.draft_service import WorkflowDraftService
-from tests.unit_tests.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_workflow
 
 SNAPSHOT = workflow_snapshot(make_workflow())
 

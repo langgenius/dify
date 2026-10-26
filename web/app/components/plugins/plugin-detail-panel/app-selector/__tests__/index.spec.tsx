@@ -95,7 +95,7 @@ describe('AppSelector', () => {
       <AppSelector value={{ app_id: 'app-2', inputs: {} }} onSelect={vi.fn()} />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    await user.click(await screen.findByRole('button', { name: 'Workflow App' }))
 
     await waitFor(() => {
       expect(fetchWorkflow).toHaveBeenCalledWith({ params: { app_id: 'app-2' } })
@@ -128,12 +128,12 @@ describe('AppSelector', () => {
 
     renderWithConsoleQuery(<StatefulAppSelector onSelect={onSelect} />)
 
-    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
-    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.placeholder' }))
+    await user.click(screen.getAllByRole('button', { name: 'app.appSelector.placeholder' })[1]!)
     await user.click(await screen.findByRole('option', { name: /Support Bot/ }))
     await user.type(await screen.findByPlaceholderText('First question'), 'alpha')
 
-    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.click(screen.getAllByRole('button', { name: 'Support Bot' })[1]!)
     await user.click(await screen.findByRole('option', { name: /Sales Bot/ }))
     await user.type(await screen.findByPlaceholderText('Second question'), 'beta')
 
@@ -150,8 +150,8 @@ describe('AppSelector', () => {
 
     renderWithConsoleQuery(<StatefulAppSelector onSelect={onSelect} />)
 
-    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
-    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.placeholder' }))
+    await user.click(screen.getAllByRole('button', { name: 'app.appSelector.placeholder' })[1]!)
 
     await waitFor(() => {
       expect(screen.getByText('Support Bot')).toBeInTheDocument()
@@ -160,16 +160,16 @@ describe('AppSelector', () => {
     await user.click(screen.getByText('Support Bot'))
     expect(onSelect).toHaveBeenLastCalledWith({ app_id: 'app-1', inputs: {}, files: [] })
     expect(screen.queryByRole('option')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.click(screen.getAllByRole('button', { name: 'Support Bot' })[1]!)
     await user.type(
-      screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }),
+      screen.getByRole('combobox', { name: 'app.appSelector.searchPlaceholder' }),
       'workflow',
     )
 
     await waitFor(() => {
       expect(screen.queryByRole('option', { name: /Support Bot/ })).not.toBeInTheDocument()
     })
-    expect(screen.getByRole('option', { name: /Workflow App/ })).toBeInTheDocument()
+    expect(await screen.findByRole('option', { name: /Workflow App/ })).toBeInTheDocument()
 
     await user.keyboard('{ArrowDown}')
     await user.keyboard('{Enter}')
@@ -181,5 +181,19 @@ describe('AppSelector', () => {
         files: [],
       })
     })
+  })
+  it('preserves inputs and files when the current app is selected again', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    const value = {
+      app_id: 'app-1',
+      inputs: { question: 'Keep this draft' },
+      files: ['attachment'],
+    }
+    renderWithConsoleQuery(<AppSelector value={value} onSelect={onSelect} />)
+    await user.click(await screen.findByRole('button', { name: 'Support Bot' }))
+    await user.click(screen.getAllByRole('button', { name: 'Support Bot' })[1]!)
+    await user.click(await screen.findByRole('option', { name: /Support Bot/ }))
+    expect(onSelect).toHaveBeenLastCalledWith(value)
   })
 })

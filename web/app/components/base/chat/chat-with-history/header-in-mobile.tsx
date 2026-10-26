@@ -26,7 +26,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { useChatWithHistoryContext } from './context'
-import MobileOperationDropdown from './header/mobile-operation-dropdown'
+import MobileOperationMenu from './header/mobile-operation-menu'
 import Operation from './header/operation'
 import Sidebar from './sidebar'
 
@@ -121,7 +121,7 @@ const HeaderInMobile = () => {
               />
             )}
           </div>
-          <MobileOperationDropdown
+          <MobileOperationMenu
             handleResetChat={handleNewConversation}
             handleViewChatSettings={() => setShowChatSettings(true)}
             hideViewChatSettings={inputsForms.length < 1}

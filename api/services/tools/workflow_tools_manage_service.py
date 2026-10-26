@@ -5,7 +5,6 @@ from uuid import uuid4
 
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration, emoji_icon_adapter
-from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.tool_runtime_contracts import WorkflowToolDefinition, WorkflowToolStore
 from models.tools import WorkflowToolProvider
@@ -41,9 +40,6 @@ class WorkflowToolManageService:
         import_id: str = "",
     ):
         workflow = self._queries.current_workflow(tenant_id=tenant_id, app_id=workflow_app_id)
-
-        # check if workflow configuration is synced
-        WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
 
         # create workflow tool provider
         workflow_tool_provider = WorkflowToolDefinition(
@@ -101,7 +97,6 @@ class WorkflowToolManageService:
         if provider is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
         workflow = self._queries.current_workflow(tenant_id=tenant_id, app_id=provider.app_id)
-        WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
         definition = WorkflowToolDefinition(
             id=provider.id,
             tenant_id=tenant_id,

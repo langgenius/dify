@@ -1,0 +1,419 @@
+'use client'
+
+import type { ReactNode } from 'react'
+import type { InstalledSourceProviderOption, SourceProviderOption } from './provider-options'
+import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './source-draft'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Input } from '@langgenius/dify-ui/input'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
+import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import Link from '@/next/link'
+import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH } from './source-draft'
+import { SyncPolicyField } from './sync-policy-field'
+
+const sourceTypeOptions = [
+  { icon: 'i-ri-global-line', iconSize: 'size-4', value: 'websiteCrawl' },
+  { icon: 'i-ri-file-text-line', iconSize: 'size-3.5', value: 'onlineDocuments' },
+  { icon: 'i-ri-hard-drive-3-line', iconSize: 'size-3.5', value: 'onlineDrive' },
+] as const
+
+export function SourceTypeSelector({
+  appearance = 'page',
+  disabled = false,
+  disabledValues = [],
+  value,
+  onChange,
+}: {
+  appearance?: 'embedded' | 'page'
+  disabled?: boolean
+  disabledValues?: readonly NewKnowledgeSourceType[]
+  value: NewKnowledgeSourceType
+  onChange: (value: NewKnowledgeSourceType) => void
+}) {
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
+
+  return (
+    <Fieldset disabled={disabled}>
+      <FieldsetLegend
+        className={cn('py-0 system-sm-medium', appearance === 'embedded' ? 'mb-1.25' : 'mb-1.5')}
+      >
+        {t(($) => $.sourceTypeLabel, { ns: 'knowledgeSources' })}
+      </FieldsetLegend>
+      <RadioGroup<NewKnowledgeSourceType>
+        value={value}
+        disabled={disabled}
+        className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-section p-0.5 sm:grid-cols-3"
+        onValueChange={onChange}
+      >
+        {sourceTypeOptions.map((option) => (
+          <RadioItem<NewKnowledgeSourceType>
+            key={option.value}
+            value={option.value}
+            disabled={disabled || disabledValues.includes(option.value)}
+            className={cn(
+              'relative flex cursor-pointer items-center justify-center gap-1.5 rounded-md system-xs-medium text-text-tertiary outline-hidden data-disabled:cursor-not-allowed',
+              appearance === 'embedded' ? 'min-h-7 px-2' : 'h-7',
+              'hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              appearance === 'embedded'
+                ? 'data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary data-checked:shadow-xs data-disabled:opacity-60'
+                : 'data-checked:bg-background-default data-checked:text-text-primary data-checked:shadow-xs',
+            )}
+          >
+            <span
+              aria-hidden
+              className={`${option.icon} ${appearance === 'embedded' ? 'size-4' : option.iconSize}`}
+            />
+            {t(($) => $[`${option.value}`])}
+          </RadioItem>
+        ))}
+      </RadioGroup>
+    </Fieldset>
+  )
+}
+
+export function SourceProviderRadioGroup<T extends string>({
+  disabled = false,
+  layout,
+  options,
+  size = 'medium',
+  surface = 'transparent',
+  value,
+  onChange,
+}: {
+  disabled?: boolean
+  layout: 'grid-four' | 'grid-three' | 'wrap'
+  options: Array<{ disabled?: boolean; icon: ReactNode; label?: ReactNode; value: T }>
+  size?: 'medium' | 'small'
+  surface?: 'default' | 'transparent'
+  value: T
+  onChange: (value: T) => void
+}) {
+  return (
+    <RadioGroup<T>
+      value={value}
+      disabled={disabled}
+      className={cn(
+        layout === 'wrap' ? 'flex flex-wrap gap-2' : 'grid grid-cols-2 gap-2',
+        layout === 'grid-three' && 'sm:grid-cols-3',
+        layout === 'grid-four' && 'sm:grid-cols-4',
+      )}
+      onValueChange={onChange}
+    >
+      {options.map((option) => (
+        <RadioItem<T>
+          key={option.value}
+          value={option.value}
+          disabled={disabled || option.disabled}
+          className={cn(
+            'relative flex items-center justify-center gap-1.5 rounded-lg border border-divider-subtle system-xs-medium text-text-secondary outline-hidden',
+            size === 'medium' ? 'h-8.5 px-2.5' : 'h-7.5 px-3',
+            surface === 'default' && 'bg-background-default',
+            'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+            'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:text-text-primary',
+            'data-disabled:cursor-not-allowed data-disabled:opacity-60',
+          )}
+        >
+          {option.icon}
+          <span className="truncate">{option.label ?? option.value}</span>
+        </RadioItem>
+      ))}
+    </RadioGroup>
+  )
+}
+
+export function SourceProviderEmptyState({ className }: { className?: string }) {
+  const { t } = useTranslation(['plugin'])
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={cn(
+        'flex min-h-20 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-divider-regular bg-background-section px-4 py-3 text-center',
+        className,
+      )}
+    >
+      <span className="flex size-8 items-center justify-center rounded-lg bg-background-default">
+        <span aria-hidden className="i-ri-plug-line size-4 text-text-tertiary" />
+      </span>
+      <span className="system-xs-regular text-text-tertiary">
+        {t(($) => $['list.notFound'], { ns: 'plugin' })}
+      </span>
+    </div>
+  )
+}
+
+type SourceProviderIconValue =
+  | InstalledSourceProviderOption['datasource']['identity']['icon']
+  | InstalledSourceProviderOption['plugin']['declaration']['identity']['icon']
+
+function SourceProviderImage({
+  className,
+  fallbackIcon,
+  src,
+}: {
+  className?: string
+  fallbackIcon: string
+  src: string
+}) {
+  const [failed, setFailed] = useState(false)
+
+  if (failed) return <span aria-hidden className={cn(fallbackIcon, 'size-4 shrink-0', className)} />
+
+  return (
+    <img
+      aria-hidden
+      alt=""
+      className={cn('size-4 shrink-0 object-contain', className)}
+      src={src}
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
+export function SourceProviderIcon({
+  className,
+  fallbackIcon,
+  icon,
+}: {
+  className?: string
+  fallbackIcon: string
+  icon?: SourceProviderIconValue
+}) {
+  const { getIconUrl } = useGetIcon()
+
+  if (typeof icon === 'string' && icon) {
+    const src = /^[a-z][a-z\d+.-]*:/i.test(icon) || icon.startsWith('/') ? icon : getIconUrl(icon)
+    return (
+      <SourceProviderImage key={src} className={className} fallbackIcon={fallbackIcon} src={src} />
+    )
+  }
+
+  return <span aria-hidden className={cn(fallbackIcon, 'size-4 shrink-0', className)} />
+}
+
+export function SourceProviderSelector({
+  appearance = 'page',
+  disabled = false,
+  layout = 'grid-three',
+  options,
+  providerKey,
+  showEmptyState = false,
+  onChange,
+}: {
+  appearance?: 'embedded' | 'page'
+  disabled?: boolean
+  layout?: 'grid-four' | 'grid-three'
+  options: SourceProviderOption[]
+  providerKey: string
+  showEmptyState?: boolean
+  onChange: (providerKey: string) => void
+}) {
+  const { t } = useTranslation(['knowledgeSpace'])
+
+  return (
+    <Fieldset disabled={disabled}>
+      <div
+        className={cn(
+          'flex items-center justify-between gap-3',
+          appearance === 'embedded' ? 'mb-2' : 'mb-1.5',
+        )}
+      >
+        <FieldsetLegend className="py-0 system-sm-medium">
+          {t(($) => $.providerLabel)}
+        </FieldsetLegend>
+        <Link
+          aria-disabled={disabled || undefined}
+          className={cn(
+            buttonVariants({ variant: 'ghost-accent', size: 'small' }),
+            'gap-1 pr-1.5 pl-2.25 text-[13px] leading-4 font-normal active:bg-state-accent-active',
+          )}
+          data-disabled={disabled ? '' : undefined}
+          href={buildIntegrationPath('data-source')}
+          rel="noopener noreferrer"
+          tabIndex={disabled ? -1 : undefined}
+          target="_blank"
+          onClick={disabled ? (event) => event.preventDefault() : undefined}
+        >
+          {t(($) => $.moreProviders)}
+          <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+        </Link>
+      </div>
+      {options.length > 0 ? (
+        <SourceProviderRadioGroup
+          value={providerKey}
+          disabled={disabled}
+          layout={layout}
+          options={options.map((option) => ({
+            icon: (
+              <SourceProviderIcon
+                fallbackIcon={option.fallbackIcon}
+                icon={option.datasource.identity.icon || option.plugin.declaration.identity.icon}
+              />
+            ),
+            label: option.label,
+            value: option.key,
+          }))}
+          size="medium"
+          surface="default"
+          onChange={onChange}
+        />
+      ) : showEmptyState ? (
+        <SourceProviderEmptyState />
+      ) : null}
+    </Fieldset>
+  )
+}
+
+export function SourceNameField({
+  className,
+  disabled = false,
+  draft,
+  labelClassName,
+  name = 'sourceName',
+  preventSubmitOnEnter = false,
+  onDraftChange,
+}: {
+  className?: string
+  disabled?: boolean
+  draft: NewKnowledgeSourceDraft
+  labelClassName?: string
+  name?: string
+  preventSubmitOnEnter?: boolean
+  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+}) {
+  const { t } = useTranslation(['knowledgeSources'])
+
+  return (
+    <Field name={name} className={cn('gap-1.5', className)}>
+      <FieldLabel className={labelClassName}>
+        {t(($) => $.sourceName, { ns: 'knowledgeSources' })}
+        <span aria-hidden className="ml-0.5 text-text-destructive">
+          *
+        </span>
+      </FieldLabel>
+      <Input
+        type="text"
+        autoComplete="off"
+        disabled={disabled}
+        maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
+        value={draft.sourceName}
+        placeholder={t(($) => $.sourceNamePlaceholder, { ns: 'knowledgeSources' })}
+        onValueChange={(value) => onDraftChange({ ...draft, sourceName: value })}
+        onKeyDown={(event) => {
+          if (preventSubmitOnEnter && event.key === 'Enter') event.preventDefault()
+        }}
+      />
+    </Field>
+  )
+}
+
+export function SourceSyncPolicyField({
+  className,
+  disabled = false,
+  draft,
+  size,
+  triggerClassName,
+  onDraftChange,
+}: {
+  className?: string
+  disabled?: boolean
+  draft: NewKnowledgeSourceDraft
+  size?: 'large' | 'medium'
+  triggerClassName?: string
+  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+}) {
+  return (
+    <SyncPolicyField
+      className={className}
+      disabled={disabled}
+      size={size}
+      triggerClassName={triggerClassName}
+      value={{
+        customIntervalSeconds: draft.customIntervalSeconds,
+        mode:
+          draft.syncPolicy === 'daily'
+            ? 'interval'
+            : draft.syncPolicy === 'custom'
+              ? 'custom'
+              : draft.syncPolicy,
+      }}
+      onChange={(value) =>
+        onDraftChange({
+          ...draft,
+          customIntervalSeconds: value.customIntervalSeconds,
+          syncPolicy: value.mode === 'interval' ? 'daily' : value.mode,
+        })
+      }
+    />
+  )
+}
+
+function SourceConnectionRequiredCard({
+  actionLabel,
+  description,
+  disabled = false,
+  icon,
+  title,
+  onConnect,
+}: {
+  actionLabel: string
+  description: string
+  disabled?: boolean
+  icon: ReactNode
+  title: string
+  onConnect: () => void
+}) {
+  return (
+    <section className="flex h-44 flex-col items-start gap-2.5 rounded-xl bg-background-section p-4">
+      <span className="flex size-9 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-background-default">
+        {icon}
+      </span>
+      <h3 className="system-sm-semibold text-text-primary">{title}</h3>
+      <p className="max-w-xl system-xs-regular leading-3.75 text-text-tertiary">{description}</p>
+      <Button
+        type="button"
+        variant="primary"
+        disabled={disabled}
+        className="mt-auto"
+        onClick={onConnect}
+      >
+        {actionLabel}
+      </Button>
+    </section>
+  )
+}
+
+export function SourceProviderCredentialRequiredCard({
+  disabled = false,
+  icon,
+  provider,
+  onConnect,
+}: {
+  disabled?: boolean
+  icon: ReactNode
+  provider: string
+  onConnect: () => void
+}) {
+  const { t } = useTranslation(['knowledgeSources'])
+
+  return (
+    <SourceConnectionRequiredCard
+      actionLabel={t(($) => $.connectProvider, { ns: 'knowledgeSources', provider })}
+      description={t(($) => $.providerCredentialRequiredDescription, {
+        ns: 'knowledgeSources',
+        provider,
+      })}
+      disabled={disabled}
+      icon={icon}
+      title={t(($) => $.providerNotConfigured, { ns: 'knowledgeSources', provider })}
+      onConnect={onConnect}
+    />
+  )
+}
