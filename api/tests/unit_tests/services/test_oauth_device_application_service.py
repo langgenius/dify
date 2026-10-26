@@ -27,8 +27,7 @@ from services.oauth_device_contracts import (
     ApprovalSessionConsumedError,
     ApprovalTransitionConfirmation,
     AuthorizationPendingError,
-    DeviceApprovalRecord,
-    DeviceFlowStateView,
+    ClientMismatchError,
     DeviceFlowStatus,
     DeviceMutation,
     DeviceRequestContext,
@@ -920,3 +919,46 @@ def test_external_issuer_is_required_before_persistence(issuer: str) -> None:
         )
 
     tokens.rotate_token.assert_not_called()
+
+
+def test_poll_device_grant_rejects_other_client() -> None:
+    harness = _harness()
+    harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
+    harness.store.poll_decision = SlowDownDecision.SLOW_DOWN
+
+    with pytest.raises(ClientMismatchError):
+        harness.service.poll_device_grant(client_id="other", device_code="device-1", poll_ip="127.0.0.1")
+
+    harness.store.poll_decision = SlowDownDecision.OK
+    assert "ABCD-EFGH" in harness.store.states
+    result = harness.service.poll_device_grant(client_id="difyctl", device_code="device-1", poll_ip="127.0.0.1")
+    assert result["token"] == "secret-token"
+
+
+@pytest.mark.parametrize(
+    ("state", "expected_error"),
+    [
+        (FakeState(), AuthorizationPendingError),
+        (FakeState(status=DeviceFlowStatus.DENIED), AccessDeniedError),
+        (None, ExpiredTokenError),
+        (FakeState(status=DeviceFlowStatus.APPROVED), ExpiredTokenError),
+    ],
+    ids=["pending", "denied", "unknown", "approved-without-token"],
+)
+def test_poll_device_grant_matches_poll_for_right_client(
+    state: FakeState | None, expected_error: type[Exception]
+) -> None:
+    harness = _harness()
+    harness.store.states = {} if state is None else {"ABCD-EFGH": ("device-1", state)}
+
+    with pytest.raises(expected_error):
+        harness.service.poll_device_grant(client_id="difyctl", device_code="device-1", poll_ip="127.0.0.1")
+
+
+def test_poll_device_grant_returns_approved_payload() -> None:
+    harness = _harness()
+    harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
+
+    result = harness.service.poll_device_grant(client_id="difyctl", device_code="device-1", poll_ip="127.0.0.1")
+
+    assert result["token"] == "secret-token"

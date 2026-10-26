@@ -517,6 +517,12 @@ def build_application_services(
         providers=datasource_credentials.providers,
     )
     oauth_server = _build_oauth_server_service(database_client=database_client, redis=redis)
+    oauth_device = _build_oauth_device_service(
+        database_client=database_client,
+        redis=redis,
+        accounts=accounts,
+        workspaces=workspace_repository,
+    )
     console_apps = ConsoleAppRepository(session_factory=database_client)
     rbac = build_rbac_services(
         workspaces=workspace_repository,
@@ -783,14 +789,9 @@ def build_application_services(
             storage=storage,
         ),
         oauth_server=oauth_server,
-        oauth_device=_build_oauth_device_service(
-            database_client=database_client,
-            redis=redis,
-            accounts=accounts,
-            workspaces=workspace_repository,
-        ),
+        oauth_device=oauth_device,
         oauth_clients=OAuthClientRegistry(sources=[SQLAlchemyOAuthClientRepository(session_factory=database_client)]),
-        oauth_token=OAuthTokenService(handlers=build_grant_handlers()),
+        oauth_token=OAuthTokenService(handlers=build_grant_handlers(device=oauth_device)),
         init_validation=InitValidationService(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),

@@ -23,6 +23,7 @@ from services.oauth_device_contracts import (
     ApprovalSessionConsumedError,
     ApprovalTransitionConfirmation,
     AuthorizationPendingError,
+    ClientMismatchError,
     DeviceApprovalContext,
     DeviceApprovalRecord,
     DeviceAuthorization,
@@ -311,6 +312,12 @@ class OAuthDeviceApplicationService:
 
         self._audit_cross_ip_if_needed(state, poll_ip, poll_payload["token_id"])
         return poll_payload
+
+    def poll_device_grant(self, *, client_id: str, device_code: str, poll_ip: str) -> PollPayload:
+        state = self._store.load_by_device_code(device_code)
+        if state is not None and state.client_id != client_id:
+            raise ClientMismatchError
+        return self.poll(device_code=device_code, poll_ip=poll_ip)
 
     def lookup(self, *, user_code: str) -> DeviceLookup:
         found = self._store.load_by_user_code(user_code.strip().upper())
