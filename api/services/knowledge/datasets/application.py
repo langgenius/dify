@@ -34,10 +34,10 @@ class DatasetVisibility:
     def list_scope(self, *, rbac_enabled: bool) -> tuple[list[str] | None, bool]:
         if not rbac_enabled:
             return None, False
-        # A restricted whitelist always takes precedence over default grants,
-        # resource overrides and the creator's own-dataset fallback.
+        # Maintainers always retain visibility of their own datasets. The
+        # whitelist takes precedence over grants only for other datasets.
         if not self.unrestricted:
-            return sorted(set(self.whitelist_ids)), False
+            return sorted(set(self.whitelist_ids)), True
         read_keys = {"dataset.preview", "dataset.acl.preview", "dataset.full_access"}
         default_read = bool(
             read_keys.intersection(self.default_permissions) or read_keys.intersection(self.workspace_permissions)
@@ -47,7 +47,7 @@ class DatasetVisibility:
             if default_read
             else sorted(key for key, grants in self.overrides.items() if read_keys.intersection(grants))
         )
-        return ids, "dataset.create_and_management" in self.workspace_permissions
+        return ids, True
 
 
 class DatasetOperations(Protocol):
