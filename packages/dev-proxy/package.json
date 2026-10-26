@@ -35,6 +35,7 @@
     "@types/node": "catalog:",
     "@typescript/native": "catalog:",
     "tsrs": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },

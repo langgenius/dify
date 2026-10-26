@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "리소스",
   "resourceAccessToken.searchPlaceholder": "토큰 검색…",
   "resourceAccessToken.searchResourcesPlaceholder": "앱 또는 지식 베이스 검색…",
-  "resourceAccessToken.tabAll": "전체",
+  "resourceAccessToken.tabAllTypes": "모든 유형",
   "resourceAccessToken.tabApps": "앱",
   "resourceAccessToken.tabKnowledgeBases": "지식 베이스",
   "resourceAccessToken.token": "토큰",
