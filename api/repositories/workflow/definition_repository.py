@@ -10,7 +10,7 @@ import uuid
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -709,6 +709,18 @@ def workflow_from_snapshot(snapshot: WorkflowSnapshot) -> Workflow:
     )
 
 
+class WorkflowKnowledgeSpaceSync(Protocol):
+    """Publication effect supplied by the application composition root."""
+
+    def __call__(
+        self,
+        *,
+        session: Session,
+        session_maker: sessionmaker[Session],
+        workflow: WorkflowSnapshot,
+    ) -> None: ...
+
+
 @dataclass
 class _PublicationTransaction:
     session: Session
@@ -717,6 +729,7 @@ class _PublicationTransaction:
     actor: Account
     draft: WorkflowSnapshot
     bindings: WorkflowAgentBindingRepository
+    knowledge_spaces: WorkflowKnowledgeSpaceSync
 
     def create_version(self, *, marked_name: str, marked_comment: str) -> WorkflowSnapshot:
         workflow = WorkflowDefinitionStore.publish_workflow(
@@ -746,12 +759,10 @@ class _PublicationTransaction:
         WorkflowDefinitionStore.sync_dataset_relationships(self.session, self.app, dataset_ids)
 
     def sync_knowledge_spaces(self, workflow: WorkflowSnapshot) -> None:
-        from services.agent.knowledge_spaces import sync_workflow_app_knowledge_bindings
-
-        sync_workflow_app_knowledge_bindings(
+        self.knowledge_spaces(
             session=self.session,
             session_maker=self.session_maker,
-            workflow=workflow_from_snapshot(workflow),
+            workflow=workflow,
         )
 
     def activate(self, workflow: WorkflowSnapshot) -> None:
@@ -764,9 +775,11 @@ class WorkflowDefinitionRepository:
         *,
         session_factory: sessionmaker[Session],
         import_session: Session | None = None,
+        publication_knowledge_spaces: WorkflowKnowledgeSpaceSync | None = None,
     ) -> None:
         self._sessions = session_factory
         self._import_session = import_session
+        self._publication_knowledge_spaces = publication_knowledge_spaces
 
     def debug_context(
         self,
@@ -847,6 +860,9 @@ class WorkflowDefinitionRepository:
     ) -> Generator[WorkflowPublicationTransaction[WorkflowAgentBindingRepository]]:
         from repositories.app.console_repository import console_app_actor
 
+        knowledge_spaces = self._publication_knowledge_spaces
+        if knowledge_spaces is None:
+            raise RuntimeError("workflow publication requires a KnowledgeFS synchronization callback")
         with self._sessions.begin() as session:
             app = WorkflowDefinitionStore.lock_app(session, context, app_id)
             current = WorkflowDefinitionStore.get_draft_workflow(app, session=session, for_update=True)
@@ -859,6 +875,7 @@ class WorkflowDefinitionRepository:
                 console_app_actor(session, context),
                 workflow_snapshot(current),
                 WorkflowAgentBindingRepository(session),
+                knowledge_spaces,
             )
 
     def debug_node(self, context: RequestContext, app_id: str, node_id: str) -> WorkflowDebugNode:
