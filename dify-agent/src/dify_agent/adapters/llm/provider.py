@@ -172,7 +172,12 @@ class DifyApiLLMClient:
 
 @dataclass(slots=True, kw_only=True)
 class DifyApiLLMProvider(Provider[DifyLLMClient]):
-    """Pydantic AI provider backed by Dify API's metered model gateway."""
+    """Pydantic AI provider backed by Dify API's metered model gateway.
+
+    The provider only borrows the caller's lifespan-owned ``httpx.AsyncClient``;
+    the base ``Provider`` manages lifecycle solely for clients it creates
+    itself, so there is no ``_set_http_client`` override.
+    """
 
     plugin_id: str
     inner_api_url: str
@@ -192,10 +197,6 @@ class DifyApiLLMProvider(Provider[DifyLLMClient]):
             agent_run_id=self.agent_run_id,
             http_client=self.http_client,
         )
-
-    @override
-    def _set_http_client(self, http_client: httpx.AsyncClient) -> None:
-        self._client.http_client = http_client
 
     @property
     @override

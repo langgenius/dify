@@ -28,10 +28,13 @@ class Capability(AbstractCapability[Deps]):
         return State.model_validate(deps.layers[self.name]["state"]).messages
 
     def save_messages(self, deps: Deps, messages: Sequence[ModelMessage], *, interrupted: bool = False) -> None:
-        """Save captured history, closing unexecuted trailing calls on interruption.
+        """Save captured history, preserving the native interrupted marker.
 
-        Pydantic AI closes unmatched tool calls on the next user turn when a response
-        is marked interrupted, rather than complete.
+        In pydantic-ai-slim 2.53, interruption during tool execution preserves a
+        trailing interrupted ``ModelRequest``. Cancellation before tool
+        processing begins may instead leave a complete tool-call
+        ``ModelResponse``, which is marked interrupted here so a fresh prompt
+        can resume without executing abandoned calls.
         """
         persistent = [replace(m, instructions=None) if isinstance(m, ModelRequest) else m for m in messages]
         if interrupted and persistent:

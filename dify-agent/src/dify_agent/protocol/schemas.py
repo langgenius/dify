@@ -211,11 +211,19 @@ class RunStartedEvent(BaseRunEvent):
     data: EmptyRunEventData = Field(default_factory=EmptyRunEventData)
 
 
+def _omit_stream_event_discriminator(schema: dict[str, JsonValue]) -> None:
+    # Upstream emits inline oneOf dicts in discriminator.mapping for the
+    # custom/capability families; OpenAPI requires string mapping values.
+    # Drops only the generated documentation discriminator; runtime
+    # AgentStreamEvent validation is unchanged.
+    schema.pop("discriminator", None)
+
+
 class PydanticAIStreamRunEvent(BaseRunEvent):
     """Pydantic AI stream event with optional Dify Agent semantic annotations."""
 
     type: Literal["pydantic_ai_event"] = "pydantic_ai_event"
-    data: AgentStreamEvent
+    data: AgentStreamEvent = Field(json_schema_extra=_omit_stream_event_discriminator)
     agent_message_delta: str | None = None
 
 
