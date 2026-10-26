@@ -12,22 +12,16 @@ const service = vi.hoisted(() => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'knowledgeFs.spaces.byControlSpaceId.metadata.get': service.listMetadata,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'knowledgeFs.spaces.get': service.listSpaces,
     }),
-  }
-})
-
-vi.mock('@/service/console/inferred', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console/inferred')>()
-  return {
-    ...actual,
-    consoleClient: {
-      knowledgeFs: { spaces: { byControlSpaceId: { metadata: { get: service.listMetadata } } } },
-    },
   }
 })
 

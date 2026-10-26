@@ -1,6 +1,6 @@
 /* oxlint-disable vitest/no-import-node-test -- Verify the repository editor setup through the native language server. */
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
@@ -16,8 +16,12 @@ test('workspace TS 7.1 resolves composed Console completions, request types and 
   assert.equal(settings['js/ts.contentMappers.enabled'], true)
   const compiler = join(repo, settings['js/ts.tsdk.path'], 'bin/tsc')
   const directory = mkdtempSync(join(web, '.console-editor-'))
+  symlinkSync(
+    join(repo, 'packages/contracts/openapi/console-client-openapi.json'),
+    join(directory, 'console.openapi'),
+  )
   const source = [
-    "import { consoleClient, consoleQuery } from '../service/console/inferred';",
+    "import { api as consoleClient, query as consoleQuery } from './console.openapi';",
     "const options = consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.queryOptions({ input: { params: { control_space_id: 'space' } } });",
     'consoleClient.enterprise.appDeploy.accessService.',
   ].join('\n')

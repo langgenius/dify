@@ -5,7 +5,6 @@ import { DatasourceType, PipelineInputVarType } from '@/models/pipeline'
 import {
   isPipelineProcessingRun,
   selectDatasourceSingleRun,
-  selectOnlineDocumentPreview,
   selectPipelineExecutionLog,
   selectPipelineStepParameters,
   selectPipelineTemplate,
@@ -17,30 +16,6 @@ import {
 const graphNode = { id: 'node-1', data: { type: 'datasource' }, position: { x: 0, y: 0 } }
 
 describe('pipeline query selectors', () => {
-  describe('online document preview', () => {
-    it.each(['# Document\n\nPreview text', ''])('preserves string content %j', (content) => {
-      expect(selectOnlineDocumentPreview({ content })).toEqual({ content })
-    })
-
-    it.each([
-      { response: null },
-      { response: undefined },
-      { response: 'preview' },
-      { response: 42 },
-      { response: false },
-      { response: [] },
-    ])('returns empty content for a non-object response $response', ({ response }) => {
-      expect(selectOnlineDocumentPreview(response)).toEqual({ content: '' })
-    })
-
-    it.each([{}, { content: null }, { content: 42 }, { content: ['preview'] }])(
-      'returns empty content when the response has no string content: %j',
-      (response) => {
-        expect(selectOnlineDocumentPreview(response)).toEqual({ content: '' })
-      },
-    )
-  })
-
   it('should narrow template icons and chunk structures', () => {
     const { pipeline_templates } = selectPipelineTemplateList({
       pipeline_templates: [

@@ -1,9 +1,5 @@
-import { consoleClient, consoleQuery } from '@/service/console/inferred'
-
-type MetadataResponse = Awaited<
-  ReturnType<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.get>
->
-type KnowledgeFsMetadataFieldResponse = MetadataResponse['data'][number]
+import type { KnowledgeFsMetadataFieldResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import { consoleClient, consoleQuery } from '@/service/console'
 
 export type KnowledgeFsMetadataField = {
   count: number
@@ -39,18 +35,15 @@ export function knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId: string) 
       },
       retry: false,
     }),
-    queryFn: async ({ signal }: { signal?: AbortSignal } = {}) => {
+    queryFn: async () => {
       const data: KnowledgeFsMetadataFieldResponse[] = []
       const visitedCursors = new Set<string>()
       let cursor: string | undefined
       do {
-        const response = await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.get(
-          {
-            params: { control_space_id: knowledgeSpaceId },
-            query: { ...(cursor ? { cursor } : {}), limit: 100 },
-          },
-          { signal, context: { silent: true } },
-        )
+        const response = await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.get({
+          params: { control_space_id: knowledgeSpaceId },
+          query: { ...(cursor ? { cursor } : {}), limit: 100 },
+        })
         data.push(...response.data)
         const nextCursor = response.next_cursor ?? undefined
         if (!nextCursor || visitedCursors.has(nextCursor)) break

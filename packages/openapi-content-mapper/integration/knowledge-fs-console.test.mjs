@@ -1,4 +1,4 @@
-/* oxlint-disable vitest/no-import-node-test, antfu/no-import-dist -- Verify the production integration with the built mapper and bundler. */
+/* oxlint-disable vitest/no-import-node-test, antfu/no-import-dist -- Verify standalone Console imports with the built mapper and bundler. */
 import assert from 'node:assert/strict'
 import { Buffer } from 'node:buffer'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -10,15 +10,23 @@ import { openapi } from '../dist/tooling/vite.js'
 /* oxlint-enable vitest/no-import-node-test, antfu/no-import-dist */
 
 const repository = resolve(import.meta.dirname, '../../..')
-const web = join(repository, 'web')
-const entry = join(web, 'service/knowledge-fs/metadata.ts')
 const specFile = join(repository, 'packages/contracts/openapi/console-client-openapi.json')
 
-test('the production metadata integration prunes every unused console operation', async (t) => {
+test('a standalone metadata consumer prunes every unused console operation', async (t) => {
   const directory = await mkdtemp(join(import.meta.dirname, '.console-bundle-'))
   try {
     const spec = JSON.parse(await readFile(specFile, 'utf8'))
     const path = '/knowledge-fs/spaces/{control_space_id}/metadata'
+    const fullSpec = join(directory, 'console.openapi')
+    const entry = join(directory, 'consumer.ts')
+    await writeFile(fullSpec, JSON.stringify(spec))
+    await writeFile(
+      entry,
+      `import { api, query } from './console.openapi';
+export const loadMetadata = (input) => api.knowledgeFs.spaces.byControlSpaceId.metadata.get(input);
+export const metadataOptions = (input) => query.knowledgeFs.spaces.byControlSpaceId.metadata.get.queryOptions({ input });
+`,
+    )
     const reduced = join(directory, 'reduced.openapi')
     await writeFile(
       reduced,
@@ -29,17 +37,21 @@ test('the production metadata integration prunes every unused console operation'
         },
       }),
     )
-    for (const kind of ['queries', 'errors']) {
+    for (const document of [fullSpec, reduced]) {
       await writeFile(
-        `${reduced}.${kind}.ts`,
-        `export * from ${JSON.stringify(join(web, `service/console/console.openapi.${kind}.ts`))};`,
+        `${document}.errors.ts`,
+        `export * from ${JSON.stringify(join(repository, 'packages/contracts/generated/api/console/errors.gen.ts'))};`,
+      )
+      await writeFile(
+        `${document}.queries.ts`,
+        `const defaults = { queryOptions: { retry: false, staleTime: 30000 } };
+export { defaults as 'GET ${path}' };`,
       )
     }
     async function bundle(useReduced) {
       const result = await build({
         configFile: false,
-        root: web,
-        resolve: { alias: { '@': web } },
+        root: directory,
         logLevel: 'silent',
         plugins: [
           ...(useReduced
@@ -53,16 +65,14 @@ test('the production metadata integration prunes every unused console operation'
                 },
               ]
             : []),
-          openapi({ runtime: () => join(web, 'service/console/console.openapi.config.ts') }),
+          openapi(),
         ],
         build: {
           write: false,
           minify: true,
           lib: { entry, formats: ['es'] },
-          // Shared application auth/error code is the same for both builds.
           rollupOptions: {
             output: { chunkFileNames: 'error-[hash].js' },
-            external: [join(web, 'service/console/console.openapi.config.ts')],
           },
         },
       })
@@ -107,7 +117,7 @@ test('the production metadata integration prunes every unused console operation'
     ])
       assert(!full.includes(unused), `Unused code retained: ${unused}`)
     t.diagnostic(
-      `Metadata integration: ${Buffer.byteLength(full)} bytes JS, ${gzipSync(full).length} gzip; shared app transport external.`,
+      `Standalone metadata consumer: ${Buffer.byteLength(full)} bytes JS, ${gzipSync(full).length} gzip, including the SDK transport.`,
     )
   } finally {
     await rm(directory, { recursive: true, force: true })

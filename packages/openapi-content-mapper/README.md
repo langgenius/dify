@@ -297,6 +297,36 @@ External references, Swagger 2, URL-encoded forms, advanced parameter serializat
 
 Existing oRPC Links and interceptors require explicit transport adapters; query policies and typed errors require the per-operation sidecars above. Browser Fetch governs cookie headers. Supported schema features include required/optional properties, enum/const, arrays and dictionaries, `oneOf`, `anyOf`, `allOf`, and nullable types.
 
+## Repository setup
+
+The Dify workspace configures TypeScript 7.1, VS Code, Vite and Next.js to support
+future OpenAPI imports. Production Console and Marketplace calls continue to use
+their existing oRPC clients. Application transports, query-policy migration and
+business call-site changes are deferred.
+
+`@dify/contracts` composes the tracked Console, FastOpenAPI, Enterprise and App
+Deploy snapshots during installation. Docker runs preparation explicitly when
+lifecycle scripts are disabled. No running API or private source checkout is
+needed to prepare the composed document:
+
+```sh
+pnpm --filter @dify/contracts compose:console
+pnpm --filter @dify/openapi-content-mapper build
+pnpm --filter @dify/openapi-content-mapper check:console
+```
+
+The Console audit checks every generated procedure against a reviewed per-operation
+type-difference baseline. Standalone fixtures verify bundle pruning, error maps and
+workspace editor support without importing a production mapper client. The broader
+`test:repository` suite also needs the ignored API specifications generated with
+`pnpm --dir packages/contracts gen-api-contract`.
+
+Update source snapshots and generated contracts together. Enterprise regeneration
+uses the matching source checkout through `DIFY_ENTERPRISE_SERVER`. The composed
+document and compiler caches stay out of Git. Inspect the comparison report before
+accepting intentional baseline changes with
+`compare:orpc -- --console --update-baseline`.
+
 ## Development and release
 
 From the repository root, build and verify the package:

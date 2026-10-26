@@ -8,8 +8,9 @@ import type {
   ListEnvironmentDeploymentsResponse,
   WorkflowVersion,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient } from '@tanstack/react-query'
-import type { ConsoleQueryKeys } from './query-keys'
+import type { ConsoleClient } from './index'
 
 // Transitional key until the editor version list uses generated query options.
 export const legacyWorkflowVersionHistoryKey = ['workflow', 'versionHistory'] as const
@@ -107,15 +108,15 @@ function syncEnvironmentDeployments(
 
 export function syncAppWorkflowVersionCaches(
   queryClient: QueryClient,
-  consoleQuery: ConsoleQueryKeys,
+  consoleQuery: RouterUtils<ConsoleClient>,
   appId: string,
   updatedWorkflow: WorkflowResponse,
 ) {
-  const publishedWorkflowQuery = consoleQuery.apps.byAppId.workflows.publish.get.queryKey({
+  const publishedWorkflowQuery = consoleQuery.apps.byAppId.workflows.publish.get.queryOptions({
     input: { params: { app_id: appId } },
   })
 
-  queryClient.setQueryData<WorkflowResponse>(publishedWorkflowQuery, (workflow) =>
+  queryClient.setQueryData<WorkflowResponse>(publishedWorkflowQuery.queryKey, (workflow) =>
     workflow?.id === updatedWorkflow.id ? updatedWorkflow : workflow,
   )
   queryClient.setQueriesData<InfiniteData<WorkflowPaginationResponse>>(
@@ -131,12 +132,12 @@ export function syncAppWorkflowVersionCaches(
 
 export function syncWorkflowDeploymentCaches(
   queryClient: QueryClient,
-  consoleQuery: ConsoleQueryKeys,
+  consoleQuery: RouterUtils<ConsoleClient>,
   appId: string,
   updatedWorkflow: WorkflowResponse,
 ) {
   const environmentDeploymentsQuery =
-    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey({
+    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
       input: {
         params: {
           app_id: appId,
@@ -145,7 +146,7 @@ export function syncWorkflowDeploymentCaches(
     })
 
   queryClient.setQueryData<ListEnvironmentDeploymentsResponse>(
-    environmentDeploymentsQuery,
+    environmentDeploymentsQuery.queryKey,
     (data) => syncEnvironmentDeployments(data, updatedWorkflow),
   )
   queryClient.setQueriesData<GetEnvironmentDeploymentResponse>(
@@ -168,5 +169,5 @@ export function syncWorkflowDeploymentCaches(
     },
   )
 
-  return environmentDeploymentsQuery
+  return environmentDeploymentsQuery.queryKey
 }

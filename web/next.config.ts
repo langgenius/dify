@@ -4,10 +4,6 @@ import { env } from './env'
 
 const openapiLoader = {
   loader: '@dify/openapi-content-mapper/loader',
-  options: {
-    runtime: '../../../web/service/console/console.openapi.config.ts',
-    sidecars: '../../../web/service/console/console.openapi',
-  },
 }
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -23,6 +19,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     rules: {
       ...codeInspectorPlugin({ bundler: 'turbopack' }),
+      '*.openapi': { loaders: [openapiLoader], as: '*.js' },
       // Next resolves the .openapi symlink to its JSON target before applying loaders.
       '*console-client-openapi.json': { loaders: [openapiLoader], as: '*.js' },
       '*openapi-namespace.js': { loaders: [openapiLoader], as: '*.js' },
@@ -30,7 +27,7 @@ const nextConfig: NextConfig = {
   },
   webpack(config) {
     config.module.rules.push({
-      test: /(?:console-client-openapi\.json|openapi-namespace\.js)$/,
+      test: /(?:\.openapi|console-client-openapi\.json|openapi-namespace\.js)$/,
       type: 'javascript/auto',
       use: [openapiLoader],
     })

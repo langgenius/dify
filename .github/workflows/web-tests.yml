@@ -32,7 +32,7 @@ jobs:
       - name: Test Next.js adapters and tree-shaking
         run: pnpm --filter @dify/openapi-content-mapper test:next
 
-      - name: Verify the production console bundle and error maps
+      - name: Verify standalone Console imports, error maps and editor support
         run: pnpm --filter @dify/openapi-content-mapper exec node --test --test-concurrency=1 integration/knowledge-fs-console.test.mjs integration/orpc-errors.test.mjs integration/console-preparation.test.mjs integration/console-editor.test.mjs
 
       - name: Check all Console types against the reviewed migration differences
