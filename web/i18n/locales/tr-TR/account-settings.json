@@ -67,7 +67,7 @@
   "resourceAccessToken.appsCount": "{{count}} Uygulamalar",
   "resourceAccessToken.appsSection": "Uygulamalar",
   "resourceAccessToken.copied": "Erişim belirteci kopyalandı",
-  "resourceAccessToken.createButton": "Create new token",
+  "resourceAccessToken.createButton": "Yeni belirteç oluştur",
   "resourceAccessToken.createTitle": "Erişim belirteci oluştur",
   "resourceAccessToken.created": "Erişim belirteci oluşturuldu",
   "resourceAccessToken.createdColumn": "Oluşturuldu",
