@@ -17,7 +17,7 @@ from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeF
 from models.model import App, AppMode, Conversation, Message
 from services.app.generation.message_records import MessageBasedAppGenerator
 from services.errors.app_model_config import AppModelConfigBrokenError
-from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.model_factories import make_app, make_end_user
 
 
 @dataclass(eq=False, repr=False)
@@ -156,6 +156,7 @@ class TestMessageBasedAppGeneratorExtras:
                 queue_manager=SimpleNamespace(),
                 conversation=Conversation(id="conv", app_id="app"),
                 message=Message(id="msg", app_id="app", conversation_id="conv"),
+                user=make_end_user(end_user_id="user-id"),
                 stream=False,
             )
 

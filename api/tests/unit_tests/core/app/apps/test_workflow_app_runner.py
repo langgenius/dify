@@ -849,7 +849,7 @@ class TestWorkflowExecutionAdapters:
 
     @pytest.mark.parametrize("ownership", ["canonical", "parent", "legacy"])
     def test_nested_engine_events_retain_both_container_ancestors(self, ownership: str):
-        from tests.unit_tests.core.app.workflow.test_persistence_layer import _make_layer
+        from tests.unit_tests.services.test_workflow_persistence import _make_layer
 
         published: list[object] = []
 

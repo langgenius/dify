@@ -21,6 +21,7 @@ from models.application_trace import ApplicationTraceInvocation
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Message
 from models.workflow import WorkflowRun, WorkflowType
+from repositories.app.generation_repository import AppGenerationRepository
 from services.tracing import recovery
 from services.tracing import service as service_module
 from services.tracing.normalization import span_id
@@ -430,6 +431,7 @@ def test_stop_save_preserves_worker_usage_committed_after_its_cached_message_rea
 def test_stopped_runner_hands_off_only_an_observed_runtime_terminal(
     case: RecoveryCase,
     monkeypatch: pytest.MonkeyPatch,
+    app_records: AppGenerationRepository,
     runtime_outcome: str,
     final_batch_arrived: bool,
     snapshot_save_fails: bool,
@@ -481,7 +483,7 @@ def test_stopped_runner_hands_off_only_an_observed_runtime_terminal(
 
         monkeypatch.setattr(client, "cancel_run_and_wait", unexpected_cancel)
     store = _ExplodingSessionStore() if snapshot_save_fails else _FakeSessionStore()
-    runner = _runner(client, store)
+    runner = _runner(client, store, app_records=app_records)
     run = case.collection.run
     context = DifyRunContext(
         tenant_id=run.tenant_id,
@@ -584,7 +586,10 @@ def test_missing_runtime_stop_terminal_converges_without_inventing_success(
 
 @pytest.mark.parametrize("stop_on_end", [False, True])
 def test_stop_during_final_queue_publication_preserves_the_already_observed_success(
-    case: RecoveryCase, monkeypatch: pytest.MonkeyPatch, stop_on_end: bool
+    case: RecoveryCase,
+    monkeypatch: pytest.MonkeyPatch,
+    app_records: AppGenerationRepository,
+    stop_on_end: bool,
 ) -> None:
     from cachetools import TTLCache
     from flask import Flask
@@ -629,7 +634,7 @@ def test_stop_during_final_queue_publication_preserves_the_already_observed_succ
     clock = [0.0]
     queue_manager._stopped_cache = TTLCache(maxsize=1, ttl=1, timer=lambda: clock[0])
     store = _FakeSessionStore()
-    runner = _runner(FakeAgentBackendRunClient(), store)
+    runner = _runner(FakeAgentBackendRunClient(), store, app_records=app_records)
     original_publish = queue_manager._publish
 
     def publish_after_stop(event: AppQueueEvent, pub_from: PublishFrom) -> None:
@@ -681,7 +686,10 @@ def test_stop_during_final_queue_publication_preserves_the_already_observed_succ
 
 @pytest.mark.parametrize("stop_during_cleanup", [False, True])
 def test_runtime_cleanup_cancellation_does_not_reclassify_a_business_stream_failure(
-    case: RecoveryCase, monkeypatch: pytest.MonkeyPatch, stop_during_cleanup: bool
+    case: RecoveryCase,
+    monkeypatch: pytest.MonkeyPatch,
+    app_records: AppGenerationRepository,
+    stop_during_cleanup: bool,
 ) -> None:
     from collections.abc import Iterator
     from typing import cast
@@ -722,7 +730,7 @@ def test_runtime_cleanup_cancellation_does_not_reclassify_a_business_stream_fail
 
         monkeypatch.setattr(client, "cancel_run_and_wait", cancel_then_stop)
     store = _FakeSessionStore()
-    runner = _runner(client, store)
+    runner = _runner(client, store, app_records=app_records)
     run = case.collection.run
     context = DifyRunContext(
         tenant_id=run.tenant_id,

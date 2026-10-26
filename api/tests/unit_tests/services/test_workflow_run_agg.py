@@ -129,7 +129,7 @@ def _pipeline_tool_runner(
         )
         session.add(provider)
         session.flush()
-        graph = {
+        graph: dict[str, object] = {
             "nodes": [
                 {"id": "start", "data": {"type": "start", "title": "Start", "variables": list[object]()}},
                 {
