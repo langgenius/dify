@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -70,6 +72,32 @@ def test_parse_and_check_json_markdown_success():
     """
     obj = parse_and_check_json_markdown(src, ["present"])
     assert obj == {"present": 1, "other": 2}
+
+
+@pytest.mark.parametrize("value", [None, True, False, 42, 1.5, "", "present"])
+@pytest.mark.parametrize("expected_keys", [[], ["present"]])
+def test_parse_and_check_json_markdown_rejects_scalars(value: object, expected_keys: list[str]):
+    src = f"```json\n{json.dumps(value)}\n```"
+
+    # Decoding scalars remains supported; only the object-checking wrapper rejects them.
+    assert parse_json_markdown(src) == value
+    with pytest.raises(OutputParserError, match="got invalid return object"):
+        parse_and_check_json_markdown(src, expected_keys)
+
+
+@pytest.mark.parametrize("value", [[], [None], [42], ["present"], [{}, {}], [[{}]]])
+def test_parse_and_check_json_markdown_rejects_non_object_arrays(value: list[object]):
+    with pytest.raises(OutputParserError, match="got invalid return object"):
+        parse_and_check_json_markdown(json.dumps(value), [])
+
+
+def test_parse_and_check_json_markdown_unwraps_single_object():
+    assert parse_and_check_json_markdown('[{"present": 1}]', ["present"]) == {"present": 1}
+
+
+def test_parse_and_check_json_markdown_unwrapped_object_missing_key():
+    with pytest.raises(OutputParserError, match="expected key `missing`"):
+        parse_and_check_json_markdown('[{"present": 1}]', ["missing"])
 
 
 def test_parse_and_check_json_markdown_multiple_blocks_fails():
