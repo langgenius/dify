@@ -41,7 +41,7 @@ from sqlalchemy.orm import Session
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.dify_builder.models import Actor, ChangedNode, Graph, MutationIntent, NodeEvent, Run
 from models.account import Account
-from models.model import App
+from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from runtime_contracts.builder.execution import BuilderExecutionContext
 from services.dify_builder import run_mapping
@@ -98,7 +98,7 @@ def _app(
     row = App(
         id=id,
         tenant_id=tenant_id,
-        mode=mode,
+        mode=AppMode(mode),
         name="Draft",
         enable_site=False,
         enable_api=False,

@@ -32,7 +32,7 @@ from models.dify_builder import (
     DifyBuilderSessionCommit,
     DifyBuilderTestInput,
 )
-from models.model import App
+from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from runtime_contracts.builder.execution import BuilderExecutionRecorder
 from services.dify_builder.application.execution_policy import (
@@ -73,7 +73,7 @@ def native_owner(flask_req_ctx_with_containers: None, db_session_with_containers
     app = App(
         tenant_id=tenant.id,
         name="Restricted native CI",
-        mode="workflow",
+        mode=AppMode.WORKFLOW,
         enable_site=False,
         enable_api=False,
         created_by=account.id,

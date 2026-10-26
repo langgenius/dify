@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import services.app_generate_service as module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
+from models.enums import EndUserType
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
@@ -35,7 +36,7 @@ def test_confirmed_agent_refuses_unsupported_entry_before_guardrails(
     with Session() as session, pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
         AppGenerateService.generate(
             app_model=app,
-            user=EndUser(id="user", tenant_id="tenant", app_id="app", type="browser", session_id="session")
+            user=EndUser(id="user", tenant_id="tenant", app_id="app", type=EndUserType.BROWSER, session_id="session")
             if case == "end_user"
             else Account(name="Actor", email="actor@example.invalid"),
             args={"inputs": {}},

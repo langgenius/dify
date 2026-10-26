@@ -41,8 +41,8 @@ from services.dify_builder.application.execution_policy import (
     TrustedExecutionCompletion,
 )
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import NativeOwner, configure
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
+from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import NativeOwner, configure
+from tests.e2e_tests.containers.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
 )
 
@@ -179,7 +179,7 @@ def test_real_postgres_execution_migration_upgrade_downgrade(flask_app_with_cont
     from extensions.ext_database import db
 
     path = (
-        Path(__file__).parents[4] / "migrations/versions/2026_10_09_1300-c84e6a217b90_add_builder_execution_requests.py"
+        Path(__file__).parents[5] / "migrations/versions/2026_10_09_1300-c84e6a217b90_add_builder_execution_requests.py"
     )
     spec = importlib.util.spec_from_file_location("builder_execution_migration", path)
     assert spec is not None
@@ -237,7 +237,9 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     from extensions.ext_database import db
 
     merge_revision = "f9a3c62de418"
-    current_head = "e832a94f210b"
+    current_head = "db7f42c9a801"
+    coordination_head = "e832a94f210b"
+    knowledge_fs_head = "b9d3f7a5c102"
     builder_merge_head = "d41e6b8c2a75"
     code_head = "7d2b9c4e61a8"
     task_head = "c6f4a90d8b31"
@@ -249,10 +251,14 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     branch_heads = {"d82f9a6c31e0", "a8c9e2f1b704"}
     predecessor = "733e4c46f90e"
     config = Config()
-    config.set_main_option("script_location", str(Path(__file__).parents[4] / "migrations"))
+    config.set_main_option("script_location", str(Path(__file__).parents[5] / "migrations"))
     scripts = ScriptDirectory.from_config(config)
     assert scripts.get_heads() == [current_head]
-    coordination_revision = scripts.get_revision(current_head)
+    final_merge = scripts.get_revision(current_head)
+    assert final_merge is not None
+    assert isinstance(final_merge.down_revision, tuple)
+    assert set(final_merge.down_revision) == {coordination_head, knowledge_fs_head}
+    coordination_revision = scripts.get_revision(coordination_head)
     assert coordination_revision is not None
     assert coordination_revision.down_revision == builder_merge_head
     merged_head = scripts.get_revision(builder_merge_head)
@@ -584,7 +590,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         workflow_columns = {
             column["name"] for column in inspect(connection).get_columns("workflow_runs", schema=schema)
         }
-        assert migrate("head") == (current_head,)
+        assert migrate(coordination_head) == (coordination_head,)
         workflow_after = inspect(connection).get_columns("workflow_runs", schema=schema)
         assert {column["name"] for column in workflow_after} == {*workflow_columns, "task_id", "stop_requested_at"}
         assert all(column["nullable"] for column in workflow_after if column["name"] not in workflow_columns)
@@ -631,6 +637,28 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
             text("SELECT app_id,workflow_id FROM dify_builder_native_invocation_states WHERE id=:id"),
             {"id": identity},
         ).one() == (None, None)
+
+        # The official branch has its own migration qualification. With both
+        # parents applied, the new merge must only consolidate version rows.
+        parents = MigrationContext.configure(connection, opts={"version_table_schema": schema})
+        parents.stamp(scripts, coordination_head)
+        parents.stamp(scripts, knowledge_fs_head)
+        assert set(parents.get_current_heads()) == {coordination_head, knowledge_fs_head}
+        assert migrate("head") == (current_head,)
+        assert native_ledger_witness() == ledger_before
+        assert archive_witness() == archive_before
+        assert (
+            witness(
+                include_archive=True,
+                include_native=True,
+                include_continuation=True,
+                include_dispatch_claims=True,
+                include_code_physical=True,
+                include_workflow_tasks=True,
+                include_draft_coordination=True,
+            )
+            == before_continuation
+        )
 
 
 @pytest.mark.parametrize(

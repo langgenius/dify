@@ -11,8 +11,11 @@ from models.agent import (
     AgentConfigSnapshot,
     AgentConfigVersionKind,
     AgentHomeSnapshot,
+    AgentScope,
+    AgentSource,
     AgentWorkingResourceStatus,
     AgentWorkspace,
+    WorkflowAgentBindingType,
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.dify_builder import DifyBuilderExecutionRequest
@@ -86,7 +89,7 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(
             ]
         },
     )
-    rows = {
+    rows: dict[type[object], object] = {
         DifyBuilderExecutionRequest: DifyBuilderExecutionRequest(
             id="request",
             tenant_id="tenant",
@@ -107,20 +110,41 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(
             node_id="node",
             agent_workspace_binding_id="binding",
         ),
-        AgentWorkspace: AgentWorkspace(backend_workspace_ref="ordinary-workspace"),
+        AgentWorkspace: AgentWorkspace(
+            tenant_id="tenant",
+            app_id="app",
+            owner_type=scope.workspace_owner.owner_type,
+            owner_id=scope.workspace_owner.owner_id,
+            owner_scope_key=scope.workspace_owner.owner_scope_key,
+            backend_workspace_ref="ordinary-workspace",
+        ),
         AgentConfigSnapshot: AgentConfigSnapshot(
             id="snapshot",
             tenant_id="tenant",
             agent_id="agent",
+            version=1,
             home_snapshot_id=home_id,
             config_snapshot=AgentSoulConfig(),
         ),
-        AgentHomeSnapshot: AgentHomeSnapshot(
-            id=home_id, tenant_id="tenant", agent_id="agent", status=AgentWorkingResourceStatus.ACTIVE
+        Agent: Agent(
+            name="Native Agent",
+            tenant_id="tenant",
+            scope=AgentScope.ROSTER,
+            source=AgentSource.ROSTER,
+            active_config_snapshot_id="snapshot",
         ),
-        Agent: Agent(tenant_id="tenant", active_config_snapshot_id="snapshot"),
     }
+    if home_id is not None:
+        rows[AgentHomeSnapshot] = AgentHomeSnapshot(
+            id=home_id,
+            tenant_id="tenant",
+            agent_id="agent",
+            snapshot_ref="ordinary-home",
+            status=AgentWorkingResourceStatus.ACTIVE,
+        )
     binding = AgentWorkspaceBinding(
+        tenant_id="tenant",
+        app_id="app",
         workspace_id="workspace",
         agent_id="agent",
         base_home_snapshot_id=home_id,
@@ -132,7 +156,15 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(
     monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", lambda **kwargs: calls.append(kwargs) or binding)
     monkeypatch.setattr(module, "validate_invocation_workflow", lambda *_args, **_kwargs: Workflow(version="draft"))
     monkeypatch.setattr(access_service, "require_builder_agent_access", lambda **_kwargs: None)
-    node_binding = WorkflowAgentNodeBinding(node_job_config=WorkflowNodeJobConfig())
+    node_binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant",
+        app_id="app",
+        workflow_id="workflow",
+        workflow_version="draft",
+        node_id="node",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        node_job_config=WorkflowNodeJobConfig(),
+    )
     session = sqlite_session
     monkeypatch.setattr(session, "get", lambda model, _identifier: rows[model])
     monkeypatch.setattr(session, "scalar", lambda _query: node_binding)
