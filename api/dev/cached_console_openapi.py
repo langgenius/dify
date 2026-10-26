@@ -136,11 +136,11 @@ def preload() -> tuple[bool, dict[str, tuple[int, int, int]]]:
         safe = False
     finally:
         urllib.request.getproxies = getproxies
-    dependencies = {
-        str(Path(filename).resolve()): file_stamp(Path(filename))
-        for module in tuple(sys.modules.values())
-        if isinstance(filename := getattr(module, "__file__", None), str)
-    }
+    dependencies = {}
+    for module in tuple(sys.modules.values()):
+        filename = getattr(module, "__file__", None)  # guard-ignore: no-new-getattr -- optional module source metadata
+        if isinstance(filename, str):
+            dependencies[str(Path(filename).resolve())] = file_stamp(Path(filename))
     for filename in (API_ROOT / "pyproject.toml", API_ROOT / "uv.lock", Path.cwd() / ".env"):
         dependencies[str(filename)] = file_stamp(filename)
     return safe, dependencies

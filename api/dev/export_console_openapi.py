@@ -48,12 +48,12 @@ def main() -> None:
 
         for namespace in api.namespaces:
             for resource in namespace.resources:
+                cls = resource.resource
                 for url in api.ns_urls(namespace, resource.urls):
                     path = extract_path(url)
-                    for method in resource.resource.methods:
-                        attach_source_location(
-                            documents["console"], path, method, getattr(resource.resource, method.lower(), None)
-                        )
+                    for method in cls.methods:
+                        handler = getattr(cls, method.lower(), None)  # guard-ignore: no-new-getattr -- HTTP method
+                        attach_source_location(documents["console"], path, method, handler)
         for path, method, handler in console_router.get_routes():
             attach_source_location(documents["fast"], f"/console/api{path}", method, handler)
     json.dump(documents, sys.stdout, sort_keys=True)
