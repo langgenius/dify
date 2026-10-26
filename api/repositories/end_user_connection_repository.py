@@ -395,7 +395,11 @@ class EndUserConnectionRepository:
         selections = []
         for item in execution.selections:
             record = records.get(item.connection_id) if item.connection_id is not None else None
-            if record is None or record.provider != item.provider:
+            if (
+                record is None
+                or record.provider != item.provider
+                or record.credential_status != ConnectionCredentialStatus.CONNECTED
+            ):
                 raise ConnectionConflictError()
             selections.append(SavedConnectionSelection(execution.workflow_id, item.node_id, record.provider, record.id))
         return context, app, tuple(selections)
@@ -431,6 +435,7 @@ class EndUserConnectionRepository:
                     EndUserConnection.provider,
                     EndUserConnection.credential_type,
                     EndUserConnection.status,
+                    EndUserConnection.oauth_client_fingerprint,
                     EndUserConnection.account_label,
                     EndUserConnection.expires_at,
                     EndUserConnection.created_at,

@@ -282,3 +282,32 @@ def test_client_rotation_invalidates_a_pending_oauth_attempt(harness: OAuthHarne
     assert harness.handler.exchanges == 0
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 0
+
+
+def test_stale_run_acceptance_cannot_restore_disconnected_choices(harness: OAuthHarness) -> None:
+    from context.connection_execution import ConnectionExecutionContext, ExecutionConnectionSelection
+    from services.end_user_connections.errors import ConnectionConflictError
+    from services.end_user_connections.selections import ConnectionSelectionService
+
+    connection = harness.finish(harness.start())
+    identity = harness.base.context
+    accepted = ConnectionExecutionContext(
+        tenant_id=identity.tenant_id,
+        app_id=identity.app_id,
+        end_user_id=identity.end_user_id,
+        account_id=identity.account_id,
+        workflow_id=harness.base.workflow_id,
+        connection_revision=harness.base.connection_revision,
+        selections=(ExecutionConnectionSelection(node_id="tool-1", provider=PROVIDER, connection_id=connection.id),),
+    )
+    BuiltinToolManageService.save_custom_oauth_client_params(
+        identity.tenant_id,
+        PROVIDER,
+        client_params={"client_id": "public-client", "client_secret": "rotated-secret"},
+    )
+    service = ConnectionSelectionService(store=harness.base.repository)
+    with pytest.raises(ConnectionConflictError):
+        service.save_run(accepted, str(uuid4()), None, update_conversation=True)
+    with harness.base.sessions() as session:
+        for selection in (AppConnection, SessionConnection):
+            assert session.scalar(sa.select(sa.func.count()).select_from(selection)) == 0
