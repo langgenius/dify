@@ -1,4 +1,4 @@
-"""Persist content-addressed Web App connection authorization snapshots.
+"""Persist deduplicated Web App connection authorization snapshots.
 
 Revision ID: d92e7a1b604f
 Revises: a57d8c91e024
@@ -19,12 +19,14 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "end_user_connection_revisions",
-        sa.Column("id", sa.String(67), nullable=False),
+        sa.Column("id", StringUUID(), nullable=False),
         sa.Column("tenant_id", StringUUID(), nullable=False),
         sa.Column("app_id", StringUUID(), nullable=False),
+        sa.Column("fingerprint", sa.String(64), nullable=False),
         sa.Column("snapshot", LongText(), nullable=False),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.PrimaryKeyConstraint("id", name="end_user_connection_revisions_pkey"),
+        sa.UniqueConstraint("tenant_id", "app_id", "fingerprint", name="end_user_connection_revision_content_key"),
     )
 
 

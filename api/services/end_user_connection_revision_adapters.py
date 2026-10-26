@@ -49,14 +49,14 @@ class PluginConnectionRevisions:
             raise ConnectionRevisionChangedError()
         current = self.snapshot(tenant_id, app_id, graph)
         canonical = self._snapshots.save_revision(current)
-        if previous.revision == current.revision:
+        if previous.fingerprint == current.fingerprint:
             return canonical
         old_providers = {item.provider: item.plugin_unique_identifier for item in previous.providers}
         new_providers = {item.provider: item.plugin_unique_identifier for item in current.providers}
         # Compare normalized requirements independently of plugin artifacts.
         requirements_unchanged = (
-            previous.model_copy(update={"providers": ()}).revision
-            == current.model_copy(update={"providers": ()}).revision
+            previous.model_copy(update={"providers": ()}).fingerprint
+            == current.model_copy(update={"providers": ()}).fingerprint
         )
         if (
             requirements_unchanged

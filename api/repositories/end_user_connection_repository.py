@@ -52,58 +52,51 @@ class EndUserConnectionRepository:
         self._sessions = session_factory
 
     def save_revision(self, snapshot: ConnectionContractSnapshot) -> str:
-        revision = snapshot.revision
         canonical = snapshot.canonical_json()
+        scope = (
+            EndUserConnectionRevision.tenant_id == snapshot.tenant_id,
+            EndUserConnectionRevision.app_id == snapshot.app_id,
+            EndUserConnectionRevision.fingerprint == snapshot.fingerprint,
+        )
         with self._sessions.begin() as session:
-            existing = session.scalar(
-                sa.select(EndUserConnectionRevision.snapshot).where(
-                    EndUserConnectionRevision.id == revision,
-                    EndUserConnectionRevision.tenant_id == snapshot.tenant_id,
-                    EndUserConnectionRevision.app_id == snapshot.app_id,
-                )
-            )
+            existing = session.scalar(sa.select(EndUserConnectionRevision).where(*scope))
             if existing is not None:
-                if existing != canonical:
+                if existing.snapshot != canonical:
                     raise ConnectionRevisionChangedError()
-                return revision
+                return existing.id
+            row = EndUserConnectionRevision(
+                fingerprint=snapshot.fingerprint,
+                tenant_id=snapshot.tenant_id,
+                app_id=snapshot.app_id,
+                snapshot=canonical,
+            )
             try:
                 with session.begin_nested():
-                    session.add(
-                        EndUserConnectionRevision(
-                            id=revision, tenant_id=snapshot.tenant_id, app_id=snapshot.app_id, snapshot=canonical
-                        )
-                    )
+                    session.add(row)
                     session.flush()
             except IntegrityError:
-                # Concurrent requests can discover the same contract for the first time.
-                existing = session.scalar(
-                    sa.select(EndUserConnectionRevision.snapshot)
-                    .where(
-                        EndUserConnectionRevision.id == revision,
-                        EndUserConnectionRevision.tenant_id == snapshot.tenant_id,
-                        EndUserConnectionRevision.app_id == snapshot.app_id,
-                    )
-                    .with_for_update()
-                )
-                if existing != canonical:
+                # Concurrent discovery must reuse the winner's ID, not the losing UUID.
+                existing = session.scalar(sa.select(EndUserConnectionRevision).where(*scope).with_for_update())
+                if existing is None or existing.snapshot != canonical:
                     raise
-        return revision
+                return existing.id
+            return row.id
 
     def get_revision(self, tenant_id: str, app_id: str, revision: str) -> ConnectionContractSnapshot | None:
         with self._sessions() as session:
-            payload = session.scalar(
-                sa.select(EndUserConnectionRevision.snapshot).where(
+            row = session.scalar(
+                sa.select(EndUserConnectionRevision).where(
                     EndUserConnectionRevision.id == revision,
                     EndUserConnectionRevision.tenant_id == tenant_id,
                     EndUserConnectionRevision.app_id == app_id,
                 )
             )
-        if payload is None:
-            return None
-        snapshot = ConnectionContractSnapshot.model_validate_json(payload)
-        if snapshot.tenant_id != tenant_id or snapshot.app_id != app_id or snapshot.revision != revision:
-            raise ConnectionRevisionChangedError()
-        return snapshot
+            if row is None:
+                return None
+            snapshot = ConnectionContractSnapshot.model_validate_json(row.snapshot)
+            if snapshot.tenant_id != tenant_id or snapshot.app_id != app_id or snapshot.fingerprint != row.fingerprint:
+                raise ConnectionRevisionChangedError()
+            return snapshot
 
     @staticmethod
     def disconnect_oauth_client_connections(

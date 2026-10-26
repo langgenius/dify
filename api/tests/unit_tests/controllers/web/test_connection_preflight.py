@@ -133,7 +133,7 @@ def test_temporary_check_failure_has_unknown_effective_state(client: FlaskClient
 def test_stale_workflow_is_documented_conflict(client: FlaskClient, harness: OAuthHarness) -> None:
     response = client.post(
         "/api/connections/preflight",
-        json={"connection_revision": "cr_" + "a" * 64, "connections": {}},
+        json={"connection_revision": "00000000-0000-7000-8000-000000000001", "connections": {}},
     )
     assert response.status_code == 409
     assert response.get_json()["code"] == "connection_revision_changed"
@@ -173,11 +173,14 @@ def test_guest_can_discover_requirements(
     ("payload", "valid"),
     [
         ({"connections": {}}, False),
-        ({"connections": {}, "connection_revision": "cr_" + "a" * 64}, True),
+        ({"connections": {}, "connection_revision": "00000000-0000-7000-8000-000000000001"}, True),
         ({"connections": {}, "connection_revision": None}, False),
         ({"connections": {"tool-1": None}}, False),
         ({"connections": {"tool-1": str(uuid4())}, "connection_revision": None}, False),
-        ({"connections": {"tool-1": str(uuid4())}, "connection_revision": "cr_" + "a" * 64}, True),
+        (
+            {"connections": {"tool-1": str(uuid4())}, "connection_revision": "00000000-0000-7000-8000-000000000001"},
+            True,
+        ),
         ({}, False),
     ],
 )

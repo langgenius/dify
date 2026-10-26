@@ -12,13 +12,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, OAuthClientSource
 from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
 
 from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, LongText, StringUUID
 
 
 class EndUserConnectionRevision(TypeBase):
-    """Immutable, content-addressed authorization snapshots scoped to one Web App.
+    """Immutable authorization snapshots deduplicated within one Web App.
 
     Keep old snapshots for consent validation after upgrades and for revocation
     references after uninstall. They contain no personal credentials or Client secrets.
@@ -26,7 +27,12 @@ class EndUserConnectionRevision(TypeBase):
 
     __tablename__ = "end_user_connection_revisions"
 
-    id: Mapped[str] = mapped_column(sa.String(67), primary_key=True)
+    __table_args__ = (
+        sa.UniqueConstraint("tenant_id", "app_id", "fingerprint", name="end_user_connection_revision_content_key"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
+    fingerprint: Mapped[str] = mapped_column(sa.String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     snapshot: Mapped[str] = mapped_column(LongText, nullable=False, repr=False)

@@ -185,7 +185,9 @@ def test_protocol_mismatch_never_selects_the_requested_workflow(
     with pytest.raises(ConnectionRevisionChangedError):
         service.prepare(
             harness.base.context,
-            ConnectionRunInput.model_validate({"connection_revision": "cr_" + "a" * 64, "connections": {}}),
+            ConnectionRunInput.model_validate(
+                {"connection_revision": "00000000-0000-7000-8000-000000000001", "connections": {}}
+            ),
             workflow_id=harness.base.workflow_id,
             conversation_id=None,
         )
@@ -426,7 +428,7 @@ def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
                 ConnectionContractSnapshot(tenant_id=app.tenant_id, app_id=app.id, providers=(), requirements=())
             )
             if pin == "matching"
-            else "cr_" + "a" * 64
+            else "00000000-0000-7000-8000-000000000001"
         )
     if pin == "stale":
         with pytest.raises(ConnectionRevisionChangedError):

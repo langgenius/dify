@@ -162,7 +162,7 @@ def test_stale_workflow_request_is_rejected_before_plugin_calls(
 ) -> None:
     payload = {
         **harness.command().model_dump(mode="json"),
-        "connection_revision": "cr_" + "a" * 64,
+        "connection_revision": "00000000-0000-7000-8000-000000000001",
     }
     response = client.post("/api/connections", json=payload)
     assert response.status_code == 409
@@ -263,7 +263,9 @@ def test_credential_patch_requires_confirmed_revision_before_sending_credentials
     assert original is not None
     payload: dict[str, object] = {"credentials": {"api_key": "private-replacement"}}
     if revision is not None:
-        payload["connection_revision"] = harness.connection_revision if revision == "stale" else "cr_" + "a" * 64
+        payload["connection_revision"] = (
+            harness.connection_revision if revision == "stale" else "00000000-0000-7000-8000-000000000001"
+        )
     assert isinstance(harness.service._credentials, TestProviders)
     harness.service._credentials.controller.plugin_unique_identifier = "vendor/calendar:2.0.0@" + "b" * 64
     harness.auth.calls.clear()

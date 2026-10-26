@@ -319,7 +319,7 @@ def test_disconnect_requires_persisted_provider_consent_only_for_remote_revoke(
     payload = {}
     if revision is not None:
         payload["connection_revision"] = (
-            harness.base.connection_revision if revision == "original" else "cr_" + "a" * 64
+            harness.base.connection_revision if revision == "original" else "00000000-0000-7000-8000-000000000001"
         )
     harness.providers.controller.plugin_unique_identifier = "vendor/calendar:9.0.0@" + "f" * 64
     response = client.delete(f"/api/connections/{connection.id}", json=payload)

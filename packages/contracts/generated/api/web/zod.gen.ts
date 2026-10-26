@@ -116,11 +116,7 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
-  connection_revision: z
-    .string()
-    .length(67)
-    .regex(/^cr_[0-9a-f]{64}$/)
-    .nullish(),
+  connection_revision: z.uuid().nullish(),
   connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   conversation_id: z.string().nullish(),
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
@@ -161,11 +157,7 @@ export const zConnectionCredentialType = z.enum(['api-key', 'oauth2'])
  * ConnectionRevisionChangeDetails
  */
 export const zConnectionRevisionChangeDetails = z.object({
-  connection_revision: z
-    .string()
-    .length(67)
-    .regex(/^cr_[0-9a-f]{64}$/)
-    .nullable(),
+  connection_revision: z.uuid().nullable(),
 })
 
 /**
@@ -246,11 +238,7 @@ export const zEmailCodeLoginVerifyPayload = z.object({
  * EndUserConnectionDisconnectPayload
  */
 export const zEndUserConnectionDisconnectPayload = z.object({
-  connection_revision: z
-    .string()
-    .length(67)
-    .regex(/^cr_[0-9a-f]{64}$/)
-    .nullish(),
+  connection_revision: z.uuid().nullish(),
 })
 
 /**
@@ -266,10 +254,7 @@ export const zEndUserConnectionListQuery = z.object({
  * EndUserConnectionOAuthPayload
  */
 export const zEndUserConnectionOAuthPayload = z.object({
-  connection_revision: z
-    .string()
-    .length(67)
-    .regex(/^cr_[0-9a-f]{64}$/),
+  connection_revision: z.uuid(),
   name: z.string().min(1).max(100),
   node_id: z.string().min(1).max(255),
 })
@@ -285,10 +270,7 @@ export const zEndUserConnectionOAuthResponse = z.object({
  * EndUserConnectionPreflightPayload
  */
 export const zEndUserConnectionPreflightPayload = z.object({
-  connection_revision: z
-    .string()
-    .length(67)
-    .regex(/^cr_[0-9a-f]{64}$/),
+  connection_revision: z.uuid(),
   connections: z.record(z.string(), z.uuid().nullable()),
   conversation_id: z.uuid().nullish(),
 })
@@ -297,10 +279,7 @@ export const zEndUserConnectionPreflightPayload = z.object({
  * EndUserConnectionReauthorizePayload
  */
 export const zEndUserConnectionReauthorizePayload = z.object({
-  connection_revision: z
-    .string()
-    .length(67)
-    .regex(/^cr_[0-9a-f]{64}$/),
+  connection_revision: z.uuid(),
 })
 
 /**
@@ -339,10 +318,7 @@ export const zEndUserConnectionListResponse = z.object({
  * EndUserConnectionRevisionResponse
  */
 export const zEndUserConnectionRevisionResponse = z.object({
-  connection_revision: z
-    .string()
-    .length(67)
-    .regex(/^cr_[0-9a-f]{64}$/),
+  connection_revision: z.uuid(),
 })
 
 /**
@@ -879,10 +855,7 @@ export const zJsonValue = z.unknown()
  * EndUserConnectionCreatePayload
  */
 export const zEndUserConnectionCreatePayload = z.object({
-  connection_revision: z
-    .string()
-    .length(67)
-    .regex(/^cr_[0-9a-f]{64}$/),
+  connection_revision: z.uuid(),
   credentials: z.record(z.string(), zJsonValue),
   name: z.string().min(1).max(100),
   node_id: z.string().min(1).max(255),
@@ -892,11 +865,7 @@ export const zEndUserConnectionCreatePayload = z.object({
  * EndUserConnectionUpdatePayload
  */
 export const zEndUserConnectionUpdatePayload = z.object({
-  connection_revision: z
-    .string()
-    .length(67)
-    .regex(/^cr_[0-9a-f]{64}$/)
-    .optional(),
+  connection_revision: z.uuid().optional(),
   credentials: z.record(z.string(), zJsonValue).optional(),
   name: z.string().min(1).max(100).optional(),
 })
@@ -2231,11 +2200,7 @@ export const zHumanInputFormDefinitionResponse = z.object({
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
-  connection_revision: z
-    .string()
-    .length(67)
-    .regex(/^cr_[0-9a-f]{64}$/)
-    .nullish(),
+  connection_revision: z.uuid().nullish(),
   connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   files: z
     .array(

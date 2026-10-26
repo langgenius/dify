@@ -4,13 +4,14 @@ import hashlib
 import json
 from collections.abc import Mapping
 from operator import itemgetter
-from typing import Annotated, Any, Protocol
+from typing import Any, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
+from libs.helper import UUIDStr
 from services.end_user_connections.entities import WebConnectionContext
 
-ConnectionRevision = Annotated[str, Field(pattern=r"^cr_[0-9a-f]{64}$", min_length=67, max_length=67)]
+ConnectionRevision = UUIDStr
 
 
 class ProviderContractSnapshot(BaseModel):
@@ -50,8 +51,8 @@ class ConnectionContractSnapshot(BaseModel):
         return json.dumps(data, sort_keys=True, separators=(",", ":"))
 
     @property
-    def revision(self) -> str:
-        return "cr_" + hashlib.sha256(self.canonical_json().encode()).hexdigest()
+    def fingerprint(self) -> str:
+        return hashlib.sha256(self.canonical_json().encode()).hexdigest()
 
 
 class ConnectionRevisionSnapshots(Protocol):

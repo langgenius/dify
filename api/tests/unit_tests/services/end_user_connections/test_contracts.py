@@ -17,7 +17,7 @@ from services.end_user_connections.contracts import (
 
 def create_payload() -> dict[str, object]:
     return {
-        "connection_revision": "cr_" + "b" * 64,
+        "connection_revision": "00000000-0000-7000-8000-000000000002",
         "node_id": "1730000000000",
         "name": "My calendar",
         "credentials": {"api_key": "secret-sentinel"},
@@ -45,7 +45,7 @@ def test_create_input_cannot_supply_authority_or_provider_configuration(field: s
 
 def test_create_input_keeps_credentials_out_of_repr_and_validation_messages() -> None:
     command = CreateApiKeyConnectionInput.model_validate(create_payload())
-    assert command.connection_revision == "cr_" + "b" * 64
+    assert command.connection_revision == "00000000-0000-7000-8000-000000000002"
     assert "workflow_id" not in command.model_dump()
     assert command.credentials == {"api_key": "secret-sentinel"}
     assert "secret-sentinel" not in repr(command)
@@ -82,7 +82,7 @@ def test_update_distinguishes_omission_and_full_replacement() -> None:
     assert rename.credentials is None
     assert rename.model_fields_set == {"name"}
     replacement = UpdateConnectionInput(
-        credentials={"api_key": "secret-sentinel"}, connection_revision="cr_" + "b" * 64
+        credentials={"api_key": "secret-sentinel"}, connection_revision="00000000-0000-7000-8000-000000000002"
     )
     assert replacement.name is None
     assert replacement.model_fields_set == {"credentials", "connection_revision"}
@@ -100,7 +100,7 @@ def test_oauth_start_does_not_accept_browser_supplied_tokens_or_client() -> None
         with pytest.raises(ValidationError):
             StartConnectionOAuthInput.model_validate(
                 {
-                    "connection_revision": "cr_" + "b" * 64,
+                    "connection_revision": "00000000-0000-7000-8000-000000000002",
                     "node_id": "node",
                     "name": "My account",
                     field: "secret-sentinel",

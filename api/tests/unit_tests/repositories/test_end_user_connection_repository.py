@@ -1,9 +1,8 @@
 """Persisted authorization revisions are immutable, deduplicated, and Web App scoped."""
 
 import hashlib
-import re
 from concurrent.futures import ThreadPoolExecutor
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 import sqlalchemy as sa
@@ -30,13 +29,16 @@ def snapshot() -> ConnectionContractSnapshot:
     )
 
 
-def test_revision_id_is_a_durable_content_digest_without_client_metadata(
+def test_revision_id_is_a_durable_uuidv7_with_a_private_content_fingerprint(
     sqlite_session_factory: sessionmaker[Session], snapshot: ConnectionContractSnapshot
 ) -> None:
     repository = EndUserConnectionRepository(session_factory=sqlite_session_factory)
     revision = repository.save_revision(snapshot)
-    assert re.fullmatch(r"cr_[0-9a-f]{64}", revision)
-    assert revision == "cr_" + hashlib.sha256(snapshot.canonical_json().encode()).hexdigest()
+    assert UUID(revision).version == 7
+    with sqlite_session_factory() as session:
+        row = session.get(EndUserConnectionRevision, revision)
+        assert row is not None
+        assert row.fingerprint == hashlib.sha256(snapshot.canonical_json().encode()).hexdigest()
     restarted = EndUserConnectionRepository(session_factory=sqlite_session_factory)
     assert restarted.get_revision(snapshot.tenant_id, snapshot.app_id, revision) == snapshot
     assert (
@@ -54,8 +56,7 @@ def test_revision_reads_require_tenant_app_and_a_persisted_snapshot(
     revision = repository.save_revision(snapshot)
     assert repository.get_revision(str(uuid4()), snapshot.app_id, revision) is None
     assert repository.get_revision(snapshot.tenant_id, str(uuid4()), revision) is None
-    changed = snapshot.model_copy(update={"providers": ()})
-    assert repository.get_revision(snapshot.tenant_id, snapshot.app_id, changed.revision) is None
+    assert repository.get_revision(snapshot.tenant_id, snapshot.app_id, str(uuid4())) is None
 
 
 def test_concurrent_snapshot_discovery_persists_one_revision(
@@ -66,7 +67,8 @@ def test_concurrent_snapshot_discovery_persists_one_revision(
 
     with ThreadPoolExecutor(max_workers=4) as pool:
         revisions = list(pool.map(lambda _: discover(), range(8)))
-    assert set(revisions) == {snapshot.revision}
+    assert len(set(revisions)) == 1
+    assert UUID(revisions[0]).version == 7
     with sqlite_session_factory() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevision)) == 1
 

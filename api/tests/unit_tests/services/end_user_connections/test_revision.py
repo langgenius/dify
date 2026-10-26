@@ -361,7 +361,7 @@ def test_revision_cannot_forge_trust_or_cross_application_scope(harness: OAuthHa
     elif tamper == "modified":
         revision = revision[:-1] + ("a" if revision[-1] != "a" else "b")
     else:
-        revision = "cr_" + "0" * 64
+        revision = "00000000-0000-7000-8000-000000000000"
     with pytest.raises(ConnectionRevisionChangedError):
         preflight(harness).check(
             harness.base.context, ConnectionPreflightInput(connection_revision=revision, connections={})

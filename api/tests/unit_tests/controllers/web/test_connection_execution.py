@@ -247,7 +247,7 @@ def test_real_gate_rejects_before_run_creation_or_enqueue(
         case "extra":
             choices["unused-node"] = connection.id
         case "stale":
-            payload["connection_revision"] = "cr_" + "a" * 64
+            payload["connection_revision"] = "00000000-0000-7000-8000-000000000001"
     if selection != "omitted":
         payload["connections"] = choices
     params = mocker.spy(AppExecutionParams, "new")

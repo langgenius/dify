@@ -60,7 +60,7 @@ def test_provider_revision_cannot_cross_its_persisted_scope(
         )
         revision = snapshots.save_revision(snapshot)
     else:
-        revision = "cr_" + "0" * 64
+        revision = "00000000-0000-7000-8000-000000000000"
     with pytest.raises(ConnectionRevisionChangedError):
         revisions.reference(context, PROVIDER, revision)
 

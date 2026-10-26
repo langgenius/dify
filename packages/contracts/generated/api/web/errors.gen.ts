@@ -3,11 +3,7 @@ import * as z from 'zod'
 
 const zConnectionRevisionChangeDetails = /* @__PURE__ */ (() =>
   z.object({
-    connection_revision: z
-      .string()
-      .length(67)
-      .regex(/^cr_[0-9a-f]{64}$/)
-      .nullable(),
+    connection_revision: z.uuid().nullable(),
   }))()
 
 const zErrorResponse = /* @__PURE__ */ (() =>
