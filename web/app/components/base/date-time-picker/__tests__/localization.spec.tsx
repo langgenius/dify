@@ -20,11 +20,9 @@ import {
   TimePickerTrigger,
 } from '@/app/components/base/date-time-picker/time-picker'
 import { I18nDirectionProvider } from '@/app/components/provider/i18n-direction'
-import enCommon from '@/i18n/locales/en-US/common.json'
 import en from '@/i18n/locales/en-US/time.json'
 import fa from '@/i18n/locales/fa-IR/time.json'
 import lo from '@/i18n/locales/lo-LA/time.json'
-import zhCommon from '@/i18n/locales/zh-Hans/common.json'
 import zh from '@/i18n/locales/zh-Hans/time.json'
 
 vi.unmock('react-i18next')
@@ -37,8 +35,8 @@ async function createI18n(language = 'en-US') {
     defaultNS: 'time',
     keySeparator: false,
     resources: {
-      'en-US': { time: en, common: enCommon },
-      'zh-Hans': { time: zh, common: zhCommon },
+      'en-US': { time: en },
+      'zh-Hans': { time: zh },
       'fa-IR': { time: fa },
       'lo-LA': { time: lo },
     },
@@ -177,7 +175,7 @@ it('localizes the picker close action and dismisses without changing its value',
     </I18nextProvider>,
   )
   await user.click(screen.getByRole('button', { name: /^Time / }))
-  act(() => screen.getByRole('button', { name: zhCommon['operation.close'] }).click())
+  act(() => screen.getByRole('button', { name: zh['operation.close'] }).click())
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(changed).not.toHaveBeenCalled()
 })

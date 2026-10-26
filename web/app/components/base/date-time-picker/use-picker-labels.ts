@@ -5,7 +5,7 @@ import { useLocale } from '#i18n'
 
 export function usePickerLabels() {
   const locale = useLocale()
-  const { t } = useTranslation(['time', 'common'])
+  const { t } = useTranslation(['time'])
   const period = (hour: number) =>
     new Intl.DateTimeFormat(locale, { hour: 'numeric', hour12: true, timeZone: 'UTC' })
       .formatToParts(new Date(Date.UTC(2025, 0, 1, hour)))
@@ -26,7 +26,7 @@ export function usePickerLabels() {
       unavailable: t(($) => $['picker.unavailable']),
       backToDate: t(($) => $['operation.pickDate']),
       cancel: t(($) => $['operation.cancel']),
-      close: t(($) => $['operation.close'], { ns: 'common' }),
+      close: t(($) => $['operation.close']),
       apply: t(($) => $['operation.ok']),
       now: t(($) => $['operation.now']),
       title: t(($) => $['title.pickTime']),
