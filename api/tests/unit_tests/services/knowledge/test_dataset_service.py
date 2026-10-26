@@ -3337,7 +3337,6 @@ class TestDatasetServiceDocumentCases:
             mock_redis.delete.assert_called_once_with(indexing_cache_key)
             assert indexing_cache_key not in guard_store
 
-
         @pytest.mark.parametrize(
             ("guard_write_fails", "guard_cleanup_fails"),
             [(True, False), (False, True)],
