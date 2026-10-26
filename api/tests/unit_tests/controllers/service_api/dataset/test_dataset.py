@@ -27,6 +27,7 @@ from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetMetadata, DatasetPermissionEnum, Document
 from models.enums import PermissionEnum, TagType
 from models.model import App, Tag, TagBinding
+from services.auth.resource_access_token_contracts import DatasetServiceApiGrant
 
 """Unit tests for Service API dataset controller behavior.
 
@@ -93,6 +94,10 @@ def make_dataset(
     session.add(dataset)
     session.flush()
     return dataset
+
+
+def make_dataset_service_grant(tenant_id: str, dataset_ids: frozenset[str] | None = None) -> DatasetServiceApiGrant:
+    return DatasetServiceApiGrant(token_id="test-token", tenant_id=tenant_id, dataset_ids=dataset_ids)
 
 
 DATASET_DETAIL_KEYS = {
@@ -229,7 +234,12 @@ class TestDatasetApisCases:
 
             with app.test_request_context("/datasets?page=1&limit=20", method="GET"):
                 api = DatasetListApi()
-                response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+                response, status = unwrap(api.get)(
+                    api,
+                    controller_session,
+                    tenant_id=tenant.id,
+                    dataset_grant=make_dataset_service_grant(tenant.id),
+                )
 
             assert status == 200
             assert set(response) == {"data", "has_more", "limit", "total", "page"}
@@ -258,11 +268,18 @@ class TestDatasetApisCases:
 
             with app.test_request_context("/datasets?tag_ids=tag-a&tag_ids=tag-b", method="GET"):
                 api = DatasetListApi()
-                response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+                dataset_grant = make_dataset_service_grant(tenant.id)
+                response, status = unwrap(api.get)(
+                    api,
+                    controller_session,
+                    tenant_id=tenant.id,
+                    dataset_grant=dataset_grant,
+                )
                 page, limit, session, tenant_id, user, keyword, tag_ids, include_all = (
                     mock_dataset_svc.get_datasets.call_args.args
                 )
                 assert user is account
+                assert mock_dataset_svc.get_datasets.call_args.kwargs["service_api_grant"] is dataset_grant
 
             assert status == 200
             assert response["total"] == 1
@@ -275,6 +292,37 @@ class TestDatasetApisCases:
                 ["tag-a", "tag-b"],
                 False,
             )
+
+        @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
+        @patch("controllers.service_api.dataset.dataset.DatasetService")
+        def test_list_datasets_preserves_resource_token_scope(
+            self,
+            mock_dataset_svc: MagicMock,
+            mock_provider_mgr: MagicMock,
+            app: Flask,
+            account: Account,
+            tenant: Tenant,
+            controller_session: Session,
+        ) -> None:
+            from controllers.service_api.dataset.dataset import DatasetListApi
+
+            mock_dataset_svc.get_datasets.return_value = ([make_dataset(controller_session, tenant, account)], 1)
+            mock_provider_mgr.return_value.get_configurations.return_value.get_models.return_value = list[object]()
+
+            with app.test_request_context("/datasets", method="GET"):
+                api = DatasetListApi()
+                dataset_grant = make_dataset_service_grant(
+                    tenant.id,
+                    frozenset({"dataset-a", "dataset-b"}),
+                )
+                unwrap(api.get)(
+                    api,
+                    controller_session,
+                    tenant_id=tenant.id,
+                    dataset_grant=dataset_grant,
+                )
+
+            assert mock_dataset_svc.get_datasets.call_args.kwargs["service_api_grant"] is dataset_grant
 
         @patch("controllers.service_api.dataset.dataset.create_plugin_provider_manager")
         @patch("controllers.service_api.dataset.dataset.DatasetService")
@@ -297,7 +345,12 @@ class TestDatasetApisCases:
 
             with app.test_request_context(f"/datasets?page=1&limit={page_size}", method="GET"):
                 api = DatasetListApi()
-                response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+                response, status = unwrap(api.get)(
+                    api,
+                    controller_session,
+                    tenant_id=tenant.id,
+                    dataset_grant=make_dataset_service_grant(tenant.id),
+                )
 
             assert status == 200
             assert response["has_more"] is False
@@ -327,7 +380,12 @@ class TestDatasetApisCases:
 
             with app.test_request_context("/datasets?page=1&limit=200", method="GET"):
                 api = DatasetListApi()
-                response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+                response, status = unwrap(api.get)(
+                    api,
+                    controller_session,
+                    tenant_id=tenant.id,
+                    dataset_grant=make_dataset_service_grant(tenant.id),
+                )
 
             assert status == 200
             assert response["has_more"] is True
@@ -357,7 +415,12 @@ class TestDatasetApisCases:
 
             with app.test_request_context("/datasets?page=1&limit=0", method="GET"):
                 api = DatasetListApi()
-                response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+                response, status = unwrap(api.get)(
+                    api,
+                    controller_session,
+                    tenant_id=tenant.id,
+                    dataset_grant=make_dataset_service_grant(tenant.id),
+                )
 
             assert status == 200
             assert response["limit"] == 1
@@ -385,7 +448,12 @@ class TestDatasetApisCases:
 
             with app.test_request_context("/datasets?page=8&limit=0", method="GET"):
                 api = DatasetListApi()
-                response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+                response, status = unwrap(api.get)(
+                    api,
+                    controller_session,
+                    tenant_id=tenant.id,
+                    dataset_grant=make_dataset_service_grant(tenant.id),
+                )
 
             assert status == 200
             assert response["has_more"] is False
@@ -414,7 +482,12 @@ class TestDatasetApisCases:
 
             with app.test_request_context("/datasets?page=1&limit=-1", method="GET"):
                 api = DatasetListApi()
-                response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+                response, status = unwrap(api.get)(
+                    api,
+                    controller_session,
+                    tenant_id=tenant.id,
+                    dataset_grant=make_dataset_service_grant(tenant.id),
+                )
 
             assert status == 200
             assert response["limit"] == 1
@@ -442,7 +515,12 @@ class TestDatasetApisCases:
 
             with app.test_request_context("/datasets?page=0&limit=20", method="GET"):
                 api = DatasetListApi()
-                response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
+                response, status = unwrap(api.get)(
+                    api,
+                    controller_session,
+                    tenant_id=tenant.id,
+                    dataset_grant=make_dataset_service_grant(tenant.id),
+                )
 
             assert status == 200
             assert response["page"] == 1
