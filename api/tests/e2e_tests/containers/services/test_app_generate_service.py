@@ -84,7 +84,6 @@ class TestAppGenerateService:
             # Setup default mock returns for app generators
             mock_completion_generator_instance = mock_completion_generator.return_value
             mock_completion_generator_instance.generate.return_value = ["completion_response"]
-            mock_completion_generator_instance.generate_more_like_this.return_value = ["more_like_this_response"]
             mock_completion_generator.convert_to_event_stream.return_value = ["completion_stream"]
 
             mock_chat_generator_instance = mock_chat_generator.return_value
