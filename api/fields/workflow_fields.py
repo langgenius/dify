@@ -166,8 +166,13 @@ class WorkflowRestoreResponse(ResponseModel):
     updated_at: int
 
 
-class DefaultBlockConfigsResponse(RootModel[list[dict[str, Any]]]):
-    root: list[dict[str, Any]]
+class DefaultBlockConfigItemResponse(ResponseModel):
+    type: str
+    config: dict[str, Any]
+
+
+class DefaultBlockConfigsResponse(RootModel[list[DefaultBlockConfigItemResponse]]):
+    pass
 
 
 class DefaultBlockConfigResponse(RootModel[dict[str, Any]]):

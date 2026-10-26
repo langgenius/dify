@@ -53,7 +53,7 @@ from services.knowledge.external.service import ExternalDatasetService
 from services.knowledge.retrieval.adapters.resource_events import DatasetIndexToolCallbackHandler
 from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
 from services.tools.dataset.tool import DatasetRetrieverTool
-from tests.unit_tests.model_factories import make_dataset
+from tests.helpers.unit.model_factories import make_dataset
 
 
 @dataclass

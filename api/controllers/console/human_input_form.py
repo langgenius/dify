@@ -7,15 +7,17 @@ import logging
 from collections.abc import Generator, Sequence
 from typing import Any
 
-from flask import Response, jsonify, request
+from flask import Response, jsonify, request, stream_with_context
 from flask_restx import Resource
 from pydantic import RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import EventStreamResponse
 from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, enforce_rbac_checks
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
@@ -220,6 +222,20 @@ class ConsoleWorkflowEventsApi(Resource):
 
             include_state_snapshot = request.args.get("include_state_snapshot", "false").lower() == "true"
             continue_on_pause = request.args.get("continue_on_pause", "false").lower() == "true"
+            include_node_details = False
+            if include_state_snapshot:
+                # Owning a run permits replay; internal details require the same admission as run history.
+                try:
+                    enforce_rbac_checks(
+                        tenant_id=tenant_id,
+                        account_id=user.id,
+                        checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())],
+                        path_args={"app_id": app.id},
+                    )
+                except (Forbidden, NotFound):
+                    pass
+                else:
+                    include_node_details = True
 
             def _generate_stream_events():
                 if include_state_snapshot:
@@ -231,6 +247,7 @@ class ConsoleWorkflowEventsApi(Resource):
                             app_id=workflow_run.app_id,
                             session_maker=session_maker,
                             human_input_surface=HumanInputSurface.CONSOLE,
+                            include_node_details=include_node_details,
                             close_on_pause=not continue_on_pause,
                         )
                     )
@@ -241,7 +258,7 @@ class ConsoleWorkflowEventsApi(Resource):
             event_generator = _generate_stream_events
 
         return Response(
-            event_generator(),
+            stream_with_context(event_generator()),  # pyrefly: ignore[no-matching-overload]
             mimetype="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",

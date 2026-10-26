@@ -18,7 +18,7 @@ from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowKind, WorkflowType
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.variable_service import WorkflowVariableService
-from tests.unit_tests.model_factories import make_account, make_app, make_upload_file, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_app, make_upload_file, make_workflow
 
 
 @pytest.fixture(autouse=True)

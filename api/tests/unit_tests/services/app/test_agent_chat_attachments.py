@@ -42,6 +42,7 @@ from services.app.generation.ports import AgentMessageRecords
 from services.knowledge.retrieval.adapters.resource_events import DatasetIndexToolCallbackHandler
 from services.tools.dataset.tool import DatasetRetrieverTool, DatasetToolRetrieval
 from services.tools.tool_engine import ToolEngine
+from tests.helpers.unit.model_factories import make_app, make_upload_file
 from tests.unit_tests.core.agent.test_base_agent_runner import (
     _app_config,
     _app_generate,
@@ -49,7 +50,6 @@ from tests.unit_tests.core.agent.test_base_agent_runner import (
     _message,
     _tool_entity,
 )
-from tests.unit_tests.model_factories import make_app, make_upload_file
 
 
 @dataclass

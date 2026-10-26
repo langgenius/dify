@@ -286,7 +286,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
           <div>
             <div className="mb-1 flex h-6 items-center">
               <Switch
-                className="mr-2"
+                className="me-2"
                 checked={state.forwardUserIdentity}
                 onCheckedChange={actions.setForwardUserIdentity}
                 aria-labelledby="mcp-forward-user-identity-label"

@@ -32,7 +32,7 @@ from services.workflow.execution.adapters.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolsBuilder,
     WorkflowAgentDifyToolsBuildError,
 )
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 type Database = tuple[sessionmaker[Session], ToolProviderRepository]
 

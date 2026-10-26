@@ -126,7 +126,7 @@ def test_node_binding_resolution_uses_injected_database_through_nested_factories
             # Single-node debugging must reach the same injected database,
             # without consulting an installed Flask application container.
             from services.workflow.execution.adapters.workflow_entry import WorkflowEntry
-            from tests.unit_tests.model_factories import make_workflow
+            from tests.helpers.unit.model_factories import make_workflow
 
             node_config = {
                 "id": ids["node_id"],

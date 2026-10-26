@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import uuid
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -17,14 +17,12 @@ from core.db import session_factory
 from core.trigger.constants import is_trigger_node_type
 from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
-from models.annotation_reply import AnnotationReplies
 from models.model import Account, App, AppMode, EndUser
 from repositories.workflow.definition_repository import WorkflowDefinitionStore
 from services.app.generation.adapters.agent_app import AgentAppGenerator
 from services.app.generation.adapters.agent_chat import AgentChatAppGenerator
 from services.app.generation.adapters.chat import ChatAppGenerator
 from services.app.generation.adapters.completion import CompletionAppGenerator
-from services.app.generation.ports import ChatRecords
 from services.app.generation.response import convert_to_event_stream
 from services.app.generation.runtime import AppGenerationRuntime
 from services.errors.app import (
@@ -32,7 +30,6 @@ from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError,
 )
 from services.errors.llm import InvokeRateLimitError
-from services.knowledge.retrieval.ports import DatasetRetrievalFactory
 from services.quota_service import QuotaService, unlimited
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.chatflow.app_generator import AdvancedChatAppGenerator
@@ -617,40 +614,6 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case _:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
-
-    @classmethod
-    def generate_more_like_this(
-        cls,
-        app_model: App,
-        user: Account | EndUser,
-        message_id: str,
-        invoke_from: InvokeFrom,
-        *,
-        session: Session,
-        records: ChatRecords,
-        retrieval: DatasetRetrievalFactory,
-        annotations: AnnotationReplies,
-        streaming: bool = True,
-    ) -> Mapping | Generator:
-        """
-        Generate more like this
-        :param app_model: app model
-        :param user: user
-        :param message_id: message id
-        :param invoke_from: invoke from
-        :param streaming: streaming
-        :return:
-        """
-        return CompletionAppGenerator(
-            retrieval=retrieval, annotations=annotations, records=records
-        ).generate_more_like_this(
-            session=session,
-            app_model=app_model,
-            message_id=message_id,
-            user=user,
-            invoke_from=invoke_from,
-            stream=streaming,
-        )
 
     @classmethod
     def _get_workflow(

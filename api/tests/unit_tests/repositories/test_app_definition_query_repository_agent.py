@@ -1,5 +1,4 @@
 import json
-from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
@@ -68,7 +67,7 @@ def _persist_snapshot(
     snapshot_id: str,
     tenant_id: str,
     agent_id: str,
-    config_snapshot: dict[str, Any],
+    config_snapshot: dict[str, object],
     publish_visible: bool = True,
 ) -> AgentConfigSnapshot:
     snapshot = AgentConfigSnapshot(

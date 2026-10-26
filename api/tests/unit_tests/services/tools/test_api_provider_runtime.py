@@ -23,7 +23,7 @@ from models.model import App
 from models.tools import ApiToolProvider
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 from tests.unit_tests.services.agent.test_tool_invocation_service import (
     TENANT_ID,
     USER_ID,

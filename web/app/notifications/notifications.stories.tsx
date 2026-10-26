@@ -4,7 +4,7 @@ import { createToast, createToastManager, Toaster } from '@langgenius/dify-ui/to
 import { useState } from 'react'
 import { expect, spyOn, userEvent, within } from 'storybook/test'
 import { toast as globalToast } from '.'
-import { AppToastHost } from './host'
+import { AppToaster } from './app-toaster'
 
 type Scenario = { label: string; run: (toast: ToastApi) => void }
 type PlaygroundProps = {
@@ -65,7 +65,7 @@ function Playground({
       {primitive ? (
         <Toaster toastManager={manager} timeout={timeout} limit={limit} />
       ) : (
-        <AppToastHost manager={manager} timeout={timeout} limit={limit} />
+        <AppToaster manager={manager} timeout={timeout} limit={limit} />
       )}
     </main>
   )
@@ -515,8 +515,8 @@ function IsolatedHosts() {
           Dismiss right
         </button>
       </div>
-      <AppToastHost manager={left.manager} timeout={0} offset={{ top: 180, right: '52%' }} />
-      <AppToastHost manager={right.manager} timeout={0} offset={{ top: 60 }} />
+      <AppToaster manager={left.manager} timeout={0} offset={{ top: 180, right: '52%' }} />
+      <AppToaster manager={right.manager} timeout={0} offset={{ top: 60 }} />
     </main>
   )
 }
@@ -525,7 +525,7 @@ export const ScopedHostIsolation: Story = { render: () => <IsolatedHosts /> }
 export const GlobalWebInstance: Story = {
   args: {
     description:
-      'Uses the actual web singleton and the AppToastHost already mounted by the Storybook decorator. Copy, typed calls, and dismissals use the same entrypoint as application callers.',
+      'Uses the actual web singleton and the AppToaster already mounted by the Storybook decorator. Copy, typed calls, and dismissals use the same entrypoint as application callers.',
     scenarios: [
       {
         label: 'Global error',

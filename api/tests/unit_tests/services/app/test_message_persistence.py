@@ -34,8 +34,8 @@ from services.app.generation.adapters.message_pipeline import EasyUIBasedGenerat
 from services.app.generation.message_records import MessageBasedAppGenerator
 from services.app.generation.ports import MessageIdentity, MessageUpdate
 from services.errors.message import MessageNotExistsError
+from tests.helpers.unit.model_factories import make_app, make_message
 from tests.unit_tests.core.app.apps.test_message_based_app_generator import DummyModelConf, _make_app_config
-from tests.unit_tests.model_factories import make_app, make_message
 
 type GenerateEntityType = (
     type[ChatAppGenerateEntity]

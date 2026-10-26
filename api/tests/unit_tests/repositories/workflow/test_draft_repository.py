@@ -22,7 +22,7 @@ from models.workflow import Workflow, WorkflowKind, WorkflowType
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.workflow.contracts import DraftSyncCommand, WorkflowOwner
-from tests.unit_tests.model_factories import make_account, make_tenant, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_tenant, make_workflow
 
 CONTEXT = RequestContext("draft", None, "account-1", "tenant-1")
 

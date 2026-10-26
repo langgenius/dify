@@ -39,6 +39,7 @@ from core.workflow.llm_environment_variable import (
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
+from enums import DeploymentEdition
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
@@ -78,7 +79,7 @@ from services.entities.dsl_entities import (
     make_app_dsl,
 )
 from services.entities.site_dsl import SiteDsl, apply_site_dsl
-from services.errors.app import DraftChangedError, WorkflowNotFoundError
+from services.errors.app import AppQuotaCheckError, DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.icon_configuration import (
@@ -86,6 +87,7 @@ from services.icon_configuration import (
     DEFAULT_ICON_TYPE,
     is_valid_image_icon,
 )
+from services.knowledge_fs.knowledge_retrieval_v2.validation import missing_control_space_ids
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow.contracts import (
     DraftImportResult,
@@ -152,6 +154,7 @@ class PendingData(PendingImportOwner):
     icon_background: str | None = None
     app_id: str | None = None
     draft_hash: str | None = None
+    preserve_agent_bindings: bool = False
     warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
@@ -175,6 +178,21 @@ class AppDslService:
         self._overwrites = overwrites
         self._warnings = []
 
+    @staticmethod
+    def _check_app_quota(account: Account) -> None:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return
+        tenant_id = account.current_tenant_id
+        if tenant_id is None:
+            raise ValueError("Current tenant is not set")
+        try:
+            apps = FeatureService.get_features(tenant_id, exclude_vector_space=True).apps
+        except Exception as error:
+            # A failed lookup is a server failure, not an invalid DSL or exhausted quota.
+            raise AppQuotaCheckError("Unable to check the app quota.") from error
+        if 0 < apps.limit <= apps.size:
+            raise NoPermissionError("The number of apps has reached the limit of your subscription.")
+
     def import_app(
         self,
         *,
@@ -193,7 +211,7 @@ class AppDslService:
         preserve_agent_bindings: bool = False,
         draft_hash: str | None = None,
     ) -> Import:
-        """Import an App DSL after checking Site entitlements and staging archive resources.
+        """Import an App DSL after validating applicable entitlements and staging archive resources.
 
         With ``draft_hash``, an overwrite saves only while the draft's ``draft_token`` still equals it and
         raises DraftChangedError otherwise; a pending import keeps it for the confirm.
@@ -299,6 +317,9 @@ class AppDslService:
                     error=missing_app_section_error(original_top_level_keys),
                 )
 
+            if not app_id:
+                self._check_app_quota(account)
+
             allow_premium_site_settings = True
             if status != ImportStatus.PENDING and data.get("site") is not None:
                 # Resolve billing before archive uploads or database writes.
@@ -369,6 +390,7 @@ class AppDslService:
                     icon_background=icon_background,
                     app_id=app_id,
                     draft_hash=draft_hash,
+                    preserve_agent_bindings=preserve_agent_bindings,
                     warnings=self._warnings,
                 )
                 redis_client.setex(
@@ -437,7 +459,7 @@ class AppDslService:
                 error=f"Invalid YAML format: {str(e)}",
             )
 
-        except (NoPermissionError, DraftChangedError):
+        except (NoPermissionError, DraftChangedError, AppQuotaCheckError):
             raise
 
         except Exception as e:
@@ -480,6 +502,9 @@ class AppDslService:
                     status=ImportStatus.FAILED,
                     error="Import information expired or does not exist",
                 )
+            if not pending_data.app_id:
+                # Workspace usage may have changed since the pending import was staged.
+                self._check_app_quota(account)
             data = yaml.safe_load(pending_data.yaml_content)
             self._warnings = list(pending_data.warnings)
 
@@ -518,6 +543,7 @@ class AppDslService:
                 allow_premium_site_settings=allow_premium_site_settings,
                 environment=environment,
                 draft_hash=pending_data.draft_hash,
+                preserve_agent_bindings=pending_data.preserve_agent_bindings,
             )
 
             # Delete import info from Redis
@@ -534,7 +560,7 @@ class AppDslService:
                 warnings=self._warnings,
             )
 
-        except (NoPermissionError, DraftChangedError):
+        except (NoPermissionError, DraftChangedError, AppQuotaCheckError):
             raise
 
         except Exception as e:
@@ -810,6 +836,23 @@ class AppDslService:
                                 )
                             )
                         ]
+                missing_knowledge_fs_spaces = missing_control_space_ids(
+                    session=self._session,
+                    tenant_id=app.tenant_id,
+                    graph=graph,
+                )
+                for control_space_id in missing_knowledge_fs_spaces:
+                    self._warnings.append(
+                        DslImportWarning(
+                            code="knowledge_fs_space_unresolved",
+                            path="workflow.graph.nodes",
+                            message=(
+                                "A KnowledgeFS Space reference is unavailable in the target workspace "
+                                "and must be reselected before publishing."
+                            ),
+                            details={"control_space_id": control_space_id},
+                        )
+                    )
                 raw_agent_packages = data.get("agent_packages") or {}
                 if not isinstance(raw_agent_packages, Mapping):
                     raise ValueError("agent_packages must be a mapping")
@@ -1063,7 +1106,9 @@ class AppDslService:
         reference_nodes: dict[str, dict[str, Any]] = {}
         if preserve_agent_bindings:
             graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-                session=session, draft_workflow=workflow
+                session=session,
+                draft_workflow=workflow,
+                binding_version=workflow.version,
             )
             agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
             for binding in cls._workflow_agent_bindings(workflow=workflow, session=session):

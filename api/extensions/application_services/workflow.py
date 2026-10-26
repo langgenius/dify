@@ -42,6 +42,9 @@ from services.workflow.execution.ports import (
 )
 from services.workflow.variable_contracts import WorkflowExecutionVariables
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
 
 class _SessionBoundWorkflowToolInvoker(WorkflowToolInvoker):
     """Keep a transaction open until a workflow tool's lazy output is fully consumed."""

@@ -17,7 +17,7 @@ from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 from models import Account, App
 from services.app.generation.runtime import AppGenerationRuntime
 from services.workflow.variable_contracts import WorkflowExecutionVariables
-from tests.unit_tests.config_override import config_overrides_context
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 class TestAppGenerateHandler:

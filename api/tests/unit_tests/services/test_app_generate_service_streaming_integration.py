@@ -1,14 +1,13 @@
 import json
 import uuid
 from collections import defaultdict, deque
-from typing import Any
 
 import pytest
 
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.workflow.execution.adapters.response_stream import WorkflowEventStream
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 # -----------------------------
@@ -30,6 +29,7 @@ class _FakePubSub:
         self._closed = True
 
     def get_message(self, ignore_subscribe_messages: bool = True, timeout: int | float | None = 1):
+        _ = ignore_subscribe_messages, timeout
         # simulate a non-blocking poll; return first available
         if self._closed:
             return None
@@ -65,8 +65,9 @@ class _FakeStreams:
         # the first xread naming it is issued -- entries added earlier are never seen.
         self._dollar_snapshots: dict[str, int] = {}
 
-    def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
+    def xadd(self, key: str, fields: dict[str, object], *, maxlen: int | None = None) -> str:
         # maxlen is accepted for API compatibility with redis-py; ignored in this test double
+        _ = maxlen
         self._seq[key] += 1
         eid = f"{self._seq[key]}-0"
         self._data[key].append((eid, fields))
@@ -74,7 +75,7 @@ class _FakeStreams:
 
     def expire(self, key: str, seconds: int) -> None:
         # no-op for tests
-        return None
+        _ = key, seconds
 
     def xrevrange(self, key: str, count: int | None = None):
         entries = list(reversed(self._data.get(key, [])))
@@ -82,7 +83,8 @@ class _FakeStreams:
             entries = entries[:count]
         return entries
 
-    def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
+    def xread(self, streams: dict[str, object], block: int | None = None, count: int | None = None):
+        _ = block
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
         entries = self._data.get(key, [])
