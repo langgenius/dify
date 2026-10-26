@@ -92,7 +92,7 @@ export function DocumentMetadataCreateForm({
               />
             }
           >
-            <FieldsetLegend className="py-1 system-sm-semibold text-text-secondary">
+            <FieldsetLegend className="col-span-full py-1 system-sm-semibold text-text-secondary">
               {t(($) => $['metadata.createMetadata.type'], { ns: 'dataset' })}
             </FieldsetLegend>
             {metadataTypes.map((candidate) => (
