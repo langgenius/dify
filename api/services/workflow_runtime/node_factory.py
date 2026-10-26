@@ -650,7 +650,11 @@ class DifyNodeFactory(NodeFactory):
             workflow_tools=self.workflow_tools,
             execution_driver=self._execution_driver,
             execution_recorder=self.execution_recorder,
-            _request_hmac_key=getattr(self, "_request_hmac_key", None),
+            _request_hmac_key=(
+                self._request_hmac_key
+                if isinstance(self._dify_context.builder_execution, BuilderExecutionContext)
+                else None
+            ),
             native_runtime=self._native_runtime,
         ).with_graph_config(self.init_params.graph_config)
 

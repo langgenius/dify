@@ -44,7 +44,7 @@ from models.dify_builder import (
     DifyBuilderSession,
     DifyBuilderSessionCommit,
 )
-from models.model import App
+from models.model import App, AppMode
 from models.trigger import WorkflowWebhookTrigger
 from models.workflow import Workflow
 from models.workflow_draft_coordination import WorkflowDraftCoordination
@@ -218,7 +218,7 @@ def task_world(task_postgres_engine: Engine, task_flask_app: Flask, monkeypatch:
     with factory.begin() as sql:
         sql.add(account)
         sql.flush()
-        app = App(tenant_id=tenant_id, name="Task fence", mode="workflow", enable_site=False, enable_api=False)
+        app = App(tenant_id=tenant_id, name="Task fence", mode=AppMode.WORKFLOW, enable_site=False, enable_api=False)
         sql.add(app)
         sql.flush()
         workflow = Workflow(

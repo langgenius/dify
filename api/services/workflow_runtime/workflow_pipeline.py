@@ -76,6 +76,7 @@ from services.dify_builder.native_testing.observation_stream import (
     require_native_observation,
 )
 from services.workflow_runtime.response_converter import WorkflowResponseConverter
+from services.workflow_runtime.workflow_queue import WorkflowAppQueueManager
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if native_observation is not None:
             with native_observation.persistence_scope():
                 if (
-                    getattr(queue_manager, "native_observation", None) is not native_observation
+                    not isinstance(queue_manager, WorkflowAppQueueManager)
+                    or queue_manager.native_observation is not native_observation
                     or not isinstance(user, Account)
                     or application_generate_entity.files
                     or application_generate_entity.trace_manager is not None

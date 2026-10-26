@@ -1927,6 +1927,8 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: Wo
     mock_workflow_entry.graph_engine.layer = MagicMock()
     mock_workflow_entry.run.return_value = iter([])
 
+    graph = _workflow_graph(runner)
+
     with (
         patch("services.workflow_runtime.workflow_runner.RedisChannel"),
         patch("services.workflow_runtime.workflow_runner.redis_client"),
@@ -1939,7 +1941,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases(queue_manager: Wo
             "services.workflow_runtime.workflow_runner.get_compatible_start_aliases", return_value=("legacy-start",)
         ) as aliases,
         patch("services.workflow_runtime.workflow_runner.add_node_inputs_to_pool") as add_inputs,
-        patch.object(runner, "_init_graph", return_value=MagicMock()) as init_graph,
+        patch.object(runner, "_init_graph", return_value=graph) as init_graph,
     ):
         runner.prepare()
 

@@ -65,7 +65,7 @@ def validate_profile(profile):
         "x86_64",
     }:
         raise Refusal("unsupported_platform")
-    if profile.get("node") != "v24.20.0":
+    if profile.get("node") != "v24.22.1":
         raise Refusal("unsupported_node")
     if profile.get("packages") != PACKAGES:
         raise Refusal("unsupported_packages")
@@ -374,7 +374,7 @@ def collect_environment():
         "packages": PACKAGES.copy(),
     }
     # Validate Python/platform before any package discovery/import or child process.
-    validate_profile({**profile, "node": "v24.20.0"})
+    validate_profile({**profile, "node": "v24.22.1"})
     if (
         not sys.flags.isolated
         or sys.prefix != PREFIX

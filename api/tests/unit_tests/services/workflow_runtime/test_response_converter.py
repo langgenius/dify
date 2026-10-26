@@ -12,6 +12,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -1535,9 +1536,7 @@ class TestWorkflowPauseEventsCases:
 
     @staticmethod
     @pytest.mark.parametrize("source_node_id", ["node-human", "nested-human"])
-    def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(
-        monkeypatch: pytest.MonkeyPatch, source_node_id: str
-    ):
+    def test_graph_run_paused_event_uses_projected_nodes_for_highlighting(mocker: MockerFixture, source_node_id: str):
         from tests.unit_tests.services.workflow_runtime.test_base_runner import _workflow_entry
 
         runner = _build_runner()
@@ -1557,7 +1556,7 @@ class TestWorkflowPauseEventsCases:
             node_id="node-human",
             node_title="Human Step",
         )
-        monkeypatch.setattr("services.workflow_runtime.base_runner.dispatch_human_input_email_task", MagicMock())
+        mocker.patch("services.workflow_runtime.base_runner.dispatch_human_input_email_task")
 
         runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
 

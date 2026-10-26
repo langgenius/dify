@@ -1143,7 +1143,9 @@ def test_current_published_binding_must_match_graph_outputs_and_routes(
         agent_id="agent",
         current_snapshot_id="pin",
         node_job_config=job,
-        binding_type="foreign" if mutation == "binding-kind" else WorkflowAgentBindingType.ROSTER_AGENT,
+        binding_type=cast(WorkflowAgentBindingType, "foreign")
+        if mutation == "binding-kind"
+        else WorkflowAgentBindingType.ROSTER_AGENT,
     )
 
     loader = operations_service.loader

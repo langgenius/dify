@@ -16,7 +16,7 @@ from core.dify_builder.models import Actor
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.account import Account
-from models.model import App
+from models.model import App, AppMode
 from models.workflow import Workflow
 from runtime_contracts.builder.native.contracts import JsonValue
 from runtime_contracts.builder.native.runtime_contracts import NativeWorkflowOutcome, ResolvedNativeTestContext
@@ -314,7 +314,7 @@ def test_generator_refuses_missing_native_scope_before_file_or_config_work(mocke
     )
     with pytest.raises(NativeContextUnavailable, match="native_context_missing"):
         generator.generate(
-            app_model=App(id="app", tenant_id="tenant", mode="workflow"),
+            app_model=App(id="app", tenant_id="tenant", mode=AppMode.WORKFLOW),
             workflow=Workflow(),
             user=_account(),
             args={},
@@ -411,7 +411,7 @@ def test_ordinary_resume_cannot_rebuild_trace_for_native_marked_entity(mocker: p
 
     def resume() -> None:
         app_generator.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).resume(
-            app_model=App(id="app", tenant_id="tenant", mode="workflow"),
+            app_model=App(id="app", tenant_id="tenant", mode=AppMode.WORKFLOW),
             workflow=Workflow(),
             user=_account(),
             application_generate_entity=entity,

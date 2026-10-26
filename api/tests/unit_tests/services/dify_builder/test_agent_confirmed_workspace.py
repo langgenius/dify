@@ -89,7 +89,7 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(
             ]
         },
     )
-    rows = {
+    rows: dict[type[object], object] = {
         DifyBuilderExecutionRequest: DifyBuilderExecutionRequest(
             id="request",
             tenant_id="tenant",
@@ -126,13 +126,6 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(
             home_snapshot_id=home_id,
             config_snapshot=AgentSoulConfig(),
         ),
-        AgentHomeSnapshot: AgentHomeSnapshot(
-            id=home_id,
-            tenant_id="tenant",
-            agent_id="agent",
-            snapshot_ref="ordinary-home",
-            status=AgentWorkingResourceStatus.ACTIVE,
-        ),
         Agent: Agent(
             name="Native Agent",
             tenant_id="tenant",
@@ -141,6 +134,14 @@ def test_current_normal_workspace_requires_complete_sql_owner_chain(
             active_config_snapshot_id="snapshot",
         ),
     }
+    if home_id is not None:
+        rows[AgentHomeSnapshot] = AgentHomeSnapshot(
+            id=home_id,
+            tenant_id="tenant",
+            agent_id="agent",
+            snapshot_ref="ordinary-home",
+            status=AgentWorkingResourceStatus.ACTIVE,
+        )
     binding = AgentWorkspaceBinding(
         tenant_id="tenant",
         app_id="app",

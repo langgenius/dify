@@ -27,6 +27,7 @@ from models.dify_builder_native_tests import (
     NativeTestInvocation,
     NativeTestScope,
 )
+from models.enums import AppStatus
 from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.agent_contracts import (
@@ -492,7 +493,7 @@ def state_case(monkeypatch: pytest.MonkeyPatch) -> AgentStateCase:
         Account: account,
         Tenant: tenant,
         TenantAccountJoin: membership,
-        App: App(id="app", tenant_id="tenant", status="normal"),
+        App: App(id="app", tenant_id="tenant", status=AppStatus.NORMAL),
         Agent: Agent(
             name="Native Agent",
             id="agent",

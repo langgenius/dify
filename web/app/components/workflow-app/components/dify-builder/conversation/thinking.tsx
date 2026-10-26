@@ -42,7 +42,7 @@ const ThinkingDetails = ({
         />
       </summary>
       {open && (
-        <div className="ml-5 border-l border-divider-subtle py-1 pl-3">
+        <div className="ms-5 border-s border-divider-subtle py-1 ps-3">
           <Markdown
             content={text}
             mode={isStreaming ? 'streaming' : 'static'}

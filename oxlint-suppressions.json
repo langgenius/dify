@@ -693,7 +693,7 @@
   },
   "web/app/components/app/create-app-dialog/app-list/sidebar.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
+      "count": 2
     },
     "react/only-export-components": {
       "count": 1
@@ -4037,14 +4037,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow-app/hooks/use-workflow-run-callbacks.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -4199,11 +4191,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow/collaboration/components/user-cursors.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/comment/comment-icon.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
@@ -4316,12 +4303,6 @@
   "web/app/components/workflow/header/view-history.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 5
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/workflow/header/view-workflow-history.tsx": {
@@ -7267,11 +7248,6 @@
     },
     "typescript/no-deprecated": {
       "count": 1
-    }
-  },
-  "web/service/http-error.spec.ts": {
-    "typescript/no-deprecated": {
-      "count": 13
     }
   },
   "web/service/log.ts": {

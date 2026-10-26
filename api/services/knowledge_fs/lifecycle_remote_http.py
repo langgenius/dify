@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from http import HTTPStatus
-from typing import Literal
+from typing import Literal, NotRequired, TypedDict
 from uuid import uuid4
 
 import httpx
@@ -38,6 +38,14 @@ _MAX_RESPONSE_BYTES = 1024 * 1024
 _MAX_RECONCILIATION_SPACES = 10_000
 _PAGE_SIZE = 100
 _WORKER_PRINCIPAL = "knowledge-fs-lifecycle"
+
+
+class _RequestKwargs(TypedDict):
+    follow_redirects: bool
+    headers: dict[str, str]
+    params: tuple[tuple[str, str], ...]
+    timeout: float
+    json: NotRequired[JsonValue]
 
 
 class _KnowledgeSpaceResponse(BaseModel):
@@ -503,7 +511,7 @@ class HTTPKnowledgeFSLifecycleRemoteClient:
             "Authorization": f"Bearer {token}",
             "X-Trace-Id": trace_id,
         }
-        request_kwargs: dict[str, object] = {
+        request_kwargs: _RequestKwargs = {
             "follow_redirects": False,
             "headers": headers,
             "params": query,

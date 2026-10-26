@@ -153,6 +153,7 @@ def physical_migration(migrated_dispatch_claims: None, flask_app_with_containers
             assert scripts.get_heads() == ["db7f42c9a801"]
             final_merge = scripts.get_revision("db7f42c9a801")
             assert final_merge is not None
+            assert isinstance(final_merge.down_revision, tuple)
             assert set(final_merge.down_revision) == {"e832a94f210b", "b9d3f7a5c102"}
             coordination = scripts.get_revision("e832a94f210b")
             assert coordination is not None

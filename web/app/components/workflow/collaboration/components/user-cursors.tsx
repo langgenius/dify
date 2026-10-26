@@ -42,7 +42,7 @@ const UserCursors: FC<UserCursorsProps> = ({ visible, myUserId, onlineUsers }) =
         return (
           <div
             key={userId}
-            className="pointer-events-none absolute top-0 left-0 z-8 transition-transform duration-150 ease-out motion-reduce:transition-none"
+            className="pointer-events-none absolute inset-s-0 top-0 z-8 transition-transform duration-150 ease-out motion-reduce:transition-none"
             style={{
               transform: `translate(${screenPos.x}px, ${screenPos.y}px)`,
             }}
@@ -65,7 +65,7 @@ const UserCursors: FC<UserCursorsProps> = ({ visible, myUserId, onlineUsers }) =
             </svg>
 
             <div
-              className="absolute top-4 left-4 max-w-30 overflow-hidden rounded px-1.5 py-0.5 text-[11px] font-medium text-ellipsis whitespace-nowrap text-white shadow-sm"
+              className="absolute inset-s-4 top-4 max-w-30 overflow-hidden rounded px-1.5 py-0.5 text-[11px] font-medium text-ellipsis whitespace-nowrap text-white shadow-sm"
               style={{
                 backgroundColor: userColor,
               }}

@@ -35,6 +35,7 @@ def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
     assert scripts.get_heads() == ["db7f42c9a801"]
     merged = scripts.get_revision("db7f42c9a801")
     assert merged is not None
+    assert isinstance(merged.down_revision, tuple)
     assert set(merged.down_revision) == {"e832a94f210b", _KNOWLEDGE_FS_CHAIN[-1]}
 
 

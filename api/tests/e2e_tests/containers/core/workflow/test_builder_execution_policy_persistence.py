@@ -256,6 +256,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
     assert scripts.get_heads() == [current_head]
     final_merge = scripts.get_revision(current_head)
     assert final_merge is not None
+    assert isinstance(final_merge.down_revision, tuple)
     assert set(final_merge.down_revision) == {coordination_head, knowledge_fs_head}
     coordination_revision = scripts.get_revision(coordination_head)
     assert coordination_revision is not None
@@ -640,7 +641,8 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         # The official branch has its own migration qualification. With both
         # parents applied, the new merge must only consolidate version rows.
         parents = MigrationContext.configure(connection, opts={"version_table_schema": schema})
-        parents.stamp(scripts, [coordination_head, knowledge_fs_head])
+        parents.stamp(scripts, coordination_head)
+        parents.stamp(scripts, knowledge_fs_head)
         assert set(parents.get_current_heads()) == {coordination_head, knowledge_fs_head}
         assert migrate("head") == (current_head,)
         assert native_ledger_witness() == ledger_before

@@ -109,6 +109,23 @@
   "console GET /datasets/metadata/built-in": ["no-input-schema", "compatible"],
   "console GET /datasets/process-rule": ["compatible", "parsed-vs-wire-output"],
   "console GET /datasets/retrieval-setting": ["no-input-schema", "compatible"],
+  "console GET /dify-builder/sessions/{session_id}": ["compatible", "parsed-vs-wire-output"],
+  "console GET /dify-builder/sessions/{session_id}/conversation": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /dify-builder/sessions/{session_id}/native-test-input": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /dify-builder/sessions/{session_id}/native-tests/{request_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /dify-builder/sessions/{session_id}/stream": [
+    "compatible",
+    "raw-stream-vs-event-iterator"
+  ],
   "console GET /enterprise/sso/oauth2/login": ["no-input-schema", "compatible"],
   "console GET /enterprise/sso/oidc/login": ["no-input-schema", "compatible"],
   "console GET /enterprise/sso/saml/login": ["no-input-schema", "compatible"],
@@ -536,6 +553,37 @@
   ],
   "console POST /datasets/{resource_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
   "console POST /datasets/api-keys": ["compatible", "parsed-vs-wire-output"],
+  "console POST /dify-builder/agent/ping": ["no-input-schema", "undocumented-output"],
+  "console POST /dify-builder/sessions": ["compatible", "raw-stream-vs-event-iterator"],
+  "console POST /dify-builder/sessions/{session_id}/actions": [
+    "compatible",
+    "raw-stream-vs-event-iterator"
+  ],
+  "console POST /dify-builder/sessions/{session_id}/messages": [
+    "compatible",
+    "raw-stream-vs-event-iterator"
+  ],
+  "console POST /dify-builder/sessions/{session_id}/native-tests": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /dify-builder/sessions/{session_id}/native-tests/{request_id}/cancel": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /dify-builder/sessions/{session_id}/native-tests/{request_id}/decisions": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /dify-builder/sessions/{session_id}/native-tests/{request_id}/resume": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /dify-builder/sessions/{session_id}/resume": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /dify-builder/sessions/{session_id}/stop": ["compatible", "parsed-vs-wire-output"],
   "console POST /installed-apps/{installed_app_id}/chat-messages": [
     "compatible",
     "undocumented-output"

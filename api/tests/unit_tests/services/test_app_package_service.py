@@ -741,7 +741,8 @@ class TestWorkflowPackageServiceCases:
         sqlite_session: Session, storage: _MemoryStorage, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
-            "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned", lambda **_kwargs: None
+            "services.workflow.draft_coordination_service.WorkflowAgentRetirementService.retire_unowned",
+            lambda **_kwargs: None,
         )
         content = _roster_export(sqlite_session, storage)
         account = _account("tenant-1")
