@@ -11,7 +11,7 @@
 - Description: Application services never query tables or hold persistence models. Each service declares the persistence it needs as a port in its own module, and a repository implements that port. When a table already has a repository, extend it or let it implement the new port instead of adding a parallel query path.
 - Suggested fix:
   - First check `api/repositories`, `api/core/repositories`, and `api/extensions/*/repositories/` for an existing repository. If one exists, add the missing operation there and depend on it through the consumer's port.
-  - Otherwise, declare the port next to the service that needs it and implement it in a repository outside migration-only `api/core/`. The repository owns its sessions, filters by the complete owner chain, returns plain records, and is wired only in the composition root.
+  - Otherwise, declare the port next to the service that needs it and implement it in a repository outside migration-only `api/core/`. The repository owns its sessions, filters by the complete owner chain, and is wired only in the composition root. Query ports return plain records; aggregate repository ports, in slices that adopt aggregates, accept and return whole aggregates. Neither returns persistence models or sessions.
 - Example:
   - Bad: a service opens a session, queries a table, changes the loaded persistence model, and commits.
   - Good: the service calls an operation on a port it declares, passing the owner identifiers. The repository behind that port performs the scoped write in one bounded transaction and reports a missing target with an application error.
