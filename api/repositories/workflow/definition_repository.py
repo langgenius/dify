@@ -496,19 +496,22 @@ class WorkflowDefinitionStore:
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 type=(
-                    WorkflowType.from_app_mode(app_model.mode).value
+                    WorkflowType.from_app_mode(app_model.mode)
                     if isinstance(app_model, App)
-                    else WorkflowType.RAG_PIPELINE.value
+                    else WorkflowType.RAG_PIPELINE
                     if isinstance(app_model, Pipeline)
-                    else WorkflowType.WORKFLOW.value
+                    else WorkflowType.WORKFLOW
                 ),
-                kind="snippet" if isinstance(app_model, CustomizedSnippet) else "standard",
+                kind=WorkflowKind.SNIPPET if isinstance(app_model, CustomizedSnippet) else WorkflowKind.STANDARD,
                 version=Workflow.VERSION_DRAFT,
                 graph=json.dumps(graph),
-                features=json.dumps(features),
+                _features=json.dumps(features),
                 created_by=account_id,
                 _environment_variables=environment.value if environment is not None else "{}",
-                conversation_variables=conversation_variables,
+                _conversation_variables=json.dumps(
+                    {variable.name: variable.model_dump() for variable in conversation_variables},
+                    ensure_ascii=False,
+                ),
             )
             session.add(workflow)
         else:
@@ -687,12 +690,12 @@ def workflow_snapshot(workflow: Workflow) -> WorkflowSnapshot:
 
 def workflow_from_snapshot(snapshot: WorkflowSnapshot) -> Workflow:
     """Rehydrate stored values without a query or secret re-encryption."""
-    return Workflow(
+    workflow = Workflow(
         id=snapshot.id,
         tenant_id=snapshot.tenant_id,
         app_id=snapshot.app_id,
-        type=snapshot.type,
-        kind=snapshot.kind,
+        type=WorkflowType(snapshot.type),
+        kind=WorkflowKind(snapshot.kind) if snapshot.kind is not None else None,
         version=snapshot.version,
         version_number=snapshot.version_number,
         marked_name=snapshot.marked_name,
@@ -703,10 +706,11 @@ def workflow_from_snapshot(snapshot: WorkflowSnapshot) -> Workflow:
         _conversation_variables=snapshot.conversation_variables,
         _rag_pipeline_variables=snapshot.rag_pipeline_variables,
         created_by=snapshot.created_by,
-        created_at=snapshot.created_at,
         updated_by=snapshot.updated_by,
-        updated_at=snapshot.updated_at,
     )
+    workflow.created_at = snapshot.created_at
+    workflow.updated_at = snapshot.updated_at
+    return workflow
 
 
 @dataclass

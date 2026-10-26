@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from models.tools import ToolLabelBinding, WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
+from models.workflow import WorkflowType
 from services.app_service import AppService, CreateAppParams
 from tests.e2e_tests.containers.helpers import accounts as account_fixtures
 from tests.e2e_tests.containers.helpers import generate_valid_password
@@ -99,13 +100,13 @@ class TestWorkflowToolManageService:
         workflow = WorkflowModel(
             tenant_id=tenant.id,
             app_id=app.id,
-            type="workflow",
+            type=WorkflowType.WORKFLOW,
             version="1.0.0",
             graph=json.dumps({}),
-            features=json.dumps({}),
+            _features=json.dumps({}),
             created_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
         )
 
         db_session_with_containers.add(workflow)

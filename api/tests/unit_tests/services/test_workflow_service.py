@@ -134,11 +134,11 @@ class TestWorkflowAssociatedDataFactory:
             type=workflow_type,
             version=version,
             graph=json.dumps(graph or {"nodes": [], "edges": []}),
-            features=json.dumps(features or {}),
+            _features=json.dumps(features or {}),
             created_by="user-123",
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         for key, value in kwargs.items():
             setattr(workflow, key, value)

@@ -65,6 +65,7 @@ from models.human_input import HumanInputForm, HumanInputFormRecipient
 from models.human_input_entities import UserActionConfig
 from models.model import App, AppMode, Conversation, EndUser, Message, MessageFile
 from models.workflow import WorkflowNodeExecutionModel, WorkflowPause, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.app.generation_repository import AppGenerationRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.workflow.runtime_context_repository import WorkflowRuntimeContextRepository
@@ -268,7 +269,7 @@ def test_pause_does_not_overwrite_a_concurrent_stop(message_case, stop_after_pau
                 app_id="app-1",
                 workflow_id="workflow-1",
                 task_id="task-1",
-                type=WorkflowType.CHAT,
+                type=ModelWorkflowType(WorkflowType.CHAT),
                 triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
                 version="1",
                 status=WorkflowExecutionStatus.PAUSED,
