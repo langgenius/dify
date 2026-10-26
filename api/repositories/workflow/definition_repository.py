@@ -101,8 +101,8 @@ class WorkflowDefinitionStore:
         if workflow_id:
             try:
                 uuid.UUID(workflow_id)
-            except ValueError:
-                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ")
+            except ValueError as exc:
+                raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ") from exc
             workflow = WorkflowDefinitionStore.get_published_workflow_by_id(app_model, workflow_id, session=session)
             if workflow is None:
                 raise WorkflowNotFoundError(f"Workflow not found with id: {workflow_id}")
@@ -724,7 +724,9 @@ class _PublicationTransaction:
         return workflow_snapshot(workflow)
 
     def sync_webhooks(self, node_ids: Sequence[str]) -> None:
-        WorkflowTriggerRepository.sync_webhooks(self.session, self.app, node_ids, remove_stale=True)
+        WorkflowTriggerRepository.sync_webhooks(
+            self.session, self.app, node_ids, created_by=self.actor.id, remove_stale=True
+        )
 
     def sync_plugins(self, relationships: Sequence[Mapping[str, Any]]) -> None:
         WorkflowTriggerRepository.sync_plugins(self.session, self.app, relationships)

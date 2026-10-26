@@ -1,88 +1,15 @@
-import { describe, expect, it } from 'vite-plus/test'
-import { AuthCategory, CredentialTypeEnum } from '../../types'
+import { AuthCategory } from '../../types'
 import { getApi } from '../get-api'
 
-describe('getApi', () => {
-  const provider = 'test-provider'
-
-  describe('tool category', () => {
-    it('returns correct API paths for tool category', () => {
-      const api = getApi({ category: AuthCategory.tool, provider })
-      expect(api.getCredentialInfo).toBe(
-        `/workspaces/current/tool-provider/builtin/${provider}/credential/info`,
-      )
-      expect(api.setDefaultCredential).toBe(
-        `/workspaces/current/tool-provider/builtin/${provider}/default-credential`,
-      )
-      expect(api.getCredentials).toBe(
-        `/workspaces/current/tool-provider/builtin/${provider}/credentials`,
-      )
-      expect(api.addCredential).toBe(`/workspaces/current/tool-provider/builtin/${provider}/add`)
-      expect(api.updateCredential).toBe(
-        `/workspaces/current/tool-provider/builtin/${provider}/update`,
-      )
-      expect(api.deleteCredential).toBe(
-        `/workspaces/current/tool-provider/builtin/${provider}/delete`,
-      )
-      expect(api.getOauthUrl).toBe(`/oauth/plugin/${provider}/tool/authorization-url`)
-    })
-
-    it('maps the API key credential schema endpoint', () => {
-      const api = getApi({ category: AuthCategory.tool, provider })
-      const schemaUrl = api.getCredentialSchema(CredentialTypeEnum.API_KEY)
-      expect(schemaUrl).toBe(
-        `/workspaces/current/tool-provider/builtin/${provider}/credential/schema/api-key`,
-      )
-    })
-
-    it('includes OAuth client endpoints', () => {
-      const api = getApi({ category: AuthCategory.tool, provider })
-      expect(api.getOauthClientSchema).toBe(
-        `/workspaces/current/tool-provider/builtin/${provider}/oauth/client-schema`,
-      )
-      expect(api.setCustomOauthClient).toBe(
-        `/workspaces/current/tool-provider/builtin/${provider}/oauth/custom-client`,
-      )
-    })
-  })
-
-  describe('datasource category', () => {
-    it('returns correct API paths for datasource category', () => {
-      const api = getApi({ category: AuthCategory.datasource, provider })
-      expect(api.getCredentials).toBe(`/auth/plugin/datasource/${provider}`)
-      expect(api.addCredential).toBe(`/auth/plugin/datasource/${provider}`)
-      expect(api.updateCredential).toBe(`/auth/plugin/datasource/${provider}/update`)
-      expect(api.deleteCredential).toBe(`/auth/plugin/datasource/${provider}/delete`)
-      expect(api.setDefaultCredential).toBe(`/auth/plugin/datasource/${provider}/default`)
-      expect(api.getOauthUrl).toBe(`/oauth/plugin/${provider}/datasource/get-authorization-url`)
-    })
-
-    it('returns empty string for getCredentialInfo', () => {
-      const api = getApi({ category: AuthCategory.datasource, provider })
-      expect(api.getCredentialInfo).toBe('')
-    })
-
-    it('returns a function for getCredentialSchema that returns empty string', () => {
-      const api = getApi({ category: AuthCategory.datasource, provider })
-      expect(api.getCredentialSchema(CredentialTypeEnum.API_KEY)).toBe('')
-    })
-  })
-
-  describe('other categories', () => {
-    it('returns empty strings as fallback for unsupported category', () => {
-      const api = getApi({ category: AuthCategory.model, provider })
-      expect(api.getCredentialInfo).toBe('')
-      expect(api.setDefaultCredential).toBe('')
-      expect(api.getCredentials).toBe('')
-      expect(api.addCredential).toBe('')
-      expect(api.updateCredential).toBe('')
-      expect(api.deleteCredential).toBe('')
-      expect(api.getOauthUrl).toBe('')
-    })
-
-    it('returns a function for getCredentialSchema that returns empty string', () => {
-      const api = getApi({ category: AuthCategory.model, provider })
-      expect(api.getCredentialSchema(CredentialTypeEnum.API_KEY)).toBe('')
-    })
-  })
+it('keeps the legacy credential-info endpoint for tools', () => {
+  expect(getApi({ category: AuthCategory.tool, provider: 'test-provider' }).getCredentialInfo).toBe(
+    '/workspaces/current/tool-provider/builtin/test-provider/credential/info',
+  )
 })
+
+it.each([AuthCategory.datasource, AuthCategory.model, AuthCategory.trigger])(
+  'does not request legacy credential info for %s',
+  (category) => {
+    expect(getApi({ category, provider: 'test-provider' }).getCredentialInfo).toBe('')
+  },
+)

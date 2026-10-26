@@ -6,7 +6,8 @@ import { toIconInfo } from '@/app/components/datasets/dataset-fields'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
+import { consoleClient } from '@/service/console'
+import { fetchWorkflowDraft } from '@/service/workflow'
 import { usePipelineConfig } from './use-pipeline-config'
 import { usePipelineTemplate } from './use-pipeline-template'
 
@@ -67,20 +68,25 @@ export const usePipelineInit = () => {
             notInitialWorkflow: true,
             shouldAutoOpenStartNodeSelector: true,
           })
-          syncWorkflowDraft({
-            url: `/rag/pipelines/${pipelineId}/workflows/draft`,
-            params: {
-              graph: {
-                nodes: nodesTemplate,
-                edges: edgesTemplate,
+          consoleClient.rag.pipelines.byPipelineId.workflows.draft
+            .post(
+              {
+                params: { pipeline_id: pipelineId },
+                body: {
+                  graph: {
+                    nodes: nodesTemplate,
+                    edges: edgesTemplate,
+                  },
+                  environment_variables: [],
+                },
               },
-              environment_variables: [],
-            },
-          }).then((res) => {
-            const { setDraftUpdatedAt } = workflowStore.getState()
-            setDraftUpdatedAt(res.updated_at)
-            handleGetInitialWorkflowData()
-          })
+              { context: { silent: true } },
+            )
+            .then((res) => {
+              const { setDraftUpdatedAt } = workflowStore.getState()
+              setDraftUpdatedAt(res.updated_at)
+              handleGetInitialWorkflowData()
+            })
         }
       }
     }

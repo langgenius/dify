@@ -1,6 +1,5 @@
 import json
 import logging
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +31,7 @@ from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.credentials.query import CredentialQuery, ToolCredentialRecord
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.tools.builtin.credentials import resolve_oauth_client
 from services.tools.provider_queries import ToolProviders
 from services.tools.tool_manager import ToolManager
@@ -525,10 +525,12 @@ class BuiltinToolManageService:
             return user_client is not None and user_client.enabled
 
     @staticmethod
-    def get_oauth_client(tenant_id: str, provider: str, *, tool_providers: ToolProviders) -> Mapping[str, Any] | None:
+    def get_oauth_client(
+        tenant_id: str, provider: str, *, tool_providers: ToolProviders
+    ) -> PluginOAuthClientConfig | None:
         return resolve_oauth_client(
             providers=tool_providers,
-            controller=ToolManager.get_builtin_provider(provider, tenant_id),
+            controller=ToolManager.get_plugin_provider(provider, tenant_id),
             tenant_id=tenant_id,
             provider_id=provider,
         )

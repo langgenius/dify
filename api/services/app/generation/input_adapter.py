@@ -1,7 +1,8 @@
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
-from typing import TYPE_CHECKING, Any, final
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, ClassVar, final
 
 from core.app.apps.draft_variable_saver import (
     DraftVariableSaver,
@@ -26,19 +27,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+@dataclass(kw_only=True)
 class AppInputAdapter:
-    _file_access_controller: DatabaseFileAccessController = DatabaseFileAccessController()
+    _file_access_controller: ClassVar[DatabaseFileAccessController] = DatabaseFileAccessController()
 
-    def __init__(
-        self,
-        *,
-        draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None,
-        draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
-        workflow_runtime: WorkflowRuntime | None = None,
-    ) -> None:
-        self._draft_variable_loader = draft_variable_loader
-        self._draft_variable_saver = draft_variable_saver
-        self._workflow_runtime = workflow_runtime
+    draft_variable_loader: Callable[[WorkflowSnapshot, str], VariableLoader] | None = None
+    draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None
+    workflow_runtime: WorkflowRuntime | None = None
 
     @staticmethod
     def _bind_file_access_scope(
@@ -187,8 +182,8 @@ class AppInputAdapter:
                             return float(value)
                         else:
                             return int(value)
-                    except ValueError:
-                        raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
+                    except ValueError as exc:
+                        raise ValueError(f"{variable_entity.variable} in input form must be a valid number") from exc
                 case _:
                     raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
 
@@ -257,9 +252,9 @@ class AppInputAdapter:
         if invoke_from == InvokeFrom.DEBUGGER:
             assert isinstance(account, Account)
 
-            if self._draft_variable_saver is None:
+            if self.draft_variable_saver is None:
                 raise ValueError("Draft variable saver is required for debugging")
-            return self._draft_variable_saver(tenant_id, account)
+            return self.draft_variable_saver(tenant_id, account)
         else:
 
             def draft_var_saver_factory(

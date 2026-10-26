@@ -3,6 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 
 type MemberItemProps = {
+  disabled?: boolean
   leftIcon: ReactNode
   name: string
   email: string
@@ -12,6 +13,7 @@ type MemberItemProps = {
 }
 
 const MemberItem = ({
+  disabled = false,
   leftIcon,
   name,
   email,
@@ -45,13 +47,14 @@ const MemberItem = ({
   )
 
   if (isMe) {
-    return <div className="flex items-center gap-2 rounded-lg py-1 pr-2.5 pl-2">{content}</div>
+    return <div className="flex items-center gap-2 rounded-lg py-1 ps-2 pe-2.5">{content}</div>
   }
 
   return (
     <button
       type="button"
-      className="flex w-full cursor-pointer touch-manipulation items-center gap-2 rounded-lg border-none bg-transparent py-1 pr-2.5 pl-2 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      disabled={disabled}
+      className="flex w-full cursor-pointer touch-manipulation items-center gap-2 rounded-lg border-none bg-transparent py-1 ps-2 pe-2.5 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       aria-pressed={isSelected}
       onClick={onClick}
     >

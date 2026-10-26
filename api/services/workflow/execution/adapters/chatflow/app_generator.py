@@ -379,9 +379,9 @@ class AdvancedChatAppGenerator(AppInputAdapter):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        if self._draft_variable_loader is None:
+        if self.draft_variable_loader is None:
             raise ValueError("Draft variable loader is required for debugging")
-        var_loader = self._draft_variable_loader(workflow, user.id)
+        var_loader = self.draft_variable_loader(workflow, user.id)
 
         return self._generate(
             workflow=workflow,
@@ -460,9 +460,9 @@ class AdvancedChatAppGenerator(AppInputAdapter):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        if self._draft_variable_loader is None:
+        if self.draft_variable_loader is None:
             raise ValueError("Draft variable loader is required for debugging")
-        var_loader = self._draft_variable_loader(workflow, user.id)
+        var_loader = self.draft_variable_loader(workflow, user.id)
 
         return self._generate(
             workflow=workflow,
@@ -634,7 +634,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
                     )
                 runner = AdvancedChatAppRunner(
                     runtime=self._runtime,
-                    draft_variable_saver=self._draft_variable_saver,
+                    draft_variable_saver=self.draft_variable_saver,
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     conversation=conversation,
@@ -681,11 +681,7 @@ class AdvancedChatAppGenerator(AppInputAdapter):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> (
-        ChatbotAppBlockingResponse
-        | AdvancedChatPausedBlockingResponse
-        | Generator[ChatbotAppStreamResponse]
-    ):
+    ) -> ChatbotAppBlockingResponse | AdvancedChatPausedBlockingResponse | Generator[ChatbotAppStreamResponse]:
         """
         Handle response.
         :param application_generate_entity: application generate entity

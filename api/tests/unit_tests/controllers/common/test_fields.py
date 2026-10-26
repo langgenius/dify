@@ -1,19 +1,11 @@
-import builtins
 from unittest.mock import patch
-
-from flask.views import MethodView as FlaskMethodView
 
 from controllers.common.fields import Parameters, Site
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from models.model import IconType
 
-_NEEDS_METHOD_VIEW_CLEANUP = False
-if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = FlaskMethodView
-    _NEEDS_METHOD_VIEW_CLEANUP = True
 
-
-def test_parameters_model_round_trip():
+def test_parameters_model_round_trip() -> None:
     parameters = get_parameters_from_feature_dict(features_dict={}, user_input_form=[])
 
     model = Parameters.model_validate(parameters)
@@ -21,7 +13,7 @@ def test_parameters_model_round_trip():
     assert model.model_dump(mode="json") == parameters
 
 
-def test_site_icon_url_uses_signed_url_for_image_icon():
+def test_site_icon_url_uses_signed_url_for_image_icon() -> None:
     site = Site(
         title="Example",
         chat_color_theme=None,
@@ -45,7 +37,7 @@ def test_site_icon_url_uses_signed_url_for_image_icon():
         mock_helper.assert_called_once_with("file-id")
 
 
-def test_site_icon_url_is_none_for_non_image_icon():
+def test_site_icon_url_is_none_for_non_image_icon() -> None:
     site = Site(
         title="Example",
         chat_color_theme=None,

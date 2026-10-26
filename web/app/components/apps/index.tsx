@@ -1,12 +1,15 @@
 'use client'
+import type { UpdateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
-import type { CreateAppModalProps } from '../explore/create-app-modal'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
-import { noop, useQueryClient } from '@tanstack/react-query'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { noop, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AppMetadataForm } from '@/app/components/app/app-metadata'
 import { getTemplateImportSource } from '@/app/components/explore/template-import'
 import { EducationExpireNotice } from '@/app/education/expire-notice'
 import { toast } from '@/app/notifications'
@@ -22,7 +25,6 @@ import { List } from './list'
 const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), {
   ssr: false,
 })
-const CreateAppModal = dynamic(() => import('../explore/create-app-modal'), { ssr: false })
 const TryApp = dynamic(() => import('../explore/try-app'), { ssr: false })
 const ImportFromMarketplaceTemplateModal = dynamic(
   () => import('./import-from-marketplace-template-modal'),
@@ -67,11 +69,13 @@ const AppsContent = () => {
     [queryClient],
   )
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
+  const createNameRef = useRef<HTMLInputElement>(null)
 
   const handleCreateLearnDify = (app: RecommendedAppResponse) => {
     if (!canCreateApp) return
 
     setCurrApp(app)
+
     setIsShowCreateModal(true)
   }
 
@@ -82,6 +86,7 @@ const AppsContent = () => {
       source: 'studio_template_preview',
       templateId: currApp?.app_id,
     }
+
     setIsShowCreateModal(true)
   }, [canCreateApp, currApp?.app_id])
   const trackCurrentCreateApp = useCallback((appMode?: TrackCreateAppParams['appMode'] | null) => {
@@ -146,8 +151,8 @@ const AppsContent = () => {
     [canCreateApp, handleImportDSL, handleCloseTemplateModal, templateId, trackCurrentCreateApp],
   )
 
-  const onCreate: CreateAppModalProps['onConfirm'] = useCallback(
-    async ({ name, icon_type, icon, icon_background, description }) => {
+  const onCreate = useCallback(
+    async ({ name, icon_type, icon, icon_background, description }: UpdateAppPayload) => {
       if (!canCreateApp || !currApp) return
 
       hideTryAppPanel()
@@ -171,6 +176,7 @@ const AppsContent = () => {
             setIsShowCreateModal(false)
           },
           onPending: () => {
+            setIsShowCreateModal(false)
             setShowDSLConfirmModal(true)
           },
         })
@@ -180,6 +186,9 @@ const AppsContent = () => {
     },
     [canCreateApp, currApp, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp, t],
   )
+
+  const submission = useMutation({ mutationFn: onCreate })
+  const isCreatePending = submission.isPending || isFetching
 
   return (
     <>
@@ -207,24 +216,39 @@ const AppsContent = () => {
           />
         )}
 
-        {isShowCreateModal && (
-          <CreateAppModal
-            appIconType={
-              currApp?.app?.icon_type === 'image' || currApp?.app?.icon_type === 'link'
-                ? currApp.app.icon_type
-                : 'emoji'
-            }
-            appIcon={currApp?.app?.icon ?? ''}
-            appIconBackground={currApp?.app?.icon_background ?? ''}
-            appIconUrl={currApp?.app?.icon_url}
-            appName={currApp?.app?.name ?? ''}
-            appDescription=""
-            show
-            onConfirm={onCreate}
-            confirmLoading={isFetching}
-            onHide={() => setIsShowCreateModal(false)}
-          />
-        )}
+        <Dialog
+          open={isShowCreateModal}
+          disablePointerDismissal
+          onOpenChange={(open, details) => {
+            if (!open && isCreatePending) details.cancel()
+            else setIsShowCreateModal(open)
+          }}
+          onOpenChangeComplete={(open) => {
+            if (!open && !submission.isPending) submission.reset()
+          }}
+        >
+          <DialogContent initialFocus={createNameRef}>
+            {currApp && (
+              <AppMetadataForm
+                operation="create"
+                appDetail={{
+                  name: currApp.app?.name ?? '',
+                  description: '',
+                  icon_type: zIconType.safeParse(currApp.app?.icon_type).data ?? 'emoji',
+                  icon: currApp.app?.icon ?? null,
+                  icon_background: currApp.app?.icon_background,
+                  icon_url: currApp.app?.icon_url ?? null,
+                }}
+                nameInputRef={createNameRef}
+                isPending={isCreatePending}
+                error={submission.error?.message}
+                onSubmit={(body) => {
+                  if (!isCreatePending) submission.mutate(body)
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
 
         {canCreateApp && templateId && !templateDismissedRef.current && (
           <ImportFromMarketplaceTemplateModal

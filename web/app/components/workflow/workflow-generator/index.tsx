@@ -4,12 +4,14 @@ import type {
   WorkflowGenerateErrorResponse,
   WorkflowGeneratePayload,
   WorkflowGeneratePlanEventResponse,
+  WorkflowGraph,
 } from '@dify/contracts/api/console/workflow-generate/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { SelectorParam, TFunction } from 'i18next'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, ModelModeType } from '@/types/app'
+import { zWorkflowGraph } from '@dify/contracts/api/console/workflow-generate/zod.gen'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -39,7 +41,7 @@ import { WORKFLOW_GENERATION_TIMEOUT_MS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { consoleClient } from '@/service/console'
 import { generateWorkflow, generateWorkflowStream } from '@/service/workflow-generator'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import {
@@ -62,7 +64,7 @@ import useGenGraph from './use-gen-graph'
 // Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
 // keeping the limit client-side turns an opaque 400 into a visible input stop.
 const MAX_INSTRUCTION_LENGTH = 10_000
-const WORKFLOW_GENERATOR_SUBMIT_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const WORKFLOW_GENERATOR_SUBMIT_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 // A single structured generation error. Mirrors the backend ``errors[]`` entry
 // (stable ``code`` + human ``detail`` + optional ``node_id``) so the error panel
@@ -222,7 +224,7 @@ function WorkflowGeneratorModal() {
   const [genError, setGenError] = useState<WorkflowGenerateErrorResponse[] | null>(null)
   // Refine base graph captured at Generate time, diffed against the result so
   // the user can see what "apply" changes before overwriting their draft.
-  const [refineBaseGraph, setRefineBaseGraph] = useState<GeneratedGraph | null>(null)
+  const [refineBaseGraph, setRefineBaseGraph] = useState<WorkflowGraph | null>(null)
 
   const storageKey = `${mode}-${currentAppId ?? 'new'}`
   const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } =
@@ -365,11 +367,18 @@ function WorkflowGeneratorModal() {
     // provider, so we read the persisted draft rather than the live canvas. A
     // fetch failure (no draft yet) degrades to from-scratch generation, but we
     // warn since the user explicitly asked to refine.
-    let currentGraph: GeneratedGraph | undefined
+    let currentGraph: WorkflowGraph | undefined
     if (isRefine && currentAppId) {
       try {
-        const draft = await fetchWorkflowDraft(`apps/${currentAppId}/workflows/draft`)
-        if (draft?.graph?.nodes?.length) currentGraph = draft.graph as GeneratedGraph
+        const draft = await consoleClient.apps.byAppId.workflows.draft.get(
+          { params: { app_id: currentAppId } },
+          { context: { silent: true } },
+        )
+        // Validate the generator's graph requirements without stripping editor metadata.
+        if (zWorkflowGraph.safeParse(draft.graph).success) {
+          const graph = draft.graph as WorkflowGraph
+          if (graph.nodes.length) currentGraph = graph
+        }
       } catch {
         currentGraph = undefined
       }
@@ -386,9 +395,7 @@ function WorkflowGeneratorModal() {
       mode: autoMode ? 'auto' : mode,
       instruction,
       model_config: { ...model, mode: model.mode || 'chat' },
-      ...(currentGraph
-        ? { current_graph: currentGraph as unknown as WorkflowGeneratePayload['current_graph'] }
-        : {}),
+      ...(currentGraph ? { current_graph: currentGraph } : {}),
     }
 
     const finish = () => {
@@ -565,7 +572,7 @@ function WorkflowGeneratorModal() {
   // Refine diff — what an "apply" would change vs. the draft we started from.
   const refineDiff = useMemo(() => {
     if (!isRefine || !refineBaseGraph || !current?.graph?.nodes?.length) return null
-    return diffGraphs(refineBaseGraph, current.graph as GeneratedGraph)
+    return diffGraphs(refineBaseGraph, current.graph)
   }, [isRefine, refineBaseGraph, current])
   const hasRefineChanges =
     !!refineDiff &&
