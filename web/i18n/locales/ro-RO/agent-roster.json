@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "de ex. Asistent de cercetare",
   "roster.dateTimeFormat": "DD.MM.YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Această acțiune șterge definitiv {{name}}. Aplicația web și accesul la API ale Agentului, precum și workflow-urile care îl folosesc, vor înceta imediat să funcționeze.",
+  "roster.deleteDialog.inputLabel": "Introdu <name>{{name}}</name> pentru a confirma",
+  "roster.deleteDialog.inputPlaceholder": "Introdu numele agentului",
   "roster.deleteDialog.title": "Ștergeți {{name}}?",
   "roster.deleteFailed": "Ștergerea agentului a eșuat.",
   "roster.duplicateDialog.description": "Creați o copie a {{name}} și personalizați-i identitatea Agent.",

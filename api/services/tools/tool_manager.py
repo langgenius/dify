@@ -526,7 +526,7 @@ class ToolManager:
     @classmethod
     def list_builtin_providers(
         cls, tenant_id: str
-    ) -> Generator[BuiltinToolProviderController | PluginToolProviderController, None, None]:
+    ) -> Generator[BuiltinToolProviderController | PluginToolProviderController]:
         """
         list all the builtin providers
         """
@@ -535,7 +535,7 @@ class ToolManager:
         yield from cls.list_plugin_providers(tenant_id)
 
     @classmethod
-    def _list_hardcoded_providers(cls) -> Generator[BuiltinToolProviderController, None, None]:
+    def _list_hardcoded_providers(cls) -> Generator[BuiltinToolProviderController]:
         """
         list all the builtin providers
         """

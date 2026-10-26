@@ -13,6 +13,7 @@ from uuid import uuid4
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConnectResponse,
     AgentStubConfigManifestResponse,
+    AgentStubConfigPromptResponse,
     AgentStubConfigPushRequest,
     AgentStubConfigPushResponse,
     AgentStubFileDownloadRequest,
@@ -68,6 +69,10 @@ class AgentStubControlPlaneService:
     file_request_handler: AgentStubFileRequestHandler | None = None
     config_request_handler: AgentStubConfigRequestHandler | None = None
     connection_id_factory: Callable[[], str] = field(default=lambda: str(uuid4()))
+
+    def authenticate(self, *, authorization: str | None) -> AgentStubPrincipal:
+        """Shared authentication boundary for additional typed read-only bridges."""
+        return self._authenticate(authorization, expose_expiration=True)
 
     async def connect(self, *, authorization: str | None) -> AgentStubConnectResponse:
         """Authenticate and handle one connect request."""
@@ -171,6 +176,22 @@ class AgentStubControlPlaneService:
         handler = self._require_config_request_handler()
         try:
             return await handler.update_note(principal=principal, note=note)
+        except AgentStubConfigRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
+    async def get_config_prompt(self, *, authorization: str | None) -> AgentStubConfigPromptResponse:
+        principal = self._authenticate(authorization, expose_expiration=True)
+        handler = self._require_config_request_handler()
+        try:
+            return await handler.get_prompt(principal=principal)
+        except AgentStubConfigRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
+    async def update_config_prompt(self, *, prompt: str, authorization: str | None) -> AgentStubConfigPromptResponse:
+        principal = self._authenticate(authorization, expose_expiration=True)
+        handler = self._require_config_request_handler()
+        try:
+            return await handler.update_prompt(principal=principal, prompt=prompt)
         except AgentStubConfigRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 

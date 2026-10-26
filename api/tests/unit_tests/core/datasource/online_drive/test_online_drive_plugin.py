@@ -9,7 +9,7 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveDownloadFileRequest,
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
-from tests.unit_tests.core.datasource.factories import datasource_entity
+from tests.helpers.unit.core.datasource.factories import datasource_entity
 
 
 class TestOnlineDriveDatasourcePlugin:

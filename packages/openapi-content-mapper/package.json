@@ -1,0 +1,130 @@
+{
+  "name": "@dify/openapi-content-mapper",
+  "version": "0.1.0-beta.0",
+  "description": "Typed OpenAPI imports with TypeScript 7.1 Content Mappers, tree-shakable API calls and query helpers.",
+  "keywords": [
+    "content-mapper",
+    "nextjs",
+    "openapi",
+    "sdk",
+    "tanstack-query",
+    "tree-shaking",
+    "typescript",
+    "vite"
+  ],
+  "homepage": "https://github.com/langgenius/dify/tree/main/packages/openapi-content-mapper#readme",
+  "bugs": {
+    "url": "https://github.com/langgenius/dify/issues"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/langgenius/dify.git",
+    "directory": "packages/openapi-content-mapper"
+  },
+  "files": [
+    "CHANGELOG.md",
+    "LICENSE",
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "./dist/tooling/register.js"
+  ],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/tooling/vite.d.ts",
+      "default": "./dist/tooling/vite.js"
+    },
+    "./loader": {
+      "types": "./dist/tooling/loader.d.ts",
+      "default": "./dist/tooling/loader.js"
+    },
+    "./namespace": {
+      "types": "./dist/tooling/openapi-namespace.d.ts",
+      "default": "./dist/tooling/openapi-namespace.js"
+    },
+    "./register": {
+      "types": "./dist/tooling/register.d.ts",
+      "default": "./dist/tooling/register.js"
+    },
+    "./mapper": {
+      "types": "./dist/tooling/mapper.d.ts",
+      "default": "./dist/tooling/mapper.js"
+    },
+    "./runtime": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
+    "./query-runtime": {
+      "types": "./dist/query-runtime.d.ts",
+      "default": "./dist/query-runtime.js"
+    },
+    "./package.json": "./package.json",
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/",
+    "tag": "beta"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "prepare": "pnpm run build",
+    "type-check": "tsc -p tsconfig.json --noEmit && tsc --runExternalCode --noEmit -p examples/petstore/tsconfig.json",
+    "test": "node --test --test-concurrency=1 test/*.test.mjs",
+    "demo": "node --import ./dist/tooling/register.js examples/petstore/demo.ts",
+    "test:next": "node --test integration/next.mjs",
+    "test:repository": "node --test integration/*.test.mjs",
+    "compare:orpc": "node integration/compare-orpc.mjs",
+    "check:orpc": "node integration/compare-orpc.mjs --check",
+    "prepack": "pnpm run build",
+    "test:package": "node --test integration/package.mjs",
+    "check:console": "node integration/compare-orpc.mjs --console --check"
+  },
+  "dependencies": {
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "@orpc/standard-server": "catalog:",
+    "@orpc/tanstack-query": "catalog:",
+    "es-module-lexer": "catalog:",
+    "import-meta-resolve": "catalog:",
+    "yaml": "catalog:"
+  },
+  "devDependencies": {
+    "@tanstack/query-core": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:ts71",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "vite": "catalog:public-vite"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "typescript": {
+    "contentMapper": {
+      "compilerOptions": [],
+      "dynamicConfig": true,
+      "exec": [
+        "node",
+        "dist/tooling/mapper.js"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

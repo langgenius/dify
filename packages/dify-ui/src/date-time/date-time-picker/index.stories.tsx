@@ -3,6 +3,7 @@ import { arTN } from '@daypicker/react/locale/ar-TN'
 import { faIR } from '@daypicker/react/locale/fa-IR'
 import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
+import { DirectionProvider } from '../../direction-provider'
 import {
   DateTimePicker,
   DateTimePickerClear,
@@ -72,31 +73,31 @@ export const RTL: Story = {
     docs: {
       description: {
         story:
-          'A local direction override applies to both calendar and time views, including the portaled popup. Dates use Arabic formatting with English action labels. Changing views preserves the draft; Escape discards it.',
+          'DirectionProvider controls keyboard navigation and layout in both calendar and time views. For a local RTL region, set dir on the wrapper and on the portaled content; global direction is inherited from <html dir>. Dates use Arabic formatting with English action labels. Changing views preserves the draft; Escape discards it.',
       },
     },
   },
   render: () => (
-    <DateTimePicker
-      direction="rtl"
-      locale={arTN}
-      timeZone="Asia/Shanghai"
-      defaultValue={new Date('2025-01-15T13:30:00Z')}
-      hourCycle={24}
-    >
-      <DateTimePickerLabel className="sr-only">Meeting time</DateTimePickerLabel>
-      <DateTimePickerTrigger />
-      <DateTimePickerContent />
-    </DateTimePicker>
+    <div dir="rtl">
+      <DirectionProvider direction="rtl">
+        <DateTimePicker
+          locale={arTN}
+          timeZone="Asia/Shanghai"
+          defaultValue={new Date('2025-01-15T13:30:00Z')}
+          hourCycle={24}
+        >
+          <DateTimePickerLabel className="sr-only">Meeting time</DateTimePickerLabel>
+          <DateTimePickerTrigger />
+          <DateTimePickerContent dir="rtl" />
+        </DateTimePicker>
+      </DirectionProvider>
+    </div>
   ),
   play: async ({ canvasElement, userEvent }) => {
     const body = within(canvasElement.ownerDocument.body)
     const trigger = within(canvasElement).getByRole('button', { name: /^Meeting time / })
     await userEvent.click(trigger)
-    await expect(await body.findByRole('dialog', { name: 'Meeting time' })).toHaveAttribute(
-      'dir',
-      'rtl',
-    )
+    await body.findByRole('dialog', { name: 'Meeting time' })
     await userEvent.click(body.getByRole('button', { name: /Pick Time:/ }))
     const hours = await body.findByRole('listbox', { name: 'Hour' })
     const minutes = body.getByRole('listbox', { name: 'Minute' })
@@ -204,19 +205,20 @@ export const PersianNumbers: Story = {
     },
   },
   render: () => (
-    <div dir="rtl" className="grid gap-1">
-      <DateTimePicker
-        locale={faIR}
-        direction="rtl"
-        timeZone="UTC"
-        hourCycle={24}
-        defaultValue={new Date('2025-01-15T10:05:00Z')}
-      >
-        <DateTimePickerLabel>Meeting</DateTimePickerLabel>
-        <DateTimePickerTrigger />
-        <DateTimePickerContent />
-      </DateTimePicker>
-    </div>
+    <DirectionProvider direction="rtl">
+      <div dir="rtl" className="grid gap-1">
+        <DateTimePicker
+          locale={faIR}
+          timeZone="UTC"
+          hourCycle={24}
+          defaultValue={new Date('2025-01-15T10:05:00Z')}
+        >
+          <DateTimePickerLabel>Meeting</DateTimePickerLabel>
+          <DateTimePickerTrigger />
+          <DateTimePickerContent dir="rtl" />
+        </DateTimePicker>
+      </div>
+    </DirectionProvider>
   ),
   play: async ({ canvasElement, userEvent }) => {
     const body = within(canvasElement.ownerDocument.body)

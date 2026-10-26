@@ -1,6 +1,5 @@
 'use client'
 
-import type { TextDirection } from '@langgenius/dify-ui/direction-provider'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 
@@ -11,9 +10,7 @@ export function usePickerLabels() {
     new Intl.DateTimeFormat(locale, { hour: 'numeric', hour12: true, timeZone: 'UTC' })
       .formatToParts(new Date(Date.UTC(2025, 0, 1, hour)))
       .find((part) => part.type === 'dayPeriod')?.value ?? (hour < 12 ? 'AM' : 'PM')
-  const direction: TextDirection = locale === 'ar-TN' || locale === 'fa-IR' ? 'rtl' : 'ltr'
   return {
-    direction,
     locale,
     requiredLabel: t(($) => $['picker.requiredLabel']),
     validationMessage: t(($) => $['picker.required']),
@@ -29,6 +26,7 @@ export function usePickerLabels() {
       unavailable: t(($) => $['picker.unavailable']),
       backToDate: t(($) => $['operation.pickDate']),
       cancel: t(($) => $['operation.cancel']),
+      close: t(($) => $['operation.close']),
       apply: t(($) => $['operation.ok']),
       now: t(($) => $['operation.now']),
       title: t(($) => $['title.pickTime']),

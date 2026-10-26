@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from models import App
 from repositories.app.dsl_repository import AppDslOverwriteRepository
 from services.errors.base import NoPermissionError
-from tests.unit_tests.model_factories import make_app, make_workflow
+from tests.helpers.unit.model_factories import make_app, make_workflow
 
 
 @pytest.mark.parametrize(

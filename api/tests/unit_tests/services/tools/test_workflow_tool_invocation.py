@@ -14,7 +14,7 @@ from models.model import App, AppMode, EndUser
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.tools.workflow.tool import WorkflowTool
-from tests.unit_tests.model_factories import make_account, make_app, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 
 
 @dataclass(frozen=True)

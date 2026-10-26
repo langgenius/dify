@@ -3,6 +3,7 @@ from types import ModuleType
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.common.access_response import register_auth_error_response
 from controllers.common.errors import (
     InternalServerError,
     InvalidArgumentError,
@@ -13,6 +14,7 @@ from controllers.common.errors import (
 from libs.external_api import ExternalApi
 
 bp = Blueprint("service_api", __name__, url_prefix="/v1")
+register_auth_error_response(bp, www_authenticate='Bearer realm="api"')
 
 api = ExternalApi(
     bp,
@@ -57,6 +59,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     )
     from .dataset.rag_pipeline import rag_pipeline_workflow
     from .end_user import end_user
+    from .knowledge_fs import resources as knowledge_fs_resources
     from .workspace import models
 
     return (
@@ -80,6 +83,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         segment,
         rag_pipeline_workflow,
         end_user,
+        knowledge_fs_resources,
         models,
     )
 
@@ -105,6 +109,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     segment,
     rag_pipeline_workflow,
     end_user,
+    knowledge_fs_resources,
     models,
 ) = _register_controllers()
 
@@ -122,6 +127,7 @@ __all__ = [
     "hit_testing",
     "human_input_form",
     "index",
+    "knowledge_fs_resources",
     "message",
     "metadata",
     "models",
