@@ -45,9 +45,7 @@ def find_new_constructor_bypasses(
     added = []
     for path, (old_source, new_source) in versions.items():
         if Path(path).is_relative_to("api"):
-            existing = Counter(
-                match_key(match) for match in run_ast_grep(old_source, rule=rule)
-            )
+            existing = Counter(match_key(match) for match in run_ast_grep(old_source, rule=rule))
             for match in run_ast_grep(new_source, rule=rule):
                 key = match_key(match)
                 if existing[key]:
@@ -74,16 +72,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--base-rev", help="Compare this revision with committed HEAD.")
-    source.add_argument(
-        "--staged", action="store_true", help="Compare staged changes with HEAD."
-    )
+    source.add_argument("--staged", action="store_true", help="Compare staged changes with HEAD.")
     args = parser.parse_args()
     try:
-        versions = (
-            changed_file_versions(args)
-            if args.base_rev or args.staged
-            else working_file_versions()
-        )
+        versions = changed_file_versions(args) if args.base_rev or args.staged else working_file_versions()
         violations = find_new_constructor_bypasses(versions)
     except (OSError, RuntimeError) as error:
         sys.stderr.write(f"{error}\n")
