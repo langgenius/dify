@@ -20,7 +20,8 @@ from sqlalchemy.orm import sessionmaker
 from core.dify_builder.models import Actor
 from graphon.runtime.runtime_state.state import RuntimeState
 from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
-from models.model import App
+from models.enums import AppStatus
+from models.model import App, AppMode
 from models.workflow import Workflow
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
@@ -138,7 +139,7 @@ def zero_http_case(monkeypatch: pytest.MonkeyPatch) -> ZeroHttpCase:
         assert kwargs == {"actor": actor, "app_id": "app", "session_id": "session", "test_input_id": "input"}
         case.owner_reads.append(kwargs)
         return ExecutionOwnerSnapshot(
-            app=App(id="app", mode="workflow", tenant_id="tenant", status="normal"),
+            app=App(id="app", mode=AppMode.WORKFLOW, tenant_id="tenant", status=AppStatus.NORMAL),
             workflow=workflow,
             session=builder,
             test_input=test_input,

@@ -64,7 +64,7 @@ from libs.passport import PassportService
 from libs.token import _real_cookie_name, generate_csrf_token
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base, TypeBase
-from models.model import App, DifySetup
+from models.model import App, AppMode, DifySetup
 from services.dify_builder import wiring
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.dify_builder.application.ports import Repository
@@ -2290,7 +2290,7 @@ def request_sql_world(
             App(
                 id="app-1",
                 tenant_id="ten-1",
-                mode="workflow",
+                mode=AppMode.WORKFLOW,
                 name="Builder app",
                 tracing=None,
                 enable_site=False,

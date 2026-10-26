@@ -20,6 +20,7 @@ from sqlalchemy import Select
 from sqlalchemy.engine import ScalarResult
 
 from controllers.inner_api import bp
+from models.model import AppMode
 from runtime_contracts.builder.native.agent_contracts import (
     AgentNodeAssociation,
     AgentParentNodeRef,
@@ -252,7 +253,12 @@ def test_genuine_plugin_and_verified_ordinary_retain_real_knowledge_resource_aut
     sqlite_session.add_all(
         [
             App(
-                id="app-1", tenant_id=owned_tenant, name="Caller", mode="workflow", enable_site=False, enable_api=False
+                id="app-1",
+                tenant_id=owned_tenant,
+                name="Caller",
+                mode=AppMode.WORKFLOW,
+                enable_site=False,
+                enable_api=False,
             ),
             Dataset(id="dataset-1", tenant_id=owned_tenant, name="Knowledge", created_by="actor"),
         ]

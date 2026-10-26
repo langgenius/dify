@@ -29,6 +29,11 @@ const getChildExecutions = vi.hoisted(() =>
     typeof import('@/service/console').consoleClient.apps.byAppId.workflowRuns.byRunId.nodeExecutions.byNodeExecutionId.children.get
   >(),
 )
+const getTraceRun = vi.hoisted(() =>
+  vi.fn<
+    typeof import('@/service/console').consoleClient.apps.byAppId.traceRuns.bySourceKind.bySourceId.get
+  >(),
+)
 const getPauseDetails = vi.hoisted(() =>
   vi.fn<
     typeof import('@/service/console').consoleClient.workflow.byWorkflowRunId.pauseDetails.get
@@ -40,6 +45,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': getTraceRun,
       'apps.byAppId.workflowRuns.byRunId.nodeExecutions.byNodeExecutionId.children.get':
         getChildExecutions,
       'workflow.byWorkflowRunId.pauseDetails.get': getPauseDetails,
@@ -72,6 +78,12 @@ vi.mock('react-i18next', async () => {
 const renderPreview = (options: Parameters<typeof renderWorkflowEditor>[1] = {}) =>
   renderWorkflowEditor(<WorkflowPreview />, options)
 const mockSubmitHumanInputForm = vi.mocked(submitHumanInputForm)
+
+// Preload the real renderer so output assertions wait for preview state changes.
+beforeAll(async () => {
+  await import('@/app/components/base/markdown/streamdown-wrapper')
+})
+
 type PreviewRun = NonNullable<Shape['workflowRunningData']>
 const createPreviewRunningData = (overrides: Partial<PreviewRun> = {}): PreviewRun => ({
   ...createWorkflowRunningData(),
@@ -123,6 +135,11 @@ const createHumanInputFilledFormData = (
 })
 
 beforeEach(() => {
+  getTraceRun.mockImplementation(async ({ params }) => ({
+    status: 'not_collected',
+    source_kind: params.source_kind,
+    source_id: params.source_id,
+  }))
   getChildExecutions.mockReset()
   getPauseDetails.mockReset()
   mockSubmitHumanInputForm.mockReset().mockResolvedValue({ result: 'success' })
@@ -402,7 +419,11 @@ it('loads nested tool traces using the editor app identity and preview run ID', 
     },
   })
 
-  await user.click(await screen.findByRole('button', { name: 'runLog.tracing' }))
+  await user.click(
+    await screen.findByRole('button', {
+      name: (name, element) => name === 'runLog.tracing' && !element.hasAttribute('aria-pressed'),
+    }),
+  )
   expect(await screen.findByText('common.noData')).toBeInTheDocument()
   expect(getChildExecutions).toHaveBeenCalledWith({
     params: {

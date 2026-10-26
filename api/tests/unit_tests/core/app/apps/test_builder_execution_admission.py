@@ -26,7 +26,7 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLA
 from graphon.graph.graph import Graph
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
-from models.model import Account, App
+from models.model import Account, App, AppMode
 from models.workflow import Workflow
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from runtime_contracts.builder.execution import JsonToolExecutionContext
@@ -196,7 +196,7 @@ def test_serialized_native_markers_cannot_disappear() -> None:
     account = Account(name="Owner", email="owner@example.invalid")
     account.id = "account"
     params = AppExecutionParams.new(
-        App(id="app", tenant_id="tenant", mode="workflow"),
+        App(id="app", tenant_id="tenant", mode=AppMode.WORKFLOW),
         Workflow(id="workflow"),
         account,
         {},
@@ -286,7 +286,7 @@ def test_json_generate_refuses_unsupported_transport_before_workflow_read(
     admit = admission
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
         AppGenerateService.generate(
-            app_model=App(id=marker.app_id, tenant_id=marker.tenant_id, mode="workflow"),
+            app_model=App(id=marker.app_id, tenant_id=marker.tenant_id, mode=AppMode.WORKFLOW),
             user=account,
             args={"inputs": {}, "files": [{"id": "file"}]} if transport == "files" else {"inputs": {}},
             invoke_from=InvokeFrom.DEBUGGER,
@@ -316,7 +316,7 @@ def test_json_workflow_generator_refuses_before_file_or_graph_effect(
     )
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
         WorkflowAppGenerator(execution_driver=_forbidden_driver).generate(
-            app_model=App(id=marker.app_id, tenant_id=marker.tenant_id, mode="workflow"),
+            app_model=App(id=marker.app_id, tenant_id=marker.tenant_id, mode=AppMode.WORKFLOW),
             workflow=Workflow(id=marker.workflow_id),
             user=account,
             args={"inputs": {}, "files": [{"id": "file"}]} if transport == "files" else {"inputs": {}},
@@ -343,7 +343,7 @@ def test_json_resume_refuses_before_trace_or_graph_restore(
     marker = _json_context()
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
         WorkflowAppGenerator(execution_driver=_forbidden_driver).resume(
-            app_model=App(id=marker.app_id, tenant_id=marker.tenant_id, mode="workflow"),
+            app_model=App(id=marker.app_id, tenant_id=marker.tenant_id, mode=AppMode.WORKFLOW),
             workflow=Workflow(id=marker.workflow_id),
             user=Account(name="Owner", email="owner@example.invalid"),
             application_generate_entity=WorkflowAppGenerateEntity.model_construct(builder_execution=marker),

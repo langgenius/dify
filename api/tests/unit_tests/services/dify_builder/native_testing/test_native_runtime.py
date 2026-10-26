@@ -27,7 +27,7 @@ from graphon.nodes.base.node import Node
 from models.base import Base, TypeBase
 from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativePayloadObject
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import AppStatus, WorkflowRunTriggeredFrom
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from runtime_contracts.builder.native.contracts import (
@@ -731,7 +731,9 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(
         _conversation_variables="{}",
         created_by=context.actor_id,
     )
-    app = App(id=context.app_id, tenant_id=context.tenant_id, mode="workflow", status="normal", name="Component")
+    app = App(
+        id=context.app_id, tenant_id=context.tenant_id, mode=AppMode.WORKFLOW, status=AppStatus.NORMAL, name="Component"
+    )
     account = Account(name="Component", email="component@example.invalid")
     account.id, account.status = context.actor_id, AccountStatus.ACTIVE
     case.rows[Workflow], case.rows[App], case.rows[Account] = (

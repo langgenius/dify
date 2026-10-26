@@ -96,9 +96,9 @@ export const TestResultCard = ({
             role="region"
             aria-label={outputsLabel}
             style={{ overflowX: 'hidden' }}
-            className="max-h-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-accent"
+            className="max-h-80"
           >
-            <ScrollAreaContent style={{ minWidth: 0 }} className="pr-3 pb-1">
+            <ScrollAreaContent style={{ minWidth: 0 }} className="pe-3 pb-1">
               {payload.terminal_outputs != null ? (
                 <TestResultOutputs outputs={payload.terminal_outputs} />
               ) : appId && payload.dify_run_id ? (

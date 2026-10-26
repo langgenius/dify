@@ -239,7 +239,7 @@ def _seed_app(db: _AuthorizerDb, *, role: TenantAccountRole | None, app_tenant: 
             App(
                 id="app-1",
                 tenant_id=app_tenant,
-                mode="workflow",
+                mode=AppMode.WORKFLOW,
                 name="Builder app",
                 tracing=None,
                 enable_site=False,

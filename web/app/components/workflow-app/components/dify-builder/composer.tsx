@@ -111,7 +111,7 @@ const DifyBuilderComposer = () => {
       >
         <div className="flex flex-col items-end justify-end p-1.5">
           <DifyBuilderPromptInput descriptionId={showStatus ? statusId : undefined} />
-          <div className="flex h-8 w-full shrink-0 items-center justify-between gap-2 pl-1">
+          <div className="flex h-8 w-full shrink-0 items-center justify-between gap-2 ps-1">
             <DifyBuilderModelSelector {...modelState} />
             <DifyBuilderSendButton hasModel={hasModel} />
           </div>

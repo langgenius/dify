@@ -130,7 +130,7 @@ function FirstEmptyState({
                         type="button"
                         aria-controls={moreTypesId}
                         aria-expanded={moreTypesExpanded}
-                        className="flex h-6 w-full cursor-pointer items-center gap-1 rounded-lg py-1 text-left system-xs-medium-uppercase text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                        className="flex h-6 w-full cursor-pointer items-center gap-1 rounded-lg py-1 text-start system-xs-medium-uppercase text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                         onClick={() => setMoreTypesExpanded((value) => !value)}
                       >
                         <span

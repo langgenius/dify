@@ -7,6 +7,22 @@ import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '../../types'
 import WorkflowPreview from '../workflow-preview'
 
+const getTraceRun = vi.hoisted(() =>
+  vi.fn<
+    typeof import('@/service/console').consoleClient.apps.byAppId.traceRuns.bySourceKind.bySourceId.get
+  >(),
+)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': getTraceRun,
+    }),
+  }
+})
+
 vi.mock('../../hooks/use-workflow-panel-interactions', () => ({
   useWorkflowInteractions: () => ({ handleCancelDebugAndPreviewPanel: vi.fn() }),
 }))
@@ -26,6 +42,14 @@ const createLiveRun = (result: Partial<WorkflowRunningData['result']> = {}): Wor
   })
 
 describe('WorkflowPreview Fix', () => {
+  beforeEach(() => {
+    getTraceRun.mockImplementation(async ({ params }) => ({
+      status: 'not_collected',
+      source_kind: params.source_kind,
+      source_id: params.source_id,
+    }))
+  })
+
   it('opens Fix for the latest live run from Detail and hides it on other tabs', async () => {
     const user = userEvent.setup()
     const onFixRun = vi.fn()
