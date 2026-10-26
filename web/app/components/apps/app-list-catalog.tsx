@@ -8,7 +8,6 @@ import type {
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { RefObject } from 'react'
-import type { AppCardInteractionsProps } from './app-card/interactions'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -20,11 +19,11 @@ import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tans
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DeleteAppForm } from '@/app/components/app/delete-app-form'
-import { getAdjacentCardFocusTargets } from '@/app/components/base/card-list-focus'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import { APP_LIST_GRID_CLASS_NAME } from './constants'
@@ -115,11 +114,13 @@ function AppListCatalogContent({
   const deletion = useMutation(
     consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
   )
-  const openDeleteDialog = useCallback<AppCardInteractionsProps['onDelete']>(
-    (app, trigger) =>
+  const openDeleteDialog = useCallback(
+    (app: Pick<AppPartial, 'id' | 'name'>, item: HTMLLIElement | null) =>
       deleteDialog.openWithPayload({
         ...app,
-        adjacentFocusTargets: getAdjacentCardFocusTargets(trigger),
+        adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+          sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+        ),
         fallbackFocus: { current: null },
       }),
     [deleteDialog],
@@ -220,7 +221,7 @@ function AppListCatalogContent({
                   <AppCard
                     key={app.id}
                     app={app}
-                    onDelete={openDeleteDialog}
+                    onDelete={(item) => openDeleteDialog(app, item)}
                     onlineUsers={workflowOnlineUsersMap[app.id]}
                     onOpenTagManagement={onOpenTagManagement}
                     stepByStepTourActionMenuOpen={

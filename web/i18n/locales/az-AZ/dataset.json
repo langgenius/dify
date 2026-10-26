@@ -32,7 +32,6 @@
   "createNewExternalAPI": "Yeni xarici bilik API-si yarat",
   "creatorFilter.creators": "Yaradıcılar",
   "creatorFilter.maxCreators": "Maksimum yaradıcı sayı",
-  "datasetDeleted": "Biliklər silindi",
   "datasetUsedByApp": "Bəzi tətbiqlər bu biliklərdən istifadə edir. Tətbiqlər artıq bu biliklərdən istifadə edə bilməyəcək, bütün təlimat konfiqurasiyaları və jurnallar həmişəlik silinəcək.",
   "defaultRetrievalTip": "Standart olaraq çoxistiqamətli məlumat axtarışından istifadə edilir. Biliklər bir neçə bilik bazasından əldə edilir və sonra yenidən sıralanır.",
   "deleteDatasetConfirmContent": "Biliklərin silinməsi geri qaytarıla bilməz. İstifadəçilər artıq biliklərinizə daxil ola bilməyəcək, bütün təlimat konfiqurasiyaları və jurnallar həmişəlik silinəcək.",

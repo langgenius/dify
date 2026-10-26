@@ -27,16 +27,10 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -535,8 +529,8 @@ function SkillCard({
       )}
       <div className="pointer-events-none absolute inset-e-[-0.5px] top-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 rtl:bg-[linear-gradient(293deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] [@media(hover:none)]:opacity-100">
         <div className="pointer-events-none flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger
+          <Menu modal={false}>
+            <MenuTrigger
               render={
                 <IconButton
                   aria-label={t(($) => $['skillManagement.moreActions'], {
@@ -549,17 +543,17 @@ function SkillCard({
                 </IconButton>
               }
             />
-            <DropdownMenuContent className="w-40">
+            <MenuContent align="end" className="w-40">
               {canEdit && (
-                <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
+                <MenuItem className="gap-2" onClick={handleDuplicate}>
                   <span
                     aria-hidden
                     className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary"
                   />
                   <span>{tCommon(($) => $['operation.duplicate'])}</span>
-                </DropdownMenuItem>
+                </MenuItem>
               )}
-              <DropdownMenuItem
+              <MenuItem
                 className="gap-2"
                 disabled={exportMutation.isPending}
                 onClick={handleExport}
@@ -569,22 +563,22 @@ function SkillCard({
                   className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary"
                 />
                 <span>{tCommon(($) => $['operation.export'])}</span>
-              </DropdownMenuItem>
+              </MenuItem>
               {canDelete && (
                 <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
+                  <MenuSeparator />
+                  <MenuItem
                     variant="destructive"
                     className="gap-2"
                     onClick={() => setIsDeleteOpen(true)}
                   >
                     <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
                     <span>{tCommon(($) => $['operation.delete'])}</span>
-                  </DropdownMenuItem>
+                  </MenuItem>
                 </>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </MenuContent>
+          </Menu>
         </div>
       </div>
       <div className="pointer-events-none absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">

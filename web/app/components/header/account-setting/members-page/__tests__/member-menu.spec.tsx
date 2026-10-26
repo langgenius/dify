@@ -1,9 +1,7 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import { QueryClient } from '@tanstack/react-query'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleClient, consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MemberMenu from '../member-menu'
 
@@ -17,7 +15,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: { workspaces: { current: { members: { byMemberId: { delete: vi.fn() } } } } },
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.rbac.members.byMemberId.rbacRoles.put': mockUpdateRolesOfMember,
       'workspaces.current.rbac.roles.get': mockWorkspaceRoleListHook,
@@ -58,26 +55,9 @@ const member: AccountWithRoleResponse = {
 }
 
 describe('MemberMenu', () => {
-  const createQueryClient = () =>
-    new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: Infinity,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
-
   beforeEach(() => {
     vi.clearAllMocks()
     mockUpdateRolesOfMember.mockResolvedValue(undefined)
-    vi.mocked(consoleClient.workspaces.current.members.byMemberId.delete).mockResolvedValue({
-      result: 'success',
-      tenant_id: 'tenant-1',
-    })
     mockWorkspaceRoleListHook.mockResolvedValue({
       data: roles,
       pagination: { total_count: 2, per_page: 20, current_page: 1, total_pages: 1 },
@@ -88,7 +68,12 @@ describe('MemberMenu', () => {
     const user = userEvent.setup()
 
     renderWithConsoleQuery(
-      <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
+      <MemberMenu
+        onRemove={vi.fn()}
+        member={member}
+        isCurrentUser={false}
+        allowMultipleRoles={false}
+      />,
       {
         systemFeatures: {
           rbac_enabled: false,
@@ -117,7 +102,12 @@ describe('MemberMenu', () => {
         }),
     )
     renderWithConsoleQuery(
-      <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
+      <MemberMenu
+        onRemove={vi.fn()}
+        member={member}
+        isCurrentUser={false}
+        allowMultipleRoles={false}
+      />,
     )
     await user.click(screen.getByRole('button', { name: /members\.memberActions/ }))
     await user.click(screen.getByRole('menuitem', { name: /members\.editRole/ }))
@@ -156,7 +146,12 @@ describe('MemberMenu', () => {
         }),
     )
     renderWithConsoleQuery(
-      <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
+      <MemberMenu
+        onRemove={vi.fn()}
+        member={member}
+        isCurrentUser={false}
+        allowMultipleRoles={false}
+      />,
     )
     const more = screen.getByRole('button', { name: /members\.memberActions/ })
     await user.click(more)
@@ -187,7 +182,12 @@ describe('MemberMenu', () => {
     const user = userEvent.setup()
     mockUpdateRolesOfMember.mockRejectedValueOnce(new Error('Save failed'))
     renderWithConsoleQuery(
-      <MemberMenu member={member} isCurrentUser={false} allowMultipleRoles={false} />,
+      <MemberMenu
+        onRemove={vi.fn()}
+        member={member}
+        isCurrentUser={false}
+        allowMultipleRoles={false}
+      />,
     )
     const open = async () => {
       await user.click(screen.getByRole('button', { name: /members\.memberActions/ }))
@@ -208,34 +208,13 @@ describe('MemberMenu', () => {
     )
   })
 
-  it('should require confirmation before removing a member', async () => {
+  it('asks the list to confirm removal of this member', async () => {
+    const onRemove = vi.fn()
     const user = userEvent.setup()
-    const queryClient = createQueryClient()
-    const { queryKey: membersQueryKey } = consoleQuery.workspaces.current.members.get.queryOptions({
-      input: { query: { language: 'en' } },
-    })
-    queryClient.setQueryData(membersQueryKey, { accounts: [member] })
-
-    renderWithConsoleQuery(<MemberMenu member={member} isCurrentUser={false} />, {
-      queryClient,
-    })
-
-    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+    renderWithConsoleQuery(<MemberMenu member={member} isCurrentUser={false} onRemove={onRemove} />)
+    const trigger = screen.getByRole('button', { name: /members\.memberActions/i })
+    await user.click(trigger)
     await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
-
-    const dialog = screen.getByRole('alertdialog', {
-      name: /workspaceMembers\.members\.removeFromTeamConfirmTitle:\{"memberName":"Member User"\}/i,
-    })
-    expect(dialog).toHaveTextContent('workspaceMembers.members.removeFromTeamConfirmDescription')
-    expect(consoleClient.workspaces.current.members.byMemberId.delete).not.toHaveBeenCalled()
-
-    await user.click(within(dialog).getByRole('button', { name: /common\.operation\.confirm/i }))
-
-    await waitFor(() => {
-      expect(consoleClient.workspaces.current.members.byMemberId.delete).toHaveBeenCalledWith({
-        params: { member_id: 'member-1' },
-      })
-    })
-    expect(queryClient.getQueryState(membersQueryKey)?.isInvalidated).toBe(true)
+    expect(onRemove).toHaveBeenCalledOnce()
   })
 })
