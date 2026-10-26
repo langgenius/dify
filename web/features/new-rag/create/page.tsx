@@ -603,19 +603,17 @@ function CreateKnowledgeSession() {
               </div>
 
               <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10 [@media(max-height:600px)]:py-3">
-                <div
-                  aria-hidden={startMode !== 'upload'}
-                  className={startMode === 'upload' ? 'mb-4' : 'invisible mb-4'}
-                >
+                {startMode === 'upload' && (
                   <ModelCostNotice
                     id={modelCostNoticeId}
+                    className="mb-4"
                     summary={
                       validUploads.length > 0 &&
                       t(($) => $['modelCost.uploadSummary'], { count: validUploads.length })
                     }
                     description={t(($) => $['modelCost.uploadDescription'])}
                   />
-                </div>
+                )}
                 <div className="flex justify-end gap-2">
                   <Button type="button" disabled={submissionPending} onClick={requestClose}>
                     {tCommon(($) => $['operation.cancel'])}
