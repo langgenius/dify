@@ -1,6 +1,7 @@
 'use client'
 
 import type { CreateAnnotationPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
@@ -15,7 +16,6 @@ import {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
-  DialogViewport,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
@@ -29,19 +29,24 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import robotAvatar from '../assets/robot-avatar.svg'
 
-type Props = {
+type AddAnnotationDialogProps = {
   appId: string
   onAdded: () => void
 }
 
-type FormProps = {
+type AddAnnotationDialogPopupProps = {
   isPending: boolean
   isError: boolean
   onSave: (body: CreateAnnotationPayload, onSuccess: () => void) => void
   onClose: () => void
 }
 
-function AddAnnotationForm({ isPending, isError, onSave, onClose }: FormProps) {
+function AddAnnotationDialogPopup({
+  isPending,
+  isError,
+  onSave,
+  onClose,
+}: AddAnnotationDialogPopupProps) {
   const { t } = useTranslation(['appAnnotation', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const quota = useQuery(
@@ -65,7 +70,7 @@ function AddAnnotationForm({ isPending, isError, onSave, onClose }: FormProps) {
   return (
     <DialogPopup
       initialFocus={questionRef}
-      className="absolute inset-e-2 top-16 bottom-3 flex min-h-0 w-120 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl"
+      className="fixed inset-e-2 top-16 bottom-3 flex min-h-0 w-120 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl"
     >
       <DialogHeader>
         <DialogTitle>{t(($) => $['addModal.title'], { ns: 'appAnnotation' })}</DialogTitle>
@@ -166,9 +171,9 @@ function AddAnnotationForm({ isPending, isError, onSave, onClose }: FormProps) {
   )
 }
 
-export default function AddAnnotationDialog({ appId, onAdded }: Props) {
+export default function AddAnnotationDialog({ appId, onAdded }: AddAnnotationDialogProps) {
   const { t } = useTranslation(['appAnnotation'])
-  const [open, setOpen] = useState(false)
+  const actionsRef = useRef<DialogActions>(null)
   const creation = useMutation(
     consoleQuery.apps.byAppId.annotations.post.mutationOptions({
       context: { silent: true },
@@ -178,14 +183,12 @@ export default function AddAnnotationDialog({ appId, onAdded }: Props) {
 
   return (
     <Dialog
-      open={open}
+      actionsRef={actionsRef}
       disablePointerDismissal
       onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && creation.isPending) {
+        if (!nextOpen && creation.isPending && details.reason !== 'imperative-action') {
           details.cancel()
-          return
         }
-        setOpen(nextOpen)
       }}
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) creation.reset()
@@ -197,16 +200,14 @@ export default function AddAnnotationDialog({ appId, onAdded }: Props) {
       </DialogTrigger>
       <DialogPortal>
         <DialogBackdrop />
-        <DialogViewport>
-          <AddAnnotationForm
-            isPending={creation.isPending}
-            isError={creation.isError}
-            onSave={(body, onSuccess) => {
-              creation.mutate({ params: { app_id: appId }, body }, { onSuccess })
-            }}
-            onClose={() => setOpen(false)}
-          />
-        </DialogViewport>
+        <AddAnnotationDialogPopup
+          isPending={creation.isPending}
+          isError={creation.isError}
+          onSave={(body, onSuccess) => {
+            creation.mutate({ params: { app_id: appId }, body }, { onSuccess })
+          }}
+          onClose={() => actionsRef.current?.close()}
+        />
       </DialogPortal>
     </Dialog>
   )
