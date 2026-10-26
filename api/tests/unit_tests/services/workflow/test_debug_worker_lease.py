@@ -77,7 +77,7 @@ def test_lost_lease_aborts_real_graph_and_prevents_successor_node(
     from graphon.engine.command import InMemoryChannel
     from graphon.engine_events import EngineEvent, GraphRunAbortedEvent
     from services.workflow.execution.adapters.workflow.stop_aware_ready_queue import attach_stop_aware_ready_queue
-    from tests.unit_tests.core.workflow.graph_engine.test_table_runner import WorkflowRunner
+    from tests.helpers.workflow.table_runner import WorkflowRunner
 
     config_overrides(WORKFLOW_DEBUG_RESERVATION_TIMEOUT=3)
     runner = WorkflowRunner()
@@ -236,7 +236,7 @@ def test_resumed_runner_does_not_treat_previous_pause_as_current_completion(
     from services.workflow.debug_cancellation import DebugExecutionCancellation
     from services.workflow.execution.adapters.workflow.app_config_manager import WorkflowAppConfig
     from services.workflow.execution.adapters.workflow.app_runner import WorkflowAppRunner
-    from tests.unit_tests.model_factories import make_workflow
+    from tests.helpers.unit.model_factories import make_workflow
 
     state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
     state.graph_execution.started = True
