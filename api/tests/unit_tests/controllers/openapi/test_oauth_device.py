@@ -593,6 +593,18 @@ class _FakeRateLimitStore:
     hits: dict[str, int] = field(default_factory=dict)
 
 
+@dataclass
+class _FakeFeatureQueries:
+    def has_valid_enterprise_license(self) -> bool:
+        return True
+
+
+@dataclass
+class _FakeApplicationServices:
+    oauth_device: OAuthDeviceApplicationService
+    feature_queries: _FakeFeatureQueries = field(default_factory=_FakeFeatureQueries)
+
+
 @pytest.mark.usefixtures("device_service", "rate_limit_store")
 class TestDeviceDecisionRateLimitCases:
     @staticmethod
@@ -637,10 +649,7 @@ class TestDeviceDecisionRateLimitCases:
         service = create_autospec(OAuthDeviceApplicationService, instance=True)
         service.approve.return_value = DeviceMutation(status="approved")
         service.deny.return_value = DeviceMutation(status="denied")
-        openapi_app.extensions["application_services"] = SimpleNamespace(
-            oauth_device=service,
-            feature_queries=SimpleNamespace(has_valid_enterprise_license=lambda: True),
-        )
+        openapi_app.extensions["application_services"] = _FakeApplicationServices(oauth_device=service)
 
         def admitted() -> AccountWithTenant:
             account = Account(name="Ada", email="ada@example.com", status=AccountStatus.ACTIVE)
