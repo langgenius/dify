@@ -907,20 +907,21 @@ def test_import_creator_access_runs_after_successful_commit(
         agent_importer=RosterAgentPackageImporter(),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),
     )
+    import_entry = gateway.import_copy if entry == "copy" else gateway.import_dsl
     if commit_fails and status != ImportStatus.FAILED and not (entry == "copy" and status == ImportStatus.PENDING):
         if entry == "confirm":
             with pytest.raises(RuntimeError, match="commit failed"):
                 gateway.confirm_import(context, "import")
         else:
             with pytest.raises(RuntimeError, match="commit failed"):
-                gateway.import_dsl(context, AppImportParams(mode="yaml-content"), as_copy=entry == "copy")
+                import_entry(context, AppImportParams(mode="yaml-content"))
         assert "sync" not in events
         return
     if entry == "confirm":
         returned, was_created = gateway.confirm_import(context, "import")
         assert was_created is created
     else:
-        returned = gateway.import_dsl(context, AppImportParams(mode="yaml-content"), as_copy=entry == "copy")
+        returned = import_entry(context, AppImportParams(mode="yaml-content"))
     assert returned is result
     expected = created and status in (ImportStatus.COMPLETED, ImportStatus.COMPLETED_WITH_WARNINGS)
     assert (events.count("sync") == 1) is expected

@@ -79,6 +79,9 @@ from tasks.initialize_created_app_rbac_access_task import initialize_created_app
 # NODE_WIDTH_X_OFFSET in web/app/components/workflow/constants.ts).
 _START_POSITION: Final = (80, 282)
 _NODE_X_STEP: Final = 300
+_DISCARDED_IMPORT_STATUSES: Final = frozenset({ImportStatus.FAILED})
+# A copy that waits for version confirmation keeps nothing.
+_DISCARDED_COPY_STATUSES: Final = frozenset({ImportStatus.FAILED, ImportStatus.PENDING})
 
 
 def _editor_node(node_id: str, column: int, data: dict[str, Any]) -> dict[str, Any]:
@@ -295,9 +298,31 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         context: RequestContext,
         params: AppImportParams,
         *,
-        as_copy: bool = False,
         package: AppImportPackage | None = None,
         preserve_agent_bindings: bool = False,
+    ) -> Import:
+        return self._import(
+            context,
+            params,
+            package=package,
+            preserve_agent_bindings=preserve_agent_bindings,
+            discarded=_DISCARDED_IMPORT_STATUSES,
+        )
+
+    @override
+    def import_copy(self, context: RequestContext, params: AppImportParams) -> Import:
+        return self._import(
+            context, params, package=None, preserve_agent_bindings=True, discarded=_DISCARDED_COPY_STATUSES
+        )
+
+    def _import(
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        *,
+        package: AppImportPackage | None,
+        preserve_agent_bindings: bool,
+        discarded: frozenset[ImportStatus],
     ) -> Import:
         account = self._import_actor(context)
         with self._session_factory() as session:
@@ -316,7 +341,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 preserve_agent_bindings=preserve_agent_bindings,
                 draft_hash=params.draft_hash if isinstance(params, DraftGuardedImportParams) else None,
             )
-            if result.status == ImportStatus.FAILED or (as_copy and result.status == ImportStatus.PENDING):
+            if result.status in discarded:
                 session.rollback()
             else:
                 session.commit()
