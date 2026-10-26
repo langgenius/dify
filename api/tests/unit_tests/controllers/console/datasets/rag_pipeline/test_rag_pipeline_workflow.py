@@ -870,10 +870,12 @@ def make_node_execution(**overrides: Unpack[NodeExecutionOverrides]) -> Workflow
         "finished_at": datetime(2026, 1, 1, 0, 0, 1),
     }
     payload.update(overrides)
+    created_at = payload.pop("created_at")
     execution = WorkflowNodeExecutionModel(
         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
         **payload,
     )
+    execution.created_at = created_at
     execution.offload_data = []
     return execution
 
@@ -902,7 +904,25 @@ def default_workflow_payload() -> WorkflowFactoryPayload:
 def make_workflow(**overrides: Unpack[WorkflowFactoryOverrides]) -> Workflow:
     payload = default_workflow_payload()
     payload.update(overrides)
-    return Workflow(**payload)
+    workflow = Workflow(
+        id=payload["id"],
+        tenant_id=payload["tenant_id"],
+        app_id=payload["app_id"],
+        type=WorkflowType(payload["type"]),
+        version=payload["version"],
+        marked_name=payload["marked_name"],
+        marked_comment=payload["marked_comment"],
+        graph=payload["graph"],
+        _features=payload["features"],
+        created_by=payload["created_by"],
+        updated_by=payload["updated_by"],
+        _environment_variables=payload["environment_variables"],
+        _conversation_variables=payload["conversation_variables"],
+        _rag_pipeline_variables=payload["rag_pipeline_variables"],
+    )
+    workflow.created_at = payload["created_at"]
+    workflow.updated_at = payload["updated_at"]
+    return workflow
 
 
 def _rag_pipeline_workflow_apis_make_account(
