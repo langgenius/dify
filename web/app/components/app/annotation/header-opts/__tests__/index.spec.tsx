@@ -1,7 +1,6 @@
 import type { Window } from 'happy-dom'
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vite-plus/test'
-import type { AnnotationItemBasic } from '../../type'
 import type { Locale } from '@/i18n'
 import type { consoleClient } from '@/service/console'
 import { screen, waitFor } from '@testing-library/react'
@@ -118,7 +117,7 @@ const clickOperationAction = async (
   await clickMenuItem(user, item)
 }
 
-const mockAnnotations: AnnotationItemBasic[] = [
+const mockAnnotations = [
   {
     question: 'Question 1',
     answer: 'Answer 1',
