@@ -8,10 +8,11 @@
   "type": "module",
   "scripts": {
     "build": "vp pack",
-    "type-check": "tsc"
+    "type-check": "tsrs --noEmit"
   },
   "dependencies": {
     "@typescript/native": "catalog:",
+    "tsrs": "catalog:",
     "typescript": "catalog:"
   },
   "devDependencies": {

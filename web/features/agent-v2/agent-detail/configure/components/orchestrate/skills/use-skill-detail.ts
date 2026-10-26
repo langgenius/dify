@@ -217,17 +217,15 @@ export function useAgentSkillDetail({
     enabled: isOpen && !!apiContext.workflow,
   })
   const trialSkillInspectQuery = useQuery(
-    apiContext.trialAppId
-      ? {
-          ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.inspect.get.queryOptions({
-            input: {
-              params: { app_id: apiContext.trialAppId, name: skill.name },
-              query: { version_id: apiContext.versionId },
-            },
-          }),
-          enabled: isOpen,
-        }
-      : { queryKey: ['agent-v2', 'trial-skill-inspect-disabled'], queryFn: skipToken },
+    consoleQuery.trialApps.byAppId.agent.config.skills.byName.inspect.get.queryOptions({
+      input: apiContext.trialAppId
+        ? {
+            params: { app_id: apiContext.trialAppId, name: skill.name },
+            query: { version_id: apiContext.versionId },
+          }
+        : skipToken,
+      enabled: !!apiContext.trialAppId && isOpen,
+    }),
   )
   const inspectQuery = apiContext.trialAppId
     ? trialSkillInspectQuery
@@ -284,19 +282,15 @@ export function useAgentSkillDetail({
     enabled: isOpen && !!selectedPreviewPath && !!apiContext.workflow,
   })
   const trialPreviewQuery = useQuery(
-    apiContext.trialAppId
-      ? {
-          ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.preview.get.queryOptions(
-            {
-              input: {
-                params: { app_id: apiContext.trialAppId, name: skill.name },
-                query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
-              },
-            },
-          ),
-          enabled: isOpen && !!selectedPreviewPath,
-        }
-      : { queryKey: ['agent-v2', 'trial-skill-preview-disabled'], queryFn: skipToken },
+    consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.preview.get.queryOptions({
+      input: apiContext.trialAppId
+        ? {
+            params: { app_id: apiContext.trialAppId, name: skill.name },
+            query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
+          }
+        : skipToken,
+      enabled: !!apiContext.trialAppId && isOpen && !!selectedPreviewPath,
+    }),
   )
   const previewQuery = apiContext.trialAppId
     ? trialPreviewQuery
@@ -341,20 +335,16 @@ export function useAgentSkillDetail({
     enabled: shouldLoadImagePreview && !!apiContext.workflow,
   })
   const trialDownloadQuery = useQuery(
-    apiContext.trialAppId
-      ? {
-          ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
-            {
-              input: {
-                params: { app_id: apiContext.trialAppId, name: skill.name },
-                query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
-              },
-            },
-          ),
-          staleTime: 0,
-          enabled: shouldLoadImagePreview,
-        }
-      : { queryKey: ['agent-v2', 'trial-skill-download-disabled'], queryFn: skipToken },
+    consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
+      input: apiContext.trialAppId
+        ? {
+            params: { app_id: apiContext.trialAppId, name: skill.name },
+            query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
+          }
+        : skipToken,
+      enabled: !!apiContext.trialAppId && shouldLoadImagePreview,
+      staleTime: 0,
+    }),
   )
   const downloadQuery = apiContext.trialAppId
     ? trialDownloadQuery

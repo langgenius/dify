@@ -1,25 +1,20 @@
-"""Message reads and feedback for an admitted installation."""
+"""Message reads for an admitted installation."""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal, Protocol
+from typing import Protocol
 
 from pydantic import JsonValue
 
 from graphon.file import File
 from services.installed_app_access_service import InstalledAppRef
 
-type MessageRating = Literal["like", "dislike"]
 type MessageInputValue = JsonValue | File | list[File]
 
 
 class MessageNotChatAppError(Exception):
-    pass
-
-
-class FeedbackRatingRequiredError(Exception):
     pass
 
 
@@ -88,17 +83,6 @@ class MessagePage:
     data: tuple[MessageRecord, ...]
 
 
-@dataclass(frozen=True, slots=True)
-class MessageFeedbackEvent:
-    tenant_id: str
-    app_id: str
-    conversation_id: str
-    message_id: str
-    account_id: str
-    rating: str
-    content: str | None
-
-
 class InstalledAppMessageStore(Protocol):
     def get_page(
         self,
@@ -110,23 +94,9 @@ class InstalledAppMessageStore(Protocol):
         limit: int,
     ) -> MessagePage: ...
 
-    def set_feedback(
-        self,
-        *,
-        installed_app: InstalledAppRef,
-        account_id: str,
-        message_id: str,
-        rating: MessageRating | None,
-        content: str | None,
-    ) -> MessageFeedbackEvent | None: ...
-
 
 class MessageExtraContentsQuery(Protocol):
     def __call__(self, *, message_ids: Sequence[str]) -> Mapping[str, list[dict[str, JsonValue]]]: ...
-
-
-class MessageFeedbackEmitter(Protocol):
-    def __call__(self, *, feedback: MessageFeedbackEvent) -> None: ...
 
 
 class InstalledAppMessageService:
@@ -135,11 +105,9 @@ class InstalledAppMessageService:
         *,
         messages: InstalledAppMessageStore,
         get_extra_contents: MessageExtraContentsQuery,
-        emit_feedback: MessageFeedbackEmitter,
     ) -> None:
         self._messages: InstalledAppMessageStore = messages
         self._get_extra_contents: MessageExtraContentsQuery = get_extra_contents
-        self._emit_feedback: MessageFeedbackEmitter = emit_feedback
 
     def get_page(
         self,
@@ -165,25 +133,6 @@ class InstalledAppMessageService:
             page,
             data=tuple(replace(message, extra_contents=contents.get(message.id, [])) for message in page.data),
         )
-
-    def set_feedback(
-        self,
-        *,
-        installed_app: InstalledAppRef,
-        account_id: str,
-        message_id: str,
-        rating: MessageRating | None,
-        content: str | None,
-    ) -> None:
-        feedback = self._messages.set_feedback(
-            installed_app=installed_app,
-            account_id=account_id,
-            message_id=message_id,
-            rating=rating,
-            content=content,
-        )
-        if feedback is not None:
-            self._emit_feedback(feedback=feedback)
 
     @staticmethod
     def _require_chat_app(installed_app: InstalledAppRef) -> None:

@@ -136,7 +136,7 @@ export function ToolProviderGrid({
               aria-current={currentProviderId === collection.id ? 'true' : undefined}
               data-step-by-step-tour-target={index === 0 ? stepByStepTourTarget : undefined}
               className={cn(
-                'block w-full appearance-none border-0 bg-transparent p-0 text-left',
+                'block w-full appearance-none border-0 bg-transparent p-0 text-start',
                 useCustomToolGrid && 'min-w-0',
                 useIntegrationsCard && !useCustomToolGrid && 'min-w-0',
               )}

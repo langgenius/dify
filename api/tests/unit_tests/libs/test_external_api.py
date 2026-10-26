@@ -6,7 +6,8 @@ from flask import Blueprint, Flask
 from flask_restx import Api, Namespace, Resource
 from flask_restx.swagger import Swagger
 from pydantic import BaseModel
-from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
+from werkzeug.datastructures import WWWAuthenticate
+from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable, Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from core.errors.error import AppInvokeQuotaExceededError
@@ -82,8 +83,7 @@ def _create_api_app():
             e.description = {"field": "is required"}
             raise e
 
-    # The per-token rate limit raises this; ExternalApi must carry its Retry-After header to the
-    # wire (it reads getattr(e, "headers"), not werkzeug's get_headers()).
+    # The per-token rate limit carries Retry-After in an explicit headers attribute.
     @api.route("/rate-limited")
     class RateLimited(Resource):
         def get(self):
@@ -165,13 +165,47 @@ def test_external_api_param_mapping_and_quota():
 
 
 def test_external_api_carries_exception_headers_to_429_response():
-    # Locks the coupling enforce_bearer_rate_limit relies on: handle_error reads getattr(e,
-    # "headers") and puts it on the response, so Retry-After reaches the wire.
+    # Keep supporting explicit headers used by enforce_bearer_rate_limit.
     app = _create_api_app()
     res = app.test_client().get("/api/rate-limited")
     assert res.status_code == 429
     assert res.headers["Retry-After"] == "23"
     assert (res.get_json() or {})["status"] == 429
+
+
+def test_external_api_explicit_headers_override_generated_headers():
+    class ExplicitRetryAfter(ServiceUnavailable):
+        headers = {"retry-after": "23"}
+
+    app = Flask(__name__)
+    api = ExternalApi(app)
+
+    @api.route("/pending")
+    class Pending(Resource):
+        def get(self):
+            raise ExplicitRetryAfter(retry_after=5)
+
+    response = app.test_client().get("/pending")
+    assert response.status_code == 503
+    assert response.headers.getlist("Retry-After") == ["23"]
+    assert response.mimetype == "application/json"
+    assert response.get_json()["status"] == 503
+
+
+def test_external_api_preserves_multiple_authentication_challenges():
+    challenges = [WWWAuthenticate("Basic", {"realm": "api"}), WWWAuthenticate("Bearer", {"realm": "api"})]
+    app = Flask(__name__)
+    api = ExternalApi(app)
+
+    @api.route("/unauth")
+    class Unauth(Resource):
+        def get(self):
+            raise Unauthorized(www_authenticate=challenges)
+
+    response = app.test_client().get("/unauth")
+    assert response.status_code == 401
+    assert response.headers.getlist("WWW-Authenticate") == [str(challenge) for challenge in challenges]
+    assert response.mimetype == "application/json"
 
 
 def test_unauthorized_and_force_logout_clears_cookies():

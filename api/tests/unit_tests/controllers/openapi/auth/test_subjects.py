@@ -14,8 +14,7 @@ from models.account import TenantAccountRole
 from models.enums import EndUserType
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from services.app_scoped_end_user_service import AppScopedEndUserService
-
-from ._world import (
+from tests.helpers.unit.controllers.openapi.auth._world import (
     ACCOUNT_ID,
     APP_ID,
     SSO_EMAIL,

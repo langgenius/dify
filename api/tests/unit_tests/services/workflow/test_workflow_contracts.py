@@ -8,7 +8,7 @@ from graphon.entities.graph_config import NodeConfigDictAdapter
 from models.workflow import WorkflowKind
 from repositories.workflow.definition_repository import workflow_snapshot
 from services.workflow.contracts import WorkflowBindingScope, WorkflowSnapshot, WorkflowTriggerError
-from tests.unit_tests.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_workflow
 
 
 def test_binding_scope_graph_dict_returns_independent_parsed_data() -> None:

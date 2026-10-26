@@ -1,18 +1,15 @@
-from sqlalchemy.orm import sessionmaker
-
-from extensions.application_services.retrieval import build_dataset_retrieval
-from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
-
 """Unit tests for the inner knowledge retrieval service."""
 
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.knowledge_retrieval.retrieval import Source, SourceMetadata
+from extensions.application_services.retrieval import build_dataset_retrieval
 from models.dataset import Dataset
 from models.model import App, AppMode
+from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest
 from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveAppNotFoundError,
@@ -21,7 +18,7 @@ from services.errors.knowledge_retrieval import (
     InnerKnowledgeRetrieveDatasetTenantMismatchError,
 )
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
-from tests.unit_tests.model_factories import make_app, make_dataset
+from tests.helpers.unit.model_factories import make_app, make_dataset
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"

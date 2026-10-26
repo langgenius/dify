@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+from models.tool_runtime_contracts import WorkflowToolQueries
+from services.tools.provider_queries import ToolProviders
 from services.tools.tools_manage_service import ToolCommonService
 
 
@@ -7,8 +9,13 @@ class TestToolCommonService:
     @patch("services.tools.tools_manage_service.ToolTransformService")
     @patch("services.tools.tools_manage_service.ToolManager")
     def test_list_tool_providers_transforms_and_returns(
-        self, mock_manager, mock_transform, *, workflow_queries, tool_providers
-    ):
+        self,
+        mock_manager: MagicMock,
+        mock_transform: MagicMock,
+        *,
+        workflow_queries: WorkflowToolQueries,
+        tool_providers: ToolProviders,
+    ) -> None:
         mock_provider1 = MagicMock()
         mock_provider1.to_dict.return_value = {"name": "provider1"}
         mock_provider2 = MagicMock()
@@ -28,9 +35,15 @@ class TestToolCommonService:
     @patch("services.tools.tools_manage_service.ToolTransformService")
     @patch("services.tools.tools_manage_service.ToolManager")
     def test_list_tool_providers_with_type_filter(
-        self, mock_manager, mock_transform, *, workflow_queries, tool_providers
-    ):
-        mock_manager.list_providers_from_api.return_value = []
+        self,
+        mock_manager: MagicMock,
+        mock_transform: MagicMock,
+        *,
+        workflow_queries: WorkflowToolQueries,
+        tool_providers: ToolProviders,
+    ) -> None:
+        providers: list[MagicMock] = []
+        mock_manager.list_providers_from_api.return_value = providers
 
         result = ToolCommonService.list_tool_providers(
             "user-1", "tenant-1", typ="builtin", workflow_queries=workflow_queries, tool_providers=tool_providers
@@ -43,8 +56,16 @@ class TestToolCommonService:
 
     @patch("services.tools.tools_manage_service.ToolTransformService")
     @patch("services.tools.tools_manage_service.ToolManager")
-    def test_list_tool_providers_empty(self, mock_manager, mock_transform, *, workflow_queries, tool_providers):
-        mock_manager.list_providers_from_api.return_value = []
+    def test_list_tool_providers_empty(
+        self,
+        mock_manager: MagicMock,
+        mock_transform: MagicMock,
+        *,
+        workflow_queries: WorkflowToolQueries,
+        tool_providers: ToolProviders,
+    ) -> None:
+        providers: list[MagicMock] = []
+        mock_manager.list_providers_from_api.return_value = providers
 
         result = ToolCommonService.list_tool_providers(
             "u", "t", workflow_queries=workflow_queries, tool_providers=tool_providers

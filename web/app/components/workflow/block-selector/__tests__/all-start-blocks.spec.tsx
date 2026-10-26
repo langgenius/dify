@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react'
 import type { TriggerWithProvider } from '../types'
+import { QueryObserver } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { onTestFinished } from 'vite-plus/test'
 import { useLocale } from '#i18n'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -9,7 +11,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
@@ -124,35 +126,16 @@ const createMarketplacePluginsMock = (
       : undefined,
   }) as UseMarketplacePluginsReturn
 
-const createTriggerPluginsQueryResult = (data: TriggerWithProvider[]): UseAllTriggerPluginsReturn =>
-  ({
-    data,
-    error: null,
-    isError: false,
-    isPending: false,
-    isLoading: false,
-    isSuccess: true,
-    isFetching: false,
-    isRefetching: false,
-    isLoadingError: false,
-    isRefetchError: false,
-    isInitialLoading: false,
-    isPaused: false,
-    isEnabled: true,
-    status: 'success',
-    fetchStatus: 'idle',
-    dataUpdatedAt: Date.now(),
-    errorUpdatedAt: 0,
-    failureCount: 0,
-    failureReason: null,
-    errorUpdateCount: 0,
-    isFetched: true,
-    isFetchedAfterMount: true,
-    isPlaceholderData: false,
-    isStale: false,
-    refetch: vi.fn(),
-    promise: Promise.resolve(data),
-  }) as UseAllTriggerPluginsReturn
+const createTriggerPluginsQueryResult = (
+  data: TriggerWithProvider[],
+): UseAllTriggerPluginsReturn => {
+  const queryClient = createConsoleQueryClient()
+  onTestFinished(() => queryClient.clear())
+  return new QueryObserver<TriggerWithProvider[]>(queryClient, {
+    queryKey: ['trigger-plugins'],
+    initialData: data,
+  }).getCurrentResult()
+}
 
 const createFeaturedTriggersRecommendationsMock = (
   overrides: Partial<UseFeaturedTriggersRecommendationsReturn> = {},

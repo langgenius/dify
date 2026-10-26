@@ -7,8 +7,8 @@ from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.model import AppMode
 from services.entities.app_entities import AppAgentBinding
 from services.rbac.resource_queries import ResourceQueryService
-from tests.unit_tests.model_factories import make_app, make_dataset, make_document
-from tests.unit_tests.rbac_fakes import RBACDomain
+from tests.helpers.unit.model_factories import make_app, make_dataset, make_document
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
 @pytest.fixture
