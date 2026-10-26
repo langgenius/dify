@@ -120,13 +120,14 @@ class _FailingFactory:
 
 @dataclass(slots=True)
 class _FailThenSucceedFactory:
+    output: str
     clients: list[_Client] = field(default_factory=list)
     runs: list[_RunCall] = field(default_factory=list)
 
     def __call__(self) -> _Client:
         client = _Client(
             runs=self.runs,
-            output="primary shellctl failure",
+            output=self.output,
             exit_codes=[1, 0],
         )
         self.clients.append(client)
@@ -251,8 +252,12 @@ async def test_local_binding_separates_root_workspace_from_home_control_scope() 
 
 
 @pytest.mark.anyio
-async def test_local_binding_create_failure_removes_partial_home_and_workspace() -> None:
-    factory = _FailThenSucceedFactory()
+@pytest.mark.parametrize(
+    ("output", "message"),
+    [("primary shellctl failure", "^primary shellctl failure$"), ("", "job_id=job-1, status=exited, exit_code=1")],
+)
+async def test_local_binding_create_failure_removes_partial_home_and_workspace(output: str, message: str) -> None:
+    factory = _FailThenSucceedFactory(output)
     backend = LocalExecutionBindingBackend(
         endpoint="http://shellctl",
         auth_token="",
@@ -262,7 +267,7 @@ async def test_local_binding_create_failure_removes_partial_home_and_workspace()
         client_factory=factory,  # pyright: ignore[reportArgumentType]
     )
 
-    with pytest.raises(BindingCreateError, match="primary shellctl failure"):
+    with pytest.raises(BindingCreateError, match=message):
         await backend.create_binding(
             ExecutionBindingCreateSpec(
                 tenant_id="tenant-1",
