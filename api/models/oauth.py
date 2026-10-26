@@ -5,6 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from enums.oauth_client import OAuthClientKind
 from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
@@ -121,6 +122,29 @@ class OAuthAccessToken(TypeBase):
     token_hash: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
     last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
     revoked_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
+
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False
+    )
+
+
+class OAuthClient(TypeBase):
+    __tablename__ = "oauth_clients"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="oauth_clients_pkey"),
+        sa.Index("uq_oauth_clients_client_id", "client_id", unique=True),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
+    )
+    client_id: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    kind: Mapped[OAuthClientKind] = mapped_column(EnumText(OAuthClientKind, length=32), nullable=False)
+    display_name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    redirect_uris: Mapped[list[str]] = mapped_column(AdjustedJSON, nullable=False)
+    grant_types: Mapped[list[str]] = mapped_column(AdjustedJSON, nullable=False)
+    client_secret_hash: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
+    logo_uri: Mapped[str | None] = mapped_column(sa.String(1024), nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False
