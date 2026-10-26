@@ -3857,6 +3857,87 @@ describe('DocumentsPage', () => {
     },
   )
 
+  it.each(['retry_wait', 'succeeded'] as const)(
+    'tracks a filtered-out document outside loaded task history through %s',
+    async (nextState) => {
+      const running = createDeferred<void>()
+      const nextUpdate = createDeferred<void>()
+      const initialTask = task({ state: 'queued' })
+      const updatedTask = task({ state: nextState, updatedAt: '2026-07-20T10:03:00Z' })
+      documentsQuery.data = { pages: [{ items: [document({ latestTask: initialTask })] }] }
+      tasksQuery.data = {
+        pages: [
+          {
+            items: Array.from({ length: 100 }, (_, index) =>
+              backgroundTask({ id: `other-${index}` }),
+            ),
+          },
+          { items: [initialTask] },
+        ],
+      }
+      tasksQuery.hasNextPage = true
+      getTaskSnapshot.mockResolvedValue(updatedTask)
+      streamProcessingTaskEvents.mockImplementation(async function* () {
+        await running.promise
+        yield {
+          data: {
+            progressPercent: 50,
+            stage: 'parsed' as const,
+            state: 'running' as const,
+            updatedAt: '2026-07-20T10:02:00Z',
+          },
+          event: 'progress' as const,
+          id: 'task-1:running',
+        }
+        await nextUpdate.promise
+        yield {
+          data: {
+            progressPercent: 50,
+            stage: 'parsed' as const,
+            state: nextState,
+            updatedAt: updatedTask.updatedAt,
+          },
+          event: 'progress' as const,
+          id: 'task-1:next',
+        }
+        if (nextState === 'succeeded')
+          yield { data: { state: nextState }, event: 'terminal' as const, id: 'task-1:terminal' }
+        await new Promise<void>(() => {})
+      })
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?status=queued' })
+      expect(screen.getByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+      documentsQuery.data = {
+        pages: [
+          {
+            items: [
+              document({
+                latestTask: task({ state: 'running', updatedAt: '2026-07-20T10:02:00Z' }),
+              }),
+            ],
+          },
+        ],
+      }
+      await act(async () => running.resolve())
+      expect(await screen.findByText('knowledgeDocuments.noMatchingDocuments')).toBeInTheDocument()
+      documentsQuery.refetch.mockClear()
+      documentsQuery.data = { pages: [{ items: [document({ latestTask: updatedTask })] }] }
+      await act(async () => nextUpdate.resolve())
+      await waitFor(() => expect(documentsQuery.refetch).toHaveBeenCalledOnce())
+      if (nextState === 'retry_wait')
+        expect(await screen.findByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+      else {
+        await waitFor(() => expect(getTaskSnapshot).toHaveBeenCalledOnce())
+        const user = userEvent.setup()
+        await user.click(screen.getByRole('combobox'))
+        await user.click(
+          screen.getByRole('option', { name: 'knowledgeSpace.documentStatus.ready' }),
+        )
+        expect(await screen.findByRole('link', { name: 'sso-enterprise.pdf' })).toBeInTheDocument()
+      }
+      expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+    },
+  )
+
   it('finds a document beyond twenty unfiltered pages and clears an exhausted search', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
