@@ -1,7 +1,7 @@
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import { zKnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/zod.gen'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { describe, expect, it } from 'vite-plus/test'
@@ -13,6 +13,7 @@ import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as render,
+  seedKnowledgeFsFeatures,
 } from '@/test/console/query-data'
 import {
   AgentOrchestrateReadOnlyContext,
@@ -378,6 +379,36 @@ describe('KnowledgeFS composer interaction', () => {
     expect(screen.queryByRole('heading', { name: /knowledgeFs.title/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /knowledgeFs.add/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/knowledgeFs.runtimeUnavailable/)).not.toBeInTheDocument()
+  })
+
+  it('allows removing Classic bindings while preserving hidden KnowledgeFS bindings', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = setup(
+      [binding, { id: 'classic', name: 'Classic Docs', datasetRefs: [{ id: 'dataset' }] }],
+      { enabled: false },
+    )
+
+    expect(screen.getByText('Classic Docs')).toBeInTheDocument()
+    expect(screen.queryByText('Product manual')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /knowledgeFs.title/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /knowledgeFs.add/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /knowledgeRetrieval.edit/ }),
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.remove/ }))
+
+    expect(snapshot().knowledge.sets).toEqual([])
+    expect(snapshot().knowledge.spaces[0]).toMatchObject({ id: binding.id })
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+
+    act(() => {
+      seedKnowledgeFsFeatures(queryClient, { agent_enabled: true })
+    })
+
+    expect(await screen.findByText('Product manual')).toBeInTheDocument()
+    expect(screen.queryByText('Classic Docs')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /knowledgeFs.add/ })).toBeEnabled()
   })
 
   it('does not offer additions when viewing a historical version', () => {

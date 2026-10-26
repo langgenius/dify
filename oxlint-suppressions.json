@@ -6569,11 +6569,6 @@
       "count": 2
     }
   },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/common/configurable-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/common/section.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1

@@ -194,7 +194,8 @@ describe('KnowledgeFS entry points in the real Agent configuration panel', () =>
     setup({ enabled: false, classic: true })
 
     await user.click(screen.getByRole('button', { name: /prompt.insert.label/ }))
-    await user.click(screen.getByRole('button', { name: /knowledgeRetrieval.label/ }))
+    const menu = screen.getByRole('dialog', { name: /prompt.insert.label/ })
+    await user.click(within(menu).getByRole('button', { name: /knowledgeRetrieval.label/ }))
     expect(screen.getByRole('button', { name: 'Classic Docs' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /knowledgeRetrieval.add/ })).not.toBeInTheDocument()
   })

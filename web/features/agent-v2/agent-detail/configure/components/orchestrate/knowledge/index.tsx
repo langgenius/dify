@@ -38,7 +38,7 @@ function AgentKnowledgeRetrievalRow({
   item,
 }: {
   onDelete: () => void
-  onEdit: () => void
+  onEdit?: () => void
   item: AgentKnowledgeRetrievalItem
 }) {
   const { t } = useTranslation(['agentV2'])
@@ -85,44 +85,49 @@ export function AgentKnowledgeRetrieval() {
   }
   useRegisterAgentOrchestrateAddAction('knowledge', addRetrieval)
 
-  if (!enabled) return null
+  const visibleRetrievals = enabled ? retrievals : retrievals.filter((item) => !item.controlSpaceId)
+  if (!enabled && visibleRetrievals.length === 0) return null
 
   return (
     <>
       <ConfigureSection
-        label={t(($) => $['agentDetail.configure.knowledgeFs.title'])}
+        label={
+          enabled
+            ? t(($) => $['agentDetail.configure.knowledgeFs.title'])
+            : t(($) => $['agentDetail.configure.knowledgeRetrieval.label'])
+        }
         labelId={`${retrievalListId}-label`}
         panelId={retrievalListId}
-        tip={knowledgeRetrievalTip}
+        tip={enabled ? knowledgeRetrievalTip : undefined}
         panelContentClassName="flex flex-col gap-1"
         actions={
-          <ConfigureSectionAddButton
-            ariaLabel={t(($) => $['agentDetail.configure.knowledgeFs.add'])}
-            onClick={() => addRetrieval()}
-            disabled={readOnly}
-          />
+          enabled && (
+            <ConfigureSectionAddButton
+              ariaLabel={t(($) => $['agentDetail.configure.knowledgeFs.add'])}
+              onClick={() => addRetrieval()}
+              disabled={readOnly}
+            />
+          )
         }
       >
-        {retrievals.length === 0 ? (
+        {visibleRetrievals.length === 0 ? (
           <ConfigureSectionEmpty
             title={t(($) => $['agentDetail.configure.knowledgeRetrieval.empty.title'])}
             description={knowledgeRetrievalTip}
           />
         ) : (
-          retrievals.map((item) => (
+          visibleRetrievals.map((item) => (
             <AgentKnowledgeRetrievalRow
               key={item.id}
               item={item}
               onDelete={() => removeKnowledgeRetrieval(item.id)}
-              onEdit={() => {
-                if (!readOnly) setIsDialogOpen(true)
-              }}
+              onEdit={enabled ? () => addRetrieval() : undefined}
             />
           ))
         )}
       </ConfigureSection>
       <AgentKnowledgeRetrievalDialog
-        open={isDialogOpen}
+        open={enabled && isDialogOpen}
         initialBindings={retrievals}
         onConfirm={confirmBindings}
         onOpenChange={(open) => {
