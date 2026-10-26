@@ -18,7 +18,7 @@ from repositories.knowledge.metadata_repository import SQLAlchemyMetadataReposit
 from repositories.knowledge.retrieval_repository import KnowledgeRetrievalRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
-from services.api_token_service import ApiTokenCache
+from services.api_token_service import ApiTokenCache, get_effective_token_last_used_at
 from services.data_source.credential_gateway import (
     ActorAwareDatasourceCredentialGateway,
     TrustedStoredDatasourceCredentialGateway,
@@ -29,6 +29,7 @@ from services.knowledge.dataset_access import DatasetAccessService
 from services.knowledge.dataset_service import DocumentService
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetApplicationService
+from services.knowledge.datasets.upgrades import KnowledgeUpgradeApplicationService
 from services.knowledge.document_sync import DocumentSyncApplicationService
 from services.knowledge.document_sync_adapters import CeleryDocumentSyncDispatcher
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
@@ -52,6 +53,7 @@ from services.knowledge.segments.adapters import (
 )
 from services.knowledge.segments.application import DatasetSegmentApplicationService
 from services.knowledge.segments.indexing import SegmentIndexingGateway
+from services.knowledge_fs.feature_service import get_knowledge_fs_features
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
 from services.rbac.members import MemberService
 from services.tag_application_service import TagTargetQuery
@@ -74,6 +76,7 @@ class KnowledgeServices:
     indexing_estimates: IndexingEstimateApplicationService
     segments: DatasetSegmentApplicationService
     pipeline_generator: PipelineGenerator
+    upgrades: KnowledgeUpgradeApplicationService
 
 
 def build_dataset_api_key_service(
@@ -83,6 +86,7 @@ def build_dataset_api_key_service(
         keys=DatasetApiKeyRepository(session_factory=database_client),
         cache=ApiTokenCache,
         access=dataset_access,
+        last_used_at=get_effective_token_last_used_at,
         rbac_enabled=lambda: dify_config.RBAC_ENABLED,
     )
 
@@ -126,6 +130,12 @@ def build_knowledge_services(
         enable_task=enable_segments_to_index_task.delay,
         disable_task=disable_segments_from_index_task.delay,
     )
+    dataset_operations = SQLAlchemyDatasetOperations(
+        session_factory=database_client,
+        tags=tags,
+        app_queries=ConsoleAppRepository(session_factory=database_client),
+        members=rbac_members,
+    )
     return KnowledgeServices(
         inner_retrieval=InnerKnowledgeRetrievalService(
             scopes=KnowledgeRetrievalRepository(database_client), retrieval=build_dataset_retrieval(database_client)
@@ -135,12 +145,7 @@ def build_knowledge_services(
         ),
         datasets=DatasetApplicationService(
             dataset_access=dataset_access,
-            operations=SQLAlchemyDatasetOperations(
-                session_factory=database_client,
-                tags=tags,
-                app_queries=ConsoleAppRepository(session_factory=database_client),
-                members=rbac_members,
-            ),
+            operations=dataset_operations,
             rbac_enabled=dify_config.RBAC_ENABLED,
             service_api_url=dify_config.SERVICE_API_URL,
             vector_store=dify_config.VECTOR_STORE,
@@ -157,6 +162,13 @@ def build_knowledge_services(
         ),
         pipeline_generator=PipelineGenerator(
             execution_driver=WorkflowRunAgg.run, documents=documents, datasource_providers=providers
+        ),
+        upgrades=KnowledgeUpgradeApplicationService(
+            session_factory=database_client,
+            dataset_access=dataset_access,
+            datasets=dataset_operations,
+            rbac_enabled=dify_config.RBAC_ENABLED,
+            feature_enabled=lambda: get_knowledge_fs_features().enabled,
         ),
         document_sync=DocumentSyncApplicationService(
             dataset_access=dataset_access,

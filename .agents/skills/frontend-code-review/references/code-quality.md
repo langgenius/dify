@@ -1,71 +1,34 @@
-# Code Quality Rules
+# Code Quality Review
 
-## Scope Control
+Use this pack for changed type, styling, or copy contracts. Scope and reporting thresholds come
+from the skill entrypoint; do not turn general style preferences into findings.
 
-Flag changes that expand beyond the requested feature or review scope:
+## Types And Boundaries
 
-- Repo-wide cleanup mixed into a targeted fix.
-- Compatibility exports, aliases, shims, or wrapper layers added without an explicit migration requirement.
-- Shared abstractions created before there is stable cross-feature reuse.
-- Business components moved into generic shared locations without a clear ownership boundary.
+[Ownership] defines module boundaries, extraction, props, and domain types; [Data] owns generated
+API types. For Dify UI public exports and upstream-derived props, use [Public API authoring].
 
-## TypeScript
+- Identify the actual type information lost by a widened field, DTO mirror, or assertion. Trace
+  consumers before proposing a new abstraction or adapter.
+- Check that moved imports still use the intended public boundary. Distinguish an application
+  bypassing that boundary from the implementation that owns a library integration.
+- Require a real migration or compatibility need for new aliases and forwarding layers. Check
+  whether an existing owner can express the behavior with less state or indirection.
 
-Flag:
+## Styling And Copy
 
-- `any` or broad `Record<string, any>` where generated/API types or local domain types exist.
-- Re-declared API shapes instead of importing generated or returned types.
-- Weak route/query param typing that leaks `string | string[] | undefined` deep into components.
-- Runtime wrappers added only to satisfy TypeScript when a narrower type boundary would preserve the existing runtime shape.
+- Use [Styling] for tokens, class composition, state callbacks, and focus ownership, and [Overlays]
+  for portal/layering changes. Report the violated contract or rendered failure, not the absence
+  of a preferred utility class.
+- Apply [Web requirements] to localized strings and supported locales. Keep keys in the owning
+  feature namespace; aliases are for crossing namespaces. Verify changed keys and interpolation
+  against their consumers rather than reviewing only the English text.
+- Check whether action and recovery copy explains the real next step. A generic label or wording
+  preference alone is not a defect; establish ambiguity or an applicable naming contract.
 
-Prefer:
-
-- Explicit domain names that match the API contract.
-- Type narrowing at route/API boundaries.
-- Small conversion helpers colocated with the component that needs them.
-
-## Styling
-
-For Dify UI/Base UI state styling and callback composition, apply the package's [Styling] contract,
-including its documented reasons for direct state access.
-
-Flag:
-
-- New CSS modules or ad hoc CSS when Tailwind utilities and Dify tokens cover the need.
-- Component-level plain `.css` files or component CSS imported through `globals.css`; use scoped `*.module.css` only when Tailwind and component variants cannot express the style.
-- Generic color utilities where Dify semantic tokens exist.
-- Hardcoded magic class values for colors, spacing, radius, shadow, z-index, or typography when Dify tokens, component variants, or standard Tailwind radius classes match the required design value. Apply [Styling] when choosing radius classes.
-- `!` important modifiers or important CSS overrides without a narrow, documented reason.
-- Manual class-list assembly through string concatenation, template strings, array `.join(' ')`, or a custom conditional combiner instead of `cn(...)`. Conditional values passed to `cn(...)` remain valid.
-- Incoming `className` placed before default classes in `cn(...)`, preventing call-site overrides.
-- Z-index, forced backdrops, or other one-off layering fixes on overlays and body-level portals.
-
-Use:
-
-- `cn(...)` from the local package or utility already used by the file.
-- Dify semantic tokens and Tailwind v4 utilities.
-- Existing component variants before one-off class forks.
-- Component-level variants, semantic tokens, and normal cascade/order before `!` overrides. Use `!` only for a contained compatibility override that cannot be expressed through the component API or local selector structure.
-
-## Imports
-
-Flag:
-
-- Barrel imports from `@langgenius/dify-ui`; consumers must use subpath exports.
-- New overlay imports from legacy `@/app/components/base/modal`, `dialog`, or `drawer`.
-- Cross-feature imports that bypass explicit top-level public files.
-- Direct imports from generated/internal implementation files when a feature contract already exposes the intended surface.
-
-## Copy And i18n
-
-Flag:
-
-- User-facing hardcoded strings in `web/`.
-- Added or renamed i18n keys that are not present in every supported locale file for the touched namespace.
-- Translation namespace drift, especially using unrelated module namespaces for local feature copy.
-- Generic button labels like `Continue` where the action is specific.
-- Error messages that state only the failure and not the next step.
-
-Use feature-local translation keys by default. Alias only when crossing namespaces. `pnpm i18n:check --file <name>` should pass for any touched translation namespace.
-
+[Data]: ../../how-to-write-component/references/data.md
+[Overlays]: ../../../../packages/dify-ui/docs/overlays.md
+[Ownership]: ../../how-to-write-component/references/ownership.md
+[Public API authoring]: ../../../../packages/dify-ui/docs/authoring.md
 [Styling]: ../../../../packages/dify-ui/docs/styling.md
+[Web requirements]: ../../../../web/AGENTS.md

@@ -1,11 +1,11 @@
 """Prepare pipeline document names and metadata before opening a write transaction."""
 
-import datetime
 from collections.abc import Mapping
 from typing import Any
 
 from core.datasource.entities.datasource_entities import DatasourceProviderType
-from core.rag.index_processor.constant.built_in_field import BuiltInField
+from libs.datetime_utils import naive_utc_now
+from models.dataset import build_built_in_field_values
 from models.pipeline_execution import PipelineDocumentSeed
 
 
@@ -27,12 +27,12 @@ def prepare_pipeline_document(
             raise ValueError(f"Unsupported datasource type: {datasource_type}")
     metadata: dict[str, Any] = {}
     if built_in_field_enabled:
-        now = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")
-        metadata = {
-            BuiltInField.document_name: name,
-            BuiltInField.uploader: uploader_name,
-            BuiltInField.upload_date: now,
-            BuiltInField.last_update_date: now,
-            BuiltInField.source: datasource_type,
-        }
+        now = naive_utc_now()
+        metadata = build_built_in_field_values(
+            document_name=name,
+            uploader=uploader_name,
+            upload_date=now,
+            last_update_date=now,
+            data_source_type=datasource_type,
+        )
     return PipelineDocumentSeed(name, datasource_type, datasource_info, metadata)

@@ -44,7 +44,7 @@ function MarketplaceSection({
         onOpenChange={(open) => onMarketplaceCollapsedChange(!open)}
         render={<section aria-labelledby={headingId} />}
       >
-        <div className="flex h-5.5 items-center pr-2 pl-4">
+        <div className="flex h-5.5 items-center ps-4 pe-2">
           <CollapsibleTrigger
             id={headingId}
             className="group/marketplace flex min-h-0 w-full flex-1 touch-manipulation items-center justify-start gap-0 text-start system-sm-medium text-text-primary select-none"
@@ -68,7 +68,7 @@ function MarketplaceSection({
               return (
                 <li
                   key={key}
-                  className="group flex cursor-pointer items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-3 focus-within:bg-state-base-hover hover:bg-state-base-hover"
+                  className="group flex cursor-pointer items-center gap-1 rounded-lg py-0.5 ps-3 pe-0.5 focus-within:bg-state-base-hover hover:bg-state-base-hover"
                 >
                   <div className="flex flex-1 items-center gap-2 py-0.5">
                     {'image' in logo ? (
@@ -119,7 +119,7 @@ function MarketplaceSection({
               <Button
                 variant="ghost"
                 size="small"
-                className="h-auto w-full justify-start gap-0.5 px-3 py-1.5 text-left"
+                className="h-auto w-full justify-start gap-0.5 px-3 py-1.5 text-start"
                 onClick={onOpenMarketplace}
               >
                 <span className="flex-1 system-xs-regular text-text-accent">
@@ -128,7 +128,7 @@ function MarketplaceSection({
                   })}
                 </span>
                 <span
-                  className="i-ri-arrow-right-up-line size-3! text-text-accent"
+                  className="i-ri-arrow-right-up-line size-3! text-text-accent rtl:-scale-x-100"
                   aria-hidden="true"
                 />
               </Button>
@@ -145,7 +145,7 @@ function MarketplaceSection({
                   })}
                 </span>
                 <span
-                  className="i-ri-arrow-right-up-line size-3! text-text-accent"
+                  className="i-ri-arrow-right-up-line size-3! text-text-accent rtl:-scale-x-100"
                   aria-hidden="true"
                 />
               </a>

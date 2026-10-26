@@ -18,7 +18,7 @@ from core.ops.utils import (
 )
 from models.enums import ConversationFromSource
 from models.model import Message
-from tests.unit_tests.model_factories import make_message
+from tests.helpers.unit.model_factories import make_message
 
 
 @pytest.fixture

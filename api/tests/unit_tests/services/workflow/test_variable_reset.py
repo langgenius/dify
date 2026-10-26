@@ -29,7 +29,7 @@ from services.file_service import FileService
 from services.workflow.draft_variable_service import VariableResetError
 from services.workflow.variable_contracts import DraftVariableChangedError
 from tasks.workflow_draft_var_tasks import cleanup_draft_variable_files_task, recover_draft_variable_file_cleanup_task
-from tests.unit_tests.model_factories import make_account, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_workflow
 
 
 @dataclass

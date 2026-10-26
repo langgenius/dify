@@ -27,7 +27,7 @@ from services.agent.chat.cot_runner import CotAgentRunner
 from services.agent.chat.ports import AgentToolInvoker
 from services.app.generation.adapters.agent_chat import _SessionBoundAgentToolInvoker
 from services.app.generation.ports import AgentMessageRecords, MessageFileWriter
-from tests.unit_tests.model_factories import make_message
+from tests.helpers.unit.model_factories import make_message
 
 
 class _TrackingSession(Session):
@@ -69,7 +69,7 @@ class _LazyTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         assert isinstance(session, _TrackingSession)
         self.sessions.append(session)
         assert not session.was_closed

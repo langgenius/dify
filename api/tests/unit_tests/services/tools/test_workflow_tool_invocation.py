@@ -1,11 +1,10 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
-from unittest.mock import create_autospec
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.orm import Session
 
-from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
@@ -19,7 +18,7 @@ from services.tools.workflow.tool import WorkflowTool
 from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.workflow.app_generator import WorkflowAppGenerator
 from services.workflow.execution.ports import WorkflowRuntime
-from tests.unit_tests.model_factories import make_account, make_app, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 
 
 @dataclass(frozen=True)
@@ -66,6 +65,7 @@ class _GenerateCall:
     streaming: bool
     call_depth: int
     pause_state_config: object | None
+    allow_human_input: bool
 
 
 def test_public_invoke_passes_explicit_session_and_injects_service_generator_dependencies(
@@ -76,10 +76,8 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
     actor = make_account()
     calls: list[_GenerateCall] = []
     generators: list[WorkflowAppGenerator] = []
-    workflow_runtime: WorkflowRuntime = create_autospec(WorkflowRuntime, instance=True, spec_set=True)
-
-    def draft_variable_saver(_tenant_id: str, _account: Account) -> DraftVariableSaverFactory:
-        raise AssertionError("draft-variable saver lookup is not expected for a published workflow")
+    execution_driver = Mock(name="execution_driver")
+    workflow_runtime: WorkflowRuntime = Mock(spec=WorkflowRuntime, execution_driver=execution_driver)
 
     def generate(
         generator: WorkflowAppGenerator,
@@ -92,6 +90,7 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
         streaming: bool,
         call_depth: int,
         pause_state_config: object | None,
+        allow_human_input: bool,
     ) -> dict[str, object]:
         generators.append(generator)
         calls.append(
@@ -104,6 +103,7 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
                 streaming=streaming,
                 call_depth=call_depth,
                 pause_state_config=pause_state_config,
+                allow_human_input=allow_human_input,
             )
         )
         return {"data": {"outputs": {"answer": "forty-two"}}}
@@ -118,9 +118,9 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
     )
     tool = WorkflowTool(
         workflow_app_id="app-1",
+        workflow_id=workflow.id,
         workflow_as_tool_id="workflow-tool-1",
         version="published",
-        workflow_entities={},
         workflow_call_depth=2,
         entity=ToolEntity(
             identity=ToolIdentity(
@@ -133,7 +133,7 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
         ),
         runtime=ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.EXPLORE),
         queries=_WorkflowQueries(app_model=app, workflow_model=workflow, actor_model=actor),
-        draft_variable_saver=draft_variable_saver,
+        draft_variable_saver=None,
         workflow_runtime=workflow_runtime,
     )
 
@@ -156,11 +156,13 @@ def test_public_invoke_passes_explicit_session_and_injects_service_generator_dep
             streaming=False,
             call_depth=3,
             pause_state_config=None,
+            allow_human_input=False,
         )
     ]
     assert len(generators) == 1
     assert generators[0]._runtime is workflow_runtime
-    assert generators[0]._draft_variable_saver is draft_variable_saver
+    assert generators[0]._execution_driver is execution_driver
+    assert generators[0].draft_variable_saver is None
     assert [message.type for message in messages] == [
         ToolInvokeMessage.MessageType.VARIABLE,
         ToolInvokeMessage.MessageType.TEXT,

@@ -4,6 +4,8 @@ from typing import override
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.common.access_response import register_auth_error_response
+
 # Register response/query models BEFORE importing controller modules so that
 # @openapi_ns.response / @openapi_ns.expect decorators can resolve model names.
 from controllers.common.fields import EventStreamResponse, SimpleResultResponse
@@ -161,6 +163,7 @@ from services.entities.dsl_entities import CheckDependenciesResult, Import
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)
+register_auth_error_response(bp)
 attach_catalog(bp)
 
 
@@ -366,6 +369,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         human_input_form,
         index,
         knowledge_bases,
+        knowledge_fs,
         model_providers,
         node_types,
         oauth_device,
@@ -391,6 +395,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         human_input_form,
         index,
         knowledge_bases,
+        knowledge_fs,
         model_providers,
         node_types,
         oauth_device,
@@ -417,6 +422,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     human_input_form,
     index,
     knowledge_bases,
+    knowledge_fs,
     model_providers,
     node_types,
     oauth_device,
@@ -444,6 +450,7 @@ __all__ = [
     "human_input_form",
     "index",
     "knowledge_bases",
+    "knowledge_fs",
     "model_providers",
     "node_types",
     "oauth_device",

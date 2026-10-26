@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from core.tools.entities.tool_entities import ToolProviderType
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
 from models.workflow import WorkflowNodeExecutionModel
@@ -19,9 +20,12 @@ def node_execution_extras(
     if execution_metadata:
         if execution.node_type == BuiltinNodeTypes.TOOL and "tool_info" in execution_metadata:
             tool_info: dict[str, Any] = execution_metadata["tool_info"]
+            provider_type = ToolProviderType(tool_info["provider_type"])
+            if provider_type == ToolProviderType.WORKFLOW:
+                extras["workflow_tool"] = True
             extras["icon"] = ToolManager.get_tool_icon(
                 tenant_id=execution.tenant_id,
-                provider_type=tool_info["provider_type"],
+                provider_type=provider_type,
                 provider_id=tool_info["provider_id"],
                 tool_providers=tool_providers,
             )

@@ -1,6 +1,6 @@
 'use client'
 
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -8,7 +8,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 
-const PUBLISH_SKILL_HOTKEY = 'Mod+Shift+P' satisfies Hotkey
+const PUBLISH_SKILL_HOTKEY = 'Mod+Shift+P' satisfies HotkeyChord
 
 type SkillPublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
 

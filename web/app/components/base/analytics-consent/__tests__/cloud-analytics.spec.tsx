@@ -1,8 +1,10 @@
 import { QueryClient } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
 import { REGISTRATION_SUCCESS_STORAGE_KEY } from '@/app/components/base/amplitude/registration-session-state'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 
 let queryClient: QueryClient
+const systemFeaturesQueryKey = consoleQueryKey('systemFeatures.get')
 
 type ConfigState = {
   cookieYesSiteKey: string
@@ -10,7 +12,7 @@ type ConfigState = {
   webPrefix: string | undefined
 }
 
-const { configState, mockHeadersGet, mockBoundary, systemFeaturesQueryKey } = vi.hoisted(() => ({
+const { configState, mockHeadersGet, mockBoundary } = vi.hoisted(() => ({
   configState: {
     cookieYesSiteKey: 'site-key',
     isProd: true,
@@ -18,7 +20,6 @@ const { configState, mockHeadersGet, mockBoundary, systemFeaturesQueryKey } = vi
   } as ConfigState,
   mockHeadersGet: vi.fn(),
   mockBoundary: vi.fn(),
-  systemFeaturesQueryKey: ['console', 'system-features'] as const,
 }))
 
 vi.mock('@/features/system-features/server', () => ({

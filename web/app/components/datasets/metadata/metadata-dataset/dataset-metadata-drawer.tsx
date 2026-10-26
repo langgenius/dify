@@ -105,14 +105,14 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
           <div className="shrink-0 system-xs-regular">{payload.type}</div>
         </div>
         {(!readonly || disabled) && (
-          <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
+          <div className="ms-2 shrink-0 system-xs-regular text-text-tertiary">
             {disabled
               ? t(($) => $[`${i18nPrefix}.disabled`], { ns: 'dataset' })
               : t(($) => $[`${i18nPrefix}.values`], { ns: 'dataset', num: payload.count || 0 })}
           </div>
         )}
         {!readonly && !disabled && (
-          <div className="ml-2 flex shrink-0 items-center space-x-1 text-text-tertiary">
+          <div className="ms-2 flex shrink-0 items-center space-x-1 text-text-tertiary">
             <IconButton
               size="sm"
               aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
@@ -284,7 +284,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
                   />
                   <div
                     id={builtInLabelId}
-                    className="mr-0.5 ml-2 system-sm-semibold text-text-secondary"
+                    className="ms-2 me-0.5 system-sm-semibold text-text-secondary"
                   >
                     {t(($) => $[`${i18nPrefix}.builtIn`], { ns: 'dataset' })}
                   </div>
