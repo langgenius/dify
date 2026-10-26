@@ -724,8 +724,6 @@ export const workflowRuns = {
 }
 
 /**
- * Preview human input form content and placeholders
- *
  * Get human input form preview for advanced chat workflow
  */
 export const post4 = oc
@@ -735,7 +733,6 @@ export const post4 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreview',
     path: '/apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview',
-    summary: 'Preview human input form content and placeholders',
     tags: ['console'],
   })
   .input(
@@ -745,15 +742,12 @@ export const post4 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const preview = {
   post: post4,
 }
 
 /**
- * Submit human input form preview
- *
  * Submit human input form preview for advanced chat workflow
  */
 export const post5 = oc
@@ -763,7 +757,6 @@ export const post5 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRun',
     path: '/apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/run',
-    summary: 'Submit human input form preview',
     tags: ['console'],
   })
   .input(
@@ -773,7 +766,6 @@ export const post5 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run = {
   post: post5,
@@ -797,8 +789,6 @@ export const humanInput = {
 }
 
 /**
- * Run draft workflow iteration node
- *
  * Run draft workflow iteration node for advanced chat
  */
 export const post6 = oc
@@ -808,7 +798,6 @@ export const post6 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRun',
     path: '/apps/{app_id}/advanced-chat/workflows/draft/iteration/nodes/{node_id}/run',
-    summary: 'Run draft workflow iteration node',
     tags: ['console'],
   })
   .input(
@@ -818,7 +807,6 @@ export const post6 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run2 = {
   post: post6,
@@ -837,8 +825,6 @@ export const iteration = {
 }
 
 /**
- * Run draft workflow loop node
- *
  * Run draft workflow loop node for advanced chat
  */
 export const post7 = oc
@@ -848,7 +834,6 @@ export const post7 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRun',
     path: '/apps/{app_id}/advanced-chat/workflows/draft/loop/nodes/{node_id}/run',
-    summary: 'Run draft workflow loop node',
     tags: ['console'],
   })
   .input(
@@ -858,7 +843,6 @@ export const post7 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run3 = {
   post: post7,
@@ -877,8 +861,6 @@ export const loop = {
 }
 
 /**
- * Run draft workflow
- *
  * Run draft workflow for advanced chat application
  */
 export const post8 = oc
@@ -888,7 +870,6 @@ export const post8 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdAdvancedChatWorkflowsDraftRun',
     path: '/apps/{app_id}/advanced-chat/workflows/draft/run',
-    summary: 'Run draft workflow',
     tags: ['console'],
   })
   .input(
@@ -898,10 +879,7 @@ export const post8 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    rate_limit_error: { status: 429, data: zRateLimitError },
-  })
+  .errors({ rate_limit_error: { status: 429, data: zRateLimitError } })
 
 export const run4 = {
   post: post8,
@@ -1980,21 +1958,15 @@ export const conversationVariables = {
 }
 
 /**
- * Convert basic mode of chatbot app to workflow mode
- *
  * Convert application to workflow mode
- * Convert expert mode of chatbot app to workflow mode
- * Convert Completion App to Workflow App
  */
 export const post21 = oc
   .route({
-    description:
-      'Convert application to workflow mode\nConvert expert mode of chatbot app to workflow mode\nConvert Completion App to Workflow App',
+    description: 'Convert application to workflow mode',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdConvertToWorkflow',
     path: '/apps/{app_id}/convert-to-workflow',
-    summary: 'Convert basic mode of chatbot app to workflow mode',
     tags: ['console'],
   })
   .input(
@@ -2004,7 +1976,6 @@ export const post21 = oc
     }),
   )
   .output(zPostAppsByAppIdConvertToWorkflowResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const convertToWorkflow = {
   post: post21,
@@ -3039,8 +3010,6 @@ export const count3 = {
 }
 
 /**
- * Stop workflow task
- *
  * Stop running workflow task
  */
 export const post39 = oc
@@ -3050,12 +3019,10 @@ export const post39 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowRunsTasksByTaskIdStop',
     path: '/apps/{app_id}/workflow-runs/tasks/{task_id}/stop',
-    summary: 'Stop workflow task',
     tags: ['console'],
   })
   .input(z.object({ params: zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopPath }))
   .output(zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const stop3 = {
   post: post39,
@@ -3677,8 +3644,6 @@ export const workflow = {
 }
 
 /**
- * Get default block config
- *
  * Get default block configuration by type
  */
 export const get65 = oc
@@ -3688,7 +3653,6 @@ export const get65 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockType',
     path: '/apps/{app_id}/workflows/default-workflow-block-configs/{block_type}',
-    summary: 'Get default block config',
     tags: ['console'],
   })
   .input(
@@ -3698,15 +3662,12 @@ export const get65 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byBlockType = {
   get: get65,
 }
 
 /**
- * Get default block config
- *
  * Get default block configurations for workflow
  */
 export const get66 = oc
@@ -3716,12 +3677,10 @@ export const get66 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDefaultWorkflowBlockConfigs',
     path: '/apps/{app_id}/workflows/default-workflow-block-configs',
-    summary: 'Get default block config',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsPath }))
   .output(zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const defaultWorkflowBlockConfigs = {
   get: get66,
@@ -3831,15 +3790,12 @@ export const post46 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftFeaturesResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const features = {
   post: post46,
 }
 
 /**
- * Test human input delivery
- *
  * Test human input delivery for workflow
  */
 export const post47 = oc
@@ -3849,7 +3805,6 @@ export const post47 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTest',
     path: '/apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/delivery-test',
-    summary: 'Test human input delivery',
     tags: ['console'],
   })
   .input(
@@ -3859,15 +3814,12 @@ export const post47 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const deliveryTest = {
   post: post47,
 }
 
 /**
- * Preview human input form content and placeholders
- *
  * Get human input form preview for workflow
  */
 export const post48 = oc
@@ -3877,7 +3829,6 @@ export const post48 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreview',
     path: '/apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/preview',
-    summary: 'Preview human input form content and placeholders',
     tags: ['console'],
   })
   .input(
@@ -3887,15 +3838,12 @@ export const post48 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const preview4 = {
   post: post48,
 }
 
 /**
- * Submit human input form preview
- *
  * Submit human input form preview for workflow
  */
 export const post49 = oc
@@ -3905,7 +3853,6 @@ export const post49 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRun',
     path: '/apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/run',
-    summary: 'Submit human input form preview',
     tags: ['console'],
   })
   .input(
@@ -3915,7 +3862,6 @@ export const post49 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run5 = {
   post: post49,
@@ -3941,8 +3887,6 @@ export const humanInput2 = {
 
 /**
  * Run draft workflow iteration node
- *
- * Run draft workflow iteration node
  */
 export const post50 = oc
   .route({
@@ -3951,7 +3895,6 @@ export const post50 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRun',
     path: '/apps/{app_id}/workflows/draft/iteration/nodes/{node_id}/run',
-    summary: 'Run draft workflow iteration node',
     tags: ['console'],
   })
   .input(
@@ -3961,7 +3904,6 @@ export const post50 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run6 = {
   post: post50,
@@ -3981,8 +3923,6 @@ export const iteration2 = {
 
 /**
  * Run draft workflow loop node
- *
- * Run draft workflow loop node
  */
 export const post51 = oc
   .route({
@@ -3991,7 +3931,6 @@ export const post51 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRun',
     path: '/apps/{app_id}/workflows/draft/loop/nodes/{node_id}/run',
-    summary: 'Run draft workflow loop node',
     tags: ['console'],
   })
   .input(
@@ -4001,7 +3940,6 @@ export const post51 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run7 = {
   post: post51,
@@ -4210,15 +4148,12 @@ export const get71 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunPath }))
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const lastRun = {
   get: get71,
 }
 
 /**
- * Run draft workflow node
- *
  * Run draft workflow node
  */
 export const post56 = oc
@@ -4228,7 +4163,6 @@ export const post56 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftNodesByNodeIdRun',
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/run',
-    summary: 'Run draft workflow node',
     tags: ['console'],
   })
   .input(
@@ -4238,15 +4172,12 @@ export const post56 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run8 = {
   post: post56,
 }
 
 /**
- * Poll for trigger events and execute single node when event arrives
- *
  * Poll for trigger events and execute single node when event arrives
  */
 export const post57 = oc
@@ -4256,12 +4187,10 @@ export const post57 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRun',
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/trigger/run',
-    summary: 'Poll for trigger events and execute single node when event arrives',
     tags: ['console'],
   })
   .input(z.object({ params: zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunPath }))
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run9 = {
   post: post57,
@@ -4321,8 +4250,6 @@ export const nodes7 = {
 
 /**
  * Run draft workflow
- *
- * Run draft workflow
  */
 export const post58 = oc
   .route({
@@ -4331,7 +4258,6 @@ export const post58 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftRun',
     path: '/apps/{app_id}/workflows/draft/run',
-    summary: 'Run draft workflow',
     tags: ['console'],
   })
   .input(
@@ -4341,10 +4267,7 @@ export const post58 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftRunResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    rate_limit_error: { status: 429, data: zRateLimitError },
-  })
+  .errors({ rate_limit_error: { status: 429, data: zRateLimitError } })
 
 export const run10 = {
   post: post58,
@@ -4485,8 +4408,6 @@ export const systemVariables = {
 
 /**
  * Poll for trigger events and execute full workflow when event arrives
- *
- * Poll for trigger events and execute full workflow when event arrives
  */
 export const post59 = oc
   .route({
@@ -4495,7 +4416,6 @@ export const post59 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftTriggerRun',
     path: '/apps/{app_id}/workflows/draft/trigger/run',
-    summary: 'Poll for trigger events and execute full workflow when event arrives',
     tags: ['console'],
   })
   .input(
@@ -4505,18 +4425,13 @@ export const post59 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    rate_limit_error: { status: 429, data: zRateLimitError },
-  })
+  .errors({ rate_limit_error: { status: 429, data: zRateLimitError } })
 
 export const run11 = {
   post: post59,
 }
 
 /**
- * Full workflow debug when the start node is a trigger
- *
  * Full workflow debug when the start node is a trigger
  */
 export const post60 = oc
@@ -4526,7 +4441,6 @@ export const post60 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftTriggerRunAll',
     path: '/apps/{app_id}/workflows/draft/trigger/run-all',
-    summary: 'Full workflow debug when the start node is a trigger',
     tags: ['console'],
   })
   .input(
@@ -4536,10 +4450,7 @@ export const post60 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunAllResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    rate_limit_error: { status: 429, data: zRateLimitError },
-  })
+  .errors({ rate_limit_error: { status: 429, data: zRateLimitError } })
 
 export const runAll = {
   post: post60,
@@ -4674,8 +4585,6 @@ export const variables2 = {
 }
 
 /**
- * Get draft workflow
- *
  * Get draft workflow for an application
  */
 export const get80 = oc
@@ -4685,19 +4594,13 @@ export const get80 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraft',
     path: '/apps/{app_id}/workflows/draft',
-    summary: 'Get draft workflow',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftPath }))
   .output(zGetAppsByAppIdWorkflowsDraftResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
-  })
+  .errors({ draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError } })
 
 /**
- * Sync draft workflow
- *
  * Sync draft workflow configuration
  */
 export const post61 = oc
@@ -4707,7 +4610,6 @@ export const post61 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraft',
     path: '/apps/{app_id}/workflows/draft',
-    summary: 'Sync draft workflow',
     tags: ['console'],
   })
   .input(
@@ -4717,10 +4619,7 @@ export const post61 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftResponse)
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
-  })
+  .errors({ draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError } })
 
 export const draft2 = {
   get: get80,
@@ -4740,8 +4639,6 @@ export const draft2 = {
 }
 
 /**
- * Get published workflow
- *
  * Get published workflow for an application
  */
 export const get81 = oc
@@ -4751,23 +4648,17 @@ export const get81 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsPublish',
     path: '/apps/{app_id}/workflows/publish',
-    summary: 'Get published workflow',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishPath }))
   .output(zGetAppsByAppIdWorkflowsPublishResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
-/**
- * Publish workflow
- */
 export const post62 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsPublish',
     path: '/apps/{app_id}/workflows/publish',
-    summary: 'Publish workflow',
     tags: ['console'],
   })
   .input(
@@ -4777,7 +4668,6 @@ export const post62 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsPublishResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const publish = {
   get: get81,
@@ -4952,15 +4842,11 @@ export const post63 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdWorkflowsByWorkflowIdRestorePath }))
   .output(zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const restore = {
   post: post63,
 }
 
-/**
- * Delete workflow
- */
 export const delete14 = oc
   .route({
     inputStructure: 'detailed',
@@ -4968,16 +4854,12 @@ export const delete14 = oc
     operationId: 'deleteAppsByAppIdWorkflowsByWorkflowId',
     path: '/apps/{app_id}/workflows/{workflow_id}',
     successStatus: 204,
-    summary: 'Delete workflow',
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsByWorkflowIdPath }))
   .output(zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
- * Update workflow attributes
- *
  * Update workflow by ID
  */
 export const patch3 = oc
@@ -4987,7 +4869,6 @@ export const patch3 = oc
     method: 'PATCH',
     operationId: 'patchAppsByAppIdWorkflowsByWorkflowId',
     path: '/apps/{app_id}/workflows/{workflow_id}',
-    summary: 'Update workflow attributes',
     tags: ['console'],
   })
   .input(
@@ -4997,7 +4878,6 @@ export const patch3 = oc
     }),
   )
   .output(zPatchAppsByAppIdWorkflowsByWorkflowIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byWorkflowId = {
   delete: delete14,
@@ -5006,8 +4886,6 @@ export const byWorkflowId = {
 }
 
 /**
- * Get published workflows
- *
  * Get all published workflows for an application
  */
 export const get87 = oc
@@ -5017,7 +4895,6 @@ export const get87 = oc
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflows',
     path: '/apps/{app_id}/workflows',
-    summary: 'Get published workflows',
     tags: ['console'],
   })
   .input(
@@ -5027,7 +4904,6 @@ export const get87 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const workflows3 = {
   get: get87,

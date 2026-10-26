@@ -101,7 +101,6 @@ ignore_imports =
     # The KnowledgeFS retrieval node is owned by services.knowledge_fs and only wired in here.
     core.workflow.node_factory -> services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter
     core.workflow.node_factory -> services.knowledge_fs.knowledge_retrieval_v2.entities
-    core.workflow.nodes.agent.message_transformer -> services.tools.legacy_builtin_tools_manage_service
     core.workflow.nodes.agent_v2.agent_node -> services.agent.knowledge_citations
     core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
     core.workflow.nodes.agent_v2.agent_node -> services.agent.workspace_service
