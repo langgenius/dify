@@ -139,14 +139,6 @@ export const zCompletionMessagePayload = z.object({
 })
 
 /**
- * ConnectionConfigurationResponse
- */
-export const zConnectionConfigurationResponse = z.object({
-  connections: z.record(z.string(), z.string().nullable()),
-  workflow_id: z.string().nullable(),
-})
-
-/**
  * ConnectionCredentialStatus
  *
  * Last known credential lifecycle state, not readiness for a particular node.
@@ -283,6 +275,13 @@ export const zEndUserConnectionResponse = z.object({
   name: z.string(),
   provider: z.string(),
   updated_at: z.int(),
+})
+
+/**
+ * ConnectionConfigurationResponse
+ */
+export const zConnectionConfigurationResponse = z.object({
+  connections: z.record(z.string(), zEndUserConnectionResponse.nullable()),
 })
 
 /**

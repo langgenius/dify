@@ -371,27 +371,42 @@ class EndUserConnectionRepository:
             for item in selections
         )
 
+    @classmethod
+    def _summary_query(cls, context: WebConnectionContext) -> sa.Select[tuple[EndUserConnection]]:
+        return (
+            sa.select(EndUserConnection)
+            .options(
+                load_only(
+                    EndUserConnection.id,
+                    EndUserConnection.name,
+                    EndUserConnection.provider,
+                    EndUserConnection.credential_type,
+                    EndUserConnection.status,
+                    EndUserConnection.account_label,
+                    EndUserConnection.expires_at,
+                    EndUserConnection.created_at,
+                    EndUserConnection.updated_at,
+                    EndUserConnection.last_active_at,
+                    raiseload=True,
+                )
+            )
+            .where(EndUserConnection.tenant_id == context.tenant_id, *cls._owner(context.owner))
+        )
+
+    def connection_summaries(
+        self, context: WebConnectionContext, connection_ids: frozenset[str]
+    ) -> Mapping[str, ConnectionSummary]:
+        with self._sessions() as session:
+            self._require_context(session, context, lock=False)
+            if not connection_ids:
+                return {}
+            rows = session.scalars(self._summary_query(context).where(EndUserConnection.id.in_(connection_ids)))
+            return {row.id: self._summary(row) for row in rows}
+
     def list(self, context: WebConnectionContext, query: ListConnectionsInput, after_id: str | None) -> ConnectionPage:
         with self._sessions() as session:
             self._require_context(session, context, lock=False)
-            stmt = (
-                sa.select(EndUserConnection)
-                .options(
-                    load_only(
-                        EndUserConnection.id,
-                        EndUserConnection.name,
-                        EndUserConnection.provider,
-                        EndUserConnection.credential_type,
-                        EndUserConnection.status,
-                        EndUserConnection.account_label,
-                        EndUserConnection.expires_at,
-                        EndUserConnection.created_at,
-                        EndUserConnection.updated_at,
-                        EndUserConnection.last_active_at,
-                    )
-                )
-                .where(EndUserConnection.tenant_id == context.tenant_id, *self._owner(context.owner))
-            )
+            stmt = self._summary_query(context)
             if query.provider is not None:
                 stmt = stmt.where(EndUserConnection.provider == query.provider)
             if after_id is not None:

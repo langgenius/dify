@@ -154,9 +154,8 @@ export type ConnectionConfigurationInvalidError = ErrorResponse & {
 
 export type ConnectionConfigurationResponse = {
   connections: {
-    [key: string]: string | null
+    [key: string]: EndUserConnectionResponse | null
   }
-  workflow_id: string | null
 }
 
 export type ConnectionConflictError = ErrorResponse & {

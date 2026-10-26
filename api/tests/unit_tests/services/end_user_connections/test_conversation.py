@@ -248,7 +248,9 @@ def test_delayed_first_conversation_does_not_overwrite_newer_app_defaults(harnes
     with harness.sessions() as session:
         conversation, _ = MessageBasedAppGenerator()._init_generate_records(entity, session=session)
     assert harness.saved(conversation.id) == {"tool-1": first.id}
-    assert harness.service.get(base.context, None).connections == {"tool-1": second.id}
+    selected = harness.service.get(base.context, None).connections["tool-1"]
+    assert selected is not None
+    assert selected.id == second.id
 
 
 def test_workspace_only_run_clears_old_defaults_without_preflight(harness: ConversationHarness) -> None:
