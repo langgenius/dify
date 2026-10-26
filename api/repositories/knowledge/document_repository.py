@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentPipelineExecutionLog, Pipeline
-from models.enums import IndexingStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.pipeline_execution import PipelineDocumentSeed
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from repositories.knowledge.dataset_repository import _get_dataset
@@ -145,11 +145,11 @@ class SQLAlchemyDocumentRepository:
                         tenant_id=tenant_id,
                         dataset_id=dataset_id,
                         position=position + offset,
-                        data_source_type=seed.data_source_type,
+                        data_source_type=DataSourceType(seed.data_source_type),
                         data_source_info=json.dumps(seed.data_source_info),
                         batch=batch,
                         name=seed.name,
-                        created_from="rag-pipeline",
+                        created_from=DocumentCreatedFrom.RAG_PIPELINE,
                         created_by=user_id,
                         doc_form=dataset.chunk_structure,
                         doc_metadata=dict(seed.doc_metadata) or None,
