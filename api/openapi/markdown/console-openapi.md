@@ -16595,6 +16595,15 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/agents/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -16651,6 +16660,15 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/apps/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -16707,6 +16725,15 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/datasets/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -16763,6 +16790,12 @@ Update a plugin endpoint
 
 ### [POST] /workspaces/current/skills/import
 Import a Skill zip package from multipart form field `file`.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
