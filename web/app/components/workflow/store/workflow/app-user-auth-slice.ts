@@ -14,6 +14,7 @@ type NodeAuthorizationDraft = {
   provider: string
   providerId: string
   authorizationTab: AuthorizationTab
+  workspaceCredentialId?: string
   draft?: AppUserAuthDraft
   errors?: AppUserAuthErrors
   reuseFromNode?: { source: ReuseFromNodeReference }
@@ -40,6 +41,12 @@ export type AppUserAuthSliceShape = {
     providerId: string,
     source: ReuseFromNodeReference,
   ) => void
+  cacheNodeWorkspaceCredential: (
+    nodeId: string,
+    provider: string,
+    providerId: string,
+    credentialId?: string,
+  ) => void
 }
 
 const getNodeAuthorizationDraft = (
@@ -55,8 +62,19 @@ const getNodeAuthorizationDraft = (
 }
 
 export const createAppUserAuthSlice: StateCreator<AppUserAuthSliceShape> = (set) => ({
-  // UI-only drafts must stay outside graph node data and collaboration payloads.
+  // Retain inactive-tab drafts and display snapshots for this editor session.
+  // Active authorization is owned by the graph, not this cache.
   nodeAuthDrafts: {},
+  cacheNodeWorkspaceCredential: (nodeId, provider, providerId, workspaceCredentialId) =>
+    set((state) => ({
+      nodeAuthDrafts: {
+        ...state.nodeAuthDrafts,
+        [nodeId]: {
+          ...getNodeAuthorizationDraft(state.nodeAuthDrafts, nodeId, provider, providerId),
+          workspaceCredentialId,
+        },
+      },
+    })),
   setNodeAuthorizationTab: (nodeId, provider, providerId, authorizationTab, options) =>
     set((state) => {
       const current = getNodeAuthorizationDraft(state.nodeAuthDrafts, nodeId, provider, providerId)

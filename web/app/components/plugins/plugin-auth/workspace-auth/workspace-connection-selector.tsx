@@ -20,6 +20,11 @@ export type WorkspaceConnectionSelectorProps = {
   pluginPayload: PluginPayload
   authorization: ReturnType<typeof usePluginAuth>
   credentialId?: string
+  useWorkspaceDefault?: boolean
+  active?: boolean
+  disabled?: boolean
+  placeholder?: string
+  onClientTypeChange?: (type: 'default' | 'custom' | undefined) => void
   providerName?: string
   onAuthorizationItemClick: (id: string) => void
   onDefaultCredentialChange?: (id?: string) => void
@@ -29,6 +34,11 @@ const WorkspaceConnectionSelector = ({
   pluginPayload,
   authorization,
   credentialId,
+  useWorkspaceDefault = true,
+  active = true,
+  disabled = false,
+  placeholder,
+  onClientTypeChange,
   providerName,
   onAuthorizationItemClick,
   onDefaultCredentialChange,
@@ -47,11 +57,14 @@ const WorkspaceConnectionSelector = ({
   const operations = useWorkspaceConnectionOperations({
     pluginPayload,
     canApiKey:
-      !!canApiKey ||
-      credentials.some((credential) => credential.credential_type === CredentialTypeEnum.API_KEY),
+      active &&
+      (!!canApiKey ||
+        credentials.some(
+          (credential) => credential.credential_type === CredentialTypeEnum.API_KEY,
+        )),
     onUpdate: invalidPluginCredentialInfo,
   })
-  const oauthClient = useOAuthClient(pluginPayload, !!canOAuth)
+  const oauthClient = useOAuthClient(pluginPayload, active && !!canOAuth)
   const oauthSchema = oauthClient.query
   const [oauthSettingsSession, setOauthSettingsSession] = useState(0)
   const [oauthSettingsOpen, setOauthSettingsOpen] = useState(false)
@@ -70,21 +83,26 @@ const WorkspaceConnectionSelector = ({
   const defaultCredential = credentials.find((credential) => credential.is_default)
   const selectedCredential = credentialId
     ? credentials.find((credential) => credential.id === credentialId)
-    : defaultCredential
+    : useWorkspaceDefault
+      ? defaultCredential
+      : undefined
   const unavailable =
     selectedCredential?.not_allowed_to_use ||
-    (!authorization.loadError && !isLoading && !selectedCredential)
+    (!authorization.loadError &&
+      !isLoading &&
+      !selectedCredential &&
+      (!!credentialId || useWorkspaceDefault))
   const selectedName =
     selectedCredential?.name ||
     (isLoading
       ? t(($) => $.loading, { ns: 'common' })
       : credentialId && !authorization.loadError
         ? t(($) => $['auth.authRemoved'], { ns: 'plugin' })
-        : t(($) => $['auth.workspaceDefault'], { ns: 'plugin' }))
+        : (placeholder ?? t(($) => $['auth.workspaceDefault'], { ns: 'plugin' })))
 
   useEffect(() => {
-    onDefaultCredentialChange?.(defaultCredential?.id)
-  }, [defaultCredential?.id, onDefaultCredentialChange])
+    if (active && useWorkspaceDefault) onDefaultCredentialChange?.(defaultCredential?.id)
+  }, [active, defaultCredential?.id, onDefaultCredentialChange, useWorkspaceDefault])
 
   const methodLabel = (credential?: Credential) =>
     credential?.credential_type === CredentialTypeEnum.OAUTH2
@@ -128,23 +146,26 @@ const WorkspaceConnectionSelector = ({
         dataSource={{
           credentials,
           selectedCredential,
-          workspaceDefault: {
-            option: {
-              id: '__workspace_default__',
-              name: t(($) => $['auth.workspaceDefault'], { ns: 'plugin' }),
-              subtitle:
-                defaultCredential?.name ?? t(($) => $['auth.unavailable'], { ns: 'plugin' }),
-              disabled:
-                !canUseCredential || !defaultCredential || defaultCredential.not_allowed_to_use,
-            },
-            selected: !credentialId,
-            select: () =>
-              onAuthorizationItemClick(
-                onDefaultCredentialChange ? (defaultCredential?.id ?? '') : '',
-              ),
-          },
+          workspaceDefault: useWorkspaceDefault
+            ? {
+                option: {
+                  id: '__workspace_default__',
+                  name: t(($) => $['auth.workspaceDefault'], { ns: 'plugin' }),
+                  subtitle:
+                    defaultCredential?.name ?? t(($) => $['auth.unavailable'], { ns: 'plugin' }),
+                  disabled:
+                    !canUseCredential || !defaultCredential || defaultCredential.not_allowed_to_use,
+                },
+                selected: !credentialId,
+                select: () =>
+                  onAuthorizationItemClick(
+                    onDefaultCredentialChange ? (defaultCredential?.id ?? '') : '',
+                  ),
+              }
+            : undefined,
           fallbackName: selectedName,
           unavailable,
+          disabled: disabled || !active,
           loadError: authorization.loadError,
           canUse: canUseCredential,
           canCreate: canCreateCredential,
@@ -184,6 +205,7 @@ const WorkspaceConnectionSelector = ({
             invalidPluginCredentialInfo()
             oauthSchema.refetch().catch(() => {})
           }}
+          onClientTypeChange={onClientTypeChange}
           onRequestAuthorization={() => {
             setVisibility(PermissionLevel.onlyMe)
             setVisibilityOpen(true)

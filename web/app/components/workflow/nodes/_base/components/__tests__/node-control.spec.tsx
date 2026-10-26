@@ -2,8 +2,8 @@ import type { CommonNodeType } from '../../../../types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
 import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useNodes } from 'reactflow'
-import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
+import { useEffect } from 'react'
+import { useNodes, useStoreApi } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
@@ -18,6 +18,22 @@ function SelectedNode() {
   const selected = useNodes<CommonNodeType>().find((node) => node.data.selected)
   return <output aria-label="Selected node">{selected?.id}</output>
 }
+
+function GraphNodeControl({
+  pluginInstallLocked,
+  onGraphReady,
+}: {
+  pluginInstallLocked: boolean
+  onGraphReady: (graph: ReturnType<typeof useStoreApi>) => void
+}) {
+  const graph = useStoreApi()
+  const node = useNodes<CommonNodeType>().find((node) => node.id === 'node-1')
+  useEffect(() => onGraphReady(graph), [graph, onGraphReady])
+  return node ? (
+    <NodeControl id={node.id} data={node.data} pluginInstallLocked={pluginInstallLocked} />
+  ) : null
+}
+
 const renderControl = ({
   data = {},
   canRun = true,
@@ -41,9 +57,15 @@ const renderControl = ({
     { data: null },
   )
   const payload: CommonNodeType = { type: BlockEnum.Code, title: 'Code', desc: '', ...data }
-  return renderWorkflowFlowComponent(
+  let graph: ReturnType<typeof useStoreApi>
+  const rendered = renderWorkflowFlowComponent(
     <>
-      <NodeControl id="node-1" data={payload} pluginInstallLocked={pluginInstallLocked} />
+      <GraphNodeControl
+        pluginInstallLocked={pluginInstallLocked}
+        onGraphReady={(state) => {
+          graph = state
+        }}
+      />
       <SelectedNode />
     </>,
     {
@@ -53,6 +75,17 @@ const renderControl = ({
       hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canRun } },
     },
   )
+  return {
+    ...rendered,
+    updateNodeData: (data: Partial<ToolNodeType>) => {
+      const { getNodes, setNodes } = graph.getState()
+      setNodes(
+        getNodes().map((node) =>
+          node.id === 'node-1' ? { ...node, data: { ...node.data, ...data } } : node,
+        ),
+      )
+    },
+  }
 }
 
 describe('NodeControl', () => {
@@ -94,7 +127,7 @@ describe('NodeControl', () => {
     expect(await screen.findByRole('menu')).toBeVisible()
   })
 
-  it('blocks an unconfigured App user test run and enables it after adding a connection', async () => {
+  it('blocks App user runs until the graph contains a saved test credential', async () => {
     const user = userEvent.setup()
     const provider = createToolProviderFixture({
       id: 'provider-id',
@@ -102,7 +135,7 @@ describe('NodeControl', () => {
       allow_delete: true,
       is_team_authorization: false,
     })
-    const { store } = renderControl({
+    const { store, updateNodeData } = renderControl({
       tools: [provider],
       data: {
         type: BlockEnum.Tool,
@@ -113,19 +146,21 @@ describe('NodeControl', () => {
         tool_label: 'Test tool',
         tool_parameters: {},
         tool_configurations: {},
+        credential_source: 'end_user',
+        end_user_auth: {
+          allowed_credential_types: ['api-key'],
+          purpose: 'Connect app users',
+        },
       },
     })
-    const draft = {
-      oauthEnabled: false,
-      apiKeyEnabled: true,
-      description: 'Connect app users',
-      testConnection: { connections: [] },
-    }
+    // A cached inactive-tab draft cannot authorize a run without a persisted credential.
     act(() => {
-      store.getState().setNodeAppUserAuthDraft('node-1', provider.name, provider.id, draft)
-      store
-        .getState()
-        .setNodeAuthorizationTab('node-1', provider.name, provider.id, 'app-user-auth')
+      store.getState().setNodeAppUserAuthDraft('node-1', provider.name, provider.id, {
+        oauthEnabled: false,
+        apiKeyEnabled: true,
+        description: 'Cached purpose',
+        testCredentialId: 'cached-test-key',
+      })
     })
     const run = screen.getByRole('button', { name: 'workflow.panel.runThisStep' })
     expect(run).toHaveAttribute('aria-disabled', 'true')
@@ -135,21 +170,10 @@ describe('NodeControl', () => {
     expect(screen.getByRole('status', { name: 'Selected node' })).toBeEmptyDOMElement()
 
     await user.keyboard('{Escape}')
-    act(() =>
-      store.getState().setNodeAppUserAuthDraft('node-1', provider.name, provider.id, {
-        ...draft,
-        testConnection: {
-          connections: [
-            {
-              id: 'test-key',
-              name: 'Test key',
-              method: CredentialTypeEnum.API_KEY,
-              subtitle: '•••• 1234',
-            },
-          ],
-          selectedId: 'test-key',
-        },
-      }),
+    act(() => updateNodeData({ test_credential_id: 'saved-test-key' }))
+    expect(screen.getByRole('button', { name: 'workflow.panel.runThisStep' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
     )
     await user.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
     expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
@@ -170,19 +194,13 @@ describe('NodeControl', () => {
         type: BlockEnum.Tool,
         provider_type: CollectionType.builtIn,
         provider_id: provider.id,
+        credential_source: 'end_user',
+        end_user_auth: {
+          allowed_credential_types: ['api-key'],
+          purpose: 'Connect app users',
+        },
         _singleRunningStatus: NodeRunningStatus.Running,
       },
-    })
-    act(() => {
-      store.getState().setNodeAppUserAuthDraft('node-1', provider.name, provider.id, {
-        oauthEnabled: false,
-        apiKeyEnabled: true,
-        description: 'Connect app users',
-        testConnection: { connections: [] },
-      })
-      store
-        .getState()
-        .setNodeAuthorizationTab('node-1', provider.name, provider.id, 'app-user-auth')
     })
     const stop = screen.getByRole('button', {
       name: 'workflowDebug.debug.variableInspect.trigger.stop',

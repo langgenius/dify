@@ -117,7 +117,7 @@ describe('PluginAuth', () => {
     expect(onAuthorizationItemClick).not.toHaveBeenCalled()
   })
 
-  it('keeps App user test connections independent when Workspace authorization becomes available', async () => {
+  it('leaves the test credential unselected when Workspace credentials become available', async () => {
     const user = userEvent.setup()
     const onAuthorizationItemClick = vi.fn()
     const { queryClient } = renderAuth(
@@ -133,7 +133,9 @@ describe('PluginAuth', () => {
     const testConnection = within(
       screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
     )
-    expect(testConnection.getByRole('button', { name: /^API key test connection/ })).toBeVisible()
+    expect(
+      testConnection.getByRole('button', { name: /^plugin.auth.appUser.testConnection/ }),
+    ).toBeVisible()
     requests.credentials.mockResolvedValue(
       credentialInfo({
         credentials: [
@@ -145,7 +147,9 @@ describe('PluginAuth', () => {
     await act(async () => {
       await queryClient.invalidateQueries()
     })
-    expect(testConnection.getByRole('button', { name: /^API key test connection/ })).toBeVisible()
+    expect(
+      testConnection.getByRole('button', { name: /^plugin.auth.appUser.testConnection/ }),
+    ).toBeVisible()
     expect(
       testConnection.queryByRole('button', { name: /Selected API key/ }),
     ).not.toBeInTheDocument()
@@ -256,7 +260,7 @@ describe('PluginAuth', () => {
     ).toBeVisible()
     expect(
       within(appUserPanel).getByRole('button', {
-        name: /^API key test connection/,
+        name: /^plugin.auth.appUser.testConnection/,
       }),
     ).toBeVisible()
 
@@ -288,7 +292,7 @@ describe('PluginAuth', () => {
     expect(workspaceTab).toHaveAttribute('aria-selected', 'true')
   })
 
-  it('applies Workspace creation permission without restricting mock test connections or exposing controls in Reuse', async () => {
+  it('applies Workspace creation permission to test connections without exposing controls in Reuse', async () => {
     const user = userEvent.setup()
     workspacePermissionKeys = ['credential.use']
     requests.credentials.mockResolvedValue(
@@ -326,12 +330,16 @@ describe('PluginAuth', () => {
         )
         expect(
           testConnection.getByRole('button', {
-            name: /^API key test connection/,
+            name: /^plugin.auth.appUser.testConnection/,
           }),
         ).toBeEnabled()
+        await user.click(testConnection.getByRole('button'))
+        const picker = await screen.findByRole('dialog', { name: 'plugin.auth.authorization' })
         expect(
-          testConnection.queryByRole('button', { name: 'plugin.auth.common.addApiKey' }),
-        ).not.toBeInTheDocument()
+          within(picker).getByRole('button', { name: 'plugin.auth.common.addApiKey' }),
+        ).toBeDisabled()
+        await user.keyboard('{Escape}')
+        await waitFor(() => expect(picker).not.toBeInTheDocument())
         expect(
           testConnection.queryByText('plugin.auth.permissionHint.title'),
         ).not.toBeInTheDocument()
@@ -369,161 +377,108 @@ describe('PluginAuth', () => {
     ).toBeVisible()
   })
 
-  it('selects mock test connections without changing Workspace selection or losing App user drafts', async () => {
+  it('selects a real Workspace test credential without changing the Workspace selection and retains it across tabs', async () => {
     const user = userEvent.setup()
     const onAuthorizationItemClick = vi.fn()
+    const onDraftChange = vi.fn()
     requests.credentials.mockResolvedValue(
       credentialInfo({
-        supported_credential_types: [CredentialTypeEnum.OAUTH2, CredentialTypeEnum.API_KEY],
         credentials: [
-          createCredential({ name: 'Workspace connection' }),
-          createCredential({ id: '2', name: 'Personal connection', is_default: false }),
+          createCredential({ id: 'workspace-default', name: 'Workspace connection' }),
+          createCredential({
+            id: 'workspace-selected',
+            name: 'Selected connection',
+            is_default: false,
+          }),
         ],
-        allow_custom_token: true,
       }),
     )
-    const AppUserDraftHarness = () => {
+    const Harness = () => {
       const [draft, setDraft] = useState<AppUserAuthDraft>({
-        oauthEnabled: true,
-        apiKeyEnabled: false,
+        oauthEnabled: false,
+        apiKeyEnabled: true,
         description: '',
       })
       return (
         <PluginAuth
           pluginPayload={defaultPayload}
-          nodeAuth={{ credentialId: '2', onAuthorizationItemClick }}
-          appUserAuth={{ draft, onChange: setDraft }}
+          nodeAuth={{ credentialId: 'workspace-selected', onAuthorizationItemClick }}
+          appUserAuth={{
+            draft,
+            onChange: (next) => {
+              setDraft(next)
+              onDraftChange(next)
+            },
+          }}
           showAuthorizationTabs
         />
       )
     }
-    renderAuth(<AppUserDraftHarness />)
-    expect(await screen.findByRole('button', { name: /^Personal connection/ })).toBeVisible()
-    await waitFor(() =>
-      expect(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })).toBeEnabled(),
-    )
-    await user.click(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' }))
-    const appUserPanel = within(screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' }))
-    const description = appUserPanel.getByRole('textbox', {
+    renderAuth(<Harness />)
+    expect(await screen.findByRole('button', { name: /^Selected connection/ })).toBeVisible()
+    const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
+    await waitFor(() => expect(appUserTab).toBeEnabled())
+    await user.click(appUserTab)
+    const description = screen.getByRole('textbox', {
       name: 'plugin.auth.appUser.connectionDescription',
     })
-    await user.type(description, 'Choose a connection for app users')
-    const apiKey = appUserPanel.getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' })
-    expect(apiKey).not.toBeChecked()
-    await user.click(apiKey)
-    expect(apiKey).toBeChecked()
-    const testConnection = within(
-      appUserPanel.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
+    await user.type(description, 'Use your own connection')
+    const region = within(
+      screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
     )
-    const oauth = testConnection.getByRole('button', {
-      name: /^OAuth test connection/,
-    })
-    expect(oauth).toHaveTextContent('@test-user')
-    await user.click(oauth)
-    const picker = await screen.findByRole('dialog', { name: 'plugin.auth.authorization' })
+    await user.click(region.getByRole('button'))
+    const picker = within(await screen.findByRole('dialog', { name: 'plugin.auth.authorization' }))
     expect(
-      within(picker).queryByRole('button', { name: /plugin\.auth\.workspaceDefault/ }),
+      picker.queryByRole('button', { name: /plugin.auth.workspaceDefault/ }),
     ).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^Personal connection/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^Workspace connection/ })).not.toBeInTheDocument()
-    await user.click(
-      await screen.findByRole('button', {
-        name: /^API key test connection/,
-      }),
+    const option = picker.getByRole('button', { name: /^Workspace connection/ })
+    expect(option).toHaveAttribute('aria-pressed', 'false')
+    await user.click(option)
+    expect(onDraftChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ testCredentialId: 'workspace-default' }),
     )
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', {
-          name: 'plugin.auth.authorization',
-        }),
-      ).not.toBeInTheDocument(),
-    )
-
     expect(onAuthorizationItemClick).not.toHaveBeenCalled()
-    expect(
-      testConnection.getByRole('button', {
-        name: /^API key test connection/,
-      }),
-    ).toBeVisible()
-    expect(description).toHaveValue('Choose a connection for app users')
-    expect(apiKey).toBeChecked()
-
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
-    expect(await screen.findByRole('button', { name: /^Personal connection/ })).toBeVisible()
-    await waitFor(() =>
-      expect(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })).toBeEnabled(),
+    expect(await screen.findByRole('button', { name: /^Selected connection/ })).toBeVisible()
+    await user.click(appUserTab)
+    expect(await screen.findByRole('button', { name: /^Workspace connection/ })).toBeVisible()
+    expect(
+      screen.getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
+    ).toHaveValue('Use your own connection')
+    expect(requests.credentials).toHaveBeenLastCalledWith(
+      '/workspaces/current/tool-provider/builtin/test-provider/credential/info?include_credential_ids=workspace-selected&include_credential_ids=workspace-default',
     )
-    await user.click(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' }))
-    expect(
-      testConnection.getByRole('button', {
-        name: /^API key test connection/,
-      }),
-    ).toBeVisible()
-    expect(description).toHaveValue('Choose a connection for app users')
-    expect(apiKey).toBeChecked()
-    expect(onAuthorizationItemClick).not.toHaveBeenCalled()
-    expect(
-      mockConsoleCall.mock.calls.filter(([path]) => Array.isArray(path) && path.at(-1) === 'post'),
-    ).toEqual([])
   })
 
-  it('allows mock connection selection without Workspace permissions while Workspace rows stay disabled', async () => {
+  it('enforces Workspace use permission for test credential selection', async () => {
     const user = userEvent.setup()
-    const onAuthorizationItemClick = vi.fn()
     workspacePermissionKeys = []
     requests.credentials.mockResolvedValue(
-      credentialInfo({
-        supported_credential_types: [CredentialTypeEnum.OAUTH2, CredentialTypeEnum.API_KEY],
-        credentials: [createCredential({ name: 'Workspace connection' })],
-        allow_custom_token: true,
-      }),
+      credentialInfo({ credentials: [createCredential({ name: 'Workspace connection' })] }),
     )
+    const onDraftChange = vi.fn()
     renderAuth(
       <PluginAuth
         pluginPayload={defaultPayload}
-        nodeAuth={{ onAuthorizationItemClick }}
+        appUserAuth={{
+          draft: { oauthEnabled: false, apiKeyEnabled: true, description: '' },
+          onChange: onDraftChange,
+        }}
         showAuthorizationTabs
       />,
     )
-    await waitFor(() =>
-      expect(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })).toBeEnabled(),
-    )
-    await user.click(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' }))
-    const testConnection = within(
-      screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
-    )
+    const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
+    await waitFor(() => expect(appUserTab).toBeEnabled())
+    await user.click(appUserTab)
     await user.click(
-      testConnection.getByRole('button', {
-        name: /^OAuth test connection/,
-      }),
+      within(screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' })).getByRole(
+        'button',
+      ),
     )
-    const mockConnection = await screen.findByRole('button', {
-      name: /^API key test connection/,
-    })
-    expect(mockConnection).toBeEnabled()
-    await user.click(mockConnection)
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', {
-          name: 'plugin.auth.authorization',
-        }),
-      ).not.toBeInTheDocument(),
-    )
-    expect(
-      testConnection.getByRole('button', {
-        name: /^API key test connection/,
-      }),
-    ).toBeVisible()
-    expect(onAuthorizationItemClick).not.toHaveBeenCalled()
-
-    await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
-    await user.click(screen.getByRole('button', { name: /^Workspace connection/ }))
-    const connection = within(
-      screen.getByRole('group', { name: 'common.userProfile.workspace' }),
-    ).getByRole('button', { name: /^Workspace connection/ })
-    expect(connection).toBeDisabled()
-    await user.click(connection)
-    expect(onAuthorizationItemClick).not.toHaveBeenCalled()
+    const option = await screen.findByRole('button', { name: /^Workspace connection/ })
+    expect(option).toBeDisabled()
+    await user.click(option)
+    expect(onDraftChange).not.toHaveBeenCalled()
   })
 
   it('shares saved and removed OAuth client settings with Workspace while retaining App user drafts', async () => {
@@ -824,7 +779,7 @@ describe('PluginAuth', () => {
     ).toHaveValue('Keep this draft')
   })
 
-  it('preserves controlled methods and description when provider client status synchronizes', async () => {
+  it('preserves disabled methods and description without initializing an unused OAuth client', async () => {
     const user = userEvent.setup()
     const onDraftChange = vi.fn()
     requests.credentials.mockResolvedValue(
@@ -859,14 +814,7 @@ describe('PluginAuth', () => {
     await waitFor(() => expect(appUserTab).toBeEnabled())
     await user.click(appUserTab)
 
-    await waitFor(() =>
-      expect(onDraftChange).toHaveBeenCalledExactlyOnceWith({
-        oauthEnabled: false,
-        apiKeyEnabled: false,
-        description: 'Existing connection description',
-        client: { type: 'default' },
-      }),
-    )
+    expect(onDraftChange).not.toHaveBeenCalled()
     const panel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
     expect(
       within(panel).getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }),
@@ -884,7 +832,7 @@ describe('PluginAuth', () => {
     await waitFor(() => expect(appUserTab).toBeEnabled())
     await user.click(appUserTab)
 
-    expect(onDraftChange).toHaveBeenCalledTimes(1)
+    expect(onDraftChange).not.toHaveBeenCalled()
     expect(
       within(screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })).getByRole(
         'textbox',

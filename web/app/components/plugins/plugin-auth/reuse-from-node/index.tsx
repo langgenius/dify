@@ -29,6 +29,7 @@ const ReuseFromNode = ({ nodes = [], value, onChange, onLocate }: ReuseFromNodeP
   const selectedNode = nodes.find((node) => node.id === value?.id)
   const reference = selectedNode ?? value
   const removed = !!value && !selectedNode
+  const invalid = removed || !!selectedNode?.disabled
   const sourceLabel = (source: ReusableNode['source']) =>
     source === 'app-user'
       ? t(($) => $['auth.reuse.appUser'], { ns: 'plugin' })
@@ -51,11 +52,11 @@ const ReuseFromNode = ({ nodes = [], value, onChange, onLocate }: ReuseFromNodeP
       >
         <SelectTrigger
           aria-label={t(($) => $['auth.reuse.selectNode'], { ns: 'plugin' })}
-          aria-invalid={removed || undefined}
+          aria-invalid={invalid || undefined}
           className={cn(
             'px-2',
             !nodes.length && !removed && 'opacity-50',
-            removed &&
+            invalid &&
               'inset-ring-1 inset-ring-components-input-border-destructive data-disabled:bg-components-input-bg-normal data-disabled:text-components-input-text-filled',
           )}
         >
@@ -78,9 +79,11 @@ const ReuseFromNode = ({ nodes = [], value, onChange, onLocate }: ReuseFromNodeP
                     decorative
                   />
                   <span className="min-w-0 grow truncate">{reference.title}</span>
-                  {removed && (
+                  {invalid && (
                     <span className="shrink-0 system-xs-regular text-text-destructive">
-                      {t(($) => $['auth.reuse.removed'], { ns: 'plugin' })}
+                      {removed
+                        ? t(($) => $['auth.reuse.removed'], { ns: 'plugin' })
+                        : t(($) => $['auth.unavailable'], { ns: 'plugin' })}
                     </span>
                   )}
                 </span>

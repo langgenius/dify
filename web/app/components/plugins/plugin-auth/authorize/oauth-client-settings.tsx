@@ -37,6 +37,7 @@ type OAuthClientSettingsProps = {
   onRequestAuthorization?: () => Promise<void> | void
   hasOriginalClientParams?: boolean
   onUpdate?: () => void
+  onClientTypeChange?: (type: 'default' | 'custom' | undefined) => void
 }
 const OAuthClientSettings = ({
   pluginPayload,
@@ -50,6 +51,7 @@ const OAuthClientSettings = ({
   onRequestAuthorization,
   hasOriginalClientParams,
   onUpdate,
+  onClientTypeChange,
 }: OAuthClientSettingsProps) => {
   const { t } = useTranslation(['common', 'plugin'])
   const [doingAction, setDoingAction] = useState(false)
@@ -92,6 +94,7 @@ const OAuthClientSettings = ({
         client_params: restValues,
         enable_oauth_custom_client: __oauth_client__ === 'custom',
       })
+      onClientTypeChange?.(__oauth_client__ === 'default' ? 'default' : 'custom')
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
 
       onOpenChange?.(false)
@@ -106,6 +109,7 @@ const OAuthClientSettings = ({
     onClose,
     onOpenChange,
     onUpdate,
+    onClientTypeChange,
     invalidPluginOAuthClientSchema,
     setPluginOAuthCustomClient,
     t,
@@ -129,6 +133,9 @@ const OAuthClientSettings = ({
     try {
       handleSetDoingAction(true)
       await deletePluginOAuthCustomClient()
+      onClientTypeChange?.(
+        schemas.some((schema) => schema.name === '__oauth_client__') ? 'default' : undefined,
+      )
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       onOpenChange?.(false)
       onClose?.()
@@ -139,6 +146,8 @@ const OAuthClientSettings = ({
     }
   }, [
     onUpdate,
+    onClientTypeChange,
+    schemas,
     invalidPluginOAuthClientSchema,
     deletePluginOAuthCustomClient,
     t,

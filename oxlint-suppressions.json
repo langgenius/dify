@@ -5674,11 +5674,6 @@
       "count": 6
     }
   },
-  "web/app/components/workflow/nodes/tool/node.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    }
-  },
   "web/app/components/workflow/nodes/tool/output-schema-utils.ts": {
     "typescript/no-explicit-any": {
       "count": 4

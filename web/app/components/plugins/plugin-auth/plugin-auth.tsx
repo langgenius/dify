@@ -41,10 +41,16 @@ const PluginAuth = ({
 }: PluginAuthProps) => {
   const { t } = useTranslation(['plugin'])
   const labelId = useId()
+  const includeCredentialIds = [
+    ...new Set([
+      ...(nodeAuth?.credentialId ? [nodeAuth.credentialId] : []),
+      ...(appUserAuth?.draft?.testCredentialId ? [appUserAuth.draft.testCredentialId] : []),
+    ]),
+  ]
   const authorization = usePluginAuth(
     pluginPayload,
     !!pluginPayload.provider,
-    nodeAuth?.credentialId ? [nodeAuth.credentialId] : undefined,
+    includeCredentialIds.length ? includeCredentialIds : undefined,
   )
 
   if (!showAuthorizationTabs) {
@@ -122,12 +128,9 @@ const PluginAuth = ({
             {!authorization.isLoading && (
               <AppUserAuth
                 pluginPayload={pluginPayload}
+                authorization={authorization}
                 active={!hidden}
-                notAllowCustomCredential={authorization.notAllowCustomCredential}
-                onUpdate={authorization.invalidPluginCredentialInfo}
                 key={`${pluginPayload.category}/${pluginPayload.provider}/${authorization.canOAuth}/${authorization.canApiKey}`}
-                canOAuth={!!authorization.canOAuth}
-                canApiKey={!!authorization.canApiKey}
                 providerName={nodeAuth?.providerName}
                 value={appUserAuth?.draft}
                 onChange={appUserAuth?.onChange}

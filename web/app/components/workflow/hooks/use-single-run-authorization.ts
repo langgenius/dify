@@ -2,7 +2,6 @@ import type { CommonNodeType, Node } from '../types'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import { getEnabledTestConnectionState } from '@/app/components/plugins/plugin-auth/app-user-auth/test-connection/model'
 import { CollectionType } from '@/app/components/tools/types'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { consoleQuery } from '@/service/console'
@@ -24,7 +23,6 @@ export const useSingleRunAuthorization = (id: string, data: Node['data']) => {
   )
   const storedTools = useStore((state) => state.buildInTools)
   const nodes = useNodes<CommonNodeType>()
-  const nodeAuthDrafts = useStore((state) => state.nodeAuthDrafts)
   const collection = (builtInTools ?? storedTools)?.find((tool) =>
     matchesProviderReference(tool, data.provider_id),
   )
@@ -33,8 +31,6 @@ export const useSingleRunAuthorization = (id: string, data: Node['data']) => {
       ? resolveToolAuthorization({
           node: { id, data },
           nodes,
-          nodeAuthDrafts,
-          provider: collection.name,
         })
       : undefined
   const appUserDraft =
@@ -45,12 +41,7 @@ export const useSingleRunAuthorization = (id: string, data: Node['data']) => {
   let disabledReason: string | undefined
 
   if (usesAppUserAuth) {
-    const draft = appUserDraft.draft
-    const { selectedConnection } = getEnabledTestConnectionState(draft?.testConnection, {
-      oauthEnabled: draft?.oauthEnabled ?? true,
-      apiKeyEnabled: draft?.apiKeyEnabled ?? true,
-    })
-    if (!selectedConnection)
+    if (!appUserDraft.draft.testCredentialId)
       disabledReason = t(($) => $['panel.configureTestRunConnection'], { ns: 'workflow' })
   } else if (authorization?.status === 'invalid') {
     disabledReason = t(($) => $['panel.selectReuseNode'], { ns: 'workflow' })

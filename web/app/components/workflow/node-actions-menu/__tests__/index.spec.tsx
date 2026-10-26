@@ -1,7 +1,7 @@
 import type { ToolNodeType } from '../../nodes/tool/types'
 import type { Node } from '../../types'
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { act, fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectionType } from '@/app/components/tools/types'
 import {
@@ -81,31 +81,32 @@ const renderComponent = (
     workflowTools: [],
     mcpTools: [],
   })
-  return renderWorkflowFlowComponent(
+  const content = (nodeData: Node['data']) => (
     <>
       <NodeActionsMenu
         id="node-1"
-        data={data}
+        data={nodeData}
         triggerClassName="node-actions-trigger"
         onOpenChange={onOpenChange}
         showHelpLink={showHelpLink}
       />
       <CanvasNodesCatalogProbe />
-    </>,
-    {
-      initialStoreState: { canvasReadOnly: readOnly },
-      nodes: [
-        createNode({
-          id: 'node-1',
-          width: 240,
-          height: 80,
-          data,
-        }),
-      ],
-      edges: [],
-      queryClient,
-    },
+    </>
   )
+  const view = renderWorkflowFlowComponent(content(data), {
+    initialStoreState: { canvasReadOnly: readOnly },
+    nodes: [
+      createNode({
+        id: 'node-1',
+        width: 240,
+        height: 80,
+        data,
+      }),
+    ],
+    edges: [],
+    queryClient,
+  })
+  return { ...view, update: (nodeData: Node['data']) => view.rerender(content(nodeData)) }
 }
 
 describe('NodeActionsMenu', () => {
@@ -158,37 +159,23 @@ describe('NodeActionsMenu', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument()
   })
 
-  it('updates the open menu when the App user test connection is removed', async () => {
+  it('updates the open menu when the saved App user test credential is removed', async () => {
     const user = userEvent.setup()
-    const { store } = renderComponent(true, undefined, false, makeToolData())
-    act(() => {
-      store.getState().setNodeAppUserAuthDraft('node-1', toolProvider.name, toolProvider.id, {
-        oauthEnabled: false,
-        apiKeyEnabled: true,
-        description: 'Connect app users',
-      })
-      store
-        .getState()
-        .setNodeAuthorizationTab('node-1', toolProvider.name, toolProvider.id, 'app-user-auth')
+    const data = makeToolData({
+      credential_source: 'end_user',
+      end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Connect app users' },
+      test_credential_id: 'credential-1',
     })
+    const { store, update } = renderComponent(true, undefined, false, data)
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     expect(
       screen.getByRole('menuitem', { name: 'workflow.panel.runThisStep' }),
     ).not.toHaveAttribute('aria-disabled', 'true')
-
-    act(() =>
-      store.getState().setNodeAppUserAuthDraft('node-1', toolProvider.name, toolProvider.id, {
-        oauthEnabled: false,
-        apiKeyEnabled: true,
-        description: 'Connect app users',
-        testConnection: { connections: [] },
-      }),
-    )
+    update(makeToolData({ ...data, test_credential_id: null }))
     const run = screen.getByRole('menuitem', { name: 'workflow.panel.runThisStep' })
     expect(run).toHaveAttribute('aria-disabled', 'true')
     expect(run).toHaveAttribute('aria-description', 'workflow.panel.configureTestRunConnection')
     await user.click(run)
-
     expect(store.getState().pendingSingleRun).toBeUndefined()
     expect(canvasNodes()).toBe('node-1')
   })

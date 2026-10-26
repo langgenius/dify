@@ -1,73 +1,109 @@
-import type { AppUserAuthSliceShape } from '../../../store/workflow/app-user-auth-slice'
 import type { Node } from '../../../types'
+import type { ToolNodeType } from '../types'
 import { CollectionType } from '@/app/components/tools/types'
 import { createNode } from '../../../__tests__/fixtures'
 import { BlockEnum } from '../../../types'
 import { resolveToolAuthorization } from '../authorization'
 
-const makeTool = (
-  id: string,
-  providerId = 'google',
-  providerType: CollectionType = CollectionType.builtIn,
-) =>
+const makeTool = (id: string, data: Partial<ToolNodeType> = {}) =>
   createNode({
     id,
     data: {
       type: BlockEnum.Tool,
-      provider_id: providerId,
-      provider_type: providerType,
+      provider_id: 'google',
+      provider_type: CollectionType.builtIn,
       provider_name: 'google',
-      tool_name: id,
+      tool_name: 'search',
       tool_parameters: {},
       tool_configurations: {},
+      ...data,
     },
   })
-const reuse = (sourceId?: string): AppUserAuthSliceShape['nodeAuthDrafts'][string] => ({
-  provider: 'google',
-  providerId: 'google',
-  authorizationTab: 'reuse-from-node',
-  reuseFromNode: sourceId ? { source: { id: sourceId, title: sourceId } } : undefined,
+
+it('keeps legacy tool nodes on workspace authorization', () => {
+  expect(resolveToolAuthorization({ node: makeTool('current'), nodes: [] })).toEqual({
+    status: 'resolved',
+    authorizationTab: 'workspace-auth',
+    sourceNodeId: 'current',
+  })
 })
 
-it.each<{
-  name: string
-  drafts: AppUserAuthSliceShape['nodeAuthDrafts']
-  nodes: Node[]
-  reason: string
-}>([
-  {
-    name: 'unselected source',
-    drafts: { current: reuse() },
-    nodes: [makeTool('source')],
-    reason: 'unselected',
-  },
-  { name: 'deleted source', drafts: { current: reuse('source') }, nodes: [], reason: 'missing' },
-  {
-    name: 'deleted transitive source',
-    drafts: { current: reuse('middle'), middle: reuse('source') },
-    nodes: [makeTool('middle')],
-    reason: 'missing',
-  },
+it('restores saved App user settings and validation without an editor draft', () => {
+  const node = makeTool('current', {
+    credential_source: 'end_user',
+    end_user_auth: { allowed_credential_types: ['oauth2'], purpose: 'Read calendar' },
+    test_credential_id: 'test-credential',
+  })
+  expect(resolveToolAuthorization({ node, nodes: [node] })).toMatchObject({
+    status: 'resolved',
+    authorizationTab: 'app-user-auth',
+    sourceNodeId: 'current',
+    appUserDraft: {
+      draft: {
+        oauthEnabled: true,
+        apiKeyEnabled: false,
+        description: 'Read calendar',
+        testCredentialId: 'test-credential',
+      },
+      errors: { methods: false, oauthClient: true, description: false },
+    },
+  })
+})
+
+it('inherits the direct source settings and test credential from the live graph', () => {
+  const node = makeTool('current', { credential_source: 'reuse_node', reuse_node_id: 'source' })
+  const source = makeTool('source', {
+    credential_source: 'end_user',
+    end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Read calendar' },
+    test_credential_id: 'source-credential',
+  })
+  expect(resolveToolAuthorization({ node, nodes: [node, source] })).toMatchObject({
+    status: 'resolved',
+    authorizationTab: 'app-user-auth',
+    sourceNodeId: 'source',
+    appUserDraft: {
+      draft: { testCredentialId: 'source-credential' },
+      errors: { methods: false, oauthClient: false, description: false },
+    },
+  })
+})
+
+it.each<{ name: string; sourceId?: string; nodes: Node[]; reason: string }>([
+  { name: 'unselected source', nodes: [makeTool('source')], reason: 'unselected' },
+  { name: 'deleted source', sourceId: 'source', nodes: [], reason: 'missing' },
   {
     name: 'changed provider ID',
-    drafts: { current: reuse('source') },
-    nodes: [makeTool('source', 'another-provider')],
+    sourceId: 'source',
+    nodes: [makeTool('source', { provider_id: 'another-provider' })],
     reason: 'incompatible',
   },
   {
     name: 'changed provider type',
-    drafts: { current: reuse('source') },
-    nodes: [makeTool('source', 'google', CollectionType.custom)],
+    sourceId: 'source',
+    nodes: [makeTool('source', { provider_type: CollectionType.custom })],
     reason: 'incompatible',
   },
   {
-    name: 'cycle after source changes',
-    drafts: { current: reuse('middle'), middle: reuse('current') },
-    nodes: [makeTool('middle'), makeTool('current')],
-    reason: 'cycle',
+    name: 'different tool in the same provider',
+    sourceId: 'source',
+    nodes: [makeTool('source', { tool_name: 'another-tool' })],
+    reason: 'incompatible',
   },
-])('rejects a $name using the live graph', ({ drafts, nodes, reason }) => {
+  {
+    name: 'indirect source',
+    sourceId: 'middle',
+    nodes: [
+      makeTool('middle', { credential_source: 'reuse_node', reuse_node_id: 'source' }),
+      makeTool('source'),
+    ],
+    reason: 'indirect',
+  },
+  { name: 'self reference', sourceId: 'current', nodes: [], reason: 'cycle' },
+])('rejects a $name using the live graph', ({ sourceId, nodes, reason }) => {
   expect(
-    resolveToolAuthorization({ node: makeTool('current'), nodes, nodeAuthDrafts: drafts }),
+    resolveToolAuthorization({
+      node: makeTool('current', { credential_source: 'reuse_node', reuse_node_id: sourceId }),
+      nodes,
+    }),
   ).toEqual({ status: 'invalid', reason })
 })

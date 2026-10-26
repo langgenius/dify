@@ -1,8 +1,12 @@
-import type { AppUserAuthSliceShape } from '../../store/workflow/app-user-auth-slice'
 import type { Node } from '../../types'
+import type { ToolNodeType } from './types'
+import type {
+  AppUserAuthDraft,
+  AppUserAuthErrors,
+} from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
+import { validateAppUserAuth } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
 import { BlockEnum } from '../../types'
-
-type NodeAuthorizationDraft = AppUserAuthSliceShape['nodeAuthDrafts'][string]
+import { getAppUserAuthDraft, getToolAuthorizationTab } from './authorization-config'
 
 export type ToolAuthorizationResolution =
   | {
@@ -14,65 +18,55 @@ export type ToolAuthorizationResolution =
       status: 'resolved'
       authorizationTab: 'app-user-auth'
       sourceNodeId: string
-      appUserDraft: NodeAuthorizationDraft
+      appUserDraft: { draft: AppUserAuthDraft; errors: AppUserAuthErrors }
     }
   | {
       status: 'invalid'
-      reason: 'unselected' | 'missing' | 'incompatible' | 'cycle'
+      reason: 'unselected' | 'missing' | 'incompatible' | 'cycle' | 'indirect'
     }
 
 type ResolveToolAuthorizationParams = {
   node: Pick<Node, 'id' | 'data'>
   nodes: readonly Node[]
-  nodeAuthDrafts: AppUserAuthSliceShape['nodeAuthDrafts']
-  provider?: string
 }
 
-// Resolve UI-only references against the live graph, never the saved display snapshot.
+const isToolNode = (
+  node: Pick<Node, 'id' | 'data'>,
+): node is Pick<Node<ToolNodeType>, 'id' | 'data'> => node.data.type === BlockEnum.Tool
+
 export const resolveToolAuthorization = ({
   node,
   nodes,
-  nodeAuthDrafts,
-  provider,
 }: ResolveToolAuthorizationParams): ToolAuthorizationResolution | undefined => {
-  if (node.data.type !== BlockEnum.Tool) return undefined
+  if (!isToolNode(node)) return undefined
 
-  const nodesById = new Map(nodes.map((item) => [item.id, item]))
-  const visited = new Set<string>()
-  const providerName = provider ?? nodeAuthDrafts[node.id]?.provider
   let source = node
-
-  while (true) {
-    if (visited.has(source.id)) return { status: 'invalid', reason: 'cycle' }
-    visited.add(source.id)
-
-    const storedDraft = nodeAuthDrafts[source.id]
-    const draft =
-      storedDraft &&
-      storedDraft.providerId === source.data.provider_id &&
-      (!providerName || storedDraft.provider === providerName)
-        ? storedDraft
-        : undefined
-    if (draft?.authorizationTab === 'app-user-auth')
-      return {
-        status: 'resolved',
-        authorizationTab: 'app-user-auth',
-        sourceNodeId: source.id,
-        appUserDraft: draft,
-      }
-    if (draft?.authorizationTab !== 'reuse-from-node')
-      return { status: 'resolved', authorizationTab: 'workspace-auth', sourceNodeId: source.id }
-
-    const sourceId = draft.reuseFromNode?.source.id
+  if (getToolAuthorizationTab(node.data) === 'reuse-from-node') {
+    const sourceId = node.data.reuse_node_id
     if (!sourceId) return { status: 'invalid', reason: 'unselected' }
-    const target = nodesById.get(sourceId)
+    if (sourceId === node.id) return { status: 'invalid', reason: 'cycle' }
+    const target = nodes.find((item) => item.id === sourceId)
     if (!target) return { status: 'invalid', reason: 'missing' }
     if (
-      target.data.type !== BlockEnum.Tool ||
+      !isToolNode(target) ||
       target.data.provider_type !== node.data.provider_type ||
-      target.data.provider_id !== node.data.provider_id
+      target.data.provider_id !== node.data.provider_id ||
+      target.data.tool_name !== node.data.tool_name
     )
       return { status: 'invalid', reason: 'incompatible' }
+    if (getToolAuthorizationTab(target.data) === 'reuse-from-node')
+      return { status: 'invalid', reason: 'indirect' }
     source = target
   }
+
+  if (getToolAuthorizationTab(source.data) === 'app-user-auth') {
+    const draft = getAppUserAuthDraft(source.data)
+    return {
+      status: 'resolved',
+      authorizationTab: 'app-user-auth',
+      sourceNodeId: source.id,
+      appUserDraft: { draft, errors: validateAppUserAuth(draft) },
+    }
+  }
+  return { status: 'resolved', authorizationTab: 'workspace-auth', sourceNodeId: source.id }
 }

@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react'
 import type { ReactFlowState } from 'reactflow'
+import type { Credential } from '@/app/components/plugins/plugin-auth/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useEffect } from 'react'
 import { useStoreApi } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
@@ -12,17 +14,26 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import ToolAuthorization from '../tool-authorization'
 
-const mocks = vi.hoisted(() => ({ canOAuth: false, consoleCall: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  canOAuth: false,
+  isLoading: false,
+  credentials: [] as Credential[],
+  consoleCall: vi.fn(),
+  syncDraft: vi.fn(),
+  workspaceSelection: vi.fn(),
+}))
 
 vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
   usePluginAuth: () => ({
-    isLoading: false,
+    isLoading: mocks.isLoading,
     isAuthorized: true,
     canOAuth: mocks.canOAuth,
     canApiKey: true,
-    credentials: [],
+    credentials: mocks.credentials,
+    invalidPluginCredentialInfo: vi.fn(),
   }),
 }))
 
@@ -30,8 +41,8 @@ vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: (...args: unknown[]) => mocks.consoleCall(...args) },
 }))
 
-vi.mock('@/app/components/plugins/plugin-auth/workspace-auth', () => ({
-  default: () => <div>Workspace connection picker</div>,
+vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
+  useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: mocks.syncDraft }),
 }))
 
 const descriptionLabel = 'plugin.auth.appUser.connectionDescription'
@@ -60,7 +71,11 @@ const toolNode = (id: string, title = id, data: Partial<ToolNodeType> = {}) =>
     },
   })
 
-const connect = (source: string, target: string) => createEdge({ source, target })
+const GraphProbe = ({ onReady }: { onReady: (graph: ReactFlowState) => void }) => {
+  const graph = useStoreApi()
+  useEffect(() => onReady(graph.getState()), [graph, onReady])
+  return null
+}
 
 const GraphAction = ({
   label,
@@ -81,61 +96,94 @@ const setup = ({
   nodes = [toolNode('node-1'), toolNode('node-2')],
   edges = [],
   actions,
-}: { nodes?: Node[]; edges?: Edge[]; actions?: ReactNode } = {}) => {
+  readOnly = false,
+}: { nodes?: Node[]; edges?: Edge[]; actions?: ReactNode; readOnly?: boolean } = {}) => {
   const { queryClient, wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   })
-  for (const provider of ['provider-a', 'provider-b']) {
-    queryClient.setQueryData(
-      consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get.queryKey(
-        { input: { params: { provider, credential_type: 'api-key' } } },
-      ),
-      [
-        {
-          name: 'api_key',
-          label: { en_US: 'API Key' },
-          type: 'secret-input',
-          required: true,
-          multiple: false,
-        },
-      ],
-    )
+  const { wrapper: UrlState } = createNuqsTestWrapper()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get.queryKey(
+      { input: { params: { provider: 'provider-a', credential_type: 'api-key' } } },
+    ),
+    [
+      {
+        name: 'api_key',
+        label: { en_US: 'API Key' },
+        type: 'secret-input',
+        required: true,
+        multiple: false,
+      },
+    ],
+  )
+  let graph: ReactFlowState
+  const onReady = (state: ReactFlowState) => {
+    graph = state
   }
-  const content = (nodeId = 'node-1', provider = 'provider-a', providerId = 'provider-id-a') => (
+  const content = (nodeId = 'node-1') => (
     <ConsoleQueryWrapper>
-      <TooltipProvider delay={0} closeDelay={0}>
-        <section aria-label="Current node authorization">
-          <ToolAuthorization
-            key={nodeId}
-            nodeId={nodeId}
-            providerId={providerId}
-            pluginPayload={{ category: 'tool', provider }}
-            showAuthorizationTabs
-          />
-        </section>
-        {actions}
-      </TooltipProvider>
+      <UrlState>
+        <TooltipProvider delay={0} closeDelay={0}>
+          <GraphProbe onReady={onReady} />
+          <section aria-label="Current node authorization">
+            <ToolAuthorization
+              key={nodeId}
+              nodeId={nodeId}
+              providerId="provider-id-a"
+              pluginPayload={{ category: 'tool', provider: 'provider-a' }}
+              nodeAuth={{
+                providerName: 'Example provider',
+                onAuthorizationItemClick: mocks.workspaceSelection,
+              }}
+              showAuthorizationTabs
+            />
+          </section>
+          {actions}
+        </TooltipProvider>
+      </UrlState>
     </ConsoleQueryWrapper>
   )
-  return { content, ...renderWorkflowFlowComponent(content(), { nodes, edges }) }
-}
-
-const seedReuseReference = (
-  store: ReturnType<typeof setup>['store'],
-  nodeId: string,
-  sourceId: string,
-  { provider = 'provider-a', providerId = 'provider-id-a' } = {},
-) => {
-  store.getState().setNodeAuthorizationTab(nodeId, provider, providerId, 'reuse-from-node')
-  store.getState().setNodeReuseFromNode(nodeId, provider, providerId, {
-    id: sourceId,
-    title: sourceId,
+  const rendered = renderWorkflowFlowComponent(content(), {
+    nodes,
+    edges,
+    initialStoreState: { canvasReadOnly: readOnly },
   })
+  return {
+    content,
+    ...rendered,
+    getNodes: () => graph.getNodes() as Node[],
+    getData: (nodeId = 'node-1') =>
+      graph.getNodes().find((node) => node.id === nodeId)!.data as ToolNodeType,
+  }
 }
 
-describe('Workflow tool authorization bridge', () => {
+const chooseSource = async (user: ReturnType<typeof userEvent.setup>, name: RegExp) => {
+  await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
+  await user.click(await screen.findByRole('option', { name }))
+  await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
+}
+
+describe('Workflow tool authorization persistence', () => {
   beforeEach(() => {
     mocks.canOAuth = false
+    mocks.isLoading = false
+    mocks.credentials = [
+      {
+        id: 'workspace-credential',
+        name: 'Workspace connection',
+        provider: 'provider-a',
+        credential_type: 'api-key',
+        is_default: true,
+        credentials: { api_key: 'test-secret-must-not-be-saved' },
+      },
+      {
+        id: 'test-credential',
+        name: 'Testing connection',
+        provider: 'provider-a',
+        credential_type: 'api-key',
+        is_default: false,
+      },
+    ]
     mocks.consoleCall.mockImplementation(async (path: string[]) => {
       if (path.includes('clientSchema')) {
         return {
@@ -150,615 +198,224 @@ describe('Workflow tool authorization bridge', () => {
     })
   })
 
-  it('preserves separate node drafts through tab changes and node panel remounts', async () => {
-    const user = userEvent.setup()
-    const { store, content, rerender } = setup()
-    await user.click(screen.getByRole('tab', { name: appUserTab }))
-    await user.type(screen.getByRole('textbox', { name: descriptionLabel }), 'Connect first node')
-    await user.click(screen.getByRole('tab', { name: workspaceTab }))
-    await user.click(screen.getByRole('tab', { name: appUserTab }))
-    expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveValue(
-      'Connect first node',
-    )
-
-    rerender(content('node-2'))
-    expect(screen.getByRole('tab', { name: workspaceTab })).toHaveAttribute('aria-selected', 'true')
-    await user.click(screen.getByRole('tab', { name: appUserTab }))
-    expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveValue('')
-    await user.type(screen.getByRole('textbox', { name: descriptionLabel }), 'Connect second node')
-
-    rerender(content('node-1'))
-    expect(screen.getByRole('tab', { name: appUserTab })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveValue(
-      'Connect first node',
-    )
-    expect(store.getState().nodeAuthDrafts['node-2']?.draft?.description).toBe(
-      'Connect second node',
-    )
-  })
-
-  it.each([
-    { provider: 'provider-b', providerId: 'provider-id-a' },
-    { provider: 'provider-a', providerId: 'provider-id-b' },
-  ])(
-    'starts a fresh local configuration when identity changes to $provider / $providerId',
-    async ({ provider, providerId }) => {
-      const user = userEvent.setup()
-      const { store, content, rerender } = setup()
-      await user.click(screen.getByRole('tab', { name: appUserTab }))
-      await user.type(screen.getByRole('textbox', { name: descriptionLabel }), 'Provider A only')
-
-      rerender(content('node-1', provider, providerId))
-
-      expect(screen.getByRole('tab', { name: workspaceTab })).toHaveAttribute(
-        'aria-selected',
-        'true',
-      )
-      await user.click(screen.getByRole('tab', { name: appUserTab }))
-      expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveValue('')
-      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-      expect(
-        screen.getByRole('heading', { name: 'plugin.auth.appUser.userAuthentication' }),
-      ).toBeVisible()
-      expect(screen.getByText('plugin.auth.common.required')).toBeVisible()
-      expect(store.getState().nodeAuthDrafts['node-1']?.draft).toMatchObject({
-        oauthEnabled: false,
-        apiKeyEnabled: true,
-        description: '',
-      })
-    },
-  )
-
-  it('updates errors while editing and revalidates when returning to App user Auth', async () => {
+  it('saves App user edits and a real test credential ID through the graph draft boundary', async () => {
     const user = userEvent.setup()
     mocks.canOAuth = true
-    const { store } = setup()
+    const { getData } = setup({
+      nodes: [toolNode('node-1', 'Current tool', { credential_id: 'workspace-credential' })],
+    })
     await user.click(screen.getByRole('tab', { name: appUserTab }))
-    const description = screen.getByRole('textbox', { name: descriptionLabel })
-    expect(description).toHaveAttribute('aria-invalid', 'true')
-    expect(store.getState().nodeAuthDrafts['node-1']?.errors?.description).toBe(true)
+    await user.type(screen.getByRole('textbox', { name: descriptionLabel }), 'Connect app users')
+    const testConnections = within(
+      screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
+    )
+    await user.click(
+      testConnections.getByRole('button', { name: /^plugin.auth.appUser.testConnection/ }),
+    )
+    await user.click(await screen.findByRole('button', { name: /^Testing connection/ }))
 
-    await user.type(description, 'Connect app users')
-    expect(description).not.toHaveAttribute('aria-invalid', 'true')
-    expect(store.getState().nodeAuthDrafts['node-1']?.errors?.description).toBe(false)
-    await user.clear(description)
-    expect(description).toHaveAttribute('aria-invalid', 'true')
-    expect(store.getState().nodeAuthDrafts['node-1']?.errors?.description).toBe(true)
+    await waitFor(() =>
+      expect(getData()).toMatchObject({
+        credential_source: 'end_user',
+        end_user_auth: {
+          allowed_credential_types: ['api-key', 'oauth2'],
+          purpose: 'Connect app users',
+          oauth_client_type: 'default',
+        },
+        test_credential_id: 'test-credential',
+      }),
+    )
+    expect(getData().credential_id).toBeUndefined()
+    expect(getData().reuse_node_id).toBeUndefined()
+    expect(mocks.syncDraft).toHaveBeenCalled()
+    expect(mocks.workspaceSelection).not.toHaveBeenCalled()
+    const persisted = JSON.stringify(getData())
+    for (const uiOnlyValue of [
+      'testConnection',
+      'testCredentialId',
+      'description',
+      'errors',
+      'test-secret-must-not-be-saved',
+      'mock-test-',
+    ])
+      expect(persisted).not.toContain(uiOnlyValue)
 
-    const oauth = screen.getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' })
-    await user.click(oauth)
-    expect(oauth).not.toHaveAttribute('aria-invalid', 'true')
-    const apiKey = screen.getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' })
-    await user.click(apiKey)
-    expect(apiKey).toHaveAttribute('aria-invalid', 'true')
-    expect(store.getState().nodeAuthDrafts['node-1']?.errors?.methods).toBe(true)
-    await user.click(apiKey)
-    expect(apiKey).not.toHaveAttribute('aria-invalid', 'true')
-    expect(store.getState().nodeAuthDrafts['node-1']?.errors?.methods).toBe(false)
-
-    await user.click(screen.getByRole('tab', { name: workspaceTab }))
-    expect(store.getState().nodeAuthDrafts['node-1']?.errors).toBeUndefined()
-    await user.click(screen.getByRole('tab', { name: appUserTab }))
-    expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveValue('')
+    await user.click(screen.getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }))
+    expect(getData().end_user_auth?.allowed_credential_types).toEqual(['api-key'])
+    await user.clear(screen.getByRole('textbox', { name: descriptionLabel }))
+    expect(getData().end_user_auth?.purpose).toBe('')
     expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveAttribute(
       'aria-invalid',
       'true',
     )
   })
 
-  it('offers every other node with the same provider type and ID, regardless of tool, plugin or graph edges', async () => {
+  it('clears mutually exclusive persisted fields while preserving the inactive App user draft', async () => {
     const user = userEvent.setup()
-    const upstream = [
-      toolNode('workspace-source', 'Workspace source'),
-      toolNode('app-user-source', 'App user source'),
-      toolNode('legacy-source', 'Legacy source', { plugin_id: undefined }),
-      toolNode('reuse-source', 'Chained source'),
-      toolNode('other-provider', 'Other provider', { provider_id: 'provider-b' }),
-      toolNode('other-type', 'Other provider type', { provider_type: CollectionType.custom }),
-      toolNode('other-tool', 'Other tool', { tool_name: 'other-tool' }),
-      toolNode('other-plugin', 'Other plugin', { plugin_id: 'plugin-b' }),
-      createNode({ id: 'code-source', type: 'default', data: { title: 'Code source' } }),
-    ]
-    const { store } = setup({
+    const { getData } = setup({
       nodes: [
-        ...upstream,
-        toolNode('node-1'),
-        toolNode('downstream', 'Downstream source'),
-        toolNode('unconnected', 'Disconnected source'),
-      ],
-      edges: [
-        ...upstream.map((node) => connect(node.id, 'node-1')),
-        connect('node-1', 'downstream'),
+        toolNode('source', 'Direct source'),
+        toolNode('node-1', 'Current tool', {
+          credential_source: 'end_user',
+          end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Saved purpose' },
+          test_credential_id: 'test-credential',
+        }),
       ],
     })
-    act(() => {
-      store
-        .getState()
-        .setNodeAuthorizationTab('app-user-source', 'provider-a', 'provider-id-a', 'app-user-auth')
-      store
-        .getState()
-        .setNodeAuthorizationTab(
-          'workspace-source',
-          'old-provider',
-          'provider-id-a',
-          'app-user-auth',
-        )
-      store
-        .getState()
-        .setNodeAuthorizationTab('reuse-source', 'provider-a', 'provider-id-a', 'reuse-from-node')
-    })
+    await user.click(screen.getByRole('tab', { name: workspaceTab }))
+    expect(getData().credential_source).toBe('workspace')
+    expect(getData().end_user_auth).toBeUndefined()
+    expect(getData().test_credential_id).toBeUndefined()
+    expect(getData().reuse_node_id).toBeUndefined()
+
+    await user.click(screen.getByRole('tab', { name: appUserTab }))
+    expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveValue('Saved purpose')
+    expect(getData().end_user_auth?.purpose).toBe('Saved purpose')
+    expect(getData().test_credential_id).toBe('test-credential')
+    expect(getData().credential_id).toBeUndefined()
 
     await user.click(screen.getByRole('tab', { name: reuseTab }))
-    await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-    const listbox = await screen.findByRole('listbox')
-    expect(within(listbox).getAllByRole('option')).toHaveLength(8)
-    expect(
-      within(screen.getByRole('option', { name: /^Workspace source/ })).getByText(
-        'plugin.auth.reuse.workspace',
-      ),
-    ).toBeVisible()
-    expect(
-      within(screen.getByRole('option', { name: /^App user source/ })).getByText(
-        'plugin.auth.reuse.appUser',
-      ),
-    ).toBeVisible()
-    expect(screen.getByRole('option', { name: /^Legacy source/ })).toBeVisible()
-    expect(
-      within(screen.getByRole('option', { name: /^Chained source/ })).getByText(
-        'plugin.auth.reuseFromNode',
-      ),
-    ).toBeVisible()
-    expect(screen.getByRole('option', { name: /^Downstream source/ })).toBeVisible()
-    expect(screen.getByRole('option', { name: /^Disconnected source/ })).toBeVisible()
-    expect(screen.getByRole('option', { name: /^Other tool/ })).toBeVisible()
-    expect(screen.getByRole('option', { name: /^Other plugin/ })).toBeVisible()
-    expect(screen.queryByRole('option', { name: /^Other provider/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /^Code source/ })).not.toBeInTheDocument()
-    expect(
-      within(listbox).queryByText('plugin.auth.reuse.connectionExpired'),
-    ).not.toBeInTheDocument()
+    await chooseSource(user, /^Direct source/)
+    expect(getData().credential_source).toBe('reuse_node')
+    expect(getData().reuse_node_id).toBe('source')
+    expect(getData().credential_id).toBeUndefined()
+    expect(getData().end_user_auth).toBeUndefined()
+    expect(getData().test_credential_id).toBeUndefined()
 
-    await user.click(screen.getByRole('option', { name: /^Downstream source/ }))
-    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent(
-      'Downstream source',
-    )
-    await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-    await user.click(await screen.findByRole('option', { name: /^Disconnected source/ }))
-    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode?.source.id).toBe('unconnected')
-
-    await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-    await user.click(await screen.findByRole('option', { name: /^Other tool/ }))
-    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent('Other tool')
-    expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode?.source.id).toBe('other-tool')
-
-    await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-    await user.click(await screen.findByRole('option', { name: /^Other plugin/ }))
-    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent(
-      'Other plugin',
-    )
-    expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode?.source.id).toBe('other-plugin')
+    await user.click(screen.getByRole('tab', { name: workspaceTab }))
+    expect(getData().reuse_node_id).toBeUndefined()
+    await user.click(screen.getByRole('tab', { name: appUserTab }))
+    expect(getData().end_user_auth?.purpose).toBe('Saved purpose')
+    expect(getData().reuse_node_id).toBeUndefined()
   })
 
-  it('includes matching tools across containers regardless of graph edges', async () => {
+  it('saves Workspace connection changes and restores its selection after visiting App user Auth', async () => {
     const user = userEvent.setup()
-    const parent = createNode({
-      id: 'iteration',
-      type: 'default',
-      data: { type: BlockEnum.Iteration },
-    })
-    const inside = { ...toolNode('inside-source', 'Earlier inside tool'), parentId: parent.id }
-    const later = { ...toolNode('later-source', 'Later inside tool'), parentId: parent.id }
-    const current = { ...toolNode('node-1'), parentId: parent.id }
-    setup({
-      nodes: [
-        toolNode('outer-source', 'Outer tool'),
-        parent,
-        inside,
-        current,
-        later,
-        toolNode('unconnected', 'Disconnected outer tool'),
-      ],
-      edges: [
-        connect('outer-source', parent.id),
-        connect(inside.id, current.id),
-        connect(current.id, later.id),
-      ],
-    })
+    const { getData } = setup()
+    await user.click(screen.getByRole('button', { name: /^Workspace connection/ }))
+    await user.click(await screen.findByRole('button', { name: /^Testing connection/ }))
+    expect(getData().credential_source).toBe('workspace')
+    expect(getData().credential_id).toBe('test-credential')
+    expect(mocks.syncDraft).toHaveBeenCalled()
 
-    await user.click(screen.getByRole('tab', { name: reuseTab }))
-    await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-    const listbox = await screen.findByRole('listbox')
-    expect(within(listbox).getAllByRole('option')).toHaveLength(4)
-    expect(screen.getByRole('option', { name: /^Outer tool/ })).toBeVisible()
-    expect(screen.getByRole('option', { name: /^Earlier inside tool/ })).toBeVisible()
-    expect(screen.getByRole('option', { name: /^Later inside tool/ })).toBeVisible()
-    expect(screen.getByRole('option', { name: /^Disconnected outer tool/ })).toBeVisible()
+    await user.click(screen.getByRole('tab', { name: appUserTab }))
+    expect(getData().credential_id).toBeUndefined()
+    await user.click(screen.getByRole('tab', { name: workspaceTab }))
+    expect(getData().credential_id).toBe('test-credential')
+    expect(screen.getByRole('button', { name: /^Testing connection/ })).toBeVisible()
+    expect(getData().end_user_auth).toBeUndefined()
+    expect(getData().test_credential_id).toBeUndefined()
   })
 
-  it('preserves per-node selections across panels and keeps a renamed source snapshot after deletion', async () => {
+  it('restores saved App user configuration after a fresh workflow mount without UI cache', async () => {
     const user = userEvent.setup()
-    const first = toolNode('first-source', 'First source')
-    const second = toolNode('second-source', 'Second source')
-    const { store, content, rerender } = setup({
-      nodes: [first, second, toolNode('node-1'), toolNode('node-2')],
-      edges: ['node-1', 'node-2'].flatMap((target) => [
-        connect(first.id, target),
-        connect(second.id, target),
-      ]),
-      actions: (
-        <>
-          <GraphAction
-            label="Rename first source"
-            update={({ setNodes, getNodes }) =>
-              setNodes(
-                getNodes().map((node) =>
-                  node.id === first.id
-                    ? { ...node, data: { ...node.data, title: 'Renamed source' } }
-                    : node,
-                ),
-              )
-            }
-          />
-          <GraphAction
-            label="Delete first source"
-            update={({ setNodes, getNodes }) =>
-              setNodes(getNodes().filter((node) => node.id !== first.id))
-            }
-          />
-        </>
-      ),
-    })
-    const choose = async (name: RegExp) => {
-      await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-      await user.click(await screen.findByRole('option', { name }))
-      await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    }
+    const first = setup()
+    await user.click(screen.getByRole('tab', { name: appUserTab }))
+    await user.type(screen.getByRole('textbox', { name: descriptionLabel }), 'Saved across refresh')
+    const savedNodes = JSON.parse(JSON.stringify(first.getNodes())) as Node[]
+    first.unmount()
+    mocks.syncDraft.mockClear()
 
-    await user.click(screen.getByRole('tab', { name: reuseTab }))
-    await choose(/^First source/)
-    for (const tab of [workspaceTab, appUserTab]) {
-      await user.click(screen.getByRole('tab', { name: tab }))
-      await user.click(screen.getByRole('tab', { name: reuseTab }))
-      expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent(
-        'First source',
-      )
-    }
+    const refreshed = setup({ nodes: savedNodes })
+    expect(screen.getByRole('tab', { name: appUserTab })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveValue(
+      'Saved across refresh',
+    )
+    expect(refreshed.getData().end_user_auth?.purpose).toBe('Saved across refresh')
+    expect(mocks.syncDraft).not.toHaveBeenCalled()
+  })
 
+  it('isolates edits when moving between node panels', async () => {
+    const user = userEvent.setup()
+    const { getData, content, rerender } = setup()
+    await user.click(screen.getByRole('tab', { name: appUserTab }))
+    await user.type(screen.getByRole('textbox', { name: descriptionLabel }), 'First node purpose')
     rerender(content('node-2'))
-    await user.click(screen.getByRole('tab', { name: reuseTab }))
-    expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent(
-      selectNodeLabel,
-    )
-    await choose(/^Second source/)
-    rerender(content())
-    expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent(
-      'First source',
-    )
-
-    await user.click(screen.getByRole('button', { name: 'Rename first source' }))
-    expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent(
-      'Renamed source',
-    )
-    await waitFor(() =>
-      expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode?.source.title).toBe(
-        'Renamed source',
-      ),
-    )
-    await user.click(screen.getByRole('button', { name: 'Delete first source' }))
-    expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent(
-      'Renamed source',
-    )
-    expect(screen.getByText('plugin.auth.reuse.removed')).toBeVisible()
-    expect(screen.queryByRole('button', { name: locateLabel })).not.toBeInTheDocument()
-
-    await choose(/^Second source/)
-    expect(screen.queryByText('plugin.auth.reuse.removed')).not.toBeInTheDocument()
-    expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode).toMatchObject({
-      source: { id: second.id },
-    })
-    expect(store.getState().nodeAuthDrafts['node-2']?.reuseFromNode?.source.id).toBe(second.id)
-  })
-
-  it.each([
-    { mode: 'Workspace', tab: workspaceTab },
-    { mode: 'App user', tab: appUserTab },
-  ])('clears a preserved circular source when returning from $mode to Reuse', async ({ tab }) => {
-    const user = userEvent.setup()
-    const { store, content, rerender } = setup({
-      nodes: [
-        toolNode('node-1', 'Tool A', { tool_name: 'tool-a' }),
-        toolNode('node-2', 'Tool B', { tool_name: 'tool-b' }),
-        toolNode('safe', 'Independent source', { tool_name: 'tool-c' }),
-      ],
-    })
-    const choose = async (name: RegExp) => {
-      await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-      await user.click(await screen.findByRole('option', { name }))
-      await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    }
-
-    await user.click(screen.getByRole('tab', { name: reuseTab }))
-    await choose(/^Tool B/)
-    await user.click(screen.getByRole('tab', { name: tab }))
-
-    rerender(content('node-2'))
-    await user.click(screen.getByRole('tab', { name: reuseTab }))
-    await choose(/^Tool A/)
+    expect(screen.getByRole('tab', { name: workspaceTab })).toHaveAttribute('aria-selected', 'true')
+    await user.click(screen.getByRole('tab', { name: appUserTab }))
+    expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveValue('')
+    await user.type(screen.getByRole('textbox', { name: descriptionLabel }), 'Second node purpose')
 
     rerender(content('node-1'))
-    await user.click(screen.getByRole('tab', { name: reuseTab }))
+    expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveValue(
+      'First node purpose',
+    )
+    expect(getData('node-1').end_user_auth?.purpose).toBe('First node purpose')
+    expect(getData('node-2').end_user_auth?.purpose).toBe('Second node purpose')
+  })
 
+  it('restores a saved Reuse reference and permits only direct authorization from the same tool', async () => {
+    const user = userEvent.setup()
+    const { getData } = setup({
+      nodes: [
+        toolNode('workspace', 'Workspace source'),
+        toolNode('app-user', 'App user source', {
+          credential_source: 'end_user',
+          end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Source purpose' },
+        }),
+        toolNode('reuse', 'Chained source', {
+          credential_source: 'reuse_node',
+          reuse_node_id: 'workspace',
+        }),
+        toolNode('different-tool', 'Different tool', { tool_name: 'another-tool' }),
+        toolNode('different-provider', 'Different provider', { provider_id: 'other-provider' }),
+        toolNode('different-type', 'Different provider type', {
+          provider_type: CollectionType.custom,
+        }),
+        toolNode('different-plugin', 'Different plugin', { plugin_id: 'other-plugin' }),
+        toolNode('node-1', 'Current tool', {
+          credential_source: 'reuse_node',
+          reuse_node_id: 'workspace',
+        }),
+      ],
+      edges: [createEdge({ source: 'node-1', target: 'workspace' })],
+    })
+    expect(screen.getByRole('tab', { name: reuseTab })).toHaveAttribute('aria-selected', 'true')
     const selection = screen.getByRole('combobox', { name: selectNodeLabel })
-    expect(selection).toHaveTextContent(selectNodeLabel)
-    expect(screen.queryByRole('button', { name: locateLabel })).not.toBeInTheDocument()
-    expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode).toBeUndefined()
-    expect(store.getState().nodeAuthDrafts['node-2']?.reuseFromNode?.source.id).toBe('node-1')
-
+    expect(selection).toHaveTextContent('Workspace source')
+    expect(mocks.syncDraft).not.toHaveBeenCalled()
     await user.click(selection)
-    const circular = await screen.findByRole('option', { name: /^Tool B/ })
-    expect(circular).toHaveAttribute('aria-disabled', 'true')
-    expect(circular).toHaveAttribute('aria-selected', 'false')
-    await user.click(circular)
-    expect(selection).toHaveTextContent(selectNodeLabel)
-    expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode).toBeUndefined()
-
-    const independent = screen.getByRole('option', { name: /^Independent source/ })
-    expect(independent).not.toHaveAttribute('aria-disabled', 'true')
-    await user.click(independent)
+    const listbox = await screen.findByRole('listbox')
+    expect(within(listbox).getAllByRole('option')).toHaveLength(4)
+    expect(screen.queryByRole('option', { name: /^Different tool/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /^Different provider/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /^Different plugin/ })).toBeVisible()
+    const chained = screen.getByRole('option', { name: /^Chained source/ })
+    expect(chained).toHaveAttribute('aria-disabled', 'true')
+    await user.click(chained)
+    expect(getData().reuse_node_id).toBe('workspace')
+    await user.click(screen.getByRole('option', { name: /^App user source/ }))
     await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    expect(selection).toHaveTextContent('Independent source')
-    expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode?.source.id).toBe('safe')
-
-    rerender(content('node-2'))
-    expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent('Tool A')
-    expect(store.getState().nodeAuthDrafts['node-2']?.reuseFromNode?.source.id).toBe('node-1')
+    expect(getData().reuse_node_id).toBe('app-user')
+    expect(mocks.syncDraft).toHaveBeenCalled()
   })
 
-  it('keeps a selected source when its authorization mode or graph connections change', async () => {
+  it('marks a source that changes to Reuse invalid while retaining its saved reference for repair', async () => {
     const user = userEvent.setup()
-    const source = toolNode('source', 'Source tool')
-    const edge = connect(source.id, 'node-1')
-    const { store } = setup({
-      nodes: [source, toolNode('node-1')],
-      edges: [edge],
-      actions: (
-        <>
-          <GraphAction label="Disconnect source" update={({ setEdges }) => setEdges([])} />
-          <GraphAction label="Reconnect source" update={({ setEdges }) => setEdges([edge])} />
-        </>
-      ),
-    })
-    await user.click(screen.getByRole('tab', { name: reuseTab }))
-    await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-    await user.click(await screen.findByRole('option', { name: /^Source tool/ }))
-    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-
-    act(() =>
-      store
-        .getState()
-        .setNodeAuthorizationTab(source.id, 'provider-a', 'provider-id-a', 'app-user-auth'),
-    )
-    expect(
-      screen.getByText('plugin.auth.reuse.source:{"type":"plugin.auth.reuse.appUser"}'),
-    ).toBeVisible()
-    act(() =>
-      store
-        .getState()
-        .setNodeAuthorizationTab(source.id, 'provider-a', 'provider-id-a', 'reuse-from-node'),
-    )
-    expect(
-      screen.getByText('plugin.auth.reuse.source:{"type":"plugin.auth.reuseFromNode"}'),
-    ).toBeVisible()
-    expect(screen.queryByText('plugin.auth.reuse.removed')).not.toBeInTheDocument()
-    act(() =>
-      store
-        .getState()
-        .setNodeAuthorizationTab(source.id, 'provider-a', 'provider-id-a', 'workspace-auth'),
-    )
-    expect(screen.queryByText('plugin.auth.reuse.removed')).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Disconnect source' }))
-    expect(screen.queryByText('plugin.auth.reuse.removed')).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent('Source tool')
-    expect(screen.getByRole('button', { name: locateLabel })).toBeEnabled()
-    expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode?.source.id).toBe(source.id)
-    await user.click(screen.getByRole('button', { name: 'Reconnect source' }))
-    expect(screen.queryByText('plugin.auth.reuse.removed')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: locateLabel })).toBeEnabled()
-  })
-
-  it.each([
-    { scenario: 'direct cycle', links: [['source', 'node-1']] as const },
-    {
-      scenario: 'indirect cycle',
-      links: [
-        ['source', 'middle'],
-        ['middle', 'node-1'],
-      ] as const,
-    },
-    {
-      scenario: 'pre-existing cycle',
-      links: [
-        ['source', 'middle'],
-        ['middle', 'source'],
-      ] as const,
-    },
-  ])(
-    'keeps a $scenario across different tools visible but prevents selecting it',
-    async ({ links }) => {
-      const user = userEvent.setup()
-      const { store } = setup({
-        nodes: [
-          toolNode('node-1'),
-          toolNode('source', 'Circular source', {
-            tool_name: 'second-tool',
-            plugin_id: 'plugin-b',
-          }),
-          toolNode('middle', 'Middle source', { tool_name: 'third-tool', plugin_id: 'plugin-c' }),
-          toolNode('safe', 'Independent source'),
-        ],
-      })
-      act(() => {
-        links.forEach(([nodeId, sourceId]) => seedReuseReference(store, nodeId, sourceId))
-      })
-
-      await user.click(screen.getByRole('tab', { name: reuseTab }))
-      await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-      const circular = await screen.findByRole('option', { name: /^Circular source/ })
-      expect(circular).toBeVisible()
-      expect(circular).toHaveAttribute('aria-disabled', 'true')
-      expect(within(circular).getByText('plugin.auth.reuseFromNode')).toBeVisible()
-
-      await user.click(circular)
-      expect(screen.getByRole('listbox')).toBeVisible()
-      expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode).toBeUndefined()
-      expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent(
-        selectNodeLabel,
-      )
-
-      const independent = screen.getByRole('option', { name: /^Independent source/ })
-      expect(independent).not.toHaveAttribute('aria-disabled', 'true')
-      await user.click(independent)
-      await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-      expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent(
-        'Independent source',
-      )
-      expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode?.source.id).toBe('safe')
-    },
-  )
-
-  it('recomputes disabled candidates when another open panel changes its mode or Reuse reference', async () => {
-    const user = userEvent.setup()
-    setup({
+    const { getData } = setup({
       nodes: [
-        toolNode('node-1', 'Current tool'),
-        toolNode('source', 'Source tool', { tool_name: 'second-tool' }),
-        toolNode('safe', 'Independent tool', { tool_name: 'third-tool' }),
+        toolNode('source', 'Source tool'),
+        toolNode('safe', 'Independent source'),
+        toolNode('node-1', 'Current tool', {
+          credential_source: 'reuse_node',
+          reuse_node_id: 'source',
+        }),
       ],
-      actions: (
-        <section aria-label="Source node authorization">
-          <ToolAuthorization
-            nodeId="source"
-            providerId="provider-id-a"
-            pluginPayload={{ category: 'tool', provider: 'provider-a' }}
-            showAuthorizationTabs
-          />
-        </section>
-      ),
-    })
-    const currentPanel = within(screen.getByRole('region', { name: 'Current node authorization' }))
-    const sourcePanel = within(screen.getByRole('region', { name: 'Source node authorization' }))
-    const openCurrentOptions = () =>
-      user.click(currentPanel.getByRole('combobox', { name: selectNodeLabel }))
-    const closeOptions = async () => {
-      await user.keyboard('{Escape}')
-      await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    }
-    const chooseSourceReference = async (name: RegExp) => {
-      await user.click(sourcePanel.getByRole('combobox', { name: selectNodeLabel }))
-      await user.click(await screen.findByRole('option', { name }))
-      await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    }
-
-    await user.click(currentPanel.getByRole('tab', { name: reuseTab }))
-    await openCurrentOptions()
-    expect(await screen.findByRole('option', { name: /^Source tool/ })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    await closeOptions()
-
-    await user.click(sourcePanel.getByRole('tab', { name: reuseTab }))
-    await chooseSourceReference(/^Current tool/)
-    await openCurrentOptions()
-    expect(await screen.findByRole('option', { name: /^Source tool/ })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    await closeOptions()
-
-    await user.click(sourcePanel.getByRole('tab', { name: workspaceTab }))
-    await openCurrentOptions()
-    const workspaceSource = await screen.findByRole('option', { name: /^Source tool/ })
-    expect(workspaceSource).not.toHaveAttribute('aria-disabled', 'true')
-    expect(within(workspaceSource).getByText('plugin.auth.reuse.workspace')).toBeVisible()
-    await closeOptions()
-
-    await user.click(sourcePanel.getByRole('tab', { name: reuseTab }))
-    await openCurrentOptions()
-    expect(await screen.findByRole('option', { name: /^Source tool/ })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    await closeOptions()
-
-    await chooseSourceReference(/^Independent tool/)
-    await openCurrentOptions()
-    const reusableSource = await screen.findByRole('option', { name: /^Source tool/ })
-    expect(reusableSource).not.toHaveAttribute('aria-disabled', 'true')
-    expect(within(reusableSource).getByText('plugin.auth.reuseFromNode')).toBeVisible()
-    await user.click(reusableSource)
-    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    expect(
-      currentPanel.getByText('plugin.auth.reuse.source:{"type":"plugin.auth.reuseFromNode"}'),
-    ).toBeVisible()
-  })
-
-  it.each([
-    { scenario: 'inactive Workspace mode', mode: 'workspace-auth' as const },
-    { scenario: 'inactive App user mode', mode: 'app-user-auth' as const },
-    { scenario: 'stale provider', provider: 'old-provider' },
-    { scenario: 'stale provider ID', providerId: 'old-provider-id' },
-  ])('ignores a nested Reuse reference with $scenario', async ({ mode, ...identity }) => {
-    const user = userEvent.setup()
-    const { store } = setup({
-      nodes: [
-        toolNode('node-1'),
-        toolNode('source', 'Reusable source', { tool_name: 'second-tool' }),
-        toolNode('middle', 'Intermediate source', { tool_name: 'third-tool' }),
-      ],
-    })
-    act(() => {
-      seedReuseReference(store, 'source', 'middle')
-      seedReuseReference(store, 'middle', 'node-1', identity)
-      if (mode)
-        store.getState().setNodeAuthorizationTab('middle', 'provider-a', 'provider-id-a', mode)
-    })
-
-    await user.click(screen.getByRole('tab', { name: reuseTab }))
-    await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-    const source = await screen.findByRole('option', { name: /^Reusable source/ })
-    expect(source).not.toHaveAttribute('aria-disabled', 'true')
-    expect(within(source).getByText('plugin.auth.reuseFromNode')).toBeVisible()
-    await user.click(source)
-    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-    expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent(
-      'Reusable source',
-    )
-    expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode?.source.id).toBe('source')
-  })
-
-  it('preserves its source and continues checking cycles after changing tools within the same provider', async () => {
-    const user = userEvent.setup()
-    const { store } = setup({
-      nodes: [
-        toolNode('source', 'Original tool source', { tool_name: 'source-tool' }),
-        toolNode('circular', 'Circular source', { tool_name: 'another-tool' }),
-        toolNode('node-1'),
-      ],
-      edges: [connect('source', 'node-1')],
       actions: (
         <GraphAction
-          label="Change current tool"
-          update={({ setNodes, getNodes }) =>
+          label="Change source authorization"
+          update={({ getNodes, setNodes }) =>
             setNodes(
               getNodes().map((node) =>
-                node.id === 'node-1'
-                  ? { ...node, data: { ...node.data, tool_name: 'different-tool' } }
+                node.id === 'source'
+                  ? {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        credential_source: 'reuse_node',
+                        reuse_node_id: 'safe',
+                      },
+                    }
                   : node,
               ),
             )
@@ -766,44 +423,157 @@ describe('Workflow tool authorization bridge', () => {
         />
       ),
     })
-    act(() => seedReuseReference(store, 'circular', 'node-1'))
-    await user.click(screen.getByRole('tab', { name: reuseTab }))
-    await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-    await user.click(await screen.findByRole('option', { name: /^Original tool source/ }))
-    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
-
-    await user.click(screen.getByRole('button', { name: 'Change current tool' }))
-
-    const select = screen.getByRole('combobox', { name: selectNodeLabel })
-    expect(select).toHaveTextContent('Original tool source')
-    expect(select).toBeEnabled()
-    expect(screen.queryByText('plugin.auth.reuse.removed')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: locateLabel })).toBeEnabled()
-    expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode?.source.id).toBe('source')
-
-    await user.click(select)
-    const circular = await screen.findByRole('option', { name: /^Circular source/ })
-    expect(circular).toHaveAttribute('aria-disabled', 'true')
-    await user.click(circular)
-    expect(store.getState().nodeAuthDrafts['node-1']?.reuseFromNode?.source.id).toBe('source')
-    expect(select).toHaveTextContent('Original tool source')
+    await user.click(screen.getByRole('button', { name: 'Change source authorization' }))
+    const selection = screen.getByRole('combobox', { name: selectNodeLabel })
+    expect(selection).toHaveAttribute('aria-invalid', 'true')
+    expect(selection).toHaveTextContent('Source tool')
+    expect(getData().reuse_node_id).toBe('source')
+    expect(mocks.syncDraft).not.toHaveBeenCalled()
+    await user.click(selection)
+    expect(await screen.findByRole('option', { name: /^Source tool/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
-  it('requests the existing select-and-focus navigation for the chosen source', async () => {
+  it.each([workspaceTab, appUserTab])(
+    'revalidates a cached Reuse source when returning from %s',
+    async (tab) => {
+      const user = userEvent.setup()
+      const { getData } = setup({
+        nodes: [
+          toolNode('source', 'Source tool'),
+          toolNode('node-1', 'Current tool', {
+            credential_source: 'reuse_node',
+            reuse_node_id: 'source',
+          }),
+        ],
+        actions: (
+          <GraphAction
+            label="Change source tool"
+            update={({ getNodes, setNodes }) =>
+              setNodes(
+                getNodes().map((node) =>
+                  node.id === 'source'
+                    ? { ...node, data: { ...node.data, tool_name: 'different-tool' } }
+                    : node,
+                ),
+              )
+            }
+          />
+        ),
+      })
+      await user.click(screen.getByRole('tab', { name: tab }))
+      await user.click(screen.getByRole('button', { name: 'Change source tool' }))
+      await user.click(screen.getByRole('tab', { name: reuseTab }))
+      expect(getData().credential_source).toBe('reuse_node')
+      expect(getData().reuse_node_id).toBeUndefined()
+      expect(screen.getByRole('combobox', { name: selectNodeLabel })).toHaveTextContent(
+        selectNodeLabel,
+      )
+    },
+  )
+
+  it('keeps a removed source visible for repair without serializing its UI snapshot', async () => {
+    const user = userEvent.setup()
+    const { getData } = setup({
+      nodes: [
+        toolNode('source', 'Source tool'),
+        toolNode('node-1', 'Current tool', {
+          credential_source: 'reuse_node',
+          reuse_node_id: 'source',
+        }),
+      ],
+      actions: (
+        <GraphAction
+          label="Delete source"
+          update={({ getNodes, setNodes }) =>
+            setNodes(getNodes().filter((node) => node.id !== 'source'))
+          }
+        />
+      ),
+    })
+    await user.click(screen.getByRole('button', { name: 'Delete source' }))
+    expect(screen.getByText('plugin.auth.reuse.removed')).toBeVisible()
+    expect(screen.queryByRole('button', { name: locateLabel })).not.toBeInTheDocument()
+    expect(getData().reuse_node_id).toBe('source')
+    expect(JSON.stringify(getData())).not.toContain('Source tool')
+  })
+
+  it('does not overwrite saved configuration while provider capabilities are loading', async () => {
+    mocks.isLoading = true
+    const saved = {
+      credential_source: 'end_user' as const,
+      end_user_auth: { allowed_credential_types: ['api-key' as const], purpose: 'Already saved' },
+      test_credential_id: 'test-credential',
+    }
+    const { getData, content, rerender } = setup({
+      nodes: [toolNode('node-1', 'Current tool', saved)],
+    })
+    expect(getData()).toMatchObject(saved)
+    expect(mocks.syncDraft).not.toHaveBeenCalled()
+    mocks.isLoading = false
+    rerender(content())
+    expect(screen.getByRole('textbox', { name: descriptionLabel })).toHaveValue('Already saved')
+    expect(getData()).toMatchObject(saved)
+    expect(mocks.syncDraft).not.toHaveBeenCalled()
+  })
+
+  it('preserves the saved OAuth client type when workspace client metadata loads', async () => {
+    mocks.canOAuth = true
+    const saved = {
+      credential_source: 'end_user' as const,
+      end_user_auth: {
+        allowed_credential_types: ['api-key' as const, 'oauth2' as const],
+        purpose: 'Saved OAuth purpose',
+        oauth_client_type: 'custom' as const,
+      },
+      test_credential_id: 'test-credential',
+    }
+    const { getData } = setup({ nodes: [toolNode('node-1', 'Current tool', saved)] })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'plugin.auth.appUser.customClient' }),
+      ).toBeEnabled(),
+    )
+    expect(getData()).toMatchObject(saved)
+    expect(mocks.syncDraft).not.toHaveBeenCalled()
+  })
+
+  it('does not mutate the graph or synchronize draft changes in read-only mode', async () => {
+    const user = userEvent.setup()
+    const { getData, store } = setup({
+      nodes: [
+        toolNode('node-1', 'Current tool', {
+          credential_source: 'end_user',
+          end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Read-only purpose' },
+          test_credential_id: 'test-credential',
+        }),
+      ],
+    })
+    const before = JSON.stringify(getData())
+    act(() => store.setState({ canvasReadOnly: true }))
+    mocks.syncDraft.mockClear()
+    await user.type(screen.getByRole('textbox', { name: descriptionLabel }), ' changed')
+    await user.click(screen.getByRole('tab', { name: workspaceTab }))
+    expect(JSON.stringify(getData())).toBe(before)
+    expect(mocks.syncDraft).not.toHaveBeenCalled()
+  })
+
+  it('requests canvas navigation for the selected saved source', async () => {
     const user = userEvent.setup()
     setup({
-      nodes: [toolNode('source', 'Locate this source'), toolNode('node-1')],
-      edges: [connect('source', 'node-1')],
+      nodes: [
+        toolNode('source', 'Source tool'),
+        toolNode('node-1', 'Current tool', {
+          credential_source: 'reuse_node',
+          reuse_node_id: 'source',
+        }),
+      ],
     })
-    await user.click(screen.getByRole('tab', { name: reuseTab }))
-    await user.click(screen.getByRole('combobox', { name: selectNodeLabel }))
-    await user.click(await screen.findByRole('option', { name: /^Locate this source/ }))
-    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
     const onSelect = vi.fn()
     document.addEventListener('workflow:select-node', onSelect, { once: true })
-
     await user.click(screen.getByRole('button', { name: locateLabel }))
-
     expect(onSelect).toHaveBeenCalledOnce()
     expect((onSelect.mock.calls[0]?.[0] as CustomEvent).detail).toEqual({
       nodeId: 'source',

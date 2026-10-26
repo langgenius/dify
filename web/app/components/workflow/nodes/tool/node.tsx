@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
-import { useStore } from '@/app/components/workflow/store'
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import { isToolAuthorizationRequired } from './auth'
 import { resolveToolAuthorization } from './authorization'
@@ -21,12 +20,9 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
   const { currCollection } = useCurrentToolCollection(data.provider_type, data.provider_id)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
   const nodes = useNodes<CommonNodeType>()
-  const nodeAuthDrafts = useStore((state) => state.nodeAuthDrafts)
   const authorization = resolveToolAuthorization({
     node: { id, data },
     nodes,
-    nodeAuthDrafts,
-    provider: currCollection?.name,
   })
   const authDraft =
     authorization?.status === 'resolved' && authorization.authorizationTab === 'app-user-auth'
@@ -54,7 +50,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
   return (
     <div className="relative mb-1 px-3 py-1">
       {showInstallButton && (
-        <div className="pointer-events-auto absolute -top-8 right-3 z-40">
+        <div className="pointer-events-auto absolute inset-e-3 -top-8 z-40">
           <InstallPluginButton
             size="small"
             className="font-medium! text-text-accent!"
@@ -83,7 +79,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
                 {typeof tool_configurations[key].value === 'string' && (
                   <div
                     title={tool_configurations[key].value}
-                    className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                    className="w-0 shrink-0 grow truncate text-end text-xs font-normal text-text-secondary"
                   >
                     {paramSchemas?.find((i) => i.name === key)?.type === FormTypeEnum.secretInput
                       ? '********'
@@ -97,7 +93,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
                         ? ''
                         : tool_configurations[key].value
                     }
-                    className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                    className="w-0 shrink-0 grow truncate text-end text-xs font-normal text-text-secondary"
                   >
                     {Number.isNaN(tool_configurations[key].value)
                       ? ''
@@ -107,7 +103,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
                 {Array.isArray(tool_configurations[key].value) && (
                   <div
                     title={tool_configurations[key].value.join(', ')}
-                    className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                    className="w-0 shrink-0 grow truncate text-end text-xs font-normal text-text-secondary"
                   >
                     {tool_configurations[key].value.join(', ')}
                   </div>
@@ -116,7 +112,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
                   tool_configurations[key]?.type === FormTypeEnum.modelSelector && (
                     <div
                       title={tool_configurations[key].model}
-                      className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                      className="w-0 shrink-0 grow truncate text-end text-xs font-normal text-text-secondary"
                     >
                       {tool_configurations[key].model}
                     </div>
@@ -128,7 +124,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ id, data }) => {
               key={warning}
               className="flex min-h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5 py-1"
             >
-              <span className="mr-1 size-1 shrink-0 rounded-xs bg-text-warning-secondary" />
+              <span className="me-1 size-1 shrink-0 rounded-xs bg-text-warning-secondary" />
               <div className="grow system-xs-medium wrap-anywhere text-text-warning">{warning}</div>
             </div>
           ))}

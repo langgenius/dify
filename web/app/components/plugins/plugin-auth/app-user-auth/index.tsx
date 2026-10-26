@@ -1,28 +1,31 @@
+import type { usePluginAuth } from '../hooks/use-plugin-auth'
 import type { PluginPayload } from '../types'
 import type { AppUserAuthDraft } from './draft'
+import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset } from '@langgenius/dify-ui/fieldset'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { useMutation } from '@tanstack/react-query'
 import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
+import { openOAuthPopup } from '@/hooks/use-oauth'
+import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
 import OAuthClientSettings from '../authorize/oauth-client-settings'
-import ConnectionSelector from '../connections/connection-selector'
+import OAuthVisibilityDialog from '../authorize/oauth-visibility-dialog'
 import { useOAuthClient } from '../hooks/use-oauth-client'
+import { CredentialTypeEnum } from '../types'
+import WorkspaceConnectionSelector from '../workspace-auth/workspace-connection-selector'
 import { createAppUserAuthDraft, validateAppUserAuth } from './draft'
-import { createMockTestConnectionDraft } from './test-connection/model'
-import { useMockTestConnectionSource } from './test-connection/use-mock-test-connection-source'
 
 type AppUserAuthProps = {
   pluginPayload: PluginPayload
+  authorization: ReturnType<typeof usePluginAuth>
   active?: boolean
-  notAllowCustomCredential?: boolean
-  onUpdate?: () => void
-  canOAuth?: boolean
-  canApiKey?: boolean
   providerName?: string
   value?: AppUserAuthDraft
   onChange?: (draft: AppUserAuthDraft) => void
@@ -30,17 +33,16 @@ type AppUserAuthProps = {
 
 const AppUserAuth = ({
   pluginPayload,
+  authorization,
   active = true,
-  notAllowCustomCredential,
-  onUpdate,
-  canOAuth = true,
-  canApiKey = true,
   providerName,
   value,
   onChange,
 }: AppUserAuthProps) => {
   const { t } = useTranslation(['plugin'])
   const { canManageCredential } = useCredentialPermissions()
+  const canOAuth = !!authorization.canOAuth
+  const canApiKey = !!authorization.canApiKey
   const oauthClient = useOAuthClient(pluginPayload, canOAuth && active)
   const descriptionLabelId = useId()
   const descriptionCountId = useId()
@@ -55,7 +57,10 @@ const AppUserAuth = ({
     createAppUserAuthDraft({ canOAuth, canApiKey }),
   )
   const draft = value ?? localDraft
-  const client = oauthClient.clientType ? { type: oauthClient.clientType } : undefined
+  const [clientWasRemoved, setClientWasRemoved] = useState(false)
+  const client =
+    draft.client ??
+    (!clientWasRemoved && oauthClient.clientType ? { type: oauthClient.clientType } : undefined)
   const oauthOnly = canOAuth && !canApiKey
   const apiKeyOnly = canApiKey && !canOAuth
   const oauthEnabled = canOAuth && (oauthOnly || draft.oauthEnabled)
@@ -65,14 +70,19 @@ const AppUserAuth = ({
   const { description } = draft
   const oauthDisabled =
     !canManageCredential ||
-    !!notAllowCustomCredential ||
+    authorization.notAllowCustomCredential ||
     oauthClient.query.isPending ||
     oauthClient.query.isError
-  // A sole supported method is required. Keep shared validation in sync with the
-  // effective methods and mirror client type only after its query succeeds.
+  // Only initialize missing client metadata for the active form. Persisted node
+  // choices must survive background workspace client refreshes.
   useEffect(() => {
-    if (!value) return
-    const syncClient = canOAuth && oauthClient.query.isSuccess
+    if (!active || !value) return
+    const syncClient =
+      !clientWasRemoved &&
+      oauthEnabled &&
+      !draft.client &&
+      !!oauthClient.clientType &&
+      oauthClient.query.isSuccess
     if (
       draft.oauthEnabled === oauthEnabled &&
       draft.apiKeyEnabled === apiKeyEnabled &&
@@ -90,6 +100,8 @@ const AppUserAuth = ({
     onChange?.(nextDraft)
   }, [
     canOAuth,
+    active,
+    clientWasRemoved,
     oauthEnabled,
     apiKeyEnabled,
     oauthClient.query.isSuccess,
@@ -98,13 +110,8 @@ const AppUserAuth = ({
     value,
     onChange,
   ])
-  const testConnection =
-    draft.testConnection ??
-    createMockTestConnectionDraft({
-      canOAuth,
-      canApiKey,
-    })
   const updateDraft = (updates: Partial<AppUserAuthDraft>) => {
+    if (!active) return
     const nextDraft = { ...draft, oauthEnabled, apiKeyEnabled, client, ...updates }
     if (!value) setLocalDraft(nextDraft)
     onChange?.(nextDraft)
@@ -116,17 +123,31 @@ const AppUserAuth = ({
     setClientDialogSession((session) => session + 1)
     setClientDialogOpen(true)
   }
-  const testConnectionSource = useMockTestConnectionSource({
-    pluginPayload,
-    active,
-    value: testConnection,
-    oauthEnabled,
-    apiKeyEnabled,
-    providerName,
-    onChange: (testConnection) => updateDraft({ testConnection }),
-    onOAuthClientSettings: openClientDialog,
-    oauthDisabled,
-  })
+  const [visibilityOpen, setVisibilityOpen] = useState(false)
+  const [visibility, setVisibility] = useState<CredentialPermission>(PermissionLevel.onlyMe)
+  const oauthAuthorization = useMutation(
+    consoleQuery.oauth.plugin.byProvider.tool.authorizationUrl.get.mutationOptions({
+      onSuccess: ({ authorization_url }) => {
+        if (!authorization_url) return
+        openOAuthPopup(authorization_url, authorization.invalidPluginCredentialInfo)
+        setVisibilityOpen(false)
+      },
+    }),
+  )
+  const handleClientTypeChange = (type: 'default' | 'custom' | undefined) => {
+    if (!active) return
+    setClientWasRemoved(type === undefined)
+    updateDraft({ client: type ? { type } : undefined })
+  }
+  const testCredentials = authorization.credentials.filter((credential) =>
+    credential.credential_type === CredentialTypeEnum.OAUTH2 ? oauthEnabled : apiKeyEnabled,
+  )
+  const selectedTestCredential = testCredentials.find(
+    (credential) => credential.id === draft.testCredentialId,
+  )
+  const testCredentialUsesDisabledMethod =
+    !selectedTestCredential &&
+    authorization.credentials.some((credential) => credential.id === draft.testCredentialId)
 
   const oauthClientControl =
     oauthEnabled &&
@@ -294,7 +315,25 @@ const AppUserAuth = ({
                 : t(($) => $['auth.appUser.testConnectionDescription'], { ns: 'plugin' })}
           </p>
         </div>
-        <ConnectionSelector dataSource={testConnectionSource} />
+        <WorkspaceConnectionSelector
+          pluginPayload={pluginPayload}
+          authorization={{
+            ...authorization,
+            credentials: testCredentials,
+            canOAuth: oauthEnabled,
+            canApiKey: apiKeyEnabled,
+          }}
+          active={active}
+          disabled={!oauthEnabled && !apiKeyEnabled}
+          useWorkspaceDefault={false}
+          placeholder={t(($) => $['auth.appUser.testConnection'], { ns: 'plugin' })}
+          credentialId={
+            testCredentialUsesDisabledMethod ? undefined : (draft.testCredentialId ?? undefined)
+          }
+          providerName={providerName}
+          onAuthorizationItemClick={(testCredentialId) => updateDraft({ testCredentialId })}
+          onClientTypeChange={handleClientTypeChange}
+        />
       </section>
       <Field
         name="appUserConnectionDescription"
@@ -346,19 +385,37 @@ const AppUserAuth = ({
           key={clientDialogSession}
           pluginPayload={pluginPayload}
           schemas={oauthClient.schemas}
-          editValues={oauthClient.editValues}
+          editValues={{ ...oauthClient.editValues, __oauth_client__: client?.type ?? 'custom' }}
           redirectUri={oauthClient.redirectUri}
           hasOriginalClientParams={oauthClient.hasOriginalClientParams}
           disabled={oauthDisabled}
           open={clientDialogOpen}
           onOpenChange={setClientDialogOpen}
           onUpdate={() => {
-            onUpdate?.()
+            authorization.invalidPluginCredentialInfo()
             oauthClient.query.refetch().catch(() => {})
           }}
-          onRequestAuthorization={testConnectionSource.addOAuth}
+          onClientTypeChange={handleClientTypeChange}
+          onRequestAuthorization={() => {
+            setVisibility(PermissionLevel.onlyMe)
+            setVisibilityOpen(true)
+          }}
         />
       )}
+      <OAuthVisibilityDialog
+        open={visibilityOpen}
+        onOpenChange={setVisibilityOpen}
+        permission={visibility}
+        onPermissionChange={setVisibility}
+        loading={oauthAuthorization.isPending}
+        onConfirm={() => {
+          if (!active || !canManageCredential || oauthAuthorization.isPending) return
+          oauthAuthorization.mutate({
+            params: { provider: pluginPayload.provider },
+            query: { visibility },
+          })
+        }}
+      />
     </div>
   )
 }

@@ -201,7 +201,6 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     }),
   )
   const workflowStore = useWorkflowStore()
-  const nodeAuthDrafts = useStore((state) => state.nodeAuthDrafts)
   const resource = useAtomValue(editorResourceAtom)
 
   const map = useNodesAvailableVarList(nodes)
@@ -379,7 +378,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
-      const authorization = resolveToolAuthorization({ node: node!, nodes, nodeAuthDrafts })
+      const authorization = resolveToolAuthorization({ node: node!, nodes })
       const appUserAuthDraft =
         authorization?.status === 'resolved' && authorization.authorizationTab === 'app-user-auth'
           ? authorization.appUserDraft
@@ -632,7 +631,6 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     modelProviders,
     inlineAgentConfigurationIssues,
     inlineAgentToolPresentation.toolDisplayNameById,
-    nodeAuthDrafts,
     resourceKind,
   ])
 
@@ -737,7 +735,7 @@ export const useChecklistBeforePublish = () => {
 
   const handleCheckBeforePublish = useCallback(async () => {
     const { getNodes, edges } = store.getState()
-    const { dataSourceList, environmentVariables = [], nodeAuthDrafts } = workflowStore.getState()
+    const { dataSourceList, environmentVariables = [] } = workflowStore.getState()
     const nodes = getNodes()
     const filteredNodes = nodes.filter((node) => node.type === CUSTOM_NODE)
     const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
@@ -821,7 +819,7 @@ export const useChecklistBeforePublish = () => {
           workflowTools || [],
           language,
         )
-        const authorization = resolveToolAuthorization({ node: node!, nodes, nodeAuthDrafts })
+        const authorization = resolveToolAuthorization({ node: node!, nodes })
         if (authorization?.status === 'invalid') {
           toast.error(
             `[${node!.data.title}] ${t(($) => $['panel.selectReuseNode'], { ns: 'workflow' })}`,

@@ -1,10 +1,13 @@
+import type { RefObject } from 'react'
+import type { ReactFlowInstance } from 'reactflow'
 import type { ToolNodeType } from '../types'
 import type { Node as WorkflowNode } from '@/app/components/workflow/types'
 import { act, screen } from '@testing-library/react'
-import { createAppUserAuthDraft } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
+import { createRef, useImperativeHandle } from 'react'
+import ReactFlow, { ReactFlowProvider, useReactFlow } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -24,6 +27,12 @@ const createNodeData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => 
   tool_configurations: {},
   ...overrides,
 })
+
+function GraphApi({ graphRef }: { graphRef: RefObject<ReactFlowInstance | null> }) {
+  const graph = useReactFlow()
+  useImperativeHandle(graphRef, () => graph, [graph])
+  return null
+}
 
 function renderTool(
   data: ToolNodeType,
@@ -47,7 +56,16 @@ function renderTool(
     workflowTools: [],
     mcpTools: [],
   })
-  return renderWorkflowFlowComponent(<Node id="tool-node-1" data={data} />, { queryClient, nodes })
+  const graph = createRef<ReactFlowInstance>()
+  const content = (nodeData: ToolNodeType) => (
+    <ReactFlowProvider>
+      <ReactFlow defaultNodes={nodes} />
+      <GraphApi graphRef={graph} />
+      <Node id="tool-node-1" data={nodeData} />
+    </ReactFlowProvider>
+  )
+  const view = renderWorkflowComponent(content(data), { queryClient })
+  return { ...view, graph, update: (nodeData: ToolNodeType) => view.rerender(content(nodeData)) }
 }
 
 describe('ToolNode', () => {
@@ -74,151 +92,81 @@ describe('ToolNode', () => {
     expect(screen.getByText('png, svg')).toBeInTheDocument()
   })
 
-  it('updates App user errors on the canvas immediately as the draft changes', () => {
+  it('updates App user errors on the canvas from saved node data', () => {
     const data = createNodeData()
-    const { store } = renderTool(data, { authorized: false })
+    const { update } = renderTool(data, { authorized: false })
     expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
-    const draft = createAppUserAuthDraft()
-    act(() => {
-      store
-        .getState()
-        .setNodeAppUserAuthDraft('tool-node-1', 'google_search', data.provider_id, draft)
-      store
-        .getState()
-        .setNodeAuthorizationTab('tool-node-1', 'google_search', data.provider_id, 'app-user-auth')
+    const appUser = createNodeData({
+      credential_source: 'end_user',
+      end_user_auth: { allowed_credential_types: ['oauth2', 'api-key'], purpose: '' },
     })
+    update(appUser)
     expect(screen.getByText('plugin.auth.appUser.clientRequired')).toBeInTheDocument()
     expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
     expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
 
-    act(() => {
-      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google_search', data.provider_id, {
-        ...draft,
-        oauthEnabled: false,
-      })
-    })
+    update({ ...appUser, end_user_auth: { allowed_credential_types: ['api-key'], purpose: '' } })
     expect(screen.queryByText('plugin.auth.appUser.clientRequired')).not.toBeInTheDocument()
     expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
 
-    act(() => {
-      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google_search', data.provider_id, {
-        ...draft,
-        oauthEnabled: false,
-        description: 'Find repositories',
-      })
+    update({
+      ...appUser,
+      end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Find repositories' },
     })
     expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
     expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
 
-    act(() => {
-      store.getState().setNodeAppUserAuthDraft('tool-node-1', 'google_search', data.provider_id, {
-        ...draft,
-        oauthEnabled: false,
-        apiKeyEnabled: false,
-        description: ' ',
-      })
-    })
+    update({ ...appUser, end_user_auth: { allowed_credential_types: [], purpose: ' ' } })
     expect(screen.getByText('plugin.auth.appUser.selectMethod')).toBeInTheDocument()
     expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
     expect(screen.queryByText('plugin.auth.appUser.clientRequired')).not.toBeInTheDocument()
 
-    act(() => {
-      store
-        .getState()
-        .setNodeAuthorizationTab('tool-node-1', 'google_search', data.provider_id, 'workspace-auth')
-    })
+    update(data)
     expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
     expect(screen.queryByText('plugin.auth.appUser.selectMethod')).not.toBeInTheDocument()
     expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
   })
-
-  it('does not show errors for a different provider', () => {
-    const data = createNodeData()
-    const { store, rerender } = renderTool(data, {
-      authorized: false,
-      providerIds: [data.provider_id, 'github'],
-    })
-    act(() => {
-      store
-        .getState()
-        .setNodeAppUserAuthDraft(
-          'tool-node-1',
-          'google_search',
-          data.provider_id,
-          createAppUserAuthDraft(),
-        )
-      store
-        .getState()
-        .setNodeAuthorizationTab('tool-node-1', 'google_search', data.provider_id, 'app-user-auth')
-    })
-    expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeInTheDocument()
-    rerender(<Node id="tool-node-1" data={createNodeData({ provider_id: 'github' })} />)
-    expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeInTheDocument()
-  })
 })
 
-it('inherits live App user errors through multiple Reuse sources and restores Workspace checks at the terminal', () => {
-  const data = createNodeData()
+it('inherits live App user errors from its direct Reuse source and restores Workspace checks', () => {
+  const data = createNodeData({ credential_source: 'reuse_node', reuse_node_id: 'auth-source' })
   const source = createNode({
     id: 'auth-source',
-    data: createNodeData({ tool_name: 'another-tool' }),
+    data: createNodeData({
+      credential_source: 'end_user',
+      end_user_auth: { allowed_credential_types: ['api-key'], purpose: '' },
+    }),
   })
-  const middle = createNode({ id: 'middle', data: createNodeData() })
-  const { store } = renderTool(data, {
-    authorized: false,
-    nodes: [source, middle],
-  })
-  act(() => {
-    for (const [id, target] of [
-      ['tool-node-1', middle],
-      ['middle', source],
-    ] as const) {
-      store.getState().setNodeReuseFromNode(id, 'google_search', data.provider_id, {
-        id: target.id,
-        title: target.data.title,
-      })
-      store
-        .getState()
-        .setNodeAuthorizationTab(id, 'google_search', data.provider_id, 'reuse-from-node')
-    }
-    store.getState().setNodeAppUserAuthDraft('auth-source', 'google_search', data.provider_id, {
-      ...createAppUserAuthDraft({ canOAuth: false, canApiKey: true }),
-      description: '',
-    })
-    store
-      .getState()
-      .setNodeAuthorizationTab('auth-source', 'google_search', data.provider_id, 'app-user-auth')
-  })
+  const { graph } = renderTool(data, { authorized: false, nodes: [source] })
   expect(screen.getByText('plugin.auth.appUser.descriptionRequired')).toBeVisible()
   expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
-  act(() => {
-    store.getState().setNodeAppUserAuthDraft('auth-source', 'google_search', data.provider_id, {
-      ...createAppUserAuthDraft({ canOAuth: false, canApiKey: true }),
-      description: 'Find repositories',
-    })
-  })
+  act(() =>
+    graph.current?.setNodes([
+      {
+        ...source,
+        data: {
+          ...source.data,
+          end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Find repositories' },
+        },
+      },
+    ]),
+  )
   expect(screen.queryByText('plugin.auth.appUser.descriptionRequired')).not.toBeInTheDocument()
   expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
   act(() =>
-    store
-      .getState()
-      .setNodeAuthorizationTab('auth-source', 'google_search', data.provider_id, 'workspace-auth'),
+    graph.current?.setNodes([
+      {
+        ...source,
+        data: { ...source.data, credential_source: 'workspace', end_user_auth: undefined },
+      },
+    ]),
   )
   expect(screen.getByText('workflow.nodes.tool.authorizationRequired')).toBeVisible()
 })
 
 it('shows the invalid Reuse reference on the canvas instead of a Workspace authorization error', () => {
-  const data = createNodeData()
-  const { store } = renderTool(data, { authorized: false })
-  act(() => {
-    store.getState().setNodeReuseFromNode('tool-node-1', 'google_search', data.provider_id, {
-      id: 'removed',
-      title: 'Removed source',
-    })
-    store
-      .getState()
-      .setNodeAuthorizationTab('tool-node-1', 'google_search', data.provider_id, 'reuse-from-node')
+  renderTool(createNodeData({ credential_source: 'reuse_node', reuse_node_id: 'removed' }), {
+    authorized: false,
   })
   expect(screen.getByText('workflow.panel.selectReuseNode')).toBeVisible()
   expect(screen.queryByText('workflow.nodes.tool.authorizationRequired')).not.toBeInTheDocument()
