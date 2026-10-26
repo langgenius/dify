@@ -620,7 +620,7 @@ def test_stop_during_final_queue_publication_preserves_the_already_observed_succ
         base_app_queue_manager.redis_client, "setex", lambda key, _ttl, value: flags.__setitem__(key, value)
     )
     monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window", lambda **_kwargs: None
+        "services.app.generation.adapters.agent_request_builder.resolve_model_context_window", lambda **_kwargs: None
     )
     task_id = identifier("stop-at-final-publish")
     queue_manager = MessageBasedAppQueueManager(
