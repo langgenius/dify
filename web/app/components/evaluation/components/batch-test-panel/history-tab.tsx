@@ -2,11 +2,11 @@ import type { EvaluationRunResponse } from '@dify/contracts/api/console/evaluate
 import type { EvaluationResourceProps } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu as DropdownMenu,
+  MenuContent as DropdownMenuContent,
+  MenuItem as DropdownMenuItem,
+  MenuTrigger as DropdownMenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
@@ -111,16 +111,16 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
           </colgroup>
           <thead>
             <tr className="border-b border-divider-regular">
-              <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">
+              <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
                 <span className="inline-flex items-center gap-0.5">
                   {t(($) => $['history.columns.time'])}
                   <span aria-hidden="true" className="i-ri-arrow-down-line h-3.5 w-3.5" />
                 </span>
               </th>
-              <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">
+              <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['history.columns.creator'])}
               </th>
-              <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">
+              <th className="h-7 px-3 text-start system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['history.columns.status'])}
               </th>
               <th className="h-7 text-center text-text-tertiary">

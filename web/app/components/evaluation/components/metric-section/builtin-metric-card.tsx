@@ -5,11 +5,11 @@ import type { EvaluationMetric, EvaluationResourceProps } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu as DropdownMenu,
+  MenuContent as DropdownMenuContent,
+  MenuItem as DropdownMenuItem,
+  MenuTrigger as DropdownMenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -66,7 +66,7 @@ const BuiltinMetricCard = ({
       >
         <button
           type="button"
-          className="flex min-w-0 flex-1 items-center gap-2 px-1 text-left"
+          className="flex min-w-0 flex-1 items-center gap-2 px-1 text-start"
           aria-expanded={isExpanded}
           aria-label={
             isExpanded ? t(($) => $['metrics.collapseNodes']) : t(($) => $['metrics.expandNodes'])
@@ -173,7 +173,7 @@ const BuiltinMetricCard = ({
                         )
                       }
                     >
-                      <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-1">
+                      <div className="flex min-w-0 flex-1 items-center gap-2.5 pe-1">
                         <BlockIcon
                           type={getEvaluationNodeBlockType(nodeInfo)}
                           size="xs"
