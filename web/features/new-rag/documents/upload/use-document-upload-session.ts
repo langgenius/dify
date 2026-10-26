@@ -1,0 +1,206 @@
+'use client'
+
+import type {
+  KnowledgeFsUploadPhase,
+  KnowledgeFsUploadProgress,
+} from '../../upload/knowledge-fs-upload'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createRequestId } from '../../request-id'
+import {
+  discardKnowledgeFsStagedUpload,
+  stageKnowledgeFsDocument,
+  uploadKnowledgeFsDocuments,
+} from '../../upload/knowledge-fs-upload'
+import { documentUploadFingerprint } from '../../upload/policy'
+import { documentsKnowledgeSpaceIdAtom } from '../state/inputs'
+import { documentUploadingAtom } from '../state/upload'
+import {
+  DOCUMENT_STAGING_REQUEST_TIMEOUT,
+  DocumentStagingCanceledError,
+  DocumentStagingTimeoutError,
+} from './model'
+
+export function useDocumentUploadSession() {
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const uploadPendingRef = useRef(false)
+  const uploadRequestIdsRef = useRef(new Map<string, string>())
+  const stagedUploadIdsRef = useRef(new Map<File, string>())
+  const stagingPromisesRef = useRef(new Map<File, Promise<string>>())
+  const stagingControllersRef = useRef(new Map<File, AbortController>())
+  const uploading = useAtomValue(documentUploadingAtom)
+  const setUploading = useSetAtom(documentUploadingAtom)
+  const [uploadProgress] = useState<KnowledgeFsUploadProgress>(() => new Map())
+  const [progress, setProgress] = useState<ReadonlyMap<File, KnowledgeFsUploadPhase>>(
+    () => new Map(),
+  )
+
+  const stageFiles = useCallback(
+    async (files: File[], prepare?: (isActive: () => boolean) => Promise<boolean>) => {
+      const controllers: AbortController[] = []
+      const prepared = prepare?.(() => controllers.some((controller) => !controller.signal.aborted))
+      const tasks = files.map((file) => {
+        const stagedUploadId = stagedUploadIdsRef.current.get(file)
+        if (stagedUploadId) return Promise.resolve(stagedUploadId)
+        const active = stagingPromisesRef.current.get(file)
+        if (active) return active
+
+        const controller = new AbortController()
+        controllers.push(controller)
+        let settled = false
+        let timeout: number | undefined
+        const promise = new Promise<string>((resolve, reject) => {
+          function cleanup() {
+            if (timeout !== undefined) window.clearTimeout(timeout)
+            controller.signal.removeEventListener('abort', handleAbort)
+            if (stagingControllersRef.current.get(file) === controller) {
+              stagingPromisesRef.current.delete(file)
+              stagingControllersRef.current.delete(file)
+            }
+          }
+          function rejectOnce(error: unknown) {
+            if (settled) return
+            settled = true
+            cleanup()
+            reject(error)
+          }
+          function handleAbort() {
+            rejectOnce(
+              controller.signal.reason instanceof Error
+                ? controller.signal.reason
+                : new DocumentStagingCanceledError(),
+            )
+          }
+          controller.signal.addEventListener('abort', handleAbort, { once: true })
+          function stage() {
+            if (controller.signal.aborted) return
+            timeout = window.setTimeout(
+              () => controller.abort(new DocumentStagingTimeoutError()),
+              DOCUMENT_STAGING_REQUEST_TIMEOUT,
+            )
+            void stageKnowledgeFsDocument(file, controller.signal).then((uploadId) => {
+              if (settled) {
+                void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
+                return
+              }
+              settled = true
+              cleanup()
+              stagedUploadIdsRef.current.set(file, uploadId)
+              resolve(uploadId)
+            }, rejectOnce)
+          }
+          if (prepared)
+            void prepared.then((allowed) => {
+              if (allowed) stage()
+              else rejectOnce(new DocumentStagingCanceledError())
+            }, rejectOnce)
+          else stage()
+        })
+        stagingPromisesRef.current.set(file, promise)
+        stagingControllersRef.current.set(file, controller)
+        return promise
+      })
+      if (!tasks.length) return
+
+      const results = await Promise.allSettled(tasks)
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult => result.status === 'rejected',
+      )
+      const failed =
+        failures.find(({ reason }) => !(reason instanceof DocumentStagingCanceledError)) ??
+        failures[0]
+      if (failed) throw failed.reason
+    },
+    [],
+  )
+
+  const discardStagedFile = useCallback((file: File) => {
+    stagingControllersRef.current.get(file)?.abort(new DocumentStagingCanceledError())
+    const uploadId = stagedUploadIdsRef.current.get(file)
+    stagedUploadIdsRef.current.delete(file)
+    if (uploadId) void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
+  }, [])
+
+  const discardStagedUploadObjects = useCallback(() => {
+    const uploadIds = [...stagedUploadIdsRef.current.values()]
+    for (const controller of stagingControllersRef.current.values())
+      controller.abort(new DocumentStagingCanceledError())
+    stagingControllersRef.current.clear()
+    stagingPromisesRef.current.clear()
+    stagedUploadIdsRef.current.clear()
+    uploadProgress.clear()
+    uploadRequestIdsRef.current.clear()
+    for (const uploadId of uploadIds)
+      void discardKnowledgeFsStagedUpload(uploadId).catch(() => undefined)
+  }, [uploadProgress])
+
+  const discardAllStagedFiles = useCallback(() => {
+    discardStagedUploadObjects()
+    setProgress(new Map())
+  }, [discardStagedUploadObjects])
+
+  useEffect(() => discardStagedUploadObjects, [discardStagedUploadObjects])
+
+  const uploadFiles = useCallback(
+    async (files: File[], prepare: () => Promise<boolean>) => {
+      if (uploadPendingRef.current) return false
+      uploadPendingRef.current = true
+      setUploading(true)
+      try {
+        if (!(await prepare())) return false
+        const uploads = files.map((file) => {
+          const fingerprint = `${knowledgeSpaceId}:${documentUploadFingerprint(file)}`
+          const id = uploadRequestIdsRef.current.get(fingerprint) ?? createRequestId()
+          uploadRequestIdsRef.current.set(fingerprint, id)
+          const uploadId = stagedUploadIdsRef.current.get(file)
+          if (!uploadId) throw new Error('KnowledgeFS file was not staged')
+          return { file, id, uploadId }
+        })
+        await uploadKnowledgeFsDocuments(
+          knowledgeSpaceId,
+          uploads,
+          uploadProgress,
+          (file: File, phase: KnowledgeFsUploadPhase) => {
+            setProgress((current) => {
+              const next = new Map(current)
+              next.set(file, phase)
+              return next
+            })
+          },
+        )
+        uploadProgress.clear()
+        uploadRequestIdsRef.current.clear()
+        stagedUploadIdsRef.current.clear()
+        setProgress(new Map())
+        return true
+      } finally {
+        uploadPendingRef.current = false
+        setUploading(false)
+        setProgress((current) => new Map([...current].filter(([, phase]) => phase === 'completed')))
+      }
+    },
+    [knowledgeSpaceId, setUploading, uploadProgress],
+  )
+
+  const resetProgress = useCallback(() => setProgress(new Map()), [])
+  const completedUploadCount = useCallback(
+    (files: File[]) =>
+      files.filter((file) => {
+        const fingerprint = `${knowledgeSpaceId}:${documentUploadFingerprint(file)}`
+        const id = uploadRequestIdsRef.current.get(fingerprint)
+        return id !== undefined && uploadProgress.get(id)?.phase === 'completed'
+      }).length,
+    [knowledgeSpaceId, uploadProgress],
+  )
+
+  return {
+    completedUploadCount,
+    discardAllStagedFiles,
+    discardStagedFile,
+    progress,
+    resetProgress,
+    stageFiles,
+    uploadFiles,
+    uploading,
+  }
+}

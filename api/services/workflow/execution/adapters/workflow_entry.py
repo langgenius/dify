@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import ExitStack
 from contextvars import copy_context
+from functools import partial
 from typing import Any, Protocol, TypedDict
 from uuid import uuid4
 
@@ -19,6 +20,7 @@ from core.app.layers.execution_context_layer import ExecutionContextLayer
 from core.app.workflow.file_runtime import create_dify_workflow_file_runtime
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.credit_usage import CreditUsageAppType
+from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.system_variables import (
     default_system_variables,
@@ -31,6 +33,8 @@ from extensions.otel.runtime import is_instrument_flag_enabled
 from factories.workflow_input import map_user_inputs_to_variable_pool
 from graphon.engine import Engine
 from graphon.engine.command import CommandChannel, InMemoryChannel
+from graphon.engine.container_handler.builtin.iteration import IterationContainerHandler
+from graphon.engine.container_handler.builtin.loop import LoopContainerHandler
 from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
 from graphon.engine.layer import ExecutionLimitsLayer, Layer
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent, NodeEvent, is_node_result_event
@@ -53,6 +57,11 @@ from services.workflow.execution.adapters.node_factory import (
     DifyNodeFactory,
     is_start_node_type,
     resolve_workflow_node_class,
+)
+from services.workflow.execution.adapters.workflow_tool_container_handler import (
+    WorkflowToolContainerHandler,
+    WorkflowToolEventListenerFactory,
+    WorkflowToolNestedContainerHandler,
 )
 from services.workflow.execution.ports import WorkflowRuntime
 from services.workflow_node_variables import load_additional_node_variables
@@ -161,18 +170,43 @@ class WorkflowEntry:
         self._human_form_reader = human_form_reader
         self.command_channel = command_channel
         self.graph_config = graph_config
+        self.workflow_tool_sources: dict[str, WorkflowToolSource] = {}
+        self.workflow_tool_event_listener_factory: WorkflowToolEventListenerFactory | None = None
         self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
         file_runtime = create_dify_workflow_file_runtime()
         execution_context_layer = ExecutionContextLayer()
         limits_layer = ExecutionLimitsLayer(
             max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
+        workflow_tool_event_listeners: dict[str, Callable[[NodeEvent], None]] = {}
         self.graph_engine = Engine(
             graph=graph,
             runtime_state=graph_runtime_state,
             command_channel=command_channel,
             workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
             file_runtime=file_runtime,
+            container_handler_factories=(
+                partial(
+                    WorkflowToolNestedContainerHandler,
+                    handler_factory=LoopContainerHandler,
+                    hidden_event_listener=limits_layer.on_event,
+                    event_listeners=workflow_tool_event_listeners,
+                ),
+                partial(
+                    WorkflowToolNestedContainerHandler,
+                    handler_factory=IterationContainerHandler,
+                    hidden_event_listener=limits_layer.on_event,
+                    event_listeners=workflow_tool_event_listeners,
+                ),
+                partial(
+                    WorkflowToolContainerHandler,
+                    sources=self.workflow_tool_sources,
+                    hidden_event_listener=limits_layer.on_event,
+                    event_listener_factory=self._create_workflow_tool_event_listener,
+                    event_listeners=workflow_tool_event_listeners,
+                    execution_context_factory=execution_context_layer.enter_context,
+                ),
+            ),
         )
 
         self.graph_engine.add_layer(execution_context_layer)
@@ -182,6 +216,13 @@ class WorkflowEntry:
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
             self.graph_engine.add_layer(ObservabilityLayer())
+
+    def _create_workflow_tool_event_listener(
+        self, source: WorkflowToolSource, caller_workflow_id: str, caller_node_execution_id: str
+    ) -> Callable[[NodeEvent], None]:
+        if self.workflow_tool_event_listener_factory is None:
+            return lambda event: None
+        return self.workflow_tool_event_listener_factory(source, caller_workflow_id, caller_node_execution_id)
 
     @property
     def response_stream_filter(self) -> ResponseStreamFilter:
@@ -317,6 +358,7 @@ class WorkflowEntry:
             draft_variable_saver=draft_variable_saver,
             agent_binding_resolver=agent_binding_resolver,
             workflow_runtime=workflow_runtime,
+            use_workflow_tool_containers=False,
         )
         node = node_factory.create_node(node_config)
 

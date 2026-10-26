@@ -9,7 +9,11 @@ import type {
   PickerTriggerProps,
   PickerValueProps,
 } from '../internal/picker-parts'
-import { useControlled } from '@base-ui/utils/useControlled'
+import type {
+  PickerChangeEventDetails,
+  PickerChangeEventReason,
+} from '../internal/use-picker-value'
+import { createChangeEventDetails } from '@base-ui/react/internals/createBaseUIEventDetails'
 import { enUS } from '@daypicker/react/locale/en-US'
 import * as React from 'react'
 import { CalendarPanel } from '../internal/calendar-panel'
@@ -23,6 +27,12 @@ import {
   PickerValue,
   usePickerContext,
 } from '../internal/picker-parts'
+import { usePickerValue } from '../internal/use-picker-value'
+
+type DatePickerLabels = CalendarPanelLabels & { close: string }
+
+type DatePickerChangeEventReason = PickerChangeEventReason
+type DatePickerChangeEventDetails = PickerChangeEventDetails
 
 type DatePickerProps = PickerFieldProps &
   Pick<CalendarPanelProps, 'locale' | 'minDate' | 'maxDate' | 'isDateUnavailable'> & {
@@ -30,15 +40,16 @@ type DatePickerProps = PickerFieldProps &
     value?: string | null
     defaultValue?: string | null
     /** Called on day confirmation, clearing or form reset. */
-    onValueChange?: (value: string | null) => void
-    labels?: Partial<CalendarPanelLabels>
+    onValueChange?: (value: string | null, details: DatePickerChangeEventDetails) => void
+    labels?: Partial<DatePickerLabels>
   }
 type ContextValue = Omit<
   DatePickerProps,
-  'value' | 'defaultValue' | 'onValueChange' | 'children'
+  'value' | 'defaultValue' | 'onValueChange' | 'children' | 'labels'
 > & {
+  labels: DatePickerLabels
   value: Exclude<DatePickerProps['value'], undefined>
-  commit: NonNullable<DatePickerProps['onValueChange']>
+  commit: (value: string | null, details: DatePickerChangeEventDetails) => boolean
 }
 const Context = React.createContext<ContextValue | null>(null)
 function useContext() {
@@ -46,13 +57,14 @@ function useContext() {
   if (!context) throw new Error('DatePicker parts require DatePicker.')
   return context
 }
-const defaultLabels: CalendarPanelLabels = {
+const defaultLabels: DatePickerLabels = {
   previousMonth: 'Previous month',
   nextMonth: 'Next month',
   chooseMonthAndYear: 'Choose month and year',
   month: 'Month',
   year: 'Year',
   cancel: 'Cancel',
+  close: 'Close',
   apply: 'OK',
   unavailable: 'This date is unavailable.',
 }
@@ -64,9 +76,12 @@ function DatePicker({
   children,
   ...props
 }: DatePickerProps) {
-  const [value, setValue] = useControlled({
-    controlled: valueProp,
-    default: defaultValue,
+  const { value, commit } = usePickerValue<string>({
+    value: valueProp,
+    defaultValue,
+    onValueChange,
+    disabled: props.disabled,
+    readOnly: props.readOnly,
     name: 'DatePicker',
   })
   const parsedValue = requireDateValue(value)
@@ -80,23 +95,15 @@ function DatePicker({
       (props.maxDate && value > props.maxDate) ||
       props.isDateUnavailable?.(value)),
   )
-  function commit(next: string | null) {
-    if (props.disabled || props.readOnly) return
-    if (next !== value) {
-      setValue(next)
-      onValueChange?.(next)
-    }
-  }
+
+  const labels = { ...defaultLabels, ...props.labels }
+
   return (
-    <Context.Provider value={{ ...props, value, commit }}>
+    <Context.Provider value={{ ...props, value, commit, labels }}>
       <PickerRoot
         {...props}
         invalid={props.invalid || unavailable}
-        validationMessage={
-          unavailable
-            ? (props.labels?.unavailable ?? defaultLabels.unavailable)
-            : props.validationMessage
-        }
+        validationMessage={unavailable ? labels.unavailable : props.validationMessage}
         placeholder={props.placeholder ?? 'Select date'}
         displayValue={
           parsedValue
@@ -109,12 +116,10 @@ function DatePicker({
               }).format(parsedValue)
             : ''
         }
+        value={value}
         serializedValue={value ?? ''}
-        onClear={() => commit(null)}
-        onReset={() => {
-          setValue(defaultValue)
-          if (defaultValue !== value) onValueChange?.(defaultValue)
-        }}
+        onClear={(details) => commit(null, details)}
+        onReset={(details) => commit(defaultValue, details)}
       >
         {children}
       </PickerRoot>
@@ -131,25 +136,31 @@ const DatePickerClear = PickerClear
 const DatePickerLabel = PickerLabel
 const DatePickerValue = PickerValue
 function DatePickerContent(props: DatePickerContentProps) {
-  const { value } = useContext()
+  const { value, labels } = useContext()
   return (
-    <PickerContent {...props}>
+    <PickerContent {...props} closeLabel={labels.close}>
       <Session key={value ?? ''} />
     </PickerContent>
   )
 }
 function Session() {
   const { value, commit, locale = enUS, minDate, maxDate, isDateUnavailable, labels } = useContext()
-  const { close } = usePickerContext()
+  const { close, canEdit } = usePickerContext()
   const [displayMonth, setDisplayMonth] = React.useState(() =>
     getInitialMonth(value ?? formatDateValue(new Date()), minDate, maxDate),
   )
   return (
     <CalendarPanel
       value={value}
-      onSelect={(next) => {
-        commit(next)
-        close()
+      onSelect={(next, event) => {
+        if (
+          canEdit() &&
+          commit(
+            next,
+            createChangeEventDetails('item-press', event.nativeEvent, event.currentTarget),
+          )
+        )
+          close()
       }}
       displayMonth={displayMonth}
       onDisplayMonthChange={setDisplayMonth}
@@ -157,7 +168,7 @@ function Session() {
       minDate={minDate}
       maxDate={maxDate}
       isDateUnavailable={isDateUnavailable}
-      labels={{ ...defaultLabels, ...labels }}
+      labels={labels}
     />
   )
 }
@@ -171,6 +182,8 @@ export {
   DatePickerValue,
 }
 export type {
+  DatePickerChangeEventDetails,
+  DatePickerChangeEventReason,
   DatePickerClearProps,
   DatePickerContentProps,
   DatePickerLabelProps,

@@ -1,14 +1,17 @@
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
+from dataclasses import dataclass, field
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 import controllers.console.explore.completion as completion_module
+import services.installed_app_generation_service as completion_service_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from models import AppMode, Conversation, Tenant
+from models import App, AppMode, Conversation, InstalledApp, Tenant
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.account_errors import AccountNotFoundError
 from services.app_generate_service import AppGenerateService
@@ -21,363 +24,830 @@ from tests.unit_tests.controllers.console.explore.test_installed_app_admission i
     _assert_json_response,
     _Harness,
     _set_app_mode,
-    harness,
-)
-from tests.unit_tests.controllers.console.explore.test_installed_app_completion import (
-    _USED_AT,
-    _InstalledAppServices,
-    _last_used_at,
-    _Runtime,
-    _RuntimeCall,
-    _Services,
-    runtime,
 )
 
-__all__ = ["harness", "runtime"]
+_installed_app_completion_all__ = ["harness"]
+
+_INSTALLED_APP_COMPLETION_USED_AT = datetime(2026, 9, 6, 12, 30, 0)
+_BLOCKING_RESPONSE: dict[str, object] = {"event": "message", "answer": "Hello", "metadata": {}, "usage": None}
+
+
+@dataclass(frozen=True)
+class _InstalledAppCompletionRuntimecall:
+    app_id: str
+    account_id: str
+    args: Mapping[str, object]
+    streaming: bool
+
+
+@dataclass
+class _InstalledAppCompletionRuntime:
+    session_factory: sessionmaker[Session]
+    installed_app_id: str
+    response: GenerationResponse = field(default_factory=lambda: dict(_BLOCKING_RESPONSE))
+    error: Exception | None = None
+    calls: list[_InstalledAppCompletionRuntimecall] = field(default_factory=list)
+
+    def generate(
+        self, *, app_id: str, account_id: str, args: Mapping[str, object], streaming: bool
+    ) -> GenerationResponse:
+        # The runtime sees a committed usage update through an independent
+        # connection, including when generation immediately fails.
+        with self.session_factory() as session:
+            installation = session.get(InstalledApp, self.installed_app_id)
+            assert installation is not None
+            assert installation.last_used_at == _INSTALLED_APP_COMPLETION_USED_AT
+        self.calls.append(_InstalledAppCompletionRuntimecall(app_id, account_id, dict(args), streaming))
+        if self.error is not None:
+            raise self.error
+        return self.response
+
+    def generate_more_like_this(
+        self, *, app_id: str, account_id: str, message_id: str, streaming: bool
+    ) -> GenerationResponse:
+        pytest.fail(f"Unexpected more-like-this call: {app_id=}, {account_id=}, {message_id=}, {streaming=}")
+
+
+@dataclass(frozen=True)
+class _InstalledAppCompletionInstalledappservices:
+    generation: InstalledAppGenerationService
+
+
+@dataclass(frozen=True)
+class _InstalledAppCompletionServices:
+    installed_apps: _InstalledAppCompletionInstalledappservices
+
+
+def _installed_app_completion_url(harness: _Harness) -> str:
+    return f"/installed-apps/{harness.installed_app.id}/completion-messages"
+
+
+def _installed_app_completion_last_used_at(
+    harness: _Harness, session_factory: sessionmaker[Session]
+) -> datetime | None:
+    with session_factory() as session:
+        installation = session.get(InstalledApp, harness.installed_app.id)
+        assert installation is not None
+        return installation.last_used_at
+
+
+class TestInstalledAppCompletionCases:
+    from tests.unit_tests.controllers.console.explore.test_installed_app_admission import harness
+
+    harness = staticmethod(harness)
+
+    @staticmethod
+    @pytest.fixture
+    def runtime(
+        harness: _Harness,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> _InstalledAppCompletionRuntime:
+        runtime = _InstalledAppCompletionRuntime(sqlite_session_factory, harness.installed_app.id)
+        service = InstalledAppGenerationService(
+            usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
+            runtime=runtime,
+        )
+        services = _InstalledAppCompletionServices(
+            installed_apps=_InstalledAppCompletionInstalledappservices(generation=service)
+        )
+        monkeypatch.setattr(completion_module, "application_services", lambda: services)
+        monkeypatch.setattr(completion_service_module, "naive_utc_now", lambda: _INSTALLED_APP_COMPLETION_USED_AT)
+        harness.api.add_resource(
+            completion_module.CompletionApi,
+            "/installed-apps/<uuid:installed_app_id>/completion-messages",
+        )
+        return runtime
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("payload", "expected_args"),
+        [
+            (
+                {"inputs": {"zero": 0, "enabled": False, "empty": [], "nullable": None}},
+                {
+                    "inputs": {"zero": 0, "enabled": False, "empty": [], "nullable": None},
+                    "query": "",
+                    "retriever_from": "explore_app",
+                    "auto_generate_name": False,
+                },
+            ),
+            (
+                {"inputs": {}, "query": "Hi", "files": None, "response_mode": None},
+                {"inputs": {}, "query": "Hi", "retriever_from": "explore_app", "auto_generate_name": False},
+            ),
+            (
+                {"inputs": {}, "files": [], "response_mode": "blocking", "auto_generate_name": True},
+                {
+                    "inputs": {},
+                    "query": "",
+                    "files": [],
+                    "response_mode": "blocking",
+                    "retriever_from": "explore_app",
+                    "auto_generate_name": False,
+                },
+            ),
+            (
+                {
+                    "inputs": {},
+                    "files": [
+                        {"type": "image", "transfer_method": "remote_url", "url": "https://example.com/image.png"}
+                    ],
+                    "retriever_from": "custom-source",
+                },
+                {
+                    "inputs": {},
+                    "query": "",
+                    "files": [
+                        {"type": "image", "transfer_method": "remote_url", "url": "https://example.com/image.png"}
+                    ],
+                    "retriever_from": "custom-source",
+                    "auto_generate_name": False,
+                },
+            ),
+        ],
+    )
+    def test_blocking_completion_preserves_payload_defaults_and_response(
+        harness: _Harness,
+        runtime: _InstalledAppCompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+        payload: dict[str, object],
+        expected_args: dict[str, object],
+    ) -> None:
+        response = harness.app.test_client().post(_installed_app_completion_url(harness), json=payload)
+
+        assert response.status_code == 200
+        assert response.get_json() == _BLOCKING_RESPONSE
+        assert dict(response.headers) == {
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": str(len(response.data)),
+        }
+        assert runtime.calls == [
+            _InstalledAppCompletionRuntimecall(harness.target_app.id, harness.account.id, expected_args, False)
+        ]
+        assert (
+            _installed_app_completion_last_used_at(harness, sqlite_session_factory) == _INSTALLED_APP_COMPLETION_USED_AT
+        )
+        assert harness.installed_app.tenant_id != harness.target_app.tenant_id
+
+    @staticmethod
+    @pytest.mark.parametrize("consume_all", [False, True])
+    def test_streaming_completion_preserves_bytes_headers_and_closes_runtime_iterator(
+        harness: _Harness,
+        runtime: _InstalledAppCompletionRuntime,
+        consume_all: bool,
+    ) -> None:
+        closed: list[bool] = []
+
+        def chunks() -> Generator[str]:
+            try:
+                yield 'data: {"answer":"你好"}\n\n'
+                yield "data: [DONE]\n\n"
+            finally:
+                closed.append(True)
+
+        runtime.response = chunks()
+        response = harness.app.test_client().post(
+            _installed_app_completion_url(harness), json={"inputs": {}, "response_mode": "streaming"}, buffered=False
+        )
+
+        assert response.status_code == 200
+        assert dict(response.headers) == {"Content-Type": "text/event-stream; charset=utf-8"}
+        if consume_all:
+            assert response.data == 'data: {"answer":"你好"}\n\ndata: [DONE]\n\n'.encode()
+        else:
+            assert next(iter(response.response)) == 'data: {"answer":"你好"}\n\n'.encode()
+            assert closed == []
+        response.close()
+        assert closed == [True]
+        assert runtime.calls == [
+            _InstalledAppCompletionRuntimecall(
+                harness.target_app.id,
+                harness.account.id,
+                {
+                    "inputs": {},
+                    "query": "",
+                    "response_mode": "streaming",
+                    "retriever_from": "explore_app",
+                    "auto_generate_name": False,
+                },
+                True,
+            )
+        ]
+
+    @staticmethod
+    @pytest.mark.parametrize("response_mode", ["blocking", "streaming"])
+    @pytest.mark.parametrize(
+        ("failure", "status", "code", "message"),
+        [
+            (ConversationNotExistsError(), 404, "not_found", "Conversation Not Exists."),
+            # Nothing raises ConversationCompletedError today, so the contract does not list its code.
+            pytest.param(
+                ConversationCompletedError(),
+                400,
+                "conversation_completed",
+                "The conversation has ended. Please start a new conversation.",
+                marks=pytest.mark.allow_error_contract_violations,
+            ),
+            (
+                AppModelConfigBrokenError(),
+                400,
+                "app_unavailable",
+                "App unavailable, please check your app configurations.",
+            ),
+            (
+                ProviderTokenNotInitError("Missing provider credentials"),
+                400,
+                "provider_not_initialize",
+                "Missing provider credentials",
+            ),
+            (
+                QuotaExceededError(),
+                400,
+                "provider_quota_exceeded",
+                "Your quota for Dify Hosted Model Provider has been exhausted. "
+                "Please go to Settings -> Model Provider to complete your own provider credentials.",
+            ),
+            (
+                ModelCurrentlyNotSupportError(),
+                400,
+                "model_currently_not_support",
+                "Dify Hosted OpenAI trial currently not support the GPT-4 model.",
+            ),
+            (InvokeError("Provider rejected input"), 400, "completion_request_error", "Provider rejected input"),
+            (ValueError("Invalid runtime arguments"), 400, "invalid_param", "Invalid runtime arguments"),
+            (AccountNotFoundError(), 401, "unauthorized", "Account no longer exists."),
+            (
+                RuntimeError("Unexpected runtime failure"),
+                500,
+                "internal_server_error",
+                "The server encountered an internal error and was unable to complete your request. "
+                "Either the server is overloaded or there is an error in the application.",
+            ),
+        ],
+    )
+    def test_completion_preserves_error_contract_and_committed_usage_on_runtime_failure(
+        harness: _Harness,
+        runtime: _InstalledAppCompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+        failure: Exception,
+        status: int,
+        code: str,
+        message: str,
+        response_mode: str,
+    ) -> None:
+        runtime.error = failure
+
+        response = harness.app.test_client().post(
+            _installed_app_completion_url(harness), json={"inputs": {}, "response_mode": response_mode}
+        )
+
+        _assert_json_response(response, status=status, body={"code": code, "message": message, "status": status})
+        assert len(runtime.calls) == 1
+        assert runtime.calls[0].streaming == (response_mode == "streaming")
+        assert (
+            _installed_app_completion_last_used_at(harness, sqlite_session_factory) == _INSTALLED_APP_COMPLETION_USED_AT
+        )
+        if status == 401:
+            assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("payload", "error"),
+        [
+            ({}, {"type": "missing", "loc": ["inputs"], "msg": "Field required"}),
+            ({"inputs": None}, {"type": "dict_type", "loc": ["inputs"], "msg": "Input should be a valid dictionary"}),
+            (
+                {"inputs": {}, "response_mode": "invalid"},
+                {"type": "literal_error", "loc": ["response_mode"], "msg": "Input should be 'blocking' or 'streaming'"},
+            ),
+        ],
+    )
+    def test_invalid_payload_does_not_record_usage_or_start_runtime(
+        harness: _Harness,
+        runtime: _InstalledAppCompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+        payload: dict[str, object],
+        error: dict[str, object],
+    ) -> None:
+        response = harness.app.test_client().post(_installed_app_completion_url(harness), json=payload)
+
+        _assert_json_response(
+            response,
+            status=422,
+            body={"code": "unprocessable_entity", "message": json.dumps([error]), "status": 422},
+        )
+        assert runtime.calls == []
+        assert _installed_app_completion_last_used_at(harness, sqlite_session_factory) is None
+
+    @staticmethod
+    def test_wrong_mode_does_not_record_usage_or_start_runtime(
+        harness: _Harness,
+        runtime: _InstalledAppCompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory.begin() as session:
+            app = session.get(App, harness.target_app.id)
+            assert app is not None
+            app.mode = AppMode.CHAT
+
+        response = harness.app.test_client().post(_installed_app_completion_url(harness), json={"inputs": {}})
+
+        _assert_json_response(
+            response, status=400, body={"code": "not_completion_app", "message": "Not Completion App", "status": 400}
+        )
+        assert runtime.calls == []
+        assert _installed_app_completion_last_used_at(harness, sqlite_session_factory) is None
+
+    @staticmethod
+    def test_completion_uses_the_mode_captured_at_admission(
+        harness: _Harness,
+        runtime: _InstalledAppCompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        harness.state.permission_action = lambda: _set_app_mode(harness, sqlite_session_factory, AppMode.CHAT)
+
+        response = harness.app.test_client().post(_installed_app_completion_url(harness), json={"inputs": {}})
+
+        assert response.status_code == 200
+        assert response.get_json() == _BLOCKING_RESPONSE
+        assert len(runtime.calls) == 1
+        assert (
+            _installed_app_completion_last_used_at(harness, sqlite_session_factory) == _INSTALLED_APP_COMPLETION_USED_AT
+        )
+
+    @staticmethod
+    @pytest.mark.parametrize("rejection", ["permission", "missing", "tenant"])
+    def test_completion_requires_installed_app_admission_before_payload_validation(
+        harness: _Harness,
+        runtime: _InstalledAppCompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+        rejection: str,
+    ) -> None:
+        if rejection == "permission":
+            harness.state.allowed = False
+        elif rejection == "tenant":
+            harness.account._current_tenant = Tenant(name="Other workspace")
+        else:
+            with sqlite_session_factory.begin() as session:
+                installation = session.get(InstalledApp, harness.installed_app.id)
+                assert installation is not None
+                session.delete(installation)
+
+        response = harness.app.test_client().post(_installed_app_completion_url(harness), json={})
+
+        if rejection == "permission":
+            _assert_json_response(
+                response, status=403, body={"code": "access_denied", "message": "App access denied.", "status": 403}
+            )
+        else:
+            _assert_json_response(
+                response,
+                status=404,
+                body={
+                    "code": "installed_app_not_found",
+                    "message": "The app was not found in this workspace.",
+                    "status": 404,
+                    "details": {"request_id": "request-1"},
+                },
+            )
+        assert runtime.calls == []
+        if rejection != "missing":
+            assert _installed_app_completion_last_used_at(harness, sqlite_session_factory) is None
+
+    @staticmethod
+    @pytest.mark.parametrize("deleted_resource", ["app", "installation"])
+    @pytest.mark.usefixtures("runtime")
+    def test_resource_removed_after_admission_is_revalidated_before_generation(
+        harness: _Harness,
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+        deleted_resource: str,
+    ) -> None:
+        def delete_resource() -> None:
+            with sqlite_session_factory.begin() as session:
+                if deleted_resource == "app":
+                    resource = session.get(App, harness.target_app.id)
+                else:
+                    resource = session.get(InstalledApp, harness.installed_app.id)
+                assert resource is not None
+                session.delete(resource)
+
+        harness.state.permission_action = delete_resource
+        services = _InstalledAppCompletionServices(
+            installed_apps=_InstalledAppCompletionInstalledappservices(
+                generation=InstalledAppGenerationService(
+                    usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
+                    runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+                )
+            )
+        )
+        monkeypatch.setattr(completion_module, "application_services", lambda: services)
+
+        def generate(**_kwargs: object) -> GenerationResponse:
+            pytest.fail("Removed app or installation must be rejected before generation")
+
+        monkeypatch.setattr(AppGenerateService, "generate", generate)
+
+        response = harness.app.test_client().post(_installed_app_completion_url(harness), json={"inputs": {}})
+
+        if deleted_resource == "app":
+            _assert_json_response(
+                response,
+                status=400,
+                body={
+                    "code": "app_unavailable",
+                    "message": "App unavailable, please check your app configurations.",
+                    "status": 400,
+                },
+            )
+            assert (
+                _installed_app_completion_last_used_at(harness, sqlite_session_factory)
+                == _INSTALLED_APP_COMPLETION_USED_AT
+            )
+        else:
+            _assert_json_response(
+                response,
+                status=404,
+                body={"code": "not_found", "message": "Installed app not found", "status": 404},
+            )
+
+
+_COMPLETION_USED_AT = _INSTALLED_APP_COMPLETION_USED_AT
+_CompletionInstalledAppServices = _InstalledAppCompletionInstalledappservices
+_completion_last_used_at = _installed_app_completion_last_used_at
+_CompletionRuntime = _InstalledAppCompletionRuntime
+_CompletionRuntimeCall = _InstalledAppCompletionRuntimecall
+_CompletionServices = _InstalledAppCompletionServices
+
+_completion_all__ = ["harness", "runtime"]
 
 _CONVERSATION_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 _PARENT_MESSAGE_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 
 
-@pytest.fixture
-def chat_runtime(
-    harness: _Harness,
-    runtime: _Runtime,
-    sqlite_session_factory: sessionmaker[Session],
-) -> _Runtime:
-    _set_app_mode(harness, sqlite_session_factory, AppMode.CHAT)
-    harness.api.add_resource(completion_module.ChatApi, "/installed-apps/<uuid:installed_app_id>/chat-messages")
-    return runtime
-
-
-def _url(harness: _Harness) -> str:
+def _completion_url(harness: _Harness) -> str:
     return f"/installed-apps/{harness.installed_app.id}/chat-messages"
 
 
-@pytest.mark.parametrize(
-    ("payload", "expected_args"),
-    [
-        (
-            {"inputs": {"zero": 0, "enabled": False, "empty": [], "nullable": None}, "query": ""},
-            {"inputs": {"zero": 0, "enabled": False, "empty": [], "nullable": None}, "query": ""},
-        ),
-        (
-            {"inputs": {}, "query": "Hi", "files": None, "conversation_id": None, "parent_message_id": None},
-            {"inputs": {}, "query": "Hi"},
-        ),
-        (
-            {
-                "inputs": {},
-                "query": "Hi",
-                "files": [],
-                "conversation_id": "",
-                "parent_message_id": "",
-                "response_mode": "blocking",
-                "auto_generate_name": True,
-            },
-            {"inputs": {}, "query": "Hi", "files": []},
-        ),
-        (
-            {
-                "inputs": {},
-                "query": "Hi",
-                "files": [{"type": "image", "transfer_method": "remote_url", "url": "https://example.com/image.png"}],
-                "conversation_id": _CONVERSATION_ID.upper(),
-                "parent_message_id": _PARENT_MESSAGE_ID.replace("-", ""),
-                "retriever_from": "custom-source",
-            },
-            {
-                "inputs": {},
-                "query": "Hi",
-                "files": [{"type": "image", "transfer_method": "remote_url", "url": "https://example.com/image.png"}],
-                "conversation_id": _CONVERSATION_ID,
-                "parent_message_id": _PARENT_MESSAGE_ID,
-                "retriever_from": "custom-source",
-            },
-        ),
-    ],
-)
-def test_chat_preserves_payload_defaults_and_always_requests_streaming(
-    harness: _Harness,
-    chat_runtime: _Runtime,
-    payload: dict[str, object],
-    expected_args: dict[str, object],
-) -> None:
-    def chunks() -> Generator[str]:
-        yield 'data: {"answer":"你好","metadata":{},"usage":null}\n\n'
+class TestCompletionCases:
+    from tests.unit_tests.controllers.console.explore.test_installed_app_admission import harness
 
-    chat_runtime.response = chunks()
-    response = harness.app.test_client().post(_url(harness), json=payload)
+    harness = staticmethod(harness)
 
-    assert response.status_code == 200
-    assert dict(response.headers) == {"Content-Type": "text/event-stream; charset=utf-8"}
-    assert response.data == 'data: {"answer":"你好","metadata":{},"usage":null}\n\n'.encode()
-    response.close()
-    expected_args = {"retriever_from": "explore_app", **expected_args, "auto_generate_name": False}
-    assert chat_runtime.calls == [_RuntimeCall(harness.target_app.id, harness.account.id, expected_args, True)]
-    assert harness.installed_app.tenant_id != harness.target_app.tenant_id
+    runtime = staticmethod(TestInstalledAppCompletionCases.runtime)
 
+    @staticmethod
+    @pytest.fixture
+    def chat_runtime(
+        harness: _Harness,
+        runtime: _CompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> _CompletionRuntime:
+        _set_app_mode(harness, sqlite_session_factory, AppMode.CHAT)
+        harness.api.add_resource(completion_module.ChatApi, "/installed-apps/<uuid:installed_app_id>/chat-messages")
+        return runtime
 
-@pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-@pytest.mark.parametrize("consume_all", [False, True])
-def test_chat_modes_preserve_stream_bytes_headers_and_close_on_completion_or_disconnect(
-    harness: _Harness,
-    chat_runtime: _Runtime,
-    sqlite_session_factory: sessionmaker[Session],
-    mode: AppMode,
-    consume_all: bool,
-) -> None:
-    _set_app_mode(harness, sqlite_session_factory, mode)
-    closed: list[bool] = []
-
-    def chunks() -> Generator[str]:
-        try:
-            yield 'data: {"answer":"Hello"}\n\n'
-            yield "data: [DONE]\n\n"
-        finally:
-            closed.append(True)
-
-    chat_runtime.response = chunks()
-    response = harness.app.test_client().post(_url(harness), json={"inputs": {}, "query": "Hi"}, buffered=False)
-
-    assert response.status_code == 200
-    assert dict(response.headers) == {"Content-Type": "text/event-stream; charset=utf-8"}
-    if consume_all:
-        assert response.data == b'data: {"answer":"Hello"}\n\ndata: [DONE]\n\n'
-    else:
-        assert next(iter(response.response)) == b'data: {"answer":"Hello"}\n\n'
-        assert closed == []
-    response.close()
-    assert closed == [True]
-    assert len(chat_runtime.calls) == 1
-    assert chat_runtime.calls[0].streaming is True
-    assert _last_used_at(harness, sqlite_session_factory) == _USED_AT
-
-
-@pytest.mark.parametrize(
-    ("failure", "status", "code", "message"),
-    [
-        (ConversationNotExistsError(), 404, "not_found", "Conversation Not Exists."),
-        # Nothing raises ConversationCompletedError today, so the contract does not list its code.
-        pytest.param(
-            ConversationCompletedError(),
-            400,
-            "conversation_completed",
-            "The conversation has ended. Please start a new conversation.",
-            marks=pytest.mark.allow_error_contract_violations,
-        ),
-        (AppModelConfigBrokenError(), 400, "app_unavailable", "App unavailable, please check your app configurations."),
-        (ProviderTokenNotInitError("Missing credentials"), 400, "provider_not_initialize", "Missing credentials"),
-        (
-            QuotaExceededError(),
-            400,
-            "provider_quota_exceeded",
-            "Your quota for Dify Hosted Model Provider has been exhausted. "
-            "Please go to Settings -> Model Provider to complete your own provider credentials.",
-        ),
-        (
-            ModelCurrentlyNotSupportError(),
-            400,
-            "model_currently_not_support",
-            "Dify Hosted OpenAI trial currently not support the GPT-4 model.",
-        ),
-        (InvokeError("Provider rejected input"), 400, "completion_request_error", "Provider rejected input"),
-        (
-            InvokeRateLimitError("Concurrent request limit exceeded"),
-            429,
-            "rate_limit_error",
-            "Concurrent request limit exceeded",
-        ),
-        (ValueError("Invalid runtime arguments"), 400, "invalid_param", "Invalid runtime arguments"),
-        (AccountNotFoundError(), 401, "unauthorized", "Account no longer exists."),
-        (
-            RuntimeError("Unexpected runtime failure"),
-            500,
-            "internal_server_error",
-            "The server encountered an internal error and was unable to complete your request. "
-            "Either the server is overloaded or there is an error in the application.",
-        ),
-    ],
-)
-def test_chat_preserves_precise_errors_and_committed_usage_when_generation_fails(
-    harness: _Harness,
-    chat_runtime: _Runtime,
-    sqlite_session_factory: sessionmaker[Session],
-    failure: Exception,
-    status: int,
-    code: str,
-    message: str,
-) -> None:
-    chat_runtime.error = failure
-
-    response = harness.app.test_client().post(_url(harness), json={"inputs": {}, "query": "Hi"})
-
-    _assert_json_response(response, status=status, body={"code": code, "message": message, "status": status})
-    assert len(chat_runtime.calls) == 1
-    assert chat_runtime.calls[0].streaming is True
-    assert _last_used_at(harness, sqlite_session_factory) == _USED_AT
-    if status == 401:
-        assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
-
-
-@pytest.mark.parametrize(
-    ("payload", "error"),
-    [
-        ({"inputs": {}}, {"type": "missing", "loc": ["query"], "msg": "Field required"}),
-        (
-            {"inputs": {}, "query": None},
-            {"type": "string_type", "loc": ["query"], "msg": "Input should be a valid string"},
-        ),
-        (
-            {"inputs": None, "query": "Hi"},
-            {"type": "dict_type", "loc": ["inputs"], "msg": "Input should be a valid dictionary"},
-        ),
-        (
-            {"inputs": {}, "query": "Hi", "conversation_id": "invalid"},
-            {"type": "value_error", "loc": ["conversation_id"], "msg": "Value error, must be a valid UUID"},
-        ),
-        (
-            {"inputs": {}, "query": "Hi", "parent_message_id": "invalid"},
-            {"type": "value_error", "loc": ["parent_message_id"], "msg": "Value error, must be a valid UUID"},
-        ),
-    ],
-)
-def test_chat_validates_payload_before_mode_and_never_records_usage_for_invalid_input(
-    harness: _Harness,
-    chat_runtime: _Runtime,
-    sqlite_session_factory: sessionmaker[Session],
-    payload: dict[str, object],
-    error: dict[str, object],
-) -> None:
-    _set_app_mode(harness, sqlite_session_factory, AppMode.COMPLETION)
-
-    response = harness.app.test_client().post(_url(harness), json=payload)
-
-    _assert_json_response(
-        response,
-        status=422,
-        body={"code": "unprocessable_entity", "message": json.dumps([error]), "status": 422},
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("payload", "expected_args"),
+        [
+            (
+                {"inputs": {"zero": 0, "enabled": False, "empty": [], "nullable": None}, "query": ""},
+                {"inputs": {"zero": 0, "enabled": False, "empty": [], "nullable": None}, "query": ""},
+            ),
+            (
+                {"inputs": {}, "query": "Hi", "files": None, "conversation_id": None, "parent_message_id": None},
+                {"inputs": {}, "query": "Hi"},
+            ),
+            (
+                {
+                    "inputs": {},
+                    "query": "Hi",
+                    "files": [],
+                    "conversation_id": "",
+                    "parent_message_id": "",
+                    "response_mode": "blocking",
+                    "auto_generate_name": True,
+                },
+                {"inputs": {}, "query": "Hi", "files": []},
+            ),
+            (
+                {
+                    "inputs": {},
+                    "query": "Hi",
+                    "files": [
+                        {"type": "image", "transfer_method": "remote_url", "url": "https://example.com/image.png"}
+                    ],
+                    "conversation_id": _CONVERSATION_ID.upper(),
+                    "parent_message_id": _PARENT_MESSAGE_ID.replace("-", ""),
+                    "retriever_from": "custom-source",
+                },
+                {
+                    "inputs": {},
+                    "query": "Hi",
+                    "files": [
+                        {"type": "image", "transfer_method": "remote_url", "url": "https://example.com/image.png"}
+                    ],
+                    "conversation_id": _CONVERSATION_ID,
+                    "parent_message_id": _PARENT_MESSAGE_ID,
+                    "retriever_from": "custom-source",
+                },
+            ),
+        ],
     )
-    assert chat_runtime.calls == []
-    assert _last_used_at(harness, sqlite_session_factory) is None
+    def test_chat_preserves_payload_defaults_and_always_requests_streaming(
+        harness: _Harness,
+        chat_runtime: _CompletionRuntime,
+        payload: dict[str, object],
+        expected_args: dict[str, object],
+    ) -> None:
+        def chunks() -> Generator[str]:
+            yield 'data: {"answer":"你好","metadata":{},"usage":null}\n\n'
 
+        chat_runtime.response = chunks()
+        response = harness.app.test_client().post(_completion_url(harness), json=payload)
 
-@pytest.mark.parametrize(
-    "mode", [AppMode.COMPLETION, AppMode.WORKFLOW, AppMode.AGENT, AppMode.CHANNEL, AppMode.RAG_PIPELINE]
-)
-def test_chat_rejects_other_modes_before_recording_usage(
-    harness: _Harness,
-    chat_runtime: _Runtime,
-    sqlite_session_factory: sessionmaker[Session],
-    mode: AppMode,
-) -> None:
-    _set_app_mode(harness, sqlite_session_factory, mode)
+        assert response.status_code == 200
+        assert dict(response.headers) == {"Content-Type": "text/event-stream; charset=utf-8"}
+        assert response.data == 'data: {"answer":"你好","metadata":{},"usage":null}\n\n'.encode()
+        response.close()
+        expected_args = {"retriever_from": "explore_app", **expected_args, "auto_generate_name": False}
+        assert chat_runtime.calls == [
+            _CompletionRuntimeCall(harness.target_app.id, harness.account.id, expected_args, True)
+        ]
+        assert harness.installed_app.tenant_id != harness.target_app.tenant_id
 
-    response = harness.app.test_client().post(_url(harness), json={"inputs": {}, "query": "Hi"})
+    @staticmethod
+    @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @pytest.mark.parametrize("consume_all", [False, True])
+    def test_chat_modes_preserve_stream_bytes_headers_and_close_on_completion_or_disconnect(
+        harness: _Harness,
+        chat_runtime: _CompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+        mode: AppMode,
+        consume_all: bool,
+    ) -> None:
+        _set_app_mode(harness, sqlite_session_factory, mode)
+        closed: list[bool] = []
 
-    _assert_json_response(
-        response, status=400, body={"code": "not_chat_app", "message": "App mode is invalid.", "status": 400}
-    )
-    assert chat_runtime.calls == []
-    assert _last_used_at(harness, sqlite_session_factory) is None
+        def chunks() -> Generator[str]:
+            try:
+                yield 'data: {"answer":"Hello"}\n\n'
+                yield "data: [DONE]\n\n"
+            finally:
+                closed.append(True)
 
-
-def test_chat_uses_the_mode_captured_at_admission(
-    harness: _Harness,
-    chat_runtime: _Runtime,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    harness.state.permission_action = lambda: _set_app_mode(harness, sqlite_session_factory, AppMode.COMPLETION)
-
-    response = harness.app.test_client().post(_url(harness), json={"inputs": {}, "query": "Hi"})
-
-    assert response.status_code == 200
-    assert len(chat_runtime.calls) == 1
-    assert chat_runtime.calls[0].streaming is True
-    assert _last_used_at(harness, sqlite_session_factory) == _USED_AT
-
-
-@pytest.mark.parametrize("rejection", ["permission", "tenant"])
-def test_chat_enforces_admission_before_payload_validation(
-    harness: _Harness,
-    chat_runtime: _Runtime,
-    sqlite_session_factory: sessionmaker[Session],
-    rejection: str,
-) -> None:
-    if rejection == "permission":
-        harness.state.allowed = False
-    else:
-        harness.account._current_tenant = Tenant(name="Other workspace")
-
-    response = harness.app.test_client().post(_url(harness), json={})
-
-    if rejection == "permission":
-        _assert_json_response(
-            response, status=403, body={"code": "access_denied", "message": "App access denied.", "status": 403}
+        chat_runtime.response = chunks()
+        response = harness.app.test_client().post(
+            _completion_url(harness), json={"inputs": {}, "query": "Hi"}, buffered=False
         )
-    else:
+
+        assert response.status_code == 200
+        assert dict(response.headers) == {"Content-Type": "text/event-stream; charset=utf-8"}
+        if consume_all:
+            assert response.data == b'data: {"answer":"Hello"}\n\ndata: [DONE]\n\n'
+        else:
+            assert next(iter(response.response)) == b'data: {"answer":"Hello"}\n\n'
+            assert closed == []
+        response.close()
+        assert closed == [True]
+        assert len(chat_runtime.calls) == 1
+        assert chat_runtime.calls[0].streaming is True
+        assert _completion_last_used_at(harness, sqlite_session_factory) == _COMPLETION_USED_AT
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("failure", "status", "code", "message"),
+        [
+            (ConversationNotExistsError(), 404, "not_found", "Conversation Not Exists."),
+            # Nothing raises ConversationCompletedError today, so the contract does not list its code.
+            pytest.param(
+                ConversationCompletedError(),
+                400,
+                "conversation_completed",
+                "The conversation has ended. Please start a new conversation.",
+                marks=pytest.mark.allow_error_contract_violations,
+            ),
+            (
+                AppModelConfigBrokenError(),
+                400,
+                "app_unavailable",
+                "App unavailable, please check your app configurations.",
+            ),
+            (ProviderTokenNotInitError("Missing credentials"), 400, "provider_not_initialize", "Missing credentials"),
+            (
+                QuotaExceededError(),
+                400,
+                "provider_quota_exceeded",
+                "Your quota for Dify Hosted Model Provider has been exhausted. "
+                "Please go to Settings -> Model Provider to complete your own provider credentials.",
+            ),
+            (
+                ModelCurrentlyNotSupportError(),
+                400,
+                "model_currently_not_support",
+                "Dify Hosted OpenAI trial currently not support the GPT-4 model.",
+            ),
+            (InvokeError("Provider rejected input"), 400, "completion_request_error", "Provider rejected input"),
+            (
+                InvokeRateLimitError("Concurrent request limit exceeded"),
+                429,
+                "rate_limit_error",
+                "Concurrent request limit exceeded",
+            ),
+            (ValueError("Invalid runtime arguments"), 400, "invalid_param", "Invalid runtime arguments"),
+            (AccountNotFoundError(), 401, "unauthorized", "Account no longer exists."),
+            (
+                RuntimeError("Unexpected runtime failure"),
+                500,
+                "internal_server_error",
+                "The server encountered an internal error and was unable to complete your request. "
+                "Either the server is overloaded or there is an error in the application.",
+            ),
+        ],
+    )
+    def test_chat_preserves_precise_errors_and_committed_usage_when_generation_fails(
+        harness: _Harness,
+        chat_runtime: _CompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+        failure: Exception,
+        status: int,
+        code: str,
+        message: str,
+    ) -> None:
+        chat_runtime.error = failure
+
+        response = harness.app.test_client().post(_completion_url(harness), json={"inputs": {}, "query": "Hi"})
+
+        _assert_json_response(response, status=status, body={"code": code, "message": message, "status": status})
+        assert len(chat_runtime.calls) == 1
+        assert chat_runtime.calls[0].streaming is True
+        assert _completion_last_used_at(harness, sqlite_session_factory) == _COMPLETION_USED_AT
+        if status == 401:
+            assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("payload", "error"),
+        [
+            ({"inputs": {}}, {"type": "missing", "loc": ["query"], "msg": "Field required"}),
+            (
+                {"inputs": {}, "query": None},
+                {"type": "string_type", "loc": ["query"], "msg": "Input should be a valid string"},
+            ),
+            (
+                {"inputs": None, "query": "Hi"},
+                {"type": "dict_type", "loc": ["inputs"], "msg": "Input should be a valid dictionary"},
+            ),
+            (
+                {"inputs": {}, "query": "Hi", "conversation_id": "invalid"},
+                {"type": "value_error", "loc": ["conversation_id"], "msg": "Value error, must be a valid UUID"},
+            ),
+            (
+                {"inputs": {}, "query": "Hi", "parent_message_id": "invalid"},
+                {"type": "value_error", "loc": ["parent_message_id"], "msg": "Value error, must be a valid UUID"},
+            ),
+        ],
+    )
+    def test_chat_validates_payload_before_mode_and_never_records_usage_for_invalid_input(
+        harness: _Harness,
+        chat_runtime: _CompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+        payload: dict[str, object],
+        error: dict[str, object],
+    ) -> None:
+        _set_app_mode(harness, sqlite_session_factory, AppMode.COMPLETION)
+
+        response = harness.app.test_client().post(_completion_url(harness), json=payload)
+
         _assert_json_response(
             response,
-            status=404,
-            body={
-                "code": "installed_app_not_found",
-                "message": "The app was not found in this workspace.",
-                "status": 404,
-                "details": {"request_id": "request-1"},
-            },
+            status=422,
+            body={"code": "unprocessable_entity", "message": json.dumps([error]), "status": 422},
         )
-    assert chat_runtime.calls == []
-    assert _last_used_at(harness, sqlite_session_factory) is None
+        assert chat_runtime.calls == []
+        assert _completion_last_used_at(harness, sqlite_session_factory) is None
 
+    @staticmethod
+    @pytest.mark.parametrize(
+        "mode", [AppMode.COMPLETION, AppMode.WORKFLOW, AppMode.AGENT, AppMode.CHANNEL, AppMode.RAG_PIPELINE]
+    )
+    def test_chat_rejects_other_modes_before_recording_usage(
+        harness: _Harness,
+        chat_runtime: _CompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+        mode: AppMode,
+    ) -> None:
+        _set_app_mode(harness, sqlite_session_factory, mode)
 
-@pytest.mark.parametrize("rejection", ["missing", "other_app", "other_account", "api", "deleted"])
-@pytest.mark.usefixtures("chat_runtime")
-def test_chat_conversation_preflight_returns_404_before_starting_generation_and_preserves_usage(
-    harness: _Harness,
-    sqlite_session_factory: sessionmaker[Session],
-    monkeypatch: pytest.MonkeyPatch,
-    rejection: str,
-) -> None:
-    conversation_id = str(uuid4())
-    with sqlite_session_factory.begin() as session:
-        session.add(harness.account)
-        if rejection != "missing":
-            session.add(
-                Conversation(
-                    id=conversation_id,
-                    app_id=str(uuid4()) if rejection == "other_app" else harness.target_app.id,
-                    from_account_id=str(uuid4()) if rejection == "other_account" else harness.account.id,
-                    from_source="api" if rejection == "api" else "console",
-                    mode=AppMode.CHAT,
-                    name="Existing conversation",
-                    _inputs={},
-                    is_deleted=rejection == "deleted",
+        response = harness.app.test_client().post(_completion_url(harness), json={"inputs": {}, "query": "Hi"})
+
+        _assert_json_response(
+            response, status=400, body={"code": "not_chat_app", "message": "App mode is invalid.", "status": 400}
+        )
+        assert chat_runtime.calls == []
+        assert _completion_last_used_at(harness, sqlite_session_factory) is None
+
+    @staticmethod
+    def test_chat_uses_the_mode_captured_at_admission(
+        harness: _Harness,
+        chat_runtime: _CompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        harness.state.permission_action = lambda: _set_app_mode(harness, sqlite_session_factory, AppMode.COMPLETION)
+
+        response = harness.app.test_client().post(_completion_url(harness), json={"inputs": {}, "query": "Hi"})
+
+        assert response.status_code == 200
+        assert len(chat_runtime.calls) == 1
+        assert chat_runtime.calls[0].streaming is True
+        assert _completion_last_used_at(harness, sqlite_session_factory) == _COMPLETION_USED_AT
+
+    @staticmethod
+    @pytest.mark.parametrize("rejection", ["permission", "tenant"])
+    def test_chat_enforces_admission_before_payload_validation(
+        harness: _Harness,
+        chat_runtime: _CompletionRuntime,
+        sqlite_session_factory: sessionmaker[Session],
+        rejection: str,
+    ) -> None:
+        if rejection == "permission":
+            harness.state.allowed = False
+        else:
+            harness.account._current_tenant = Tenant(name="Other workspace")
+
+        response = harness.app.test_client().post(_completion_url(harness), json={})
+
+        if rejection == "permission":
+            _assert_json_response(
+                response, status=403, body={"code": "access_denied", "message": "App access denied.", "status": 403}
+            )
+        else:
+            _assert_json_response(
+                response,
+                status=404,
+                body={
+                    "code": "installed_app_not_found",
+                    "message": "The app was not found in this workspace.",
+                    "status": 404,
+                    "details": {"request_id": "request-1"},
+                },
+            )
+        assert chat_runtime.calls == []
+        assert _completion_last_used_at(harness, sqlite_session_factory) is None
+
+    @staticmethod
+    @pytest.mark.parametrize("rejection", ["missing", "other_app", "other_account", "api", "deleted"])
+    @pytest.mark.usefixtures("chat_runtime")
+    def test_chat_conversation_preflight_returns_404_before_starting_generation_and_preserves_usage(
+        harness: _Harness,
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+        rejection: str,
+    ) -> None:
+        conversation_id = str(uuid4())
+        with sqlite_session_factory.begin() as session:
+            session.add(harness.account)
+            if rejection != "missing":
+                session.add(
+                    Conversation(
+                        id=conversation_id,
+                        app_id=str(uuid4()) if rejection == "other_app" else harness.target_app.id,
+                        from_account_id=str(uuid4()) if rejection == "other_account" else harness.account.id,
+                        from_source="api" if rejection == "api" else "console",
+                        mode=AppMode.CHAT,
+                        name="Existing conversation",
+                        _inputs={},
+                        is_deleted=rejection == "deleted",
+                    )
+                )
+
+        services = _CompletionServices(
+            installed_apps=_CompletionInstalledAppServices(
+                generation=InstalledAppGenerationService(
+                    usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
+                    runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
                 )
             )
-
-    services = _Services(
-        installed_apps=_InstalledAppServices(
-            generation=InstalledAppGenerationService(
-                usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
-                runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
-            )
         )
-    )
-    monkeypatch.setattr(completion_module, "application_services", lambda: services)
-    generation_started: list[bool] = []
+        monkeypatch.setattr(completion_module, "application_services", lambda: services)
+        generation_started: list[bool] = []
 
-    def generate(**_kwargs: object) -> GenerationResponse:
-        generation_started.append(True)
-        pytest.fail("The generation runtime must not start for an inaccessible conversation")
+        def generate(**_kwargs: object) -> GenerationResponse:
+            generation_started.append(True)
+            pytest.fail("The generation runtime must not start for an inaccessible conversation")
 
-    monkeypatch.setattr(AppGenerateService, "generate", generate)
+        monkeypatch.setattr(AppGenerateService, "generate", generate)
 
-    response = harness.app.test_client().post(
-        _url(harness), json={"inputs": {}, "query": "Hi", "conversation_id": conversation_id}, buffered=False
-    )
+        response = harness.app.test_client().post(
+            _completion_url(harness),
+            json={"inputs": {}, "query": "Hi", "conversation_id": conversation_id},
+            buffered=False,
+        )
 
-    _assert_json_response(
-        response, status=404, body={"code": "not_found", "message": "Conversation Not Exists.", "status": 404}
-    )
-    assert generation_started == []
-    assert _last_used_at(harness, sqlite_session_factory) == _USED_AT
+        _assert_json_response(
+            response, status=404, body={"code": "not_found", "message": "Conversation Not Exists.", "status": 404}
+        )
+        assert generation_started == []
+        assert _completion_last_used_at(harness, sqlite_session_factory) == _COMPLETION_USED_AT

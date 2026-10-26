@@ -332,8 +332,7 @@ class AppTaskService:
                 app_id=app_id,
                 triggered_from=triggered_from,
             )
-            for execution in stopped_nodes:
-                target.save(execution)
+            target.save_many(stopped_nodes)
 
     @staticmethod
     def stop_task(

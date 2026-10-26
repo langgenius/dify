@@ -44,6 +44,7 @@ it.each([false, true])(
     )
     expect(run).toHaveBeenLastCalledWith(
       expect.objectContaining({
+        appId: 'inspected-app',
         activeTab: 'TRACING',
         hideResult: true,
         runDetailUrl: '/apps/inspected-app/workflow-runs/run-1',

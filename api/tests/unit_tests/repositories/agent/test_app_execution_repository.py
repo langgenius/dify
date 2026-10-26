@@ -29,7 +29,7 @@ from models.enums import ConversationFromSource
 from repositories.agent.app_execution_repository import AgentAppExecutionRepository
 from services.app.generation.agent_config import AgentAppConfiguration
 from services.app.generation.errors import AgentAppGeneratorError, AgentAppNotPublishedError
-from tests.unit_tests.model_factories import make_conversation
+from tests.helpers.unit.model_factories import make_conversation
 
 
 def soul(prompt: str = "Published") -> AgentSoulConfig:

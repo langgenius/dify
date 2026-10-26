@@ -14,6 +14,7 @@ const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockHandleExportDSL = vi.fn()
 const mockRestoreWorkflow = vi.fn()
+const mockDeleteWorkflow = vi.fn()
 const mockUpdateWorkflow = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
 const mockEmitRestoreIntent = vi.fn()
@@ -64,7 +65,7 @@ vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
 vi.mock('@/service/use-workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/use-workflow')>()),
-  useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
+  useDeleteWorkflow: () => mockDeleteWorkflow,
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
   useInvalidateAllLastRun: () => vi.fn(),
   useResetWorkflowVersionHistory: () => vi.fn(),
@@ -128,7 +129,7 @@ vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  patch: (...args: unknown[]) => mockUpdateWorkflow(...args),
+  request: async (...args: unknown[]) => Response.json(await mockUpdateWorkflow(...args)),
 }))
 
 let renderedStore: ReturnType<typeof renderWorkflowComponent>['store']
@@ -142,6 +143,7 @@ const selectAction = async (name: RegExp) => {
 describe('VersionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDeleteWorkflow.mockResolvedValue(undefined)
     mockRestoreWorkflow.mockResolvedValue(undefined)
     mockUpdateWorkflow.mockResolvedValue(undefined)
     mockCurrentVersion = null
@@ -278,6 +280,22 @@ describe('VersionHistoryPanel', () => {
     expect(mockToast.error).not.toHaveBeenCalled()
   })
 
+  it.each([false, true])('handles version deletion (failed: %s)', async (failed) => {
+    const user = userEvent.setup()
+    if (failed) mockDeleteWorkflow.mockRejectedValueOnce(new Error('Delete failed'))
+    const { VersionHistoryPanel } = await import('../index')
+    render(<VersionHistoryPanel latestVersionId="newer-version-id" />)
+    await selectAction(/operation\.delete/)
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    await waitFor(() => expect(mockDeleteWorkflow).toHaveBeenCalledWith('published-version-id'))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    if (failed)
+      expect(mockToast.error).toHaveBeenCalledWith(
+        'workflowHistory.versionHistory.action.deleteFailure',
+      )
+    else expect(mockToast.error).not.toHaveBeenCalled()
+  })
+
   it('should keep restore mode backup state when restore request fails', async () => {
     const user = userEvent.setup()
     const { VersionHistoryPanel } = await import('../index')
@@ -317,20 +335,16 @@ describe('VersionHistoryPanel', () => {
     })
     const { VersionHistoryPanel } = await import('../index')
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        updateVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     await selectAction(/editVersionInfo/)
     await user.click(screen.getByRole('button', { name: 'submit version info' }))
 
     await waitFor(() => {
       expect(mockUpdateWorkflow).toHaveBeenCalledWith(
-        '/apps/app-1/workflows/published-version-id',
-        { body: { marked_name: 'Updated release', marked_comment: 'Updated notes' } },
+        expect.stringContaining('/apps/app-1/workflows/published-version-id'),
+        expect.anything(),
+        expect.objectContaining({ request: expect.objectContaining({ method: 'PATCH' }) }),
       )
       expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
     })

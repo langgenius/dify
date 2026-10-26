@@ -20,7 +20,7 @@ from services.knowledge.retrieval.dataset_retrieval import DatasetRetrieval
 from services.knowledge.retrieval.reranking import KnowledgeReranker
 from services.tools.dataset.tool import DatasetRetrieverTool
 from services.tools.tool_engine import ToolEngine
-from tests.unit_tests.model_factories import make_message
+from tests.helpers.unit.model_factories import make_message
 
 
 def _entity(name: str) -> ToolEntity:

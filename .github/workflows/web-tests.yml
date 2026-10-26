@@ -10,6 +10,44 @@ permissions:
   contents: read
 
 jobs:
+  openapi-sdk-test:
+    name: OpenAPI SDK and Next.js adapters
+    runs-on: depot-ubuntu-24.04-4
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Setup Python for in-memory Console schema export
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+          python-version: '3.13'
+          cache-dependency-glob: api/uv.lock
+
+      - name: Install schema exporter dependencies
+        run: uv sync --project api --frozen
+
+      - name: Test SDK types, runtime and Vite integration
+        run: pnpm --filter @dify/openapi-content-mapper test
+
+      - name: Verify the packed SDK in an independent npm project
+        run: pnpm --filter @dify/openapi-content-mapper test:package
+
+      - name: Test Next.js adapters and tree-shaking
+        run: pnpm --filter @dify/openapi-content-mapper test:next
+
+      - name: Verify standalone Console imports, error maps and editor support
+        run: pnpm --filter @dify/openapi-content-mapper exec node --test --test-concurrency=1 integration/knowledge-fs-console.test.mjs integration/orpc-errors.test.mjs integration/console-preparation.test.mjs integration/console-editor.test.mjs
+
+      - name: Check all Console types against the reviewed migration differences
+        run: pnpm --filter @dify/openapi-content-mapper check:console
+
   test:
     name: Web Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: depot-ubuntu-24.04-4

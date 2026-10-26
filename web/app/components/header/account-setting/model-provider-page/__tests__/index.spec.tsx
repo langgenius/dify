@@ -1,7 +1,11 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelTypeEnum } from '../declarations'
-import { zDefaultModelResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
-import { act, fireEvent, screen, within } from '@testing-library/react'
+import {
+  zDefaultModelResponse,
+  zProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/zod.gen'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import {
   getStepByStepTourTargetSelector,
@@ -9,9 +13,15 @@ import {
 } from '@/app/components/step-by-step-tour/target-registry'
 import { consoleQuery } from '@/service/console'
 import {
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  createModelCreditsFixture,
+} from '@/test/console/model-provider'
+import {
   createConsoleQueryClient,
   renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState,
 } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import {
   CurrentSystemQuotaTypeEnum,
@@ -315,6 +325,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.modelProviders.summary.get': () => new Promise(() => {}),
       'workspaces.current.defaultModel.get': mockDefaultModelQuery,
+      'workspaces.current.models.modelTypes.byModelType.get': () => ({ data: [] }),
       'workspaces.current.plugin.list.latestVersions.post': () => new Promise(() => {}),
     }),
   }
@@ -645,6 +656,54 @@ describe('ModelProviderPage', () => {
     it('should show none-configured warning when providers exist but no default models set', () => {
       renderModelProviderPage()
       expect(screen.getByText('modelProvider.modelProvider.noneConfigured')).toBeInTheDocument()
+    })
+
+    it('keeps Default Models open when refreshed defaults remove the toolbar warning', async () => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
+      const defaultModel = createDefaultModelFixture()
+      const request = createDeferred<{ data: typeof defaultModel }>()
+      mockDefaultModelQuery.mockImplementation(({ query }: { query: { model_type: string } }) =>
+        query.model_type === 'llm' ? request.promise : { data: null },
+      )
+      const { queryClient } = renderModelProviderPage()
+      act(() => {
+        queryClient.setQueryData(
+          consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
+          createModelCreditsFixture(),
+        )
+        queryClient.setQueryData(
+          consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+            input: { params: { model_type: 'llm' } },
+          }),
+          { data: [zProviderWithModelsResponse.parse(createModelCatalogFixture())] },
+        )
+      })
+      expect(screen.getByText('modelProvider.modelProvider.noneConfigured')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /modelProvider.systemModelSettings/ }))
+      const dialog = await screen.findByRole('dialog', {
+        name: 'modelProvider.modelProvider.systemModelSettingsTitle',
+      })
+      expect(within(dialog).getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+      await waitFor(() => expect(mockDefaultModelQuery).toHaveBeenCalledTimes(5))
+
+      await act(async () => request.resolve({ data: defaultModel }))
+
+      await waitFor(() => {
+        expect(
+          screen.queryByText('modelProvider.modelProvider.noneConfigured'),
+        ).not.toBeInTheDocument()
+      })
+      const refreshedDialog = screen.getByRole('dialog', {
+        name: 'modelProvider.modelProvider.systemModelSettingsTitle',
+      })
+      expect(
+        await within(refreshedDialog).findByRole('button', {
+          name: 'modelProvider.modelProvider.systemReasoningModel.key GPT-4',
+        }),
+      ).toBeVisible()
+      expect(mockDefaultModelQuery).toHaveBeenCalledTimes(5)
     })
 
     it('should not show warning when some default models are set', () => {

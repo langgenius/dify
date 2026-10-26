@@ -13,6 +13,8 @@ class TraceProviderNotInstalledError(ImportError):
 class RetryableTraceDispatchError(RuntimeError):
     """Base class for transient trace dispatch failures that Celery may retry."""
 
+    acceptance_unknown: bool = False
+
 
 class TraceParentContextAccessError(RetryableTraceDispatchError):
     """Raised when unified parent context storage is temporarily unavailable."""

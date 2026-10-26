@@ -21,6 +21,7 @@ from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.node_queries import ConversationHistory, DatasourceCredentials, RetrieverAttachments
 
 if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
     from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
     from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
     from core.tools.__base.tool import Tool
@@ -104,6 +105,9 @@ class WorkflowToolInvoker(Protocol):
 
 class WorkflowRuntime(Protocol):
     """Capabilities needed to execute a graph, including nested Workflow Tools."""
+
+    @property
+    def execution_driver(self) -> WorkflowRunDriver: ...
 
     @property
     def history(self) -> ConversationHistory: ...

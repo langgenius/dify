@@ -1,5 +1,5 @@
 'use client'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { InputVar } from '@/models/pipeline'
 import type { SnippetCanvasData } from '@/models/snippet'
 import { Button } from '@langgenius/dify-ui/button'
@@ -18,7 +18,7 @@ import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-const CREATE_SNIPPET_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const CREATE_SNIPPET_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 export type CreateSnippetDialogPayload = {
   name: string
