@@ -544,6 +544,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             user=user,
             invoke_from=invoke_from,
         ):
+            self._grant_file_default_access(application_generate_entity.app_config.variables)
             is_first_conversation = conversation is None
 
             if conversation is not None and message is not None:
