@@ -25,6 +25,23 @@ DEFAULT_OAUTH_TTL_DAYS: Final = 14
 MIN_OAUTH_TTL_DAYS: Final = 1
 MAX_OAUTH_TTL_DAYS: Final = 365
 
+DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT: Final = 15
+MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT: Final = 1
+MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT: Final = 100
+
+
+def _clamp_int_setting(name: str, value: object, *, default: int, minimum: int, maximum: int) -> int:
+    # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
+    try:
+        parsed = int(str(value))
+    except ValueError:
+        logger.warning("%s=%r is not an int; falling back to %d", name, value, default)
+        return default
+    clamped = min(max(parsed, minimum), maximum)
+    if clamped != parsed:
+        logger.warning("%s=%d outside %d-%d; clamping to %d", name, parsed, minimum, maximum, clamped)
+    return clamped
+
 
 class SecurityConfig(BaseSettings):
     """
@@ -1121,22 +1138,33 @@ class AuthConfig(BaseSettings):
     @field_validator("OAUTH_TTL_DAYS", mode="before")
     @classmethod
     def _clamp_oauth_ttl_days(cls, v: object) -> int:
-        # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
-        try:
-            value = int(str(v))
-        except ValueError:
-            logger.warning("OAUTH_TTL_DAYS=%r is not an int; falling back to %d", v, DEFAULT_OAUTH_TTL_DAYS)
-            return DEFAULT_OAUTH_TTL_DAYS
-        clamped = min(max(value, MIN_OAUTH_TTL_DAYS), MAX_OAUTH_TTL_DAYS)
-        if clamped != value:
-            logger.warning(
-                "OAUTH_TTL_DAYS=%d outside %d-%d; clamping to %d",
-                value,
-                MIN_OAUTH_TTL_DAYS,
-                MAX_OAUTH_TTL_DAYS,
-                clamped,
-            )
-        return clamped
+        return _clamp_int_setting(
+            "OAUTH_TTL_DAYS",
+            v,
+            default=DEFAULT_OAUTH_TTL_DAYS,
+            minimum=MIN_OAUTH_TTL_DAYS,
+            maximum=MAX_OAUTH_TTL_DAYS,
+        )
+
+    OAUTH_MAX_TOKENS_PER_ACCOUNT: int = Field(
+        description="Max live OAuth sessions per account; issuing one past the cap revokes the oldest. "
+        f"Values outside {MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT}-{MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT} are clamped; "
+        "a non-integer falls back to the default.",
+        ge=MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT,
+        le=MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT,
+        default=DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT,
+    )
+
+    @field_validator("OAUTH_MAX_TOKENS_PER_ACCOUNT", mode="before")
+    @classmethod
+    def _clamp_oauth_max_tokens_per_account(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_MAX_TOKENS_PER_ACCOUNT",
+            v,
+            default=DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT,
+            minimum=MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT,
+            maximum=MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT,
+        )
 
     OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(
         description="Per-token rate limit on /openapi/v1/* (requests per minute). "

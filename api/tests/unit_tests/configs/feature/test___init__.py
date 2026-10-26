@@ -24,6 +24,22 @@ def test_oauth_ttl_days_clamps_or_falls_back_instead_of_failing(configured: str,
     assert expected == config.OAUTH_TTL_DAYS
 
 
+def test_oauth_max_tokens_per_account_defaults_to_fifteen() -> None:
+    config = _IsolatedAuthConfig()
+
+    assert config.OAUTH_MAX_TOKENS_PER_ACCOUNT == 15
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [("30", 30), ("1", 1), ("100", 100), ("0", 1), ("-5", 1), ("500", 100), ("abc", 15), ("", 15)],
+)
+def test_oauth_max_tokens_per_account_clamps_or_falls_back_instead_of_failing(configured: str, expected: int) -> None:
+    config = _IsolatedAuthConfig(OAUTH_MAX_TOKENS_PER_ACCOUNT=configured)
+
+    assert expected == config.OAUTH_MAX_TOKENS_PER_ACCOUNT
+
+
 class _IsolatedFileUploadConfig(InitSettingsOnly, FileUploadConfig):
     pass
 
