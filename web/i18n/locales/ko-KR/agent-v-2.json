@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Agent 지식 베이스를 불러오는 중…",
   "agentDetail.configure.knowledgeFs.rebind": "가져온 연결입니다. 이 Agent 지식 베이스를 다시 선택하거나 사용 가능한 Agent 지식 베이스로 바꾸세요.",
   "agentDetail.configure.knowledgeFs.retry": "다시 시도",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "이 배포에서는 Agent 지식 베이스 검색을 사용할 수 없습니다. 관리자에게 활성화를 요청하세요.",
   "agentDetail.configure.knowledgeFs.select": "최대 10개 Agent 지식 베이스 선택",
   "agentDetail.configure.knowledgeFs.title": "Agent 지식 베이스",
   "agentDetail.configure.knowledgeFs.unavailable": "이 Agent 지식 베이스를 사용할 수 없거나 이 에이전트에서 사용할 권한이 없습니다.",
