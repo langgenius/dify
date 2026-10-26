@@ -131,6 +131,8 @@ OpenAPI document to stdout. The descriptor contains the command, not the schema:
   "command": ["python", "export_openapi.py"],
   "cwd": "../backend",
   "inputs": ["**/*.py", "pyproject.toml"],
+  "exclude": ["tests/**"],
+  "optionalInputs": [".env"],
   "env": ["API_EDITION"],
   "timeoutMs": 60000
 }
@@ -138,7 +140,10 @@ OpenAPI document to stdout. The descriptor contains the command, not the schema:
 
 `cwd` is relative to the descriptor; input glob patterns are relative to `cwd`.
 Declare every source/configuration input and any environment variables that affect
-exported schemas. Inputs must match existing paths. Dependency scanning excludes
+exported schemas. Input globs must match existing paths; `exclude` removes glob
+matches that cannot affect the contract. `optionalInputs` lists exact paths that
+may not exist yet, such as `.env`; their creation, changes and removal invalidate
+the source. Dependency scanning excludes
 `node_modules`, `.venv`, `.git` and `__pycache__`. Commands run without a shell;
 `node` uses the current Node executable. Write exactly one OpenAPI JSON document to
 stdout and send diagnostics to stderr. No running backend is needed if the exporter
@@ -179,6 +184,32 @@ inputs change; the mapper's temporary cache stores derived types, not a committe
 specification. Each new process needs the backend export environment. The exporter
 and schema do not ship to the browser. Definitions from a command source have no
 schema-file location; file imports retain their existing source navigation.
+
+The repository Console exporter additionally shares its in-memory result between
+compiler, editor and build processes through a local POSIX helper. It starts on
+demand and exits after two idle minutes. A private Unix socket and empty lifecycle
+lock are the only IPC files; OpenAPI content is never written to disk. The helper
+is specific to the Console source, not enabled for arbitrary exporter commands.
+
+On changes, a fresh child imports the current controllers from source, with safe
+model dependencies preloaded. Changing a preloaded dependency, adding/removing a
+Python file, changing `.env`, or changing the environment invalidates that state.
+Python bytecode caches are bypassed to handle rapid same-size edits. Export errors
+are surfaced rather than serving the old contract. Refreshes interrupted by more
+source edits are retried. Backend tests are excluded from Console source inputs.
+Native threads are checked before forking; unsafe snapshots and platforms without
+fork use a fresh-process export instead. Those refreshes still incur cold startup.
+
+To stop the local helper early, run from the same directory and environment used
+by the source descriptor:
+
+```sh
+uv run --project api api/dev/cached_console_openapi.py --stop
+```
+
+The uncached reference exporter remains `api/dev/export_console_openapi.py`.
+Command-source JSON is transformed directly, avoiding the YAML syntax tree and
+source mappings needed only for file-backed documents.
 
 ### Navigate to backend implementations
 

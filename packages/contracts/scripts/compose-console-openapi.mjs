@@ -64,11 +64,11 @@ export function composeConsoleDocuments(sources) {
 
 export function loadConsoleDocument(root = resolve(import.meta.dirname, '..')) {
   const community = JSON.parse(
-    execFileSync('uv', ['run', '--project', 'api', 'api/dev/export_console_openapi.py'], {
+    execFileSync('uv', ['run', '--project', 'api', 'api/dev/cached_console_openapi.py'], {
       cwd: resolve(root, '../..'),
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
-      timeout: 60000,
+      timeout: 100000,
     }),
   )
   const snapshots = [

@@ -74,6 +74,9 @@ test('projection preserves structural refs, escaped pointers, literal payloads a
   try {
     const projected = transformSpec(JSON.stringify(spec), join(dir, 'spec.openapi'))
     assert.equal(projected.diagnostics, undefined)
+    const commandSource = transformSpec(JSON.stringify(spec), join(dir, 'spec.openapi-source'))
+    assert.equal(commandSource.text, projected.text)
+    assert.deepEqual(commandSource.mappings, [])
     const declarationEnd = projected.text.indexOf(';\n')
     const document = JSON.parse(
       projected.text.slice('declare const document: '.length, declarationEnd),

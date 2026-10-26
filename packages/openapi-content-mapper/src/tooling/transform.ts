@@ -30,6 +30,24 @@ function assertObjectKey(node: unknown): asserts node is Scalar<string | number>
 
 // Both compiler mappings and runtime modules share the same document validation.
 function parseSpec(content: string, fileName: string) {
+  if (isSource(fileName)) {
+    // Exporters produce JSON and have no authored schema coordinates. Avoid
+    // allocating a YAML AST and thousands of source mappings we would discard.
+    const value: unknown = JSON.parse(content)
+    assertDocument(value)
+    function validate(node: unknown): void {
+      if (typeof node === 'number' && !Number.isFinite(node))
+        throw new Error('OpenAPI does not support non-finite numbers')
+      if (node && typeof node === 'object') {
+        for (const [key, child] of Object.entries(node)) {
+          if (key === '$ref' && typeof child === 'string') pointer(value, child)
+          validate(child)
+        }
+      }
+    }
+    validate(value)
+    return { value, router: createRouter(describeOperations(value)), document: undefined }
+  }
   // JSON files must be valid JSON, even though YAML is a superset.
   if (fileName.endsWith('.json')) JSON.parse(content)
   const document = parseDocument(content, { uniqueKeys: true, version: '1.2' })
@@ -111,7 +129,34 @@ export function transformSpec(content: string, fileName: string): Transform {
         text += 'null'
       }
     }
-    emit(document.contents, typeDocument(value))
+    function emitJson(node: unknown, selected: Selection): void {
+      if (Array.isArray(node)) {
+        text += '['
+        node.forEach((item, index) => {
+          if (index) text += ','
+          const child = selected.all ? selected : selected.children.get(String(index))
+          if (child) emitJson(item, child)
+          else text += 'null'
+        })
+        text += ']'
+      } else if (node && typeof node === 'object') {
+        text += '{'
+        let separator = ''
+        for (const [key, item] of Object.entries(node)) {
+          const child = selected.all ? selected : selected.children.get(key)
+          if (!child) continue
+          text += `${separator}${JSON.stringify(key)}:`
+          separator = ','
+          emitJson(item, child)
+        }
+        text += '}'
+      } else {
+        text += JSON.stringify(node)
+      }
+    }
+    const selected = typeDocument(value)
+    if (document) emit(document.contents, selected)
+    else emitJson(value, selected)
     text += ';\n'
     text += schemaTypes(value)
     const config = runtimeConfigFile(fileName)

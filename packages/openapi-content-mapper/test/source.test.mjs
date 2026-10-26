@@ -89,6 +89,32 @@ test('command sources stay in memory, cache by backend inputs, and do not cache 
   assert.equal(resolveDocument(content, file).content.trim(), first.content.trim())
 })
 
+test('excluded inputs do not invalidate contracts; optional inputs track creation, edits and removal', (t) => {
+  const { directory, file } = fixture(t)
+  mkdirSync(join(directory, 'tests'))
+  const ignored = join(directory, 'tests/schema.txt')
+  writeFileSync(ignored, 'unrelated')
+  const content = JSON.stringify({
+    command: ['node', 'export.mjs'],
+    inputs: ['**/*.txt', 'export.mjs'],
+    exclude: ['tests/**'],
+    optionalInputs: ['.env'],
+  })
+  const first = inspectSource(content, file)
+  assert(!first.dependencies.includes(ignored))
+  writeFileSync(ignored, 'another test')
+  assert.equal(inspectSource(content, file).identity, first.identity)
+  const env = join(directory, '.env')
+  assert(first.dependencies.includes(env))
+  writeFileSync(env, 'SETTING=one')
+  const created = inspectSource(content, file)
+  assert.notEqual(created.identity, first.identity)
+  writeFileSync(env, 'SETTING=two')
+  assert.notEqual(inspectSource(content, file).identity, created.identity)
+  rmSync(env)
+  assert.equal(inspectSource(content, file).identity, first.identity)
+})
+
 test('TS incremental checks invalidate when backend input changes without touching the descriptor', (t) => {
   const { directory, schema, config } = fixture(t)
   writeFileSync(

@@ -90,6 +90,16 @@ def test_console_stdout_export_contains_both_surfaces_without_spec_files(tmp_pat
                 assert source_line.startswith(("def ", "async def "))
     datasets = documents["console"]["paths"]["/datasets"]["get"]["x-source-location"]
     assert datasets["file"].endswith("/controllers/console/datasets/datasets.py")
+    cached_script = script.with_name("cached_console_openapi.py")
+    try:
+        cached = subprocess.run(
+            [sys.executable, str(cached_script)], cwd=tmp_path, capture_output=True, text=True, check=True, timeout=60
+        )
+        assert json.loads(cached.stdout) == documents
+    finally:
+        subprocess.run(
+            [sys.executable, str(cached_script), "--stop"], cwd=tmp_path, capture_output=True, check=True, timeout=10
+        )
     assert not list(tmp_path.rglob("*.json"))
 
 
@@ -124,6 +134,11 @@ def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
     }
     assert "Bearer" not in inner_payload["components"]["securitySchemes"]
     assert "/enterprise/apps/{app_id}/dsl" in inner_payload["paths"]
+
+
+def test_console_only_export_matches_the_full_export():
+    module = _load_generate_swagger_specs_module()
+    assert module.export_console_spec() == module.export_specs()["console-openapi.json"]
 
 
 def test_generate_specs_match_live_openapi_payloads(tmp_path: Path):

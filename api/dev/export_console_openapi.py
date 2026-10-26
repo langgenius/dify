@@ -35,10 +35,10 @@ def main() -> None:
     with contextlib.redirect_stdout(sys.stderr):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
         from dev.generate_fastopenapi_specs import export_fastopenapi_specs
-        from dev.generate_swagger_specs import export_specs
+        from dev.generate_swagger_specs import export_console_spec
 
         documents = {
-            "console": export_specs()["console-openapi.json"],
+            "console": export_console_spec(),
             "fast": export_fastopenapi_specs()["fastopenapi-console-openapi.json"],
         }
         from flask_restx.swagger import extract_path

@@ -25,16 +25,24 @@ export function inspectSource(content: string, fileName: string) {
     throw new Error('cwd must be a string relative to the source descriptor')
   const cwd = resolve(dirname(file), config.cwd ?? '.')
   const inputs = strings(config.inputs, 'inputs')
+  const exclude = strings(config.exclude ?? [], 'exclude')
   if (!inputs.length) throw new Error('inputs must declare the files used by the exporter')
   const env = strings(config.env ?? [], 'env')
   const timeout = config.timeoutMs ?? 60000
   if (typeof timeout !== 'number' || !Number.isSafeInteger(timeout) || timeout <= 0)
     throw new Error('timeoutMs must be a positive integer')
   const dependencies = new Set([file])
+  const optional = new Set(
+    strings(config.optionalInputs ?? [], 'optionalInputs').map((input) => resolve(cwd, input)),
+  )
+  for (const input of optional) {
+    dependencies.add(input)
+    dependencies.add(dirname(input))
+  }
   for (const input of inputs) {
     const matches = globSync(input, {
       cwd,
-      exclude: ['**/node_modules/**', '**/.venv/**', '**/.git/**', '**/__pycache__/**'],
+      exclude: ['**/node_modules/**', '**/.venv/**', '**/.git/**', '**/__pycache__/**', ...exclude],
     })
     const matchedFiles = matches.filter((match) => statSync(resolve(cwd, match)).isFile())
     if (!matchedFiles.length) throw new Error(`No source input files match ${input} in ${cwd}`)
@@ -55,7 +63,12 @@ export function inspectSource(content: string, fileName: string) {
   const hash = createHash('sha256').update(content).update(cwd)
   for (const name of env) hash.update(JSON.stringify([name, process.env[name] ?? null]))
   for (const dependency of files) {
-    const stat = statSync(dependency)
+    const stat = statSync(dependency, { throwIfNoEntry: false })
+    if (!stat && optional.has(dependency)) {
+      hash.update(JSON.stringify([dependency, 'missing']))
+      continue
+    }
+    if (!stat) throw new Error(`Source input disappeared: ${dependency}`)
     hash.update(
       JSON.stringify(
         stat.isDirectory()

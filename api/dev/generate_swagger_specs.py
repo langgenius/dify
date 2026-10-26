@@ -17,7 +17,7 @@ import sys
 from collections.abc import MutableMapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol, TypeGuard
+from typing import Any, Protocol, TypeGuard, cast
 
 from flask import Flask
 from flask_restx import Api
@@ -270,6 +270,21 @@ def _materialize_inline_model_definitions(api: RestxApi) -> None:
         if isinstance(model, (Model, OrderedModel)):
             for field in model.values():
                 materialize_field(field)
+
+
+def export_console_spec() -> dict[str, Any]:
+    """Build only Console; editor refreshes do not need the other four API surfaces."""
+    apply_runtime_defaults()
+    from libs.flask_restx_compat import install_swagger_compatibility
+
+    install_swagger_compatibility()
+    from controllers.console import api, bp
+
+    app = Flask(__name__)
+    app.register_blueprint(bp)
+    _materialize_inline_model_definitions(cast(RestxApi, api))
+    with app.test_request_context("/console/api/openapi.json"):
+        return finalize_openapi_payload(Swagger(api).as_dict())
 
 
 def export_specs() -> dict[str, dict[str, Any]]:
