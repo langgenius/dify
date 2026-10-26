@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, TypedDict
 
 from services.credentials.query import CredentialQuery
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 
 if TYPE_CHECKING:
     from models.account import Account
@@ -321,33 +322,25 @@ class TriggerProviderService:
                 if expires_at is not None:
                     subscription.expires_at = expires_at
 
-                # Clear subscription cache
-                delete_cache_for_subscription(
-                    tenant_id=tenant_id,
-                    provider_id=subscription.provider_id,
-                    subscription_id=subscription.id,
-                )
+        # Invalidate after commit so a cache miss observes committed credentials.
+        delete_cache_for_subscription(
+            tenant_id=tenant_id, provider_id=subscription.provider_id, subscription_id=subscription.id
+        )
 
     @classmethod
-    def get_subscription_by_id(cls, tenant_id: str, subscription_id: str | None = None) -> TriggerSubscription | None:
+    def get_subscription_by_id(
+        cls, tenant_id: str, subscription_id: str | None = None, *, provider_id: TriggerProviderID | None = None
+    ) -> TriggerSubscription | None:
         """
         Get a trigger subscription by the ID.
         """
         with Session(db.engine, expire_on_commit=False) as session:
-            subscription: TriggerSubscription | None = None
+            query = select(TriggerSubscription).where(TriggerSubscription.tenant_id == tenant_id)
             if subscription_id:
-                subscription = session.scalar(
-                    select(TriggerSubscription)
-                    .where(
-                        TriggerSubscription.tenant_id == tenant_id,
-                        TriggerSubscription.id == subscription_id,
-                    )
-                    .limit(1)
-                )
-            else:
-                subscription = session.scalar(
-                    select(TriggerSubscription).where(TriggerSubscription.tenant_id == tenant_id).limit(1)
-                )
+                query = query.where(TriggerSubscription.id == subscription_id)
+            if provider_id is not None:
+                query = query.where(TriggerSubscription.provider_id == str(provider_id))
+            subscription = session.scalar(query.limit(1))
             if subscription:
                 provider_controller = TriggerManager.get_trigger_provider(
                     tenant_id, TriggerProviderID(subscription.provider_id)
@@ -467,7 +460,8 @@ class TriggerProviderService:
             redirect_uri = (
                 f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{subscription.provider_id}/trigger/callback"
             )
-            system_credentials = cls.get_oauth_client(tenant_id, provider_id)
+            plugin_unique_identifier = provider_controller.plugin_unique_identifier
+            system_credentials = cls.get_oauth_client(tenant_id, provider_id, provider_controller=provider_controller)
 
             # Refresh token
             oauth_handler = OAuthHandler()
@@ -477,7 +471,12 @@ class TriggerProviderService:
                 plugin_id=provider_id.plugin_id,
                 provider=provider_id.provider_name,
                 redirect_uri=redirect_uri,
-                system_credentials=system_credentials or {},
+                system_credentials=dict(system_credentials.credentials) if system_credentials is not None else {},
+                plugin_unique_identifier=(
+                    system_credentials.plugin_unique_identifier
+                    if system_credentials is not None
+                    else plugin_unique_identifier
+                ),
                 credentials=current_credentials,
             )
 
@@ -577,8 +576,6 @@ class TriggerProviderService:
             # Persist refreshed properties and expires_at
             subscription.properties = dict(properties_encrypter.encrypt(dict(refreshed.properties)))
             subscription.expires_at = int(refreshed.expires_at)
-            properties_cache.delete()
-
             logger.info(
                 "Subscription refreshed (service): tenant=%s id=%s new_expires_at=%s",
                 tenant_id,
@@ -586,10 +583,18 @@ class TriggerProviderService:
                 subscription.expires_at,
             )
 
-            return {"result": "success", "expires_at": int(refreshed.expires_at)}
+            result = {"result": "success", "expires_at": int(refreshed.expires_at)}
+        properties_cache.delete()
+        return result
 
     @classmethod
-    def get_oauth_client(cls, tenant_id: str, provider_id: TriggerProviderID) -> Mapping[str, Any] | None:
+    def get_oauth_client(
+        cls,
+        tenant_id: str,
+        provider_id: TriggerProviderID,
+        *,
+        provider_controller: PluginTriggerProviderController | None = None,
+    ) -> PluginOAuthClientConfig | None:
         """
         Get OAuth client configuration for a provider.
         First tries tenant-level OAuth, then falls back to system OAuth.
@@ -598,9 +603,9 @@ class TriggerProviderService:
         :param provider_id: Provider identifier
         :return: OAuth client configuration or None
         """
-        provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
-            tenant_id=tenant_id, provider_id=provider_id
-        )
+        if provider_controller is None:
+            provider_controller = TriggerManager.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
+        plugin_unique_identifier = provider_controller.plugin_unique_identifier
         with Session(db.engine, expire_on_commit=False) as session:
             tenant_client = session.scalar(
                 select(TriggerOAuthTenantClient)
@@ -621,9 +626,9 @@ class TriggerProviderService:
                     cache=NoOpProviderCredentialCache(),
                 )
                 oauth_params = encrypter.decrypt(dict(tenant_client.oauth_params))
-                return oauth_params
+                return PluginOAuthClientConfig(plugin_unique_identifier, dict(oauth_params))
 
-            is_verified = PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
+            is_verified = PluginService.is_plugin_verified(tenant_id, plugin_unique_identifier)
             if not is_verified:
                 return None
 
@@ -643,7 +648,11 @@ class TriggerProviderService:
                 except Exception as e:
                     raise ValueError(f"Error decrypting system oauth params: {e}") from e
 
-            return oauth_params
+            return (
+                PluginOAuthClientConfig(plugin_unique_identifier, dict(oauth_params))
+                if oauth_params is not None
+                else None
+            )
 
     @classmethod
     def is_oauth_system_client_exists(cls, tenant_id: str, provider_id: TriggerProviderID) -> bool:

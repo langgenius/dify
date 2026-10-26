@@ -25,7 +25,7 @@ from services import workflow_service as workflow_module
 from services.entities.feature_entities import FeatureModel
 from services.human_input.debug_service import HumanInputDebugService
 from services.workflow.runtime_gateway import WorkflowRuntimeGateway
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 from tests.unit_tests.services.workflow.test_runtime_gateway import CONTEXT, RecordingSession, runtime_gateway  # noqa: F401
 
 

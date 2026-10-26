@@ -159,6 +159,17 @@ class WorkflowService:
         # validate graph structure
         self.validate_graph_structure(graph=draft_workflow.graph_dict)
 
+        from services.knowledge_fs.knowledge_retrieval_v2.validation import (
+            validate_control_space_references,
+        )
+
+        with self._sessions() as session:
+            validate_control_space_references(
+                session=session,
+                tenant_id=app_model.tenant_id,
+                graph=draft_workflow.graph_dict,
+            )
+
         # billing check
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             limit_info = BillingService.get_info(app_model.tenant_id)

@@ -62,7 +62,7 @@ from graphon.file import helpers as file_helpers
 from models import App
 from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType, effective_declared_outputs
 from models.agent_runtime_contracts import WorkflowAgentBindingError, WorkflowAgentRuntimeBindings
-from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 
 logger = logging.getLogger(__name__)
 
@@ -532,7 +532,7 @@ class NodeOutputInspectorService:
     def _load_run_and_executions(
         self, *, app_model: App, workflow_run_id: str, session: Session
     ) -> tuple[WorkflowRun, Sequence[WorkflowNodeExecutionModel]]:
-        """Fetch the ``WorkflowRun`` row + every execution that belongs to it.
+        """Fetch the run and its visible nodes, excluding internal Workflow Tool executions.
 
         Enforces:
           * row exists,
@@ -557,6 +557,7 @@ class NodeOutputInspectorService:
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == app_model.tenant_id,
                 WorkflowNodeExecutionModel.app_id == app_model.id,
+                WorkflowNodeExecutionModel.triggered_from != WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
             )
         ).all()
 

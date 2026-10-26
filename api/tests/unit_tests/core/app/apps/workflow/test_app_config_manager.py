@@ -1,17 +1,18 @@
 from unittest.mock import patch
 
 from models.model import App, AppMode
-from models.workflow import Workflow
+from repositories.workflow.definition_repository import workflow_snapshot
+from services.workflow.contracts import WorkflowSnapshot
 from services.workflow.execution.adapters.workflow.app_config_manager import WorkflowAppConfigManager
-from tests.unit_tests.model_factories import make_app, make_workflow
+from tests.helpers.unit.model_factories import make_app, make_workflow
 
 
 def _app() -> App:
     return make_app(name="Workflow App", mode=AppMode.WORKFLOW, icon_type=None)
 
 
-def _workflow() -> Workflow:
-    return make_workflow(workflow_id="wf-1", graph="{}")
+def _workflow() -> WorkflowSnapshot:
+    return workflow_snapshot(make_workflow(workflow_id="wf-1", graph="{}"))
 
 
 class TestWorkflowAppConfigManager:

@@ -6,6 +6,7 @@ import {
   applyAnnotationEdited,
   applyAnnotationRemoved,
   buildChatThreadState,
+  getAllChatItemIndex,
   getCompletionMessageFiles,
   getConversationRowValues,
   getDetailVarList,
@@ -201,6 +202,24 @@ describe('log list utils', () => {
     expect(applyAnnotationRemoved(edited, 1)[1]!.annotation).toBeUndefined()
     expect(items[0]!.content).toBe('hello')
     expect(items[1]!.annotation).toBeUndefined()
+  })
+
+  it('should map a thread index to allChatItems when the conversation has regenerated branches', () => {
+    const allChatItems = [
+      ...createChatItems(),
+      { id: 'question-3', content: 'next', isAnswer: false, parentMessageId: 'answer-1' },
+      { id: 'answer-3', content: 'regenerated', isAnswer: true, parentMessageId: 'question-3' },
+    ] as IChatItem[]
+    const { threadChatItems } = buildChatThreadState({ allChatItems, hasMore: false })
+
+    expect(threadChatItems.map((item) => item.id)).toEqual([
+      'question-1',
+      'answer-1',
+      'question-3',
+      'answer-3',
+    ])
+    expect(getAllChatItemIndex(allChatItems, threadChatItems, 3)).toBe(5)
+    expect(getAllChatItemIndex(allChatItems, threadChatItems, 4)).toBe(-1)
   })
 
   it('should derive urls, scroll thresholds, row values, and detail metadata', () => {

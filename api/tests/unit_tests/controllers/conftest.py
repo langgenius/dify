@@ -30,7 +30,7 @@ from services.webapp_access_query_service import WebAppAccessQueryService
 from services.workflow.dsl_import import DslImportService
 from services.workflow.execution.adapters.pipeline.pipeline_generator import PipelineGenerator
 from services.workflow.variable_contracts import WorkflowExecutionVariables
-from tests.unit_tests.controllers.error_contract import check_response, track_external_apis
+from tests.helpers.unit.controllers.error_contract import check_response, track_external_apis
 
 track_external_apis()
 

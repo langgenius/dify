@@ -1,11 +1,19 @@
 """Convert chatflow input into persistable conversation and message values."""
 
 from contextlib import suppress
+from decimal import Decimal
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file_reference import resolve_file_record_id
-from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.enums import (
+    ConversationFromSource,
+    ConversationStatus,
+    CreatorUserRole,
+    MessageFileBelongsTo,
+)
+from models.enums import InvokeFrom as ModelInvokeFrom
+from models.model import AppMode
 from services.app.generation.ports import ChatRecordSeed
 
 
@@ -15,7 +23,7 @@ def prepare_chat_records(entity: AdvancedChatAppGenerateEntity, features: str) -
         "from_source": ConversationFromSource.API if external else ConversationFromSource.CONSOLE,
         "from_end_user_id": entity.user_id if external else None,
         "from_account_id": None if external else entity.user_id,
-        "invoke_from": entity.invoke_from.value,
+        "invoke_from": ModelInvokeFrom(entity.invoke_from.value),
     }
     features_config = entity.app_config.additional_features
     introduction = (features_config.opening_statement if features_config else None) or ""
@@ -29,32 +37,32 @@ def prepare_chat_records(entity: AdvancedChatAppGenerateEntity, features: str) -
     return ChatRecordSeed(
         conversation={
             **actor,
-            "mode": entity.app_config.app_mode.value,
+            "mode": AppMode(entity.app_config.app_mode.value),
             "name": query[:20] + "…" if len(query) > 20 else query,
-            "inputs": entity.inputs,
+            "_inputs": dict(entity.inputs),
             "introduction": introduction,
             "override_model_configs": features,
             "system_instruction": "",
             "system_instruction_tokens": 0,
-            "status": "normal",
+            "status": ConversationStatus.NORMAL,
         },
         message={
             **actor,
-            "inputs": entity.inputs,
+            "_inputs": dict(entity.inputs),
             "query": entity.query,
             "message": "",
             "message_tokens": 0,
-            "message_unit_price": 0,
-            "message_price_unit": 0,
+            "message_unit_price": Decimal(0),
+            "message_price_unit": Decimal(0),
             "answer": "",
             "answer_tokens": 0,
-            "answer_unit_price": 0,
-            "answer_price_unit": 0,
+            "answer_unit_price": Decimal(0),
+            "answer_price_unit": Decimal(0),
             "parent_message_id": entity.parent_message_id,
             "provider_response_latency": 0,
-            "total_price": 0,
+            "total_price": Decimal(0),
             "currency": "USD",
-            "app_mode": entity.app_config.app_mode,
+            "app_mode": AppMode(entity.app_config.app_mode.value),
         },
         files=[
             {

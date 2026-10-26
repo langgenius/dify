@@ -10,6 +10,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, Unauthorized
 
+from controllers.common.errors import NotFoundError
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import CheckScope, CheckSubject
@@ -23,7 +24,7 @@ from extensions.application_services.resource_access_token import build_resource
 from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Tenant, TenantStatus
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, EndUserType
 from models.model import App, AppMode, AppStar, EndUser
 from models.resource_access_token import (
     ResourceAccessToken,
@@ -87,7 +88,7 @@ def resource_fixture(
         ),
     ):
         end_user = end_user.return_value.app_scoped_end_users.commands.get_or_create_end_user_by_type
-        end_user.return_value = EndUser(id="machine-user", tenant_id=tenant.id, app_id=app.id, type="openapi")
+        end_user.return_value = EndUser(id="machine-user", tenant_id=tenant.id, app_id=app.id, type=EndUserType.OPENAPI)
         yield flask_app, app.id, token.id, tenant.id, end_user
 
 
@@ -259,23 +260,23 @@ def test_stop_task_rejects_other_token_owner(
 ) -> None:
     import inspect
 
-    from werkzeug.exceptions import NotFound
-
     from controllers.openapi.app_run import AppRunTaskStopApi
 
     flask_app, app_id, _, _, end_user = resource_fixture
     data = call(flask_app, app_id)
     end_user.return_value.id = "machine-user"
     from services.app_task_service import AppTaskControlService
-    from tests.unit_tests.services.test_app_task_service import _StopRedis
+    from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
     redis = _StopRedis(values={"generate_task_belong:task": b"end-user-other-user"})
     with patch(
         "controllers.openapi.app_run.application_services",
         return_value=replace(account_application_services, app_tasks=AppTaskControlService(redis_client=redis)),
     ):
-        with pytest.raises(NotFound):
+        with pytest.raises(NotFoundError, match="Task not found") as raised:
             inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")
+        assert raised.value.code == 404
+        assert raised.value.error_code == "not_found"
         assert redis.operations == []
         redis.values["generate_task_belong:task"] = b"end-user-machine-user"
         inspect.unwrap(AppRunTaskStopApi.post)(AppRunTaskStopApi(), data, app_id, "task")

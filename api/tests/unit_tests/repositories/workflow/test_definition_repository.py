@@ -72,7 +72,7 @@ from services.workflow.definition_gateway import WorkflowDefinitionGateway
 from services.workflow.draft_service import DraftAgentRetirement, WorkflowDraftService
 from services.workflow.environment_variable_service import prepare_environment_variables
 from services.workflow_service import WorkflowService
-from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
 
 CONTEXT = RequestContext("request", None, "account-1", "tenant-1")
 
@@ -1545,9 +1545,9 @@ def test_republish_without_schedule_removes_the_runtime_plan(seeded: sessionmake
         assert session.scalar(select(WorkflowSchedulePlan).where(WorkflowSchedulePlan.app_id == "app-1")) is None
 
 
-@pytest.mark.parametrize("rollback", [False, True])
-def test_agent_bindings_and_active_version_share_the_publication_transaction(
-    seeded: sessionmaker[Session], rollback: bool
+@pytest.mark.parametrize("rollback_at", [None, "knowledge", "after-activation"])
+def test_agent_bindings_knowledge_spaces_and_active_version_share_the_publication_transaction(
+    seeded: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, rollback_at: str | None
 ) -> None:
     from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource
     from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
@@ -1614,6 +1614,32 @@ def test_agent_bindings_and_active_version_share_the_publication_transaction(
         snapshot = workflow_snapshot(draft)
     repository = WorkflowDefinitionRepository(session_factory=seeded)
     published_id = ""
+    knowledge_sync_sessions: list[Session] = []
+
+    def sync_knowledge_spaces(*, session: Session, session_maker: sessionmaker[Session], workflow: Workflow) -> None:
+        nonlocal published_id
+        assert session_maker is seeded
+        published_id = workflow.id
+        published_binding = session.scalar(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == workflow.tenant_id,
+                WorkflowAgentNodeBinding.app_id == workflow.app_id,
+                WorkflowAgentNodeBinding.workflow_id == workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == workflow.version,
+            )
+        )
+        assert published_binding is not None
+        app = session.get(App, workflow.app_id)
+        assert app is not None
+        app.description = "KnowledgeFS bindings synchronized"
+        knowledge_sync_sessions.append(session)
+        if rollback_at == "knowledge":
+            raise RuntimeError("rollback during KnowledgeFS synchronization")
+
+    monkeypatch.setattr(
+        "services.agent.knowledge_spaces.sync_workflow_app_knowledge_bindings",
+        sync_knowledge_spaces,
+    )
 
     with repository.binding_reader() as bindings:
         agents = WorkflowAgentPublishService(repository=bindings).publication_state(draft_workflow=snapshot)
@@ -1630,19 +1656,22 @@ def test_agent_bindings_and_active_version_share_the_publication_transaction(
                 marked_comment="",
             )
             published_id = published.id
-            if rollback:
+            if rollback_at == "after-activation":
                 raise RuntimeError("rollback after binding copy and activation")
 
-    if rollback:
-        with pytest.raises(RuntimeError, match="rollback after binding copy"):
+    should_rollback = rollback_at is not None
+    if should_rollback:
+        with pytest.raises(RuntimeError, match="rollback"):
             publish()
     else:
         publish()
+    assert len(knowledge_sync_sessions) == 1
     with seeded() as session:
         app = session.get(App, "app-1")
         assert app is not None
-        assert app.workflow_id == ("published" if rollback else published_id)
-        assert (session.get(Workflow, published_id) is None) is rollback
+        assert app.workflow_id == ("published" if should_rollback else published_id)
+        assert app.description == ("" if should_rollback else "KnowledgeFS bindings synchronized")
+        assert (session.get(Workflow, published_id) is None) is should_rollback
         bindings = list(
             session.scalars(
                 select(WorkflowAgentNodeBinding).where(
@@ -1650,7 +1679,7 @@ def test_agent_bindings_and_active_version_share_the_publication_transaction(
                 )
             )
         )
-        assert len(bindings) == (0 if rollback else 1)
+        assert len(bindings) == (0 if should_rollback else 1)
         if bindings:
             assert bindings[0].current_snapshot_id == "agent-config"
         assert (

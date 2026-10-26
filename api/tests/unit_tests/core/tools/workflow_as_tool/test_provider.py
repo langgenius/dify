@@ -27,12 +27,13 @@ from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
 from models.model import App, AppMode
+from models.tool_runtime_contracts import WorkflowToolQueries
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.tools.workflow.provider import WorkflowToolProviderController
 from services.tools.workflow.tool import WorkflowTool
 from services.workflow.execution.ports import WorkflowRuntime
-from tests.unit_tests.model_factories import make_account, make_app, make_workflow
+from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 
 
 @pytest.fixture
@@ -46,7 +47,9 @@ def database_session(sqlite_engine: Engine) -> Iterator[Session]:
         yield session
 
 
-def _controller(provider_id: str = "provider-1", *, workflow_queries) -> WorkflowToolProviderController:
+def _controller(
+    provider_id: str = "provider-1", *, workflow_queries: WorkflowToolQueries
+) -> WorkflowToolProviderController:
     entity = ToolProviderEntity(
         identity=ToolProviderIdentity(
             author="author",
@@ -133,7 +136,7 @@ def _workflow_tool(
         ),
         runtime=ToolRuntime(tenant_id=app.tenant_id),
         workflow_app_id=app.id,
-        workflow_entities={"app": app, "workflow": workflow},
+        workflow_id=workflow.id,
         version="1",
         workflow_call_depth=0,
         workflow_runtime=workflow_runtime,
@@ -171,8 +174,8 @@ def _persist_provider_graph(
     return db_provider, app, account, workflow
 
 
-def test_get_tools_builds_entity(database_session: Session, *, workflow_queries):
-    db_provider, app, user, _ = _persist_provider_graph(
+def test_get_tools_builds_entity(database_session: Session, *, workflow_queries: WorkflowToolQueries) -> None:
+    db_provider, _, _, _ = _persist_provider_graph(
         database_session,
         parameter_configuration=json.dumps(
             [
@@ -223,7 +226,9 @@ def test_get_tools_builds_entity(database_session: Session, *, workflow_queries)
     assert controller.provider_type == ToolProviderType.WORKFLOW
 
 
-def test_get_tool_returns_hit_or_none(*, workflow_runtime: WorkflowRuntime, workflow_queries):
+def test_get_tool_returns_hit_or_none(
+    *, workflow_runtime: WorkflowRuntime, workflow_queries: WorkflowToolQueries
+) -> None:
     controller = _controller(workflow_queries=workflow_queries)
     tool = _workflow_tool(workflow_runtime=workflow_runtime)
     controller.tools = [tool]
@@ -232,7 +237,7 @@ def test_get_tool_returns_hit_or_none(*, workflow_runtime: WorkflowRuntime, work
     assert controller.get_tool("missing") is None
 
 
-def test_get_tools_returns_cached(*, workflow_runtime: WorkflowRuntime, workflow_queries):
+def test_get_tools_returns_cached(*, workflow_runtime: WorkflowRuntime, workflow_queries: WorkflowToolQueries) -> None:
     controller = _controller(workflow_queries=workflow_queries)
     cached_tools = [_workflow_tool("wf-cached", tenant_id="tenant-1", workflow_runtime=workflow_runtime)]
     controller.tools = cached_tools
@@ -240,7 +245,7 @@ def test_get_tools_returns_cached(*, workflow_runtime: WorkflowRuntime, workflow
     assert controller.get_tools("tenant-1") == cached_tools
 
 
-def test_from_db_builds_controller(database_session: Session, *, workflow_queries):
+def test_from_db_builds_controller(database_session: Session, *, workflow_queries: WorkflowToolQueries) -> None:
     db_provider, app, user, workflow = _persist_provider_graph(database_session)
 
     with (
@@ -270,10 +275,12 @@ def test_from_db_builds_controller(database_session: Session, *, workflow_querie
     assert built.provider_id == db_provider.id
     assert built.tools is not None
     assert built.tools[0].workflow_app_id == app.id
-    assert built.tools[0].workflow_entities["workflow"].id == workflow.id
+    assert built.tools[0].workflow_id == workflow.id
 
 
-def test_get_tools_returns_empty_when_provider_missing(database_session: Session, *, workflow_queries):
+def test_get_tools_returns_empty_when_provider_missing(
+    database_session: Session, *, workflow_queries: WorkflowToolQueries
+) -> None:
     db_provider, _, _, _ = _persist_provider_graph(database_session)
     controller = _controller(db_provider.id, workflow_queries=workflow_queries)
     controller.tools = None
@@ -281,7 +288,7 @@ def test_get_tools_returns_empty_when_provider_missing(database_session: Session
     assert controller.get_tools(str(uuid.uuid4())) == []
 
 
-def test_get_tools_raises_when_app_missing(database_session: Session, *, workflow_queries):
+def test_get_tools_raises_when_app_missing(database_session: Session, *, workflow_queries: WorkflowToolQueries) -> None:
     db_provider, _, _, _ = _persist_provider_graph(
         database_session,
         include_app=False,

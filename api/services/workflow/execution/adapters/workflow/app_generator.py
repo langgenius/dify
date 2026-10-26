@@ -95,6 +95,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
@@ -113,6 +114,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any]: ...
 
@@ -131,6 +133,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
@@ -148,6 +151,7 @@ class WorkflowAppGenerator(AppInputAdapter):
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
+        allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
@@ -209,6 +213,7 @@ class WorkflowAppGenerator(AppInputAdapter):
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
+                allow_human_input=allow_human_input,
                 call_depth=call_depth,
                 trace_manager=trace_manager,
                 workflow_execution_id=workflow_run_id,
@@ -461,9 +466,9 @@ class WorkflowAppGenerator(AppInputAdapter):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        if self._draft_variable_loader is None:
+        if self.draft_variable_loader is None:
             raise ValueError("Draft variable loader is required for debugging")
-        var_loader = self._draft_variable_loader(workflow, user.id)
+        var_loader = self.draft_variable_loader(workflow, user.id)
 
         return self._generate(
             app_model=app_model,
@@ -544,9 +549,9 @@ class WorkflowAppGenerator(AppInputAdapter):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        if self._draft_variable_loader is None:
+        if self.draft_variable_loader is None:
             raise ValueError("Draft variable loader is required for debugging")
-        var_loader = self._draft_variable_loader(workflow, user.id)
+        var_loader = self.draft_variable_loader(workflow, user.id)
         return self._generate(
             app_model=app_model,
             workflow=workflow,
@@ -593,7 +598,7 @@ class WorkflowAppGenerator(AppInputAdapter):
                     )
                 runner = WorkflowAppRunner(
                     runtime=self._runtime,
-                    draft_variable_saver=self._draft_variable_saver,
+                    draft_variable_saver=self.draft_variable_saver,
                     cancellation=self._cancellation,
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,

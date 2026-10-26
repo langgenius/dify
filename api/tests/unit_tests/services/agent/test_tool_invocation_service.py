@@ -1,18 +1,24 @@
 """Unit tests for the Agent tool inner invoke service with SQLite-backed app lookup."""
 
 from collections.abc import Generator
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from unittest.mock import create_autospec, patch
 
 import pytest
 from sqlalchemy import Connection, Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolProviderType
+from core.tools.entities.tool_entities import (
+    ToolEntity,
+    ToolIdentity,
+    ToolInvokeFrom,
+    ToolInvokeMessage,
+    ToolProviderType,
+)
 from core.tools.errors import (
     ToolInvokeError,
     ToolParameterValidationError,
@@ -72,6 +78,7 @@ def _request() -> AgentToolInvokeRequest:
                 "node_execution_id": "node-exec-1",
                 "agent_id": "agent-1",
                 "agent_config_version_id": "snapshot-1",
+                "trace_session_id": "trace-session-1",
             },
             "tool": {
                 "provider_type": "plugin",
@@ -92,8 +99,15 @@ def _messages() -> Generator[ToolInvokeMessage]:
     )
 
 
-def _tool() -> Tool:
-    return create_autospec(Tool, instance=True, spec_set=True)
+@dataclass
+class _FakeTool:
+    """Resolved tool stub whose runtime metadata is populated by the gateway."""
+
+    runtime: ToolRuntime = field(default_factory=lambda: ToolRuntime(tenant_id=TENANT_ID))
+
+
+def _tool() -> _FakeTool:
+    return _FakeTool()
 
 
 def _variables() -> WorkflowExecutionVariables:
@@ -149,6 +163,9 @@ def test_app_lookup_releases_connection_before_tool_setup_and_stream_consumption
         return tool
 
     class PluginTransport:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
         def invoke(self, **kwargs: object) -> Generator[ToolInvokeMessage]:
             assert not active
             assert kwargs["tenant_id"] == TENANT_ID
@@ -178,8 +195,19 @@ def test_app_lookup_releases_connection_before_tool_setup_and_stream_consumption
 
 
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+@pytest.mark.parametrize(
+    ("workflow_id", "expected_tool_invoke_from"),
+    [
+        ("workflow-1", ToolInvokeFrom.WORKFLOW),
+        (None, ToolInvokeFrom.AGENT),
+    ],
+)
 def test_invoke_uses_agent_tool_runtime_and_returns_observation(
-    sqlite_session: Session, *, workflow_runtime: WorkflowExecutionDependencies
+    sqlite_session: Session,
+    workflow_id: str | None,
+    expected_tool_invoke_from: ToolInvokeFrom,
+    *,
+    workflow_runtime: WorkflowExecutionDependencies,
 ) -> None:
     fake_tool = _tool()
     variables = _variables()
@@ -198,7 +226,9 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation(
             side_effect=lambda messages, **_kwargs: messages,
         ),
     ):
-        response = _service(sqlite_session, runtime, variables).invoke(_request())
+        request = _request()
+        request.caller.workflow_id = workflow_id
+        response = _service(sqlite_session, runtime, variables).invoke(request)
 
     assert response.observation == "ok"
     assert response.metadata == {
@@ -210,6 +240,14 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation(
     assert mock_get_runtime.call_args.kwargs["draft_variable_saver"] is variables.saver_factory
     assert agent_tool.provider_type is ToolProviderType.PLUGIN
     assert agent_tool.tool_parameters == {"region": "us"}
+    assert fake_tool.runtime.dify_run_context is not None
+    assert fake_tool.runtime.dify_run_context.tenant_id == TENANT_ID
+    assert fake_tool.runtime.dify_run_context.app_id == APP_ID
+    assert fake_tool.runtime.dify_run_context.user_id == USER_ID
+    assert fake_tool.runtime.dify_run_context.user_from is UserFrom.ACCOUNT
+    assert fake_tool.runtime.dify_run_context.invoke_from is InvokeFrom.SERVICE_API
+    assert fake_tool.runtime.dify_run_context.trace_session_id == "trace-session-1"
+    assert fake_tool.runtime.tool_invoke_from is expected_tool_invoke_from
     tool_invoker.assert_called_once()
     assert "session" not in tool_invoker.call_args.kwargs
     assert not sqlite_session.in_transaction()

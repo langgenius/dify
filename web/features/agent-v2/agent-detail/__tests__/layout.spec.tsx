@@ -105,12 +105,13 @@ describe('AgentDetailLayout', () => {
     expect(router.replace).not.toHaveBeenCalled()
   })
 
-  it('redirects to the roster when the agent no longer exists', async () => {
+  it('redirects a missing agent to the roster', async () => {
     const { wrapper, queryClient } = setup()
     queryClient.removeQueries({ queryKey: detailKey })
     detailRequest.mockRejectedValueOnce(createHttpError(new Response(null, { status: 404 })))
     render(content, { wrapper })
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/agents'))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
   })
 })
