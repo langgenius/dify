@@ -415,8 +415,7 @@ function CreateKnowledgeSession() {
             <span aria-hidden className="i-ri-close-line size-5" />
           </IconButton>
 
-          <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle xl:items-end xl:border-e">
-            <div className="h-6 shrink-0 [@media(max-height:600px)]:h-3" />
+          <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle py-6 xl:items-end xl:border-e [@media(max-height:600px)]:py-3">
             <Form
               className="flex min-h-0 w-full max-w-180 flex-1 flex-col"
               onFormSubmit={() => void handleSubmit()}
@@ -635,7 +634,6 @@ function CreateKnowledgeSession() {
                 </div>
               </div>
             </Form>
-            <div className="h-6 shrink-0 [@media(max-height:600px)]:h-3" />
           </div>
 
           <aside className="hidden min-h-0 min-w-0 xl:block">
