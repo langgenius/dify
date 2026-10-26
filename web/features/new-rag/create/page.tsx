@@ -416,12 +416,12 @@ function CreateKnowledgeSession() {
           </IconButton>
 
           <div className="flex min-h-0 min-w-0 flex-col items-center border-divider-subtle xl:items-end xl:border-e">
-            <div className="h-6 shrink-0" />
+            <div className="h-6 shrink-0 [@media(max-height:600px)]:h-3" />
             <Form
               className="flex min-h-0 w-full max-w-180 flex-1 flex-col"
               onFormSubmit={() => void handleSubmit()}
             >
-              <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
+              <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10 [@media(max-height:600px)]:pb-3">
                 <DialogTitle id={dialogTitleId}>
                   {t(($) => $.createTitle, { ns: 'knowledgeCreate' })}
                 </DialogTitle>
@@ -603,7 +603,7 @@ function CreateKnowledgeSession() {
                 </div>
               </div>
 
-              <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10">
+              <div className="shrink-0 border-t border-divider-subtle px-6 pt-7 pb-12 sm:px-10 [@media(max-height:600px)]:py-3">
                 <div
                   aria-hidden={startMode !== 'upload'}
                   className={startMode === 'upload' ? 'mb-4' : 'invisible mb-4'}
@@ -635,7 +635,7 @@ function CreateKnowledgeSession() {
                 </div>
               </div>
             </Form>
-            <div className="h-6 shrink-0" />
+            <div className="h-6 shrink-0 [@media(max-height:600px)]:h-3" />
           </div>
 
           <aside className="hidden min-h-0 min-w-0 xl:block">

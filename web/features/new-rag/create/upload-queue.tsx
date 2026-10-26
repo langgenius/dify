@@ -84,7 +84,7 @@ export function CreateUploadQueue({
       <label
         htmlFor={inputId}
         className={cn(
-          'flex h-16 flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-divider-regular bg-background-section px-4 text-center outline-hidden transition-colors motion-reduce:transition-none',
+          'flex min-h-16 flex-col items-center justify-center gap-1 rounded-[10px] border border-dashed border-divider-regular bg-background-section px-4 py-2 text-center outline-hidden transition-colors motion-reduce:transition-none',
           'peer-focus-visible:ring-2 peer-focus-visible:ring-state-accent-solid',
           disabled
             ? 'cursor-not-allowed opacity-60'
