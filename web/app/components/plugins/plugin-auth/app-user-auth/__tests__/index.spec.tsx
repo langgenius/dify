@@ -188,6 +188,8 @@ describe('AppUserAuth', () => {
       screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
     )
     const trigger = region.getByRole('button', { name: /^plugin.auth.appUser.testConnection/ })
+    expect(trigger).toHaveAccessibleName('plugin.auth.appUser.testConnection')
+    expect(trigger).not.toHaveTextContent('plugin.auth.unavailable')
     expect(onChange).not.toHaveBeenCalled()
     await user.click(trigger)
     const picker = within(await screen.findByRole('dialog', { name: 'plugin.auth.authorization' }))
@@ -200,8 +202,34 @@ describe('AppUserAuth', () => {
     expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ testCredentialId: 'workspace-oauth' }),
     )
-    expect(region.getByRole('button', { name: /^Workspace OAuth/ })).toBeVisible()
+    expect(region.getByRole('button', { name: /^Workspace OAuth/ })).toHaveTextContent(
+      'plugin.auth.connection.oauth',
+    )
     expect(JSON.stringify(onChange.mock.calls)).not.toContain('testConnection')
+  })
+
+  it('keeps an empty test credential list unselected without reporting an unavailable credential', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn<(draft: AppUserAuthDraft) => void>()
+    render(
+      <AppUserAuth
+        pluginPayload={pluginPayload}
+        authorization={{ ...authorization, isAuthorized: false, credentials: [] }}
+        value={{ ...createAppUserAuthDraft(), testCredentialId: null }}
+        onChange={onChange}
+      />,
+    )
+    const region = within(
+      screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
+    )
+    const trigger = region.getByRole('button', { name: 'plugin.auth.appUser.testConnection' })
+    expect(trigger).not.toHaveTextContent('plugin.auth.unavailable')
+    expect(trigger).toBeEnabled()
+    await user.click(trigger)
+    const picker = within(await screen.findByRole('dialog', { name: 'plugin.auth.authorization' }))
+    expect(picker.queryByRole('button', { pressed: true })).not.toBeInTheDocument()
+    expect(picker.getByRole('button', { name: 'plugin.auth.common.addApiKey' })).toBeEnabled()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -233,6 +261,8 @@ describe('AppUserAuth', () => {
       )
       await user.click(screen.getByRole('checkbox', { name: checkbox }))
       const trigger = region.getByRole('button', { name: /^plugin.auth.appUser.testConnection/ })
+      expect(trigger).toHaveAccessibleName('plugin.auth.appUser.testConnection')
+      expect(trigger).not.toHaveTextContent('plugin.auth.unavailable')
       expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ testCredentialId: id }))
       await user.click(trigger)
       const picker = within(

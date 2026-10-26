@@ -189,6 +189,49 @@ describe('WorkspaceConnectionSelector', () => {
     expect(screen.queryByRole('button', { name: /Team API connection/ })).not.toBeInTheDocument()
   })
 
+  it.each([
+    {
+      state: 'deleted selected credential',
+      credentialId: 'deleted-credential',
+      useWorkspaceDefault: false,
+      serverCredentials: credentials,
+      expectedName: 'plugin.auth.authRemoved',
+    },
+    {
+      state: 'selected credential without use permission',
+      credentialId: 'personal-oauth',
+      useWorkspaceDefault: false,
+      serverCredentials: credentials.map((credential) => ({
+        ...credential,
+        not_allowed_to_use: credential.id === 'personal-oauth',
+      })),
+      expectedName: 'Personal OAuth connection',
+    },
+    {
+      state: 'missing Workspace default',
+      credentialId: undefined,
+      useWorkspaceDefault: true,
+      serverCredentials: credentials.map((credential) => ({ ...credential, is_default: false })),
+      expectedName: 'plugin.auth.workspaceDefault',
+    },
+  ])(
+    'retains the unavailable message for a $state',
+    ({ credentialId, useWorkspaceDefault, serverCredentials, expectedName }) => {
+      const onAuthorizationItemClick = vi.fn()
+      renderSelector({
+        credentialId,
+        useWorkspaceDefault,
+        authorization: createAuthorization({ credentials: serverCredentials }),
+        onAuthorizationItemClick,
+      })
+
+      expect(
+        screen.getByRole('button', { name: `${expectedName} plugin.auth.unavailable` }),
+      ).toBeVisible()
+      expect(onAuthorizationItemClick).not.toHaveBeenCalled()
+    },
+  )
+
   it('shows the default badge independently of the current connection selection', async () => {
     const user = userEvent.setup()
     const ControlledSelector = () => {

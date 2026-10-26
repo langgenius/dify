@@ -68,6 +68,9 @@ const ConnectionPicker = ({
 }: ConnectionPickerProps) => {
   const { t } = useTranslation(['plugin', 'common'])
   const selectedName = selected?.name || fallbackName
+  const selectedSubtitle =
+    selected?.subtitle ??
+    (unavailable ? t(($) => $['auth.unavailable'], { ns: 'plugin' }) : undefined)
   const methodLabel = (method: CredentialType) =>
     method === CredentialTypeEnum.OAUTH2
       ? t(($) => $['auth.connection.oauth'], { ns: 'plugin' })
@@ -96,9 +99,11 @@ const ConnectionPicker = ({
           >
             {selectedName}
           </span>
-          <span className="truncate system-xs-regular text-text-tertiary">
-            {selected?.subtitle ?? t(($) => $['auth.unavailable'], { ns: 'plugin' })}
-          </span>
+          {selectedSubtitle && (
+            <span className="truncate system-xs-regular text-text-tertiary">
+              {selectedSubtitle}
+            </span>
+          )}
         </span>
         {selected?.isDefault && (
           <Badge className="shrink-0">{t(($) => $['auth.default'], { ns: 'plugin' })}</Badge>
