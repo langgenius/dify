@@ -183,6 +183,10 @@ class OAuthAccessTokenResolver:
         self._positive_ttl = positive_ttl
         self._negative_ttl = negative_ttl
 
+    @property
+    def redis_client(self):
+        return self._redis
+
     def for_token_type(self, token_type: TokenType) -> Resolver:
         return _TokenTypeResolver(self, token_type)
 
@@ -246,7 +250,9 @@ class _TokenTypeResolver:
         if cached is not None and not isinstance(cached, str):
             if not self._matches_subject(cached):
                 return None
-            return cached
+            if cached.expires_at is None or cached.expires_at > datetime.now(UTC):
+                return cached
+            invalidate_oauth_token_cache(self._parent.redis_client, token_hash)
 
         # Flask-SQLAlchemy's scoped_session is request-bound and not a
         # context manager; use it directly.

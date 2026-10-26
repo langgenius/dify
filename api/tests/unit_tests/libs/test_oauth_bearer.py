@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
 from redis import Redis
 from sqlalchemy.orm import sessionmaker
 
-from constants.oauth_bearer import Scope, SubjectType, TokenType
+from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT, Scope, SubjectType, TokenType
 from libs.oauth_bearer import (
     BearerAuthenticator,
     InvalidBearerError,
@@ -16,6 +17,7 @@ from libs.oauth_bearer import (
     ResolvedRow,
     Resolver,
     _TokenTypeResolver,
+    sha256_hex,
 )
 
 """The bearer catalog: which subject each token type serves and what it may do."""
@@ -95,3 +97,79 @@ def test_every_refusal_raises_the_generic_invalid_bearer(
         auth.authenticate(token)
     assert str(exc.value) == "invalid_bearer"
     assert rl.called is rate_limited
+
+
+@dataclass
+class _FakeRedis:
+    store: dict[str, str] = field(default_factory=dict)
+
+    def get(self, key: str) -> str | None:
+        return self.store.get(key)
+
+    def setex(self, key: str, _ttl: int, value: str) -> None:
+        self.store[key] = value
+
+    def delete(self, *keys: str) -> None:
+        for key in keys:
+            self.store.pop(key, None)
+
+
+@dataclass
+class _FakeTokenRow:
+    expires_at: datetime
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    account_id: uuid.UUID = field(default_factory=uuid.uuid4)
+    prefix: str = TokenType.OAUTH_ACCOUNT.prefix
+    subject_email: str = "who@example.com"
+    subject_issuer: str = "issuer"
+    client_id: str = "client"
+
+
+@dataclass
+class _FakeResult:
+    rowcount: int = 1
+
+
+@dataclass
+class _FakeSession:
+    row: _FakeTokenRow
+
+    def query(self, *_args: object) -> _FakeSession:
+        return self
+
+    def filter(self, *_args: object) -> _FakeSession:
+        return self
+
+    def one_or_none(self) -> _FakeTokenRow:
+        return self.row
+
+    def execute(self, _stmt: object) -> _FakeResult:
+        return _FakeResult()
+
+    def commit(self) -> None:
+        pass
+
+
+def test_cached_row_past_expiry_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("libs.oauth_bearer.enforce_bearer_rate_limit", lambda _h: None)
+    expired_at = datetime.now(UTC) - timedelta(seconds=1)
+    db_row = _FakeTokenRow(expires_at=expired_at)
+    redis = _FakeRedis()
+    oauth = OAuthAccessTokenResolver(lambda: _FakeSession(db_row), redis)
+    token = "dfoa_stale"
+    token_hash = sha256_hex(token)
+    cached = ResolvedRow(
+        subject_email=db_row.subject_email,
+        subject_issuer=db_row.subject_issuer,
+        account_id=db_row.account_id,
+        client_id=db_row.client_id,
+        token_id=db_row.id,
+        expires_at=expired_at,
+    )
+    oauth.cache_set_positive(token_hash, cached)
+    auth = _authenticator_with(oauth.for_token_type(TokenType.OAUTH_ACCOUNT))
+
+    with pytest.raises(InvalidBearerError):
+        auth.authenticate(token)
+
+    assert redis.store[TOKEN_CACHE_KEY_FMT.format(hash=token_hash)] == "invalid"
