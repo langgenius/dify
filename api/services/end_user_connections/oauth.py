@@ -53,6 +53,7 @@ class OAuthClientSnapshot:
 @dataclass(frozen=True)
 class ResolvedOAuthClient:
     snapshot: OAuthClientSnapshot
+    plugin_unique_identifier: str
     parameters: Mapping[str, Any] = field(repr=False)
 
 

@@ -1,7 +1,7 @@
 """Resolve a tool's fixed credential source without falling back to workspace credentials."""
 
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from clients.plugin.auth import PluginCredentialAuthClient
 from constants.end_user_connections import ConnectionCredentialType
@@ -29,6 +29,10 @@ from services.end_user_connections.errors import (
 from services.end_user_connections.policy import require_owned_connection
 from services.workflow.tool_credentials import resolve_tool_credential_root
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from core.tools.workflow_as_tool.tool import WorkflowTool
+
 
 def get_tool_runtime(
     *,
@@ -38,10 +42,17 @@ def get_tool_runtime(
     node_id: str,
     spec: WorkflowToolRuntimeSpec,
     variable_pool: VariablePool | None,
+    execution_driver: "WorkflowRunDriver | None" = None,
+    workflow_tool_definition: "WorkflowTool | None" = None,
 ) -> Tool:
     try:
         root_id, root = resolve_tool_credential_root(graph, node_id)
-        if root.tool_name != spec.tool_name or root.provider_type.value != spec.provider_type.value:
+        node_data = next(
+            node["data"]
+            for node in graph.get("nodes", [])
+            if node.get("type") != "custom-note" and node["id"] == node_id
+        )
+        if node_data["tool_name"] != spec.tool_name or root.provider_type.value != spec.provider_type.value:
             raise ConnectionConfigurationError()
         if spec.provider_id != root.provider_id and str(ToolProviderID(spec.provider_id)) != str(
             ToolProviderID(root.provider_id)
@@ -57,6 +68,7 @@ def get_tool_runtime(
                 invoke_from=run_context.invoke_from,
                 tool_invoke_from=ToolInvokeFrom.WORKFLOW,
                 credential_id=root.credential_id,
+                execution_driver=execution_driver,
             )
         else:
             context = run_context.connection_context
@@ -142,6 +154,8 @@ def get_tool_runtime(
             run_context.invoke_from,
             variable_pool,
             tool_runtime=tool,
+            execution_driver=execution_driver,
+            workflow_tool_definition=workflow_tool_definition,
         )
     except ConnectionError as exc:
         raise ToolRuntimeResolutionError(str(exc)) from None

@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "Resurse",
   "resourceAccessToken.searchPlaceholder": "Caută tokenuri…",
   "resourceAccessToken.searchResourcesPlaceholder": "Caută aplicații sau baze de cunoștințe…",
-  "resourceAccessToken.tabAll": "Toate",
+  "resourceAccessToken.tabAllTypes": "Toate tipurile",
   "resourceAccessToken.tabApps": "Aplicații",
   "resourceAccessToken.tabKnowledgeBases": "Baze de cunoștințe",
   "resourceAccessToken.token": "Token",

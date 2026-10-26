@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Загрузка баз знаний Agent…",
   "agentDetail.configure.knowledgeFs.rebind": "Импортированная привязка: явно выберите эту базу знаний Agent повторно или замените её доступной базой знаний Agent.",
   "agentDetail.configure.knowledgeFs.retry": "Повторить",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "Поиск в базах знаний Agent недоступен в этом развёртывании. Попросите администратора включить его.",
   "agentDetail.configure.knowledgeFs.select": "Выберите до 10 баз знаний Agent",
   "agentDetail.configure.knowledgeFs.title": "База знаний Agent",
   "agentDetail.configure.knowledgeFs.unavailable": "Эта база знаний Agent недоступна или у вас нет прав на её использование в этом агенте.",

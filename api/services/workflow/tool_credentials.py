@@ -43,6 +43,7 @@ class ToolCredentialConfig(BaseModel):
 
     Independent nodes can select different Connections for the same provider. Only an explicit
     reuse reference shares another node's authentication; personal Connection IDs stay out of the graph.
+    Nodes using different tools from the same provider can share authentication.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -123,8 +124,8 @@ def requires_end_user_connections(graph: Mapping[str, Any]) -> bool:
     )
 
 
-def _same_tool(data: Mapping[str, Any], target_data: Mapping[str, Any]) -> bool:
-    if any(data.get(field) != target_data.get(field) for field in ("provider_type", "tool_name")):
+def _same_provider(data: Mapping[str, Any], target_data: Mapping[str, Any]) -> bool:
+    if data.get("provider_type") != target_data.get("provider_type"):
         return False
     provider = data.get("provider_id")
     target_provider = target_data.get("provider_id")
@@ -272,8 +273,8 @@ def check_tool_credentials(graph: Mapping[str, Any], *, complete: bool) -> list[
             message = f"Reuse target {target_id!r} must configure authentication directly."
         elif target_id in invalid_nodes:
             message = f"Reuse target {target_id!r} has incomplete authentication settings."
-        elif not _same_tool(data, target_data):
-            message = f"Reuse target {target_id!r} must use the same plugin, provider, and tool."
+        elif not _same_provider(data, target_data):
+            message = f"Reuse target {target_id!r} must use the same provider type, plugin, and provider."
         else:
             continue
         issues.append(ToolCredentialIssue(node_id, ("reuse_node_id",), message))

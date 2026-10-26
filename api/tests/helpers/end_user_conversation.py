@@ -8,8 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
 from context.connection_execution import ConnectionExecutionContext
-from core.app.entities.app_invoke_entities import InvokeFrom
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser
 from models.workflow import Workflow
 from services.end_user_connection_execution_adapters import prepare_web_connection_execution

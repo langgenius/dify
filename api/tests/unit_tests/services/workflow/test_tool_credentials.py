@@ -211,8 +211,9 @@ def test_explicit_reuse_does_not_constrain_other_nodes_of_the_same_provider() ->
 
 @pytest.mark.parametrize("source", ["workspace", "end_user"])
 @pytest.mark.parametrize("target_first", [False, True])
+@pytest.mark.parametrize("tool_name", ["read", "send"])
 def test_reuse_inherits_direct_workspace_or_end_user_auth_without_duplicate_settings(
-    source: str, target_first: bool
+    source: str, target_first: bool, tool_name: str
 ) -> None:
     target = tool_node("target")
     if source == "workspace":
@@ -220,6 +221,7 @@ def test_reuse_inherits_direct_workspace_or_end_user_auth_without_duplicate_sett
     else:
         target["data"]["test_credential_id"] = "test-credential"
     reuse = reuse_node("reuse", "target")
+    reuse["data"]["tool_name"] = tool_name
     graph = {"nodes": [target, reuse] if target_first else [reuse, target]}
 
     assert check_tool_credentials(graph, complete=True) == []
@@ -256,6 +258,7 @@ def test_reuse_accepts_plugin_aliases_without_rewriting_stored_nodes(
         target["data"].update(credential_source="workspace", end_user_auth=None, credential_id="shared")
     reuse = reuse_node("reuse", "target")
     reuse["data"]["provider_id"] = legacy_id if reverse else canonical_id
+    reuse["data"]["tool_name"] = "send"
     graph = {"nodes": [target, reuse]}
     original = deepcopy(graph)
 
@@ -293,11 +296,10 @@ def test_matching_local_providers_remain_compatible() -> None:
         {"provider_id": "other/jina_tool/jina"},
         {"provider_id": "langgenius/jina_tool/other"},
         {"provider_id": "invalid/provider"},
-        {"provider_id": "langgenius/jina_tool/jina", "tool_name": "other-tool"},
         {"provider_id": "langgenius/jina_tool/jina", "provider_type": "plugin"},
     ],
 )
-def test_alias_compatibility_preserves_provider_and_tool_boundaries(overrides: dict[str, object]) -> None:
+def test_alias_compatibility_preserves_provider_boundaries(overrides: dict[str, object]) -> None:
     target = tool_node("target", provider_id="jina")
     reuse = reuse_node("reuse", "target")
     reuse["data"].update(overrides)
@@ -340,9 +342,7 @@ def test_reuse_cannot_override_the_target_authentication(overrides: dict[str, ob
     assert issue.path == (next(iter(overrides)),)
 
 
-@pytest.mark.parametrize(
-    "target", [None, "missing", "start", "incomplete", "other-provider", "other-plugin", "other-tool"]
-)
+@pytest.mark.parametrize("target", [None, "missing", "start", "incomplete", "other-provider", "other-plugin"])
 def test_invalid_reuse_targets_are_located(target: str | None) -> None:
     nodes = [
         reuse_node("reuse", target),
@@ -350,7 +350,6 @@ def test_invalid_reuse_targets_are_located(target: str | None) -> None:
         tool_node("incomplete", end_user_auth={}),
         tool_node("other-provider", provider_id="langgenius/calendar/other"),
         tool_node("other-plugin", provider_id="vendor/calendar/calendar"),
-        tool_node("other-tool", tool_name="send"),
     ]
     issues = check_tool_credentials({"nodes": nodes}, complete=True)
     [issue] = [issue for issue in issues if issue.node_id == "reuse"]

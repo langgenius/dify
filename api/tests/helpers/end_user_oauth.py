@@ -44,6 +44,7 @@ class ScriptedOAuthHandler(OAuthHandler):
         )
         self.on_exchange: Callable[[], None] | None = None
         self.callback_headers: dict[str, str] = {}
+        self.requested_artifacts: list[str | None] = []
         self.exchanges = 0
         self.refreshes: list[dict[str, Any]] = []
         self.on_refresh: Callable[[], None] | None = None
@@ -62,7 +63,10 @@ class ScriptedOAuthHandler(OAuthHandler):
         provider: str,
         redirect_uri: str,
         system_credentials: Mapping[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthAuthorizationUrlResponse:
+        self.requested_artifacts.append(plugin_unique_identifier)
         return PluginOAuthAuthorizationUrlResponse(
             authorization_url=f"https://provider.example/authorize?state={uuidv7()}"
         )
@@ -77,7 +81,10 @@ class ScriptedOAuthHandler(OAuthHandler):
         redirect_uri: str,
         system_credentials: Mapping[str, Any],
         request: Request,
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthCredentialsResponse:
+        self.requested_artifacts.append(plugin_unique_identifier)
         self.exchanges += 1
         self.callback_headers = dict(request.headers)
         if callback := self.on_exchange:
@@ -95,7 +102,10 @@ class ScriptedOAuthHandler(OAuthHandler):
         redirect_uri: str,
         system_credentials: Mapping[str, Any],
         credentials: Mapping[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthCredentialsResponse:
+        self.requested_artifacts.append(plugin_unique_identifier)
         self.refreshes.append(dict(credentials))
         if callback := self.on_refresh:
             self.on_refresh = None

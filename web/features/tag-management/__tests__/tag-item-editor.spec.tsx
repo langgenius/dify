@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
 import { TagItemEditor } from '../components/tag-item-editor'
+import { TagManagementModal } from '../components/tag-management-modal'
+import { renderWithTags } from './render'
 
 const tagMocks = vi.hoisted(() => {
   const record = vi.fn()
@@ -50,6 +52,13 @@ vi.mock('@/app/notifications', () => ({
   toast: tagMocks.api,
 }))
 
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: ['app.tag.manage'],
+  }))
+})
+
 const baseTag: Tag = {
   id: 'tag-1',
   name: 'Frontend',
@@ -65,6 +74,12 @@ const i18n = {
 
 const render = (ui: Parameters<typeof renderComponent>[0]) =>
   renderComponent(ui, { wrapper: createQueryClientWrapper(createTestQueryClient()) })
+
+const renderManagementModal = () =>
+  renderWithTags(<TagManagementModal type="app" show onClose={vi.fn()} />, [
+    { ...baseTag, binding_count: '' },
+    { ...baseTag, id: 'tag-2', name: 'Backend', binding_count: '' },
+  ])
 
 describe('TagItemEditor', () => {
   beforeEach(() => {
@@ -172,10 +187,9 @@ describe('TagItemEditor', () => {
 
   // Remove behavior for direct delete and confirm modal paths.
   describe('Remove Flow', () => {
-    it('should delete immediately when binding count is zero', async () => {
+    it('removes an unbound tag from the list without a success toast', async () => {
       const user = userEvent.setup()
-      const removableTag: Tag = { ...baseTag, binding_count: '' }
-      render(<TagItemEditor tag={removableTag} />)
+      renderManagementModal()
 
       const removeButton = screen.getByRole('button', { name: i18n.removeTag })
       expect(removeButton).toBeInTheDocument()
@@ -184,12 +198,9 @@ describe('TagItemEditor', () => {
       await waitFor(() => {
         expect(tagMocks.deleteTag).toHaveBeenCalledWith({ params: { tag_id: 'tag-1' } })
       })
-      await waitFor(() =>
-        expect(tagMocks.record).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'common.actionMsg.modifiedSuccessfully',
-        }),
-      )
+      await waitFor(() => expect(screen.queryByText('Frontend')).not.toBeInTheDocument())
+      expect(screen.getByText('Backend')).toBeInTheDocument()
+      expect(tagMocks.api.success).not.toHaveBeenCalled()
     })
 
     it('does not send another delete while the first request is pending', async () => {
@@ -266,8 +277,7 @@ describe('TagItemEditor', () => {
     it('should notify error and keep tag when delete request fails', async () => {
       const user = userEvent.setup()
       vi.mocked(tagMocks.deleteTag).mockRejectedValueOnce(new Error('delete failed'))
-      const removableTag: Tag = { ...baseTag, binding_count: '' }
-      render(<TagItemEditor tag={removableTag} />)
+      renderManagementModal()
 
       const removeButton = screen.getByRole('button', { name: i18n.removeTag })
       await user.click(removeButton)
@@ -281,6 +291,9 @@ describe('TagItemEditor', () => {
           message: 'common.actionMsg.modifiedUnsuccessfully',
         }),
       )
+      expect(screen.getByText('Frontend')).toBeInTheDocument()
+      expect(screen.getByText('Backend')).toBeInTheDocument()
+      expect(tagMocks.api.success).not.toHaveBeenCalled()
     })
   })
 })

@@ -411,3 +411,13 @@ def test_missing_metadata_does_not_copy_credentials_into_label(harness: OAuthHar
     harness.handler.result = harness.handler.result.model_copy(update={"metadata": {"account": "unapproved-identity"}})
     connection = harness.finish(harness.start())
     assert connection.account_label is None
+
+
+def test_oauth_operations_use_the_resolved_plugin_declaration(harness: OAuthHarness) -> None:
+    identifier = harness.providers.controller.plugin_unique_identifier
+    connection = harness.finish(harness.start())
+    assert harness.handler.requested_artifacts == [identifier, identifier]
+    harness.base.service.check_connection(harness.base.context, connection.id)
+    assert harness.base.auth.check_artifacts[-1] == identifier
+    harness.base.service.delete_connection(harness.base.context, connection.id)
+    assert harness.base.auth.revocation_artifacts == [identifier]

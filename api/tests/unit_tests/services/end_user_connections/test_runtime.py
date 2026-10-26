@@ -146,18 +146,23 @@ def test_unusable_personal_connection_fails_without_fallback(
     workspace.assert_not_called()
 
 
-def test_reuse_inherits_only_credentials_and_uses_the_run_graph(harness: OAuthHarness) -> None:
+@pytest.mark.parametrize("tool_name", ["read", "send"])
+def test_reuse_inherits_only_credentials_and_uses_the_run_graph(harness: OAuthHarness, tool_name: str) -> None:
     selected = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     root = node_data(tool_configurations={"mode": {"type": "constant", "value": "root"}})
     child = node_data(
         credential_source="reuse_node",
         reuse_node_id="tool-1",
+        tool_name=tool_name,
         tool_configurations={"mode": {"type": "constant", "value": "child"}},
     )
     child.pop("end_user_auth")
     graph = {"nodes": [{"id": "tool-1", "data": root}, {"id": "child", "data": child}]}
     assert harness.providers.controller.entity.tools is not None
-    harness.providers.controller.entity.tools[0].parameters = [
+    child_tool = harness.providers.controller.entity.tools[0].model_copy(deep=True)
+    child_tool.identity.name = "send"
+    harness.providers.controller.entity.tools.append(child_tool)
+    harness.providers.controller.get_tool(tool_name).entity.parameters = [
         ToolParameter.model_validate(
             {
                 "name": "mode",
@@ -180,6 +185,7 @@ def test_reuse_inherits_only_credentials_and_uses_the_run_graph(harness: OAuthHa
         node_id="child", node_data=ToolNodeData.model_validate(child), variable_pool=VariablePool()
     )
     tool = loader._tool_from_handle(handle)
+    assert tool.entity.identity.name == tool_name
     assert tool.runtime.credentials == {"api_key": "original-secret"}
     assert tool.runtime.runtime_parameters == {"mode": "child"}
 
@@ -296,12 +302,15 @@ def test_runtime_context_cannot_be_used_under_another_execution(harness: OAuthHa
         loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
 
 
-def test_reuse_of_workspace_source_keeps_existing_resolution(harness: OAuthHarness, mocker: MockerFixture) -> None:
+@pytest.mark.parametrize("tool_name", ["read", "send"])
+def test_reuse_of_workspace_source_keeps_existing_resolution(
+    harness: OAuthHarness, mocker: MockerFixture, tool_name: str
+) -> None:
     from core.tools.__base.tool_runtime import ToolRuntime
 
     root = node_data(credential_source="workspace", credential_id="workspace-credential")
     root.pop("end_user_auth")
-    child = node_data(credential_source="reuse_node", reuse_node_id="root")
+    child = node_data(credential_source="reuse_node", reuse_node_id="root", tool_name=tool_name)
     child.pop("end_user_auth")
     outer = context(harness, {}).model_copy(
         update={"connection_context": None, "invoke_from": InvokeFrom.DEBUGGER, "user_from": UserFrom.ACCOUNT}
@@ -323,6 +332,7 @@ def test_reuse_of_workspace_source_keeps_existing_resolution(harness: OAuthHarne
         loader.get_runtime(node_id="child", node_data=ToolNodeData.model_validate(child), variable_pool=None)
     )
     workspace.assert_called_once()
+    assert workspace.call_args.kwargs["tool_name"] == tool_name
     assert workspace.call_args.kwargs["credential_id"] == "workspace-credential"
     assert result.runtime.credentials == {"api_key": "workspace-secret"}
     assert result.runtime.connection_id is None
@@ -375,13 +385,25 @@ def test_replacement_during_decryption_is_not_injected(harness: OAuthHarness, mo
         loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
 
 
-def test_actual_tool_cannot_differ_from_the_pinned_graph(harness: OAuthHarness) -> None:
+@pytest.mark.parametrize("reuse", [False, True])
+def test_actual_tool_cannot_differ_from_the_pinned_graph(harness: OAuthHarness, reuse: bool) -> None:
     selected = harness.base.service.create_api_key(harness.base.context, harness.base.command())
-    loader = runtime(harness, selected.id)
+    graph = {"nodes": [{"id": "tool-1", "data": node_data()}]}
+    if reuse:
+        child = node_data(credential_source="reuse_node", reuse_node_id="tool-1", tool_name="send")
+        child.pop("end_user_auth")
+        graph["nodes"].append({"id": "child", "data": child})
+    loader = DifyToolNodeRuntime(
+        context(harness, {"tool-1": selected.id}), workflow_id=harness.base.workflow_id, graph=graph
+    )
     with pytest.raises(ToolRuntimeResolutionError, match="compatible"):
         loader.get_runtime(
-            node_id="tool-1",
-            node_data=ToolNodeData.model_validate(node_data(tool_name="different-action")),
+            node_id="child" if reuse else "tool-1",
+            node_data=ToolNodeData.model_validate(
+                node_data(credential_source="reuse_node", reuse_node_id="tool-1")
+                if reuse
+                else node_data(tool_name="different-action")
+            ),
             variable_pool=None,
         )
 
