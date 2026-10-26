@@ -506,12 +506,14 @@ class KnowledgeRetrievalRepository:
                 if show_retrieve_source:
                     dataset_ids = [record.segment.dataset_id for record in authorized_records]
                     document_ids = [record.segment.document_id for record in authorized_records]
-                    dataset_document_stmt = select(DatasetDocument).where(
-                        DatasetDocument.id.in_(document_ids),
-                        DatasetDocument.enabled.is_(True),
-                        DatasetDocument.archived.is_(False),
+                    from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
+
+                    documents = get_retrieval_source_documents(
+                        tenant_id=tenant_id,
+                        dataset_ids=dataset_ids,
+                        document_ids=document_ids,
+                        session=session,
                     )
-                    documents = session.execute(dataset_document_stmt).scalars().all()  # type: ignore
                     dataset_stmt = select(Dataset).where(
                         Dataset.id.in_(dataset_ids),
                     )
