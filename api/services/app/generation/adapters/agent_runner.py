@@ -42,6 +42,7 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueRetrieverResourcesEvent,
 )
 from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -63,6 +64,7 @@ from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
 from models.model import MessageAgentThought
+from services.agent.knowledge_citations import knowledge_sources_from_tool_part
 from services.app.generation.adapters.agent_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequest,
@@ -278,6 +280,7 @@ class _AgentProcessRecorder:
         self._tool_by_index: dict[int, str] = {}
         self._tool_by_call_id: dict[str, str] = {}
         self._open_tool_by_name: dict[str, set[str]] = {}
+        self._knowledge_receipts: set[str] = set()
 
     def handle_stream_event(self, event: AgentBackendStreamInternalEvent) -> None:
         data = event.data
@@ -435,6 +438,16 @@ class _AgentProcessRecorder:
 
     def _record_tool_return_part(self, part: dict[str, Any]) -> None:
         self._close_thinking_segments()
+        sources = []
+        for source in knowledge_sources_from_tool_part(part):
+            citation = source.knowledge_fs_citation
+            if citation and citation.id not in self._knowledge_receipts and len(self._knowledge_receipts) < 200:
+                self._knowledge_receipts.add(citation.id)
+                sources.append(source)
+        if sources:
+            self._queue_manager.publish(
+                QueueRetrieverResourcesEvent(retriever_resources=sources), PublishFrom.APPLICATION_MANAGER
+            )
         tool_call_id = _string_or_none(part.get("tool_call_id"))
         tool_name = _string_or_none(part.get("tool_name"))
         content = part.get("content")
