@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator, Sequence
 from dataclasses import dataclass
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -32,6 +32,9 @@ from services.workflow.execution.ports import (
     WorkflowExecutionLogs,
     WorkflowToolInvoker,
 )
+
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
 
 
 class _SessionBoundWorkflowToolInvoker(WorkflowToolInvoker):
@@ -69,6 +72,7 @@ class _SessionBoundWorkflowToolInvoker(WorkflowToolInvoker):
 
 @dataclass(frozen=True)
 class WorkflowExecutionDependencies:
+    execution_driver: WorkflowRunDriver
     history: ConversationHistory
     attachments: RetrieverAttachments
     datasource_credentials: DatasourceCredentials
@@ -115,11 +119,13 @@ def build_workflow_execution_dependencies(database_client: sessionmaker[Session]
     from services.tools.dataset.tool import DatasetRetrieverTool
     from services.workflow.execution.adapters.events import enqueue_human_input_notifications
     from services.workflow.execution.adapters.human_input_events import enrich_graph_pause_reasons
+    from services.workflow_run_agg import WorkflowRunAgg
 
     retrieval = build_dataset_retrieval(database_client)
     records = AppGenerationRepository(database_client)
     human_form_reader = HumanInputFormSubmissionRepository(sessions=database_client)
     return WorkflowExecutionDependencies(
+        execution_driver=WorkflowRunAgg.run,
         history=records,
         attachments=SQLAlchemySegmentRepository(session_factory=database_client),
         datasource_credentials=build_data_source_credentials(
