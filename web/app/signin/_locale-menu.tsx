@@ -1,11 +1,13 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 
 type LocaleMenuItem<T extends string> = {
   value: T
@@ -16,52 +18,64 @@ type LocaleMenuProps<T extends string> = {
   items: Array<LocaleMenuItem<T>>
   value?: T
   onChange?: (value: T) => void
+  compact?: boolean
 }
 
 export default function LocaleMenu<T extends string>({
   items,
   value,
   onChange,
+  compact = false,
 }: LocaleMenuProps<T>) {
   const selectedItem = items.find((item) => item.value === value)
 
   return (
-    <div className="w-56 text-right">
-      <DropdownMenu>
+    <div className={cn(!compact && 'w-56', 'text-right')}>
+      <Menu>
         <div className="relative inline-block text-left">
           <div>
-            <DropdownMenuTrigger
+            <MenuTrigger
               render={
-                <button
-                  type="button"
-                  className="inline-flex w-full items-center rounded-lg border border-components-button-secondary-border px-2.5 py-1.5 text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
-                />
+                compact ? (
+                  <Button
+                    variant="ghost"
+                    className="h-8 px-2 system-sm-medium text-text-tertiary"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="inline-flex w-full items-center rounded-lg border border-components-button-secondary-border px-2.5 py-1.5 text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
+                  />
+                )
               }
             >
-              <span className="mr-1 i-heroicons-globe-alt size-5" aria-hidden="true" />
+              <span
+                className={
+                  compact ? 'i-ri-global-line size-4' : 'mr-1 i-heroicons-globe-alt size-5'
+                }
+                aria-hidden="true"
+              />
               {selectedItem?.name}
-            </DropdownMenuTrigger>
+              {compact && <span className="i-ri-arrow-down-s-line size-4" aria-hidden="true" />}
+            </MenuTrigger>
           </div>
         </div>
-        <DropdownMenuContent sideOffset={8} className="w-50">
-          <DropdownMenuRadioGroup<T>
-            value={value}
-            onValueChange={(nextValue) => onChange?.(nextValue)}
-          >
+        <MenuContent align={compact ? 'end' : undefined} sideOffset={8} className="w-50">
+          <MenuRadioGroup<T> value={value} onValueChange={(nextValue) => onChange?.(nextValue)}>
             {items.map((item) => (
-              <DropdownMenuRadioItem<T>
+              <MenuRadioItem<T>
                 key={item.value}
                 value={item.value}
                 closeOnClick
                 className="px-3 py-2 text-sm text-text-secondary"
               >
                 <span className="grow truncate">{item.name}</span>
-                <DropdownMenuRadioItemIndicator />
-              </DropdownMenuRadioItem>
+                <MenuRadioItemIndicator />
+              </MenuRadioItem>
             ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </MenuRadioGroup>
+        </MenuContent>
+      </Menu>
     </div>
   )
 }

@@ -117,3 +117,65 @@ it('keeps the source popover open when typing in the OAuth settings dialog', asy
   expect(onClose).not.toHaveBeenCalled()
   expect(onPopoverClose).not.toHaveBeenCalled()
 })
+
+it('shows custom redirect guidance after the client choice and before credential fields', async () => {
+  const user = userEvent.setup()
+  render(
+    <OAuthClientSettings
+      pluginPayload={payload}
+      schemas={[
+        {
+          name: '__oauth_client__',
+          label: 'Client type',
+          type: FormTypeEnum.radio,
+          required: false,
+          default: 'default',
+          options: [
+            { label: 'System client', value: 'default' },
+            { label: 'Custom client', value: 'custom' },
+          ],
+        },
+        {
+          name: 'client_id',
+          label: 'Client ID',
+          type: FormTypeEnum.textInput,
+          required: true,
+          show_on: [{ variable: '__oauth_client__', value: 'custom' }],
+        },
+      ]}
+      redirectUri="https://redirect.example.test/callback"
+    />,
+  )
+  expect(screen.queryByText('plugin.auth.customClientInfo')).not.toBeInTheDocument()
+  expect(screen.queryByRole('textbox', { name: /Client ID/ })).not.toBeInTheDocument()
+  const customChoice = screen.getByRole('radio', { name: 'Custom client' })
+  await user.click(customChoice)
+  const guidance = screen.getByText('plugin.auth.customClientInfo')
+  const clientId = screen.getByRole('textbox', { name: /Client ID/ })
+  expect(guidance).toBeVisible()
+  expect(screen.queryByText('plugin.auth.clientInfo')).not.toBeInTheDocument()
+  expect(screen.getByText('https://redirect.example.test/callback')).toBeVisible()
+  expect(
+    customChoice.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy()
+  expect(guidance.compareDocumentPosition(clientId) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  await user.click(screen.getByRole('radio', { name: 'System client' }))
+  expect(screen.queryByText('plugin.auth.customClientInfo')).not.toBeInTheDocument()
+  expect(screen.queryByText('https://redirect.example.test/callback')).not.toBeInTheDocument()
+})
+
+it('preserves the required manual setup guidance when there is no system OAuth client', () => {
+  render(
+    <OAuthClientSettings
+      pluginPayload={payload}
+      schemas={schemas.filter((schema) => schema.name !== '__oauth_client__')}
+      redirectUri="https://redirect.example.test/callback"
+    />,
+  )
+  const guidance = screen.getByText('plugin.auth.clientInfo')
+  expect(guidance).toBeVisible()
+  expect(screen.queryByText('plugin.auth.customClientInfo')).not.toBeInTheDocument()
+  expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+  const clientId = screen.getByRole('textbox', { name: /Client ID/ })
+  expect(guidance.compareDocumentPosition(clientId) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})

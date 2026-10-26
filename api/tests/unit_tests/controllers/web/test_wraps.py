@@ -42,7 +42,7 @@ from services.web_passport_gateways import PassportTokenGateway
 from services.web_passport_service import WebPassportService
 from services.workflow.tool_credentials import get_tool_connection_requirements
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.unit_tests.web_identity_fakes import web_identities
+from tests.helpers.unit.web_identity_fakes import web_identities
 
 """Public bootstrap admission with real SQL repositories and the canonical hook."""
 

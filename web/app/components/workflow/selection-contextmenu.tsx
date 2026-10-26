@@ -410,7 +410,6 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
           return returnToCanvas ? (flowStore.getState().domNode ?? true) : true
         }}
         className="w-60"
-        sideOffset={4}
         onKeyDown={(event) => {
           if (getNodesReadOnly()) return
           handleWorkflowMenuKeyDown(event, [

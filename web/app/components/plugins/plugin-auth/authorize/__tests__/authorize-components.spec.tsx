@@ -62,7 +62,7 @@ it('opens settings for an unconfigured OAuth provider and saves the entered clie
       }}
     />,
   )
-  await user.click(screen.getByRole('button', { name: /plugin.auth.setupOAuth/ }))
+  await user.click(screen.getByRole('button', { name: /plugin.auth.common.configureClient/ }))
   await user.type(await screen.findByRole('textbox', { name: /Client ID/ }), 'client-123')
   await user.click(screen.getByRole('button', { name: 'plugin.auth.saveOnly' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

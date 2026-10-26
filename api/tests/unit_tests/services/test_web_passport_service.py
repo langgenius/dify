@@ -21,7 +21,7 @@ from services.web_passport_service import (
     WebPassportTokenGateway,
     WebPassportUnauthorizedError,
 )
-from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, web_identities
+from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, web_identities
 
 APP = WebAppRecord(site_id="site-1", app_id="app-1", tenant_id="tenant-1", app_code="app-code")
 NOW = datetime(2026, 8, 13, 12, 0, tzinfo=UTC)

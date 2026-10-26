@@ -21,7 +21,7 @@ from services.web_identity_service import WebIdentityService
 from services.web_passport_gateways import DeploymentWebPassportAuthGateway, PassportTokenGateway
 from services.web_passport_service import WebPassportAccountExchangeDisabledError, WebPassportService
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, WebAccounts
+from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, WebAccounts
 
 
 class PublicAppAccess:
@@ -118,7 +118,7 @@ def test_internal_account_passports_are_redacted_app_scoped_and_reuse_mapping(
         assert ACCOUNT_ID not in claims.values()
         tokens.append(token)
         with app.test_request_context("/conversations", headers={"X-App-Code": code, HEADER_NAME_PASSPORT: token}):
-            _, end_user = wraps.decode_jwt_token()
+            _, end_user = wraps.decode_jwt_token(user_id="ignored-anonymous-session-hint")
         end_user_ids.append(end_user.id)
         assert end_user.account_id == ACCOUNT_ID
     assert end_user_ids[0] == end_user_ids[2]

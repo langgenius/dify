@@ -3,21 +3,31 @@ import type { ReactFlowInstance } from 'reactflow'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
+import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
 import type { Shape } from '@/app/components/workflow/store'
-import type { Node } from '@/app/components/workflow/types'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { createRef, useImperativeHandle } from 'react'
-import { useNodes, useReactFlow } from 'reactflow'
+import ReactFlow, { ReactFlowProvider, useNodes, useReactFlow } from 'reactflow'
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
+import { CollectionType } from '@/app/components/tools/types'
 import WorkflowWithDefaultContext, { Workflow } from '@/app/components/workflow'
-import { createNode, createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  createEdge,
+  createNode,
+  createNodeTracing,
+} from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store/store'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
+import { useSingleRunAuthorization } from '@/app/components/workflow/hooks/use-single-run-authorization'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import codeNodeDefault from '@/app/components/workflow/nodes/code/default'
-import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { convertToTriggerWithProvider } from '@/service/use-triggers'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -115,12 +125,21 @@ beforeEach(() => {
 })
 
 function PanelContent() {
-  return <p>Node settings</p>
+  return <h3>Node settings</h3>
 }
-function SelectedPanel({ graphRef }: { graphRef: RefObject<ReactFlowInstance | null> }) {
+type UpdateNodeData = ReturnType<typeof useNodeDataUpdate>['handleNodeDataUpdate']
+function SelectedPanel({
+  graphRef,
+  updateRef,
+}: {
+  graphRef: RefObject<ReactFlowInstance | null>
+  updateRef: RefObject<UpdateNodeData | null>
+}) {
   const nodes = useNodes<Node['data']>()
   const graph = useReactFlow()
   useImperativeHandle(graphRef, () => graph, [graph])
+  const { handleNodeDataUpdate } = useNodeDataUpdate()
+  useImperativeHandle(updateRef, () => handleNodeDataUpdate, [handleNodeDataUpdate])
   const selected = nodes.find((node) => node.data.selected)
   return selected ? (
     <BasePanel id={selected.id} data={selected.data}>
@@ -138,7 +157,9 @@ function renderPanel({
   triggers = [],
   resource,
   otherNodes = [],
+  edges = [],
 }: {
+  edges?: Edge[]
   otherNodes?: Node[]
   resource?: EditorResource
   data?: Partial<Node['data']> & Record<string, unknown>
@@ -160,6 +181,16 @@ function renderPanel({
     workflowTools: [],
     mcpTools: [],
   })
+  for (const tool of tools) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get.queryKey(
+        {
+          input: { params: { provider: tool.name, credential_type: 'api-key' } },
+        },
+      ),
+      [],
+    )
+  }
   queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
   queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
   queryClient.setQueryData(
@@ -190,6 +221,7 @@ function renderPanel({
     },
   })
   const graph = createRef<ReactFlowInstance>()
+  const updateNodeData = createRef<UpdateNodeData>()
   const onUrlUpdate = vi.fn()
   const syncDraft = vi.fn<HooksStoreShape['doSyncWorkflowDraft']>(
     async (_skipRefresh, callback) => {
@@ -200,9 +232,9 @@ function renderPanel({
   const view = renderWorkflowComponent(
     <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
       <button>Before panel</button>
-      <WorkflowWithDefaultContext nodes={[node, ...otherNodes]} edges={[]}>
-        <Workflow nodes={[node, ...otherNodes]} edges={[]}>
-          <SelectedPanel graphRef={graph} />
+      <WorkflowWithDefaultContext nodes={[node, ...otherNodes]} edges={edges}>
+        <Workflow nodes={[node, ...otherNodes]} edges={edges}>
+          <SelectedPanel graphRef={graph} updateRef={updateNodeData} />
         </Workflow>
       </WorkflowWithDefaultContext>
     </NuqsTestingAdapter>,
@@ -221,10 +253,162 @@ function renderPanel({
       },
     },
   )
-  return { ...view, graph, onUrlUpdate, syncDraft }
+  return { ...view, graph, updateNodeData, onUrlUpdate, syncDraft }
 }
 
 const panel = () => within(screen.getByRole('region', { name: /workflow.panel.nodePanel/ }))
+
+const toolData: ToolNodeType = {
+  type: BlockEnum.Tool,
+  title: 'Search tool',
+  desc: '',
+  provider_id: 'provider/tool',
+  provider_type: CollectionType.builtIn,
+  provider_name: 'Tool',
+  tool_name: 'search',
+  tool_label: 'Search',
+  tool_parameters: {},
+  tool_configurations: {},
+}
+const appUserToolData: ToolNodeType = {
+  ...toolData,
+  credential_source: 'end_user',
+  end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Connect app users' },
+}
+const toolProvider = (isAuthorized = false) =>
+  createToolProviderFixture({
+    id: 'provider/tool',
+    name: 'Tool',
+    allow_delete: true,
+    is_team_authorization: isAuthorized,
+  })
+
+it('keeps Authorization in Settings before tool configuration and preserves navigation without Workspace authorization', async () => {
+  const user = userEvent.setup()
+  renderPanel({ data: toolData, tools: [toolProvider()] })
+  const settings = panel().getByRole('tabpanel', { name: 'WORKFLOWDEBUG.DEBUG.SETTINGSTAB' })
+  expect(
+    within(settings)
+      .getAllByRole('heading')
+      .map((heading) => heading.textContent),
+  ).toEqual(['plugin.auth.authorization', 'Node settings'])
+
+  await user.click(panel().getByRole('tab', { name: 'WORKFLOWDEBUG.DEBUG.LASTRUNTAB' }))
+  expect(
+    panel().queryByRole('heading', { name: 'plugin.auth.authorization' }),
+  ).not.toBeInTheDocument()
+  expect(panel().getByRole('tabpanel', { name: 'WORKFLOWDEBUG.DEBUG.LASTRUNTAB' })).toBeVisible()
+  await user.click(panel().getByRole('tab', { name: 'WORKFLOWDEBUG.DEBUG.SETTINGSTAB' }))
+  expect(panel().getByRole('heading', { name: 'plugin.auth.authorization' })).toBeVisible()
+  expect(panel().getByRole('tab', { name: 'plugin.auth.workspaceAuth' })).toBeEnabled()
+})
+
+it.each([
+  { mode: 'workspace', reason: 'workflow.panel.configureWorkspaceAuthorization', data: toolData },
+  { mode: 'end_user', reason: 'workflow.panel.configureTestRunConnection', data: appUserToolData },
+  {
+    mode: 'reuse_node',
+    reason: 'workflow.panel.selectReuseNode',
+    data: { ...toolData, credential_source: 'reuse_node' },
+  },
+])(
+  'explains a blocked $mode run and consumes queued attempts without syncing or running',
+  async ({ data, reason }) => {
+    const user = userEvent.setup()
+    const { store, syncDraft } = renderPanel({ data, tools: [toolProvider()] })
+    const run = panel().getByRole('button', { name: 'workflow.panel.runThisStep' })
+    expect(run).toHaveAttribute('aria-disabled', 'true')
+    await user.hover(run)
+    expect(await screen.findByText(reason)).toBeVisible()
+    await user.click(run)
+    act(() => store.getState().setPendingSingleRun({ nodeId: 'node-1', action: 'run' }))
+    await waitFor(() => expect(store.getState().pendingSingleRun).toBeUndefined())
+    expect(api.run).not.toHaveBeenCalled()
+    expect(syncDraft).not.toHaveBeenCalled()
+  },
+)
+
+it('runs saved App user auth with a test credential despite missing Workspace authorization', async () => {
+  const user = userEvent.setup()
+  renderPanel({
+    data: { ...appUserToolData, test_credential_id: 'credential-1' },
+    tools: [toolProvider()],
+  })
+  const run = panel().getByRole('button', { name: 'workflow.panel.runThisStep' })
+  expect(run).not.toHaveAttribute('aria-disabled', 'true')
+  await user.click(run)
+  await waitFor(() => expect(api.run).toHaveBeenCalledOnce())
+})
+
+it('preserves required tool parameter validation with an App user test credential', async () => {
+  const user = userEvent.setup()
+  const showError = vi.spyOn(toast, 'error')
+  const provider = toolProvider()
+  provider.tools = [
+    {
+      author: 'Dify',
+      name: 'search',
+      label: { en_US: 'Search' },
+      description: { en_US: 'Search documents' },
+      parameters: [
+        {
+          name: 'query',
+          label: { en_US: 'Query' },
+          type: 'string',
+          form: 'llm',
+          required: true,
+          multiple: false,
+        },
+      ],
+    },
+  ]
+  const { syncDraft } = renderPanel({
+    data: { ...appUserToolData, test_credential_id: 'credential-1' },
+    tools: [provider],
+  })
+  await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+  expect(api.run).not.toHaveBeenCalled()
+  expect(syncDraft).not.toHaveBeenCalled()
+  expect(showError).toHaveBeenCalledWith(expect.stringContaining('workflow.errorMsg.fieldRequired'))
+  expect(showError).not.toHaveBeenCalledWith('workflow.errorMsg.authRequired')
+})
+
+it('rechecks the saved test credential before submitting an already open single-run form', async () => {
+  const user = userEvent.setup()
+  const { updateNodeData, syncDraft } = renderPanel({
+    data: {
+      ...appUserToolData,
+      test_credential_id: 'credential-1',
+      tool_parameters: { query: { type: VarKindType.variable, value: ['source-node', 'result'] } },
+    },
+    tools: [toolProvider()],
+    otherNodes: [
+      createNode({
+        id: 'source-node',
+        data: {
+          ...codeNodeDefault.defaultValue,
+          type: BlockEnum.Code,
+          title: 'Source node',
+          code: 'def main():\n    return {"result": "ok"}',
+          outputs: { result: { type: VarType.string } },
+        },
+      }),
+    ],
+    edges: [createEdge({ source: 'source-node', target: 'node-1' })],
+  })
+  await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+  await user.type(await panel().findByRole('textbox', { name: /result/ }), 'Test input')
+  expect(syncDraft).toHaveBeenCalledOnce()
+  const selectTestCredential = (test_credential_id: string | null) =>
+    act(() => updateNodeData.current?.({ id: 'node-1', data: { test_credential_id } }))
+  selectTestCredential(null)
+  await user.click(panel().getByRole('button', { name: 'workflow.singleRun.startRun' }))
+  expect(api.run).not.toHaveBeenCalled()
+  expect(syncDraft).toHaveBeenCalledOnce()
+  selectTestCredential('credential-1')
+  await user.click(panel().getByRole('button', { name: 'workflow.singleRun.startRun' }))
+  await waitFor(() => expect(api.run).toHaveBeenCalledOnce())
+})
 
 it('persists title and description edits on the selected graph node and closes the panel', async () => {
   const user = userEvent.setup()
@@ -427,12 +611,16 @@ it('selects a real tool credential and stores it on the graph node', async () =>
       tool_configurations: {},
     },
   })
-  await user.click(await panel().findByRole('button', { name: /plugin.auth.workspaceDefault/ }))
-  await user.click(await screen.findByText('Production key'))
+  await user.click(await panel().findByRole('button', { name: /Production key/ }))
+  await user.click(
+    within(screen.getByRole('dialog', { name: 'plugin.auth.authorization' })).getByRole('button', {
+      name: /^Production key/,
+    }),
+  )
   await waitFor(() =>
     expect(graph.current!.getNode('node-1')!.data.credential_id).toBe('credential-1'),
   )
-  expect(panel().getByRole('button', { name: 'Production key' })).toBeInTheDocument()
+  expect(panel().getByRole('button', { name: /Production key/ })).toBeInTheDocument()
 })
 
 it('loads the selected trigger provider and persists a subscription picked from its real list', async () => {
@@ -597,4 +785,130 @@ it('closes nested tool execution details with Escape and restores canvas focus',
   await user.keyboard('{Escape}')
   expect(screen.queryByRole('region', { name: /workflow.panel.nodePanel/ })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Search tool/ })).toHaveFocus()
+})
+
+it('inherits the direct Reuse source test credential and executes without Workspace authorization', async () => {
+  const user = userEvent.setup()
+  const source = createNode({ id: 'auth-source', data: appUserToolData })
+  const { updateNodeData } = renderPanel({
+    data: { ...toolData, credential_source: 'reuse_node', reuse_node_id: source.id },
+    tools: [toolProvider()],
+    otherNodes: [source],
+    edges: [createEdge({ source: source.id, target: 'node-1' })],
+  })
+  const run = panel().getByRole('button', { name: 'workflow.panel.runThisStep' })
+  expect(run).toHaveAttribute('aria-disabled', 'true')
+  await user.hover(run)
+  expect(await screen.findByText('workflow.panel.configureTestRunConnection')).toBeVisible()
+  act(() =>
+    updateNodeData.current?.({ id: source.id, data: { test_credential_id: 'credential-1' } }),
+  )
+  await waitFor(() =>
+    expect(panel().getByRole('button', { name: 'workflow.panel.runThisStep' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    ),
+  )
+  await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+  await waitFor(() => expect(api.run).toHaveBeenCalledOnce())
+})
+
+it('blocks an already removed Reuse source and keeps its saved display reference visible', async () => {
+  const user = userEvent.setup()
+  const { store, syncDraft } = renderPanel({
+    data: { ...toolData, credential_source: 'reuse_node', reuse_node_id: 'auth-source' },
+    tools: [toolProvider(true)],
+    initialStoreState: {
+      nodeAuthDrafts: {
+        'node-1': {
+          provider: 'Tool',
+          providerId: 'provider/tool',
+          authorizationTab: 'reuse-from-node',
+          reuseFromNode: { source: { id: 'auth-source', title: 'Source tool' } },
+        },
+      },
+    },
+  })
+  const run = () => panel().getByRole('button', { name: 'workflow.panel.runThisStep' })
+  expect(run()).toHaveAttribute('aria-disabled', 'true')
+  expect(panel().getByText('Source tool')).toBeVisible()
+  await user.hover(run())
+  expect(await screen.findByText('workflow.panel.selectReuseNode')).toBeVisible()
+  await user.click(run())
+  act(() => store.getState().setPendingSingleRun({ nodeId: 'node-1', action: 'run' }))
+  await waitFor(() => expect(store.getState().pendingSingleRun).toBeUndefined())
+  expect(api.run).not.toHaveBeenCalled()
+  expect(syncDraft).not.toHaveBeenCalled()
+})
+
+it('updates single-run authorization when a Reuse source is removed from and restored to the live graph', async () => {
+  const user = userEvent.setup()
+  const source = createNode({ id: 'auth-source', data: { ...toolData, title: 'Source tool' } })
+  const current = createNode({
+    id: 'node-1',
+    data: { ...toolData, credential_source: 'reuse_node', reuse_node_id: source.id },
+  })
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [toolProvider(true)],
+    customTools: [],
+    workflowTools: [],
+  })
+  function LiveAuthorization() {
+    const { disabledReason } = useSingleRunAuthorization(current.id, current.data)
+    const graph = useReactFlow()
+    return (
+      <>
+        <output aria-label="Run authorization">{disabledReason ?? 'Ready'}</output>
+        <button
+          onClick={() => {
+            void graph.deleteElements({ nodes: [{ id: source.id }] })
+          }}
+        >
+          Delete source
+        </button>
+        <button onClick={() => graph.addNodes(source)}>Restore source</button>
+      </>
+    )
+  }
+  renderWorkflowComponent(
+    <ReactFlowProvider>
+      <ReactFlow defaultNodes={[current, source]} />
+      <LiveAuthorization />
+    </ReactFlowProvider>,
+    {
+      queryClient,
+    },
+  )
+  const authorization = screen.getByRole('status', { name: 'Run authorization' })
+  expect(authorization).toHaveTextContent('Ready')
+  await user.click(screen.getByRole('button', { name: 'Delete source' }))
+  await waitFor(() => expect(authorization).toHaveTextContent('workflow.panel.selectReuseNode'))
+  await user.click(screen.getByRole('button', { name: 'Restore source' }))
+  await waitFor(() => expect(authorization).toHaveTextContent('Ready'))
+})
+
+it('blocks chained Reuse even when its terminal source has a saved test credential', async () => {
+  const user = userEvent.setup()
+  const { syncDraft } = renderPanel({
+    data: { ...toolData, credential_source: 'reuse_node', reuse_node_id: 'middle' },
+    tools: [toolProvider()],
+    otherNodes: [
+      createNode({
+        id: 'middle',
+        data: { ...toolData, credential_source: 'reuse_node', reuse_node_id: 'source' },
+      }),
+      createNode({
+        id: 'source',
+        data: { ...appUserToolData, test_credential_id: 'credential-1' },
+      }),
+    ],
+  })
+  const run = panel().getByRole('button', { name: 'workflow.panel.runThisStep' })
+  expect(run).toHaveAttribute('aria-disabled', 'true')
+  await user.hover(run)
+  expect(await screen.findByText('workflow.panel.selectReuseNode')).toBeVisible()
+  await user.click(run)
+  expect(api.run).not.toHaveBeenCalled()
+  expect(syncDraft).not.toHaveBeenCalled()
 })

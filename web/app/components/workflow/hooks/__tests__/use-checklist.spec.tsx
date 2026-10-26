@@ -1,15 +1,24 @@
 import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { ToolProviderListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginsFromMarketplaceByInfoResponse } from '@dify/contracts/marketplace'
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
+import type { ReactFlowInstance } from 'reactflow'
 import type { AvailableNodesMetaData } from '../../hooks-store/store'
 import type { CodeNodeType } from '../../nodes/code/types'
+import type { ToolNodeType } from '../../nodes/tool/types'
 import type { CommonEdgeType, CommonNodeType, Edge, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
 import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
-import { useState } from 'react'
-import ReactFlow, { ReactFlowProvider, useEdges, useNodes } from 'reactflow'
+import { createRef, useImperativeHandle, useState } from 'react'
+import ReactFlow, {
+  ReactFlowProvider,
+  useEdges,
+  useNodes,
+  useNodesState,
+  useReactFlow,
+} from 'reactflow'
+import { createAppUserAuthDraft } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
 import { CollectionType } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
@@ -76,10 +85,32 @@ function CatalogProvider({ children }: { children: ReactNode }) {
   return <HooksStoreContext value={store}>{children}</HooksStoreContext>
 }
 
+function ControlledGraph({ nodes, edges }: Graph) {
+  const [graphNodes, , onNodesChange] = useNodesState(nodes)
+  return <ReactFlow nodes={graphNodes} edges={edges} onNodesChange={onNodesChange} />
+}
+
+function GraphApi({ graphRef }: { graphRef: RefObject<ReactFlowInstance | null> }) {
+  const graph = useReactFlow()
+  useImperativeHandle(graphRef, () => graph, [graph])
+  return null
+}
+
+function setNodeAuthorization(
+  graph: RefObject<ReactFlowInstance | null>,
+  id: string,
+  data: Partial<ToolNodeType>,
+) {
+  graph.current?.setNodes((nodes) =>
+    nodes.map((node) => (node.id === id ? { ...node, data: { ...node.data, ...data } } : node)),
+  )
+}
+
 function createChecklistWrapper({ nodes, edges }: Graph, options: ChecklistOptions = {}) {
   const queryClient = options.queryClient ?? createChecklistQueryClient()
   const { wrapper: QueryProvider } = createConsoleQueryWrapper({ queryClient })
   const store = createTestWorkflowStore({ nodes })
+  const graph = createRef<ReactFlowInstance>()
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryProvider>
       <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
@@ -87,7 +118,8 @@ function createChecklistWrapper({ nodes, edges }: Graph, options: ChecklistOptio
           <CatalogProvider>
             <DatasetsDetailProvider nodes={nodes}>
               <ReactFlowProvider>
-                <ReactFlow nodes={nodes} edges={edges} />
+                <ControlledGraph nodes={nodes} edges={edges} />
+                <GraphApi graphRef={graph} />
                 {children}
                 <AppToaster timeout={0} />
               </ReactFlowProvider>
@@ -97,11 +129,11 @@ function createChecklistWrapper({ nodes, edges }: Graph, options: ChecklistOptio
       </EditorResourceScope>
     </QueryProvider>
   )
-  return { wrapper, store }
+  return { wrapper, store, graph }
 }
 
 function renderChecklist(nodes: Node[], edges: Edge[], options: ChecklistOptions = {}) {
-  const { wrapper, store } = createChecklistWrapper({ nodes, edges }, options)
+  const { wrapper, store, graph } = createChecklistWrapper({ nodes, edges }, options)
   return {
     ...renderHook(
       () => {
@@ -112,6 +144,7 @@ function renderChecklist(nodes: Node[], edges: Edge[], options: ChecklistOptions
       { wrapper },
     ),
     store,
+    graph,
   }
 }
 
@@ -274,7 +307,221 @@ const credentialRequiredProvider = createToolProviderFixture({
   is_team_authorization: false,
 })
 
+function buildUnauthorizedToolGraph(requiredForm?: 'llm' | 'form') {
+  const provider = createToolProviderFixture({
+    ...credentialRequiredProvider,
+    allow_delete: true,
+    tools: [
+      {
+        name: 'search',
+        author: 'Google',
+        label: { en_US: 'Search' },
+        description: { en_US: 'Search repositories' },
+        parameters: requiredForm
+          ? [
+              {
+                name: 'query',
+                label: { en_US: 'Query' },
+                human_description: { en_US: 'Search query' },
+                type: 'string',
+                form: requiredForm,
+                llm_description: 'Search query',
+                required: true,
+                multiple: false,
+                default: '',
+              },
+            ]
+          : [],
+      },
+    ],
+  })
+  return {
+    nodes: [
+      createInputNode(),
+      createNode({
+        id: 'tool',
+        data: {
+          type: BlockEnum.Tool,
+          provider_type: CollectionType.builtIn,
+          provider_id: 'google',
+          provider_name: 'google',
+          tool_name: 'search',
+          tool_parameters: {},
+          tool_configurations: {},
+        },
+      }),
+    ],
+    edges: [createEdge({ source: 'start', target: 'tool' })],
+    options: { queryClient: createChecklistQueryClient([provider]) },
+  }
+}
+
+const validAppUserDraft = {
+  ...createAppUserAuthDraft({ canOAuth: false, canApiKey: true }),
+  description: 'Find repositories',
+}
+
+const validAppUserAuth: Partial<ToolNodeType> = {
+  credential_source: 'end_user',
+  end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Find repositories' },
+}
+
+function buildReusableToolGraph(requiredForm?: 'llm' | 'form') {
+  const graph = buildUnauthorizedToolGraph(requiredForm)
+  const tool = graph.nodes.find((node) => node.id === 'tool')!
+  return {
+    ...graph,
+    nodes: [
+      ...graph.nodes.map((node) =>
+        node.id === 'tool'
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                title: 'Reuse consumer',
+                credential_source: 'reuse_node',
+                reuse_node_id: 'auth-source',
+              },
+            }
+          : node,
+      ),
+      createNode({
+        id: 'auth-source',
+        data: { ...tool.data, title: 'Authorization source', ...validAppUserAuth },
+      }),
+    ],
+    edges: [
+      createEdge({ source: 'start', target: 'auth-source' }),
+      createEdge({ source: 'auth-source', target: 'tool' }),
+    ],
+  }
+}
+
 describe('useChecklist', () => {
+  it('reports live authorization errors only on the Reuse source', () => {
+    const { nodes, edges, options } = buildReusableToolGraph()
+    const { result, graph } = renderChecklist(nodes, edges, options)
+    expect(result.current).toEqual([])
+    act(() =>
+      setNodeAuthorization(graph, 'auth-source', {
+        ...validAppUserAuth,
+        end_user_auth: { allowed_credential_types: ['api-key'], purpose: ' ' },
+      }),
+    )
+    expect(result.current.find((item) => item.id === 'auth-source')?.errorMessages).toEqual([
+      'plugin.auth.appUser.descriptionRequired',
+    ])
+    expect(result.current.find((item) => item.id === 'tool')).toBeUndefined()
+    act(() =>
+      setNodeAuthorization(graph, 'auth-source', {
+        credential_source: 'workspace',
+        end_user_auth: undefined,
+      }),
+    )
+    expect(result.current.find((item) => item.id === 'auth-source')?.errorMessages).toEqual([
+      'workflow.errorMsg.authRequired',
+    ])
+    expect(result.current.find((item) => item.id === 'tool')).toBeUndefined()
+  })
+
+  it.each(['llm', 'form'] as const)(
+    'keeps the Reuse node own required %s field error while its source requires authorization',
+    (requiredForm) => {
+      const { nodes, edges, options } = buildReusableToolGraph(requiredForm)
+      const { result, graph } = renderChecklist(nodes, edges, options)
+      act(() =>
+        setNodeAuthorization(graph, 'auth-source', {
+          credential_source: 'workspace',
+          end_user_auth: undefined,
+        }),
+      )
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        'workflow.errorMsg.fieldRequired:{"field":"Query"}',
+      ])
+      expect(result.current.find((item) => item.id === 'auth-source')?.errorMessages).toContain(
+        'workflow.errorMsg.authRequired',
+      )
+    },
+  )
+
+  it.each(['workspace', 'reuse_node'] as const)(
+    'uses saved App user authorization errors and restores errors for %s',
+    (credential_source) => {
+      const { nodes, edges, options } = buildUnauthorizedToolGraph()
+      const { result, graph } = renderChecklist(nodes, edges, options)
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        'workflow.errorMsg.authRequired',
+      ])
+      act(() =>
+        setNodeAuthorization(graph, 'tool', {
+          credential_source: 'end_user',
+          end_user_auth: { allowed_credential_types: ['oauth2', 'api-key'], purpose: '' },
+        }),
+      )
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        'plugin.auth.appUser.clientRequired',
+        'plugin.auth.appUser.descriptionRequired',
+      ])
+      act(() => setNodeAuthorization(graph, 'tool', validAppUserAuth))
+      expect(result.current).toEqual([])
+      act(() =>
+        setNodeAuthorization(graph, 'tool', { credential_source, end_user_auth: undefined }),
+      )
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        credential_source === 'reuse_node'
+          ? 'workflow.panel.selectReuseNode'
+          : 'workflow.errorMsg.authRequired',
+      ])
+    },
+  )
+
+  it.each(['llm', 'form'] as const)(
+    'keeps required tool %s fields in App user mode',
+    (requiredForm) => {
+      const { nodes, edges, options } = buildUnauthorizedToolGraph(requiredForm)
+      const { result, graph } = renderChecklist(nodes, edges, options)
+      act(() => setNodeAuthorization(graph, 'tool', validAppUserAuth))
+      expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+        'workflow.errorMsg.fieldRequired:{"field":"Query"}',
+      ])
+    },
+  )
+
+  it('keeps the saved Workspace authorization while an inactive App user draft exists', () => {
+    const { nodes, edges, options } = buildUnauthorizedToolGraph()
+    const { result, store } = renderChecklist(nodes, edges, options)
+    act(() => {
+      store.getState().setNodeAppUserAuthDraft('tool', 'google', 'google', validAppUserDraft)
+      store.getState().setNodeAuthorizationTab('tool', 'google', 'google', 'app-user-auth')
+    })
+    expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+      'workflow.errorMsg.authRequired',
+    ])
+  })
+
+  it('updates App user checklist errors immediately after saved description edits', () => {
+    const { nodes, edges, options } = buildUnauthorizedToolGraph()
+    const { result, graph } = renderChecklist(nodes, edges, options)
+    act(() =>
+      setNodeAuthorization(graph, 'tool', {
+        credential_source: 'end_user',
+        end_user_auth: { allowed_credential_types: ['oauth2'], purpose: 'Find repositories' },
+      }),
+    )
+    expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+      'plugin.auth.appUser.clientRequired',
+    ])
+    act(() =>
+      setNodeAuthorization(graph, 'tool', {
+        end_user_auth: { allowed_credential_types: ['oauth2'], purpose: ' ' },
+      }),
+    )
+    expect(result.current.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+      'plugin.auth.appUser.clientRequired',
+      'plugin.auth.appUser.descriptionRequired',
+    ])
+  })
+
   it('should return empty list when all nodes are valid and connected', async () => {
     const { nodes, edges } = buildConnectedGraph()
 
@@ -647,6 +894,55 @@ describe('useChecklist', () => {
 })
 
 describe('useChecklistBeforePublish', () => {
+  it('rejects a deleted Reuse source using the current graph and shows a Reuse error', async () => {
+    const { nodes, edges, options } = buildUnauthorizedToolGraph()
+    const { wrapper, graph } = createChecklistWrapper({ nodes, edges }, options)
+    const { result } = renderHook(
+      () => {
+        const warnings = useChecklist(useNodes<CommonNodeType>(), useEdges<CommonEdgeType>())
+        return { warnings, ...useChecklistBeforePublish() }
+      },
+      { wrapper },
+    )
+    act(() =>
+      setNodeAuthorization(graph, 'tool', {
+        credential_source: 'reuse_node',
+        reuse_node_id: 'removed',
+      }),
+    )
+    expect(result.current.warnings.find((item) => item.id === 'tool')?.errorMessages).toEqual([
+      'workflow.panel.selectReuseNode',
+    ])
+    await act(async () => expect(await result.current.handleCheckBeforePublish()).toBe(false))
+    expect(screen.getByText(/workflow.panel.selectReuseNode/)).toBeVisible()
+  })
+
+  it('blocks publishing on the source authorization error without attributing it to the Reuse node', async () => {
+    const { nodes, edges, options } = buildReusableToolGraph()
+    const { wrapper, graph } = createChecklistWrapper({ nodes, edges }, options)
+    const { result } = renderHook(() => useChecklistBeforePublish(), { wrapper })
+    await act(async () => expect(await result.current.handleCheckBeforePublish()).toBe(true))
+    act(() =>
+      setNodeAuthorization(graph, 'auth-source', {
+        credential_source: 'workspace',
+        end_user_auth: undefined,
+      }),
+    )
+    await act(async () => expect(await result.current.handleCheckBeforePublish()).toBe(false))
+    expect(screen.getByText('[Authorization source] workflow.errorMsg.authRequired')).toBeVisible()
+    expect(
+      screen.queryByText('[Reuse consumer] workflow.errorMsg.authRequired'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('does not reject valid saved App user authorization as missing Workspace authorization', async () => {
+    const { nodes, edges, options } = buildUnauthorizedToolGraph()
+    const { wrapper, graph } = createChecklistWrapper({ nodes, edges }, options)
+    const { result } = renderHook(() => useChecklistBeforePublish(), { wrapper })
+    act(() => setNodeAuthorization(graph, 'tool', validAppUserAuth))
+    await act(async () => expect(await result.current.handleCheckBeforePublish()).toBe(true))
+  })
+
   it('rejects an invalid legacy Agent using the real catalog and graph', async () => {
     const graph = buildLegacyAgentGraph()
     const { wrapper } = createChecklistWrapper(graph)

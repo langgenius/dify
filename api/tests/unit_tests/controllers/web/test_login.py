@@ -45,7 +45,7 @@ from services.webapp_access_query_service import (
     WebAppAccessUnavailableError,
 )
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, web_identities
+from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, web_identities
 
 
 @pytest.fixture

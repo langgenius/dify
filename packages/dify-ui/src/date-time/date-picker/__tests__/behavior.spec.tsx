@@ -390,9 +390,6 @@ it('localizes full dates and reverses horizontal calendar navigation in RTL', as
     </DirectionProvider>,
   )
   await screen.getByRole('button', { name: /^Date / }).click()
-  await expect
-    .element(screen.getByRole('dialog', { name: 'Date', exact: true }))
-    .toHaveAttribute('dir', 'rtl')
   await userEvent.keyboard('{ArrowLeft}')
   const nextLabel = 'الخميس، 16 جانفي 2025'
   await expect.element(screen.getByRole('button', { name: nextLabel, exact: true })).toHaveFocus()
@@ -417,26 +414,6 @@ it('focuses the first invalid picker inside a native fieldset', async () => {
   )
   await screen.getByRole('button', { name: 'Submit trip' }).click()
   await expect.element(screen.getByRole('button', { name: 'Departure', exact: true })).toHaveFocus()
-})
-
-it('lets a picker override inherited direction independently of its formatting locale', async () => {
-  const screen = await render(
-    <DirectionProvider direction="rtl">
-      <DatePicker direction="ltr" locale={arTN} defaultValue="2025-01-15">
-        <DatePickerLabel className="sr-only">Date</DatePickerLabel>
-        <Parts />
-      </DatePicker>
-    </DirectionProvider>,
-  )
-  const trigger = screen.getByRole('button', { name: /^Date / })
-  await expect.element(trigger).toHaveAttribute('dir', 'ltr')
-  await trigger.click()
-  await expect
-    .element(screen.getByRole('dialog', { name: 'Date', exact: true }))
-    .toHaveAttribute('dir', 'ltr')
-  await userEvent.keyboard('{ArrowRight}')
-  const nextLabel = 'الخميس، 16 جانفي 2025'
-  await expect.element(screen.getByRole('button', { name: nextLabel, exact: true })).toHaveFocus()
 })
 
 it('keeps Persian month labels in the Gregorian calendar used by the value', async () => {

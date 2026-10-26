@@ -245,14 +245,30 @@ def test_web_parameters_without_personal_tools_have_empty_requirements(graph: di
     assert service.get_web_parameters("app-1", "tenant-1")["connection_requirements"] == ()
 
 
-def test_incomplete_published_connection_requirement_is_not_reported_as_connection_free() -> None:
+@pytest.mark.parametrize("provider_id", [None, "invalid/provider", "calendar"])
+def test_incomplete_published_connection_requirement_is_not_reported_as_connection_free(
+    provider_id: str | None,
+) -> None:
+    data: dict[str, object] = {"type": "tool", "credential_source": "end_user"}
+    if provider_id is not None:
+        data["provider_id"] = provider_id
+    if provider_id != "calendar":
+        data["end_user_auth"] = {"allowed_credential_types": ["api-key"], "purpose": "Read events"}
     service, definitions = _service()
     definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
         parameters=AppParameterConfig(features_dict={}, user_input_form=[]),
         workflow_id="published-version",
         requires_end_user_connections=True,
-        graph={"nodes": [{"id": "tool", "data": {"type": "tool", "credential_source": "end_user"}}]},
+        graph={"nodes": [{"id": "tool", "data": data}]},
     )
+
+    with pytest.raises(AppDefinitionUnavailableError):
+        service.get_web_parameters("app-1", "tenant-1")
+
+
+def test_unavailable_web_parameter_config_is_not_reported_as_connection_free() -> None:
+    service, definitions = _service()
+    definitions.get_web_parameter_config.return_value = None
 
     with pytest.raises(AppDefinitionUnavailableError):
         service.get_web_parameters("app-1", "tenant-1")

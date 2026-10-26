@@ -6,7 +6,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { useStore } from '@/app/components/workflow/store'
@@ -56,10 +55,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
       {!isShowAuthBtn && (
         <div className="relative">
           {toolInputVarSchema.length > 0 && (
-            <Field
-              className="px-4"
-              title={t(($) => $[`${i18nPrefix}.inputVars`], { ns: 'workflow' })}
-            >
+            <div className="px-4">
               <ToolForm
                 readOnly={readOnly}
                 nodeId={id}
@@ -71,7 +67,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
                 showManageInputField={resourceKind === 'knowledge-pipeline'}
                 onManageInputField={() => setShowInputFieldPanel?.(true)}
               />
-            </Field>
+            </div>
           )}
 
           {toolInputVarSchema.length > 0 && toolSettingSchema.length > 0 && (

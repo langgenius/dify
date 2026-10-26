@@ -47,7 +47,6 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
     <ContextMenuContent
       finalFocus={() => (deletingRef.current ? (flowStore.getState().domNode ?? true) : true)}
       className={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME}
-      sideOffset={4}
       onKeyDown={(event) =>
         handleWorkflowMenuKeyDown(event, [
           ['workflow.copy', hasEditGroup ? model.handleCopy : undefined],
@@ -59,7 +58,13 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
       {hasRunGroup && (
         <ContextMenuGroup>
           {model.canRun && (
-            <ContextMenuItem onClick={model.handleRun}>{singleRunActionLabel}</ContextMenuItem>
+            <ContextMenuItem
+              disabled={!!model.singleRunDisabledReason}
+              aria-description={model.singleRunDisabledReason}
+              onClick={model.handleRun}
+            >
+              {singleRunActionLabel}
+            </ContextMenuItem>
           )}
           {model.canChangeBlock && (
             <Popover modal="trap-focus">

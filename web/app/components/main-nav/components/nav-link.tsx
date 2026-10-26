@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import type { MainNavItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useStudioListHref } from '@/features/studio-list-navigation'
+import { useStudioListHref } from '@/app/components/apps/list-navigation-state'
 import Link from '@/next/link'
 
 const NavIcon = ({ icon, className }: { icon: string; className?: string }) => (
@@ -16,13 +16,13 @@ type MainNavLinkProps = {
   children?: ReactNode
 }
 
-const MainNavLink = ({ item, pathname, children }: MainNavLinkProps) => {
+const NavLink = ({ item, pathname, children, href }: MainNavLinkProps & { href: string }) => {
   const activated = item.active(pathname)
-  const appsHref = useStudioListHref('/apps')
 
   return (
     <Link
-      href={item.href === '/apps' ? appsHref : item.href}
+      href={href}
+      scroll={false}
       aria-current={activated ? 'page' : undefined}
       title={item.label}
       className={cn(
@@ -40,5 +40,18 @@ const MainNavLink = ({ item, pathname, children }: MainNavLinkProps) => {
     </Link>
   )
 }
+
+const StudioNavLink = (props: MainNavLinkProps) => {
+  const href = useStudioListHref('/apps')
+
+  return <NavLink {...props} href={href} />
+}
+
+const MainNavLink = (props: MainNavLinkProps) =>
+  props.item.href === '/apps' ? (
+    <StudioNavLink {...props} />
+  ) : (
+    <NavLink {...props} href={props.item.href} />
+  )
 
 export default MainNavLink

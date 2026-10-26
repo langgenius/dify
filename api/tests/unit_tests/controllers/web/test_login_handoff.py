@@ -26,8 +26,8 @@ from services.web_login_handoff import WebLoginHandoffService, WebLoginTarget
 from services.web_login_handoff_adapters import RedisWebLoginGrantStore
 from services.web_passport_gateways import PassportTokenGateway
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, WebAccounts
 from tests.unit_tests.controllers.web.test_web_account_passport_flow import identity_flow as identity_flow  # noqa: PLC0414 -- Register the shared pytest fixture in this module.
-from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, WebAccounts
 
 VERIFIER = "v" * 43
 CHALLENGE = base64.urlsafe_b64encode(hashlib.sha256(VERIFIER.encode()).digest()).rstrip(b"=").decode()

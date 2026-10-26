@@ -16,7 +16,7 @@ from services.web_authentication_adapters import (
     TokenManagerWebAuthenticationGateway,
 )
 from services.web_authentication_service import WebEmailDeliveryRateLimitError
-from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, web_identities
+from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, web_identities
 
 
 def token_gateway(*, limited: bool = False) -> tuple[TokenManagerWebAuthenticationGateway, MagicMock]:

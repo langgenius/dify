@@ -13,7 +13,7 @@ type SearchInputClearProps = Pick<
   'aria-label': string
 }
 
-// Same look as dify-ui `ComboboxClear` and `DropdownMenuClear`; change all three together.
+// Same look as dify-ui `ComboboxClear` and `MenuClear`; change all three together.
 // Spread `clearProps` from `useSearchInput` so the button stays out of the tab order and never
 // takes focus from the input.
 export function SearchInputClear({ className, ...props }: SearchInputClearProps) {

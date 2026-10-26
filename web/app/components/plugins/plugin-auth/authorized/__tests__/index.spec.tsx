@@ -156,9 +156,11 @@ describe('Authorized credential management', () => {
     await user.click(confirm)
     expect(confirm).toBeDisabled()
     await user.click(confirm)
-    expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/delete`, {
-      body: { credential_id: 'credential-b' },
-    })
+    await waitFor(() =>
+      expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/delete`, {
+        body: { credential_id: 'credential-b' },
+      }),
+    )
     expect(onUpdate).not.toHaveBeenCalled()
     await act(async () => {
       pending.resolve({})
@@ -177,9 +179,11 @@ describe('Authorized credential management', () => {
     const setDefault = await screen.findByRole('button', { name: 'plugin.auth.setDefault' })
     await user.click(setDefault)
     await user.click(setDefault)
-    expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/default-credential`, {
-      body: { id: 'credential-a' },
-    })
+    await waitFor(() =>
+      expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/default-credential`, {
+        body: { id: 'credential-a' },
+      }),
+    )
     expect(onUpdate).not.toHaveBeenCalled()
     await act(async () => {
       pending.resolve({})
@@ -207,9 +211,11 @@ describe('Authorized credential management', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.rename' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/update`, {
-      body: { credential_id: 'credential-a', name: 'Renamed account' },
-    })
+    await waitFor(() =>
+      expect(requests.post).toHaveBeenCalledExactlyOnceWith(`${baseUrl}/update`, {
+        body: { credential_id: 'credential-a', name: 'Renamed account' },
+      }),
+    )
     expect(onUpdate).not.toHaveBeenCalled()
     await act(async () => {
       pending.resolve({})

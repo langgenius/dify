@@ -1,17 +1,22 @@
+import type { ToolNodeType } from '../../nodes/tool/types'
+import type { Node } from '../../types'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { CollectionType } from '@/app/components/tools/types'
 import {
   CANVAS_NODES_STATUS_NAME,
   CanvasNodesCatalogProbe,
 } from '@/app/components/workflow/__tests__/canvas-nodes-catalog-probe'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
-import { NodeActionsDropdown } from '../index'
+import { NodeActionsMenu } from '../index'
 
 // Node metadata comes from the per-app block registry, which has its own suite.
 vi.mock('../../hooks/use-nodes-meta-data', async (importOriginal) => {
@@ -40,46 +45,71 @@ vi.mock('../change-block-popup', () => ({
 
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 
+const toolProvider = createToolProviderFixture({
+  id: 'provider-id',
+  name: 'test-provider',
+  allow_delete: true,
+  team_credentials: {},
+  is_team_authorization: false,
+})
+const makeToolData = (overrides: Partial<ToolNodeType> = {}): ToolNodeType => ({
+  title: 'Tool node',
+  desc: '',
+  type: BlockEnum.Tool,
+  provider_id: toolProvider.id,
+  provider_name: toolProvider.name,
+  provider_type: CollectionType.builtIn,
+  tool_name: 'test-tool',
+  tool_label: 'Test tool',
+  tool_parameters: {},
+  tool_configurations: {},
+  ...overrides,
+})
+
 const canvasNodes = () => screen.getByRole('status', { name: CANVAS_NODES_STATUS_NAME }).textContent
 const renderComponent = (
   showHelpLink: boolean = true,
   onOpenChange?: (open: boolean) => void,
   readOnly = false,
+  data: Node['data'] = { title: 'Code Node', desc: '', type: BlockEnum.Code },
 ) => {
   const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
   seedModelProviderQueries(queryClient)
-  return renderWorkflowFlowComponent(
+  seedToolProviders(queryClient, {
+    builtInTools: [toolProvider],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  const content = (nodeData: Node['data']) => (
     <>
-      <NodeActionsDropdown
+      <NodeActionsMenu
         id="node-1"
-        data={{
-          title: 'Code Node',
-          desc: '',
-          type: BlockEnum.Code,
-        }}
+        data={nodeData}
         triggerClassName="node-actions-trigger"
         onOpenChange={onOpenChange}
         showHelpLink={showHelpLink}
       />
       <CanvasNodesCatalogProbe />
-    </>,
-    {
-      initialStoreState: { canvasReadOnly: readOnly },
-      nodes: [
-        createNode({
-          id: 'node-1',
-          width: 240,
-          height: 80,
-          data: { type: BlockEnum.Code, title: 'Code Node' },
-        }),
-      ],
-      edges: [],
-      queryClient,
-    },
+    </>
   )
+  const view = renderWorkflowFlowComponent(content(data), {
+    initialStoreState: { canvasReadOnly: readOnly },
+    nodes: [
+      createNode({
+        id: 'node-1',
+        width: 240,
+        height: 80,
+        data,
+      }),
+    ],
+    edges: [],
+    queryClient,
+  })
+  return { ...view, update: (nodeData: Node['data']) => view.rerender(content(nodeData)) }
 }
 
-describe('NodeActionsDropdown', () => {
+describe('NodeActionsMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseNodeMetaData.mockReturnValue({
@@ -108,6 +138,67 @@ describe('NodeActionsDropdown', () => {
     expect(canvasNodes()).toBe('node-1*')
     expect(store.getState().initShowLastRunTab).toBe(true)
     expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
+  })
+
+  it('blocks a tool run in the menu when Workspace authorization is missing', async () => {
+    const user = userEvent.setup()
+    const { store } = renderComponent(true, undefined, false, makeToolData())
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    const run = screen.getByRole('menuitem', { name: 'workflow.panel.runThisStep' })
+
+    expect(run).toHaveAttribute('aria-disabled', 'true')
+    expect(run).toHaveAttribute(
+      'aria-description',
+      'workflow.panel.configureWorkspaceAuthorization',
+    )
+    await user.click(run)
+
+    expect(store.getState().pendingSingleRun).toBeUndefined()
+    expect(store.getState().initShowLastRunTab).toBe(false)
+    expect(canvasNodes()).toBe('node-1')
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+  })
+
+  it('updates the open menu when the saved App user test credential is removed', async () => {
+    const user = userEvent.setup()
+    const data = makeToolData({
+      credential_source: 'end_user',
+      end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Connect app users' },
+      test_credential_id: 'credential-1',
+    })
+    const { store, update } = renderComponent(true, undefined, false, data)
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    expect(
+      screen.getByRole('menuitem', { name: 'workflow.panel.runThisStep' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+    update(makeToolData({ ...data, test_credential_id: null }))
+    const run = screen.getByRole('menuitem', { name: 'workflow.panel.runThisStep' })
+    expect(run).toHaveAttribute('aria-disabled', 'true')
+    expect(run).toHaveAttribute('aria-description', 'workflow.panel.configureTestRunConnection')
+    await user.click(run)
+    expect(store.getState().pendingSingleRun).toBeUndefined()
+    expect(canvasNodes()).toBe('node-1')
+  })
+
+  it('keeps the menu stop action available when Workspace authorization is missing', async () => {
+    const user = userEvent.setup()
+    const { store } = renderComponent(
+      true,
+      undefined,
+      false,
+      makeToolData({ _singleRunningStatus: NodeRunningStatus.Running }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    const stop = screen.getByRole('menuitem', {
+      name: 'workflowDebug.debug.variableInspect.trigger.stop',
+    })
+
+    expect(stop).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(stop)
+
+    expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'stop' })
+    expect(canvasNodes()).toBe('node-1*')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it.each([

@@ -10,6 +10,7 @@ import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { FeaturesProvider } from '@/app/components/base/features/context'
+import { CollectionType } from '@/app/components/tools/types'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   createEdge,
@@ -32,6 +33,7 @@ import {
   seedAppDetail,
   seedAppDslVersion,
 } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
@@ -354,6 +356,57 @@ it('rejects an incomplete code node through the real checklist', async () => {
   renderEditor({ graph })
   await user.click(await openPublisher(user))
   await waitFor(() => expect(error).toHaveBeenCalledWith('workflow.panel.checklistTip'))
+  expect(api.publish).not.toHaveBeenCalled()
+})
+
+it('rejects checklist warnings without changing the current App user authorization errors', async () => {
+  const user = userEvent.setup()
+  const error = vi.spyOn(toast, 'error')
+  const graph = validGraph()
+  graph.nodes.push(
+    createNode({
+      id: 'tool-1',
+      data: {
+        type: BlockEnum.Tool,
+        provider_type: CollectionType.builtIn,
+        provider_id: 'provider-1',
+        provider_name: 'provider-1',
+        tool_name: 'search',
+        tool_parameters: {},
+        tool_configurations: {},
+      },
+    }),
+  )
+  graph.edges.push(createEdge({ source: 'code', target: 'tool-1' }))
+  const { store } = renderEditor({
+    graph,
+    seedQueries(queryClient) {
+      seedToolProviders(queryClient, {
+        builtInTools: [
+          createToolProviderFixture({
+            id: 'provider-1',
+            name: 'provider-1',
+            allow_delete: true,
+            is_team_authorization: false,
+          }),
+        ],
+      })
+    },
+  })
+  act(() => {
+    store.getState().setNodeAppUserAuthDraft('tool-1', 'provider-1', 'provider-1', {
+      oauthEnabled: true,
+      apiKeyEnabled: false,
+      description: '',
+    })
+    store.getState().setNodeAuthorizationTab('tool-1', 'provider-1', 'provider-1', 'app-user-auth')
+  })
+  const errorsBeforePublish = structuredClone(store.getState().nodeAuthDrafts['tool-1']?.errors)
+  expect(errorsBeforePublish).toBeDefined()
+  await user.click(await openPublisher(user))
+  await waitFor(() => expect(error).toHaveBeenCalledWith('workflow.panel.checklistTip'))
+  expect(store.getState().nodeAuthDrafts['tool-1']?.errors).toEqual(errorsBeforePublish)
+  expect(api.save).toHaveBeenCalledOnce()
   expect(api.publish).not.toHaveBeenCalled()
 })
 
