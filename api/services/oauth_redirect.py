@@ -22,3 +22,18 @@ def is_valid_redirect_uri(uri: str) -> bool:
     if parts.scheme == HTTPS_SCHEME:
         return True
     return parts.scheme == HTTP_SCHEME and host in LOOPBACK_HOSTS
+
+
+def is_valid_logo_uri(uri: str) -> bool:
+    try:
+        parts = urlsplit(uri)
+        host = parts.hostname
+    except ValueError:
+        return False
+    if parts.scheme != HTTPS_SCHEME:
+        return False
+    if not host:
+        return False
+    if parts.fragment or "#" in uri:
+        return False
+    return not any(char.isspace() for char in uri)

@@ -7,7 +7,7 @@ from core.db.session_factory import session_factory
 from enums.oauth_client import OAuthClientKind
 from repositories.oauth_client_repository import SQLAlchemyOAuthClientRepository
 from services.oauth_clients import hash_client_secret
-from services.oauth_redirect import is_valid_redirect_uri
+from services.oauth_redirect import is_valid_logo_uri, is_valid_redirect_uri
 from services.oauth_token_contracts import GrantType
 
 RESERVED_CLIENT_ID_PREFIXES = ("dcr_", "cimd:")
@@ -61,6 +61,8 @@ def create(
     repository = SQLAlchemyOAuthClientRepository(session_factory=session_factory.get_session_maker())
     _validate_client_id(repository, client_id)
     _validate_redirect_uris(redirect_uris)
+    if logo_uri is not None and not is_valid_logo_uri(logo_uri):
+        raise click.UsageError(f"invalid logo uri {logo_uri!r}: use https")
 
     secret = secrets.token_urlsafe(CLIENT_SECRET_BYTES) if confidential else None
     repository.create(

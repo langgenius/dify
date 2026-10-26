@@ -1,8 +1,9 @@
 from collections.abc import Iterator
+from typing import cast
 
 import pytest
 from click.testing import CliRunner, Result
-from sqlalchemy import Engine, create_engine, select
+from sqlalchemy import Engine, Table, create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from commands import oauth_client
@@ -19,8 +20,8 @@ REDIRECT = "https://example.com/cb"
 @pytest.fixture
 def engine(monkeypatch: pytest.MonkeyPatch) -> Iterator[Engine]:
     engine = create_engine("sqlite://")
-    OAuthClient.__table__.create(engine)
-    OAuthProviderApp.__table__.create(engine)
+    cast(Table, OAuthClient.__table__).create(engine)
+    cast(Table, OAuthProviderApp.__table__).create(engine)
     maker = sessionmaker(engine, class_=Session)
     monkeypatch.setattr(session_factory, "get_session_maker", lambda: maker)
     yield engine
@@ -132,6 +133,25 @@ def test_rejects_invalid_redirect(engine: Engine, redirect: str) -> None:
 
 def test_requires_a_redirect_uri(engine: Engine) -> None:
     result = _create("--client-id", "c", "--name", "N")
+
+    assert result.exit_code == 2
+    assert _rows(engine) == []
+
+
+def test_accepts_https_logo(engine: Engine) -> None:
+    result = _create(
+        "--client-id", "c", "--name", "N", "--redirect-uri", REDIRECT, "--logo-uri", "https://example.com/x.png"
+    )  # fmt: skip
+
+    assert result.exit_code == 0, result.output
+    assert _rows(engine)[0].logo_uri == "https://example.com/x.png"
+
+
+@pytest.mark.parametrize(
+    "logo", ["http://example.com/x.png", "javascript:alert(1)", "http://localhost/x.png", "https://example.com/x#f"]
+)
+def test_rejects_invalid_logo(engine: Engine, logo: str) -> None:
+    result = _create("--client-id", "c", "--name", "N", "--redirect-uri", REDIRECT, "--logo-uri", logo)
 
     assert result.exit_code == 2
     assert _rows(engine) == []

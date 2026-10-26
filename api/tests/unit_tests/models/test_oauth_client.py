@@ -1,13 +1,15 @@
-from sqlalchemy import create_engine, select
+from typing import cast
+
+from sqlalchemy import Table, create_engine, select
 from sqlalchemy.orm import Session
 
 from enums.oauth_client import OAuthClientKind
 from models.oauth import OAuthClient
 
 
-def test_oauth_client_round_trips_list_fields():
+def test_oauth_client_round_trips_list_fields() -> None:
     engine = create_engine("sqlite:///:memory:")
-    OAuthClient.__table__.create(engine)
+    cast(Table, OAuthClient.__table__).create(engine)
     client = OAuthClient(
         client_id="nango",
         kind=OAuthClientKind.CONFIDENTIAL,
@@ -30,9 +32,9 @@ def test_oauth_client_round_trips_list_fields():
         assert loaded.created_at is not None
 
 
-def test_public_client_has_no_secret():
+def test_public_client_has_no_secret() -> None:
     engine = create_engine("sqlite:///:memory:")
-    OAuthClient.__table__.create(engine)
+    cast(Table, OAuthClient.__table__).create(engine)
     with Session(engine) as session:
         session.add(
             OAuthClient(
