@@ -21,11 +21,6 @@ from services.annotation import retrieval_gateway
 from services.annotation.reply_service import AnnotationReplyService
 from services.annotation.retrieval_gateway import AnnotationVectorRetrieval
 from tests.helpers.unit.model_factories import make_app, make_message
-from tests.unit_tests.core.app.apps.advanced_chat.test_app_runner import (
-    build_runner as _runner_fixture,
-)
-
-build_runner = _runner_fixture
 
 
 class ConfigOverrides(Protocol):

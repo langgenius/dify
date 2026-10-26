@@ -4038,7 +4038,7 @@ class TestDatasetRetrievalCases:
                 for document_id, doc_metadata in documents.items():
                     session.add(make_document(document_id=document_id, doc_metadata=doc_metadata))
 
-            filters = DatasetRetrieval.process_metadata_filter_func(0, condition, metadata_name, value, [])
+            filters = KnowledgeRetrievalRepository.process_metadata_filter_func(0, condition, metadata_name, value, [])
             with sqlite_session_factory() as session:
                 found = set(session.scalars(select(DatasetDocument.id).where(*filters)).all())
 
