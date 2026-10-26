@@ -110,6 +110,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         workspace_id: str,
         client_id: str,
         device_label: str,
+        lifetime: timedelta | None = None,
     ) -> IssuedOAuthToken:
         return self._issue_token(
             token_type=TokenType.OAUTH_ACCOUNT,
@@ -119,6 +120,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
             client_id=client_id,
             device_label=device_label,
             workspace_id=workspace_id,
+            lifetime=lifetime,
         )
 
     @override
@@ -140,6 +142,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
             client_id=client_id,
             device_label=device_label,
             workspace_id=None,
+            lifetime=None,
         )
 
     def _issue_token(
@@ -152,9 +155,11 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         client_id: str,
         device_label: str,
         workspace_id: str | None,
+        lifetime: timedelta | None,
     ) -> IssuedOAuthToken:
         plaintext = token_type.prefix + secrets.token_urlsafe(_OAUTH_TOKEN_BODY_BYTES)
-        expires_at = datetime.now(UTC) + timedelta(days=self._ttl_policy.ttl_days(workspace_id))
+        max_lifetime = timedelta(days=self._ttl_policy.ttl_days(workspace_id))
+        expires_at = datetime.now(UTC) + (max_lifetime if lifetime is None else min(lifetime, max_lifetime))
         rotation = self._tokens.rotate_token(
             OAuthDeviceTokenWrite(
                 subject_email=subject_email,

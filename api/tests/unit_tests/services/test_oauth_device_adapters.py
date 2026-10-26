@@ -1,5 +1,6 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import override
 
 import pytest
@@ -7,14 +8,20 @@ import pytest
 from extensions.ext_redis import RedisClientWrapper
 from libs import jws
 from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL, limiter_prefix
+from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import (
     DifyConfigOAuthDeviceSettings,
     EnterpriseDeviceSSOService,
     EnterpriseOAuthDeviceSSOGateway,
     EnvironmentOAuthDeviceTokenTTLPolicy,
+    OAuthDeviceTokenIssuanceGateway,
     RedisExternalApprovalLimiter,
 )
-from services.oauth_device_contracts import OAuthDeviceSSOInitiationError
+from services.oauth_device_contracts import (
+    OAuthDeviceSSOInitiationError,
+    OAuthDeviceTokenRotation,
+    OAuthDeviceTokenWrite,
+)
 
 
 @dataclass
@@ -199,3 +206,71 @@ def test_token_ttl_policy_reads_the_configured_days(config_overrides: Callable[.
     config_overrides(OAUTH_TTL_DAYS=30)
 
     assert EnvironmentOAuthDeviceTokenTTLPolicy().ttl_days("workspace-1") == 30
+
+
+@dataclass
+class _RecordingTokenPersistence:
+    writes: list[OAuthDeviceTokenWrite] = field(default_factory=list)
+
+    def rotate_token(self, token: OAuthDeviceTokenWrite) -> OAuthDeviceTokenRotation:
+        self.writes.append(token)
+        return OAuthDeviceTokenRotation(token_id="token-1", replaced_token_id=None, replaced_token_hash=None)
+
+    def rollback_rotation(self, rotation: OAuthDeviceTokenRotation) -> bool:
+        _ = rotation
+        return True
+
+
+@dataclass(frozen=True)
+class _FixedTTLPolicy:
+    days: int
+
+    def ttl_days(self, workspace_id: str | None) -> int:
+        _ = workspace_id
+        return self.days
+
+
+_ACCOUNT = AccountSnapshot(
+    id="account-1",
+    name="Account",
+    email="a@example.com",
+    avatar=None,
+    is_password_set=True,
+    interface_language=None,
+    interface_theme=None,
+    timezone=None,
+    last_login_at=None,
+    last_login_ip=None,
+    status="active",
+    initialized_at=None,
+    created_at=datetime(2026, 1, 1, tzinfo=UTC),
+)
+
+
+def _issue_expiry(ttl_days: int, lifetime: timedelta | None) -> timedelta:
+    persistence = _RecordingTokenPersistence()
+    gateway = OAuthDeviceTokenIssuanceGateway(tokens=persistence, ttl_policy=_FixedTTLPolicy(days=ttl_days))
+    before = datetime.now(UTC)
+    if lifetime is None:
+        gateway.issue_account_token(account=_ACCOUNT, workspace_id="ws-1", client_id="difyctl", device_label="laptop")
+    else:
+        gateway.issue_account_token(
+            account=_ACCOUNT,
+            workspace_id="ws-1",
+            client_id="difyctl",
+            device_label="laptop",
+            lifetime=lifetime,
+        )
+    return persistence.writes[0].expires_at - before
+
+
+def test_issue_account_token_defaults_to_ttl_days() -> None:
+    assert abs(_issue_expiry(14, None) - timedelta(days=14)) < timedelta(seconds=5)
+
+
+def test_issue_account_token_uses_shorter_lifetime() -> None:
+    assert abs(_issue_expiry(14, timedelta(hours=24)) - timedelta(hours=24)) < timedelta(seconds=5)
+
+
+def test_issue_account_token_caps_lifetime_at_ttl_days() -> None:
+    assert abs(_issue_expiry(1, timedelta(days=30)) - timedelta(days=1)) < timedelta(seconds=5)

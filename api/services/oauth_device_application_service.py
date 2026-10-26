@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import secrets
 from collections.abc import Sequence
+from datetime import timedelta
 from hashlib import sha256
 from typing import Protocol
 from urllib.parse import quote
@@ -115,6 +116,7 @@ class OAuthDeviceTokenIssuer(Protocol):
         workspace_id: str,
         client_id: str,
         device_label: str,
+        lifetime: timedelta | None = None,
     ) -> IssuedOAuthToken: ...
 
     def issue_external_token(
