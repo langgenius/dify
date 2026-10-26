@@ -6807,11 +6807,6 @@
       "count": 4
     }
   },
-  "web/features/new-rag/create/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/features/new-rag/create/source-setup.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
