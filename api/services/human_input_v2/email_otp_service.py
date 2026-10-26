@@ -26,6 +26,7 @@ from models.workflow import WorkflowRun
 from repositories.human_input_v2.contact import ContactType
 from repositories.human_input_v2.delivery_repository import Delivery, EmailTargetSnapshot, SubmissionAuthType
 from repositories.human_input_v2.recipient_repository import ContactRecipientSubject, EmailRecipientSubject
+from repositories.human_input_v2.sqlalchemy_audit_repository import SQLAlchemyAuditRepository
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
@@ -153,7 +154,7 @@ class EmailOtpService:
         self._limiter = limiter
         self._mail = mail
 
-    def request_access(self, form_token: str) -> AccessChallenge:
+    def request_access(self, form_token: str, *, ip_address: str | None = None) -> AccessChallenge:
         delivery, subject, _ = self._authorize(form_token)
         if not self._mail.available():
             raise EmailOtpError(OtpFailure.UNAVAILABLE)
@@ -176,6 +177,14 @@ class EmailOtpService:
         except EmailOtpError:
             self.cleanup(delivery.id, token)
             raise EmailOtpError(OtpFailure.DELIVERY, self._retry_after(delivery.id)) from None
+        # Sending is an external side effect. Commit its audit even when the
+        # challenge expires or Redis becomes unavailable before the response.
+        with self._sessions() as session, session.begin():
+            SQLAlchemyAuditRepository(session, delivery.tenant_id, delivery.form_id).record_otp_send(
+                recipient_id=delivery.recipient_id,
+                recipient_email=subject.email,
+                sender_ip_address=ip_address,
+            )
         try:
             remaining = self._challenge_remaining_seconds(delivery.id, token)
             if remaining <= 0:

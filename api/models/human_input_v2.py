@@ -455,6 +455,13 @@ class IMMessageInbox(TypeBase):
         kw_only=True,
         comment="Authenticated Provider-native payload.",
     )
+    request_ip_address: Mapped[str | None] = mapped_column(
+        sa.Text,
+        nullable=True,
+        default=None,
+        kw_only=True,
+        comment="HTTP request IP when available; absent for stream and historical events.",
+    )
     processed_at: Mapped[datetime | None] = mapped_column(
         sa.DateTime,
         nullable=True,
@@ -1365,7 +1372,8 @@ class AuditEventType(StrEnum):
 
 class FormViewEvent(_ImmutableJSONModel):
     type: Literal[AuditEventType.FORM_VIEW] = AuditEventType.FORM_VIEW
-    viewer_ip_address: str
+    # None means the request IP was unavailable.
+    viewer_ip_address: str | None
 
 
 class OtpSendEvent(_ImmutableJSONModel):

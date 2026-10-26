@@ -60,7 +60,7 @@ class IMMessageInboxSink:
         self._clock = clock
         self._metrics = metrics
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
         """Commit or resolve the event before returning transport acceptance."""
 
         event = canonicalize_inbox_event(event)
@@ -85,6 +85,7 @@ class IMMessageInboxSink:
                 self._integration_id,
                 event,
                 now=self._clock(),
+                request_ip_address=request_ip_address,
             )
         except InboxPersistenceError:
             self._metrics.record(

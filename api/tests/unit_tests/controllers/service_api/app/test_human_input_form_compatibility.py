@@ -50,7 +50,7 @@ from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm as LegacyForm
 from models.human_input import HumanInputFormRecipient as LegacyRecipient
 from models.human_input import RecipientType
-from models.human_input_v2 import HumanInputAuditEvent, HumanInputDelivery, RecipientSubjectType
+from models.human_input_v2 import FormViewEvent, HumanInputAuditEvent, HumanInputDelivery, RecipientSubjectType
 from models.human_input_v2 import HumanInputForm as V2Form
 from models.human_input_v2 import HumanInputRecipient as V2Recipient
 from models.model import ApiToken, AppMode, EndUser, UploadFile
@@ -284,8 +284,11 @@ def approval(
     database_sessions.remove()
 
 
-def test_get_without_user_returns_the_existing_form_definition(approval: Approval) -> None:
-    response = approval.client.get(_PATH, headers=_HEADERS)
+@pytest.mark.parametrize(("remote_address", "expected_ip"), [("127.0.0.1", "127.0.0.1"), (None, None), ("", None)])
+def test_get_without_user_returns_the_existing_form_definition(
+    approval: Approval, remote_address: str | None, expected_ip: str | None
+) -> None:
+    response = approval.client.get(_PATH, headers=_HEADERS, environ_overrides={"REMOTE_ADDR": remote_address})
     assert response.status_code == 200, response.json
     assert response.json == {
         "form_content": _CONTENT,
@@ -307,6 +310,16 @@ def test_get_without_user_returns_the_existing_form_definition(approval: Approva
     }
     assert approval.submission() is None
     assert approval.published == []
+    with approval.sessions() as session:
+        audits = list(session.scalars(sa.select(HumanInputAuditEvent)))
+        if approval.version == "1":
+            assert audits == []
+        else:
+            assert len(audits) == 1
+            assert audits[0].tenant_id == approval.tenant_id
+            assert audits[0].form_id == approval.form_id
+            assert isinstance(audits[0].payload, FormViewEvent)
+            assert audits[0].payload.viewer_ip_address == expected_ip
 
 
 @pytest.mark.parametrize("method", ["GET", "POST"])

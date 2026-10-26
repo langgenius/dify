@@ -23,25 +23,39 @@ class IMInboxStorage:
         self._session_factory = session_factory
 
     def insert_or_resolve(
-        self, integration_id: IntegrationId, event: AuthenticatedIMEvent, *, now: datetime
+        self,
+        integration_id: IntegrationId,
+        event: AuthenticatedIMEvent,
+        *,
+        now: datetime,
+        request_ip_address: str | None = None,
     ) -> InboxAcceptance:
         try:
-            return self._insert(integration_id, event, now=now)
+            return self._insert(integration_id, event, now=now, request_ip_address=request_ip_address)
         except IntegrityError as error:
             if event.event_id is None:
                 raise InboxPersistenceError("failed to persist unidentified IM callback") from error
             # A competing intake may insert after the initial lookup. Its commit
             # is visible only after rolling back our failed transaction.
             try:
-                return self._insert(integration_id, event, now=now)
+                return self._insert(integration_id, event, now=now, request_ip_address=request_ip_address)
             except SQLAlchemyError as retry_error:
                 raise InboxPersistenceError("failed to resolve duplicate IM callback") from retry_error
         except SQLAlchemyError as error:
             raise InboxPersistenceError("failed to persist IM callback") from error
 
-    def _insert(self, integration_id: IntegrationId, event: AuthenticatedIMEvent, *, now: datetime) -> InboxAcceptance:
+    def _insert(
+        self,
+        integration_id: IntegrationId,
+        event: AuthenticatedIMEvent,
+        *,
+        now: datetime,
+        request_ip_address: str | None,
+    ) -> InboxAcceptance:
         with self._session_factory() as session, session.begin():
-            return SQLAlchemyIMMessageInboxRepository(session).insert_or_resolve(integration_id, event, now=now)
+            return SQLAlchemyIMMessageInboxRepository(session).insert_or_resolve(
+                integration_id, event, now=now, request_ip_address=request_ip_address
+            )
 
     def get(self, record_id: IMInboxRecordId) -> IMInboxRecord | None:
         try:

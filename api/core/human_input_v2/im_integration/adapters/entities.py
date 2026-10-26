@@ -149,6 +149,8 @@ class WebhookRequest:
     headers: tuple[tuple[str, str], ...]
     body: bytes
     received_at: NaiveDatetime
+    # None when the transport cannot determine the request IP.
+    request_ip_address: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

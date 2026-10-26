@@ -777,7 +777,7 @@ class _MSTeamsWebhookHandler(IMWebhookHandler):
             payload=json.dumps(decoded_body, ensure_ascii=False, allow_nan=False, separators=(",", ":")),
         )
         try:
-            acceptance = self._consumer.accept(event)
+            acceptance = self._consumer.accept(event, request_ip_address=request.request_ip_address)
         except Exception:
             _log_safe_error("Unexpected Microsoft Teams Webhook consumer failure")
             return _webhook_response(503, b"event processing failed")

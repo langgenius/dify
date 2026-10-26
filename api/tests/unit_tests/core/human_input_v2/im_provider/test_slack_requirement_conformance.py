@@ -65,7 +65,8 @@ class _RecordingConsumer:
         self.events: list[AuthenticatedIMEvent] = []
         self._lock = threading.Lock()
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         with self._lock:
             self.events.append(event)
         return self.acceptance
@@ -701,7 +702,8 @@ def test_webhook_consumer_failure_does_not_log_exception_details(
     sensitive_marker = "sanitized-sensitive-consumer-marker"
 
     class _FailingConsumer:
-        def accept(self, event: object) -> EventAcceptance:
+        def accept(self, event: object, *, request_ip_address: str | None = None) -> EventAcceptance:
+            del request_ip_address
             del event
             raise RuntimeError(sensitive_marker)
 
@@ -1102,7 +1104,8 @@ def test_webhook_handler_supports_overlapping_calls_with_independent_responses(m
     maximum_active_calls = 0
 
     class _OverlappingConsumer:
-        def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+        def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+            del request_ip_address
             nonlocal active_calls, maximum_active_calls
             with state_lock:
                 active_calls += 1
@@ -1417,7 +1420,8 @@ def test_socket_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mock
         def __init__(self) -> None:
             self.calls = 0
 
-        def accept(self, event: object) -> EventAcceptance:
+        def accept(self, event: object, *, request_ip_address: str | None = None) -> EventAcceptance:
+            del request_ip_address
             del event
             self.calls += 1
             consumer_started.set()

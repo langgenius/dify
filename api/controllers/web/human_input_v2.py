@@ -4,6 +4,7 @@ These routes are separate from the public Email-proof form surface. A delivery
 token locates the form; the app passport establishes who may read or submit it.
 """
 
+from flask import request
 from pydantic import BaseModel, ConfigDict, JsonValue
 from werkzeug.exceptions import NotFound
 
@@ -23,7 +24,7 @@ from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import TenantId
 from fields.base import ResponseModel
 from libs.external_api import error_responses
-from libs.helper import dump_response, to_timestamp
+from libs.helper import dump_response, extract_remote_ip, to_timestamp
 from models.model import App, EndUser
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
@@ -73,7 +74,9 @@ class WebAppHumanInputV2FormApi(WebApiResource):
         actor = _web_app_actor(app_model, end_user)
         service = HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
         try:
-            form = service.get_web_app_form(actor=actor, form_token=form_token)
+            form = service.get_web_app_form(
+                actor=actor, form_token=form_token, ip_address=extract_remote_ip(request) or None
+            )
         except HumanInputFormError as exc:
             raise form_http_error(exc, message="The approval could not be accepted.") from exc
         return dump_response(

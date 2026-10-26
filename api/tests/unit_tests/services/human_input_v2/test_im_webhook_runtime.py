@@ -28,6 +28,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.key_providers.base import BaseKeyProvider
 from models.account import Account, AccountStatus, TenantAccountJoin
 from models.human_input_v2 import (
+    HumanInputAuditEvent,
     HumanInputContactIdentity,
     HumanInputForm,
     HumanInputIMBinding,
@@ -35,6 +36,7 @@ from models.human_input_v2 import (
     HumanInputIMChannel,
     HumanInputIMIdentity,
     HumanInputPlatformContactWorkspaceEntry,
+    IMCallbackVerificationEvent,
     IMIdentityRawPayload,
     IMMessageInbox,
 )
@@ -95,10 +97,15 @@ def approval(context: Context, monkeypatch: pytest.MonkeyPatch, binding_scope: s
     key_provider.decrypt.side_effect = lambda _tenant, ciphertext: ciphertext.decode()
     monkeypatch.setattr(KeyProviderManager, "provider", property(lambda _: key_provider))
     monkeypatch.setattr(dify_config, "HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE", IMEventTransportMode.WEBHOOK)
-    with context.sessions() as session:
-        inbox_table = IMMessageInbox.__table__
-        assert isinstance(inbox_table, sa.Table)
-        inbox_table.create(session.get_bind())
+    from importlib import import_module
+
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+
+    with context.sessions.begin() as session, Operations.context(MigrationContext.configure(session.connection())):
+        import_module("migrations.versions.2026_08_02_1000-f1a2b3c4d5e6_add_im_message_inbox").upgrade()
+        import_module("migrations.versions.2026_08_15_1200-d4e6f8a1b2c3_add_im_event_ingress_kind").upgrade()
+        import_module("migrations.versions.2026_10_23_1200-b9e3f5a7c1d4_add_im_inbox_request_ip").upgrade()
     node = HumanInputNodeData.model_validate(
         {
             "title": "Review",
@@ -358,8 +365,21 @@ def test_worker_redelivery_repairs_resume_publication_without_resubmitting(
     assert "sensitive-broker-detail" not in caplog.text
 
 
-@pytest.mark.parametrize("mutation", ["deleted", "another_workspace"])
-def test_worker_rechecks_current_channel_ownership(context, approval, callback_app, mutation):
+@pytest.mark.parametrize(
+    ("mutation", "expected_reason"),
+    [
+        ("deleted", "Callback channel was not found."),
+        ("another_workspace", "Channel and delivery belong to different workspaces."),
+    ],
+)
+def test_worker_rechecks_current_channel_ownership(
+    context: Context,
+    approval: tuple[str, IMChannelId],
+    callback_app: tuple[DifyApp, list[str]],
+    mutation: str,
+    expected_reason: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     form_id, channel_id = approval
     app, published = callback_app
     body = _request_body()
@@ -375,27 +395,33 @@ def test_worker_rechecks_current_channel_ownership(context, approval, callback_a
     with context.sessions() as session:
         assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
         assert session.get_one(IMMessageInbox, published[0]).processed_at is not None
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+    assert expected_reason in caplog.text
+    assert f"channel_id={channel_id}" in caplog.text
+    assert "tenant_id=None form_id=None" in caplog.text
+    assert _TOKEN not in caplog.text
+    assert _SIGNING_SECRET not in caplog.text
 
 
 @pytest.mark.parametrize(
-    ("binding_scope", "mutation"),
+    ("binding_scope", "mutation", "expected_reason"),
     [
-        ("default", "contact_deleted"),
-        ("default", "membership_removed"),
-        ("default", "account_disabled"),
-        ("default", "binding_removed"),
-        ("default", "binding_replaced"),
-        ("default", "binding_round_trip"),
-        ("default", "binding_recreated"),
-        ("default", "identity_removed"),
-        ("default", "identity_channel_changed"),
-        ("default", "identity_user_changed"),
-        ("default", "override_added"),
-        ("default", "override_added_same_identity"),
-        ("workspace_override", "override_replaced"),
-        ("workspace_override", "override_round_trip"),
-        ("workspace_override", "override_reset"),
-        ("workspace_override_same_identity", "override_reset"),
+        ("default", "contact_deleted", "Callback contact is no longer available in the workspace."),
+        ("default", "membership_removed", "Callback contact is no longer available in the workspace."),
+        ("default", "account_disabled", "Callback contact is no longer available in the workspace."),
+        ("default", "binding_removed", "Callback contact has no effective IM binding for the channel."),
+        ("default", "binding_replaced", "Callback contact binding has changed since delivery."),
+        ("default", "binding_round_trip", "Callback contact binding has changed since delivery."),
+        ("default", "binding_recreated", "Callback contact binding has changed since delivery."),
+        ("default", "identity_removed", "Callback binding identity was not found in the channel."),
+        ("default", "identity_channel_changed", "Callback binding identity was not found in the channel."),
+        ("default", "identity_user_changed", "Callback user does not match the bound identity user."),
+        ("default", "override_added", "Callback contact binding has changed since delivery."),
+        ("default", "override_added_same_identity", "Callback contact binding has changed since delivery."),
+        ("workspace_override", "override_replaced", "Callback contact binding has changed since delivery."),
+        ("workspace_override", "override_round_trip", "Callback contact binding has changed since delivery."),
+        ("workspace_override", "override_reset", "Callback contact binding has changed since delivery."),
+        ("workspace_override_same_identity", "override_reset", "Callback contact binding has changed since delivery."),
     ],
 )
 def test_worker_rejects_revoked_im_authorization(
@@ -404,6 +430,8 @@ def test_worker_rejects_revoked_im_authorization(
     callback_app: tuple[DifyApp, list[str]],
     monkeypatch: pytest.MonkeyPatch,
     mutation: str,
+    expected_reason: str,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
     from tasks.human_input_im_card_tasks import update_human_input_im_card_task
@@ -492,6 +520,17 @@ def test_worker_rejects_revoked_im_authorization(
         assert form.raw_submission_inputs is None
         assert session.get_one(WorkflowRun, form.workflow_run_id).status == WorkflowExecutionStatus.PAUSED
         assert session.get_one(IMMessageInbox, published[0]).processed_at is not None
+        audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+        assert audit.tenant_id == context.execution.tenant_id
+        assert audit.form_id == form_id
+        assert audit.payload == IMCallbackVerificationEvent(
+            succeeded=False, reason=expected_reason, request_ip_address="127.0.0.1"
+        )
+    assert expected_reason in caplog.text
+    assert f"tenant_id={context.execution.tenant_id} form_id={form_id}" in caplog.text
+    assert f"channel_id={channel_id}" in caplog.text
+    assert _TOKEN not in caplog.text
+    assert _SIGNING_SECRET not in caplog.text
     resumed.assert_not_called()
     card_updates.assert_not_called()
 
@@ -589,3 +628,113 @@ def test_worker_uses_current_platform_contact_visibility(
             assert form.status == HumanInputFormStatus.WAITING
             assert form.submitted_at is None
             resumed.assert_not_called()
+
+
+@pytest.mark.parametrize(("ip_address", "expected_ip"), [("192.0.2.15", "192.0.2.15"), (None, None), ("", None)])
+@pytest.mark.parametrize(
+    ("user_id", "token", "action", "succeeded", "reason", "submitted"),
+    [
+        (_USER, _TOKEN, "approve", True, "verified", True),
+        ("another-user", _TOKEN, "approve", False, "Callback user does not match the delivery target user.", False),
+        (_USER, _TOKEN, "unknown-action", True, "verified", False),
+        (_USER, "unknown-token", "approve", None, None, False),
+    ],
+)
+def test_callback_verification_audit_is_independent_of_submission(
+    context: Context,
+    approval: tuple[str, IMChannelId],
+    callback_app: tuple[DifyApp, list[str]],
+    monkeypatch: pytest.MonkeyPatch,
+    user_id: str,
+    token: str,
+    action: str,
+    succeeded: bool | None,
+    reason: str | None,
+    submitted: bool,
+    ip_address: str | None,
+    expected_ip: str | None,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    monkeypatch.setattr(resume_app_execution, "apply_async", Mock())
+    form_id, _ = approval
+    app, published = callback_app
+    body = _request_body(user_id=user_id, token=token).replace(b"approve", action.encode())
+    assert (
+        app.test_client()
+        .post(_PATH, data=body, headers=_headers(body), environ_overrides={"REMOTE_ADDR": ip_address})
+        .status_code
+        == 200
+    )
+    with app.app_context():
+        process_im_message_inbox_record.run(published[0])
+    with context.sessions() as session:
+        assert (session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED) is submitted
+        audits = list(session.scalars(sa.select(HumanInputAuditEvent)))
+        if succeeded is None:
+            assert audits == []
+            assert "Callback delivery was not found." in caplog.text
+            assert "tenant_id=None form_id=None" in caplog.text
+            assert token not in caplog.text
+            return
+        assert len(audits) == 1
+        audit = audits[0]
+        assert audit.tenant_id == context.execution.tenant_id
+        assert audit.form_id == form_id
+        assert audit.created_at is not None
+        assert reason is not None
+        assert audit.payload == IMCallbackVerificationEvent(
+            succeeded=succeeded, reason=reason, request_ip_address=expected_ip
+        )
+        stored = audit.payload.model_dump_json()
+        assert _TOKEN not in stored
+        assert _SIGNING_SECRET not in stored
+        if not succeeded:
+            assert reason in caplog.text
+            assert f"tenant_id={context.execution.tenant_id} form_id={form_id}" in caplog.text
+            assert _TOKEN not in caplog.text
+            assert _SIGNING_SECRET not in caplog.text
+
+
+def test_unauthenticated_callback_does_not_create_form_audit(
+    context: Context, callback_app: tuple[DifyApp, list[str]]
+) -> None:
+    app, published = callback_app
+    body = _request_body()
+    response = app.test_client().post(_PATH, data=body, headers=_headers(body, secret="wrong-signing-secret"))
+    assert response.status_code == 401
+    assert published == []
+    with context.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+
+
+def test_verification_storage_failure_propagates_without_recording_rejection(
+    context: Context, approval: tuple[str, IMChannelId], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from sqlalchemy.exc import OperationalError
+
+    from services.human_input_v2.submission_service import HumanInputSubmissionService, IMFormActor
+
+    form_id, channel_id = approval
+    monkeypatch.setattr(
+        SQLAlchemyIMBindingRepository,
+        "get_effective",
+        Mock(side_effect=OperationalError("SELECT", {}, OSError("Storage unavailable"))),
+    )
+    service = HumanInputSubmissionService(session_factory=context.sessions)
+    with pytest.raises(OperationalError):
+        service.submit_im_form(
+            actor=IMFormActor(
+                channel_id=channel_id,
+                provider=IMProvider.SLACK,
+                provider_tenant_id=_TEAM,
+                provider_user_id=_USER,
+            ),
+            form_token=_TOKEN,
+            action="approve",
+            inputs={"note": "Approved", "decision": "选项 β"},
+        )
+    with context.sessions() as session:
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0

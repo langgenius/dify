@@ -76,6 +76,8 @@ class IMInboxRecord:
     integration_id: IntegrationId
     event: AuthenticatedIMEvent
     processed_at: datetime | None
+    # Absent for stream events and callbacks saved before IP capture was added.
+    request_ip_address: str | None = None
 
 
 class InboxPersistenceError(Exception):
@@ -93,7 +95,12 @@ class IMMessageInboxRepository(Protocol):
     """Persistence operations for durable callback facts."""
 
     def insert_or_resolve(
-        self, integration_id: IntegrationId, event: AuthenticatedIMEvent, *, now: datetime
+        self,
+        integration_id: IntegrationId,
+        event: AuthenticatedIMEvent,
+        *,
+        now: datetime,
+        request_ip_address: str | None = None,
     ) -> InboxAcceptance:
         """Commit a callback or resolve its identified duplicate."""
 

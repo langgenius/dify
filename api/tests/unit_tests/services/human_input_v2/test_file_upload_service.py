@@ -29,7 +29,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.external_api import ExternalApi
 from models.account import TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
-from models.human_input_v2 import HumanInputDelivery, HumanInputForm
+from models.human_input_v2 import HumanInputAuditEvent, HumanInputDelivery, HumanInputForm
 from models.model import UploadFile
 from models.workflow import WorkflowPause, WorkflowRun
 from repositories.human_input_v2.delivery_repository import (
@@ -307,3 +307,10 @@ def test_public_uploaded_file_can_be_submitted_and_restored(approval: Approval, 
         segment = restored.submission.normalized_submission_data["file"]
         assert isinstance(segment, FileSegment)
         assert segment.value.related_id == uploaded.id
+
+
+def test_upload_authorization_does_not_record_a_form_view(approval: Approval) -> None:
+    grant = approval.issue()
+    approval.service.validate_upload_token(grant.upload_token)
+    with approval.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0

@@ -31,6 +31,7 @@ from models import ToolFile, UploadFile
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input_v2 import (
     ContactSubjectType,
+    HumanInputAuditEvent,
     HumanInputContactIdentity,
     HumanInputDelivery,
     HumanInputEmailProvider,
@@ -150,6 +151,7 @@ def context(monkeypatch: pytest.MonkeyPatch) -> Iterator[_Context]:
         HumanInputIMIdentity,
         HumanInputIMBinding,
         HumanInputIMBindingWorkspaceOverride,
+        HumanInputAuditEvent,
         HumanInputForm,
         HumanInputRecipient,
         HumanInputDelivery,

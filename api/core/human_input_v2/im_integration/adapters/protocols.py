@@ -88,7 +88,7 @@ class IMCardEventDecoder(Protocol):
 class IMEventConsumer(Protocol):
     """Thread-safe consumer of authenticated provider events."""
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
         """Accept only after processing or taking responsibility for processing."""
         ...
 

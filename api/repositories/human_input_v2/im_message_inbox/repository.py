@@ -35,7 +35,12 @@ class SQLAlchemyIMMessageInboxRepository:
         self._session = session
 
     def insert_or_resolve(
-        self, integration_id: IntegrationId, event: AuthenticatedIMEvent, *, now: datetime
+        self,
+        integration_id: IntegrationId,
+        event: AuthenticatedIMEvent,
+        *,
+        now: datetime,
+        request_ip_address: str | None = None,
     ) -> InboxAcceptance:
         event = canonicalize_inbox_event(event)
         validate_inbox_event(event)
@@ -50,7 +55,15 @@ class SQLAlchemyIMMessageInboxRepository:
             if existing_id is not None:
                 return InboxAcceptance(IMInboxRecordId(existing_id), AcceptanceKind.DUPLICATE)
         record_id = IMInboxRecordId(str(uuidv7()))
-        self._session.add(event_record(record_id=record_id, integration_id=integration_id, event=event, now=now))
+        self._session.add(
+            event_record(
+                record_id=record_id,
+                integration_id=integration_id,
+                event=event,
+                now=now,
+                request_ip_address=request_ip_address,
+            )
+        )
         self._session.flush()
         return InboxAcceptance(record_id, AcceptanceKind.NEW)
 

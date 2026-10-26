@@ -912,7 +912,7 @@ class _SlackWebhookHandler(IMWebhookHandler):
         if event is None:
             return _webhook_response(400, b"invalid Slack event")
         try:
-            acceptance = self._consumer.accept(event)
+            acceptance = self._consumer.accept(event, request_ip_address=request.request_ip_address)
         except Exception:
             _log_safe_error(
                 "Slack Webhook consumer failed",

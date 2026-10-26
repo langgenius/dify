@@ -25,7 +25,8 @@ class _Consumer:
     def __init__(self) -> None:
         self.calls = 0
 
-    def accept(self, event: object) -> EventAcceptance:
+    def accept(self, event: object, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         del event
         self.calls += 1
         return EventAcceptance.ACCEPTED

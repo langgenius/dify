@@ -1,5 +1,6 @@
 """Account-authenticated Human Input v2 approval transport."""
 
+from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, JsonValue
 
@@ -19,7 +20,7 @@ from core.human_input_v2.shared.values import AccountId
 from fields.base import ResponseModel
 from libs.datetime_utils import to_utc_timestamp
 from libs.external_api import error_responses
-from libs.helper import dump_response
+from libs.helper import dump_response, extract_remote_ip
 from libs.login import login_required
 from models.account import Account
 from services.human_input_v2.submission_service import (
@@ -68,7 +69,11 @@ class ConsoleHumanInputV2FormApi(Resource):
     def get(self, current_user: Account, form_token: str):
         service = HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
         try:
-            form = service.get_console_form(account_id=AccountId(current_user.id), form_token=form_token)
+            form = service.get_console_form(
+                account_id=AccountId(current_user.id),
+                form_token=form_token,
+                ip_address=extract_remote_ip(request) or None,
+            )
         except HumanInputFormError as exc:
             raise form_http_error(exc, message="The form could not be retrieved.") from exc
         return dump_response(

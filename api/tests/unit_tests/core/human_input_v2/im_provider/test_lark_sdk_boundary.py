@@ -142,7 +142,8 @@ class _RecordingConsumer:
         self.events: list[AuthenticatedIMEvent] = []
         self.acceptance = acceptance
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         self.events.append(event)
         return self.acceptance
 
@@ -337,7 +338,8 @@ def _send_card(adapter: LarkIMProviderAdapter) -> MessageAccepted:
 
 
 class _NoEventsExpected:
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         del event
         raise AssertionError("Endpoint discovery must not fabricate a callback")
 

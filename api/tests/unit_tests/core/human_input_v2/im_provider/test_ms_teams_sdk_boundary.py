@@ -372,7 +372,8 @@ class _RecordingConsumer:
         self._lock = threading.Lock()
         self.events: list[AuthenticatedIMEvent] = []
 
-    def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+        del request_ip_address
         with self._lock:
             self.events.append(event)
         return self.acceptance
@@ -951,7 +952,8 @@ def test_official_jwt_boundary_authenticates_complete_payload_ack_and_concurrenc
     no_timestamp_response = accepted_handler.handle(_webhook_request(body_without_timestamp, token))
 
     class FailingConsumer:
-        def accept(self, event: AuthenticatedIMEvent) -> EventAcceptance:
+        def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
+            del request_ip_address
             del event
             raise RuntimeError("test-only consumer failure")
 

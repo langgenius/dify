@@ -1476,7 +1476,7 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
             payload=native_payload,
         )
         try:
-            acceptance = self._consumer.accept(event)
+            acceptance = self._consumer.accept(event, request_ip_address=request.request_ip_address)
         except Exception:
             _log_safe_error(
                 "Feishu/Lark Webhook consumer failed",
