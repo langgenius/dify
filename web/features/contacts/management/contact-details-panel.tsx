@@ -7,6 +7,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
+  ComboboxIcon,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxItem,
@@ -171,7 +172,7 @@ function IMIdentityDetails({ identity }: { identity: IMIdentityOption }) {
     (value) => value && value !== name,
   )
   return (
-    <span className="flex min-w-0 flex-1 flex-col gap-0.5 whitespace-normal">
+    <span className="flex min-w-0 flex-1 flex-col gap-0.5 text-start whitespace-normal">
       <span className="system-sm-medium wrap-anywhere">{name}</span>
       {identifiers.length > 0 && (
         <span className="system-xs-regular wrap-anywhere text-text-tertiary">
@@ -329,20 +330,21 @@ function ContactIMBindingEditor({
             >
               <ComboboxTrigger
                 aria-label={t(($) => $['imBinding.contactLabel'])}
-                className="h-auto min-h-9 gap-2 rounded-lg py-1.5 ps-1.5 pe-2.5"
+                className="flex h-auto min-h-9 w-full min-w-0 items-center gap-2 rounded-lg bg-components-input-bg-normal py-1.5 ps-1.5 pe-2.5 text-start text-components-input-text-filled transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-popup-open:bg-state-base-hover-alt motion-reduce:transition-none"
               >
                 {identity ? (
-                  <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="flex min-w-0 flex-1 items-center gap-1.5">
                     <IMIdentityAvatar identity={identity} />
                     <IMIdentityDetails identity={identity} />
                   </span>
                 ) : (
-                  <span className="px-2 text-components-input-text-placeholder">
+                  <span className="min-w-0 flex-1 px-2 text-components-input-text-placeholder">
                     {binding?.scope === 'workspace'
                       ? t(($) => $['imBinding.currentWorkspaceIdentity'])
                       : t(($) => $['imBinding.select'])}
                   </span>
                 )}
+                <ComboboxIcon className="text-text-quaternary" />
               </ComboboxTrigger>
               <ComboboxPortal>
                 <ComboboxPositioner>
