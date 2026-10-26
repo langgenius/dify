@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from pathlib import Path
 from sqlite3 import Connection as SQLiteConnection
 from threading import Barrier, Event
 from uuid import uuid4
@@ -120,8 +118,8 @@ def test_initiator_snapshot_requires_protected_token(token_fields: dict[str, Jso
 
 
 @pytest.fixture
-def delivery_engine(tmp_path: Path) -> Iterator[Engine]:
-    engine = sa.create_engine(f"sqlite:///{tmp_path / 'deliveries.sqlite3'}", connect_args={"timeout": 10})
+def delivery_engine(sqlite_engine: Engine) -> Engine:
+    engine = sqlite_engine
 
     # Use real outer transactions, including before the first SAVEPOINT.
     @event.listens_for(engine, "connect")
@@ -132,12 +130,7 @@ def delivery_engine(tmp_path: Path) -> Iterator[Engine]:
     def begin_transaction(connection: Connection) -> None:
         connection.exec_driver_sql("BEGIN")
 
-    for model in (HumanInputRecipient, HumanInputDelivery, HumanInputDeliveryAttempt):
-        model.metadata.tables[model.__tablename__].create(engine)
-    try:
-        yield engine
-    finally:
-        engine.dispose()
+    return engine
 
 
 def _recipient_params() -> RecipientCreateParams:

@@ -127,8 +127,6 @@ def _signed_request(body: bytes, *, valid_signature: bool = True) -> WebhookRequ
 
 
 def _build_sink(sqlite_engine: Engine) -> tuple[IMMessageInboxSink, sessionmaker[Session]]:
-    inbox_table = IMMessageEvent.metadata.tables[IMMessageEvent.__tablename__]
-    IMMessageEvent.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     sink = IMMessageInboxSink(
         integration_id=_INTEGRATION_ID,

@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import datetime, timedelta
-from pathlib import Path
 from sqlite3 import Connection as SQLiteConnection
 from threading import Barrier
 from uuid import uuid4
@@ -39,8 +37,8 @@ _RECIPIENT = RecipientId("00000000-0000-0000-0000-000000000003")
 
 
 @pytest.fixture
-def form_engine(tmp_path: Path) -> Iterator[Engine]:
-    engine = sa.create_engine(f"sqlite:///{tmp_path / 'forms.sqlite3'}", connect_args={"timeout": 10})
+def form_engine(sqlite_engine: Engine) -> Engine:
+    engine = sqlite_engine
 
     # Explicit BEGIN keeps caller rollback effective for every repository write.
     @event.listens_for(engine, "connect")
@@ -51,12 +49,7 @@ def form_engine(tmp_path: Path) -> Iterator[Engine]:
     def begin_transaction(connection: Connection) -> None:
         connection.exec_driver_sql("BEGIN")
 
-    table = HumanInputForm.metadata.tables[HumanInputForm.__tablename__]
-    table.create(engine)
-    try:
-        yield engine
-    finally:
-        engine.dispose()
+    return engine
 
 
 def _params(

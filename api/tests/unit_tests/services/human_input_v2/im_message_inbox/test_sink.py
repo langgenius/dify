@@ -92,8 +92,6 @@ def _event(
 
 
 def _sink(sqlite_engine: Engine) -> tuple[IMMessageInboxSink, sessionmaker[Session], _RecordingMetrics]:
-    inbox_table = IMMessageEvent.metadata.tables[IMMessageEvent.__tablename__]
-    IMMessageEvent.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     metrics = _RecordingMetrics()
     return (
@@ -215,8 +213,6 @@ def test_sink_preserves_provider_metadata_and_payload(sqlite_engine: Engine) -> 
     maximum_tenant_id = "t" * 128
     maximum_event_id = "e" * 128
     maximum_event_type = "y" * 128
-    inbox_table = IMMessageEvent.metadata.tables[IMMessageEvent.__tablename__]
-    IMMessageEvent.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     sink = IMMessageInboxSink(
         integration_id=IntegrationId("integration-1"),
@@ -254,8 +250,6 @@ def test_sink_canonicalizes_blank_event_id_before_validation(sqlite_engine: Engi
 
 
 def test_sink_rejects_oversized_bound_provider_identity(sqlite_engine: Engine) -> None:
-    inbox_table = IMMessageEvent.metadata.tables[IMMessageEvent.__tablename__]
-    IMMessageEvent.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
 
     with pytest.raises(InboxEventValidationError, match="provider tenant id"):

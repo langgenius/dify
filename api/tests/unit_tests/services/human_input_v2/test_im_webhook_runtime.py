@@ -97,16 +97,6 @@ def approval(context: Context, monkeypatch: pytest.MonkeyPatch, binding_scope: s
     key_provider.decrypt.side_effect = lambda _tenant, ciphertext: ciphertext.decode()
     monkeypatch.setattr(KeyProviderManager, "provider", property(lambda _: key_provider))
     monkeypatch.setattr(dify_config, "HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE", IMEventTransportMode.WEBHOOK)
-    from importlib import import_module
-
-    from alembic.migration import MigrationContext
-    from alembic.operations import Operations
-
-    with context.sessions.begin() as session, Operations.context(MigrationContext.configure(session.connection())):
-        import_module("migrations.versions.2026_08_02_1000-f1a2b3c4d5e6_add_im_message_inbox").upgrade()
-        import_module("migrations.versions.2026_08_15_1200-d4e6f8a1b2c3_add_im_event_ingress_kind").upgrade()
-        import_module("migrations.versions.2026_10_23_1200-b9e3f5a7c1d4_add_im_inbox_request_ip").upgrade()
-        import_module("migrations.versions.2026_10_26_1200-f4a6c8e0b2d5_rename_im_message_inbox_to_event").upgrade()
     node = HumanInputNodeData.model_validate(
         {
             "title": "Review",

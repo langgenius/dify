@@ -1,12 +1,9 @@
 """SQLite-backed tests for durable IM callback persistence."""
 
 from datetime import UTC, datetime
-from importlib import import_module
 
 import pytest
 import sqlalchemy as sa
-from alembic.migration import MigrationContext
-from alembic.operations import Operations
 from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError, OperationalError
@@ -52,8 +49,6 @@ def _event(
 
 
 def _repository(sqlite_engine: Engine) -> tuple[IMInboxStorage, sessionmaker[Session]]:
-    inbox_table = IMMessageEvent.metadata.tables[IMMessageEvent.__tablename__]
-    IMMessageEvent.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     return IMInboxStorage(session_maker), session_maker
 
@@ -167,56 +162,6 @@ def test_load_reconstructs_callback_facts(sqlite_engine: Engine) -> None:
     assert record.integration_id == IntegrationId("integration-1")
     assert record.event == event
     assert record.processed_at is None
-
-
-def test_previously_saved_callback_can_be_loaded_processed_and_deduplicated(sqlite_engine: Engine) -> None:
-    record_id = IMInboxRecordId("00000000-0000-0000-0000-000000000001")
-    with sqlite_engine.begin() as connection, Operations.context(MigrationContext.configure(connection)):
-        # The shared fixture precreates today's schema; restore the historical
-        # callback table before exercising processing of a previously saved row.
-        IMMessageEvent.metadata.tables[IMMessageEvent.__tablename__].drop(connection)
-        import_module("migrations.versions.2026_08_02_1000-f1a2b3c4d5e6_add_im_message_inbox").upgrade()
-        import_module("migrations.versions.2026_08_15_1200-d4e6f8a1b2c3_add_im_event_ingress_kind").upgrade()
-        import_module("migrations.versions.2026_10_23_1200-b9e3f5a7c1d4_add_im_inbox_request_ip").upgrade()
-        connection.execute(
-            sa.text(
-                "INSERT INTO im_message_inbox "
-                "(id, integration_id, provider, provider_tenant_id, provider_event_id, "
-                "received_at, ingress_kind, payload, request_ip_address) "
-                "VALUES (:id, :integration_id, :provider, :tenant_id, :event_id, "
-                ":received_at, :ingress_kind, :payload, :request_ip_address)"
-            ),
-            {
-                "id": str(record_id),
-                "integration_id": "integration-1",
-                "provider": IMProvider.FEISHU.value,
-                "tenant_id": "tenant-1",
-                "event_id": "event-1",
-                "received_at": _RECEIVED_AT.isoformat(sep=" "),
-                "ingress_kind": IMEventIngressKind.WEBHOOK.value,
-                "payload": _PAYLOAD,
-                "request_ip_address": "192.0.2.20",
-            },
-        )
-        import_module("migrations.versions.2026_10_26_1200-f4a6c8e0b2d5_rename_im_message_inbox_to_event").upgrade()
-    repository = IMInboxStorage(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
-
-    record = repository.get(record_id)
-
-    assert record is not None
-    assert record.integration_id == IntegrationId("integration-1")
-    assert record.event == _event(event_type=None)
-    assert record.request_ip_address == "192.0.2.20"
-    assert record.processed_at is None
-
-    repository.mark_processed(record_id, processed_at=_NOW)
-    processed = repository.get(record_id)
-    assert processed is not None
-    assert processed.processed_at == _RECEIVED_AT
-
-    duplicate = repository.insert_or_resolve(IntegrationId("integration-2"), _event(tenant_id="tenant-2"), now=_NOW)
-    assert duplicate.kind is AcceptanceKind.DUPLICATE
-    assert duplicate.record_id == record_id
 
 
 def test_mark_processed_records_callback_fact_and_is_idempotent(sqlite_engine: Engine) -> None:

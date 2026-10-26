@@ -12,7 +12,6 @@ from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, IM
 from core.human_input_v2.im_message_inbox import IMInboxRecord, IMInboxRecordId
 from core.human_input_v2.shared import IntegrationId
 from dify_app import DifyApp
-from models.human_input_v2 import IMMessageEvent
 from services.human_input_v2.im_message_inbox.processor import IMInboxProcessor
 from services.human_input_v2.im_message_inbox.storage import IMInboxStorage
 from tasks.im_message_inbox_tasks import (
@@ -115,8 +114,6 @@ def test_processing_task_retries_sanitized_processor_failure(
 
 
 def test_processing_task_loads_callback_and_records_processed_fact(sqlite_engine: Engine) -> None:
-    inbox_table = IMMessageEvent.metadata.tables[IMMessageEvent.__tablename__]
-    IMMessageEvent.metadata.create_all(sqlite_engine, tables=[inbox_table])
     repository = IMInboxStorage(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
     accepted = repository.insert_or_resolve(IntegrationId("integration-1"), _event(), now=_NOW)
     consumer = _Consumer()
