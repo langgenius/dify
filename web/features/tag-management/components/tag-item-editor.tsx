@@ -71,7 +71,6 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           onTagsChange?.()
         },
         onError: () => {
@@ -90,7 +89,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
     <>
       <div
         className={cn(
-          'flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 pr-1 pl-2 text-sm/5 text-text-secondary',
+          'flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 ps-2 pe-1 text-sm/5 text-text-secondary',
         )}
       >
         {!isEditing && (

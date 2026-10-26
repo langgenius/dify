@@ -11,7 +11,7 @@ import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cook
 import { PermissionType } from '@/app/components/plugins/types'
 import { useStore as usePluginDependenciesStore } from '@/app/components/workflow/plugin-dependency/store'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
@@ -183,7 +183,7 @@ function setup({ app = createApp() }: { app?: ReturnType<typeof createApp> } = {
         <ErrorBoundary fallback={(error) => <CommonLayoutError error={error} retry={() => {}} />}>
           <Configuration />
         </ErrorBoundary>
-        <AppToastHost />
+        <AppToaster />
       </EventEmitterContextProvider>
     </UrlState>,
     {

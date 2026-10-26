@@ -11,7 +11,7 @@ import {
 import { FeaturesProvider } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import ConfigContext from '@/context/debug-configuration'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -100,8 +100,8 @@ function setup({
             chatContainerRef={createRef<HTMLDivElement>()}
             checkCanSend={checkCanSend}
           />
-          <AppToastHost manager={appConfigurationToastManager} />
-          <AppToastHost />
+          <AppToaster manager={appConfigurationToastManager} />
+          <AppToaster />
         </EventEmitterContextProvider>
       </FeaturesProvider>
     </ConfigContext.Provider>,

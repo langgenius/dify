@@ -34,8 +34,8 @@ from services.app.generation.adapters.message_pipeline import EasyUIBasedGenerat
 from services.app.generation.message_records import MessageBasedAppGenerator
 from services.app.generation.ports import MessageIdentity, MessageUpdate
 from services.errors.message import MessageNotExistsError
+from tests.helpers.unit.model_factories import make_app, make_message
 from tests.unit_tests.core.app.apps.test_message_based_app_generator import DummyModelConf, _make_app_config
-from tests.unit_tests.model_factories import make_app, make_message
 
 type GenerateEntityType = (
     type[ChatAppGenerateEntity]
@@ -61,7 +61,7 @@ class Queue(AppQueueManager):
         return queue
 
     @override
-    def listen(self) -> Generator[MessageQueueMessage | WorkflowQueueMessage, None, None]:
+    def listen(self) -> Generator[MessageQueueMessage | WorkflowQueueMessage]:
         assert self.identity is not None
         yield MessageQueueMessage(
             task_id="task",
@@ -431,7 +431,7 @@ def test_multimodal_output_releases_connection_before_file_io_and_publishes_comm
                     assert (record.message_id, record.upload_file_id) == (identity.message_id, tool_file.id)
                 observed.append(event.message_file_id)
 
-    def stream() -> Generator[LLMResultChunk, None, None]:
+    def stream() -> Generator[LLMResultChunk]:
         yield LLMResultChunk(
             model="model",
             prompt_messages=[],

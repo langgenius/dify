@@ -14,6 +14,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.entities.queue_entities import NodeExecutionSnapshot
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.tools.workflow_as_tool.repository import WorkflowToolSource
 from core.workflow.nodes.human_input.pause_reason import PauseReason
 from graphon.engine import Engine
 from graphon.engine.filter import ResponseStreamFilter
@@ -23,6 +24,7 @@ from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowType
 from models.human_input_contracts import HumanInputFormRecord
 from services.human_input.ports import HumanInputFormReader
+from services.workflow.execution.adapters.workflow_tool_container_handler import WorkflowToolEventListenerFactory
 
 
 class WorkflowRunEntry(Protocol):
@@ -30,6 +32,8 @@ class WorkflowRunEntry(Protocol):
 
     graph_engine: Engine
     graph_config: Mapping[str, Any]
+    workflow_tool_sources: dict[str, WorkflowToolSource]
+    workflow_tool_event_listener_factory: WorkflowToolEventListenerFactory | None
 
     @property
     def response_stream_filter(self) -> ResponseStreamFilter: ...

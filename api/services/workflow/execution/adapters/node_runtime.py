@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override, runtime_checkable
 
+from flask import current_app
 from pydantic import JsonValue
 
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
@@ -24,9 +25,12 @@ from core.model_manager import ModelInstance, QuotaManagedModelInstance
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.entities.tool_entities import ToolInvokeFrom
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_file_manager import ToolFileManager
+from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
 from core.workflow.human_input_adapter import (
@@ -34,6 +38,7 @@ from core.workflow.human_input_adapter import (
     parse_human_input_delivery_methods,
 )
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from core.workflow.workflow_tool_container_types import WorkflowToolContainerPayload
 from enums.human_input import DeliveryMethodType
 from factories import file_factory
 from graphon.file import File, FileTransferMethod, FileType
@@ -64,6 +69,7 @@ from graphon.nodes.tool_runtime_entities import (
     ToolRuntimeMessage,
     ToolRuntimeParameter,
 )
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import Account
 from models.human_input_contracts import (
     FormCreateParams,
@@ -122,6 +128,7 @@ if TYPE_CHECKING:
     from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
     from graphon.nodes.llm.file_saver import LLMFileSaver
     from graphon.nodes.tool.entities import ToolNodeData
+    from services.tools.workflow.tool import WorkflowTool
 
 
 _file_access_controller = DatabaseFileAccessController()
@@ -524,11 +531,13 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         *,
         draft_variable_saver: Callable[[str, Account], DraftVariableSaverFactory] | None = None,
         workflow_runtime: WorkflowRuntime | None = None,
+        workflow_tools: Mapping[str, WorkflowTool] | None = None,
     ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
         self._draft_variable_saver = draft_variable_saver
         self._workflow_runtime = workflow_runtime
+        self._workflow_tools = workflow_tools if workflow_tools is not None else {}
 
     @property
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:
@@ -550,19 +559,31 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         try:
             if self._workflow_runtime is None:
                 raise ValueError("Tool nodes require injected execution dependencies")
-            tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self._run_context.tenant_id,
-                self._run_context.app_id,
-                node_id,
-                self._build_tool_runtime_spec(node_data),
-                self._run_context.user_id,
-                self._run_context.invoke_from,
-                variable_pool,
-                draft_variable_saver=self._draft_variable_saver,
-                tool_providers=self._workflow_runtime.tool_providers,
-                workflow_queries=self._workflow_runtime.tools,
-                workflow_runtime=self._workflow_runtime,
+            workflow_tool_definition = (
+                self._workflow_tools.get(node_data.provider_id) if self._is_workflow_tool_provider(node_data) else None
             )
+            if workflow_tool_definition is None:
+                tool_runtime = ToolManager.get_workflow_tool_runtime(
+                    self._run_context.tenant_id,
+                    self._run_context.app_id,
+                    node_id,
+                    self._build_tool_runtime_spec(node_data),
+                    self._run_context.user_id,
+                    self._run_context.invoke_from,
+                    variable_pool,
+                    draft_variable_saver=self._draft_variable_saver,
+                    tool_providers=self._workflow_runtime.tool_providers,
+                    workflow_queries=self._workflow_runtime.tools,
+                    workflow_runtime=self._workflow_runtime,
+                )
+            else:
+                tool_runtime = self._prepare_materialized_workflow_tool(
+                    definition=workflow_tool_definition,
+                    node_id=node_id,
+                    node_data=node_data,
+                    variable_pool=variable_pool,
+                )
+            tool_runtime.runtime.dify_run_context = self._run_context
         except ToolNodeError:
             raise
         except Exception as exc:
@@ -678,6 +699,76 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         if isinstance(latest, dict):
             return LLMUsage.model_validate(latest)
         return LLMUsage.empty_usage()
+
+    def build_workflow_tool_container_payload(
+        self,
+        *,
+        tool_runtime: ToolRuntimeHandle,
+        tool_parameters: Mapping[str, Any],
+        inputs_for_log: Mapping[str, Any],
+        workflow_call_depth: int,
+    ) -> WorkflowToolContainerPayload:
+        """Prepare a serializable request for Engine-owned Workflow Tool execution."""
+        from services.tools.workflow.tool import WorkflowTool
+
+        tool = self._binding_from_handle(tool_runtime).tool
+        if not isinstance(tool, WorkflowTool):
+            raise ToolRuntimeResolutionError("resolved tool is not a Workflow Tool")
+
+        inputs, system_files = tool.prepare_container_inputs(tool_parameters)
+        json_inputs = WorkflowRuntimeTypeConverter().to_json_encodable(
+            {
+                "inputs": inputs,
+                "system_files": system_files,
+                "inputs_for_log": dict(inputs_for_log),
+            }
+        )
+        return WorkflowToolContainerPayload(
+            source_app_id=tool.workflow_app_id,
+            source_workflow_id=tool.workflow_id,
+            source_workflow_version=tool.version,
+            inputs=json_inputs["inputs"],
+            system_files=json_inputs["system_files"],
+            inputs_for_log=json_inputs["inputs_for_log"],
+            call_depth=workflow_call_depth + 1,
+        )
+
+    def _prepare_materialized_workflow_tool(
+        self,
+        *,
+        definition: WorkflowTool,
+        node_id: str,
+        node_data: ToolNodeData,
+        variable_pool,
+    ) -> WorkflowTool:
+        """Bind invocation state to the pinned definition without querying mutable provider rows."""
+        tool_runtime = definition.fork_tool_runtime(
+            runtime=ToolRuntime(
+                tenant_id=self._run_context.tenant_id,
+                user_id=self._run_context.user_id,
+                credentials={},
+                invoke_from=self._run_context.invoke_from,
+                tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+            )
+        )
+        workflow_tool = self._build_tool_runtime_spec(node_data)
+        runtime_parameters = ToolManager._convert_tool_parameters_type(
+            tool_runtime.get_merged_runtime_parameters(),
+            variable_pool,
+            workflow_tool.tool_configurations,
+            typ="workflow",
+        )
+        encryption_manager = ToolParameterConfigurationManager(
+            tenant_id=self._run_context.tenant_id,
+            tool_runtime=tool_runtime,
+            provider_name=workflow_tool.provider_id,
+            provider_type=workflow_tool.provider_type,
+            identity_id=f"WORKFLOW.{self._run_context.app_id}.{node_id}",
+        )
+        if runtime_parameters:
+            runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
+        tool_runtime.runtime.runtime_parameters.update(runtime_parameters)
+        return tool_runtime
 
     def resolve_provider_icons(
         self,
@@ -1010,3 +1101,9 @@ def build_dify_llm_file_saver(
         file_reference_factory=DifyFileReferenceFactory(run_context),
         http_client=http_client,
     )
+
+
+def build_knowledge_fs_node_dependencies() -> dict[str, object]:
+    """Resolve retrieval capabilities registered by the application composition root."""
+    factory = cast(Callable[[], dict[str, object]], current_app.extensions["knowledge_fs_node_dependencies"])
+    return factory()

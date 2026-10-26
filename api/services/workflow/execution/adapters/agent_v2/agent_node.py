@@ -23,6 +23,7 @@ from clients.agent_backend import (
     AgentBackendValidationError,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.output_failure_orchestrator import (
@@ -42,11 +43,12 @@ from graphon.enums import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from graphon.node_events import NodeEventPayload, NodeRunResult, StreamCompletedEvent
+from graphon.node_events import NodeEventPayload, NodeRunResult, RunRetrieverResourceEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from models.agent_config_entities import WorkflowNodeJobConfig, WorkflowOutputRoutes
 from models.agent_runtime_contracts import WorkflowAgentBindingError, WorkflowAgentRuntimeBindings
+from services.agent.knowledge_citations import knowledge_sources_from_stream_event
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 from services.workflow.execution.adapters.agent_v2.runtime_request_builder import (
@@ -175,6 +177,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 node_execution_id=self.execution_id,
                 conversation_id=conversation_id,
+                workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
             )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
@@ -183,7 +186,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 node_id=self._node_id,
                 binding_id=existing_scope.workflow_agent_binding_id if existing_scope is not None else None,
                 snapshot_id=existing_scope.agent_config_snapshot_id if existing_scope is not None else None,
-                conversation_id=conversation_id,
+                conversation_id=conversation_id if dify_ctx.workflow_tool_invocation_id is None else None,
                 workflow_run_id=workflow_run_id,
             )
         except WorkflowAgentBindingError as error:
@@ -212,6 +215,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "workflow_agent_binding_id": bundle.binding.id,
             }
         )
+        if dify_ctx.workflow_tool_invocation_id is not None:
+            process_data[WORKFLOW_TOOL_INVOCATION_ID_KEY] = dify_ctx.workflow_tool_invocation_id
         session_scope = existing_scope or WorkflowAgentSessionScope(
             tenant_id=dify_ctx.tenant_id,
             app_id=dify_ctx.app_id,
@@ -223,6 +228,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             agent_id=bundle.agent.id,
             agent_config_snapshot_id=bundle.snapshot.id,
             conversation_id=conversation_id,
+            workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
         )
 
         node_job = WorkflowNodeJobConfig.model_validate(bundle.binding.node_job_config_dict)
@@ -307,6 +313,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 process_data=process_data,
                 metadata=metadata,
             )
+            if metadata.get("knowledge_fs_sources"):
+                yield RunRetrieverResourceEvent(retriever_resources=metadata["knowledge_fs_sources"], context="")
             # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
             if (
                 isinstance(terminal_event, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent)
@@ -663,6 +671,18 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         if event.event_kind:
             agent_backend["last_stream_event_kind"] = event.event_kind
         if isinstance(event.data, Mapping):
+            sources = knowledge_sources_from_stream_event(event.data)
+            if sources:
+                current = metadata.setdefault("knowledge_fs_sources", [])
+                seen = {source["knowledge_fs_citation"]["id"] for source in current}
+                for source in sources:
+                    if (
+                        source.knowledge_fs_citation
+                        and source.knowledge_fs_citation.id not in seen
+                        and len(current) < 200
+                    ):
+                        current.append(source.model_dump(mode="json"))
+                        seen.add(source.knowledge_fs_citation.id)
             usage = event.data.get("usage") or event.data.get("model_usage")
             if isinstance(usage, Mapping):
                 agent_backend["usage"] = dict(usage)

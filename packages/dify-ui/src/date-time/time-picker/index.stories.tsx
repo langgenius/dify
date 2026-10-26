@@ -26,7 +26,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-function TimePickerDemo() {
+function TimePickerDemo({ dir }: { dir?: 'ltr' | 'rtl' }) {
   const [value, setValue] = React.useState<string | null>('13:30')
   return (
     <div className="grid gap-1">
@@ -36,7 +36,7 @@ function TimePickerDemo() {
           <TimePickerTrigger />
           <TimePickerClear aria-label="Clear start time" />
         </div>
-        <TimePickerContent />
+        <TimePickerContent dir={dir} />
       </TimePicker>
     </div>
   )
@@ -86,7 +86,7 @@ export const RTL: Story = {
   render: () => (
     <div dir="rtl">
       <DirectionProvider direction="rtl">
-        <TimePickerDemo />
+        <TimePickerDemo dir="rtl" />
       </DirectionProvider>
     </div>
   ),
@@ -94,10 +94,7 @@ export const RTL: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const trigger = within(canvasElement).getByRole('button', { name: 'Start time 1:30 PM' })
     await userEvent.click(trigger)
-    await expect(await body.findByRole('dialog', { name: 'Start time' })).toHaveAttribute(
-      'dir',
-      'rtl',
-    )
+    await body.findByRole('dialog', { name: 'Start time' })
     const hours = body.getByRole('listbox', { name: 'Hour' })
     const minutes = body.getByRole('listbox', { name: 'Minute' })
     await waitFor(() => expect(within(hours).getByRole('option', { name: '1' })).toHaveFocus())

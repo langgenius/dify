@@ -1,17 +1,17 @@
 import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { ToolWithProvider } from '../../types'
 import type { VarInInspect } from '@/types/workflow'
-import { act, waitFor } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { useReactFlow } from 'reactflow'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { createNode } from '../../__tests__/fixtures'
-import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
-import { BlockEnum, VarType } from '../../types'
+import { renderWorkflowCanvasHook } from '../../__tests__/workflow-test-env'
+import { BlockEnum, NodeRunningStatus, VarType } from '../../types'
 import { useSetWorkflowVarsWithValue } from '../use-fetch-workflow-inspect-vars'
 
 const mockFetchAllInspectVars = vi.hoisted(() => vi.fn())
-const mockInvalidateConversationVarValues = vi.hoisted(() => vi.fn())
-const mockInvalidateSysVarValues = vi.hoisted(() => vi.fn())
-const mockHandleCancelAllNodeSuccessStatus = vi.hoisted(() => vi.fn())
-
 const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   {
     name: 'simple',
@@ -22,46 +22,9 @@ const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   },
 ]
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.tools.builtin.get': async () => [],
-      'workspaces.current.tools.api.get': async () => [],
-      'workspaces.current.tools.workflow.get': async () => [],
-      'workspaces.current.tools.mcp.get': async () => [],
-    }),
-  }
-})
-
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidateConversationVarValues: () => mockInvalidateConversationVarValues,
-  useInvalidateSysVarValues: () => mockInvalidateSysVarValues,
-}))
-
 vi.mock('@/service/workflow', () => ({
   fetchAllInspectVars: (...args: unknown[]) => mockFetchAllInspectVars(...args),
 }))
-
-vi.mock('../use-nodes-interactions-without-sync', () => ({
-  useNodesInteractionsWithoutSync: () => ({
-    handleCancelAllNodeSuccessStatus: mockHandleCancelAllNodeSuccessStatus,
-  }),
-}))
-
-vi.mock(
-  '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type',
-  async (importOriginal) => ({
-    ...(await importOriginal<
-      typeof import('@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type')
-    >()),
-    default: () => ({
-      schemaTypeDefinitions,
-    }),
-  }),
-)
 
 const createInspectVar = (overrides: Partial<VarInInspect> = {}): VarInInspect => ({
   id: 'var-1',
@@ -89,13 +52,47 @@ const nodes = [
       title: 'Code',
       desc: '',
       outputs: { answer: { type: VarType.string } },
+      _runningStatus: NodeRunningStatus.Succeeded,
     },
   }),
 ]
 
+const variableQueryKeys = [
+  consoleQuery.apps.byAppId.workflows.draft.conversationVariables.get,
+  consoleQuery.apps.byAppId.workflows.draft.systemVariables.get,
+].map((endpoint) => endpoint.queryKey({ input: { params: { app_id: 'app-1' } } }))
+
+function setup(canvasNodes = nodes) {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(
+    consoleQuery.spec.schemaDefinitions.get.queryKey(),
+    schemaTypeDefinitions,
+  )
+  for (const key of variableQueryKeys)
+    queryClient.setQueryData(key, {
+      items: [{ ...createInspectVar(), value: 'cached', full_content: null }],
+    })
+  return {
+    ...renderWorkflowCanvasHook(
+      () => ({
+        ...useSetWorkflowVarsWithValue(),
+        getNodes: useReactFlow().getNodes,
+      }),
+      { nodes: canvasNodes, queryClient, initialStoreState: { dataSourceList: [] } },
+    ),
+    queryClient,
+  }
+}
+
 describe('use-fetch-workflow-inspect-vars', () => {
   beforeEach(() => {
-    vi.resetAllMocks()
+    mockFetchAllInspectVars.mockReset()
   })
 
   it('fetches inspect vars, invalidates cached values, and stores node vars with their real output metadata', async () => {
@@ -107,25 +104,20 @@ describe('use-fetch-workflow-inspect-vars', () => {
       }),
     ])
 
-    const { result, store } = renderWorkflowFlowHook(() => useSetWorkflowVarsWithValue(), {
-      nodes,
-      initialStoreState: {
-        dataSourceList: [],
-      },
-    })
+    const { result, store, queryClient } = setup()
 
     await act(async () => {
       await result.current.fetchInspectVars({})
     })
 
-    expect(mockInvalidateConversationVarValues).toHaveBeenCalledTimes(1)
-    expect(mockInvalidateSysVarValues).toHaveBeenCalledTimes(1)
+    for (const key of variableQueryKeys)
+      expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
     expect(mockFetchAllInspectVars).toHaveBeenCalledWith({
       kind: 'app',
       appId: 'app-1',
       mode: 'workflow',
     })
-    expect(mockHandleCancelAllNodeSuccessStatus).toHaveBeenCalledTimes(1)
+    expect(result.current.getNodes()[0]!.data._runningStatus).toBeUndefined()
     expect(store.getState().nodesWithInspectVars).toEqual([
       expect.objectContaining({
         nodeId: 'node-1',
@@ -158,12 +150,7 @@ describe('use-fetch-workflow-inspect-vars', () => {
       dataSourceList: [],
     }
 
-    const { result, store } = renderWorkflowFlowHook(() => useSetWorkflowVarsWithValue(), {
-      nodes,
-      initialStoreState: {
-        dataSourceList: [],
-      },
-    })
+    const { result, store } = setup()
 
     await act(async () => {
       await result.current.fetchInspectVars({
@@ -174,13 +161,11 @@ describe('use-fetch-workflow-inspect-vars', () => {
       })
     })
 
-    await waitFor(() => {
-      expect(mockFetchAllInspectVars).not.toHaveBeenCalled()
-      expect(store.getState().nodesWithInspectVars[0]?.vars[0]).toMatchObject({
-        id: 'var-2',
-        value: 'passed-in',
-        schemaType: undefined,
-      })
+    expect(mockFetchAllInspectVars).not.toHaveBeenCalled()
+    expect(store.getState().nodesWithInspectVars[0]?.vars[0]).toMatchObject({
+      id: 'var-2',
+      value: 'passed-in',
+      schemaType: undefined,
     })
   })
 })
@@ -225,9 +210,7 @@ it('derives schema enrichment from the passed-in tool catalog and schema definit
       },
     ],
   }
-  const { result, store } = renderWorkflowFlowHook(() => useSetWorkflowVarsWithValue(), {
-    nodes: toolNodes,
-  })
+  const { result, store } = setup(toolNodes)
   await act(async () =>
     result.current.fetchInspectVars({
       passInVars: true,

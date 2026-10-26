@@ -58,7 +58,7 @@ class _LazyTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         assert isinstance(session, _TrackingSession)
         assert user_id == "user-1"
         assert tool_parameters == {"query": "hello"}
@@ -84,7 +84,7 @@ class _LazyTool(Tool):
 class _CapturingInvoker(WorkflowToolInvoker):
     def __init__(self, delegate: WorkflowToolInvoker) -> None:
         self._delegate = delegate
-        self.streams: list[Generator[ToolInvokeMessage, None, None]] = []
+        self.streams: list[Generator[ToolInvokeMessage]] = []
 
     @override
     def __call__(
@@ -98,7 +98,7 @@ class _CapturingInvoker(WorkflowToolInvoker):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         stream = self._delegate(
             tool=tool,
             tool_parameters=tool_parameters,
@@ -132,7 +132,7 @@ def _build_runtime(
     return runtime, capturing_invoker
 
 
-def _invoke(runtime: DifyToolNodeRuntime, tool: Tool) -> Generator[ToolRuntimeMessage, None, None]:
+def _invoke(runtime: DifyToolNodeRuntime, tool: Tool) -> Generator[ToolRuntimeMessage]:
     return runtime.invoke(
         tool_runtime=ToolRuntimeHandle(raw=tool),
         tool_parameters={"query": "hello"},
