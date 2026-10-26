@@ -28,12 +28,13 @@ from controllers.console.explore.installed_app_admission import get_installed_ap
 from controllers.console.flask_admission import console_account_admission
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from models import Account, App, AppMode, InstalledApp, Tenant, WorkflowRun
 from models.account import AccountStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.app_task_service import AppTaskControlService
 from services.installed_app_access_service import InstalledAppAccessService, InstalledAppRef
@@ -571,7 +572,7 @@ def running_workflow(
         app_id=harness.target_app.id,
         workflow_id=str(uuid4()),
         task_id=_WORKFLOW_TASK_ID,
-        type=WorkflowType.CHAT,
+        type=ModelWorkflowType.CHAT,
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="1",
         status=WorkflowExecutionStatus.RUNNING,

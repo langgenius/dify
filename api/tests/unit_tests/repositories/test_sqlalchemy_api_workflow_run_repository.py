@@ -18,6 +18,7 @@ from models import Message
 from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_run_repository import AppWorkflowRunStats
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
@@ -195,7 +196,7 @@ def _workflow_run(*, run_id: str, tenant_id: str, status: WorkflowExecutionStatu
         tenant_id=tenant_id,
         app_id="app-1",
         workflow_id="workflow-1",
-        type=WorkflowType.WORKFLOW,
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         version="1",
         graph="{}",
