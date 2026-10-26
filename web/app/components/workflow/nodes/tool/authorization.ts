@@ -50,8 +50,7 @@ export const resolveToolAuthorization = ({
     if (
       !isToolNode(target) ||
       target.data.provider_type !== node.data.provider_type ||
-      target.data.provider_id !== node.data.provider_id ||
-      target.data.tool_name !== node.data.tool_name
+      target.data.provider_id !== node.data.provider_id
     )
       return { status: 'invalid', reason: 'incompatible' }
     if (getToolAuthorizationTab(target.data) === 'reuse-from-node')

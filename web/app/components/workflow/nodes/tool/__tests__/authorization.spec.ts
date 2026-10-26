@@ -50,9 +50,20 @@ it('restores saved App user settings and validation without an editor draft', ()
   })
 })
 
-it('inherits the direct source settings and test credential from the live graph', () => {
+it('resolves Workspace authorization from another tool in the same provider', () => {
+  const node = makeTool('current', { credential_source: 'reuse_node', reuse_node_id: 'source' })
+  const source = makeTool('source', { tool_name: 'calendar' })
+  expect(resolveToolAuthorization({ node, nodes: [node, source] })).toEqual({
+    status: 'resolved',
+    authorizationTab: 'workspace-auth',
+    sourceNodeId: 'source',
+  })
+})
+
+it('inherits App user settings and test credentials from another tool in the same provider', () => {
   const node = makeTool('current', { credential_source: 'reuse_node', reuse_node_id: 'source' })
   const source = makeTool('source', {
+    tool_name: 'calendar',
     credential_source: 'end_user',
     end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Read calendar' },
     test_credential_id: 'source-credential',
@@ -81,12 +92,6 @@ it.each<{ name: string; sourceId?: string; nodes: Node[]; reason: string }>([
     name: 'changed provider type',
     sourceId: 'source',
     nodes: [makeTool('source', { provider_type: CollectionType.custom })],
-    reason: 'incompatible',
-  },
-  {
-    name: 'different tool in the same provider',
-    sourceId: 'source',
-    nodes: [makeTool('source', { tool_name: 'another-tool' })],
     reason: 'incompatible',
   },
   {

@@ -14,10 +14,9 @@ type ReusableToolNodesParams = {
 const isToolNode = (node: Node | undefined): node is Node<ToolNodeType> =>
   node?.data.type === BlockEnum.Tool
 
-const isSameTool = (left: Node<ToolNodeType>, right: Node<ToolNodeType>) =>
+const isSameProvider = (left: Node<ToolNodeType>, right: Node<ToolNodeType>) =>
   left.data.provider_type === right.data.provider_type &&
-  left.data.provider_id === right.data.provider_id &&
-  left.data.tool_name === right.data.tool_name
+  left.data.provider_id === right.data.provider_id
 
 export const getReusableToolNodes = ({
   nodes,
@@ -28,7 +27,7 @@ export const getReusableToolNodes = ({
   if (!isToolNode(currentNode)) return []
 
   return nodes.flatMap((node) => {
-    if (node.id === nodeId || !isToolNode(node) || !isSameTool(currentNode, node)) return []
+    if (node.id === nodeId || !isToolNode(node) || !isSameProvider(currentNode, node)) return []
     const sourceMode = getToolAuthorizationTab(node.data)
     return [
       {

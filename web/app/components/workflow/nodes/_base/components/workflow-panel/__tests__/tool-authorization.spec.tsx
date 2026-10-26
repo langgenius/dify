@@ -344,12 +344,13 @@ describe('Workflow tool authorization persistence', () => {
     expect(getData('node-2').end_user_auth?.purpose).toBe('Second node purpose')
   })
 
-  it('restores a saved Reuse reference and permits only direct authorization from the same tool', async () => {
+  it('restores a saved Reuse reference and saves direct authorization from other tools in the same provider', async () => {
     const user = userEvent.setup()
     const { getData } = setup({
       nodes: [
         toolNode('workspace', 'Workspace source'),
         toolNode('app-user', 'App user source', {
+          tool_name: 'app-user-tool',
           credential_source: 'end_user',
           end_user_auth: { allowed_credential_types: ['api-key'], purpose: 'Source purpose' },
         }),
@@ -376,8 +377,11 @@ describe('Workflow tool authorization persistence', () => {
     expect(mocks.syncDraft).not.toHaveBeenCalled()
     await user.click(selection)
     const listbox = await screen.findByRole('listbox')
-    expect(within(listbox).getAllByRole('option')).toHaveLength(4)
-    expect(screen.queryByRole('option', { name: /^Different tool/ })).not.toBeInTheDocument()
+    expect(within(listbox).getAllByRole('option')).toHaveLength(5)
+    expect(screen.getByRole('option', { name: /^Different tool/ })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     expect(screen.queryByRole('option', { name: /^Different provider/ })).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: /^Different plugin/ })).toBeVisible()
     const chained = screen.getByRole('option', { name: /^Chained source/ })
@@ -387,6 +391,10 @@ describe('Workflow tool authorization persistence', () => {
     await user.click(screen.getByRole('option', { name: /^App user source/ }))
     await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument())
     expect(getData().reuse_node_id).toBe('app-user')
+    await chooseSource(user, /^Different tool/)
+    expect(getData().reuse_node_id).toBe('different-tool')
+    expect(selection).toHaveTextContent('Different tool')
+    expect(selection).not.toHaveAttribute('aria-invalid', 'true')
     expect(mocks.syncDraft).toHaveBeenCalled()
   })
 
@@ -450,12 +458,12 @@ describe('Workflow tool authorization persistence', () => {
         ],
         actions: (
           <GraphAction
-            label="Change source tool"
+            label="Change source provider"
             update={({ getNodes, setNodes }) =>
               setNodes(
                 getNodes().map((node) =>
                   node.id === 'source'
-                    ? { ...node, data: { ...node.data, tool_name: 'different-tool' } }
+                    ? { ...node, data: { ...node.data, provider_id: 'different-provider' } }
                     : node,
                 ),
               )
@@ -464,7 +472,7 @@ describe('Workflow tool authorization persistence', () => {
         ),
       })
       await user.click(screen.getByRole('tab', { name: tab }))
-      await user.click(screen.getByRole('button', { name: 'Change source tool' }))
+      await user.click(screen.getByRole('button', { name: 'Change source provider' }))
       await user.click(screen.getByRole('tab', { name: reuseTab }))
       expect(getData().credential_source).toBe('reuse_node')
       expect(getData().reuse_node_id).toBeUndefined()
