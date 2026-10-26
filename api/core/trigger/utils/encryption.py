@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Union, override
+from typing import override
 
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper.provider_cache import ProviderCredentialsCache
@@ -54,7 +54,7 @@ class TriggerProviderPropertiesCache(ProviderCredentialsCache):
 def create_trigger_provider_encrypter_for_subscription(
     tenant_id: str,
     controller: PluginTriggerProviderController,
-    subscription: Union[TriggerSubscription, TriggerProviderSubscriptionApiEntity],
+    subscription: TriggerSubscription | TriggerProviderSubscriptionApiEntity,
 ) -> tuple[ProviderConfigEncrypter, ProviderConfigCache]:
     cache = TriggerProviderCredentialsCache(
         tenant_id=tenant_id,
@@ -85,7 +85,7 @@ def delete_cache_for_subscription(tenant_id: str, provider_id: str, subscription
 def create_trigger_provider_encrypter_for_properties(
     tenant_id: str,
     controller: PluginTriggerProviderController,
-    subscription: Union[TriggerSubscription, TriggerProviderSubscriptionApiEntity],
+    subscription: TriggerSubscription | TriggerProviderSubscriptionApiEntity,
 ) -> tuple[ProviderConfigEncrypter, ProviderConfigCache]:
     cache = TriggerProviderPropertiesCache(
         tenant_id=tenant_id,

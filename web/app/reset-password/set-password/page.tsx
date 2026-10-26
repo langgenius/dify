@@ -19,7 +19,7 @@ import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { changePasswordWithToken } from '@/service/common'
+import { consoleClient } from '@/service/console'
 
 type PasswordFormValues = {
   password: string
@@ -75,8 +75,7 @@ const ChangePasswordForm = () => {
       if (isSubmitting) return
       setIsSubmitting(true)
       try {
-        await changePasswordWithToken({
-          url: '/forgot-password/resets',
+        await consoleClient.forgotPassword.resets.post({
           body: {
             token,
             new_password: formValues.password,

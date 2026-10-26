@@ -4,6 +4,7 @@ import json
 from collections.abc import Callable, Iterator
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timedelta
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -61,7 +62,7 @@ def _message(session: Session, *, app: App, actor: MessageActor) -> Message:
         app_id=app.id,
         mode=AppMode.CHAT,
         name="Feedback conversation",
-        inputs={},
+        _inputs={},
         from_source=source,
         from_account_id=account_id,
         from_end_user_id=end_user_id,
@@ -71,12 +72,12 @@ def _message(session: Session, *, app: App, actor: MessageActor) -> Message:
     message = Message(
         app_id=app.id,
         conversation_id=conversation.id,
-        inputs={},
+        _inputs={},
         query="Question",
         answer="Answer",
         message={},
-        message_unit_price=0,
-        answer_unit_price=0,
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
         currency="USD",
         from_source=source,
         from_account_id=account_id,

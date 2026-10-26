@@ -453,7 +453,7 @@ class TestTraceDispatcher:
 
 class TestWorkflowTrace:
     def test_emits_correct_span_attributes(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
+        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_workflow_info()
             trace_handler._workflow_trace(info)
 

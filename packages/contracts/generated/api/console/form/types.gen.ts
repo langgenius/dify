@@ -25,11 +25,8 @@ export type ErrorResponse = {
 
 export type HumanInputFormSubmitPayload = {
   action: string
-  form_inputs: {
-    [key: string]: unknown
-  }
   inputs: {
-    [key: string]: unknown
+    [key: string]: JsonValue
   }
 }
 
@@ -46,6 +43,8 @@ export type HumanInputFormExpiredError = ErrorResponse & {
   code: 'human_input_form_expired'
   status: 412
 }
+
+export type JsonValue = unknown
 
 export type GetFormHumanInputByFormTokenData = {
   body?: never

@@ -41,7 +41,7 @@ ServiceAccountResolver = Callable[[str], Account]
 
 
 class RepositoryWorkflowExecutionLoader:
-    """Load one workflow's executions through the tenant-scoped core repository."""
+    """Export caller executions; Workflow Tool source internals stay in authorized console traces."""
 
     def __init__(self, get_service_account: ServiceAccountResolver) -> None:
         self._get_service_account = get_service_account

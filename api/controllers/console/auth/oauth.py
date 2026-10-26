@@ -9,6 +9,7 @@ from configs import dify_config
 from constants.languages import languages
 from controllers.common.fields import RedirectResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console import console_ns
 from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
 from controllers.console.wraps import model_validate, setup_required, social_oauth_login_enabled
 from extensions.ext_application_services import application_services
@@ -43,8 +44,6 @@ from services.entities.account_oauth_entities import (
     OAuthCallbackResult,
     OAuthInvitationResult,
 )
-
-from .. import console_ns
 
 
 class OAuthLoginQuery(BaseModel):

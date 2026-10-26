@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
 import { FileItem } from '../file-uploader-in-chat-input/file-item'
@@ -41,9 +41,9 @@ const file = {
   url: 'https://example.com/doc.pdf',
 }
 
-async function openPdf() {
+async function openPdf(user: ReturnType<typeof userEvent.setup>) {
   render(<FileItem file={file} canPreview />)
-  fireEvent.click(screen.getByRole('button', { name: 'document.pdf' }))
+  await user.click(screen.getByRole('button', { name: 'document.pdf' }))
   await screen.findByText('PDF page')
 }
 
@@ -56,8 +56,9 @@ beforeEach(() => {
 })
 
 it('provides a named preview while loading the PDF worker from the configured base path', async () => {
+  const user = userEvent.setup()
   mockBasePath = '/dify'
-  await openPdf()
+  await openPdf(user)
   expect(screen.getByRole('dialog', { name: 'document.pdf' })).toBeInTheDocument()
   expect(screen.getByTestId('pdf-loader')).toHaveAttribute(
     'data-worker-src',
@@ -66,22 +67,23 @@ it('provides a named preview while loading the PDF worker from the configured ba
 })
 
 it('uses the root worker path without a deployment base path', async () => {
-  await openPdf()
+  const user = userEvent.setup()
+  await openPdf(user)
   expect(screen.getByTestId('pdf-loader')).toHaveAttribute('data-worker-src', '/pdf.worker.min.mjs')
 })
 
 it('zooms within its limits and starts again at the original scale after reopening', async () => {
   const user = userEvent.setup()
-  await openPdf()
+  await openPdf(user)
   const zoomIn = screen.getByRole('button', { name: 'common.operation.zoomIn' })
   const zoomOut = screen.getByRole('button', { name: 'common.operation.zoomOut' })
   await user.click(zoomIn)
   expect(scaleContainer()).toHaveStyle({ transform: 'scale(1.2)' })
   await user.click(zoomOut)
   expect(scaleContainer()).toHaveStyle({ transform: 'scale(1)' })
-  for (let step = 0; step < 20; step++) fireEvent.click(zoomIn)
+  for (let step = 0; step < 20; step++) await user.click(zoomIn)
   expect(scaleContainer()).toHaveStyle({ transform: 'scale(15)' })
-  for (let step = 0; step < 25; step++) fireEvent.click(zoomOut)
+  for (let step = 0; step < 25; step++) await user.click(zoomOut)
   expect(scaleContainer()).toHaveStyle({ transform: 'scale(0.5)' })
   await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -92,7 +94,7 @@ it('zooms within its limits and starts again at the original scale after reopeni
 
 it('keeps popup-level zoom shortcuts working while Close has focus', async () => {
   const user = userEvent.setup()
-  await openPdf()
+  await openPdf(user)
   const close = screen.getByRole('button', { name: 'common.operation.close' })
   close.focus()
   await user.keyboard('{ArrowUp}')

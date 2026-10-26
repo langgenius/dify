@@ -6,6 +6,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -20,14 +21,16 @@ export function DeleteTokenDialogContent({
   const { t } = useTranslation(['common', 'accountSettings'])
 
   return (
-    <AlertDialogContent className="w-120 p-6 text-left" backdropProps={{ forceRender: true }}>
-      <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-        {t(($) => $['resourceAccessToken.deleteTitle'], { ns: 'accountSettings' })}
-      </AlertDialogTitle>
-      <AlertDialogDescription className="mt-2 system-sm-regular text-text-tertiary">
-        {t(($) => $['resourceAccessToken.deleteDescription'], { ns: 'accountSettings' })}
-      </AlertDialogDescription>
-      <AlertDialogFooter className="mt-6 p-0">
+    <AlertDialogContent backdropProps={{ forceRender: true }}>
+      <AlertDialogHeader>
+        <AlertDialogTitle>
+          {t(($) => $['resourceAccessToken.deleteTitle'], { ns: 'accountSettings' })}
+        </AlertDialogTitle>
+        <AlertDialogDescription>
+          {t(($) => $['resourceAccessToken.deleteDescription'], { ns: 'accountSettings' })}
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
         <AlertDialogCancelButton disabled={isPending}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </AlertDialogCancelButton>

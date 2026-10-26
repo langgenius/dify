@@ -8,6 +8,7 @@ import json
 from collections.abc import Generator, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -28,7 +29,7 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.file.constants import FILE_MODEL_IDENTITY
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile, UploadFile
-from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType, MessageFileBelongsTo
 from models.provider import Provider, ProviderModel, ProviderType
 from repositories.message_repository import MessageRepository
 from services.entities.message_entities import MessageEndUser
@@ -72,7 +73,7 @@ def runtime(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         )
         session.add(app_record)
         session.flush()
-        end_user = EndUser(tenant_id=tenant_id, app_id=app_record.id, type="browser", session_id=str(uuid4()))
+        end_user = EndUser(tenant_id=tenant_id, app_id=app_record.id, type=EndUserType.BROWSER, session_id=str(uuid4()))
         current = AppModelConfig(app_id=app_record.id, more_like_this='{"enabled":true}')
         historical = AppModelConfig(
             app_id=app_record.id,
@@ -89,7 +90,7 @@ def runtime(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
             app_model_config_id=historical.id,
             mode=AppMode.COMPLETION,
             name="Original completion",
-            inputs={},
+            _inputs={},
             from_source=ConversationFromSource.API,
             from_end_user_id=end_user.id,
         )
@@ -98,12 +99,12 @@ def runtime(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         message = Message(
             app_id=app_record.id,
             conversation_id=conversation.id,
-            inputs={},
+            _inputs={},
             query="Original query",
             message={},
             answer="Original answer",
-            message_unit_price=0,
-            answer_unit_price=0,
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
             currency="USD",
             from_source=ConversationFromSource.API,
             from_end_user_id=end_user.id,

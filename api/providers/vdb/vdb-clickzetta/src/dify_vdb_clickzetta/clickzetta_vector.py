@@ -421,7 +421,7 @@ class ClickzettaVector(BaseVector):
                     break
             except queue.Empty:
                 continue
-            except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
+            except (RuntimeError, ValueError, TypeError, ConnectionError):
                 logger.exception("Write worker error")
 
     def _execute_write(self, func, *args, **kwargs):

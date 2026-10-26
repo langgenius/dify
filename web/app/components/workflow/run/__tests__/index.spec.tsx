@@ -7,11 +7,14 @@ import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import RunPanel from '../index'
 
-const { mockFetchRunDetail, mockFetchTracingList, mockToastError } = vi.hoisted(() => ({
-  mockFetchRunDetail: vi.fn(),
-  mockFetchTracingList: vi.fn(),
-  mockToastError: vi.fn(),
-}))
+const { mockFetchRunDetail, mockFetchTracingList, mockToastError, mockRequest } = vi.hoisted(
+  () => ({
+    mockFetchRunDetail: vi.fn(),
+    mockFetchTracingList: vi.fn(),
+    mockToastError: vi.fn(),
+    mockRequest: vi.fn(),
+  }),
+)
 
 const originalClientHeightDescriptor = Object.getOwnPropertyDescriptor(
   HTMLElement.prototype,
@@ -21,6 +24,11 @@ const originalClientHeightDescriptor = Object.getOwnPropertyDescriptor(
 vi.mock('@/service/log', () => ({
   fetchRunDetail: (...args: unknown[]) => mockFetchRunDetail(...args),
   fetchTracingList: (...args: unknown[]) => mockFetchTracingList(...args),
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: mockRequest,
 }))
 
 vi.mock('@/app/notifications', async (importOriginal) => ({
@@ -112,6 +120,7 @@ describe('RunPanel', () => {
   afterAll(() => {
     if (originalClientHeightDescriptor)
       Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeightDescriptor)
+    else Reflect.deleteProperty(HTMLElement.prototype, 'clientHeight')
   })
 
   it('loads run detail and tracing data on mount, then renders the result tab', async () => {
@@ -211,6 +220,39 @@ describe('RunPanel', () => {
     await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(2))
   })
 
+  it('loads nested workflow-tool executions for the inspected app and run', async () => {
+    const user = userEvent.setup()
+    mockFetchTracingList.mockResolvedValue({
+      data: [
+        createTracingNode({
+          node_type: BlockEnum.Tool,
+          expand: true,
+          extras: { workflow_tool: true, icon: { content: '✅', background: '#fff' } },
+        }),
+      ],
+    } satisfies NodeTracingListResponse)
+    mockRequest.mockResolvedValue(Response.json({ data: [] }))
+
+    renderWorkflowComponent(
+      <RunPanel
+        appId="inspected-app"
+        activeTab="TRACING"
+        runDetailUrl="/apps/inspected-app/workflow-runs/run-1"
+        tracingListUrl="/apps/inspected-app/workflow-runs/run-1/node-executions"
+      />,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'runLog.tracing' }))
+    await screen.findByText('common.noData')
+    expect(mockRequest).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '/apps/inspected-app/workflow-runs/run-1/node-executions/trace-1/children',
+      ),
+      expect.anything(),
+      expect.anything(),
+    )
+  })
+
   it('reports run-detail and tracing failures through toast.error', async () => {
     mockFetchRunDetail.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 500 }), { message: 'detail boom' }),
@@ -245,10 +287,25 @@ describe('RunPanel', () => {
       )
 
       await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(1))
+      mockFetchRunDetail.mockResolvedValue(createRunDetail({ outputs: 'Refreshed output' }))
+      mockFetchTracingList.mockResolvedValue({
+        data: [createTracingNode({ title: 'Refreshed trace' })],
+      })
       await user.click(screen.getByRole('tab', { name: `runLog.${activeTab.toLowerCase()}` }))
 
       await waitFor(() => expect(mockFetchTracingList).toHaveBeenCalledTimes(2))
       expect(mockFetchRunDetail).toHaveBeenCalledTimes(activeTab === 'RESULT' ? 2 : 1)
+      if (activeTab === 'RESULT') {
+        await waitFor(() =>
+          expect(screen.getByTestId<HTMLTextAreaElement>('monaco-editor').value).toContain(
+            'Refreshed output',
+          ),
+        )
+      } else {
+        if (activeTab === 'DETAIL')
+          await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
+        expect(await screen.findByText('Refreshed trace')).toBeInTheDocument()
+      }
     },
   )
   it('keeps the new record and selected tab when an old detail response arrives late', async () => {

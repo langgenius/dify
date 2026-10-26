@@ -87,18 +87,10 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn(
-          'w-140 overflow-hidden! text-left align-middle',
-          cn(
-            modalClassName,
-            'flex max-h-[calc(100dvh-48px)] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
-          ),
-        )}
+        className={cn('max-h-[calc(100dvh-48px)] w-140', modalClassName)}
       >
         <div className="flex shrink-0 items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-          <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
-            {getTitle()}
-          </DialogTitle>
+          <DialogTitle>{getTitle()}</DialogTitle>
         </div>
         {isBundle ? (
           <ReadyToInstallBundle

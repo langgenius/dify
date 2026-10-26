@@ -1,13 +1,14 @@
 'use client'
+import type { Annotation, AnnotationHitHistory } from '@dify/contracts/api/console/apps/types.gen'
 import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { FC } from 'react'
-import type { AnnotationItem, HitHistoryItem } from '../type'
 import {
   AlertDialog,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -30,7 +31,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
-import { fetchHitHistoryList } from '@/service/annotation'
+import { consoleClient } from '@/service/console'
 import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
 import HitHistoryNoData from './hit-history-no-data'
 
@@ -38,7 +39,7 @@ type Props = Readonly<{
   appId: string
   isShow: boolean
   onHide: () => void
-  item: AnnotationItem
+  item: Annotation
   onSave: (editedQuery: string, editedAnswer: string) => Promise<void>
   onRemove: () => void
 }>
@@ -51,7 +52,9 @@ const TabType = {
 type TabType = (typeof TabType)[keyof typeof TabType]
 
 const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, onRemove }) => {
-  const { id, question, answer, created_at: createdAt } = item
+  const { id, created_at: createdAt } = item
+  const question = item.question ?? ''
+  const answer = item.answer ?? ''
   const [newQuestion, setNewQuery] = useState(question)
   const [newAnswer, setNewAnswer] = useState(answer)
   const { t } = useTranslation(['appAnnotation', 'appDebug', 'appLog', 'common'])
@@ -59,7 +62,7 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
   const [currPage, setCurrPage] = React.useState<number>(0)
   const [total, setTotal] = useState(0)
   const totalPages = total ? Math.max(Math.ceil(total / APP_PAGE_LIMIT), 1) : 1
-  const [hitHistoryList, setHitHistoryList] = useState<HitHistoryItem[]>([])
+  const [hitHistoryList, setHitHistoryList] = useState<AnnotationHitHistory[]>([])
 
   // Update local state when item prop changes (e.g., when modal is reopened with updated data)
   useEffect(() => {
@@ -72,11 +75,12 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
 
   const fetchHitHistory = async (page = 1) => {
     try {
-      const { data, total }: any = await fetchHitHistoryList(appId, id, {
-        page,
-        limit: 10,
-      })
-      setHitHistoryList(data as HitHistoryItem[])
+      const { data, total } =
+        await consoleClient.apps.byAppId.annotations.byAnnotationId.hitHistories.get({
+          params: { app_id: appId, annotation_id: id },
+          query: { page, limit: 10 },
+        })
+      setHitHistoryList(data)
       setTotal(total)
     } catch {}
   }
@@ -158,29 +162,31 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
               >
                 <td
                   className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
-                  title={item.question}
+                  title={item.question ?? undefined}
                 >
                   {item.question}
                 </td>
                 <td
                   className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
-                  title={item.match}
+                  title={item.match ?? undefined}
                 >
                   {item.match}
                 </td>
                 <td
                   className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
-                  title={item.response}
+                  title={item.response ?? undefined}
                 >
                   {item.response}
                 </td>
                 <td className="p-3 pr-2">{item.source}</td>
                 <td className="p-3 pr-2">{item.score ? item.score.toFixed(2) : '-'}</td>
                 <td className="p-3 pr-2">
-                  {formatTime(
-                    item.created_at,
-                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                  )}
+                  {item.created_at
+                    ? formatTime(
+                        item.created_at,
+                        t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                      )
+                    : '-'}
                 </td>
               </tr>
             ))}
@@ -275,22 +281,16 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                         </span>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
-                        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                          <AlertDialogTitle
-                            title={t(($) => $['feature.annotation.removeConfirm'], {
-                              ns: 'appDebug',
-                            })}
-                            className="w-full truncate title-2xl-semi-bold text-text-primary"
-                          >
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
                             {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                           </AlertDialogTitle>
-                        </div>
+                        </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancelButton>
                             {t(($) => $['operation.cancel'], { ns: 'common' })}
                           </AlertDialogCancelButton>
                           <AlertDialogConfirmButton
-                            tone="destructive"
                             onClick={async () => {
                               await onRemove()
                               removeActionsRef.current?.close()
@@ -305,10 +305,12 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                     <div>
                       {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}
                       &nbsp;
-                      {formatTime(
-                        createdAt,
-                        t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                      )}
+                      {createdAt
+                        ? formatTime(
+                            createdAt,
+                            t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                          )
+                        : '-'}
                     </div>
                   </div>
                 )}

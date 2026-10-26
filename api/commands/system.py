@@ -159,7 +159,7 @@ def upgrade_db():
         except Exception as e:
             logger.exception("Failed to execute database migration")
             click.echo(click.style(f"Database migration failed: {e}", fg="red"))
-            raise SystemExit(1)
+            raise SystemExit(1) from e
         finally:
             status = "successful" if migration_succeeded else "failed"
             lock.release_safely(status=status)

@@ -846,7 +846,7 @@ class WebhookService:
 
             try:
                 # NOTE: don not use `with sessionmaker(bind=db.engine, expire_on_commit=False).begin()`
-                # trigger_workflow_async need to handle multipe session commits internally
+                # trigger_workflow_async need to handle multiple session commits internally
                 with Session(db.engine, expire_on_commit=False) as session:
                     AsyncWorkflowService.trigger_workflow_async(end_user, trigger_data, session=session)
                 quota_charge.commit()
@@ -973,6 +973,8 @@ class WebhookService:
 
                 # create new webhook records
                 for node_id in nodes_not_found:
+                    if app.created_by is None:
+                        raise RuntimeError("App is missing created_by; cannot create webhook trigger")
                     webhook_record = WorkflowWebhookTrigger(
                         app_id=app.id,
                         tenant_id=app.tenant_id,

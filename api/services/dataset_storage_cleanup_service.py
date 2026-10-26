@@ -1,8 +1,9 @@
 """Remove crawl caches whose remaining document references belong to a deleted dataset."""
 
-import json
 import logging
+from typing import Literal
 
+from pydantic import BaseModel, ValidationError, field_validator
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
@@ -12,17 +13,26 @@ from models.dataset import Document
 logger = logging.getLogger(__name__)
 
 
+class FirecrawlDataSourceInfo(BaseModel):
+    provider: Literal["firecrawl"]
+    job_id: str
+
+    @field_validator("job_id")
+    @classmethod
+    def validate_job_id(cls, v: str) -> str:
+        if not v or any(char in v for char in "/\\\x00"):
+            raise ValueError("Invalid job_id")
+        return v
+
+
 def _crawl_cache_key(data_source_info: str | None) -> str | None:
+    if not data_source_info:
+        return None
     try:
-        info = json.loads(data_source_info or "{}")
-    except (ValueError, TypeError):
+        info = FirecrawlDataSourceInfo.model_validate_json(data_source_info)
+    except (ValueError, TypeError, ValidationError):
         return None
-    if not isinstance(info, dict) or info.get("provider") != "firecrawl":
-        return None
-    job_id = info.get("job_id")
-    if not isinstance(job_id, str) or not job_id or any(char in job_id for char in "/\\\x00"):
-        return None
-    return f"website_files/{job_id}.txt"
+    return f"website_files/{info.job_id}.txt"
 
 
 def cleanup_dataset_crawl_cache(tenant_id: str, dataset_id: str) -> None:

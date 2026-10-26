@@ -6,7 +6,7 @@ import { VAR_TYPE_MAP } from '@/models/pipeline'
 
 export const useInitialData = (
   variables: RAGPipelineVariables,
-  lastRunInputData?: Record<string, any>,
+  lastRunInputData?: Record<string, unknown>,
 ) => {
   const initialData = useMemo(() => {
     return variables.reduce(
@@ -30,7 +30,7 @@ export const useInitialData = (
         if (fileFieldTypes.includes(type)) acc[variableName] = defaultValue ?? []
         return acc
       },
-      {} as Record<string, any>,
+      {} as Record<string, unknown>,
     )
   }, [lastRunInputData, variables])
 

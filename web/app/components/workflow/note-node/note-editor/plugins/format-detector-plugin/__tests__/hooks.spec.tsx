@@ -1,196 +1,114 @@
-import { act, renderHook } from '@testing-library/react'
+import { $createLinkNode, LinkNode } from '@lexical/link'
+import { $createListItemNode, $createListNode, ListItemNode, ListNode } from '@lexical/list'
+import { act, waitFor } from '@testing-library/react'
+import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
+import {
+  renderLexicalEditor,
+  waitForEditorReady,
+} from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
+import NoteEditorContext from '../../../context'
+import { createNoteEditorStore } from '../../../store'
 import { useFormatDetector } from '../hooks'
 
-type MockParent = {
-  isLink?: boolean
-  getURL?: () => string
-  getKey?: () => string
-  isListItem?: boolean
-} | null
+const Detector = () => {
+  useFormatDetector()
+  return null
+}
 
-const {
-  mockRegisterUpdateListener,
-  mockSelection,
-  mockIsRangeSelection,
-  mockSelectedNode,
-  mockSetSelectedIsBold,
-  mockSetSelectedIsItalic,
-  mockSetSelectedIsStrikeThrough,
-  mockSetSelectedLinkUrl,
-  mockSetSelectedLinkKey,
-  mockSetSelectedIsLink,
-  mockSetSelectedIsBullet,
-  mockEditorIsComposing,
-  mockUpdateListener,
-} = vi.hoisted(() => ({
-  mockRegisterUpdateListener: vi.fn(),
-  mockSelection: {
-    hasFormat: vi.fn((format: string) => format === 'bold'),
-  },
-  mockIsRangeSelection: vi.fn(() => true),
-  mockSelectedNode: {
-    isLink: false,
-    isListItem: false,
-    getURL: vi.fn(() => ''),
-    getKey: vi.fn(() => 'link-node'),
-    getParent: vi.fn<() => MockParent>(() => null),
-  },
-  mockSetSelectedIsBold: vi.fn(),
-  mockSetSelectedIsItalic: vi.fn(),
-  mockSetSelectedIsStrikeThrough: vi.fn(),
-  mockSetSelectedLinkUrl: vi.fn(),
-  mockSetSelectedLinkKey: vi.fn(),
-  mockSetSelectedIsLink: vi.fn(),
-  mockSetSelectedIsBullet: vi.fn(),
-  mockEditorIsComposing: vi.fn(() => false),
-  mockUpdateListener: { current: undefined as undefined | (() => void) },
-}))
-
-vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => [
-    {
-      isComposing: mockEditorIsComposing,
-      getEditorState: () => ({
-        read: (callback: () => void) => callback(),
-      }),
-      registerUpdateListener: mockRegisterUpdateListener,
-    },
-  ],
-}))
-
-vi.mock('@lexical/utils', () => ({
-  mergeRegister:
-    (...cleanups: Array<() => void>) =>
-    () =>
-      cleanups.forEach((cleanup) => cleanup()),
-}))
-
-vi.mock('@lexical/link', () => ({
-  $isLinkNode: (node: unknown) =>
-    Boolean(
-      node &&
-      typeof node === 'object' &&
-      'isLink' in (node as object) &&
-      (node as { isLink?: boolean }).isLink,
+const setup = async () => {
+  const store = createNoteEditorStore()
+  const view = renderLexicalEditor({
+    namespace: 'note-format-detector',
+    nodes: [LinkNode, ListNode, ListItemNode],
+    children: (
+      <NoteEditorContext.Provider value={store}>
+        <Detector />
+      </NoteEditorContext.Provider>
     ),
-}))
+  })
+  const editor = await waitForEditorReady(view.getEditor)
+  return { ...view, editor, store }
+}
 
-vi.mock('@lexical/list', () => ({
-  $isListItemNode: (node: unknown) =>
-    Boolean(
-      node &&
-      typeof node === 'object' &&
-      'isListItem' in (node as object) &&
-      (node as { isListItem?: boolean }).isListItem,
+it('detects formatting and links nested in a list, then clears them for plain text', async () => {
+  const { editor, store } = await setup()
+  let linkKey = ''
+  act(() =>
+    editor.update(
+      () => {
+        const text = $createTextNode('Linked item')
+          .toggleFormat('bold')
+          .toggleFormat('strikethrough')
+        const link = $createLinkNode('https://dify.ai').append(text)
+        linkKey = link.getKey()
+        $getRoot()
+          .clear()
+          .append($createListNode('bullet').append($createListItemNode().append(link)))
+        text.select(0, text.getTextContentSize()).format = text.getFormat()
+      },
+      { discrete: true },
     ),
-}))
-
-vi.mock('lexical', () => ({
-  $getSelection: () => mockSelection,
-  $isRangeSelection: () => mockIsRangeSelection(),
-}))
-
-vi.mock('../../../store', () => ({
-  useNoteEditorStore: () => ({
-    getState: () => ({
-      setSelectedIsBold: mockSetSelectedIsBold,
-      setSelectedIsItalic: mockSetSelectedIsItalic,
-      setSelectedIsStrikeThrough: mockSetSelectedIsStrikeThrough,
-      setSelectedLinkUrl: mockSetSelectedLinkUrl,
-      setSelectedLinkKey: mockSetSelectedLinkKey,
-      setSelectedIsLink: mockSetSelectedIsLink,
-      setSelectedIsBullet: mockSetSelectedIsBullet,
+  )
+  await waitFor(() =>
+    expect(store.getState()).toMatchObject({
+      selectedIsBold: true,
+      selectedIsItalic: false,
+      selectedIsStrikeThrough: true,
+      selectedIsLink: true,
+      selectedLinkUrl: 'https://dify.ai',
+      selectedLinkKey: linkKey,
+      selectedIsBullet: true,
     }),
-  }),
-}))
+  )
 
-vi.mock('../../../utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../utils')>()
-  return {
-    ...actual,
-    getSelectedNode: () => mockSelectedNode,
-  }
+  act(() =>
+    editor.update(
+      () => {
+        const text = $createTextNode('Plain text')
+        $getRoot().clear().append($createParagraphNode().append(text))
+        text.select(0, text.getTextContentSize()).format = text.getFormat()
+      },
+      { discrete: true },
+    ),
+  )
+  act(() => {
+    document.dispatchEvent(new Event('selectionchange'))
+  })
+  expect(store.getState()).toMatchObject({
+    selectedIsBold: false,
+    selectedIsItalic: false,
+    selectedIsStrikeThrough: false,
+    selectedIsLink: false,
+    selectedLinkUrl: '',
+    selectedLinkKey: null,
+    selectedIsBullet: false,
+  })
 })
 
-describe('format detector hook', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsRangeSelection.mockReturnValue(true)
-    mockEditorIsComposing.mockReturnValue(false)
-    mockSelection.hasFormat.mockImplementation(
-      (format: string) => format === 'bold' || format === 'strikethrough',
-    )
-    mockSelectedNode.isLink = false
-    mockSelectedNode.isListItem = false
-    mockSelectedNode.getURL.mockReturnValue('')
-    mockSelectedNode.getParent.mockReturnValue(null)
-    mockRegisterUpdateListener.mockImplementation((listener) => {
-      mockUpdateListener.current = () => listener({})
-      return vi.fn()
-    })
+it('defers format changes during composition and stops observing after unmount', async () => {
+  const { editor, store, unmount } = await setup()
+  const composing = vi.spyOn(editor, 'isComposing').mockReturnValue(true)
+  act(() =>
+    editor.update(
+      () => {
+        const text = $createTextNode('Composing').toggleFormat('italic')
+        $getRoot().clear().append($createParagraphNode().append(text))
+        text.select(0, text.getTextContentSize()).format = text.getFormat()
+      },
+      { discrete: true },
+    ),
+  )
+  expect(store.getState().selectedIsItalic).toBe(false)
+  composing.mockRestore()
+  act(() => {
+    document.dispatchEvent(new Event('selectionchange'))
   })
+  expect(store.getState().selectedIsItalic).toBe(true)
 
-  // Selection updates should mirror formatting, link, and list state into the note editor store.
-  describe('Formatting Detection', () => {
-    it('should sync bold, italic, strikethrough, link, and bullet state from the current selection', () => {
-      mockSelectedNode.isLink = true
-      mockSelectedNode.getURL.mockReturnValue('https://dify.ai')
-      mockSelectedNode.getParent.mockReturnValue({ isListItem: true })
-
-      const { result } = renderHook(() => useFormatDetector())
-
-      act(() => {
-        result.current.handleFormat()
-      })
-
-      expect(mockSetSelectedIsBold).toHaveBeenCalledWith(true)
-      expect(mockSetSelectedIsItalic).toHaveBeenCalledWith(false)
-      expect(mockSetSelectedIsStrikeThrough).toHaveBeenCalledWith(true)
-      expect(mockSetSelectedLinkUrl).toHaveBeenCalledWith('https://dify.ai')
-      expect(mockSetSelectedIsLink).toHaveBeenCalledWith(true)
-      expect(mockSetSelectedIsBullet).toHaveBeenCalledWith(true)
-    })
-
-    it('should clear link and bullet state for a plain text selection triggered by selectionchange', () => {
-      const addListenerSpy = vi.spyOn(document, 'addEventListener')
-      const removeListenerSpy = vi.spyOn(document, 'removeEventListener')
-      const { unmount } = renderHook(() => useFormatDetector())
-
-      act(() => {
-        document.dispatchEvent(new Event('selectionchange'))
-      })
-
-      expect(addListenerSpy).toHaveBeenCalledWith('selectionchange', expect.any(Function))
-      expect(mockSetSelectedLinkUrl).toHaveBeenCalledWith('')
-      expect(mockSetSelectedIsLink).toHaveBeenCalledWith(false)
-      expect(mockSetSelectedIsBullet).toHaveBeenCalledWith(false)
-
-      unmount()
-
-      expect(removeListenerSpy).toHaveBeenCalledWith('selectionchange', expect.any(Function))
-    })
-
-    it('should ignore format detection while the editor is composing', () => {
-      mockEditorIsComposing.mockReturnValue(true)
-      const { result } = renderHook(() => useFormatDetector())
-
-      act(() => {
-        result.current.handleFormat()
-      })
-
-      expect(mockSetSelectedIsBold).not.toHaveBeenCalled()
-      expect(mockSetSelectedLinkUrl).not.toHaveBeenCalled()
-    })
-
-    it('should react to lexical update events', () => {
-      renderHook(() => useFormatDetector())
-
-      act(() => {
-        mockUpdateListener.current?.()
-      })
-
-      expect(mockSetSelectedIsBold).toHaveBeenCalledWith(true)
-      expect(mockSetSelectedIsItalic).toHaveBeenCalledWith(false)
-    })
+  unmount()
+  store.setState({ selectedIsItalic: false })
+  act(() => {
+    document.dispatchEvent(new Event('selectionchange'))
   })
+  expect(store.getState().selectedIsItalic).toBe(false)
 })

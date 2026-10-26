@@ -1,8 +1,9 @@
 'use client'
 
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ComponentProps, FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
-import type { DataSourceType, FileIndexingEstimateResponse } from '@/models/datasets'
+import type { DataSourceType } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -31,12 +32,12 @@ type PreviewPanelProps = {
   finalFocus?: ComponentProps<typeof FloatRightContainer>['finalFocus']
   dataSourceType: DataSourceType
   currentDocForm: ChunkingMode
-  estimate?: FileIndexingEstimateResponse
+  estimate?: IndexingEstimateResponse
   parentChildConfig: ParentChildConfig
   isSetting?: boolean
   // Picker
   pickerFiles: Array<{ id: string; name: string; extension: string }>
-  pickerValue: { id: string; name: string; extension: string }
+  pickerValue?: { id: string; name: string; extension: string }
   // Mutation state
   isIdle: boolean
   isPending: boolean
@@ -148,8 +149,8 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
             const indexForLabel = index + 1
             const childChunks =
               parentChildConfig.chunkForContext === 'full-doc'
-                ? item.child_chunks.slice(0, FULL_DOC_PREVIEW_LENGTH)
-                : item.child_chunks
+                ? (item.child_chunks ?? []).slice(0, FULL_DOC_PREVIEW_LENGTH)
+                : (item.child_chunks ?? [])
             return (
               <ChunkContainer
                 key={item.content}

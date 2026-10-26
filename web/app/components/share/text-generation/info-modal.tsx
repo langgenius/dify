@@ -24,7 +24,7 @@ const InfoModal = ({ isShow, onClose, data }: Props) => {
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-100 min-w-100 overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="w-100 min-w-100 overflow-hidden">
         <DialogClose
           render={
             <IconButton
@@ -39,14 +39,12 @@ const InfoModal = ({ isShow, onClose, data }: Props) => {
 
         <div className={cn('flex flex-col items-center gap-4 px-4 pt-10 pb-8')}>
           <AppIcon
+            fallback={{ content: '🤖', background: appDefaultIconBackground }}
             size="xxl"
-            iconType={data?.icon_type}
-            icon={data?.icon}
-            background={data?.icon_background || appDefaultIconBackground}
-            imageUrl={data?.icon_url}
+            icon={data}
           />
           <div className="w-full text-center">
-            <DialogTitle className="system-xl-semibold text-text-secondary">
+            <DialogTitle>
               {data?.title || t(($) => $['userProfile.about'], { ns: 'common' })}
             </DialogTitle>
             <div className="mt-1 system-xl-medium text-text-tertiary">{data?.description}</div>

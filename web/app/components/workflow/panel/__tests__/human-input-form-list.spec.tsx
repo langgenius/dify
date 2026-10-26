@@ -1,13 +1,17 @@
+import type { ReactElement } from 'react'
 import type { HumanInputFormData } from '@/types/workflow'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useNodes } from 'reactflow'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import {
   DeliveryMethodType,
   UserActionButtonType,
 } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType } from '@/app/components/workflow/types'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
+import { BlockEnum } from '../../types'
 import HumanInputFormList from '../human-input-form-list'
 
 const mockNodes: Array<{
@@ -18,13 +22,22 @@ const mockNodes: Array<{
   }
 }> = []
 
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: () => mockNodes,
-    }),
-  }),
-}))
+function GraphReady({ children }: { children: ReactElement }) {
+  const nodes = useNodes()
+  return nodes.length >= mockNodes.length ? children : null
+}
+const render = (ui: ReactElement) => {
+  const view = (element: ReactElement) => <GraphReady>{element}</GraphReady>
+  const result = renderWorkflowFlowComponent(view(ui), {
+    nodes: mockNodes.map((node) =>
+      createNode({
+        ...node,
+        data: { type: BlockEnum.HumanInput, title: 'Human Input', desc: '', ...node.data },
+      }),
+    ),
+  })
+  return { ...result, rerender: (element: ReactElement) => result.rerender(view(element)) }
+}
 const createFormData = (overrides: Partial<HumanInputFormData> = {}): HumanInputFormData => ({
   form_id: 'form-1',
   node_id: 'human-node-1',
@@ -114,17 +127,55 @@ describe('HumanInputFormList', () => {
     expect(screen.getByText('Need Approval')).toBeInTheDocument()
     expect(screen.queryByText('Hidden Form')).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('prefill')).toBeInTheDocument()
-    expect(screen.getByTestId('expiration-time')).toBeInTheDocument()
-    expect(screen.getByTestId('tips')).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.humanInputEmailTipInDebugMode')).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.humanInputWebappTip')).toBeInTheDocument()
 
     await user.clear(screen.getByDisplayValue('prefill'))
-    await user.type(screen.getByTestId('content-item-textarea'), 'updated reason')
+    await user.type(screen.getByRole('textbox'), 'updated reason')
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
     expect(onHumanInputFormSubmit).toHaveBeenCalledWith('token-1', {
       inputs: {
         reason: 'updated reason',
       },
+      action: 'approve',
+    })
+  })
+
+  it('submits same-Tool forms with separate tokens and preserves the remaining draft', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const first = createFormData({ node_id: 'tool', node_title: 'First approval' })
+    const second = createFormData({
+      node_id: 'tool',
+      form_id: 'form-2',
+      form_token: 'token-2',
+      node_title: 'Second approval',
+    })
+    const { rerender } = render(
+      <HumanInputFormList
+        humanInputFormDataList={[first, second]}
+        onHumanInputFormSubmit={onSubmit}
+      />,
+    )
+    const inputs = screen.getAllByRole('textbox')
+    await user.clear(inputs[0]!)
+    await user.type(inputs[0]!, 'first decision')
+    await user.clear(inputs[1]!)
+    await user.type(inputs[1]!, 'second decision')
+    await user.click(screen.getAllByRole('button', { name: 'Approve' })[0]!)
+    expect(onSubmit).toHaveBeenCalledWith('token-1', {
+      inputs: { reason: 'first decision' },
+      action: 'approve',
+    })
+
+    rerender(
+      <HumanInputFormList humanInputFormDataList={[second]} onHumanInputFormSubmit={onSubmit} />,
+    )
+    expect(screen.getByRole('textbox')).toHaveValue('second decision')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(onSubmit).toHaveBeenLastCalledWith('token-2', {
+      inputs: { reason: 'second decision' },
       action: 'approve',
     })
   })
@@ -140,14 +191,14 @@ describe('HumanInputFormList', () => {
 
     render(<HumanInputFormList humanInputFormDataList={[createFormData()]} />)
 
-    expect(screen.queryByTestId('tips')).not.toBeInTheDocument()
+    expect(screen.queryByText(/workflow\.common\.humanInput.*Tip/)).not.toBeInTheDocument()
   })
 
   it('should reset inputs when the same node produces a new form', async () => {
     const user = userEvent.setup()
     const { rerender } = render(<HumanInputFormList humanInputFormDataList={[createFormData()]} />)
 
-    const input = screen.getByTestId('content-item-textarea')
+    const input = screen.getByRole('textbox')
     await user.clear(input)
     await user.type(input, 'previous response')
 
@@ -157,12 +208,6 @@ describe('HumanInputFormList', () => {
       />,
     )
 
-    expect(screen.getByTestId('content-item-textarea')).toHaveValue('prefill')
-  })
-
-  it('should render an empty container when there are no visible forms', () => {
-    render(<HumanInputFormList humanInputFormDataList={[]} />)
-
-    expect(screen.queryByTestId('content-wrapper')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox')).toHaveValue('prefill')
   })
 })

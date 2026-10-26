@@ -1,8 +1,15 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
@@ -53,33 +60,28 @@ const CreateFromDSLModal = ({
   return (
     <>
       <Dialog open={show} onOpenChange={(open) => !open && !showConfirmModal && onClose()}>
-        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
-          <div className="relative flex items-center justify-between pt-6 pr-14 pb-3 pl-6">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $.importFromDSL, { ns: 'app' })}
-            </DialogTitle>
-            <IconButton
+        <DialogContent className="w-120">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $.importFromDSL, { ns: 'app' })}</DialogTitle>
+            <DialogHeaderCloseButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="absolute top-5 right-5"
-              size="lg"
-              onClick={onClose}
-            >
-              <span aria-hidden="true" className="i-ri-close-line size-4.5" />
-            </IconButton>
-          </div>
+            />
+          </DialogHeader>
           <form
+            className="contents"
             onSubmit={(event) => {
               event.preventDefault()
               handleCreateApp()
             }}
           >
             <Tabs
+              className="contents"
               value={currentTab}
               onValueChange={(value) => {
                 if (value !== null) setCurrentTab(value as CreateFromDSLModalTab)
               }}
             >
-              <TabsList className="h-9 gap-6 border-b border-divider-subtle px-6">
+              <TabsList className="h-9 shrink-0 gap-6 border-b border-divider-subtle px-6">
                 <TabsTab value={CreateFromDSLModalTab.FROM_FILE} className="h-full py-0">
                   {t(($) => $.importFromDSLFile, { ns: 'app' })}
                 </TabsTab>
@@ -90,11 +92,15 @@ const CreateFromDSLModal = ({
               <TabsPanel
                 value={CreateFromDSLModalTab.FROM_FILE}
                 tabIndex={-1}
-                className="px-6 py-4"
+                render={<DialogBody />}
               >
                 <Uploader className="mt-0" file={currentFile} updateFile={handleFile} />
               </TabsPanel>
-              <TabsPanel value={CreateFromDSLModalTab.FROM_URL} tabIndex={-1} className="px-6 py-4">
+              <TabsPanel
+                value={CreateFromDSLModalTab.FROM_URL}
+                tabIndex={-1}
+                render={<DialogBody />}
+              >
                 <Field name="dslUrl" className="gap-0">
                   <FieldLabel className="w-full text-sm leading-5 font-semibold">
                     DSL URL
@@ -108,14 +114,14 @@ const CreateFromDSLModal = ({
                 </Field>
               </TabsPanel>
             </Tabs>
-            <div className="flex justify-end gap-2 p-6 pt-5">
+            <DialogFooter>
               <Button type="button" onClick={onClose}>
                 {t(($) => $['newApp.Cancel'], { ns: 'app' })}
               </Button>
               <Button type="submit" disabled={buttonDisabled} variant="primary">
                 {t(($) => $['newApp.import'], { ns: 'app' })}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

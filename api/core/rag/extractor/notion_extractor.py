@@ -127,10 +127,7 @@ class NotionExtractor(BaseExtractor):
                         # join them all so no part of the value is dropped.
                         value = "".join(segment.get("plain_text", "") for segment in property_value[type])
                     elif type in {"select", "status"}:
-                        if property_value[type]:
-                            value = property_value[type]["name"]
-                        else:
-                            value = ""
+                        value = property_value[type]["name"] if property_value[type] else ""
                     else:
                         value = property_value[type]
                     data[property_name] = value

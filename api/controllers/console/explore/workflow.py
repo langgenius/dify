@@ -8,6 +8,7 @@ from controllers.common.controller_schemas import WorkflowRunPayload
 from controllers.common.errors import InternalServerError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_model
+from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -29,13 +30,12 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from machinery.context import RequestContext
+from models.model import AppMode
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.errors.llm import InvokeRateLimitError
 from services.installed_app_access_service import InstalledAppRef
 from services.installed_app_generation_service import InstalledAppNotWorkflowError
-
-from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
@@ -81,20 +81,20 @@ class InstalledAppWorkflowRunApi(Resource):
         except AccountNotFoundError:
             raise UnauthorizedError("Account no longer exists.") from None
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
@@ -110,6 +110,12 @@ class InstalledAppWorkflowTaskStopApi(Resource):
         if installed_app.app_mode != "workflow":
             raise NotWorkflowAppError()
 
-        application_services().app_tasks.stop_workflow_task_no_user_check(task_id=task_id)
+        application_services().app_tasks.stop_workflow_task(
+            tenant_id=installed_app.app_owner_tenant_id,
+            app_id=installed_app.app_id,
+            task_id=task_id,
+            app_mode=AppMode.WORKFLOW,
+            owner=None,
+        )
 
         return SimpleResultResponse(result="success").model_dump(mode="json")

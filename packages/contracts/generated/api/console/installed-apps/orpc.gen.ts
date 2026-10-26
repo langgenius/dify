@@ -801,7 +801,7 @@ export const get9 = oc
     path: '/installed-apps',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetInstalledAppsQuery.optional() }))
+  .input(z.object({ query: zGetInstalledAppsQuery.optional() }).optional())
   .output(zGetInstalledAppsResponse)
   .errors({
     invalid_cursor: { status: 400, data: zInvalidCursorError },

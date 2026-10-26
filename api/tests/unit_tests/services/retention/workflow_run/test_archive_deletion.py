@@ -200,6 +200,76 @@ def test_archive_deletion_removes_only_requested_files_indexes_and_downloads(
     ]
 
 
+def test_failed_cleanup_reaches_celery_retry_instead_of_success(
+    sqlite_session_factory: sessionmaker[Session],
+    month_lease: WorkflowRunArchiveMonthLease,
+) -> None:
+    """The entry point must surface FAILED so autoretry engages (#44059)."""
+    from tasks import workflow_run_archive_deletion_tasks as deletion_tasks
+
+    archive, downloads = MemoryStorage(), MemoryStorage()
+    target = _bundle()
+    prefix = _put_bundle(archive, target)
+    download_key = build_archive_download_month_prefix(tenant_id=TENANT_ID, year=2025, month=3) + "download.zip"
+    downloads.objects[download_key] = b"download"
+    archive.fail_key = prefix + "workflow_runs.parquet"
+    with sqlite_session_factory.begin() as session:
+        session.add(target)
+    repository = WorkflowRunArchiveBundleQueryRepository(session_factory=sqlite_session_factory)
+    repository.request_deletion(TENANT_ID, year=2025, month=3)
+
+    task = deletion_tasks.delete_workflow_run_archive_task
+    # apply() executes eagerly without changing process-global Celery settings.
+    with (
+        patch.object(deletion_tasks, "get_session_maker", return_value=sqlite_session_factory),
+        patch.object(deletion_tasks, "get_archive_storage", return_value=archive),
+        patch.object(deletion_tasks, "get_export_storage", return_value=downloads),
+        patch.object(
+            deletion_tasks,
+            "RedisWorkflowRunArchiveMonthLock",
+            lambda **_kwargs: lambda **_kw: nullcontext(month_lease),
+        ),
+    ):
+        result = task.apply(args=(TENANT_ID, 2025, 3))
+
+    assert result.failed()
+    records = repository.list_for_tenant_month(TENANT_ID, year=2025, month=3)
+    assert len(records) == 1
+    assert records[0].deletion_status == WorkflowRunArchiveDeletionStatus.FAILED
+
+
+def test_completed_cleanup_returns_success(
+    sqlite_session_factory: sessionmaker[Session],
+    month_lease: WorkflowRunArchiveMonthLease,
+) -> None:
+    """A clean run still reports success with no retry."""
+    from tasks import workflow_run_archive_deletion_tasks as deletion_tasks
+
+    archive, downloads = MemoryStorage(), MemoryStorage()
+    target = _bundle()
+    _put_bundle(archive, target)
+    with sqlite_session_factory.begin() as session:
+        session.add(target)
+    repository = WorkflowRunArchiveBundleQueryRepository(session_factory=sqlite_session_factory)
+    repository.request_deletion(TENANT_ID, year=2025, month=3)
+
+    task = deletion_tasks.delete_workflow_run_archive_task
+    with (
+        patch.object(deletion_tasks, "get_session_maker", return_value=sqlite_session_factory),
+        patch.object(deletion_tasks, "get_archive_storage", return_value=archive),
+        patch.object(deletion_tasks, "get_export_storage", return_value=downloads),
+        patch.object(
+            deletion_tasks,
+            "RedisWorkflowRunArchiveMonthLock",
+            lambda **_kwargs: lambda **_kw: nullcontext(month_lease),
+        ),
+    ):
+        result = task.apply(args=(TENANT_ID, 2025, 3))
+
+    assert result.successful()
+    assert not repository.list_for_tenant_month(TENANT_ID, year=2025, month=3)
+
+
 @pytest.mark.parametrize("failure_stage", ["archive", "download"])
 def test_failed_storage_delete_keeps_indexes_and_can_retry_partial_deletion(
     sqlite_session_factory: sessionmaker[Session],

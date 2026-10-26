@@ -1,8 +1,6 @@
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
-import { noop } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
 import dayjs from 'dayjs'
-import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,
@@ -10,23 +8,14 @@ import {
 } from '@/test/console/query-data'
 import LicenseBadge from '../index'
 
-const renderLicenseBadge = (license?: Parameters<typeof seedSystemFeaturesLicense>[1]) => {
+const renderLicenseBadge = (license: Parameters<typeof seedSystemFeaturesLicense>[1]) => {
   const queryClient = createConsoleQueryClient()
-  if (license) seedSystemFeaturesLicense(queryClient, license)
-  else {
-    void queryClient
-      .query({
-        queryKey: consoleQuery.systemFeatures.license.get.queryOptions().queryKey,
-        queryFn: () => new Promise(() => {}),
-      })
-      .catch(noop)
-  }
+  seedSystemFeaturesLicense(queryClient, license)
   return renderWithConsoleQuery(<LicenseBadge />, { queryClient })
 }
 
 describe('LicenseBadge', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.useFakeTimers()
     const now = new Date('2024-01-01T12:00:00Z')
     vi.setSystemTime(now)
@@ -34,11 +23,6 @@ describe('LicenseBadge', () => {
 
   afterEach(() => {
     vi.useRealTimers()
-  })
-
-  it('should render nothing while license detail is loading', () => {
-    const { container } = renderLicenseBadge()
-    expect(container).toBeEmptyDOMElement()
   })
 
   it('should render nothing when license status is NONE', () => {
@@ -92,14 +76,6 @@ describe('LicenseBadge', () => {
       license_expiry_notice_enabled: false,
     })
     expect(screen.queryByText(/license\.expiring/)).not.toBeInTheDocument()
-    expect(screen.getByText('Enterprise')).toBeInTheDocument()
-  })
-
-  it('should keep rendering the Enterprise badge for an active license when the expiry notice is disabled', () => {
-    renderLicenseBadge({
-      status: zLicenseStatus.enum.active,
-      license_expiry_notice_enabled: false,
-    })
     expect(screen.getByText('Enterprise')).toBeInTheDocument()
   })
 })

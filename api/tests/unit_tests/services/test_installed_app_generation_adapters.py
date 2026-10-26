@@ -237,7 +237,7 @@ def test_streaming_preparation_errors_raise_eagerly_and_rollback_runtime_writes(
         raise failure
 
     _patch_generation(monkeypatch, harness, generate, streaming=True)
-    with pytest.raises(ValueError) as raised:
+    with pytest.raises(ValueError, match="query must be a string") as raised:
         _invoke_generation(harness, streaming=True)
 
     assert raised.value is failure
@@ -378,7 +378,7 @@ def _seed_chat_conversation(
             app_id=app.id,
             mode=mode,
             name="Existing conversation",
-            inputs={},
+            _inputs={},
             from_source=ConversationFromSource.CONSOLE,
             from_account_id=harness.account_id,
             from_end_user_id=None,

@@ -1,4 +1,4 @@
-from pydantic import ValidationInfo, field_validator
+from pydantic import ConfigDict, ValidationInfo, field_validator
 
 from core.ops.entities.config_entity import BaseTracingConfig
 from core.ops.utils import validate_url_with_path
@@ -8,6 +8,10 @@ class AliyunConfig(BaseTracingConfig):
     """
     Model class for Aliyun tracing config.
     """
+
+    # Endpoints may be pasted with an embedded LicenseKey. Even rejected input
+    # must not appear in formatted validation exceptions or chained API errors.
+    model_config = ConfigDict(hide_input_in_errors=True)
 
     app_name: str = "dify_app"
     license_key: str

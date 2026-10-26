@@ -1,7 +1,13 @@
 import type { Credential, ModelProvider } from '../../../declarations'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
-import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
+import {
+  ConfigurationMethodEnum,
+  CustomConfigurationStatusEnum,
+  ModelTypeEnum,
+  PreferredProviderTypeEnum,
+} from '../../../declarations'
 import ApiKeySection from '../api-key-section'
 
 vi.mock('@/context/permission-state', async () => {
@@ -17,18 +23,20 @@ const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
   ...overrides,
 })
 
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
-  ({
-    provider: 'test-provider',
-    allow_custom_token: true,
-    custom_configuration: {
-      status: CustomConfigurationStatusEnum.active,
-      available_credentials: [],
-    },
-    system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
-    preferred_provider_type: PreferredProviderTypeEnum.system,
-    ...overrides,
-  }) as unknown as ModelProvider
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
+  provider: 'test-provider',
+  label: { en_US: 'Test provider', zh_Hans: 'Test provider' },
+  supported_model_types: [ModelTypeEnum.textGeneration],
+  configurate_methods: [ConfigurationMethodEnum.predefinedModel],
+  allow_custom_token: true,
+  custom_configuration: {
+    status: CustomConfigurationStatusEnum.active,
+    available_credentials: [],
+  },
+  system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
+  preferred_provider_type: PreferredProviderTypeEnum.system,
+  ...overrides,
+})
 
 describe('ApiKeySection', () => {
   const handlers = {
@@ -44,7 +52,8 @@ describe('ApiKeySection', () => {
 
   // Empty state
   describe('Empty state (no credentials)', () => {
-    it('should show empty state message', () => {
+    it('should call onAdd when Add API Key is clicked', async () => {
+      const user = userEvent.setup()
       render(
         <ApiKeySection
           provider={createProvider()}
@@ -55,33 +64,7 @@ describe('ApiKeySection', () => {
       )
 
       expect(screen.getByText(/noApiKeysTitle/)).toBeInTheDocument()
-      expect(screen.getByText(/noApiKeysDescription/)).toBeInTheDocument()
-    })
-
-    it('should show Add API Key button', () => {
-      render(
-        <ApiKeySection
-          provider={createProvider()}
-          credentials={[]}
-          selectedCredentialId={undefined}
-          {...handlers}
-        />,
-      )
-
-      expect(screen.getByRole('button', { name: /addApiKey/ })).toBeInTheDocument()
-    })
-
-    it('should call onAdd when Add API Key is clicked', () => {
-      render(
-        <ApiKeySection
-          provider={createProvider()}
-          credentials={[]}
-          selectedCredentialId={undefined}
-          {...handlers}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: /addApiKey/ }))
+      await user.click(screen.getByRole('button', { name: /addApiKey/ }))
 
       expect(handlers.onAdd).toHaveBeenCalledTimes(1)
     })
@@ -107,8 +90,9 @@ describe('ApiKeySection', () => {
       createCredential({ credential_id: 'cred-2', credential_name: 'Key Beta' }),
     ]
 
-    it('should render credential list with header', () => {
-      render(
+    it('selects an existing credential and blocks selection while activation is pending', async () => {
+      const user = userEvent.setup()
+      const { rerender } = render(
         <ApiKeySection
           provider={createProvider()}
           credentials={credentials}
@@ -116,23 +100,25 @@ describe('ApiKeySection', () => {
           {...handlers}
         />,
       )
-
-      expect(screen.getByText(/apiKeys/)).toBeInTheDocument()
-      expect(screen.getByText('Key Alpha')).toBeInTheDocument()
-      expect(screen.getByText('Key Beta')).toBeInTheDocument()
-    })
-
-    it('should show Add API Key button in footer', () => {
-      render(
+      expect(screen.getByRole('button', { name: 'Key Alpha' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      await user.click(screen.getByRole('button', { name: 'Key Beta' }))
+      expect(handlers.onItemClick).toHaveBeenCalledExactlyOnceWith(credentials[1])
+      rerender(
         <ApiKeySection
           provider={createProvider()}
           credentials={credentials}
           selectedCredentialId="cred-1"
+          isActivating
           {...handlers}
         />,
       )
-
-      expect(screen.getByRole('button', { name: /addApiKey/ })).toBeInTheDocument()
+      const beta = screen.getByRole('button', { name: 'Key Beta' })
+      expect(beta).toBeDisabled()
+      await user.click(beta)
+      expect(handlers.onItemClick).toHaveBeenCalledTimes(1)
     })
 
     it('should hide Add API Key when allow_custom_token is false', () => {

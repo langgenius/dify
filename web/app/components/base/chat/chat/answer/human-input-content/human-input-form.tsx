@@ -36,11 +36,16 @@ const HumanInputForm = ({ formData, onSubmit }: HumanInputFormProps) => {
     inputs: Record<string, HumanInputFieldValue>,
   ) => {
     setIsSubmitting(true)
-    await onSubmit?.(formToken, {
-      inputs: getProcessedHumanInputFormInputs(renderedFormInputs, inputs) || {},
-      action: actionID,
-    })
-    setIsSubmitting(false)
+    try {
+      await onSubmit?.(formToken, {
+        inputs: getProcessedHumanInputFormInputs(renderedFormInputs, inputs) || {},
+        action: actionID,
+      })
+    } catch {
+      // The request layer reports the error; retain the inputs for another attempt.
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const isActionDisabled =
