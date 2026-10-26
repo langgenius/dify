@@ -10,7 +10,6 @@ from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration, emoji_icon_adapter
 from core.tools.tool_label_manager import ToolLabelManager
-from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
@@ -76,9 +75,6 @@ class WorkflowToolManageService:
         # if not found raise error
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_app_id}")
-
-        # check if workflow configuration is synced
-        WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
 
         # create workflow tool provider
         workflow_tool_provider = WorkflowToolProvider(
@@ -189,9 +185,6 @@ class WorkflowToolManageService:
         # if not found raise error
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_tool_provider.app_id}")
-
-        # check if workflow configuration is synced
-        WorkflowToolConfigurationUtils.ensure_no_human_input_nodes(workflow.graph_dict)
 
         with sessionmaker(db.engine).begin() as _session:
             _session.add(workflow_tool_provider)

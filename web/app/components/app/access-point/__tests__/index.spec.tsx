@@ -8,14 +8,22 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
+import {
+  createNetworkAccessGroupFixture,
+  seedAppNetworkAccessGroup,
+  seedNetworkAccessGroups,
+} from '@/test/console/network-access'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
-import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppACLPermission } from '@/utils/permission'
 import AccessPoint from '..'
 
 let appMode: AppMode = 'workflow'
+let appPublished = false
 let appPermissionKeys: string[] = [AppACLPermission.AccessPointView]
 const accessPointMocks = vi.hoisted(() => ({
   builtIn: vi.fn(),
@@ -28,7 +36,10 @@ const mockConsoleState = vi.hoisted(() => ({
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  const { default: translations } = await import('@/i18n/locales/en-US/deployments.json')
   return createReactI18nextMock({
+    ...translations,
+    'operation.save': 'Save',
     'workflow.nodes.common.memories.builtIn': 'Built-in',
   })
 })
@@ -90,17 +101,27 @@ const appEnvironments: AppEnvironment[] = [
 const renderAccessPoint = ({
   environments = appEnvironments,
   searchParams = '',
+  cloud = false,
 }: {
   environments?: AppEnvironment[]
   searchParams?: string
+  cloud?: boolean
 } = {}) => {
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
+  seedCurrentWorkspaceQuery(queryClient)
+  seedSystemFeatures(queryClient, { deployment_edition: cloud ? 'CLOUD' : 'COMMUNITY' })
+  if (cloud) {
+    seedNetworkAccessGroups(queryClient, { groups: [createNetworkAccessGroupFixture()] })
+    seedAppNetworkAccessGroup(queryClient, 'app-1')
+  }
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppDetailFixture({
       id: 'app-1',
       mode: appMode,
+      workflow: appPublished ? { id: 'published-workflow' } : null,
+      model_config: appPublished ? createAppModelConfigFixture() : null,
       maintainer: 'user-2',
       permission_keys: appPermissionKeys,
     }),
@@ -134,7 +155,16 @@ describe('AccessPoint', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     appMode = 'workflow'
+    appPublished = false
     appPermissionKeys = [AppACLPermission.AccessPointView]
+  })
+
+  it('does not show Access Control on community edition', () => {
+    renderAccessPoint()
+
+    expect(
+      screen.queryByRole('button', { name: /Access Control|studio\.accessControl\.entryLabel/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('renders Built-in and only in-use environments from the API', () => {
@@ -319,4 +349,30 @@ describe('AccessPoint', () => {
       }),
     )
   })
+
+  it.each(['workflow', 'advanced-chat', 'chat', 'agent-chat', 'completion'] as const)(
+    'checks published %s apps before applying a policy that excludes the current IP',
+    async (mode) => {
+      const user = userEvent.setup()
+      appMode = mode
+      appPublished = true
+      appPermissionKeys = [AppACLPermission.AccessPointManage]
+      vi.mocked(globalThis.fetch).mockImplementation(async () =>
+        Response.json({ allowed: false, client_ip: '203.0.113.42', policy_version: 1 }),
+      )
+      renderAccessPoint({ cloud: true })
+      await user.click(screen.getByRole('button', { name: /Access Control/ }))
+      await user.click(screen.getByRole('button', { name: /Internal Network/ }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+      expect(
+        await screen.findByRole('alertdialog', { name: 'Save without your own IP?' }),
+      ).toBeInTheDocument()
+      expect(
+        vi
+          .mocked(globalThis.fetch)
+          .mock.calls.every(([input, init]) => new Request(input, init).method === 'GET'),
+      ).toBe(true)
+    },
+  )
 })

@@ -3,15 +3,15 @@
 import type { TenantListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuRadioItemIndicator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuRadioItemIndicator,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -64,7 +64,7 @@ function WorkspaceSwitchControls({
 
   return (
     <Collapsible>
-      <div className="flex items-start gap-0.5 py-1 pr-2 pl-3">
+      <div className="flex items-start gap-0.5 py-1 ps-3 pe-2">
         <div className="flex min-w-0 flex-1 items-center justify-center py-1">
           <span
             id={labelId}
@@ -73,8 +73,8 @@ function WorkspaceSwitchControls({
             {t(($) => $['userProfile.workspace'], { ns: 'common' })}
           </span>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger
+        <Menu>
+          <MenuTrigger
             disabled={disabled}
             className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
             render={
@@ -85,29 +85,28 @@ function WorkspaceSwitchControls({
               </IconButton>
             }
           />
-          <DropdownMenuContent
-            placement="bottom-end"
-            sideOffset={4}
-            className="w-40 bg-components-panel-bg-blur! p-1! backdrop-blur-[5px]"
+          <MenuContent
+            align="end"
+            className="w-40 bg-components-panel-bg-blur! backdrop-blur-[5px]"
           >
-            <DropdownMenuRadioGroup<WorkspaceSort> value={sort} onValueChange={onSortChange}>
+            <MenuRadioGroup<WorkspaceSort> value={sort} onValueChange={onSortChange}>
               {sortOptions.map((option) => (
-                <DropdownMenuRadioItem<WorkspaceSort>
+                <MenuRadioItem<WorkspaceSort>
                   key={option.value}
                   value={option.value}
-                  className="mx-0 h-8 gap-1 px-2 py-1"
+                  className="h-8 gap-1 px-2 py-1"
                 >
                   <span className="flex size-4 shrink-0 items-center justify-center">
-                    <DropdownMenuRadioItemIndicator className="ml-0" />
+                    <MenuRadioItemIndicator className="ms-0" />
                   </span>
                   <span className="min-w-0 flex-1 truncate px-1 system-md-regular text-text-secondary">
                     {option.label}
                   </span>
-                </DropdownMenuRadioItem>
+                </MenuRadioItem>
               ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </MenuRadioGroup>
+          </MenuContent>
+        </Menu>
         <CollapsibleTrigger
           disabled={disabled}
           className="text-text-secondary data-panel-open:bg-state-base-hover"
@@ -212,7 +211,7 @@ export function WorkspaceSwitcher({
                     type="button"
                     aria-current={workspace.current ? 'true' : undefined}
                     title={workspaceName}
-                    className="group flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+                    className="group flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-start outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
                     onClick={() => {
                       onSwitchWorkspace(workspace.id)
                     }}
@@ -222,7 +221,7 @@ export function WorkspaceSwitcher({
                       label={workspaceName}
                       trailingClassName="hidden group-aria-current:flex"
                       trailing={
-                        <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
+                        <span aria-hidden className="i-ri-check-line size-4 text-text-accent" />
                       }
                     />
                   </button>
