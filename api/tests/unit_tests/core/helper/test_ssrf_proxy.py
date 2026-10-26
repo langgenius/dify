@@ -402,18 +402,30 @@ def test_graphon_ssrf_proxy_wraps_module_requests(method_name: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Squid-blocked 403 regression tests (issue #38443)
+# Squid-blocked 403 regression tests (issues #38443, #44785)
 # ---------------------------------------------------------------------------
 # When the SSRF proxy denies a request to a private/internal network address,
-# Squid returns 401/403 with itself identified in the Server or Via header.
-# The Python client must raise ToolSSRFError with a message that tells the
-# user exactly which env var to set, instead of just "blocked by SSRF
-# protection" (the pre-#38443 message gave no actionable guidance).
+# Squid answers with its own error page, which identifies it in the Server
+# header and carries an X-Squid-Error header. The Python client must raise
+# ToolSSRFError with a message that tells the user exactly which env var to
+# set, instead of just "blocked by SSRF protection" (the pre-#38443 message
+# gave no actionable guidance).
+#
+# The Via header is NOT a denial signal: Squid appends it to every proxied
+# response, so Squid-based CDNs (e.g. Aliyun CDN) send `Via: ... (squid/...)`
+# on the upstream's own 401/403 responses too (issue #44785).
 
 
 def _build_squid_blocked_response(status_code: int = 403) -> httpx.Response:
     """Construct an HTTP response with Squid's ACL denial headers."""
-    return httpx.Response(status_code, headers={"server": "squid/4.10", "via": "1.1 squid (squid/4.10)"})
+    return httpx.Response(
+        status_code,
+        headers={
+            "server": "squid/4.10",
+            "via": "1.1 squid (squid/4.10)",
+            "x-squid-error": "ERR_ACCESS_DENIED 0",
+        },
+    )
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
@@ -439,11 +451,11 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client, client_f
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client, client_factory) -> None:
-    """Squid can return 401 with only the Via header set (no Server header)
-    on some configurations. The detection must work for both."""
-    # Server header absent — only Via identifies Squid.
-    response = httpx.Response(401, headers={"server": "", "via": "1.1 squid (squid/4.10)"})
+def test_squid_401_with_x_squid_error_triggers_actionable_error(mock_get_client, client_factory) -> None:
+    """A Squid denial is identified by X-Squid-Error even when Squid does not
+    set a Server header. Via alone is not evidence: it is appended to every
+    proxied response, including forwarded upstream 401/403s (issue #44785)."""
+    response = httpx.Response(401, headers={"x-squid-error": "ERR_ACCESS_DENIED 0", "via": "1.1 squid (squid/4.10)"})
     mock_client, _ = client_factory(response)
     mock_get_client.return_value = mock_client
 
@@ -451,6 +463,44 @@ def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client, cl
         make_request("GET", "http://10.0.0.1/internal")
 
     assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_forwarded_403_through_squid_cdn_is_returned(mock_get_client, client_factory) -> None:
+    """A Squid-based CDN adds ``Via: ... (squid/...)`` to every response, so an
+    upstream 403 that kept its own Server header was forwarded by the proxy and
+    must be returned with its body intact instead of being reported as an SSRF
+    block (issue #44785)."""
+    response = httpx.Response(
+        403,
+        headers={
+            "server": "AliyunOSS",
+            "via": "1.1 cdn-node (squid/6.13)",
+            "x-oss-err": "<Code>AccessDenied</Code>",
+        },
+        content=b"Request has expired",
+    )
+    mock_client, _ = client_factory(response)
+    mock_get_client.return_value = mock_client
+
+    returned = make_request("GET", "http://bucket.oss-cn-hangzhou.aliyuncs.com/object?Expires=1")
+
+    assert returned.status_code == 403
+    assert returned.content == b"Request has expired"
+    assert returned.headers["x-oss-err"] == "<Code>AccessDenied</Code>"
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_forwarded_401_through_squid_cdn_is_returned(mock_get_client, client_factory) -> None:
+    """Same as above for a 401 from an origin that identifies itself: the proxy
+    forwarded the response, so the authorization error belongs to the caller."""
+    response = httpx.Response(401, headers={"server": "nginx/1.25", "via": "1.1 edge (squid/6.13)"})
+    mock_client, _ = client_factory(response)
+    mock_get_client.return_value = mock_client
+
+    returned = make_request("GET", "https://api.example.com/private")
+
+    assert returned.status_code == 401
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)

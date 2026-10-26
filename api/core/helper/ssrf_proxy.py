@@ -242,12 +242,18 @@ def make_request(
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
-                # Check if this is a Squid SSRF rejection
+                # Only a response that Squid generated itself proves that the
+                # proxy denied the destination: such an error page carries
+                # ``X-Squid-Error`` and identifies Squid in ``Server``. Squid
+                # appends ``Via`` to *every* proxied response, so a Squid-based
+                # CDN forwards upstream 401/403s with a ``Via`` header too and
+                # matching it would misreport a public destination as blocked
+                # (issue #44785).
                 server_header = response.headers.get("server", "").lower()
-                via_header = response.headers.get("via", "").lower()
+                squid_error_header = response.headers.get("x-squid-error", "").lower()
+                is_squid_denial = "squid" in server_header or "err_access_denied" in squid_error_header
 
-                # Squid typically identifies itself in Server or Via headers
-                if "squid" in server_header or "squid" in via_header:
+                if is_squid_denial:
                     # The deny ACL is usually ``to_private_networks`` (RFC1918 +
                     # loopback / link-local / CGN / IPv6 ULA, etc.). We don't know
                     # which specific ACL tripped from Squid's response alone, but
