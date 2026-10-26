@@ -48,12 +48,15 @@ def _patch_runtime(monkeypatch: pytest.MonkeyPatch, bindings: _RecordingAppBindi
 def test_sync_workflow_bindings_unions_direct_and_frozen_agent_spaces(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    session = Mock(spec=Session)
+    flush = Mock()
+    session = Mock(spec=Session, flush=flush)
     bindings = _RecordingAppBindings()
     session_maker = _patch_runtime(monkeypatch, bindings)
+    owning_session = session
 
     def collect_agent_spaces(*, session: Session, workflow: Workflow) -> tuple[str, ...]:
-        assert session.flush.call_count == 1
+        assert session is owning_session
+        assert flush.call_count == 1
         assert workflow.id == "published-workflow"
         return ("space-b", "space-c")
 

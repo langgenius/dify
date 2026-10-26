@@ -93,8 +93,8 @@ def test_debug_generators_use_injected_variable_dependencies(
     calls: list[str] = []
 
     def execute(generator: WorkflowAppGenerator, **_kwargs: object) -> dict[str, str]:
-        assert generator._draft_variable_loader == workflow_variables.workflow_loader
-        assert generator._draft_variable_saver == workflow_variables.saver_factory
+        assert generator.draft_variable_loader == workflow_variables.workflow_loader
+        assert generator.draft_variable_saver == workflow_variables.saver_factory
         saver = generator._get_draft_var_saver_factory(InvokeFrom.DEBUGGER, user, tenant_id=workflow.tenant_id)
         saver(workflow.app_id, "node", BuiltinNodeTypes.CODE, "execution").save(
             process_data=None, outputs={"text": "injected"}

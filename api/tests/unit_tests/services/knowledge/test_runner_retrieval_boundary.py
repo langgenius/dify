@@ -297,7 +297,8 @@ def test_runner_releases_connections_during_metadata_and_external_retrieval(
     # Stop after retrieval and prompt preparation; the assertions cover all retrieval I/O.
     monkeypatch.setattr(runner, "check_hosting_moderation", lambda **_kwargs: True)
     queue = Queue()
-    app = App(id=app_id, tenant_id=tenant_id, mode=mode)
+    app_mode = mode if isinstance(mode, AppMode) else AppMode.AGENT_CHAT
+    app = App(id=app_id, tenant_id=tenant_id, mode=app_mode)
     message = Message(id=str(uuid4()))
     try:
         with Flask(__name__).app_context():
