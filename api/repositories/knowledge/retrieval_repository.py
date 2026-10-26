@@ -515,7 +515,6 @@ class KnowledgeRetrievalRepository:
                 if show_retrieve_source:
                     dataset_ids = [record.segment.dataset_id for record in authorized_records]
                     document_ids = [record.segment.document_id for record in authorized_records]
-                    from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
 
                     documents = get_retrieval_source_documents(
                         tenant_id=tenant_id,
