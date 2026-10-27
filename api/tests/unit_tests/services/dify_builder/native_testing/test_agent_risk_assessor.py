@@ -112,7 +112,8 @@ def test_shell_reasoning_receives_owner_scope_and_preserves_unknown_risk_and_mod
     scope: dict[str, JsonValue] = {
         "initial_working_directory": "request_owned_agent_workspace",
         "may_contain_cloned_files": True,
-        "filesystem_confinement_guaranteed": False,
+        "initial_working_directory_is_confinement": False,
+        "runtime_filesystem_isolation": "not_attested_to_assessor",
     }
     result = assess_call(
         goal="Materialize configured synthetic assets in this run workspace; preserve user artifacts.",
@@ -134,3 +135,12 @@ def test_shell_reasoning_receives_owner_scope_and_preserves_unknown_risk_and_mod
     assert result.destructive is destructive
     assert "uncertain" in result.risk_notice
     assert result.parameters_summary == {"script": "dify-agent config skills pull --json proof"}
+
+
+def test_risk_rubric_separates_observed_destruction_from_uncertain_side_effects() -> None:
+    from services.dify_builder.native_testing.agent_risk_assessor import _CALL_RISK_SYSTEM
+
+    assert "Unknown isolation is not evidence that isolation is disabled" in _CALL_RISK_SYSTEM
+    assert "Ordinary external writes such as sending, creating or publishing" in _CALL_RISK_SYSTEM
+    assert "Incomplete task progress or missing proof of success is not destruction" in _CALL_RISK_SYSTEM
+    assert "concrete destruction, damage or deletion" in _CALL_RISK_SYSTEM
