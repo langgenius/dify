@@ -44,7 +44,9 @@ function buildApproveBody(
 function getMetadataHost(clientId: string) {
   try {
     const url = new URL(clientId)
-    return url.protocol === 'https:' && url.host ? url.host : null
+    if (url.protocol !== 'https:') return null
+    if (!url.host) return null
+    return url.host
   } catch {
     return null
   }
