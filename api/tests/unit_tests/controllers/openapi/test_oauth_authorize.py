@@ -400,6 +400,19 @@ class TestAuthorizationCodeToggleCases:
         assert world.hits.hits == {}
 
     @staticmethod
+    @pytest.mark.parametrize(("method", "path"), [("get", "client"), ("post", "approve"), ("post", "deny")])
+    def test_authorize_routes_404_when_bearer_auth_is_off(
+        world: _World, config_overrides: Callable[..., None], method: str, path: str
+    ) -> None:
+        config_overrides(ENABLE_OAUTH_BEARER=False)
+        client = world.app.test_client()
+
+        response = client.open(f"{_PREFIX}/{path}", method=method.upper(), json=_body())
+
+        assert response.status_code == 404
+        assert world.hits.hits == {}
+
+    @staticmethod
     def test_disabled_grant_is_unsupported_on_the_token_endpoint(world: _World) -> None:
         code = _approved_code(world)
         services, _tokens, _device = _build_services(authorization_code_enabled=False)

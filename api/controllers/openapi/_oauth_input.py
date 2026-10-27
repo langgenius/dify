@@ -8,7 +8,6 @@ from urllib.parse import unquote_plus
 from flask import request
 from werkzeug.exceptions import NotFound
 
-from configs import dify_config
 from services.oauth_token_contracts import TokenEndpointError
 
 NO_STORE_HEADERS = {"Cache-Control": "no-store", "Pragma": "no-cache"}
@@ -68,11 +67,3 @@ def oauth_feature_required[**P, R](flag: Callable[[], bool]) -> Callable[[Callab
         return wrapper
 
     return decorator
-
-
-def authorization_code_enabled() -> bool:
-    return dify_config.ENABLE_OAUTH_AUTHORIZATION_CODE
-
-
-def dcr_enabled() -> bool:
-    return dify_config.ENABLE_OAUTH_DCR

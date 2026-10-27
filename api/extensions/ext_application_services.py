@@ -198,7 +198,7 @@ from services.oauth_device_application_service import (
 from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_grant_revoker import GrantRevoker, OAuthRevocationService
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
-from services.oauth_token_adapters import DifyConfigOAuthTokenSettings
+from services.oauth_token_adapters import DifyConfigOAuthTokenSettings, cimd_enabled
 from services.oauth_token_grants import build_grant_handlers
 from services.oauth_token_service import OAuthTokenService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
@@ -435,7 +435,7 @@ def _build_oauth_services(
     )
     client_repository = SQLAlchemyOAuthClientRepository(session_factory=database_client)
     client_sources: list[ClientSource] = [client_repository]
-    if dify_config.ENABLE_OAUTH_CIMD:
+    if cimd_enabled():
         client_sources.append(
             CimdClientSource(
                 cache=redis,

@@ -1189,7 +1189,8 @@ class AuthConfig(BaseSettings):
 
     ENABLE_OAUTH_AUTHORIZATION_CODE: bool = Field(
         description="Enable the OAuth authorization code + PKCE flow: the /openapi/v1/oauth/authorize routes and the "
-        "authorization_code and refresh_token grants. /openapi/v1/oauth/token stays on for the device grant.",
+        "authorization_code and refresh_token grants. Needs ENABLE_OAUTH_BEARER. /openapi/v1/oauth/token stays on "
+        "for the device grant.",
         default=True,
     )
 

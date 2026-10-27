@@ -24,13 +24,14 @@ from controllers.openapi._models import (
     OAuthAuthorizeRedirectResponse,
     OAuthAuthorizeRequest,
 )
-from controllers.openapi._oauth_input import NO_STORE_HEADERS, authorization_code_enabled, oauth_feature_required
+from controllers.openapi._oauth_input import NO_STORE_HEADERS, oauth_feature_required
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response
 from libs.rate_limit import LIMIT_AUTHORIZE_APPROVE, LIMIT_AUTHORIZE_CLIENT_PUBLIC, rate_limit
 from machinery.context import RequestContext
 from services.oauth_authorize_service import AuthorizeErrorCode, AuthorizeRequest, AuthorizeRequestError
 from services.oauth_resource import openapi_issuer_url
+from services.oauth_token_adapters import authorization_code_enabled
 
 
 def _validated[M: BaseModel](model: type[M], data: object) -> M:

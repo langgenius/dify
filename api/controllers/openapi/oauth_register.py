@@ -9,12 +9,7 @@ from flask_restx import Resource
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import OAuthRegisterErrorResponse, OAuthRegisterRequest, OAuthRegisterResponse
-from controllers.openapi._oauth_input import (
-    NO_STORE_HEADERS,
-    authorization_code_enabled,
-    dcr_enabled,
-    oauth_feature_required,
-)
+from controllers.openapi._oauth_input import NO_STORE_HEADERS, oauth_feature_required
 from enums.oauth_client import OAuthClientKind
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response
@@ -25,6 +20,7 @@ from services.oauth_client_registration import (
     RegistrationError,
     RegistrationErrorCode,
 )
+from services.oauth_token_adapters import dcr_enabled
 
 NEVER_EXPIRES = 0
 
@@ -61,7 +57,6 @@ class OAuthRegisterApi(Resource):
     @openapi_ns.response(
         HTTPStatus.BAD_REQUEST, "Invalid client metadata", openapi_ns.models[OAuthRegisterErrorResponse.__name__]
     )
-    @oauth_feature_required(authorization_code_enabled)
     @oauth_feature_required(dcr_enabled)
     @rate_limit(LIMIT_DCR_PER_IP)
     def post(self):

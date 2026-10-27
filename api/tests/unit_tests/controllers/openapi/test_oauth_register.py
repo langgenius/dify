@@ -176,7 +176,7 @@ class TestRegisterRouteCases:
 
 class TestRegisterFeatureFlagCases:
     @staticmethod
-    @pytest.mark.parametrize("flag", ["ENABLE_OAUTH_DCR", "ENABLE_OAUTH_AUTHORIZATION_CODE"])
+    @pytest.mark.parametrize("flag", ["ENABLE_OAUTH_DCR", "ENABLE_OAUTH_AUTHORIZATION_CODE", "ENABLE_OAUTH_BEARER"])
     def test_route_is_404_when_a_flag_is_off(world: _World, flag: str) -> None:
         world.overrides(**{flag: False})
 
