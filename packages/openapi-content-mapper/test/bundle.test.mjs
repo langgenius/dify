@@ -24,13 +24,16 @@ test('sidecar star re-exports use Vite aliases and TypeScript extension resoluti
         paths: { '/pets': { get: { responses: { 200: { description: 'OK' } } } } },
       }),
     )
-    writeFileSync(join(dir, 'api.openapi.queries.ts'), "export * from './defaults.js';")
+    writeFileSync(
+      join(dir, 'api.openapi.queries.ts'),
+      "export /* shared */ * from './defaults.js';",
+    )
     writeFileSync(join(dir, 'defaults.ts'), "export * from '@policies';")
     writeFileSync(
       join(dir, 'policies.ts'),
       "const policy = {queryOptions: {staleTime: 42}}; export {policy as 'GET /pets'};",
     )
-    writeFileSync(join(dir, 'api.openapi.errors.ts'), "export * from './errors.js';")
+    writeFileSync(join(dir, 'api.openapi.errors.ts'), "export // shared\n * from './errors.js';")
     writeFileSync(
       join(dir, 'errors.ts'),
       "const errors = {CONFLICT: {status: 409}}; export {errors as 'GET /pets'};",

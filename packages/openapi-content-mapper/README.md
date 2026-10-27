@@ -260,11 +260,19 @@ await api.pets.byPetId.get(
 
 A client override takes precedence over document configuration. Otherwise the document's `servers` URL is used; relative server URLs require a browser origin or an explicit absolute `baseUrl` in Node. The exported shared `client` also supports `setConfig()`, but request-specific credentials should use independent clients.
 
+Paths containing whole `.` or `..` segments, including percent-encoded forms, are rejected before Fetch can normalize them to another route. Dots inside ordinary names such as `report.json` remain valid.
+
 Successful calls return decoded response data. Non-2xx responses throw `ApiError` with `response` and decoded `data`; network and cancellation failures propagate. Responses are not runtime-validated and schema defaults are not filled in. JSON binary-formatted fields remain strings; binary response media return Blob objects (File with the response filename when Content-Disposition is present); SSE returns a raw `ReadableStream<Uint8Array>`.
 
-Wildcard response media follow the most specific matching declaration for the response status: `*/*` and `application/*` return Blob, while `text/*` returns text. An explicit `application/json` or `text/event-stream` declaration takes precedence over a wildcard. HTTP errors are decoded from their actual Content-Type.
+If an HTTP error declares JSON but contains empty or malformed JSON, `ApiError.data` retains the raw text and `cause` contains the parsing error. Content-Disposition adds filenames only to binary responses; JSON, text and SSE keep their normal decoded types.
+
+Wildcard response media follow the most specific matching declaration for the response status: `*/*` and `application/*` return Blob, while `text/*` returns text. An explicit `application/json` or `text/event-stream` declaration takes precedence over a wildcard. HTTP errors are decoded from their actual Content-Type. Media type matching is case-insensitive in declarations and response headers; explicit `contentType` arguments retain the spelling of the declared keys in TypeScript.
 
 With one request media type, `contentType` can be omitted. With multiple media types, only `application/json` is implicit; other alternatives require an explicit matching `contentType`. Multipart accepts flat objects with scalar, Blob/File or repeated array fields, plus explicit JSON part encodings. Fetch supplies its boundary. Optional request bodies may be omitted entirely.
+
+Multipart properties with `encoding.<property>.contentType: application/json` use JSON wire types, including string values for nested binary-formatted fields. Unencoded file properties retain Blob/File types. This applies to inline and referenced schemas and preserves optional fields, arrays and recursive references.
+
+`application/octet-stream` requests accept Blob/File, including when the media declaration omits a schema. JSON media without a schema infer `unknown`.
 
 ### Document configuration
 
@@ -412,6 +420,8 @@ The loader uses a tiny shared resource for child namespaces so the full specific
 External references, Swagger 2, URL-encoded forms, advanced parameter serialization, nested multipart file dictionaries and YAML aliases are unsupported. Inline schema inference has a 24-step fallback; local referenced schemas use recursive aliases. Unsupported request serialization fails explicitly. Missing or inaccurate OpenAPI declarations cannot be repaired by inference.
 
 Existing oRPC Links and interceptors require explicit transport adapters; query policies and typed errors require the per-operation sidecars above. Browser Fetch governs cookie headers. Supported schema features include required/optional properties, enum/const, arrays and dictionaries, `oneOf`, `anyOf`, `allOf`, and nullable types.
+
+OpenAPI 3.1 schema references combine with supported sibling constraints, including `required`; required fields retain their inferred types and nullability after reference or `allOf` composition. OpenAPI 3.0 reference siblings remain ignored. Object schemas without properties accept objects rather than primitive or array values; an empty object schema with `additionalProperties: false` rejects extra keys. Example payloads, defaults, const/enum values and extension payloads are literal data, so their `$ref` fields are not resolved. Actual Example Object references are still validated.
 
 ## Repository setup
 

@@ -1,12 +1,73 @@
 /* oxlint-disable vitest/no-import-node-test, antfu/no-import-dist -- Verify the loader's module graph and watch invalidation against the built package. */
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { test } from 'node:test'
 import loader from '../dist/tooling/loader.js'
 /* oxlint-enable vitest/no-import-node-test, antfu/no-import-dist */
 
 const root = resolve(import.meta.dirname, '..')
+
+test('command-source cache rescans nested input additions and removals', async () => {
+  const directory = mkdtempSync(join(root, 'test/.loader-source-'))
+  const file = join(directory, 'spec.openapi-source')
+  const dependencies = new Set()
+  const contexts = new Set()
+  const context = {
+    resourcePath: join(root, 'dist/tooling/openapi-namespace.js'),
+    resourceQuery: `?${new URLSearchParams({ 'openapi-document': file, 'openapi-router': '[]' })}`,
+    getOptions: () => ({}),
+    addDependency: (file) => dependencies.add(file),
+    addContextDependency: (file) => contexts.add(file),
+    addMissingDependency: () => {},
+  }
+  try {
+    mkdirSync(join(directory, 'backend/a'), { recursive: true })
+    const nested = join(directory, 'backend/b/deep')
+    mkdirSync(nested, { recursive: true })
+    writeFileSync(join(directory, 'backend/a/first.json'), '{}')
+    writeFileSync(join(directory, 'exports.log'), '')
+    writeFileSync(
+      file,
+      JSON.stringify({
+        command: ['node', 'export.mjs'],
+        inputs: ['export.mjs', 'backend/**/*.json'],
+      }),
+    )
+    writeFileSync(
+      join(directory, 'export.mjs'),
+      `
+import { appendFileSync, globSync } from 'node:fs';
+const paths = {};
+for (const file of globSync('backend/**/*.json')) {
+  const name = file.split('/').pop().replace('.json', '');
+  paths['/' + name] = {get: {responses: {200: {description: 'OK'}}}};
+}
+appendFileSync('exports.log', 'export\\n');
+console.log(JSON.stringify({openapi: '3.1.0', paths}));
+`,
+    )
+    const before = await runLoader(context)
+    assert(before.includes('as "first"'))
+    assert(!before.includes('as "second"'))
+    assert.equal(await runLoader(context), before)
+    assert.equal(readFileSync(join(directory, 'exports.log'), 'utf8'), 'export\n')
+    const added = join(nested, 'second.json')
+    writeFileSync(added, '{}')
+    const after = await runLoader(context)
+    assert(after.includes('as "second"'))
+    assert(dependencies.has(added))
+    assert(contexts.has(nested))
+    assert.equal(await runLoader(context), after)
+    assert.equal(readFileSync(join(directory, 'exports.log'), 'utf8'), 'export\nexport\n')
+    rmSync(added)
+    const removed = await runLoader(context)
+    assert(!removed.includes('as "second"'))
+    assert.equal(readFileSync(join(directory, 'exports.log'), 'utf8'), 'export\nexport\nexport\n')
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+})
 
 function runLoader(context) {
   return new Promise((resolve, reject) => {
@@ -122,12 +183,12 @@ test('loader resolves logical sidecar re-exports and invalidates when their sour
         paths: { '/pets': { get: { responses: { 200: { description: 'OK' } } } } },
       }),
     )
-    writeFileSync(`${logical}.queries.ts`, "export * from './defaults.js';")
+    writeFileSync(`${logical}.queries.ts`, "export /* shared */ * from './defaults.js';")
     writeFileSync(
       join(directory, 'defaults.ts'),
       'const defaults = { queryOptions: { staleTime: 42 } }; export { defaults as "GET /pets" };',
     )
-    writeFileSync(`${logical}.errors.ts`, "export * from './errors.js';")
+    writeFileSync(`${logical}.errors.ts`, "export // shared\n * from './errors.js';")
     writeFileSync(
       join(directory, 'errors.ts'),
       'const errors = { CONFLICT: { status: 409 } }; export { errors as "GET /pets" };',

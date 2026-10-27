@@ -4,6 +4,7 @@ export type {
   CallOptions,
   InferSchema,
   RequestOptions,
+  RequireSchemaKeys,
   ResponseFor,
   RpcOperation,
   RpcQueryRouter,

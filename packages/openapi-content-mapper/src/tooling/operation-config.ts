@@ -9,6 +9,20 @@ type ModuleReference = { specifier: string; importer: string }
 type OperationConfig = { file: string | undefined; names: Set<string>; dependencies: string[] }
 export type OperationConfigs = { queries: OperationConfig; errors: OperationConfig }
 
+/** The lexer locates real statements; consume their prefix while skipping JS trivia. */
+function isStarReExport(source: string, start: number): boolean {
+  const trivia = /(?:\s|\/\*[\s\S]*?\*\/|\/\/[^\n\r\u2028\u2029]*)*/y
+  let position = start
+  for (const token of ['export', '*', 'from']) {
+    trivia.lastIndex = position
+    trivia.exec(source)
+    position = trivia.lastIndex
+    if (!source.startsWith(token, position)) return false
+    position += token.length
+  }
+  return true
+}
+
 /** Share inspection between synchronous Node hooks and asynchronous bundler resolvers. */
 function* inspectOperationConfig(
   fileName: string,
@@ -26,7 +40,7 @@ function* inspectOperationConfig(
     for (const entry of exports) names.add(entry.n)
     for (const entry of imports) {
       if (entry.d !== -1 || !entry.n) continue
-      if (/^export\s*\*\s*from\b/.test(source.slice(entry.ss, entry.se)))
+      if (isStarReExport(source, entry.ss))
         yield* collect(yield { specifier: entry.n, importer: path })
     }
   }

@@ -72,12 +72,11 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
       const body = resolveRef(operation.requestBody, spec)
       const content = record(body.content)
       const contentTypes = Object.keys(content)
-      const contentType = contentTypes.includes('application/json')
-        ? 'application/json'
-        : contentTypes.length === 1
-          ? contentTypes[0]
-          : undefined
-      for (const type of contentTypes) {
+      const contentType =
+        contentTypes.find((type) => type.toLowerCase() === 'application/json') ??
+        (contentTypes.length === 1 ? contentTypes[0] : undefined)
+      for (const declaredType of contentTypes) {
+        const type = declaredType.toLowerCase()
         if (
           !['application/json', 'multipart/form-data', 'application/octet-stream'].includes(type) &&
           !type.endsWith('+json')
@@ -87,13 +86,17 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
       if (operation.requestBody && !contentTypes.length)
         throw new Error(`${method.toUpperCase()} ${path}: empty request content`)
       const multipartJson: string[] = []
+      const multipartType = contentTypes.find(
+        (type) => type.toLowerCase() === 'multipart/form-data',
+      )
       for (const [name, raw] of Object.entries(
-        record(record(content['multipart/form-data']).encoding),
+        record(record(multipartType ? content[multipartType] : undefined).encoding),
       )) {
         const encoding = record(raw)
         if (
           Object.keys(encoding).some((key) => key !== 'contentType') ||
-          encoding.contentType !== 'application/json'
+          typeof encoding.contentType !== 'string' ||
+          encoding.contentType.toLowerCase() !== 'application/json'
         )
           throw new Error(
             `${method.toUpperCase()} ${path}: unsupported multipart encoding for ${name}`,

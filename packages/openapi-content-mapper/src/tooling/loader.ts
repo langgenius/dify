@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import { dirname, relative, resolve } from 'node:path'
 import { loadOperationConfigs } from './operation-config.js'
 import { runtimeConfigFile } from './runtime-config.js'
+import { inspectSource, isSource } from './source.js'
 import { compileRuntime } from './transform.js'
 
 type LoaderContext = {
@@ -73,10 +74,13 @@ async function render(this: LoaderContext): Promise<string> {
       .join('\n')
   const cached = cache.get(key)
   let compiled = cached ? await cached : undefined
-  const version = versionOf(compiled?.render.dependencies ?? [])
+  // Rescan command-source globs even on cache hits: a new file in an existing
+  // nested directory need not change the stats of any previously matched input.
+  const source = isSource(fileName) ? readFileSync(fileName, 'utf8') : undefined
+  const identity = source === undefined ? '' : inspectSource(source, fileName).identity
+  const version = `${identity}\n${versionOf(compiled?.render.dependencies ?? [])}`
   if (!compiled || compiled.version !== version) {
     const pending = (async () => {
-      const source = readFileSync(fileName, 'utf8')
       const resolveModule = this.getResolve({ dependencyType: 'esm' })
       const configs = await loadOperationConfigs(sidecarFileName, async (specifier, importer) => {
         const resolved = await resolveModule(dirname(importer), specifier)
@@ -85,7 +89,7 @@ async function render(this: LoaderContext): Promise<string> {
         return resolved
       })
       const render = compileRuntime(
-        source,
+        source ?? readFileSync(fileName, 'utf8'),
         fileName,
         runtimeModule,
         namespace,
@@ -93,7 +97,7 @@ async function render(this: LoaderContext): Promise<string> {
         sidecarFileName,
         configs,
       )
-      return { version: versionOf(render.dependencies), render }
+      return { version: `${identity}\n${versionOf(render.dependencies)}`, render }
     })()
     // Concurrent namespace loaders share both resolution and document compilation.
     cache.set(key, pending)

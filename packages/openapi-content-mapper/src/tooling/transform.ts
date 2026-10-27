@@ -5,7 +5,7 @@ import type { Selection } from './type-document.js'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isMap, isScalar, isSeq, parseDocument, visit } from 'yaml'
-import { assertDocument, pointer, record, resolveRef } from '../document.js'
+import { assertDocument, collectSchemaReferences, record, resolveRef } from '../document.js'
 import { describeOperations } from '../operation.js'
 import { operationConfig } from './operation-config.js'
 import { createRouter, routerModule, routerModuleId } from './router.js'
@@ -39,14 +39,17 @@ function parseSpec(content: string, fileName: string) {
       if (typeof node === 'number' && !Number.isFinite(node))
         throw new Error('OpenAPI does not support non-finite numbers')
       if (node && typeof node === 'object') {
-        for (const [key, child] of Object.entries(node)) {
-          if (key === '$ref' && typeof child === 'string') pointer(value, child)
-          validate(child)
-        }
+        for (const child of Object.values(node)) validate(child)
       }
     }
     validate(value)
-    return { value, router: createRouter(describeOperations(value)), document: undefined }
+    const references = collectSchemaReferences(value)
+    return {
+      value,
+      references,
+      router: createRouter(describeOperations(value)),
+      document: undefined,
+    }
   }
   // JSON files must be valid JSON, even though YAML is a superset.
   if (fileName.endsWith('.json')) JSON.parse(content)
@@ -60,22 +63,20 @@ function parseSpec(content: string, fileName: string) {
     },
     Pair(_key, pair) {
       assertObjectKey(pair.key)
-      const key = String(pair.key.value)
-      if (key === '$ref' && isScalar(pair.value) && typeof pair.value.value === 'string')
-        pointer(value, pair.value.value)
     },
     Scalar(_key, node) {
       if (typeof node.value === 'number' && !Number.isFinite(node.value))
         throw new Error('OpenAPI does not support non-finite numbers')
     },
   })
+  const references = collectSchemaReferences(value)
   const operations = describeOperations(value)
-  return { document, value, router: createRouter(operations) }
+  return { document, value, references, router: createRouter(operations) }
 }
 
 export function transformSpec(content: string, fileName: string): Transform {
   try {
-    const { document, value, router } = parseSpec(content, fileName)
+    const { document, value, references, router } = parseSpec(content, fileName)
     // Only the literal type is needed. An initializer makes TS check the entire
     // object expression as well as constructing its type, even for unused routes.
     let text = 'declare const document: '
@@ -158,7 +159,7 @@ export function transformSpec(content: string, fileName: string): Transform {
     if (document) emit(document.contents, selected)
     else emitJson(value, selected)
     text += ';\n'
-    text += schemaTypes(value)
+    text += schemaTypes(value, references)
     const config = runtimeConfigFile(fileName)
     text += config
       ? `type Context = import(${JSON.stringify(config)}).Context;\n`

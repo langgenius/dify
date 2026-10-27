@@ -76,3 +76,45 @@ export const mediaSpec = {
   },
   components: { schemas: { Binary: binary } },
 }
+
+const multipartSchema = {
+  type: 'object',
+  required: ['file', 'metadata', 'parts'],
+  properties: {
+    file: binary,
+    metadata: { $ref: '#/components/schemas/Metadata' },
+    parts: { type: 'array', items: binary },
+    optional: binary,
+  },
+}
+const multipart = (schema) => ({
+  'Multipart/Form-Data': {
+    schema,
+    encoding: {
+      metadata: { contentType: 'Application/JSON' },
+      parts: { contentType: 'application/json' },
+      optional: { contentType: 'application/json' },
+    },
+  },
+})
+export const multipartSpec = {
+  openapi: '3.1.0',
+  paths: {
+    '/upload-inline': post(multipart(multipartSchema)),
+    '/upload-ref': post(multipart({ $ref: '#/components/schemas/Upload' })),
+  },
+  components: {
+    schemas: {
+      Upload: multipartSchema,
+      Metadata: {
+        type: 'object',
+        required: ['content'],
+        properties: {
+          content: binary,
+          nullable: { anyOf: [binary, { type: 'null' }] },
+          next: { $ref: '#/components/schemas/Metadata' },
+        },
+      },
+    },
+  },
+}

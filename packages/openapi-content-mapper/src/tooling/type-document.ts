@@ -37,7 +37,7 @@ export function typeDocument(root: unknown): Selection {
     parameter: { name: true, in: true, required: true, schema: 'schema' },
     body: { required: true, content: 'content' },
     response: { content: 'content' },
-    media: { schema: 'schema' },
+    media: { schema: 'schema', encoding: true },
     schema: {
       $ref: true,
       const: true,
@@ -96,6 +96,7 @@ export function typeDocument(root: unknown): Selection {
       }
     }
   }
+  select(['openapi'], record(root).openapi, true)
   select(['paths'], record(root).paths, 'paths')
   return selection
 }

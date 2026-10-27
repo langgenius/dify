@@ -1,7 +1,10 @@
-import { pointer, record } from '../document.js'
+import { collectSchemaReferences, pointer, record } from '../document.js'
 
 /** Type-only aliases let TS represent recursive schemas without finite unrolling. */
-export function schemaTypes(root: unknown): string {
+export function schemaTypes(
+  root: unknown,
+  schemaReferences = collectSchemaReferences(root),
+): string {
   const references = new Map<string, number>()
   const declarations: string[] = []
   function reference(path: string, json: boolean): string {
@@ -32,7 +35,9 @@ export function schemaTypes(root: unknown): string {
       const index = `{[key:string]:${union(values)}}`
       return fields.length ? `({${fields.join(';')}} & ${index})` : index
     }
-    return `{${fields.join(';')}}`
+    return fields.length
+      ? `{${fields.join(';')}}`
+      : `Record<string, ${additional === false ? 'never' : 'unknown'}>`
   }
   function primitive(schema: Record<string, unknown>, type: unknown, json: boolean): string {
     switch (type) {
@@ -57,7 +62,8 @@ export function schemaTypes(root: unknown): string {
     if (value === false) return 'never'
     if (value === true) return 'unknown'
     const schema = record(value)
-    if (typeof schema.$ref === 'string') return reference(schema.$ref, json)
+    const ref = typeof schema.$ref === 'string' ? reference(schema.$ref, json) : undefined
+    if (ref && String(record(root).openapi).startsWith('3.0.')) return ref
     const base = Object.hasOwn(schema, 'const')
       ? literal(schema.const)
       : Array.isArray(schema.enum)
@@ -65,25 +71,24 @@ export function schemaTypes(root: unknown): string {
         : Array.isArray(schema.type)
           ? union(schema.type.map((t) => primitive(schema, t, json)))
           : primitive(schema, schema.type, json)
-    const parts = [base]
+    const parts = ref ? [ref, base] : [base]
     for (const key of ['anyOf', 'oneOf']) {
       const alternatives = schema[key]
       if (Array.isArray(alternatives)) parts.push(union(alternatives.map((s) => render(s, json))))
     }
     if (Array.isArray(schema.allOf)) parts.push(...schema.allOf.map((s) => render(s, json)))
     const intersection = parts.filter((p) => p !== 'unknown')
-    const result = intersection.length ? `(${intersection.join('&')})` : 'unknown'
+    const combined = intersection.length ? `(${intersection.join('&')})` : 'unknown'
+    const required = Array.isArray(schema.required)
+      ? schema.required.filter((key) => typeof key === 'string')
+      : []
+    const result = required.length
+      ? `import("@dify/openapi-content-mapper").RequireSchemaKeys<${combined}, ${union(required.map((key) => JSON.stringify(key)))}>`
+      : combined
     return schema.nullable ? `(${result}|null)` : result
   }
-  // Inline operation schemas still use InferSchema; referenced schemas use these
-  // lazy aliases. Include references outside components.schemas as well.
-  function collect(value: unknown) {
-    if (!value || typeof value !== 'object') return
-    const schema = record(value)
-    if (typeof schema.$ref === 'string') reference(schema.$ref, false)
-    for (const child of Object.values(value)) collect(child)
-  }
-  collect(root)
+  // Structural references and literal payloads do not create schema aliases.
+  for (const path of schemaReferences) reference(path, false)
   for (const [path, index] of references) {
     const schema = pointer(root, path)
     const ordinary = render(schema, false)

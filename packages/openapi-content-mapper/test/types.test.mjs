@@ -5,12 +5,296 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { parse, parseDocument } from 'yaml'
-import { mediaSpec } from './media.mjs'
+import { mediaSpec, multipartSpec } from './media.mjs'
 /* oxlint-enable vitest/no-import-node-test */
 
 const root = resolve(import.meta.dirname, '..')
 const compiler = join(root, 'node_modules/typescript/bin/tsc')
 const yaml = readFileSync(join(root, 'examples/petstore/pets.openapi.yaml'), 'utf8')
+
+test('JSON multipart parts use wire strings while file parts retain Blob types', () => {
+  project(
+    {
+      'spec.openapi': JSON.stringify(multipartSpec),
+      'index.ts': `
+import { api, query } from './spec.openapi';
+const body = {file:new File(['bytes'],'upload.bin'),metadata:{content:'wire',nullable:null,next:{content:'nested'}},parts:['one','two']};
+api.uploadInline.post({body});
+api.uploadRef.post({body:{...body,optional:'optional'}});
+query.uploadRef.post.mutationOptions().mutationFn!({body},null!);
+type Input = Parameters<typeof api.uploadRef.post>[0]['body'];
+const file: Blob = (null! as Input).file;
+const nullable: string | null | undefined = (null! as Input).metadata.nullable;
+const optional: string | undefined = (null! as Input).optional;
+const deep: string = (null! as Input).metadata.next!.next!.content;
+// @ts-expect-error JSON encoded fields do not accept Blob
+api.uploadInline.post({body:{...body,metadata:{content:new Blob(['lost'])}}});
+// @ts-expect-error referenced JSON encoded fields do not accept Blob
+api.uploadRef.post({body:{...body,metadata:{content:new Blob(['lost'])}}});
+// @ts-expect-error a normal file part still requires Blob
+api.uploadRef.post({body:{...body,file:'not a file'}});
+// @ts-expect-error optional JSON part is a string if present
+api.uploadRef.post({body:{...body,optional:new Blob(['lost'])}});
+// @ts-expect-error arrays inside JSON parts use strings too
+api.uploadRef.post({body:{...body,parts:[new Blob(['lost'])]}});
+// @ts-expect-error the required JSON part remains required
+api.uploadRef.post({body:{file:body.file,parts:[]}});
+`,
+    },
+    (_dir, check) => {
+      const result = check()
+      assert.equal(result.status, 0, result.output)
+    },
+  )
+})
+
+test('media type inference is case-insensitive while contentType retains declared keys', () => {
+  const spec = { openapi: '3.1.0', paths: {} }
+  for (const [name, media] of [
+    ['json', 'Application/JSON'],
+    ['vendor', 'Application/Problem+JSON'],
+    ['text', 'TEXT/PLAIN'],
+    ['stream', 'Text/Event-Stream'],
+    ['binary', 'Application/Octet-Stream'],
+  ]) {
+    spec.paths[`/${name}`] = {
+      get: {
+        responses: {
+          200: { description: 'OK', content: { [media]: { schema: { type: 'string' } } } },
+        },
+      },
+    }
+  }
+  spec.paths['/json'].post = {
+    requestBody: {
+      required: true,
+      content: {
+        'Application/JSON': { schema: { type: 'string' } },
+        'Application/Vnd.Test+JSON': { schema: { type: 'number' } },
+      },
+    },
+    responses: { 204: { description: 'OK' } },
+  }
+  project(
+    {
+      'spec.openapi': JSON.stringify(spec),
+      'index.ts': `
+import {api} from './spec.openapi';
+const json:string=await api.json.get();
+const vendor:string=await api.vendor.get();
+const text:string=await api.text.get();
+const stream:ReadableStream<Uint8Array>=await api.stream.get();
+const binary:Blob=await api.binary.get();
+api.json.post({body:'default JSON'});
+api.json.post({body:123,contentType:'Application/Vnd.Test+JSON'});
+// @ts-expect-error vendor JSON needs an explicit content type
+api.json.post({body:123});
+`,
+    },
+    (_dir, check) => {
+      const result = check()
+      assert.equal(result.status, 0, result.output)
+    },
+  )
+})
+
+test('required siblings preserve referenced property types, nullability and recursion', () => {
+  const ref = (name) => ({ $ref: `#/components/schemas/${name}` })
+  const required = { ...ref('User'), required: ['name'] }
+  const operation = (schema) => ({
+    requestBody: { required: true, content: { 'application/json': { schema } } },
+    responses: { 200: { description: 'OK', content: { 'application/json': { schema } } } },
+  })
+  for (const version of ['3.1.0', '3.0.3']) {
+    const spec = {
+      openapi: version,
+      components: {
+        schemas: {
+          User: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', nullable: true },
+              next: ref('Required'),
+            },
+          },
+          Required: required,
+          Composed: { allOf: [ref('User')], required: ['name'] },
+          Scalar: { type: 'string' },
+          RequiredScalar: { ...ref('Scalar'), required: ['name'] },
+        },
+      },
+      paths: {
+        '/inline': { post: operation(required) },
+        '/aliased': { post: operation(ref('Required')) },
+        '/composed': { post: operation(ref('Composed')) },
+        '/scalar': { post: operation(ref('RequiredScalar')) },
+      },
+    }
+    project(
+      {
+        'spec.openapi': JSON.stringify(spec),
+        'index.ts': `
+import { api, query } from './spec.openapi';
+const result = await api.inline.post({body:{name:null}});
+const named: ${version.startsWith('3.1.') ? 'string | null' : 'string | null | undefined'} = result.name;
+const aliased = await api.aliased.post({body:{name:'Mochi',next:{name:null}}});
+const aliasName: typeof named = aliased.name;
+const recursiveName: typeof named = aliased.next!.next!.name;
+api.scalar.post({body:'required applies only to objects'});
+${version.startsWith('3.1.') ? '// @ts-expect-error required sibling rejects missing name' : ''}
+api.inline.post({body:{}});
+${version.startsWith('3.1.') ? '// @ts-expect-error referenced required sibling rejects missing name' : ''}
+api.aliased.post({body:{}});
+${version.startsWith('3.1.') ? '// @ts-expect-error undefined would disappear during JSON serialization' : ''}
+api.aliased.post({body:{name:undefined}});
+${version.startsWith('3.1.') ? '// @ts-expect-error nested recursive reference preserves required sibling' : ''}
+api.aliased.post({body:{name:'ok',next:{}}});
+${version.startsWith('3.1.') ? '// @ts-expect-error query helper retains required sibling' : ''}
+query.inline.post.mutationOptions().mutationFn!({body:{}},null!);
+const composed = await api.composed.post({body:{name:null}});
+const composedName: string | null = composed.name;
+// @ts-expect-error required also applies after allOf composition
+api.composed.post({body:{}});
+// @ts-expect-error required preserves the actual property type
+api.inline.post({body:{name:123}});
+`,
+      },
+      (_dir, check) => {
+        const result = check()
+        assert.equal(result.status, 0, result.output)
+      },
+    )
+  }
+})
+
+test('empty object schemas reject primitive and array bodies in inline and aliased forms', () => {
+  const operation = (schema) => ({
+    requestBody: { required: true, content: { 'application/json': { schema } } },
+    responses: { 200: { description: 'OK', content: { 'application/json': { schema } } } },
+  })
+  const spec = {
+    openapi: '3.1.0',
+    components: {
+      schemas: {
+        Open: { type: 'object' },
+        Closed: { type: 'object', additionalProperties: false },
+      },
+    },
+    paths: {
+      '/inline': { post: operation({ type: 'object' }) },
+      '/aliased': { post: operation({ $ref: '#/components/schemas/Open' }) },
+      '/closed': { post: operation({ $ref: '#/components/schemas/Closed' }) },
+      '/inline-closed': { post: operation({ type: 'object', additionalProperties: false }) },
+    },
+  }
+  project(
+    {
+      'spec.openapi': JSON.stringify(spec),
+      'index.ts': `
+import { api, query } from './spec.openapi';
+api.inline.post({body:{}});
+api.aliased.post({body:{custom:[1,null,{nested:true}]}});
+api.closed.post({body:{}});
+api.inlineClosed.post({body:{}});
+// @ts-expect-error JSON object is not a number
+api.inline.post({body:123});
+// @ts-expect-error JSON object is not an array
+api.aliased.post({body:[]});
+// @ts-expect-error JSON object is not a string
+api.aliased.post({body:'text'});
+// @ts-expect-error JSON object is not null
+api.inline.post({body:null});
+// @ts-expect-error closed empty objects reject properties
+api.closed.post({body:{extra:true}});
+// @ts-expect-error inline closed empty objects also reject properties
+api.inlineClosed.post({body:{extra:true}});
+// @ts-expect-error query helpers retain the object constraint
+query.inline.post.mutationOptions().mutationFn!({body:false},null!);
+`,
+    },
+    (_dir, check) => {
+      const result = check()
+      assert.equal(result.status, 0, result.output)
+    },
+  )
+})
+
+test('3.1 reference siblings narrow inline and aliased schemas without changing 3.0 references', () => {
+  for (const version of ['3.1.0', '3.0.3']) {
+    const narrow = { $ref: '#/components/schemas/Status', enum: ['ready'] }
+    const operation = (schema) => ({
+      requestBody: { required: true, content: { 'application/json': { schema } } },
+      responses: { 200: { description: 'OK', content: { 'application/json': { schema } } } },
+    })
+    const spec = {
+      openapi: version,
+      components: {
+        schemas: {
+          Status: { type: 'string', enum: ['ready', 'deleted'] },
+          Narrow: narrow,
+        },
+      },
+      paths: {
+        '/inline': { post: operation(narrow) },
+        '/referenced': { post: operation({ $ref: '#/components/schemas/Narrow' }) },
+      },
+    }
+    project(
+      {
+        'spec.openapi': JSON.stringify(spec),
+        'index.ts': `
+import { api, query } from './spec.openapi';
+const inline: ${version.startsWith('3.1.') ? "'ready'" : "'ready' | 'deleted'"} = await api.inline.post({body:'ready'});
+const referenced: typeof inline = await api.referenced.post({body:'ready'});
+${version.startsWith('3.1.') ? '// @ts-expect-error sibling enum narrows inline input' : ''}
+api.inline.post({body:'deleted'});
+${version.startsWith('3.1.') ? '// @ts-expect-error sibling enum narrows aliased input' : ''}
+api.referenced.post({body:'deleted'});
+${version.startsWith('3.1.') ? '// @ts-expect-error query inputs share reference constraints' : ''}
+query.referenced.post.mutationOptions().mutationFn!({body:'deleted'}, null!);
+`,
+      },
+      (_dir, check) => {
+        const result = check()
+        assert.equal(result.status, 0, result.output)
+      },
+    )
+  }
+})
+
+test('schema-less binary requests accept Blob and schema-less JSON stays unknown', () => {
+  const spec = {
+    openapi: '3.1.0',
+    paths: {
+      '/upload': {
+        post: {
+          requestBody: { required: true, content: { 'application/octet-stream': {} } },
+          responses: { 200: { description: 'OK', content: { 'application/json': {} } } },
+        },
+      },
+    },
+  }
+  project(
+    {
+      'spec.openapi': JSON.stringify(spec),
+      'index.ts': `
+import { api, query } from './spec.openapi';
+const result = await api.upload.post({body:new Blob(['bytes'])});
+query.upload.post.mutationOptions().mutationFn!({body:new File(['bytes'], 'test.bin')}, null!);
+// @ts-expect-error binary requests require bytes, not a JSON string
+api.upload.post({body:'bytes'});
+// @ts-expect-error required binary body cannot be omitted
+api.upload.post();
+// @ts-expect-error missing JSON schema must not produce never
+const unsafe: number = result;
+`,
+    },
+    (_dir, check) => {
+      const result = check()
+      assert.equal(result.status, 0, result.output)
+    },
+  )
+})
 
 test('document configuration types context for both the API and query namespaces', () => {
   project(

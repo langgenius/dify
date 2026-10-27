@@ -29,6 +29,16 @@ export type Resolve<S, Root, D extends unknown[] = []> = D['length'] extends 24
     ? Resolve<Pointer<Root, P>, Root, Next<D>>
     : S
 type RequiredKeys<S> = Item<Value<S, 'required'>> & PropertyKey
+/** Apply required after composition so referenced properties keep their inferred types. */
+export type RequireSchemaKeys<T, Keys extends PropertyKey> = [Keys] extends [never]
+  ? T
+  : T extends readonly unknown[]
+    ? T
+    : T extends object
+      ? T & {
+          [K in Keys]-?: (K extends keyof T ? T[K] : unknown) & (NonNullable<unknown> | null)
+        }
+      : T
 type Properties<S, Root, D extends unknown[], Json extends boolean> =
   Value<S, 'properties', Record<never, never>> extends infer P
     ? {
@@ -68,6 +78,13 @@ type ObjectSchema<S, Root, D extends unknown[], Json extends boolean> = Properti
                 Json
               >
           >
+    : [keyof Properties<S, Root, D, Json>] extends [never]
+      ? Record<string, unknown>
+      : unknown) &
+  (S extends { readonly additionalProperties: false }
+    ? [keyof Properties<S, Root, D, Json>] extends [never]
+      ? Record<string, never>
+      : unknown
     : unknown)
 type ItemValues<T> = T[keyof T]
 type AllOf<S, Root, D extends unknown[], Json extends boolean> = S extends readonly [
@@ -116,18 +133,29 @@ export type InferSchema<
     : S extends true
       ? unknown
       : S extends { readonly $ref: `#/${infer P}` }
-        ? Root extends { readonly [schemaTypeMap]: unknown }
-          ? ReferencedSchema<Root, `#/${P}`, Json>
-          : InferSchema<Pointer<Root, P>, Root, Next<D>, Json>
+        ? Root extends { readonly openapi: `3.0.${string}` }
+          ? Root extends { readonly [schemaTypeMap]: unknown }
+            ? ReferencedSchema<Root, `#/${P}`, Json>
+            : InferSchema<Pointer<Root, P>, Root, Next<D>, Json>
+          : RequireSchemaKeys<
+              (Root extends { readonly [schemaTypeMap]: unknown }
+                ? ReferencedSchema<Root, `#/${P}`, Json>
+                : InferSchema<Pointer<Root, P>, Root, Next<D>, Json>) &
+                InferSchema<Omit<S, '$ref' | 'required'>, Root, Next<D>, Json>,
+              RequiredKeys<S>
+            >
         :
-            | (BaseSchema<S, Root, D, Json> &
-                (S extends { readonly oneOf: readonly (infer O)[] }
-                  ? InferSchema<O, Root, Next<D>, Json>
-                  : unknown) &
-                (S extends { readonly anyOf: readonly (infer O)[] }
-                  ? InferSchema<O, Root, Next<D>, Json>
-                  : unknown) &
-                (S extends { readonly allOf: infer A } ? AllOf<A, Root, D, Json> : unknown))
+            | RequireSchemaKeys<
+                BaseSchema<S, Root, D, Json> &
+                  (S extends { readonly oneOf: readonly (infer O)[] }
+                    ? InferSchema<O, Root, Next<D>, Json>
+                    : unknown) &
+                  (S extends { readonly anyOf: readonly (infer O)[] }
+                    ? InferSchema<O, Root, Next<D>, Json>
+                    : unknown) &
+                  (S extends { readonly allOf: infer A } ? AllOf<A, Root, D, Json> : unknown),
+                RequiredKeys<S>
+              >
             | (S extends { readonly nullable: true } ? null : never)
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options' | 'trace'
@@ -165,19 +193,36 @@ type Group<P, S, L extends string> =
         : { [K in L]: ParameterMap<G, S> }
     : never
 // Binary-formatted fields are strings in JSON and Blob/File in multipart requests.
-type MediaSchema<C, K, S> = InferSchema<
-  Value<C, 'schema'>,
-  S,
-  [],
-  K extends 'application/json' | `${string}+json` ? true : false
->
+type JsonPart<T> = T extends Blob
+  ? string
+  : T extends object
+    ? { [K in keyof T]: JsonPart<T[K]> }
+    : T
+type MultipartBody<Body, Encodings> = {
+  [K in keyof Body]: Lowercase<
+    Value<Value<Encodings, K, object>, 'contentType', ''> & string
+  > extends 'application/json'
+    ? JsonPart<Body[K]>
+    : Body[K]
+}
+type MediaSchema<C, K, S> =
+  Lowercase<K & string> extends 'application/octet-stream'
+    ? Blob
+    : Lowercase<K & string> extends 'multipart/form-data'
+      ? MultipartBody<InferSchema<Value<C, 'schema', true>, S>, Value<C, 'encoding', object>>
+      : InferSchema<
+          Value<C, 'schema', true>,
+          S,
+          [],
+          Lowercase<K & string> extends 'application/json' | `${string}+json` ? true : false
+        >
 type RequestMedia<C, S, B> =
   | {
       [K in keyof C]: (B extends { required: true }
         ? { body: MediaSchema<C[K], K, S> }
         : { body?: MediaSchema<C[K], K, S> }) &
         // application/json is the default; a single declared media type is unambiguous.
-        (K extends 'application/json'
+        (Lowercase<K & string> extends 'application/json'
           ? { contentType?: K }
           : [Exclude<keyof C, K>] extends [never]
             ? { contentType?: K }
@@ -205,11 +250,11 @@ export type RequestOptions<S, P extends keyof Paths<S>, M extends Method> = Grou
     credentials?: RequestCredentials
   }
 type ResponseContent<C, S> = {
-  [K in keyof C]: K extends 'application/json' | `${string}+json`
+  [K in keyof C]: Lowercase<K & string> extends 'application/json' | `${string}+json`
     ? MediaSchema<C[K], K, S>
-    : K extends 'text/event-stream'
+    : Lowercase<K & string> extends 'text/event-stream'
       ? ReadableStream<Uint8Array>
-      : K extends `text/${string}`
+      : Lowercase<K & string> extends `text/${string}`
         ? string
         : Blob
 }[keyof C]

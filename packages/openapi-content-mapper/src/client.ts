@@ -11,8 +11,8 @@ export type ClientOptions = {
 export class ApiError extends Error {
   readonly response: globalThis.Response
   readonly data: unknown
-  constructor(response: globalThis.Response, data: unknown) {
-    super(`HTTP ${response.status} ${response.statusText}`)
+  constructor(response: globalThis.Response, data: unknown, options?: ErrorOptions) {
+    super(`HTTP ${response.status} ${response.statusText}`, options)
     this.name = 'ApiError'
     this.response = response
     this.data = data
@@ -148,6 +148,10 @@ export function createClient(initial: ClientOptions = {}): HttpClient {
       }
     }
     if (/\{[^}]+\}/.test(path)) throw new Error(`Unresolved path template: ${path}`)
+    // URL normalizes even percent-encoded dot segments. Reject them before a
+    // parameter can redirect a request (especially a write) to a parent route.
+    if (path.split('/').some((segment) => /^\.{1,2}$/.test(segment.replace(/%2e/gi, '.'))))
+      throw new Error('Path parameters must not produce dot segments')
     const base = config.baseUrl ?? operation.baseUrl
     if (!base || /\{[^}]+\}/.test(base))
       throw new Error('Provide baseUrl, or a server URL without template variables')
@@ -160,8 +164,13 @@ export function createClient(initial: ClientOptions = {}): HttpClient {
       throw new Error('Missing required request body')
     let body: BodyInit | undefined
     if (options.body !== undefined) {
-      const mediaType = options.contentType ?? operation.contentType
-      if (!mediaType || !(operation.contentTypes ?? [operation.contentType]).includes(mediaType))
+      const mediaType = (options.contentType ?? operation.contentType)?.toLowerCase()
+      if (
+        !mediaType ||
+        !(operation.contentTypes ?? [operation.contentType]).some(
+          (type) => type?.toLowerCase() === mediaType,
+        )
+      )
         throw new Error('Request content type must be declared by the operation')
       if (mediaType === 'multipart/form-data') {
         const form = new FormData()
@@ -195,10 +204,12 @@ export function createClient(initial: ClientOptions = {}): HttpClient {
       signal: options.signal,
       credentials: options.credentials,
     })
-    let contentType = response.headers.get('content-type')?.split(';')[0]?.trim() ?? ''
+    let contentType =
+      response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? ''
     if (response.ok) {
-      const media =
+      const media = (
         operation.responseContentTypes?.[response.status] ?? operation.responseContentTypes?.['2XX']
+      )?.map((type) => type.toLowerCase())
       // Match the most specific declaration. A binary wildcard remains a Blob
       // even when the server chooses JSON, text, or SSE as its concrete media type.
       if (media && !media.includes(contentType)) {
@@ -209,17 +220,30 @@ export function createClient(initial: ClientOptions = {}): HttpClient {
     }
     let data: unknown
     if (response.status !== 204 && response.status !== 205 && method !== 'head') {
-      const disposition = response.headers.get('content-disposition')
-      if (response.ok && disposition !== null) {
+      if (response.ok && contentType === 'text/event-stream') data = response.body
+      else if (contentType === 'application/json' || contentType.endsWith('+json')) {
+        if (response.ok) data = await response.json()
+        else {
+          // Read failures (including cancellation) remain transport errors.
+          // Only JSON decoding failures are wrapped, retaining the raw payload.
+          data = await response.text()
+          try {
+            data = JSON.parse(data as string)
+          } catch (error) {
+            throw new ApiError(response, data, { cause: error })
+          }
+        }
+      } else if (contentType.startsWith('text/')) data = await response.text()
+      else {
         const blob = await response.blob()
-        data = new File([blob], getFilenameFromContentDisposition(disposition) ?? 'blob', {
-          type: blob.type,
-        })
-      } else if (response.ok && contentType === 'text/event-stream') data = response.body
-      else if (contentType === 'application/json' || contentType.endsWith('+json'))
-        data = await response.json()
-      else if (contentType.startsWith('text/')) data = await response.text()
-      else data = await response.blob()
+        const disposition = response.headers.get('content-disposition')
+        data =
+          response.ok && disposition !== null
+            ? new File([blob], getFilenameFromContentDisposition(disposition) ?? 'blob', {
+                type: blob.type,
+              })
+            : blob
+      }
     }
     if (!response.ok) throw new ApiError(response, data)
     return data
