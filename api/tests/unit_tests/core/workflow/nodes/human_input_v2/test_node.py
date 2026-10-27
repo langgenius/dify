@@ -1,6 +1,6 @@
 from dataclasses import replace
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
 from pydantic import SecretStr, TypeAdapter
@@ -93,7 +93,7 @@ def form() -> Form:
 
 
 def build_node(form: Form, *, initiator: bool = False, token: str | None = None):
-    runtime = MagicMock(spec=HumanInputRuntime)
+    runtime = create_autospec(HumanInputRuntime, instance=True)
     runtime.prepare_form.return_value = PreparedForm(form=form, form_token=SecretStr(token) if token else None)
     node = HumanInputNode(
         node_id="node-1",
@@ -257,7 +257,7 @@ def test_reentry_consumes_the_new_persisted_outcome(form):
 def test_actual_graph_queue_response_path_preserves_order_and_fields(form, status):
     form = submit(form) if status == HumanInputFormStatus.SUBMITTED else replace(form, status=status)
     node, _ = build_node(form)
-    runner = MagicMock(spec=WorkflowBasedAppRunner)
+    runner = create_autospec(WorkflowBasedAppRunner, instance=True)
     for event in list(node.run())[1:]:
         WorkflowBasedAppRunner.handle_event(runner, MagicMock(), event)
     queue_events = [call.args[0] for call in runner._publish_event.call_args_list]
@@ -350,7 +350,7 @@ def test_file_segments_survive_node_graph_queue_and_response(form):
     graph_events = list(node.run())
     assert graph_events[1].rendered_content == "Answer: yes; files: [1 files]; attachment: [file]"
     assert isinstance(graph_events[2].node_run_result.outputs["attachment"], FileSegment)
-    runner = MagicMock(spec=WorkflowBasedAppRunner)
+    runner = create_autospec(WorkflowBasedAppRunner, instance=True)
     WorkflowBasedAppRunner.handle_event(runner, MagicMock(), graph_events[1])
     queue_event = runner._publish_event.call_args.args[0]
     assert isinstance(queue_event.submitted_data["attachment"], FileSegment)

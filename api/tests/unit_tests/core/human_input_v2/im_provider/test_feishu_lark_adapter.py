@@ -540,7 +540,7 @@ def test_credentials_reject_non_integer_scope_success_code(
         assert result.kind is CredentialTestFailureKind.UNKNOWN
         assert result.provider_error_code is None
     else:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValidationError):
             adapter.test_credentials()
     assert not any(call[0] == "list_departments" for call in gateway.calls)
 

@@ -158,10 +158,7 @@ def _install_clients(
         access_token: str | None = None,
     ) -> object:
         assert credentials is not None
-        if access_token is None:
-            client = token_clients.pop(0)
-        else:
-            client = directory_clients[access_token]
+        client = token_clients.pop(0) if access_token is None else directory_clients[access_token]
         calls.append((access_token, client))
         return client
 

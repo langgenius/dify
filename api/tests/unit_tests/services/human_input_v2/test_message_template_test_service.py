@@ -7,7 +7,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 from urllib.parse import urlsplit
 
 import pytest
@@ -135,8 +135,8 @@ class _Context:
 def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
     engine = sqlite_engine
     sessions = sessionmaker(engine, expire_on_commit=False)
-    gateway = Mock(spec=ResendProviderGateway)
-    adapter = Mock(spec=IMProviderAdapter)
+    gateway = create_autospec(ResendProviderGateway, instance=True)
+    adapter = create_autospec(IMProviderAdapter, instance=True)
     adapter_factory = Mock(return_value=adapter)
     service = MessageTemplateTestService(
         session_factory=sessions,

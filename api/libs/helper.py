@@ -13,6 +13,7 @@ from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
 from uuid import UUID
+from warnings import deprecated
 from zoneinfo import available_timezones
 
 from flask import Request, Response, stream_with_context
@@ -20,7 +21,6 @@ from flask_restx import fields
 from pydantic import BaseModel, ConfigDict, TypeAdapter, WithJsonSchema, with_config
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import TypedDict
-from warnings import deprecated
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator

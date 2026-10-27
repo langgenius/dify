@@ -4,7 +4,7 @@ import hashlib
 import io
 from dataclasses import dataclass
 from datetime import timedelta
-from unittest.mock import Mock
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import httpx
@@ -287,7 +287,7 @@ def test_public_uploaded_file_can_be_submitted_and_restored(approval: Approval, 
             hashlib.sha256(approval.token.encode()).hexdigest()
         )
     assert delivery is not None
-    email_otp = Mock(spec=EmailOtpService)
+    email_otp = create_autospec(EmailOtpService, instance=True)
     email_otp.verify.return_value = VerifiedEmail(
         delivery, EmailSubject(email="approver@example.com"), approval.app_id, "verified-challenge"
     )

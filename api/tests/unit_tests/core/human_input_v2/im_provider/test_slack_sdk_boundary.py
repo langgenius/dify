@@ -157,7 +157,7 @@ class _SlackApiServer:
 
 
 @pytest.fixture
-def slack_api_server() -> Generator[_SlackApiServer, None, None]:
+def slack_api_server() -> Generator[_SlackApiServer]:
     state = _SlackApiState()
     server = _SlackApiHTTPServer(("127.0.0.1", 0), _SlackApiHandler)
     server.state = state

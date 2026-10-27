@@ -38,7 +38,7 @@ def read_avatars(
 
     by_url: dict[str, Avatar | None] = {}
     with ThreadPoolExecutor(max_workers=_MAX_CONCURRENT_DOWNLOADS) as executor:
-        for batch in batched(unique_urls, _MAX_CONCURRENT_DOWNLOADS):
+        for batch in batched(unique_urls, _MAX_CONCURRENT_DOWNLOADS, strict=False):
             by_url.update(zip(batch, executor.map(download, batch), strict=True))
     return tuple(by_url[url] if url is not None else None for url in urls)
 

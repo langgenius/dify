@@ -180,7 +180,7 @@ class _ConnectorServer:
 
 
 @pytest.fixture
-def connector_server() -> Generator[_ConnectorServer, None, None]:
+def connector_server() -> Generator[_ConnectorServer]:
     state = _ConnectorState()
     server = _ConnectorHTTPServer(("127.0.0.1", 0), _ConnectorHandler)
     server.state = state

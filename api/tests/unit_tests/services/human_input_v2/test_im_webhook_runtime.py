@@ -6,7 +6,7 @@ import json
 import time
 from functools import partial
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 from urllib.parse import urlencode
 from uuid import uuid4
 
@@ -94,7 +94,7 @@ def binding_scope() -> str:
 def approval(context: Context, monkeypatch: pytest.MonkeyPatch, binding_scope: str):
     from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
 
-    key_provider = Mock(spec=BaseKeyProvider)
+    key_provider = create_autospec(BaseKeyProvider, instance=True)
     key_provider.encrypt.side_effect = lambda _tenant, text: text.encode()
     key_provider.decrypt.side_effect = lambda _tenant, ciphertext: ciphertext.decode()
     monkeypatch.setattr(KeyProviderManager, "provider", property(lambda _: key_provider))

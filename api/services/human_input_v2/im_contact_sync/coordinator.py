@@ -460,7 +460,7 @@ class IMChannelReconciliationService:
     ) -> None:
         # Apply the plan without re-deciding individual assignments. Check the
         # captured endpoints and free them before inserting replacement Bindings.
-        for batch in batched(removed, _BINDING_WRITE_BATCH_SIZE):
+        for batch in batched(removed, _BINDING_WRITE_BATCH_SIZE, strict=False):
             deleted_ids = set(
                 session.scalars(
                     sa.delete(HumanInputIMBinding)
@@ -483,7 +483,7 @@ class IMChannelReconciliationService:
             )
             if deleted_ids != {str(binding.binding_id) for binding in batch}:
                 raise _ReconciliationPreconditionError
-        for batch in batched(added, _BINDING_WRITE_BATCH_SIZE):
+        for batch in batched(added, _BINDING_WRITE_BATCH_SIZE, strict=False):
             session.execute(
                 sa.insert(HumanInputIMBinding),
                 [

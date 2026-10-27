@@ -78,9 +78,7 @@ from .types import EnumText, FrozenPydanticModelColumn, LongText, StringUUID
 class _ImmutableJSONModel(BaseModel):
     """Strict immutable base for structured JSON persistence values."""
 
-    model_config = ConfigDict(
-        extra="forbid", frozen=True, strict=True, validate_default=True
-    )
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
 
 
 class _ImmutableJSONObject(RootModel[dict[str, JsonValue]]):
@@ -102,16 +100,10 @@ class IMSyncDirectoryEntryPayload(_ImmutableJSONObject):
 class IMSyncContactSnapshot(_ImmutableJSONModel):
     """Immutable contact values needed to display historical sync results."""
 
-    contact_id: str = Field(
-        description="Contact identifier captured by the sync result."
-    )
+    contact_id: str = Field(description="Contact identifier captured by the sync result.")
     name: str = Field(description="Contact display name captured by the sync result.")
-    email: str | None = Field(
-        default=None, description="Contact email captured by the sync result."
-    )
-    avatar_file_id: str | None = Field(
-        default=None, description="Avatar file identifier captured by the result."
-    )
+    email: str | None = Field(default=None, description="Contact email captured by the sync result.")
+    avatar_file_id: str | None = Field(default=None, description="Avatar file identifier captured by the result.")
     created_at: NaiveDatetime | None = Field(
         default=None,
         description="Contact creation time captured by new results; absent from historical snapshots.",
@@ -121,30 +113,20 @@ class IMSyncContactSnapshot(_ImmutableJSONModel):
 class IMSyncIdentitySnapshot(_ImmutableJSONModel):
     """Immutable last-known IM identity values retained after removal."""
 
-    identity_id: str = Field(
-        description="IM identity identifier captured by the sync result."
-    )
+    identity_id: str = Field(description="IM identity identifier captured by the sync result.")
     provider: _IMProvider = Field(
         strict=False,
         description="Provider that owned the captured IM identity.",
     )
-    provider_user_id: str = Field(
-        description="Provider user identifier captured by the sync result."
-    )
-    display_name: str | None = Field(
-        default=None, description="Provider display name captured by the result."
-    )
-    email: str | None = Field(
-        default=None, description="Provider email captured by the result."
-    )
+    provider_user_id: str = Field(description="Provider user identifier captured by the sync result.")
+    display_name: str | None = Field(default=None, description="Provider display name captured by the result.")
+    email: str | None = Field(default=None, description="Provider email captured by the result.")
 
 
 class IMIdentityReconciliationSnapshot(_ImmutableJSONModel):
     """Minimal current IM identity state retained by the reconciliation change log."""
 
-    subject_kind: Literal[_IMReconciliationSubjectKind.IDENTITY] = (
-        _IMReconciliationSubjectKind.IDENTITY
-    )
+    subject_kind: Literal[_IMReconciliationSubjectKind.IDENTITY] = _IMReconciliationSubjectKind.IDENTITY
     identity_id: str
     provider: _IMProvider = Field(strict=False)
     provider_user_id: str
@@ -157,9 +139,7 @@ class IMIdentityReconciliationSnapshot(_ImmutableJSONModel):
 class IMBindingReconciliationSnapshot(_ImmutableJSONModel):
     """Minimal current IM binding state retained by the reconciliation change log."""
 
-    subject_kind: Literal[_IMReconciliationSubjectKind.BINDING] = (
-        _IMReconciliationSubjectKind.BINDING
-    )
+    subject_kind: Literal[_IMReconciliationSubjectKind.BINDING] = _IMReconciliationSubjectKind.BINDING
     binding_id: str
     identity_id: str
     contact_id: str
@@ -171,8 +151,8 @@ type IMReconciliationChangeSnapshot = Annotated[
 ]
 
 
-_IM_RECONCILIATION_SNAPSHOT_ADAPTER: TypeAdapter[IMReconciliationChangeSnapshot] = (
-    TypeAdapter(IMReconciliationChangeSnapshot)
+_IM_RECONCILIATION_SNAPSHOT_ADAPTER: TypeAdapter[IMReconciliationChangeSnapshot] = TypeAdapter(
+    IMReconciliationChangeSnapshot
 )
 
 
@@ -225,8 +205,7 @@ class HumanInputContactIdentity(DefaultFieldsDCMixin, TypeBase):
     external_profile: Mapped[HumanInputExternalContactProfile | None] = relationship(
         lambda: HumanInputExternalContactProfile,
         primaryjoin=lambda: sa.and_(
-            HumanInputContactIdentity.id
-            == orm.foreign(HumanInputExternalContactProfile.contact_id),
+            HumanInputContactIdentity.id == orm.foreign(HumanInputExternalContactProfile.contact_id),
             HumanInputContactIdentity.subject_type == ContactSubjectType.EXTERNAL,
         ),
         back_populates="identity",
@@ -313,10 +292,7 @@ class HumanInputExternalContactProfile(TypeBase):
 
     identity: Mapped[HumanInputContactIdentity] = relationship(
         lambda: HumanInputContactIdentity,
-        primaryjoin=lambda: (
-            orm.foreign(HumanInputExternalContactProfile.contact_id)
-            == HumanInputContactIdentity.id
-        ),
+        primaryjoin=lambda: orm.foreign(HumanInputExternalContactProfile.contact_id) == HumanInputContactIdentity.id,
         back_populates="external_profile",
         viewonly=True,
         lazy="raise",
@@ -352,9 +328,7 @@ class HumanInputPlatformContactWorkspaceEntry(DefaultFieldsDCMixin, TypeBase):
         },
     )
 
-    tenant_id: Mapped[str] = mapped_column(
-        StringUUID, nullable=False, comment="Logical foreign key to tenants.id."
-    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, comment="Logical foreign key to tenants.id.")
     contact_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
@@ -793,26 +767,20 @@ class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
 
     __tablename__ = "human_input_im_sync_runs"
     __table_args__ = (
-        sa.CheckConstraint(
-            "integration_config_version > 0", name="captured_version_positive"
-        ),
+        sa.CheckConstraint("integration_config_version > 0", name="captured_version_positive"),
         sa.CheckConstraint(
             "added_count >= 0 AND not_matched_count >= 0 AND failed_count >= 0 AND removed_count >= 0 "
             "AND skipped_count >= 0",
             name="result_counts_nonnegative",
         ),
-        sa.Index(
-            "hiimsr_integration_created_idx", "integration_id", "created_at", "id"
-        ),
+        sa.Index("hiimsr_integration_created_idx", "integration_id", "created_at", "id"),
         sa.Index(
             "hiimsr_integration_status_created_idx",
             "integration_id",
             "status",
             "created_at",
         ),
-        {
-            "comment": "Manual IM directory synchronization lifecycle and aggregate counts."
-        },
+        {"comment": "Manual IM directory synchronization lifecycle and aggregate counts."},
     )
     # TODO(QuantumGhost): Rename this field
     integration_id: Mapped[str] = mapped_column(
@@ -898,9 +866,7 @@ class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
 
     results: Mapped[list[HumanInputIMSyncResult]] = relationship(
         lambda: HumanInputIMSyncResult,
-        primaryjoin=lambda: (
-            HumanInputIMSyncRun.id == orm.foreign(HumanInputIMSyncResult.sync_run_id)
-        ),
+        primaryjoin=lambda: HumanInputIMSyncRun.id == orm.foreign(HumanInputIMSyncResult.sync_run_id),
         back_populates="sync_run",
         viewonly=True,
         lazy="raise",
@@ -941,9 +907,7 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
             "im_identity_id",
             "created_at",
         ),
-        {
-            "comment": "Append-only per-entry, removed-binding, and diagnostic IM synchronization outcomes."
-        },
+        {"comment": "Append-only per-entry, removed-binding, and diagnostic IM synchronization outcomes."},
     )
 
     integration_id: Mapped[str] = mapped_column(
@@ -1055,9 +1019,7 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
 
     sync_run: Mapped[HumanInputIMSyncRun] = relationship(
         lambda: HumanInputIMSyncRun,
-        primaryjoin=lambda: (
-            orm.foreign(HumanInputIMSyncResult.sync_run_id) == HumanInputIMSyncRun.id
-        ),
+        primaryjoin=lambda: orm.foreign(HumanInputIMSyncResult.sync_run_id) == HumanInputIMSyncRun.id,
         back_populates="results",
         viewonly=True,
         lazy="raise",
@@ -1065,19 +1027,14 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
     )
     identity: Mapped[HumanInputIMIdentity | None] = relationship(
         lambda: HumanInputIMIdentity,
-        primaryjoin=lambda: (
-            orm.foreign(HumanInputIMSyncResult.im_identity_id)
-            == HumanInputIMIdentity.id
-        ),
+        primaryjoin=lambda: orm.foreign(HumanInputIMSyncResult.im_identity_id) == HumanInputIMIdentity.id,
         viewonly=True,
         lazy="raise",
         init=False,
     )
     binding: Mapped[HumanInputIMBinding | None] = relationship(
         lambda: HumanInputIMBinding,
-        primaryjoin=lambda: (
-            orm.foreign(HumanInputIMSyncResult.im_binding_id) == HumanInputIMBinding.id
-        ),
+        primaryjoin=lambda: orm.foreign(HumanInputIMSyncResult.im_binding_id) == HumanInputIMBinding.id,
         viewonly=True,
         lazy="raise",
         init=False,
@@ -1116,12 +1073,8 @@ class HumanInputIMReconciliationChange(DefaultFieldsDCMixin, TypeBase):
             "committed_at",
             "id",
         ),
-        sa.Index(
-            "hiimrc_integration_committed_idx", "integration_id", "committed_at", "id"
-        ),
-        {
-            "comment": "Append-only IM identity and IM binding reconciliation mutation history."
-        },
+        sa.Index("hiimrc_integration_committed_idx", "integration_id", "committed_at", "id"),
+        {"comment": "Append-only IM identity and IM binding reconciliation mutation history."},
     )
 
     integration_id: Mapped[str] = mapped_column(
@@ -1142,18 +1095,12 @@ class HumanInputIMReconciliationChange(DefaultFieldsDCMixin, TypeBase):
     subject_kind: Mapped[_IMReconciliationSubjectKind] = mapped_column(
         EnumText(_IMReconciliationSubjectKind), nullable=False
     )
-    operation: Mapped[_IMReconciliationOperation] = mapped_column(
-        EnumText(_IMReconciliationOperation), nullable=False
-    )
+    operation: Mapped[_IMReconciliationOperation] = mapped_column(EnumText(_IMReconciliationOperation), nullable=False)
     reason_code: Mapped[str] = mapped_column(sa.String(100), nullable=False)
     im_identity_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     committed_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False)
-    im_binding_id: Mapped[str | None] = mapped_column(
-        StringUUID, nullable=True, default=None
-    )
-    contact_id: Mapped[str | None] = mapped_column(
-        StringUUID, nullable=True, default=None
-    )
+    im_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    contact_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     before_snapshot: Mapped[IMReconciliationChangeSnapshot | None] = mapped_column(
         FrozenPydanticModelColumn(
             _IM_RECONCILIATION_SNAPSHOT_ADAPTER,
@@ -1222,20 +1169,14 @@ class HumanInputForm(DefaultFieldsDCMixin, TypeBase):
         nullable=False,
     )
     # The form definition after resolving all runtime related variables.
-    resolved_form: Mapped[ResolvedForm] = mapped_column(
-        FrozenPydanticModelColumn(ResolvedForm), nullable=False
-    )
+    resolved_form: Mapped[ResolvedForm] = mapped_column(FrozenPydanticModelColumn(ResolvedForm), nullable=False)
 
     # The following fields are not `None` once the form has been submitted.
     submitted_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
-    submitted_by_recipient_id: Mapped[str | None] = mapped_column(
-        StringUUID, nullable=True
-    )
+    submitted_by_recipient_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     submitted_by_delivery_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None, kw_only=True)
     # submission_data
-    selected_action_id: Mapped[str | None] = mapped_column(
-        sa.String(200), nullable=True
-    )
+    selected_action_id: Mapped[str | None] = mapped_column(sa.String(200), nullable=True)
     # original submission inputs data without any transformation or sanitization.
     raw_submission_inputs: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     # validated and sanitized submission data, a mapping from submitted form data to
@@ -1243,9 +1184,7 @@ class HumanInputForm(DefaultFieldsDCMixin, TypeBase):
     #
     # For special reference types such as File / FileSegment, the File ownership has been
     # validated.
-    normalized_submission_data: Mapped[str | None] = mapped_column(
-        sa.Text, nullable=True
-    )
+    normalized_submission_data: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
 
 
 class RecipientSubjectType(StrEnum):
@@ -1348,13 +1287,9 @@ class HumanInputDeliveryAttempt(DefaultFieldsDCMixin, TypeBase):
     form_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     delivery_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    status: Mapped[DeliveryStatus] = mapped_column(
-        EnumText(DeliveryStatus), nullable=False
-    )
+    status: Mapped[DeliveryStatus] = mapped_column(EnumText(DeliveryStatus), nullable=False)
     error_message: Mapped[str | None] = mapped_column(sa.String(200), nullable=True)
-    response: Mapped[DeliveryResponse] = mapped_column(
-        FrozenPydanticModelColumn(DeliveryResponse), nullable=False
-    )
+    response: Mapped[DeliveryResponse] = mapped_column(FrozenPydanticModelColumn(DeliveryResponse), nullable=False)
 
 
 class AuditEventType(StrEnum):
@@ -1396,9 +1331,7 @@ class OtpVerificationEvent(_ImmutableJSONModel):
 
 class IMCallbackVerificationEvent(_ImmutableJSONModel):
     # We might need to break the abstration.
-    type: Literal[AuditEventType.IM_CALLBACK_VERIFICATION] = (
-        AuditEventType.IM_CALLBACK_VERIFICATION
-    )
+    type: Literal[AuditEventType.IM_CALLBACK_VERIFICATION] = AuditEventType.IM_CALLBACK_VERIFICATION
 
     succeeded: bool
     request_ip_address: str | None

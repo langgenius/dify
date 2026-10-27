@@ -2,7 +2,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import timedelta
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 from uuid import uuid4
 
 import pytest
@@ -378,7 +378,7 @@ def providers(context: Context, monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, 
             assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDelivery)) > 0
         return MessageAccepted(MessageLocator("provider-message"))
 
-    adapter = Mock(spec=IMProviderAdapter)
+    adapter = create_autospec(IMProviderAdapter, instance=True)
     adapter.dynamic_card_messaging.assess.return_value = CardAssessment(True)
     adapter.dynamic_card_messaging.send_card.side_effect = accepted
     adapter.messaging.send_text.side_effect = accepted
@@ -1239,7 +1239,7 @@ def test_delivery_rejects_recipient_from_another_form(context: Context, provider
     from core.human_input_v2.shared.values import RecipientId
 
     foreign = replace(created.recipients[0], id=RecipientId(str(uuid4())))
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Recipient does not belong to this form"):
         build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions).deliver(
             form=created.form,
             recipient=foreign,
@@ -1607,7 +1607,7 @@ def test_console_pause_details_do_not_fall_back_when_checkpoint_is_invalid(conte
     service = WorkflowRunService(workflow_runs=repository, node_executions=Mock(), session_factory=context.sessions)
     request = RequestContext(request_id="request", trace_id="trace", account_id=_ACCOUNT, active_workspace_id=_TENANT)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Invalid JSON|Human Input v2 form is missing from its paused run"):
         service.get_pause_details(request, workflow_run_id=_RUN)
 
 
@@ -2869,7 +2869,7 @@ def test_delivery_uses_one_injected_email_client_for_multiple_recipients(context
     from services.human_input_v2.email_client import EmailClient
 
     monkeypatch.setattr(dify_config, "APP_WEB_URL", "https://app.example.com")
-    client = Mock(spec=EmailClient)
+    client = create_autospec(EmailClient, instance=True)
     created = context.prepare(_node(OnetimeEmail(email="first@example.com"), OnetimeEmail(email="second@example.com")))
     assert isinstance(created, CreatedForm)
     service = HumanInputDeliveryService(session_factory=context.sessions, email_client=client)
@@ -3355,7 +3355,7 @@ def public_form_approval(context: Context, monkeypatch, request):
             WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=_RUN, state_object_key="public-checkpoint")
         )
     cache: dict[str, bytes] = {}
-    redis = Mock(spec=RedisClientWrapper)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     pipeline = MagicMock()
     pipeline.__enter__.return_value = pipeline
     pipeline.set.side_effect = lambda key, value, **_kwargs: cache.__setitem__(key, str(value).encode())
@@ -3377,7 +3377,7 @@ def public_form_approval(context: Context, monkeypatch, request):
 
     redis.incr_if_exists.side_effect = increment
     redis.delete.side_effect = delete
-    limiter = Mock(spec=RateLimiter)
+    limiter = create_autospec(RateLimiter, instance=True)
     limiter.acquire.return_value = 0
     limiter.retry_after.return_value = 60
     send = Mock()

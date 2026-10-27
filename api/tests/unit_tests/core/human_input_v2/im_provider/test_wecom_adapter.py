@@ -163,7 +163,7 @@ def test_credential_token_fetch_applies_a_bounded_network_timeout(
 
     monkeypatch.setattr(httpx, "get", get)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValidationError):
         wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()
     assert observed_requests == [(wecom_module._ACCESS_TOKEN_URL, 5.0)]
 
@@ -358,5 +358,5 @@ def test_credential_test_rejects_malformed_directory_scope(
     client = _FakeClient(_token_response(), agent_response)
     monkeypatch.setattr(wecom_module, "_new_client", lambda *_args, **_kwargs: client)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValidationError):
         wecom_module.WeComIMProviderAdapter(_credentials()).test_credentials()

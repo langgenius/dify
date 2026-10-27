@@ -291,7 +291,7 @@ def test_wrong_wrapper_credentials_and_invalid_reference_are_rejected(monkeypatc
     with pytest.raises(TypeError, match="Lark adapter"):
         LarkIMProviderAdapter(cast(LarkCredentials, feishu))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="locator must be unpadded URL-safe Base64"):
         adapter_module._FeishuLarkLocatorPayload.decode(str(MessageLocator("invalid.")))
 
 

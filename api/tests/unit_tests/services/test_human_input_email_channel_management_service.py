@@ -214,10 +214,7 @@ def test_update_requires_matching_path_identity_and_owner_revision_before_provid
         provider_gateway = FakeProviderGateway(events)
         service = _service(repository, provider_gateway)
 
-        if channel_id != current.id:
-            expected_error = ChannelNotFoundError
-        else:
-            expected_error = ProviderConfigurationUpdatedError
+        expected_error = ChannelNotFoundError if channel_id != current.id else ProviderConfigurationUpdatedError
         with pytest.raises(expected_error):
             service.update(_SCOPE, channel_id, expected_revision, _ACTOR_ID, _candidate())
 
@@ -421,7 +418,7 @@ def test_credential_protection_failure_propagates_and_never_persists(
 
     monkeypatch.setattr(encrypter, "encrypt_token", fail_protection)
 
-    with pytest.raises(OSError) as captured:
+    with pytest.raises(OSError, match="encryption backend unavailable") as captured:
         _service(repository, FakeProviderGateway(events)).create(
             _SCOPE,
             _ACTOR_ID,
@@ -537,10 +534,10 @@ def test_decryption_failure_propagates_without_sending_or_persisting(
     )
     service = _service(repository, gateway)
     if operation == "test":
-        with pytest.raises(OSError) as captured:
+        with pytest.raises(OSError, match="decryption backend unavailable") as captured:
             service.test_saved(_SCOPE, current.id, current.snapshot, edit)
     else:
-        with pytest.raises(OSError) as captured:
+        with pytest.raises(OSError, match="decryption backend unavailable") as captured:
             service.update(_SCOPE, current.id, current.snapshot, _ACTOR_ID, edit)
     assert captured.value is failure
     assert gateway.settings == []

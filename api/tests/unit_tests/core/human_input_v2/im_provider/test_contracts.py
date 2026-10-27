@@ -104,7 +104,7 @@ def test_card_event_contract_is_immutable_and_requires_json_inputs() -> None:
         del event.inputs["nested"]
     with pytest.raises(FrozenInstanceError):
         event.action_id = "changed"
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="card event action identifier must not be empty"):
         IMCardEvent(ProviderUserId("user"), "", {}, CorrelationToken("token"))
     with pytest.raises(TypeError):
         IMCardEvent(ProviderUserId("user"), "approve", {"invalid": object()}, CorrelationToken("token"))

@@ -2,6 +2,7 @@ import enum
 import json
 import uuid
 from typing import Any, cast, overload, override
+from warnings import deprecated
 
 import sqlalchemy as sa
 from pydantic import BaseModel, TypeAdapter
@@ -10,7 +11,6 @@ from sqlalchemy.dialects.mysql import LONGBLOB, LONGTEXT
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB, UUID
 from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.sql.type_api import TypeEngine
-from typing_extensions import deprecated
 
 from configs import dify_config
 

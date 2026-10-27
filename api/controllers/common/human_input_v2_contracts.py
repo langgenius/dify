@@ -13,7 +13,7 @@ both node versions.
 from __future__ import annotations
 
 from http import HTTPStatus
-from typing import Annotated, Literal, Self, Union
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, model_validator
 
@@ -388,13 +388,7 @@ class IMSyncResultNotMatched(BaseModel):
 
 
 IMSyncResult = Annotated[
-    Union[
-        IMSyncResultAdded,
-        IMSyncResultRemoved,
-        IMSyncResultFailed,
-        IMSyncResultNotMatched,
-        IMSyncResultSkipped,
-    ],
+    IMSyncResultAdded | IMSyncResultRemoved | IMSyncResultFailed | IMSyncResultNotMatched | IMSyncResultSkipped,
     Discriminator("type"),
 ]
 

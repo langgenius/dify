@@ -547,7 +547,7 @@ def test_credential_test_fails_closed_on_invalid_scope_json_without_leaking_body
     monkeypatch.setattr(dingtalk_module, "_new_robot_client", _FakeRobotClient)
     monkeypatch.setattr(dingtalk_module, "_new_http_client", InvalidJSONHTTPClient)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValidationError):
         DingTalkIMProviderAdapter(_credentials()).test_credentials()
 
 

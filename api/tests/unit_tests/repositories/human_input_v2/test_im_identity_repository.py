@@ -204,7 +204,7 @@ def test_reads_search_and_update_are_channel_scoped(sqlite_engine: Engine) -> No
 @pytest.mark.parametrize(("page", "limit"), [(0, 1), (-1, 1), (1, 0), (1, 101)])
 def test_search_rejects_invalid_page_boundaries(sqlite_engine: Engine, page: int, limit: int) -> None:
     with Session(sqlite_engine) as session:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="page must be positive|limit must be between 1 and 100"):
             SQLAlchemyIMIdentityRepository(session, _CHANNEL_ONE).search(page=page, limit=limit)
 
 

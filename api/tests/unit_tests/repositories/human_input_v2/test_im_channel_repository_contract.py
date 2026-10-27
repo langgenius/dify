@@ -359,7 +359,12 @@ def test_replace_rejects_invalid_replacement_before_mutation_sql(
     event.listen(channel_engine, "before_cursor_execute", capture)
     try:
         with Session(channel_engine) as session:
-            with pytest.raises(ValueError):
+            with pytest.raises(
+                ValueError,
+                match=(
+                    "replacement IM Channel must use a different ID|initial IM Channel configuration version must be 1"
+                ),
+            ):
                 _writer(session, "workspace").replace(current.id, 1, replacement)
     finally:
         event.remove(channel_engine, "before_cursor_execute", capture)

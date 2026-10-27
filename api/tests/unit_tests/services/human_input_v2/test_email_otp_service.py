@@ -143,7 +143,7 @@ def context(request: pytest.FixtureRequest, sqlite_engine: sa.Engine) -> Context
                 target_snapshot=EmailTargetSnapshot(email_address="approver@example.com"),
             ),
         )
-    redis = Mock(spec=RedisClientWrapper)
+    redis = create_autospec(RedisClientWrapper, instance=True)
     payload = {"type": "email", "email": "approver@example.com", "otp": "123456"}
     if isinstance(subject, ContactRecipientSubject):
         payload.update(type="external_contact", contact_id=subject.contact_id)
@@ -154,7 +154,7 @@ def context(request: pytest.FixtureRequest, sqlite_engine: sa.Engine) -> Context
     pipeline = MagicMock()
     pipeline.__enter__.return_value = pipeline
     redis.pipeline.return_value = pipeline
-    limiter = Mock(spec=RateLimiter)
+    limiter = create_autospec(RateLimiter, instance=True)
     limiter.acquire.return_value = 0
     limiter.retry_after.return_value = 60
     send = Mock()

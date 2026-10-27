@@ -575,7 +575,7 @@ def _signed_request(
 
 
 @pytest.fixture
-def sdk_server(monkeypatch: pytest.MonkeyPatch) -> Generator[_RunningServer, None, None]:
+def sdk_server(monkeypatch: pytest.MonkeyPatch) -> Generator[_RunningServer]:
     monkeypatch.setattr(TokenManager, "cache", LocalCache())
     state = _ServerState()
     server = _SDKHTTPServer(("127.0.0.1", 0), _SDKRequestHandler)

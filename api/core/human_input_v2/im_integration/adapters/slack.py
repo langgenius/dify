@@ -677,10 +677,7 @@ class _TrustedReceiveTimeClock(Clock):
     """SDK clock fixed to the framework's trusted UTC receive time."""
 
     def __init__(self, received_at: datetime) -> None:
-        if received_at.tzinfo is None:
-            received_at = received_at.replace(tzinfo=UTC)
-        else:
-            received_at = received_at.astimezone(UTC)
+        received_at = received_at.replace(tzinfo=UTC) if received_at.tzinfo is None else received_at.astimezone(UTC)
         self._received_timestamp = received_at.timestamp()
 
     @override

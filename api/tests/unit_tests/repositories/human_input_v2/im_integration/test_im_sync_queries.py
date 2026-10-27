@@ -109,7 +109,7 @@ def _observation(provider_user_id: str, display_name: str | None, email: str | N
 @pytest.fixture
 def sync_query_context(
     sqlite_engine: Engine,
-) -> Generator[_SyncQueryContext, None, None]:
+) -> Generator[_SyncQueryContext]:
     with Session(sqlite_engine, expire_on_commit=False) as session:
         identities = SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID)
         bindings = SQLAlchemyIMBindingRepository(session, _CHANNEL_ID)
@@ -182,7 +182,7 @@ def test_result_query_rejects_invalid_page_boundaries(
 ) -> None:
     repository, _, _ = sync_query_context
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="page must be positive|limit must be between 1 and 100"):
         repository.page_sync_results(_LATEST_RUN_ID, IMSyncResultType.ADDED, page=page, limit=limit)
 
 
