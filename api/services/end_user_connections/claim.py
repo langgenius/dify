@@ -129,13 +129,11 @@ class ConnectionClaimService:
             raise WebPassportUnauthorizedError("Account login required.") from exc
         if identity.token_source != "webapp_account_login" or identity.account_id is None:
             raise WebPassportUnauthorizedError("Account Web login required.")
-        sources: list[tuple[int, ConnectionClaimSource]] = []
         failures: list[ConnectionClaimFailure] = []
         for index, token in enumerate(passports):
             try:
                 source = self._source(token)
                 self._passports.authorize_account(app_code=source.app_code, access_token=access_token)
-                sources.append((index, source))
             except (
                 ConnectionIdentityError,
                 WebPassportUnauthorizedError,
@@ -151,10 +149,10 @@ class ConnectionClaimService:
             raise ConnectionClaimPreflightError(failures)
 
         results: list[ConnectionClaimResult | ConnectionClaimFailure] = []
-        for index, source in sources:
+        for index, token in enumerate(passports):
             try:
-                # Preflight is advisory across transactions; recheck expiry and current App admission.
-                self._tokens.verify(passports[index])
+                # Preflight holds no cross-App locks; reconstruct current authority before each transfer.
+                source = self._source(token)
                 passport = self._passports.issue_for_account(app_code=source.app_code, access_token=access_token)
                 claims = self._tokens.verify(passport.access_token)
                 target_id = claims.get("end_user_id")
