@@ -103,7 +103,7 @@ class PublishedPreflightRequirements:
                     try:
                         clients[client_key] = self._oauth.resolve_client(
                             context.tenant_id, canonical, client_key[1]
-                        ).snapshot.reference
+                        ).snapshot
                     except ConnectionReauthorizationRequiredError:
                         clients[client_key] = None
                 requirements.append(

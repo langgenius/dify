@@ -17,7 +17,7 @@ from services.end_user_connections.errors import (
     ConnectionRevisionChangedError,
 )
 from services.end_user_connections.management import ConnectionCipher, StoredConnection
-from services.end_user_connections.oauth import ConnectionOAuthGrant, OAuthClientSnapshot, ResolvedOAuthClient
+from services.end_user_connections.oauth import ConnectionOAuthGrant, ResolvedOAuthClient
 from services.end_user_connections.policy import connection_mutation_guard
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class OAuthLifecycleStore(Protocol):
         context: WebConnectionContext,
         guard: ConnectionMutationGuard,
         *,
-        client: OAuthClientSnapshot,
+        client: ConnectionOAuthClient,
         status: ConnectionCredentialStatus,
         refreshed: ConnectionOAuthGrant | None,
         ciphertext: str | None,
@@ -68,7 +68,7 @@ class OAuthRefreshLease(Protocol):
 class OAuthRefreshResult:
     view: ConnectionCheckView
     revision: int
-    client: OAuthClientSnapshot
+    client: ConnectionOAuthClient
 
 
 class OAuthRefreshSingleFlight(Protocol):
@@ -108,12 +108,12 @@ class OAuthConnectionLifecycleService:
         if reference is None:
             raise ConnectionReauthorizationRequiredError()
         client = self._gateway.resolve_client(context.tenant_id, record.access.provider, reference.source)
-        if client.plugin_unique_identifier != plugin_unique_identifier:
+        if client.snapshot.plugin_unique_identifier != plugin_unique_identifier:
             raise ConnectionRevisionChangedError()
-        if not reference.same_credentials(client.snapshot.reference) or reference.plugin_unique_identifier is None:
+        if not reference.same_credentials(client.snapshot) or reference.plugin_unique_identifier is None:
             raise ConnectionReauthorizationRequiredError()
         if (
-            reference.plugin_unique_identifier != client.snapshot.reference.plugin_unique_identifier
+            reference.plugin_unique_identifier != client.snapshot.plugin_unique_identifier
             and not client.plugin_is_trusted
         ):
             raise ConnectionRevisionChangedError()

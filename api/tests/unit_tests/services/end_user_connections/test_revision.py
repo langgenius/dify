@@ -135,26 +135,6 @@ def test_upgrade_during_credential_check_rejects_the_operation(harness: OAuthHar
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 1
 
 
-def test_reloaded_contract_accepts_the_new_plugin_artifact(harness: OAuthHarness) -> None:
-    connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
-    harness.providers.controller.plugin_unique_identifier = "vendor/calendar:2.0@upgraded"
-    with harness.base.sessions() as session:
-        workflow = session.get(Workflow, harness.base.workflow_id)
-        assert workflow is not None
-        revision, _ = PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository).resolve(
-            harness.base.context.tenant_id, harness.base.context.app_id, workflow.graph_dict
-        )
-    result = preflight(harness).check(
-        harness.base.context,
-        ConnectionPreflightInput.model_validate(
-            {"connection_revision": revision, "connections": {"tool-1": connection.id}}
-        ),
-    )
-    assert result.ready
-    assert result.connection_revision == revision
-    assert "workflow_id" not in result.model_dump()
-
-
 @pytest.mark.parametrize("phase", ["redirect", "exchange"])
 def test_oauth_callback_rejects_plugin_changes_after_start(harness: OAuthHarness, phase: str) -> None:
     started = harness.start()

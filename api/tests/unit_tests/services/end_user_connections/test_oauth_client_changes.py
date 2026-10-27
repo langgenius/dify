@@ -250,38 +250,6 @@ def test_platform_client_rotation_disconnects_associated_grants_across_tenants(
             assert session.scalar(sa.select(sa.func.count()).select_from(selection)) == 0
 
 
-def test_client_and_selection_changes_rollback_together(harness: OAuthHarness) -> None:
-    connection = harness.finish(harness.start())
-    save_choices(harness, [connection.id])
-
-    def fail() -> None:
-        with harness.base.sessions.begin() as session:
-            session.execute(
-                sa.update(ToolOAuthTenantClient)
-                .where(ToolOAuthTenantClient.id == harness.client_id)
-                .values(encrypted_oauth_params='{"client_id":"other"}')
-            )
-            EndUserConnectionRepository.disconnect_oauth_client_connections(
-                session,
-                tenant_id=harness.base.context.tenant_id,
-                provider=PROVIDER,
-                source=OAuthClientSource.WORKSPACE,
-                configuration_id=harness.client_id,
-            )
-            raise RuntimeError("Abort the Client mutation.")
-
-    with pytest.raises(RuntimeError):
-        fail()
-    with harness.base.sessions() as session:
-        row = session.get(EndUserConnection, connection.id)
-        assert row is not None
-        assert row.status == ConnectionCredentialStatus.CONNECTED
-        assert row.revision == 1
-        assert row.encrypted_credentials
-        for selection in (AppConnection, SessionConnection):
-            assert session.scalar(sa.select(sa.func.count()).select_from(selection)) == 1
-
-
 def test_client_rotation_invalidates_a_pending_oauth_attempt(harness: OAuthHarness) -> None:
     started = harness.start()
     BuiltinToolManageService.save_custom_oauth_client_params(

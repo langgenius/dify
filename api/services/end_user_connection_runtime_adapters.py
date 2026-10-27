@@ -115,7 +115,7 @@ def get_tool_runtime(
                 )
                 if source is None:
                     raise ConnectionConfigurationError()
-                oauth_client = gateway.resolve_client(identity.tenant_id, canonical, source).snapshot.reference
+                oauth_client = gateway.resolve_client(identity.tenant_id, canonical, source).snapshot
             target = ToolConnectionTarget(
                 tenant_id=identity.tenant_id,
                 app_id=identity.app_id,

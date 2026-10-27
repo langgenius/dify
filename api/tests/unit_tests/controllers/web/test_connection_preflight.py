@@ -230,6 +230,8 @@ def test_anonymous_policy_preserves_page_access_and_workflows_without_personal_c
 def test_parameters_replace_workflow_id_and_plugin_upgrade_invalidates_the_revision(
     client: FlaskClient, harness: OAuthHarness
 ) -> None:
+    connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    harness.base.auth.calls.clear()
     before = client.get("/api/parameters").get_json()
     assert "workflow_id" not in before
     harness.providers.controller.plugin_unique_identifier = "vendor/calendar:1.0.0@" + "b" * 64
@@ -252,12 +254,15 @@ def test_parameters_replace_workflow_id_and_plugin_upgrade_invalidates_the_revis
     )
     assert response.status_code == 409
     assert response.get_json()["code"] == "connection_revision_changed"
+    assert harness.base.auth.calls == []
     current = client.post(
-        "/api/connections/preflight", json={"connection_revision": after["connection_revision"], "connections": {}}
+        "/api/connections/preflight",
+        json={"connection_revision": after["connection_revision"], "connections": {"tool-1": connection.id}},
     )
     assert current.status_code == 200
+    assert current.get_json()["ready"] is True
     assert current.get_json()["connection_revision"] == after["connection_revision"]
-    assert harness.base.auth.calls == []
+    assert harness.base.auth.check_artifacts[-1] == new_requirement["plugin_unique_identifier"]
 
 
 def test_unverified_plugin_change_returns_only_current_revision(client: FlaskClient, harness: OAuthHarness) -> None:

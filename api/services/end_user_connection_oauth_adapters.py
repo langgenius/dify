@@ -52,7 +52,6 @@ from services.end_user_connections.errors import (
 from services.end_user_connections.oauth import (
     ConnectionOAuthAttempt,
     ConnectionOAuthGrant,
-    OAuthClientSnapshot,
     ResolvedOAuthClient,
     StoredOAuthClientConfiguration,
 )
@@ -163,7 +162,7 @@ class PluginConnectionOAuthGateway:
         entity.identity.name = str(identity)
         controller = PluginToolProviderController(entity, identity.plugin_id, identifier, tenant_id)
         client = self._decode_client(tenant_id, stored, controller)
-        if client.snapshot.reference != reference:
+        if client.snapshot != reference:
             raise ConnectionReauthorizationRequiredError()
         return client
 
@@ -204,23 +203,19 @@ class PluginConnectionOAuthGateway:
             raise ConnectionConfigurationError()
         client_id = parameters.get("client_id")
         return ResolvedOAuthClient(
-            plugin_unique_identifier=controller.plugin_unique_identifier,
-            snapshot=OAuthClientSnapshot(
-                reference=ConnectionOAuthClient(
-                    source=stored.source,
-                    configuration_id=stored.configuration_id,
-                    client_id=client_id if isinstance(client_id, str) else None,
-                    fingerprint=stored.fingerprint,
-                    plugin_unique_identifier=controller.plugin_unique_identifier,
-                ),
+            snapshot=ConnectionOAuthClient(
+                source=stored.source,
+                configuration_id=stored.configuration_id,
+                client_id=client_id if isinstance(client_id, str) else None,
                 fingerprint=stored.fingerprint,
+                plugin_unique_identifier=controller.plugin_unique_identifier,
             ),
             parameters=parameters,
         )
 
     @staticmethod
     def _artifact(client: ResolvedOAuthClient) -> str:
-        identifier = client.snapshot.reference.plugin_unique_identifier
+        identifier = client.snapshot.plugin_unique_identifier
         if identifier is None:
             raise ConnectionReauthorizationRequiredError()
         return identifier

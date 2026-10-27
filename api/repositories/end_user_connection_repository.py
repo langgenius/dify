@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from datetime import datetime
+from hashlib import sha256
 from typing import Any, cast
 
 import sqlalchemy as sa
@@ -48,7 +49,6 @@ from services.end_user_connections.management import ConnectionChanges, StoredCo
 from services.end_user_connections.oauth import (
     ConnectionOAuthAttempt,
     ConnectionOAuthGrant,
-    OAuthClientSnapshot,
     StoredOAuthClientConfiguration,
 )
 from services.end_user_connections.revision import (
@@ -67,17 +67,18 @@ class EndUserConnectionRepository:
 
     def save_revision(self, snapshot: ConnectionContractSnapshot) -> str:
         canonical = snapshot.canonical_json()
+        fingerprint = sha256(canonical.encode()).hexdigest()
         scope = (
             EndUserConnectionRevision.tenant_id == snapshot.tenant_id,
             EndUserConnectionRevision.app_id == snapshot.app_id,
-            EndUserConnectionRevision.fingerprint == snapshot.fingerprint,
+            EndUserConnectionRevision.fingerprint == fingerprint,
         )
         with self._sessions.begin() as session:
             existing = session.scalar(sa.select(EndUserConnectionRevision.id).where(*scope))
             if existing is not None:
                 return existing
             row = EndUserConnectionRevision(
-                fingerprint=snapshot.fingerprint,
+                fingerprint=fingerprint,
                 tenant_id=snapshot.tenant_id,
                 app_id=snapshot.app_id,
                 snapshot=canonical,
@@ -265,7 +266,7 @@ class EndUserConnectionRepository:
         app: App,
         workflow_id: str,
         conversation_id: str | None,
-    ) -> None:
+    ) -> Workflow:
         def workflow(reference: str | None) -> Workflow | None:
             return session.scalar(
                 sa.select(Workflow).where(
@@ -277,16 +278,17 @@ class EndUserConnectionRepository:
             )
 
         selected = workflow(workflow_id)
-        current = workflow(app.workflow_id)
-        if selected is None or current is None:
+        if selected is None:
             raise ConnectionRevisionChangedError()
-        if selected.id != current.id and get_tool_authorization_requirements(
-            selected.graph_dict
-        ) != get_tool_authorization_requirements(current.graph_dict):
-            raise ConnectionRevisionChangedError()
-        if conversation_id is None:
-            return
-        EndUserConnectionRepository._require_conversation(session, context, app, conversation_id, lock=False)
+        if selected.id != app.workflow_id:
+            current = workflow(app.workflow_id)
+            if current is None or get_tool_authorization_requirements(
+                selected.graph_dict
+            ) != get_tool_authorization_requirements(current.graph_dict):
+                raise ConnectionRevisionChangedError()
+        if conversation_id is not None:
+            EndUserConnectionRepository._require_conversation(session, context, app, conversation_id, lock=False)
+        return selected
 
     @staticmethod
     def _require_conversation(
@@ -319,17 +321,7 @@ class EndUserConnectionRepository:
                 workflow_id = app.workflow_id
             if workflow_id is None:
                 raise ConnectionRevisionChangedError()
-            self._require_workflow_scope(session, context, app, workflow_id, conversation_id)
-            workflow = session.scalar(
-                sa.select(Workflow).where(
-                    Workflow.id == workflow_id,
-                    Workflow.app_id == context.app_id,
-                    Workflow.tenant_id == context.tenant_id,
-                    Workflow.version != "draft",
-                )
-            )
-            if workflow is None:
-                raise ConnectionRevisionChangedError()
+            workflow = self._require_workflow_scope(session, context, app, workflow_id, conversation_id)
             graph = workflow.graph_dict
             if not isinstance(graph, dict):
                 raise ConnectionConfigurationError()
@@ -723,7 +715,7 @@ class EndUserConnectionRepository:
         context: WebConnectionContext,
         guard: ConnectionMutationGuard,
         *,
-        client: OAuthClientSnapshot,
+        client: ConnectionOAuthClient,
         status: ConnectionCredentialStatus,
         refreshed: ConnectionOAuthGrant | None,
         ciphertext: str | None,
@@ -741,11 +733,11 @@ class EndUserConnectionRepository:
             # Client writers lock their configuration before invalidating grants.
             # Keep that order here so refresh and rotation cannot deadlock.
             current_client = self._oauth_client_configuration(
-                session, context.tenant_id, provider, client.reference.source, lock=True
+                session, context.tenant_id, provider, client.source, lock=True
             )
             if (
-                current_client.source != client.reference.source
-                or current_client.configuration_id != client.reference.configuration_id
+                current_client.source != client.source
+                or current_client.configuration_id != client.configuration_id
                 or current_client.fingerprint != client.fingerprint
             ):
                 raise ConnectionReauthorizationRequiredError()
@@ -818,7 +810,7 @@ class EndUserConnectionRepository:
         context = attempt.context
         with self._sessions.begin() as session:
             app = self._require_context(session, context, lock=True)
-            client = attempt.client.reference
+            client = attempt.client
             current = self._oauth_client_configuration(
                 session, context.tenant_id, attempt.provider, client.source, lock=True
             )

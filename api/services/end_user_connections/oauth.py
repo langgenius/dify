@@ -47,15 +47,8 @@ class StoredOAuthClientConfiguration:
 
 
 @dataclass(frozen=True)
-class OAuthClientSnapshot:
-    reference: ConnectionOAuthClient
-    fingerprint: str
-
-
-@dataclass(frozen=True)
 class ResolvedOAuthClient:
-    snapshot: OAuthClientSnapshot
-    plugin_unique_identifier: str
+    snapshot: ConnectionOAuthClient
     parameters: Mapping[str, Any] = field(repr=False)
     plugin_is_trusted: bool = False
 
@@ -67,15 +60,14 @@ class ConnectionOAuthAttempt:
     context: WebConnectionContext
     callback_url: str
     provider: str
-    client: OAuthClientSnapshot
+    client: ConnectionOAuthClient
     state_digest: str = field(repr=False)
     # Creation captures a published target/name; reauthorization captures a CAS guard.
     target: ConnectionTargetInput | None
     target_workflow_id: str | None
     name: str | None
     guard: ConnectionMutationGuard | None
-    # Legacy reauthorization attempts without consent must restart before dispatch.
-    connection_revision: str | None = None
+    connection_revision: str
 
 
 @dataclass(frozen=True)
@@ -157,7 +149,7 @@ class OAuthConnectionService:
             workflow_id=target.workflow_id,
             node_id=command.node_id,
             credential_type=ConnectionCredentialType.OAUTH2,
-            target=replace(target, oauth_client=client.snapshot.reference),
+            target=replace(target, oauth_client=client.snapshot),
         )
         return self._start(
             context,
@@ -205,7 +197,7 @@ class OAuthConnectionService:
         connection_revision: str,
     ) -> ConnectionOAuthStart:
         admitted = self._revisions.require(context, provider, connection_revision)
-        if client.plugin_unique_identifier != admitted.plugin_unique_identifier:
+        if client.snapshot.plugin_unique_identifier != admitted.plugin_unique_identifier:
             raise ConnectionRevisionChangedError()
         url = self._gateway.authorization_url(context, provider, client)
         self._revisions.require(context, provider, connection_revision)
@@ -261,31 +253,26 @@ class OAuthConnectionService:
             if attempt.target is None or attempt.name is None:
                 raise ConnectionOAuthError()
             target = self._targets.resolve(context, attempt.target)
-            if target.provider != attempt.provider or target.oauth_client_source != attempt.client.reference.source:
+            if target.provider != attempt.provider or target.oauth_client_source != attempt.client.source:
                 raise ConnectionConfigurationError()
             require_creation_target(
                 context,
                 workflow_id=target.workflow_id,
                 node_id=attempt.target.node_id,
                 credential_type=ConnectionCredentialType.OAUTH2,
-                target=replace(target, oauth_client=attempt.client.reference),
+                target=replace(target, oauth_client=attempt.client),
             )
         revision = attempt.connection_revision
-        if revision is None:
-            # Creation attempts already carried their graph contract before this field existed.
-            if attempt.target is None:
-                raise ConnectionRevisionChangedError()
-            revision = attempt.target.connection_revision
         admitted = self._revisions.require(context, attempt.provider, revision)
-        client = self._gateway.resolve_client(context.tenant_id, attempt.provider, attempt.client.reference.source)
-        if client.plugin_unique_identifier != admitted.plugin_unique_identifier:
+        client = self._gateway.resolve_client(context.tenant_id, attempt.provider, attempt.client.source)
+        if client.snapshot.plugin_unique_identifier != admitted.plugin_unique_identifier:
             raise ConnectionRevisionChangedError()
-        if not attempt.client.reference.same_credentials(client.snapshot.reference):
+        if not attempt.client.same_credentials(client.snapshot):
             raise ConnectionReauthorizationRequiredError()
         if client.snapshot != attempt.client:
             if not client.plugin_is_trusted:
                 raise ConnectionRevisionChangedError()
-            client = self._gateway.resolve_grant_client(context.tenant_id, attempt.provider, attempt.client.reference)
+            client = self._gateway.resolve_grant_client(context.tenant_id, attempt.provider, attempt.client)
         grant = self._gateway.exchange(context, attempt.provider, client, query_string)
         if not grant.credentials:
             raise ConnectionOAuthError()

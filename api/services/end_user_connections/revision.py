@@ -1,6 +1,5 @@
 """Content-addressed authorization contracts, independent of workflow publications."""
 
-import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -51,10 +50,6 @@ class ConnectionContractSnapshot(BaseModel):
             requirement["allowed_credential_types"] = sorted(requirement["allowed_credential_types"])
         data["requirements"] = sorted(data["requirements"], key=itemgetter("node_id"))
         return json.dumps(data, sort_keys=True, separators=(",", ":"))
-
-    @property
-    def fingerprint(self) -> str:
-        return hashlib.sha256(self.canonical_json().encode()).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
