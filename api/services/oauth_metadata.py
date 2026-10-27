@@ -4,6 +4,7 @@ from typing import Any, Final
 
 from configs import dify_config
 from enums.oauth_client import TokenEndpointAuthMethod
+from services.oauth_client_metadata import CODE_RESPONSE_TYPE, DEFAULT_GRANT_TYPES
 from services.oauth_pkce import PkceMethod
 from services.oauth_resource import OPENAPI_PATH, openapi_issuer_url
 from services.oauth_token_adapters import authorization_code_enabled, cimd_enabled, dcr_enabled
@@ -14,11 +15,10 @@ AUTHORIZATION_SERVER_PATH: Final = f"{WELL_KNOWN_PREFIX}/oauth-authorization-ser
 PROTECTED_RESOURCE_PATH: Final = f"{WELL_KNOWN_PREFIX}/oauth-protected-resource{OPENAPI_PATH}"
 AUTHORIZE_PAGE_PATH: Final = "/account/oauth/authorize"
 BEARER_METHODS: Final = ("header",)
-AUTH_CODE_GRANTS: Final = (GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN)
 
 
 def protected_resource_metadata_url(request_origin: str) -> str:
-    origin = (dify_config.CONSOLE_API_URL or request_origin).rstrip("/")
+    origin = openapi_issuer_url(request_origin).removesuffix(OPENAPI_PATH)
     return origin + PROTECTED_RESOURCE_PATH
 
 
@@ -28,7 +28,7 @@ def authorization_server_metadata(request_origin: str) -> dict[str, Any]:
     browser_flow = authorization_code_enabled()
     grants = [GrantType.DEVICE_CODE]
     if browser_flow:
-        grants = [*AUTH_CODE_GRANTS, *grants]
+        grants = [*DEFAULT_GRANT_TYPES, *grants]
 
     document: dict[str, Any] = {
         "issuer": issuer,
@@ -36,7 +36,7 @@ def authorization_server_metadata(request_origin: str) -> dict[str, Any]:
         "revocation_endpoint": f"{issuer}/oauth/revoke",
         "device_authorization_endpoint": f"{issuer}/oauth/device/code",
         "grant_types_supported": [grant.value for grant in grants],
-        "response_types_supported": ["code"],
+        "response_types_supported": [CODE_RESPONSE_TYPE],
         "code_challenge_methods_supported": [method.value for method in PkceMethod],
         "token_endpoint_auth_methods_supported": auth_methods,
         "revocation_endpoint_auth_methods_supported": auth_methods,

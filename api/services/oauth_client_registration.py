@@ -11,6 +11,7 @@ from enums.oauth_client import OAuthClientKind, TokenEndpointAuthMethod
 from libs.oauth_bearer import sha256_hex
 from models.oauth import OpenAPIOAuthClient
 from services.oauth_client_metadata import (
+    CODE_RESPONSE_TYPE,
     DEFAULT_GRANT_TYPES,
     MAX_CLIENT_NAME_LENGTH,
     InvalidClientMetadataError,
@@ -27,7 +28,6 @@ from services.oauth_token_contracts import GrantType
 CLIENT_ID_PREFIX = "dcr_"
 CLIENT_ID_BYTES = 16
 CLIENT_SECRET_BYTES = 32
-CODE_RESPONSE_TYPE = "code"
 
 
 class RegistrationErrorCode(StrEnum):

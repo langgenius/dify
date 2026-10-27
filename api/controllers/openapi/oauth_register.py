@@ -14,8 +14,8 @@ from enums.oauth_client import OAuthClientKind
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response
 from libs.rate_limit import LIMIT_DCR_PER_IP, rate_limit
+from services.oauth_client_metadata import CODE_RESPONSE_TYPE
 from services.oauth_client_registration import (
-    CODE_RESPONSE_TYPE,
     RegisteredClient,
     RegistrationError,
     RegistrationErrorCode,
