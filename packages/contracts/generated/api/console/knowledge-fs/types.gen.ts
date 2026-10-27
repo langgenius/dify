@@ -3924,6 +3924,8 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsData = {
   query?: {
     cursor?: string
     limit?: number
+    query?: string
+    status?: 'disabled' | 'failed' | 'processing' | 'queued' | 'ready'
   }
   url: '/knowledge-fs/spaces/{control_space_id}/logical-documents'
 }
