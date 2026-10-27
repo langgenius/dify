@@ -327,6 +327,117 @@ describe('dify-mock fixture server', () => {
     expect(body.error).toBe('slow_down')
   })
 
+  describe('standard token route', () => {
+    const GRANT = 'urn:ietf:params:oauth:grant-type:device_code'
+    const poll = (
+      body: Record<string, string> = { device_code: 'devcode-1', client_id: 'difyctl' },
+    ) =>
+      fetch(`${mock.url}/openapi/v1/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ grant_type: GRANT, ...body }),
+      })
+    const errorOf = async (r: Response) => ((await r.json()) as { error: string }).error
+
+    it('returns the standard envelope with Dify extras and no refresh_token', async () => {
+      const r = await poll()
+      expect(r.status).toBe(200)
+      expect(r.headers.get('cache-control')).toBe('no-store')
+      const body = (await r.json()) as Record<string, unknown>
+      expect(body.access_token).toMatch(/^dfoa_/)
+      expect(body.token_type).toBe('Bearer')
+      expect(body.expires_in).toBeGreaterThan(0)
+      expect(body.subject_type).toBe('account')
+      expect(body.token_id).toBe('tok-1')
+      expect(body).not.toHaveProperty('refresh_token')
+      expect(body).not.toHaveProperty('token')
+    })
+
+    it('scenario:sso returns the external_sso extras', async () => {
+      mock.setScenario('sso')
+      const body = (await (await poll()).json()) as Record<string, unknown>
+      expect(body.access_token).toMatch(/^dfoe_/)
+      expect(body.subject_email).toBe('sso@dify.ai')
+    })
+
+    it.each([
+      ['denied', 'access_denied'],
+      ['expired', 'expired_token'],
+      ['slow-down', 'slow_down'],
+    ] as const)('scenario:%s answers 400 %s', async (scenario, code) => {
+      mock.setScenario(scenario)
+      const r = await poll()
+      expect(r.status).toBe(400)
+      expect(await errorOf(r)).toBe(code)
+    })
+
+    it('rejects a mismatched client with 401 invalid_client and a Basic challenge', async () => {
+      const r = await poll({ device_code: 'devcode-1', client_id: 'someone-else' })
+      expect(r.status).toBe(401)
+      expect(r.headers.get('www-authenticate')).toBe('Basic realm="dify-openapi"')
+      expect(await errorOf(r)).toBe('invalid_client')
+    })
+
+    it('answers an unknown grant_type with unsupported_grant_type', async () => {
+      const r = await poll({
+        grant_type: 'urn:future:grant',
+        device_code: 'devcode-1',
+        client_id: 'difyctl',
+      })
+      expect(r.status).toBe(400)
+      expect(await errorOf(r)).toBe('unsupported_grant_type')
+    })
+
+    it('runs the before-poll hook', async () => {
+      let calls = 0
+      mock.onDeviceTokenPoll(() => {
+        calls += 1
+      })
+      await poll()
+      expect(calls).toBe(1)
+    })
+
+    it('/device/code returns verification_uri_complete with the encoded user code', async () => {
+      const r = await fetch(`${mock.url}/openapi/v1/oauth/device/code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: 'difyctl' }),
+      })
+      const body = (await r.json()) as {
+        verification_uri: string
+        verification_uri_complete: string
+      }
+      expect(body.verification_uri_complete).toBe(`${body.verification_uri}?user_code=ABCD-1234`)
+    })
+
+    it('scenario:legacy-token-route answers a JSON 404 and omits verification_uri_complete', async () => {
+      mock.setScenario('legacy-token-route')
+      const r = await poll()
+      expect(r.status).toBe(404)
+      expect(r.headers.get('content-type')).toContain('application/json')
+      const code = await fetch(`${mock.url}/openapi/v1/oauth/device/code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: 'difyctl' }),
+      })
+      expect(await code.json()).not.toHaveProperty('verification_uri_complete')
+      const legacy = await fetch(`${mock.url}/openapi/v1/oauth/device/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_code: 'devcode-1' }),
+      })
+      expect(legacy.status).toBe(200)
+    })
+
+    it('scenario:legacy-token-route-html-404 answers a text/html 404', async () => {
+      mock.setScenario('legacy-token-route-html-404')
+      const r = await poll()
+      expect(r.status).toBe(404)
+      expect(r.headers.get('content-type')).toContain('text/html')
+      expect(await r.text()).toContain('404')
+    })
+  })
+
   it('scenario:auth-expired returns 401 on bearer-protected endpoint', async () => {
     mock.setScenario('auth-expired')
     const r = await fetch(`${mock.url}/openapi/v1/workspaces`, { headers: AUTH_HEADERS })
