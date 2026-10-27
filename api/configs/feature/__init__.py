@@ -1189,6 +1189,12 @@ class AuthConfig(BaseSettings):
         default=True,
     )
 
+    ENABLE_OAUTH_DCR: bool = Field(
+        description="Let OAuth clients register themselves at /openapi/v1/oauth/register (RFC 7591). "
+        "Off: the route answers 404; clients already registered keep working.",
+        default=True,
+    )
+
     OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: int = Field(
         description="Lifetime in hours of access tokens issued by the authorization code flow. "
         f"Values outside {MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS}-{MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS} "

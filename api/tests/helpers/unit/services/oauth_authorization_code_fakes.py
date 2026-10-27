@@ -9,6 +9,7 @@ import pytest
 from enums.oauth_client import OAuthClientKind
 from libs.helper import RateLimiter
 from libs.oauth_bearer import sha256_hex
+from models.oauth import OpenAPIOAuthClient
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_clients import OAuthClientRegistry, ResolvedClient
 from services.oauth_device_contracts import (
@@ -69,6 +70,51 @@ class FakeClientSource:
 
     def resolve(self, client_id: str) -> ResolvedClient | None:
         return self.clients.get(client_id)
+
+
+@dataclass
+class FakeClientRepository:
+    """In-memory client store with the repository's ``create`` and ``resolve``."""
+
+    rows: dict[str, OpenAPIOAuthClient] = field(default_factory=dict)
+
+    def create(
+        self,
+        *,
+        client_id: str,
+        kind: OAuthClientKind,
+        display_name: str,
+        redirect_uris: Sequence[str],
+        grant_types: Sequence[GrantType],
+        client_secret_hash: str | None = None,
+        logo_uri: str | None = None,
+    ) -> OpenAPIOAuthClient:
+        row = OpenAPIOAuthClient(
+            client_id=client_id,
+            kind=kind,
+            display_name=display_name,
+            redirect_uris=list(redirect_uris),
+            grant_types=[str(grant) for grant in grant_types],
+            client_secret_hash=client_secret_hash,
+            logo_uri=logo_uri,
+        )
+        self.rows[client_id] = row
+        return row
+
+    def resolve(self, client_id: str) -> ResolvedClient | None:
+        row = self.rows.get(client_id)
+        if row is None:
+            return None
+        return ResolvedClient(
+            client_id=row.client_id,
+            storage_client_id=row.client_id,
+            kind=row.kind,
+            display_name=row.display_name,
+            logo_uri=row.logo_uri,
+            redirect_uris=tuple(row.redirect_uris),
+            grant_types=frozenset(GrantType(value) for value in row.grant_types),
+            secret_hash=row.client_secret_hash,
+        )
 
 
 def registry(*clients: ResolvedClient) -> OAuthClientRegistry:

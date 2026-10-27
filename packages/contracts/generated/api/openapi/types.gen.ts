@@ -562,6 +562,11 @@ export type FormSubmitResponse = {
   hints?: Array<Hint>
 }
 
+export type GrantType =
+  | 'authorization_code'
+  | 'refresh_token'
+  | 'urn:ietf:params:oauth:grant-type:device_code'
+
 export type HealthResponse = {
   ok: boolean
 }
@@ -1074,6 +1079,33 @@ export type OAuthAuthorizeRequest = {
   state?: string | null
 }
 
+export type OAuthRegisterErrorResponse = {
+  error: RegistrationErrorCode
+  error_description: string
+}
+
+export type OAuthRegisterRequest = {
+  client_name?: string | null
+  grant_types?: Array<GrantType> | null
+  logo_uri?: string | null
+  redirect_uris: Array<string>
+  response_types?: Array<string> | null
+  token_endpoint_auth_method?: TokenEndpointAuthMethod | null
+}
+
+export type OAuthRegisterResponse = {
+  client_id: string
+  client_id_issued_at: number
+  client_name: string
+  client_secret?: string | null
+  client_secret_expires_at?: number | null
+  grant_types: Array<GrantType>
+  logo_uri?: string | null
+  redirect_uris: Array<string>
+  response_types: Array<string>
+  token_endpoint_auth_method: TokenEndpointAuthMethod
+}
+
 export type OAuthTokenErrorResponse = {
   error: string
 }
@@ -1302,6 +1334,8 @@ export type PublishResponse = {
   warning?: string | null
 }
 
+export type RegistrationErrorCode = 'invalid_client_metadata' | 'invalid_redirect_uri'
+
 export type ReleaseCheckName = 'draft_valid' | 'tested'
 
 export type ReleaseCheckResponse = {
@@ -1410,6 +1444,8 @@ export type SupportedAppType = 'advanced-chat' | 'agent-chat' | 'chat' | 'comple
 export type TaskStopResponse = {
   result: 'success'
 }
+
+export type TokenEndpointAuthMethod = 'client_secret_basic' | 'client_secret_post' | 'none'
 
 export type ToolCredentialCreatePayload = {
   credentials: {
@@ -3609,6 +3645,26 @@ export type PostOauthDeviceTokenResponses = {
 
 export type PostOauthDeviceTokenResponse =
   PostOauthDeviceTokenResponses[keyof PostOauthDeviceTokenResponses]
+
+export type PostOauthRegisterData = {
+  body: OAuthRegisterRequest
+  path?: never
+  query?: never
+  url: '/oauth/register'
+}
+
+export type PostOauthRegisterErrors = {
+  400: OAuthRegisterErrorResponse | ErrorBody
+  default: ErrorBody
+}
+
+export type PostOauthRegisterError = PostOauthRegisterErrors[keyof PostOauthRegisterErrors]
+
+export type PostOauthRegisterResponses = {
+  201: OAuthRegisterResponse
+}
+
+export type PostOauthRegisterResponse = PostOauthRegisterResponses[keyof PostOauthRegisterResponses]
 
 export type PostOauthRevokeData = {
   body?: never

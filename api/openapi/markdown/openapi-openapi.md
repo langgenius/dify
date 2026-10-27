@@ -1334,6 +1334,21 @@ Upload a file to use as an input variable when running the app
 | 400 | Authorization pending, polling too fast, expired, or denied | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /oauth/register
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OAuthRegisterRequest](#oauthregisterrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Client registered | **application/json**: [OAuthRegisterResponse](#oauthregisterresponse)<br> |
+| 400 | Invalid client metadata | **application/json**: [OAuthRegisterErrorResponse](#oauthregistererrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /oauth/revoke
 #### Responses
 
@@ -2821,6 +2836,12 @@ is exact rather than an under-annotated open object.
 | ---- | ---- | ----------- | -------- |
 | hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
 
+#### GrantType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| GrantType | string |  |  |
+
 #### HealthResponse
 
 Liveness payload for `GET /openapi/v1/_health` — no auth required.
@@ -3437,6 +3458,41 @@ Where the consent page navigates next; the server builds it.
 | scope | string |  | No |
 | state | string |  | No |
 
+#### OAuthRegisterErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | [RegistrationErrorCode](#registrationerrorcode) |  | Yes |
+| error_description | string |  | Yes |
+
+#### OAuthRegisterRequest
+
+RFC 7591 client metadata; unknown fields are ignored.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_name | string |  | No |
+| grant_types | [ [GrantType](#granttype) ] |  | No |
+| logo_uri | string |  | No |
+| redirect_uris | [ string ] |  | Yes |
+| response_types | [ string ] |  | No |
+| token_endpoint_auth_method | [TokenEndpointAuthMethod](#tokenendpointauthmethod) |  | No |
+
+#### OAuthRegisterResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| client_id_issued_at | integer |  | Yes |
+| client_name | string |  | Yes |
+| client_secret | string |  | No |
+| client_secret_expires_at | integer |  | No |
+| grant_types | [ [GrantType](#granttype) ] |  | Yes |
+| logo_uri | string |  | No |
+| redirect_uris | [ string ] |  | Yes |
+| response_types | [ string ] |  | Yes |
+| token_endpoint_auth_method | [TokenEndpointAuthMethod](#tokenendpointauthmethod) |  | Yes |
+
 #### OAuthTokenErrorResponse
 
 | Name | Type | Description | Required |
@@ -3647,6 +3703,12 @@ Strict (extra='forbid').
 | version_id | string |  | Yes |
 | warning | string | Variable references that may read a skipped branch | No |
 
+#### RegistrationErrorCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RegistrationErrorCode | string |  |  |
+
 #### ReleaseCheckName
 
 | Name | Type | Description | Required |
@@ -3823,6 +3885,12 @@ types it as a required `'success'` rather than an optional field.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
+
+#### TokenEndpointAuthMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TokenEndpointAuthMethod | string |  |  |
 
 #### ToolCredentialCreatePayload
 

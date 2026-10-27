@@ -61,6 +61,7 @@ LIMIT_LOOKUP_PUBLIC = RateLimit(
 LIMIT_AUTHORIZE_CLIENT_PUBLIC = RateLimit(
     name="authorize_client_public", limit=60, window=timedelta(minutes=5), scopes=(RateLimitScope.IP,)
 )
+LIMIT_DCR_PER_IP = RateLimit(name="dcr_per_ip", limit=20, window=timedelta(hours=1), scopes=(RateLimitScope.IP,))
 LIMIT_AUTHORIZE_APPROVE = RateLimit(
     name="authorize_approve", limit=10, window=timedelta(hours=1), scopes=(RateLimitScope.CONSOLE_ACCOUNT,)
 )

@@ -2212,6 +2212,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/oauth/authorize/client"): frozenset({"200", "400", "default"}),
     ("post", "/oauth/authorize/approve"): frozenset({"200", "400", "default"}),
     ("post", "/oauth/authorize/deny"): frozenset({"200", "400", "default"}),
+    ("post", "/oauth/register"): frozenset({"201", "400", "default"}),
     ("get", "/node-types"): frozenset({"200", "default"}),
     ("get", "/node-types/{node_type}"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/draft/workflow/nodes/{node_id}:run"): frozenset({"200", "422", "default"}),
@@ -2468,7 +2469,7 @@ class TestAuthMatrixCases:
         # The remainder is the device-flow, token, revoke, authorize, documentation and catalog surface. Its size is
         # pinned rather than enumerated: a list of exemptions rots silently — the one this
         # replaced still named `swagger.json`, a route that is not registered at all.
-        assert len(unguarded) == 19
+        assert len(unguarded) == 20
 
     @staticmethod
     @pytest.mark.parametrize("route", ROUTES, ids=[route.id for route in ROUTES])

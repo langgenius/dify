@@ -678,6 +678,15 @@ export const zFileUploadPayload = z.object({
 })
 
 /**
+ * GrantType
+ */
+export const zGrantType = z.enum([
+  'authorization_code',
+  'refresh_token',
+  'urn:ietf:params:oauth:grant-type:device_code',
+])
+
+/**
  * HealthResponse
  *
  * Liveness payload for `GET /openapi/v1/_health` — no auth required.
@@ -1774,6 +1783,19 @@ export const zPublishResponse = z.object({
 })
 
 /**
+ * RegistrationErrorCode
+ */
+export const zRegistrationErrorCode = z.enum(['invalid_client_metadata', 'invalid_redirect_uri'])
+
+/**
+ * OAuthRegisterErrorResponse
+ */
+export const zOAuthRegisterErrorResponse = z.object({
+  error: zRegistrationErrorCode,
+  error_description: z.string(),
+})
+
+/**
  * ReleaseCheckName
  */
 export const zReleaseCheckName = z.enum(['draft_valid', 'tested'])
@@ -1969,6 +1991,45 @@ export const zPermittedExternalAppsListQuery = z.object({
  */
 export const zTaskStopResponse = z.object({
   result: z.literal('success'),
+})
+
+/**
+ * TokenEndpointAuthMethod
+ */
+export const zTokenEndpointAuthMethod = z.enum([
+  'client_secret_basic',
+  'client_secret_post',
+  'none',
+])
+
+/**
+ * OAuthRegisterRequest
+ *
+ * RFC 7591 client metadata; unknown fields are ignored.
+ */
+export const zOAuthRegisterRequest = z.object({
+  client_name: z.string().nullish(),
+  grant_types: z.array(zGrantType).nullish(),
+  logo_uri: z.string().nullish(),
+  redirect_uris: z.array(z.string()),
+  response_types: z.array(z.string()).nullish(),
+  token_endpoint_auth_method: zTokenEndpointAuthMethod.nullish(),
+})
+
+/**
+ * OAuthRegisterResponse
+ */
+export const zOAuthRegisterResponse = z.object({
+  client_id: z.string(),
+  client_id_issued_at: z.int(),
+  client_name: z.string(),
+  client_secret: z.string().nullish(),
+  client_secret_expires_at: z.int().nullish(),
+  grant_types: z.array(zGrantType),
+  logo_uri: z.string().nullish(),
+  redirect_uris: z.array(z.string()),
+  response_types: z.array(z.string()),
+  token_endpoint_auth_method: zTokenEndpointAuthMethod,
 })
 
 /**
@@ -3282,6 +3343,13 @@ export const zPostOauthDeviceTokenBody = zDevicePollRequest
  * Device token
  */
 export const zPostOauthDeviceTokenResponse = zDeviceTokenResponse
+
+export const zPostOauthRegisterBody = zOAuthRegisterRequest
+
+/**
+ * Client registered
+ */
+export const zPostOauthRegisterResponse = zOAuthRegisterResponse
 
 /**
  * Token revoked, or unknown to this client

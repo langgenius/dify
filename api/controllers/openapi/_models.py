@@ -18,6 +18,7 @@ from core.plugin.entities.plugin import PluginCategory
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.tools.entities.tool_entities import ToolProviderType
 from enums import DeploymentEdition, WebAppAccessMode
+from enums.oauth_client import TokenEndpointAuthMethod
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -29,6 +30,8 @@ from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
 from services.oauth_authorize_service import AuthorizeErrorCode
+from services.oauth_client_registration import RegistrationErrorCode
+from services.oauth_token_contracts import GrantType
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
@@ -199,6 +202,35 @@ class OAuthAuthorizeRedirectResponse(BaseModel):
 
 class OAuthAuthorizeErrorResponse(BaseModel):
     error: AuthorizeErrorCode
+
+
+class OAuthRegisterRequest(BaseModel):
+    """RFC 7591 client metadata; unknown fields are ignored."""
+
+    redirect_uris: list[str]
+    client_name: str | None = None
+    logo_uri: str | None = None
+    grant_types: list[GrantType] | None = None
+    response_types: list[str] | None = None
+    token_endpoint_auth_method: TokenEndpointAuthMethod | None = None
+
+
+class OAuthRegisterResponse(BaseModel):
+    client_id: str
+    client_id_issued_at: int
+    client_name: str
+    redirect_uris: list[str]
+    grant_types: list[GrantType]
+    response_types: list[str]
+    token_endpoint_auth_method: TokenEndpointAuthMethod
+    logo_uri: str | None = None
+    client_secret: str | None = None
+    client_secret_expires_at: int | None = None
+
+
+class OAuthRegisterErrorResponse(BaseModel):
+    error: RegistrationErrorCode
+    error_description: str
 
 
 class AccountResponse(BaseModel):
