@@ -6934,11 +6934,6 @@
       "count": 6
     }
   },
-  "web/features/new-rag/space/api-access-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/features/new-rag/space/shell.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 6
