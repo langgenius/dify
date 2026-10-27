@@ -11,7 +11,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.end_user_connections import ConnectionCredentialStatus, OAuthClientSource
 from core.tools.utils.system_encryption import encrypt_system_params
 from models.account import Account, AccountStatus
-from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
+from models.end_user_connection import (
+    AppConnection,
+    EndUserConnection,
+    EndUserConnectionRevisionAcceptance,
+    SessionConnection,
+)
 from models.model import App, EndUser, Site
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
@@ -57,6 +62,11 @@ def test_authorization_persists_encrypted_grant_and_masked_identity_only(harness
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(AppConnection)) == 0
         assert session.scalar(sa.select(sa.func.count()).select_from(SessionConnection)) == 0
+        acceptance = session.scalar(sa.select(EndUserConnectionRevisionAcceptance))
+        assert acceptance is not None
+        assert acceptance.reason == "approved"
+        assert acceptance.source_revision_id is None
+        assert acceptance.account_id == harness.base.context.account_id
     with pytest.raises(ConnectionOAuthError):
         harness.finish(started)
     assert harness.handler.exchanges == 1
@@ -71,6 +81,8 @@ def test_state_and_denial_fail_before_exchange(harness: OAuthHarness, query: byt
     with pytest.raises(ConnectionOAuthError):
         harness.service.complete_oauth(attempt, query_string=query)
     assert harness.handler.exchanges == 0
+    with harness.base.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 0
 
 
 def test_wrong_provider_cannot_route_or_consume_attempt(harness: OAuthHarness) -> None:
@@ -126,6 +138,7 @@ def test_callback_revalidates_context_after_redirect_and_external_io(
         harness.finish(started)
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 0
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 0
 
 
 @pytest.mark.parametrize("operation", ["create", "reauthorize"])

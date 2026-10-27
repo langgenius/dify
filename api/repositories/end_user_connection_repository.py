@@ -9,11 +9,22 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, load_only, sessionmaker
 
-from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, OAuthClientSource
+from constants.end_user_connections import (
+    ConnectionCredentialStatus,
+    ConnectionCredentialType,
+    ConnectionRevisionAcceptanceReason,
+    OAuthClientSource,
+)
 from context.connection_execution import ConnectionExecutionContext
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus
-from models.end_user_connection import AppConnection, EndUserConnection, EndUserConnectionRevision, SessionConnection
+from models.end_user_connection import (
+    AppConnection,
+    EndUserConnection,
+    EndUserConnectionRevision,
+    EndUserConnectionRevisionAcceptance,
+    SessionConnection,
+)
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser
 from models.provider_ids import ToolProviderID
@@ -41,7 +52,11 @@ from services.end_user_connections.oauth import (
     OAuthClientSnapshot,
     StoredOAuthClientConfiguration,
 )
-from services.end_user_connections.revision import AuthorizationRequirementSnapshot, ConnectionContractSnapshot
+from services.end_user_connections.revision import (
+    AuthorizationRequirementSnapshot,
+    ConnectionContractSnapshot,
+    ConnectionRevisionAcceptance,
+)
 from services.end_user_connections.selections import SavedConnectionSelection
 from services.errors.conversation import ConversationNotExistsError
 from services.workflow.tool_credentials import get_tool_authorization_requirements
@@ -97,6 +112,76 @@ class EndUserConnectionRepository:
             if snapshot.tenant_id != tenant_id or snapshot.app_id != app_id or snapshot.fingerprint != row.fingerprint:
                 raise ConnectionRevisionChangedError()
             return snapshot
+
+    def record_revision_acceptances(
+        self, context: WebConnectionContext, acceptances: tuple[ConnectionRevisionAcceptance, ...]
+    ) -> None:
+        """Continue a validated execution's consent without consulting a newer publication."""
+        with self._sessions.begin() as session:
+            self._require_context(session, context, lock=True)
+            for acceptance in acceptances:
+                self._record_revision_acceptance(session, context, acceptance)
+
+    @staticmethod
+    def _record_revision_acceptance(
+        session: Session, context: WebConnectionContext, acceptance: ConnectionRevisionAcceptance
+    ) -> None:
+        """Write under the caller's owner lock and transaction, preserving first provenance."""
+        revisions = {acceptance.revision_id}
+        if acceptance.source_revision_id is not None:
+            revisions.add(acceptance.source_revision_id)
+        scoped = set(
+            session.scalars(
+                sa.select(EndUserConnectionRevision.id).where(
+                    EndUserConnectionRevision.id.in_(revisions),
+                    EndUserConnectionRevision.tenant_id == context.tenant_id,
+                    EndUserConnectionRevision.app_id == context.app_id,
+                )
+            )
+        )
+        if scoped != revisions:
+            raise ConnectionRevisionChangedError()
+        owner = context.owner
+        scope = (
+            EndUserConnectionRevisionAcceptance.tenant_id == context.tenant_id,
+            EndUserConnectionRevisionAcceptance.app_id == context.app_id,
+            EndUserConnectionRevisionAcceptance.account_id == owner.account_id,
+            EndUserConnectionRevisionAcceptance.end_user_id == owner.end_user_id,
+        )
+        existing = set(
+            session.scalars(
+                sa.select(EndUserConnectionRevisionAcceptance.revision_id).where(
+                    *scope, EndUserConnectionRevisionAcceptance.revision_id.in_(revisions)
+                )
+            )
+        )
+        if acceptance.revision_id in existing:
+            return
+        if acceptance.source_revision_id is not None and acceptance.source_revision_id not in existing:
+            # Submitting the older contract supplies the explicit basis for inheritance.
+            session.add(
+                EndUserConnectionRevisionAcceptance(
+                    tenant_id=context.tenant_id,
+                    app_id=context.app_id,
+                    account_id=owner.account_id,
+                    end_user_id=owner.end_user_id,
+                    revision_id=acceptance.source_revision_id,
+                    reason=ConnectionRevisionAcceptanceReason.APPROVED,
+                    source_revision_id=None,
+                )
+            )
+        session.add(
+            EndUserConnectionRevisionAcceptance(
+                tenant_id=context.tenant_id,
+                app_id=context.app_id,
+                account_id=owner.account_id,
+                end_user_id=owner.end_user_id,
+                revision_id=acceptance.revision_id,
+                reason=acceptance.reason,
+                source_revision_id=acceptance.source_revision_id,
+            )
+        )
+        session.flush()
 
     @staticmethod
     def disconnect_oauth_client_connections(
@@ -285,12 +370,20 @@ class EndUserConnectionRepository:
         _, graph = self.preflight_graph(context, workflow_id, None)
         return get_tool_authorization_requirements(graph)
 
-    def validate_preflight_context(
-        self, context: WebConnectionContext, workflow_id: str, conversation_id: str | None
+    def complete_preflight(
+        self,
+        context: WebConnectionContext,
+        workflow_id: str,
+        conversation_id: str | None,
+        *,
+        revision_acceptance: ConnectionRevisionAcceptance | None,
     ) -> None:
-        with self._sessions() as session:
-            app = self._require_context(session, context, lock=False)
+        """Revalidate final identity and persist validated-contract acceptance atomically."""
+        with self._sessions.begin() as session:
+            app = self._require_context(session, context, lock=revision_acceptance is not None)
             self._require_workflow_scope(session, context, app, workflow_id, conversation_id)
+            if revision_acceptance is not None:
+                self._record_revision_acceptance(session, context, revision_acceptance)
 
     def validate_execution_identity(self, context: WebConnectionContext, conversation_id: str | None) -> None:
         with self._sessions() as session:
@@ -540,7 +633,14 @@ class EndUserConnectionRepository:
             return self._stored(row) if row is not None else None
 
     def create_api_key(
-        self, context: WebConnectionContext, *, workflow_id: str, provider: str, name: str, encrypted_credentials: str
+        self,
+        context: WebConnectionContext,
+        *,
+        workflow_id: str,
+        provider: str,
+        name: str,
+        encrypted_credentials: str,
+        revision_acceptance: ConnectionRevisionAcceptance,
     ) -> ConnectionSummary:
         with self._sessions.begin() as session:
             app = self._require_context(session, context, lock=True)
@@ -562,6 +662,7 @@ class EndUserConnectionRepository:
             )
             session.add(row)
             session.flush()
+            self._record_revision_acceptance(session, context, revision_acceptance)
             return self._summary(row)
 
     def update(
@@ -597,6 +698,8 @@ class EndUserConnectionRepository:
                 row = session.scalar(sa.select(EndUserConnection).where(*predicates).with_for_update())
             if row is None:
                 raise ConnectionConflictError()
+            if changes.revision_acceptance is not None:
+                self._record_revision_acceptance(session, context, changes.revision_acceptance)
             return self._stored(row)
 
     def delete(self, context: WebConnectionContext, guard: ConnectionMutationGuard) -> None:
@@ -739,6 +842,7 @@ class EndUserConnectionRepository:
         encrypted_credentials: str,
         expires_at: datetime | None,
         account_label: str | None,
+        revision_acceptance: ConnectionRevisionAcceptance,
     ) -> ConnectionSummary:
         context = attempt.context
         with self._sessions.begin() as session:
@@ -817,6 +921,7 @@ class EndUserConnectionRepository:
                 )
                 if row is None:
                     raise ConnectionConflictError()
+            self._record_revision_acceptance(session, context, revision_acceptance)
             return self._summary(row)
 
     def _guard(

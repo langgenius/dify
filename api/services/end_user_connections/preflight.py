@@ -26,6 +26,7 @@ from services.end_user_connections.errors import (
     ConnectionReauthorizationRequiredError,
 )
 from services.end_user_connections.policy import require_applicable_connection, require_personal_connection_access
+from services.end_user_connections.revision import ConnectionRevisionAcceptance
 from services.end_user_connections.status import resolve_node_connection_state
 
 ConnectionId = Annotated[UUID, Field(strict=False)]
@@ -101,8 +102,13 @@ class PreflightConnections(Protocol):
         self, context: WebConnectionContext, connection_ids: frozenset[str]
     ) -> Mapping[str, ConnectionAccessRecord]: ...
 
-    def validate_preflight_context(
-        self, context: WebConnectionContext, workflow_id: str, conversation_id: str | None
+    def complete_preflight(
+        self,
+        context: WebConnectionContext,
+        workflow_id: str,
+        conversation_id: str | None,
+        *,
+        revision_acceptance: ConnectionRevisionAcceptance | None,
     ) -> None: ...
 
 
@@ -193,7 +199,6 @@ class ConnectionPreflightService:
             latest = current.get(connection_id)
             if latest is None or latest.revision != expected:
                 raise ConnectionConflictError()
-        self._connections.validate_preflight_context(context, workflow_id, conversation_id)
 
         views: list[ConnectionPreflightStatus] = []
         for requirement in requirements:
@@ -234,4 +239,17 @@ class ConnectionPreflightService:
                     check=check,
                 )
             )
-        return ConnectionPreflightView(workflow_id=workflow_id, connection_revision=revision, connections=tuple(views))
+        result = ConnectionPreflightView(
+            workflow_id=workflow_id, connection_revision=revision, connections=tuple(views)
+        )
+        self._connections.complete_preflight(
+            context,
+            workflow_id,
+            conversation_id,
+            revision_acceptance=(
+                ConnectionRevisionAcceptance.from_revisions(command.connection_revision, revision)
+                if requirements
+                else None
+            ),
+        )
+        return result

@@ -472,6 +472,10 @@ def test_plugin_upgrade_invalidates_the_fixed_execution_contract(harness: OAuthH
     with pytest.raises(ToolRuntimeResolutionError, match="requirements changed"):
         loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
     assert len(harness.base.auth.calls) == (0 if phase == "queued" else 1)
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+
+    with harness.base.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 1
 
 
 @pytest.mark.parametrize("oauth", [False, True])
@@ -494,3 +498,47 @@ def test_verified_plugin_upgrade_can_resume_a_fixed_execution(harness: OAuthHarn
 
     assert isinstance(tool, PluginTool)
     assert tool.plugin_unique_identifier == upgraded
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+
+    with harness.base.sessions() as session:
+        inherited = session.scalars(
+            sa.select(EndUserConnectionRevisionAcceptance).where(
+                EndUserConnectionRevisionAcceptance.reason == "inherited"
+            )
+        ).all()
+        assert len(inherited) == 1
+        assert inherited[0].source_revision_id == harness.base.connection_revision
+        assert inherited[0].account_id == harness.base.context.account_id
+
+
+def test_queued_and_inflight_verified_upgrades_record_both_admitted_revisions(harness: OAuthHarness) -> None:
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+
+    connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    loader = runtime(harness, connection.id)
+    source = harness.base.connection_revision
+    queued = "vendor/calendar:2.0.0@" + "b" * 64
+    during_check = "vendor/calendar:3.0.0@" + "c" * 64
+    harness.providers.trusted_artifacts.update({queued, during_check})
+    harness.providers.controller.plugin_unique_identifier = queued
+    harness.base.auth.on_check = lambda: setattr(harness.providers.controller, "plugin_unique_identifier", during_check)
+    handle = loader.get_runtime(
+        node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None
+    )
+    assert loader._tool_from_handle(handle).runtime.connection_id == connection.id
+    with harness.base.sessions() as session:
+        inherited = session.scalars(
+            sa.select(EndUserConnectionRevisionAcceptance).where(
+                EndUserConnectionRevisionAcceptance.reason == "inherited"
+            )
+        ).all()
+        assert len(inherited) == 2
+        artifacts = set()
+        for acceptance in inherited:
+            assert acceptance.source_revision_id == source
+            snapshot = harness.base.repository.get_revision(
+                harness.base.context.tenant_id, harness.base.context.app_id, acceptance.revision_id
+            )
+            assert snapshot is not None
+            artifacts.update(provider.plugin_unique_identifier for provider in snapshot.providers)
+        assert artifacts == {queued, during_check}

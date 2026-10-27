@@ -32,7 +32,7 @@ from services.end_user_connections.policy import (
     require_owned_connection,
     require_personal_connection_access,
 )
-from services.end_user_connections.revision import ConnectionProviderRevisions
+from services.end_user_connections.revision import ConnectionProviderRevisions, ConnectionRevisionAcceptance
 
 
 @dataclass(frozen=True)
@@ -120,6 +120,7 @@ class ConnectionOAuthStore(Protocol):
         encrypted_credentials: str,
         expires_at: datetime | None,
         account_label: str | None,
+        revision_acceptance: ConnectionRevisionAcceptance,
     ) -> ConnectionSummary:
         """Revalidate identity, Client snapshot, graph or revision in one bounded transaction."""
         ...
@@ -288,7 +289,7 @@ class OAuthConnectionService:
         grant = self._gateway.exchange(context, attempt.provider, client, query_string)
         if not grant.credentials:
             raise ConnectionOAuthError()
-        self._revisions.require(context, attempt.provider, revision)
+        admitted = self._revisions.require(context, attempt.provider, revision)
         if attempt.target is not None:
             target = self._targets.resolve(context, attempt.target)
             attempt = replace(attempt, target_workflow_id=target.workflow_id)
@@ -298,6 +299,7 @@ class OAuthConnectionService:
             encrypted_credentials=encrypted,
             expires_at=grant.expires_at,
             account_label=grant.account_label,
+            revision_acceptance=self._revisions.acceptance(context, attempt.provider, revision, admitted),
         )
 
     def _load(self, context: WebConnectionContext, connection_id: str) -> StoredConnection:

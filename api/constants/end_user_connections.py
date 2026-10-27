@@ -34,3 +34,10 @@ class NodeConnectionStatus(StrEnum):
 class OAuthClientSource(StrEnum):
     WORKSPACE = "workspace"
     PLATFORM = "platform"
+
+
+class ConnectionRevisionAcceptanceReason(StrEnum):
+    """Why an owner first accepted an authorization snapshot."""
+
+    APPROVED = "approved"
+    INHERITED = "inherited"

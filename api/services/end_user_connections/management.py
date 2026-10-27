@@ -33,7 +33,7 @@ from services.end_user_connections.policy import (
     require_owned_connection,
     require_personal_connection_access,
 )
-from services.end_user_connections.revision import ConnectionProviderRevisions
+from services.end_user_connections.revision import ConnectionProviderRevisions, ConnectionRevisionAcceptance
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,7 @@ class ConnectionChanges:
     encrypted_credentials: str | None = field(repr=False)
     credential_status: ConnectionCredentialStatus | None
     touch_activity: bool
+    revision_acceptance: ConnectionRevisionAcceptance | None = None
 
 
 class ConnectionStore(Protocol):
@@ -62,7 +63,14 @@ class ConnectionStore(Protocol):
     def find(self, context: WebConnectionContext, connection_id: str) -> StoredConnection | None: ...
 
     def create_api_key(
-        self, context: WebConnectionContext, *, workflow_id: str, provider: str, name: str, encrypted_credentials: str
+        self,
+        context: WebConnectionContext,
+        *,
+        workflow_id: str,
+        provider: str,
+        name: str,
+        encrypted_credentials: str,
+        revision_acceptance: ConnectionRevisionAcceptance,
     ) -> ConnectionSummary: ...
 
     def update(
@@ -166,6 +174,7 @@ class ConnectionService:
             )
         )
         target = self._targets.resolve(context, command)
+        admitted = self._revisions.require(context, target.provider, command.connection_revision)
         ciphertext = self._cipher.encrypt(context.tenant_id, credentials)
         return self._store.create_api_key(
             context,
@@ -173,6 +182,9 @@ class ConnectionService:
             provider=target.provider,
             name=command.name,
             encrypted_credentials=ciphertext,
+            revision_acceptance=self._revisions.acceptance(
+                context, target.provider, command.connection_revision, admitted
+            ),
         )
 
     def update_connection(
@@ -182,6 +194,7 @@ class ConnectionService:
         guard = connection_mutation_guard(context, record.access)
         ciphertext = None
         status = None
+        acceptance = None
         if command.credentials is not None:
             self._require_api_key(record)
             assert command.connection_revision is not None
@@ -200,7 +213,10 @@ class ConnectionService:
                     plugin_unique_identifier=admitted.plugin_unique_identifier,
                 )
             )
-            self._revisions.require(context, record.access.provider, command.connection_revision)
+            admitted = self._revisions.require(context, record.access.provider, command.connection_revision)
+            acceptance = self._revisions.acceptance(
+                context, record.access.provider, command.connection_revision, admitted
+            )
             ciphertext = self._cipher.encrypt(context.tenant_id, credentials)
             status = ConnectionCredentialStatus.CONNECTED
         updated = self._store.update(
@@ -211,6 +227,7 @@ class ConnectionService:
                 encrypted_credentials=ciphertext,
                 credential_status=status,
                 touch_activity=ciphertext is not None,
+                revision_acceptance=acceptance,
             ),
         )
         return updated.summary

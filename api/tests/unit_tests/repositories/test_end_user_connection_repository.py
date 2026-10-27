@@ -87,3 +87,81 @@ def test_snapshot_corruption_cannot_extend_revision_scope(
         )
     with pytest.raises(ConnectionRevisionChangedError):
         repository.get_revision(snapshot.tenant_id, snapshot.app_id, revision)
+
+
+def test_foreign_revision_acceptance_rolls_back_connection_creation(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from models.end_user_connection import EndUserConnection, EndUserConnectionRevisionAcceptance
+    from services.end_user_connections.revision import ConnectionRevisionAcceptance
+    from tests.helpers.end_user_api_key import PROVIDER, make_harness
+
+    harness = make_harness(sqlite_session_factory)
+    context = harness.context
+    foreign = ConnectionContractSnapshot(tenant_id=str(uuid4()), app_id=str(uuid4()), providers=(), requirements=())
+    foreign_id = harness.repository.save_revision(foreign)
+    with pytest.raises(ConnectionRevisionChangedError):
+        harness.repository.create_api_key(
+            context,
+            workflow_id=harness.workflow_id,
+            provider=PROVIDER,
+            name="Rejected acceptance",
+            encrypted_credentials="ciphertext",
+            revision_acceptance=ConnectionRevisionAcceptance.from_revisions(foreign_id, foreign_id),
+        )
+    with sqlite_session_factory() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 0
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 0
+
+
+def test_acceptance_is_separate_for_anonymous_and_account_owners(sqlite_session_factory: sessionmaker[Session]) -> None:
+    from constants.end_user_connections import ConnectionRevisionAcceptanceReason
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+    from models.enums import EndUserType
+    from models.model import EndUser
+    from services.end_user_connections.entities import WebConnectionContext
+    from services.end_user_connections.revision import ConnectionRevisionAcceptance
+    from tests.helpers.end_user_api_key import make_harness
+
+    harness = make_harness(sqlite_session_factory)
+    account = harness.context
+    with sqlite_session_factory.begin() as session:
+        guest = EndUser(
+            tenant_id=account.tenant_id,
+            app_id=account.app_id,
+            type=EndUserType.BROWSER,
+            account_id=None,
+            session_id=str(uuid4()),
+            _is_anonymous=True,
+        )
+        session.add(guest)
+        session.flush()
+        anonymous = WebConnectionContext(account.tenant_id, account.app_id, guest.id, None)
+    original = harness.connection_revision
+    previous = harness.repository.get_revision(account.tenant_id, account.app_id, original)
+    assert previous is not None
+    current = harness.repository.save_revision(
+        previous.model_copy(
+            update={
+                "providers": tuple(
+                    provider.model_copy(update={"plugin_unique_identifier": "calendar:2@verified"})
+                    for provider in previous.providers
+                )
+            }
+        )
+    )
+    for context in (account, anonymous):
+        harness.repository.complete_preflight(
+            context,
+            harness.workflow_id,
+            None,
+            revision_acceptance=ConnectionRevisionAcceptance.from_revisions(original, current),
+        )
+    with sqlite_session_factory() as session:
+        rows = session.scalars(sa.select(EndUserConnectionRevisionAcceptance)).all()
+        assert len(rows) == 4
+        for owner_id in (account.account_id, anonymous.end_user_id):
+            owned = {row.revision_id: row for row in rows if (row.account_id or row.end_user_id) == owner_id}
+            assert owned[original].reason == ConnectionRevisionAcceptanceReason.APPROVED
+            assert owned[current].reason == ConnectionRevisionAcceptanceReason.INHERITED
+            assert owned[current].source_revision_id == original

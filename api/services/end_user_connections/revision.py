@@ -3,11 +3,13 @@
 import hashlib
 import json
 from collections.abc import Mapping
+from dataclasses import dataclass
 from operator import itemgetter
 from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict
 
+from constants.end_user_connections import ConnectionRevisionAcceptanceReason
 from libs.helper import UUIDStr
 from services.end_user_connections.entities import WebConnectionContext
 
@@ -55,6 +57,25 @@ class ConnectionContractSnapshot(BaseModel):
         return hashlib.sha256(self.canonical_json().encode()).hexdigest()
 
 
+@dataclass(frozen=True, slots=True)
+class ConnectionRevisionAcceptance:
+    revision_id: str
+    reason: ConnectionRevisionAcceptanceReason
+    # Only inherited acceptance has a source contract.
+    source_revision_id: str | None
+
+    def __post_init__(self) -> None:
+        inherited = self.reason == ConnectionRevisionAcceptanceReason.INHERITED
+        if inherited != (self.source_revision_id is not None) or self.source_revision_id == self.revision_id:
+            raise ValueError("Invalid revision acceptance provenance.")
+
+    @classmethod
+    def from_revisions(cls, submitted: str, accepted: str) -> "ConnectionRevisionAcceptance":
+        if submitted == accepted:
+            return cls(accepted, ConnectionRevisionAcceptanceReason.APPROVED, None)
+        return cls(accepted, ConnectionRevisionAcceptanceReason.INHERITED, submitted)
+
+
 class ConnectionRevisionSnapshots(Protocol):
     def save_revision(self, snapshot: ConnectionContractSnapshot) -> str: ...
 
@@ -69,6 +90,10 @@ class ConnectionProviderRevisions(Protocol):
     def resolve(self, context: WebConnectionContext, provider: str) -> str: ...
 
     def require(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot: ...
+
+    def acceptance(
+        self, context: WebConnectionContext, provider: str, revision: str, admitted: ProviderContractSnapshot
+    ) -> ConnectionRevisionAcceptance: ...
 
     def reference(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
         """Validate a persisted Provider reference without requiring its current installation."""

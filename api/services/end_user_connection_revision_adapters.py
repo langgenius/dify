@@ -7,6 +7,7 @@ from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionRevisionChangedError
 from services.end_user_connections.revision import (
     ConnectionContractSnapshot,
+    ConnectionRevisionAcceptance,
     ConnectionRevisionSnapshots,
     ProviderContractSnapshot,
 )
@@ -101,6 +102,17 @@ class PluginConnectionProviderRevisions:
         if len(references) != 1:
             raise ConnectionRevisionChangedError()
         return references[0]
+
+    def acceptance(
+        self, context: WebConnectionContext, provider: str, revision: str, admitted: ProviderContractSnapshot
+    ) -> ConnectionRevisionAcceptance:
+        previous = self.reference(context, provider, revision)
+        if admitted.provider != provider:
+            raise ConnectionRevisionChangedError()
+        # A Provider mutation approves only its projection of an App contract.
+        source = self._snapshots.save_revision(self._snapshot(context, previous))
+        current = self._snapshots.save_revision(self._snapshot(context, admitted))
+        return ConnectionRevisionAcceptance.from_revisions(source, current)
 
     def require(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
         previous = self.reference(context, provider, revision)

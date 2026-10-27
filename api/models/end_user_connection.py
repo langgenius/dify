@@ -10,7 +10,12 @@ from datetime import datetime
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
-from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, OAuthClientSource
+from constants.end_user_connections import (
+    ConnectionCredentialStatus,
+    ConnectionCredentialType,
+    ConnectionRevisionAcceptanceReason,
+    OAuthClientSource,
+)
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
@@ -29,6 +34,7 @@ class EndUserConnectionRevision(TypeBase):
 
     __table_args__ = (
         sa.UniqueConstraint("tenant_id", "app_id", "fingerprint", name="end_user_connection_revision_content_key"),
+        sa.UniqueConstraint("id", "tenant_id", "app_id", name="end_user_connection_revision_scope_key"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
@@ -41,6 +47,65 @@ class EndUserConnectionRevision(TypeBase):
         nullable=False,
         default_factory=naive_utc_now,
         server_default=sa.func.current_timestamp(),
+    )
+
+
+class EndUserConnectionRevisionAcceptance(TypeBase):
+    """First acceptance of an authorization contract by one App-scoped owner.
+
+    Preserve the original reason when a later request resubmits an inherited ID.
+    Inherited records refer to the owner's earlier contract, retaining the chain.
+    """
+
+    __tablename__ = "end_user_connection_revision_acceptances"
+    __table_args__ = (
+        sa.CheckConstraint(
+            "(account_id IS NOT NULL AND end_user_id IS NULL) OR (account_id IS NULL AND end_user_id IS NOT NULL)",
+            name=sa.schema.conv("end_user_revision_acceptance_owner_check"),
+        ),
+        sa.CheckConstraint(
+            "(reason = 'approved' AND source_revision_id IS NULL) OR "
+            "(reason = 'inherited' AND source_revision_id IS NOT NULL AND source_revision_id <> revision_id)",
+            name=sa.schema.conv("end_user_revision_acceptance_reason_check"),
+        ),
+        sa.UniqueConstraint(
+            "tenant_id", "app_id", "account_id", "revision_id", name="end_user_revision_acceptance_account_key"
+        ),
+        sa.UniqueConstraint(
+            "tenant_id", "app_id", "end_user_id", "revision_id", name="end_user_revision_acceptance_end_user_key"
+        ),
+        sa.ForeignKeyConstraint(
+            ["revision_id", "tenant_id", "app_id"],
+            [
+                "end_user_connection_revisions.id",
+                "end_user_connection_revisions.tenant_id",
+                "end_user_connection_revisions.app_id",
+            ],
+            name="end_user_revision_acceptance_scope_fkey",
+        ),
+        sa.ForeignKeyConstraint(
+            ["source_revision_id", "tenant_id", "app_id"],
+            [
+                "end_user_connection_revisions.id",
+                "end_user_connection_revisions.tenant_id",
+                "end_user_connection_revisions.app_id",
+            ],
+            name="end_user_revision_acceptance_source_scope_fkey",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    end_user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    revision_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    reason: Mapped[ConnectionRevisionAcceptanceReason] = mapped_column(
+        EnumText(ConnectionRevisionAcceptanceReason), nullable=False
+    )
+    source_revision_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, default_factory=naive_utc_now, server_default=sa.func.current_timestamp()
     )
 
 
