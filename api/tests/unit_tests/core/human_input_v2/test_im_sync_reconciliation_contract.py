@@ -47,7 +47,7 @@ _FORBIDDEN_PUBLIC_FIELD_FRAGMENTS = (
 
 def test_planner_exposes_immutable_composite_plan_values() -> None:
     for value_type in _COMPOSITE_VALUE_TYPES:
-        parameters = value_type.__dataclass_params__
+        parameters = value_type.__dict__["__dataclass_params__"]
         assert parameters.frozen is True
         assert "__slots__" in value_type.__dict__
 

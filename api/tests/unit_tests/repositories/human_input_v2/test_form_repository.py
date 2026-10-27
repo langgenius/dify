@@ -14,6 +14,7 @@ import sqlalchemy as sa
 from pydantic import ValidationError
 from sqlalchemy import event
 from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import ConnectionPoolEntry
 
@@ -166,7 +167,7 @@ def test_all_operations_are_owner_scoped(form_engine: Engine, other_tenant: Tena
         assert repo.list_waiting_forms_for_run(params.workflow_run_id).forms == ()
         # Execution identity is global; an owner mismatch must neither create a
         # duplicate nor expose the existing owner's form.
-        with pytest.raises(sa.exc.NoResultFound):
+        with pytest.raises(NoResultFound):
             repo.create_form(params)
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputForm)) == 1
 

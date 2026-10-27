@@ -19,5 +19,5 @@ def test_change_log_values_are_immutable_and_contain_no_transport_material() -> 
     field_names = {field.name for value_type in _CHANGE_VALUE_TYPES for field in dataclasses.fields(value_type)}
     assert not any(fragment in field_name for field_name in field_names for fragment in _FORBIDDEN_FIELD_FRAGMENTS)
     for value_type in _CHANGE_VALUE_TYPES:
-        assert value_type.__dataclass_params__.frozen is True
+        assert value_type.__dict__["__dataclass_params__"].frozen is True
         assert "__slots__" in value_type.__dict__

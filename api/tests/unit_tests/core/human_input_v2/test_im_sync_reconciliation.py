@@ -430,7 +430,9 @@ def test_planner_output_is_independent_of_fact_order() -> None:
         "contacts": (_contact("contact-2", "two@example.com"), _contact("contact-1", "one@example.com")),
     }
 
-    first = SyncReconciler.generate_plan(_input(**facts))
+    first = SyncReconciler.generate_plan(
+        _input(entries=facts["entries"], identities=facts["identities"], contacts=facts["contacts"])
+    )
     second = SyncReconciler.generate_plan(
         _input(
             entries=tuple(reversed(facts["entries"])),

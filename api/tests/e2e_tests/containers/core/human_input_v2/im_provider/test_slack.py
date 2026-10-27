@@ -11,7 +11,7 @@ from urllib.parse import urlencode
 from uuid import uuid4
 
 import pytest
-from pydantic import ValidationError
+from pydantic import JsonValue, TypeAdapter, ValidationError
 from slack_sdk.signature import SignatureVerifier
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.web import WebClient
@@ -289,6 +289,7 @@ def test_slack_adapter_composes_capabilities_and_decoder_survives_lifecycle(
     consumer = _RecordingConsumer()
     decoder = SlackIMProviderAdapter.card_event_decoder()
     event_stream = slack_adapter.create_stream_handler(consumer)
+    assert event_stream is not None
 
     assert slack_adapter.provider is IMProvider.SLACK
     assert slack_adapter.directory is not None
@@ -362,6 +363,7 @@ def test_slack_credential_test_translates_documented_provider_rejections(
     try:
         invalid_app_result = invalid_app_adapter.test_credentials()
         invalid_app_stream = invalid_app_adapter.create_stream_handler(_RecordingConsumer())
+        assert invalid_app_stream is not None
         with pytest.raises(IMStreamStartError):
             invalid_app_stream.start()
         invalid_app_stream.stop()
@@ -840,7 +842,7 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
             )
         )
 
-    null_input_payload = deepcopy(callback_payload)
+    null_input_payload = TypeAdapter(dict[str, JsonValue]).validate_json(json.dumps(callback_payload))
     null_state = null_input_payload["state"]
     assert isinstance(null_state, dict)
     null_values = null_state["values"]
@@ -937,7 +939,7 @@ def test_slack_card_sender_and_decoder_cross_real_web_api_boundary(
 
     replacement_body = f"Slack card integration completed [{marker}]"
     replacement_error = slack_adapter.dynamic_card_messaging.replace_with_static(
-        message_reference,
+        message_result.locator,
         StaticCardIntent(replacement_body),
     )
     assert replacement_error is None

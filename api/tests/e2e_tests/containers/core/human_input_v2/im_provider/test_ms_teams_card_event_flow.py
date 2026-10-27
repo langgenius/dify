@@ -132,7 +132,7 @@ def test_ms_teams_codec_routes_foreign_and_invalid_transport_events() -> None:
     )
     assert isinstance(decoder.decode(non_card_event), UnrecognizedIMEvent)
 
-    foreign_value_callback = {"type": "message", "value": []}
+    foreign_value_callback: dict[str, object] = {"type": "message", "value": []}
     assert isinstance(decoder.decode(_event(foreign_value_callback)), UnrecognizedIMEvent)
 
     mismatched_type_callback = {

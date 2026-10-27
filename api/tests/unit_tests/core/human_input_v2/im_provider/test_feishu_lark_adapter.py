@@ -1392,7 +1392,6 @@ def test_card_renderer_matches_provider_confirmed_form_contract(
     _, msg_type, content = arguments
     assert isinstance(content, str)
     assert msg_type == "interactive"
-    assert isinstance(content, str)
     assert json.loads(content) == adapter_module._MSFeishuLarkCardCodec().encode(
         intent,
         CorrelationToken("synthetic-correlation-token"),

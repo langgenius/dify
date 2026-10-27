@@ -364,7 +364,8 @@ def test_no_resolved_recipient_rolls_back_form(context: Context) -> None:
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputForm)) == 0
 
 
-def test_recipient_write_failure_rolls_back_whole_initialization(context: Context) -> None:
+@pytest.fixture
+def rejecting_recipient_context(context: Context) -> Context:
     with context.sessions.begin() as session:
         session.execute(
             sa.text(
@@ -373,6 +374,11 @@ def test_recipient_write_failure_rolls_back_whole_initialization(context: Contex
                 "BEGIN SELECT RAISE(ABORT, 'rejected recipient'); END"
             )
         )
+    return context
+
+
+def test_recipient_write_failure_rolls_back_whole_initialization(rejecting_recipient_context: Context) -> None:
+    context = rejecting_recipient_context
     with pytest.raises(IntegrityError):
         context.prepare(_node(OnetimeEmail(email="ok@example.com"), OnetimeEmail(email="reject@example.com")))
     with context.sessions() as session:

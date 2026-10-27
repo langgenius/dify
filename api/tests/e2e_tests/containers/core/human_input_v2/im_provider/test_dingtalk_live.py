@@ -217,7 +217,7 @@ def _read_live_directory_with_forced_pagination(
                     _DEPARTMENT_LIST_URL,
                     access_token=access_token,
                     body={"dept_id": department_id},
-                ),
+                ).body,
                 _WireDepartmentListResponse,
             )
             if department_response.result is None:
@@ -240,7 +240,7 @@ def _read_live_directory_with_forced_pagination(
                             "cursor": cursor,
                             "size": _FORCED_PAGE_SIZE,
                         },
-                    ),
+                    ).body,
                     _WireUserListResponse,
                 )
                 if user_response.result is None:

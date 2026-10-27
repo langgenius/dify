@@ -120,7 +120,6 @@ class _SDKRequestHandler(BaseHTTPRequestHandler):
         self._handle()
 
     @override
-    @override
     def log_message(self, format: str, *args: object) -> None:
         del format, args
 

@@ -327,7 +327,7 @@ def test_retries_preserve_existing_ids_names_sources_and_timestamps(delivery_eng
         connection.execute(
             sa.update(HumanInputRecipient)
             .where(HumanInputRecipient.id == original.id)
-            .values(id=historical_id, updated_at=original.updated_at)
+            .values({HumanInputRecipient.id: historical_id, HumanInputRecipient.updated_at: original.updated_at})
         )
     historical = replace(original, id=historical_id)
     extra = replace(_recipient_params(), subject=EndUserRecipientSubject(str(uuid4())), name=None)

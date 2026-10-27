@@ -13,7 +13,6 @@ from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
 from uuid import UUID
-from warnings import deprecated
 from zoneinfo import available_timezones
 
 from flask import Request, Response, stream_with_context
@@ -662,11 +661,13 @@ class RateLimiter:
                     logger.exception("Failed to release rate limit reservation")
             raise
 
-    @deprecated(
-        "Use acquire() for atomic admission, or retry_after() to query the delay without consuming a slot.",
-        category=None,
-    )
     def is_rate_limited(self, email: str) -> bool:
+        """Legacy non-consuming limit query, retained for existing admission policies.
+
+        New callers should use acquire() for atomic admission or retry_after()
+        for a delay query. Migrating existing callers requires auditing when
+        their events should consume quota.
+        """
         key = self._get_key(email)
         current_time = int(time.time())
         window_start_time = current_time - self.time_window
@@ -714,12 +715,12 @@ class RateLimiter:
             raise ValueError("Invalid Redis rate limit response")
         return remaining
 
-    @deprecated("Use retry_after(); it returns 0 when no delay is required.", category=None)
     def seconds_until_available(self, email: str) -> int:
         """Seconds until the oldest in-window entry expires, freeing a slot.
 
         Defensive floor of 1 second. Caller should only invoke this after
-        is_rate_limited() returned True.
+        is_rate_limited() returned True. New callers should use retry_after(),
+        which returns 0 when no delay is required.
         """
         key = self._get_key(email)
         oldest = cast(Any, self._redis_client).zrange(key, 0, 0, withscores=True)

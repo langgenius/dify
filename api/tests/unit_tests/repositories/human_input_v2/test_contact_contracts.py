@@ -87,11 +87,11 @@ def test_contact_values_are_frozen_slotted_values_with_stable_shapes() -> None:
     assert not hasattr(query, "__dict__")
     assert not hasattr(page, "__dict__")
 
-    with pytest.raises(FrozenInstanceError):
-        contact.name = "Changed"
-    with pytest.raises(FrozenInstanceError):
-        external.email = "changed@example.com"
-    with pytest.raises(FrozenInstanceError):
-        query.keyword = "changed"
-    with pytest.raises(FrozenInstanceError):
-        page.page = 3
+    for value, attribute, replacement in (
+        (contact, "name", "Changed"),
+        (external, "email", "changed@example.com"),
+        (query, "keyword", "changed"),
+        (page, "page", 3),
+    ):
+        with pytest.raises(FrozenInstanceError):
+            setattr(value, attribute, replacement)

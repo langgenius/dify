@@ -1,8 +1,8 @@
 import enum
 import json
 import uuid
+import warnings
 from typing import Any, cast, overload, override
-from warnings import deprecated
 
 import sqlalchemy as sa
 from pydantic import BaseModel, TypeAdapter
@@ -70,10 +70,6 @@ class LongText(TypeDecorator[str | None]):
         return value
 
 
-@deprecated(
-    "JSONModelColumn is a legacy coercing TEXT-backed type. "
-    "Use FrozenPydanticModelColumn for new model-only persistence."
-)
 class JSONModelColumn[T: BaseModel](TypeDecorator[T | None]):
     """Store coercible Pydantic model input as dialect-adjusted LongText JSON.
 
@@ -95,6 +91,13 @@ class JSONModelColumn[T: BaseModel](TypeDecorator[T | None]):
     _model_class: type[T]
 
     def __init__(self, model_class: type[T]):
+        # Existing persisted columns remain supported until their data and callers are audited.
+        warnings.warn(
+            "JSONModelColumn is a legacy coercing TEXT-backed type. "
+            "Use FrozenPydanticModelColumn for new model-only persistence.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if not issubclass(model_class, BaseModel):
             raise TypeError(f"{model_class.__module__}.{model_class.__name__} must be a Pydantic BaseModel subclass")
         self._model_class = model_class

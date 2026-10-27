@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
 from core.workflow.human_input_adapter import (
     DeliveryMethodType,
@@ -58,31 +60,6 @@ class _FailingProvider:
     def send(self, *, context: HumanInputFormDeliveryContext) -> None:
         del context
         raise TimeoutError("provider timed out")
-
-
-class _ScalarResult:
-    def __init__(self, values: list[object]) -> None:
-        self._values = values
-
-    def all(self) -> list[object]:
-        return self._values
-
-
-class _DummySession:
-    def __init__(self, values: list[list[object]]) -> None:
-        self._values = values
-        self.statements: list[object] = []
-        self.closed = False
-
-    def __enter__(self) -> "_DummySession":
-        return self
-
-    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
-        self.closed = True
-
-    def scalars(self, statement: object) -> _ScalarResult:
-        self.statements.append(statement)
-        return _ScalarResult(self._values.pop(0))
 
 
 def _make_form() -> HumanInputForm:
@@ -210,7 +187,7 @@ def test_dispatcher_continues_when_provider_fails(caplog: pytest.LogCaptureFixtu
     assert "method=email" in caplog.text
 
 
-def test_dispatcher_loads_contexts_in_session_and_dispatches_after_session_exit() -> None:
+def test_dispatcher_loads_contexts_in_session_and_dispatches_after_session_exit(sqlite_engine: Engine) -> None:
     provider = _DummyProvider()
     dispatcher = HumanInputFormDeliveryDispatcher(registry=HumanInputFormDeliveryProviderRegistry([provider]))
     form = _make_form()
@@ -219,9 +196,9 @@ def test_dispatcher_loads_contexts_in_session_and_dispatches_after_session_exit(
         payload=EmailExternalRecipientPayload(email="external@example.com").model_dump_json(),
     )
     variable_pool = VariablePool()
-    session = _DummySession([[delivery], [recipient]])
-
-    with session:
+    with Session(sqlite_engine, expire_on_commit=False) as setup, setup.begin():
+        setup.add_all([form, delivery, recipient])
+    with Session(sqlite_engine) as session:
         contexts = dispatcher.load_form_contexts(
             session=session,
             form=form,
@@ -232,10 +209,8 @@ def test_dispatcher_loads_contexts_in_session_and_dispatches_after_session_exit(
 
     dispatcher.dispatch_contexts(contexts)
 
-    assert len(session.statements) == 2
     assert len(provider.contexts) == 1
     context = provider.contexts[0]
-    assert session.closed is True
     assert context.form_id == form.id
     assert context.delivery_id == delivery.id
     assert context.recipients == (_make_recipient_context(recipient=recipient),)
