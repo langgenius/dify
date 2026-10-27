@@ -14,6 +14,7 @@ export { delete3Errors as 'DELETE /agent/{agent_id}/config/files/{name}' } from 
 export { delete3Errors as 'DELETE /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' } from './datasets/errors.gen.ts'
 export { delete3Errors as 'DELETE /knowledge-fs/spaces/{control_space_id}/documents/bulk' } from './knowledge-fs/errors.gen.ts'
 export { delete4Errors as 'DELETE /agent/{agent_id}/config/skills/{name}' } from './agent/errors.gen.ts'
+export { delete4Errors as 'DELETE /apps/{app_id}/annotations' } from './apps/errors.gen.ts'
 export { delete4Errors as 'DELETE /knowledge-fs/spaces/{control_space_id}/documents/{document_id}' } from './knowledge-fs/errors.gen.ts'
 export { delete4Errors as 'DELETE /workspaces/current/members/{member_id}' } from './workspaces/errors.gen.ts'
 export { delete5Errors as 'DELETE /agent/{agent_id}/trace-config' } from './agent/errors.gen.ts'

@@ -16,6 +16,7 @@ import {
   zAppTriggerNotFoundError,
   zAppUnavailableError,
   zAudioTooLargeError,
+  zBadRequestError,
   zBindingFileDownloadUnavailableError,
   zCompletionRequestError,
   zDraftWorkflowNotExistError,
@@ -1556,6 +1557,7 @@ export const delete4 = oc
     }),
   )
   .output(zDeleteAppsByAppIdAnnotationsResponse)
+  .errors({ bad_request: { status: 400, data: zBadRequestError } })
 
 /**
  * Get annotations for an app with pagination
