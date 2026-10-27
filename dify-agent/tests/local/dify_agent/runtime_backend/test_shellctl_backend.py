@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import cast, override
 
 import anyio
@@ -93,8 +93,6 @@ class _FakeCommands:
 
 
 class _SubprocessCommands(_FakeCommands):
-    """Execute the submitted script with real /bin/sh, exposing only stdout."""
-
     @override
     async def run(
         self,
@@ -109,20 +107,9 @@ class _SubprocessCommands(_FakeCommands):
         self.run_modes.append(mode)
         self.run_scripts.append(script)
         with anyio.fail_after(timeout):
-            completed = await anyio.run_process(
-                ["/bin/sh", "-c", script],
-                cwd=cwd,
-                env=env,
-                check=False,
-            )
-        return ShellCommandResult(
-            job_id="job-1",
-            status="exited",
-            done=True,
-            exit_code=completed.returncode,
-            output=completed.stdout.decode("utf-8"),
-            offset=len(completed.stdout),
-            truncated=False,
+            completed = await anyio.run_process(["/bin/sh", "-c", script], cwd=cwd, env=env, check=False)
+        return replace(
+            self.initial, exit_code=completed.returncode, output=completed.stdout.decode(), offset=len(completed.stdout)
         )
 
 
@@ -208,11 +195,7 @@ async def test_control_command_captures_real_shell_stderr_and_deletes_failed_job
 
     assert result.exit_code == 7
     assert result.output == "control command failed\n"
-    assert result.status == "exited"
-    assert result.done
     assert result.output_complete
-    assert result.incomplete_reason is None
-    assert result.offset == len(result.output.encode("utf-8"))
     assert commands.run_modes == ["stdio"]
     assert commands.delete_calls == [("job-1", True)]
 

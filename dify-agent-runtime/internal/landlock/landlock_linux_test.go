@@ -14,22 +14,16 @@ import (
 func TestBuildRulesScopesReferToHomeAndCwd(t *testing.T) {
 	for _, cwdMode := range []string{"separate", "home", "empty"} {
 		t.Run(cwdMode, func(t *testing.T) {
-			root := t.TempDir()
-			home := filepath.Join(root, "home")
-			cwd := filepath.Join(root, "workspace")
-			extra := filepath.Join(root, "shared")
-			readOnly := filepath.Join(root, "read-only")
-			jobDir := filepath.Join(root, "job")
-			for _, path := range []string{home, cwd, extra, readOnly, jobDir} {
-				if err := os.Mkdir(path, 0700); err != nil {
-					t.Fatal(err)
-				}
-			}
-			device := filepath.Join(root, "device")
+			home := t.TempDir()
+			cwd := t.TempDir()
+			extra := t.TempDir()
+			readOnly := t.TempDir()
+			jobDir := t.TempDir()
+			device := filepath.Join(extra, "device")
 			if err := os.WriteFile(device, nil, 0600); err != nil {
 				t.Fatal(err)
 			}
-			missing := filepath.Join(root, "missing")
+			missing := filepath.Join(extra, "missing")
 			referDirs := []string{home}
 			switch cwdMode {
 			case "separate":

@@ -749,156 +749,10 @@ func TestLandlockCannotReadOtherAgentHome(t *testing.T) {
 	}
 }
 
-func TestLandlockReferWithinBindingHomeAndCwd(t *testing.T) {
-	for _, tgt := range targets() {
-		for _, tc := range []struct {
-			name      string
-			descended bool
-		}{
-			{name: "workspace"},
-			{name: "descended", descended: true},
-		} {
-			t.Run(tgt.name+"/"+tc.name, func(t *testing.T) {
-				suffix := fmt.Sprintf("landlock-refer-%s-%s-%d", tgt.name, tc.name, time.Now().UnixNano())
-				homeRoot := "/home/dify/" + suffix
-				workspaceRoot := "/workspace/" + suffix
-				controlEnv := map[string]string{
-					"HOME":                       "/home/dify",
-					"SHELLCTL_LANDLOCK_RW_PATHS": "",
-					"TEST_HOME_ROOT":             homeRoot,
-					"TEST_WORKSPACE_ROOT":        workspaceRoot,
-				}
-				t.Cleanup(func() {
-					cleanup := runJob(t, tgt, map[string]any{
-						"script":  "exec 2>&1\nrm -rf -- \"$TEST_HOME_ROOT\" \"$TEST_WORKSPACE_ROOT\"",
-						"cwd":     "/workspace",
-						"env":     controlEnv,
-						"mode":    "stdio",
-						"timeout": 10,
-					})
-					if cleanup["done"] != true || cleanup["exit_code"] != float64(0) {
-						t.Fatalf("fixture cleanup failed: %#v", cleanup)
-					}
-				})
-				setup := runJob(t, tgt, map[string]any{
-					"script": `exec 2>&1
-python3 <<'PY'
-import os
-from pathlib import Path
-
-home_root = Path(os.environ["TEST_HOME_ROOT"])
-workspace_root = Path(os.environ["TEST_WORKSPACE_ROOT"])
-home_root.mkdir()
-workspace_root.mkdir()
-for name in ("binding-a", "binding-b"):
-    home = home_root / name
-    home.mkdir()
-    (home / "secret").write_text("other-binding-secret")
-for name in ("cwd", "outside"):
-    directory = workspace_root / name
-    directory.mkdir()
-    (directory / "secret").write_text("outside-cwd-secret")
-PY`,
-					"cwd":     "/workspace",
-					"env":     controlEnv,
-					"mode":    "stdio",
-					"timeout": 10,
-				})
-				if setup["done"] != true || setup["exit_code"] != float64(0) {
-					t.Fatalf("fixture setup failed: %#v", setup)
-				}
-
-				cwd := workspaceRoot
-				workDir := workspaceRoot + "/owned"
-				outsideCwd := ""
-				if tc.descended {
-					cwd = workspaceRoot + "/cwd"
-					workDir = cwd + "/owned"
-					outsideCwd = workspaceRoot + "/outside"
-				}
-				for _, binding := range []string{"a", "b"} {
-					t.Run("binding-"+binding, func(t *testing.T) {
-						otherBinding := "a"
-						if binding == "a" {
-							otherBinding = "b"
-						}
-						result := runJob(t, tgt, map[string]any{
-							"script": `exec 2>&1
-python3 <<'PY'
-import errno
-import os
-from pathlib import Path
-
-home = Path(os.environ["HOME"])
-workspace = Path(os.environ["TEST_WORK_DIR"])
-workspace.mkdir(parents=True)
-for root in (home, workspace):
-    (root / "source").mkdir()
-    (root / "target").mkdir()
-    for operation in (os.link, os.rename):
-        source = root / "source" / operation.__name__
-        destination = root / "target" / operation.__name__
-        source.write_text("refer-ok")
-        operation(source, destination)
-        assert destination.read_text() == "refer-ok"
-        if operation is os.link:
-            assert source.stat().st_ino == destination.stat().st_ino
-        else:
-            assert not source.exists()
-
-outside_dirs = [Path(os.environ["TEST_OTHER_HOME"])]
-if os.environ["TEST_OUTSIDE_CWD"]:
-    outside_dirs.append(Path(os.environ["TEST_OUTSIDE_CWD"]))
-for outside in outside_dirs:
-    for name, flags in (("secret", os.O_RDONLY), ("secret", os.O_WRONLY),
-                        ("new-file", os.O_WRONLY | os.O_CREAT | os.O_EXCL)):
-        try:
-            fd = os.open(outside / name, flags, 0o644)
-        except OSError as exc:
-            assert exc.errno == errno.EACCES, (outside, name, flags, exc)
-        else:
-            os.close(fd)
-            raise AssertionError(("outside access allowed", outside, name, flags))
-    for root in (home, workspace):
-        for operation in (os.link, os.rename):
-            source = root / "source" / ("denied-" + operation.__name__)
-            source.write_text("owned")
-            for src, dst in (
-                (source, outside / ("escaped-" + root.name + "-" + operation.__name__)),
-                (outside / "secret", root / "target" / ("imported-" + operation.__name__)),
-            ):
-                try:
-                    operation(src, dst)
-                except OSError as exc:
-                    assert exc.errno in (errno.EACCES, errno.EXDEV), (operation.__name__, src, dst, exc)
-                else:
-                    raise AssertionError(("outside REFER allowed", operation.__name__, src, dst))
-PY`,
-							"cwd": cwd,
-							"env": map[string]string{
-								"HOME":                       homeRoot + "/binding-" + binding,
-								"SHELLCTL_LANDLOCK_RW_PATHS": "",
-								"TEST_OTHER_HOME":            homeRoot + "/binding-" + otherBinding,
-								"TEST_WORK_DIR":              workDir + "/binding-" + binding,
-								"TEST_OUTSIDE_CWD":           outsideCwd,
-							},
-							"mode":    "stdio",
-							"timeout": 10,
-						})
-						if result["done"] != true || result["exit_code"] != float64(0) {
-							t.Fatalf("binding REFER/isolation checks failed: %#v", result)
-						}
-					})
-				}
-			})
-		}
-	}
-}
-
-func TestLandlockExtraRWPathsDoNotGrantRefer(t *testing.T) {
+func TestLandlockReferScopes(t *testing.T) {
 	for _, tgt := range targets() {
 		t.Run(tgt.name, func(t *testing.T) {
-			suffix := fmt.Sprintf("landlock-extra-refer-%s-%d", tgt.name, time.Now().UnixNano())
+			suffix := fmt.Sprintf("landlock-refer-%s-%d", tgt.name, time.Now().UnixNano())
 			homeRoot := "/home/dify/" + suffix
 			workspaceRoot := "/workspace/" + suffix
 			controlEnv := map[string]string{
@@ -915,83 +769,106 @@ func TestLandlockExtraRWPathsDoNotGrantRefer(t *testing.T) {
 					"mode":    "stdio",
 					"timeout": 10,
 				})
-				if cleanup["done"] != true || cleanup["exit_code"] != float64(0) {
-					t.Fatalf("fixture cleanup failed: %#v", cleanup)
-				}
+				assertJobDone(t, cleanup)
+				assertExitCode(t, cleanup, 0)
 			})
 			setup := runJob(t, tgt, map[string]any{
 				"script": `exec 2>&1
-python3 <<'PY'
-import os
-from pathlib import Path
-
-home_root = Path(os.environ["TEST_HOME_ROOT"])
-workspace_root = Path(os.environ["TEST_WORKSPACE_ROOT"])
-home_root.mkdir()
-workspace_root.mkdir()
-(home_root / "binding").mkdir()
-(home_root / "extra").mkdir()
-(workspace_root / "cwd").mkdir()
-(workspace_root / "extra").mkdir()
-PY`,
+set -eu
+mkdir -- "$TEST_HOME_ROOT" "$TEST_WORKSPACE_ROOT"
+mkdir -p -- "$TEST_HOME_ROOT/binding" "$TEST_HOME_ROOT/other-home" \
+    "$TEST_WORKSPACE_ROOT/cwd/nested" "$TEST_WORKSPACE_ROOT/outside-cwd" \
+    "$TEST_WORKSPACE_ROOT/shared/a" "$TEST_WORKSPACE_ROOT/shared/b"
+printf secret > "$TEST_HOME_ROOT/other-home/secret"
+printf secret > "$TEST_WORKSPACE_ROOT/outside-cwd/secret"`,
 				"cwd":     "/workspace",
 				"env":     controlEnv,
 				"mode":    "stdio",
 				"timeout": 10,
 			})
-			if setup["done"] != true || setup["exit_code"] != float64(0) {
+			assertJobDone(t, setup)
+			assertExitCode(t, setup, 0)
+			if t.Failed() {
 				t.Fatalf("fixture setup failed: %#v", setup)
 			}
-
 			result := runJob(t, tgt, map[string]any{
 				"script": `exec 2>&1
 python3 <<'PY'
 import errno
 import os
 from pathlib import Path
+from unittest import TestCase
 
-home = Path(os.environ["HOME"])
-cwd = Path.cwd()
-home_extra = Path(os.environ["TEST_HOME_EXTRA"])
-workspace_extra = Path(os.environ["TEST_WORKSPACE_EXTRA"])
-for extra in (home_extra, workspace_extra):
-    (extra / "source").mkdir()
-    (extra / "target").mkdir()
-    (extra / "ordinary-write").write_text("extra-write-ok")
-    assert (extra / "ordinary-write").read_text() == "extra-write-ok"
-for root, extra in ((home, home_extra), (cwd, workspace_extra)):
-    for index, (source_dir, destination_dir) in enumerate((
-        (extra / "source", extra / "target"),
-        (root, extra / "target"),
-        (extra / "source", root),
-    )):
-        assert source_dir.stat().st_dev == destination_dir.stat().st_dev
+home, cwd = Path(os.environ["HOME"]), Path.cwd()
+home_root = Path(os.environ["TEST_HOME_ROOT"])
+workspace_root = Path(os.environ["TEST_WORKSPACE_ROOT"])
+shared = workspace_root / "shared"
+check = TestCase()
+for root in (home, cwd):
+    (root / "a").mkdir()
+    (root / "b").mkdir()
+    for operation in (os.link, os.rename):
+        source = root / "a" / operation.__name__
+        destination = root / "b" / operation.__name__
+        source.write_text("refer-ok")
+        operation(source, destination)
+        assert destination.read_text() == "refer-ok"
+        if operation is os.link:
+            assert source.stat().st_ino == destination.stat().st_ino
+        else:
+            assert not source.exists()
+
+for outside in (home_root / "other-home", workspace_root / "outside-cwd"):
+    for name, flags in (("secret", os.O_RDONLY), ("secret", os.O_WRONLY),
+                        ("new-file", os.O_WRONLY | os.O_CREAT | os.O_EXCL)):
+        with check.assertRaises(OSError) as error:
+            os.close(os.open(outside / name, flags, 0o644))
+        assert error.exception.errno == errno.EACCES
+    for root in (home, cwd):
         for operation in (os.link, os.rename):
-            name = operation.__name__ + "-" + str(index)
-            source = source_dir / name
-            destination = destination_dir / name
-            source.write_text("extra-write-ok")
-            try:
-                operation(source, destination)
-            except OSError as exc:
-                assert exc.errno == errno.EXDEV, (operation.__name__, source, destination, exc)
-            else:
-                raise AssertionError(("extra REFER allowed", operation.__name__, source, destination))
-            assert source.read_text() == "extra-write-ok"
-            assert not destination.exists()
+            source = root / "a" / ("denied-" + operation.__name__)
+            source.write_text("owned")
+            for src, dst in (
+                (source, outside / ("escaped-" + root.name + "-" + operation.__name__)),
+                (outside / "secret", root / "b" / ("imported-" + operation.__name__)),
+            ):
+                with check.assertRaises(OSError) as error:
+                    operation(src, dst)
+                assert error.exception.errno in (errno.EACCES, errno.EXDEV)
+
+for directory in (shared / "a", shared / "b"):
+    (directory / "ordinary-write").write_text("shared-write-ok")
+    assert (directory / "ordinary-write").read_text() == "shared-write-ok"
+for index, (source_dir, destination_dir) in enumerate((
+    (shared / "a", shared / "b"),
+    (home / "a", shared / "b"), (shared / "a", home / "b"),
+    (cwd / "a", shared / "b"), (shared / "a", cwd / "b"),
+)):
+    assert source_dir.stat().st_dev == destination_dir.stat().st_dev
+    for operation in (os.link, os.rename):
+        name = operation.__name__ + "-" + str(index)
+        source, destination = source_dir / name, destination_dir / name
+        source.write_text("shared-write-ok")
+        with check.assertRaises(OSError) as error:
+            operation(source, destination)
+        assert error.exception.errno == errno.EXDEV
+        assert source.read_text() == "shared-write-ok"
+        assert not destination.exists()
 PY`,
-				"cwd": workspaceRoot + "/cwd",
+				"cwd": workspaceRoot + "/cwd/nested",
 				"env": map[string]string{
 					"HOME":                       homeRoot + "/binding",
-					"SHELLCTL_LANDLOCK_RW_PATHS": homeRoot + "/extra," + workspaceRoot + "/extra",
-					"TEST_HOME_EXTRA":            homeRoot + "/extra",
-					"TEST_WORKSPACE_EXTRA":       workspaceRoot + "/extra",
+					"SHELLCTL_LANDLOCK_RW_PATHS": workspaceRoot + "/shared",
+					"TEST_HOME_ROOT":             homeRoot,
+					"TEST_WORKSPACE_ROOT":        workspaceRoot,
 				},
 				"mode":    "stdio",
 				"timeout": 10,
 			})
-			if result["done"] != true || result["exit_code"] != float64(0) {
-				t.Fatalf("extra RW REFER checks failed: %#v", result)
+			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
+			if t.Failed() {
+				t.Logf("REFER scope checks failed: %#v", result)
 			}
 		})
 	}
