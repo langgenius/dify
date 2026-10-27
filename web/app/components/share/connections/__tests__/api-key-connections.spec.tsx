@@ -1,15 +1,17 @@
 import type { RequiredConnectionService } from '../required-services'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import RequiredServices from '../required-services'
 import ConfigureConnections from './configure-connections-fixture'
+import { credentialSchemas, renderConnectionUi as render } from './credential-schema-fixture'
 
 const service: RequiredConnectionService = {
   id: 'google-search',
   name: 'Google Search',
   description: 'Search the web for relevant information.',
   methods: ['oauth', 'api-key'],
+  credentialSchemas,
   availableConnections: [
     { id: 'invalid-key', name: 'Personal key', method: 'api-key', status: 'invalid' },
     { id: 'backup-key', name: 'Backup key', method: 'api-key', status: 'active' },
@@ -67,7 +69,7 @@ describe('API Key connection management', () => {
     await user.click(save)
     expect(onReplace).toHaveBeenCalledExactlyOnceWith('google-search', 'invalid-key', {
       name: 'Replacement key',
-      apiKey: 'sk-new-api-key',
+      credentials: { api_key: 'sk-new-api-key' },
     })
     await waitFor(() => expect(replacement).not.toBeInTheDocument())
     await waitFor(() => expect(trigger).toHaveFocus())
@@ -113,7 +115,7 @@ describe('API Key connection management', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Google Search' }))
-    const popover = await screen.findByRole('dialog', { name: popoverName })
+    let popover = await screen.findByRole('dialog', { name: popoverName })
     expect(
       within(popover).queryByRole('button', { name: 'share.connections.accounts.addAccount' }),
     ).not.toBeInTheDocument()
@@ -129,7 +131,14 @@ describe('API Key connection management', () => {
       await user.click(
         within(menu).getByRole('menuitem', { name: 'share.connections.apiKeys.remove' }),
       )
+      const confirmation = await screen.findByRole('alertdialog', {
+        name: 'app.endUser.disconnectConnectionTitle',
+      })
+      await user.click(within(confirmation).getByRole('button', { name: 'app.endUser.disconnect' }))
       expect(onRemove).toHaveBeenLastCalledWith('google-search', id)
+      await waitFor(() => expect(confirmation).not.toBeInTheDocument())
+      await user.click(screen.getByRole('button', { name: 'Google Search' }))
+      popover = await screen.findByRole('dialog', { name: popoverName })
     }
     expect(onRemove).toHaveBeenCalledTimes(2)
     expect(onReconnect).not.toHaveBeenCalled()
@@ -152,7 +161,7 @@ describe('API Key connection management', () => {
     await user.click(within(addDialog).getByRole('button', { name: 'common.operation.save' }))
     expect(onConnect).toHaveBeenCalledExactlyOnceWith('google-search', 'api-key', {
       name: 'Search key',
-      apiKey: 'sk-search-secret',
+      credentials: { api_key: 'sk-search-secret' },
     })
   })
 

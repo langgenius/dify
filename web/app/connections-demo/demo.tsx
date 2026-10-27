@@ -8,6 +8,7 @@ import RequiredConnectionSetup from '@/app/components/share/connections/required
 import RequiredConnections from '@/app/components/share/connections/required-connections'
 import SignIn from '@/app/components/share/sign-in'
 import ConfigureConnectionsDemo from './configure-connections-demo'
+import { useDemoCredentialSchemas } from './use-demo-credential-schemas'
 import WorkspaceOAuthDemo from './workspace-oauth-demo'
 
 const demoConnections: readonly RequiredConnection[] = [
@@ -70,6 +71,7 @@ const demoAccountNames: Record<string, string> = {
 }
 
 export default function ConnectionsDemo() {
+  const credentialSchemas = useDemoCredentialSchemas()
   const [services, setServices] = useState(initialServices)
 
   const handleConnect = (
@@ -164,7 +166,7 @@ export default function ConnectionsDemo() {
         <RequiredConnections connections={demoConnections} />
         <hr className="w-full border-0 border-t-2 border-divider-deep" />
         <RequiredConnectionSetup
-          services={services}
+          services={services.map((service) => ({ ...service, credentialSchemas }))}
           onConnect={handleConnect}
           onConnectionChange={handleConnectionChange}
           onReconnect={handleReconnect}

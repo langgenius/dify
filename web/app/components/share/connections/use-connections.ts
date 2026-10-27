@@ -1,17 +1,19 @@
 'use client'
 
 import type { getConnectionData } from './connection-data'
+import type useConnectionActions from './use-connection-actions'
 import { createContext, use } from 'react'
 
-export type ConnectionsState = ReturnType<typeof getConnectionData> & {
-  status: 'inactive' | 'sign-in-required' | 'loading' | 'error' | 'ready'
-  error: Error | null
-  onConnectionChange: (nodeId: string, connectionId: string | null) => void
-  hasMoreConnections: boolean
-  isFetchingMoreConnections: boolean
-  loadMoreConnections: () => void
-  retry: () => void
-}
+export type ConnectionsState = ReturnType<typeof getConnectionData> &
+  ReturnType<typeof useConnectionActions> & {
+    status: 'inactive' | 'sign-in-required' | 'loading' | 'error' | 'ready'
+    error: Error | null
+    onConnectionChange: (nodeId: string, connectionId: string | null) => void
+    hasMoreConnections: boolean
+    isFetchingMoreConnections: boolean
+    loadMoreConnections: () => void
+    retry: () => void
+  }
 
 export const ConnectionsContext = createContext<ConnectionsState | null>(null)
 

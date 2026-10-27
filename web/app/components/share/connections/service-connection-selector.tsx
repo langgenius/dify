@@ -11,16 +11,18 @@ import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgeni
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import { reportClientError } from '@/service/client-error'
 import ApiKeyDialog from './api-key-dialog'
+import RemoveConnectionDialog from './remove-connection-dialog'
 
 export type ConnectionActions = {
-  onReconnect?: (serviceId: string, connectionId: string) => void
+  onReconnect?: (serviceId: string, connectionId: string) => void | Promise<void>
   onReplace?: (
     serviceId: string,
     connectionId: string,
     values: ApiKeyValues,
   ) => void | Promise<void>
-  onRemove?: (serviceId: string, connectionId: string) => void
+  onRemove?: (serviceId: string, connectionId: string) => void | Promise<void>
   onRequestReplace?: (serviceId: string, connectionId: string) => void
   onRequestAddApiKey?: (serviceId: string) => void
 }
@@ -38,6 +40,7 @@ type Props = ConnectionActions & {
     values?: ApiKeyValues,
   ) => void | Promise<void>
   onConnectionChange: (serviceId: string, connectionId: string) => void
+  onRequestRemove?: (connectionId: string) => void
 }
 
 function SelectionMark({ selected }: { selected: boolean }) {
@@ -54,20 +57,26 @@ function AccountActions({
   disabled,
   returnFocus,
   onReconnect,
-  onRemove,
-}: ConnectionActions & {
+  onRequestRemove,
+}: Omit<ConnectionActions, 'onRemove'> & {
   connection: Connection
   serviceId: string
   disabled?: boolean
   returnFocus: RefObject<HTMLButtonElement | null>
+  onRequestRemove?: () => void
 }) {
   const { t } = useTranslation(['share'])
+  const transferringFocusRef = useRef(false)
   const canReconnect =
     !!onReconnect && connection.method !== 'api-key' && connection.status !== 'expired'
-  if (!onRemove && !canReconnect) return null
+  if (!onRequestRemove && !canReconnect) return null
 
   return (
-    <Menu>
+    <Menu
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) transferringFocusRef.current = false
+      }}
+    >
       <MenuTrigger
         render={
           <IconButton
@@ -82,17 +91,33 @@ function AccountActions({
           </IconButton>
         }
       />
-      <MenuContent className="w-50 max-w-(--available-width)" align="end" finalFocus={returnFocus}>
+      <MenuContent
+        className="w-50 max-w-(--available-width)"
+        align="end"
+        finalFocus={() => (transferringFocusRef.current ? false : returnFocus.current)}
+      >
         {canReconnect && (
-          <MenuItem disabled={disabled} onClick={() => onReconnect?.(serviceId, connection.id)}>
+          <MenuItem
+            disabled={disabled}
+            onClick={async () => {
+              try {
+                await onReconnect?.(serviceId, connection.id)
+              } catch (error) {
+                reportClientError(error)
+              }
+            }}
+          >
             {t(($) => $['connections.accounts.reconnect'], { ns: 'share' })}
           </MenuItem>
         )}
-        {onRemove && (
+        {onRequestRemove && (
           <MenuItem
             variant="destructive"
             disabled={disabled}
-            onClick={() => onRemove(serviceId, connection.id)}
+            onClick={() => {
+              transferringFocusRef.current = true
+              onRequestRemove()
+            }}
           >
             {connection.method === 'api-key'
               ? t(($) => $['connections.apiKeys.remove'], { ns: 'share' })
@@ -116,11 +141,15 @@ export default function ServiceConnectionSelector({
   onRequestReplace,
   onRequestAddApiKey,
   onRemove,
+  onRequestRemove,
 }: Props) {
   const { t } = useTranslation(['share'])
   const methodId = useId()
   const selectedNameId = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  const [removal, setRemoval] = useState<Connection | null>(null)
+  const [removeOpen, setRemoveOpen] = useState(false)
   // Opening an editor transfers focus to it instead of restoring the closing popover trigger.
   const skipReturnFocusRef = useRef(false)
   const [editor, setEditor] = useState<
@@ -137,8 +166,10 @@ export default function ServiceConnectionSelector({
   return (
     <>
       <Popover
+        open={open}
         onOpenChange={(nextOpen) => {
           if (nextOpen) skipReturnFocusRef.current = false
+          setOpen(nextOpen)
         }}
       >
         <PopoverTrigger
@@ -242,10 +273,10 @@ export default function ServiceConnectionSelector({
                       {invalid ? (
                         <PopoverClose
                           render={<Button size="small" variant="secondary-accent" />}
-                          disabled={disabled || !onReplace}
+                          disabled={disabled || !onReplace || !service.credentialSchemas?.length}
                           aria-describedby={accountLabelId}
                           onClick={() => {
-                            if (disabled || !onReplace) return
+                            if (disabled || !onReplace || !service.credentialSchemas?.length) return
                             skipReturnFocusRef.current = true
                             if (onRequestReplace) {
                               onRequestReplace(service.id, connection.id)
@@ -263,7 +294,13 @@ export default function ServiceConnectionSelector({
                           variant="secondary-accent"
                           disabled={disabled || !onReconnect}
                           aria-describedby={accountLabelId}
-                          onClick={() => onReconnect?.(service.id, connection.id)}
+                          onClick={async () => {
+                            try {
+                              await onReconnect?.(service.id, connection.id)
+                            } catch (error) {
+                              reportClientError(error)
+                            }
+                          }}
                         >
                           {t(($) => $['connections.accounts.reconnect'], { ns: 'share' })}
                         </Button>
@@ -291,7 +328,20 @@ export default function ServiceConnectionSelector({
                     disabled={disabled}
                     returnFocus={triggerRef}
                     onReconnect={onReconnect}
-                    onRemove={onRemove}
+                    onRequestRemove={
+                      onRemove
+                        ? () => {
+                            skipReturnFocusRef.current = true
+                            setOpen(false)
+                            if (onRequestRemove) {
+                              onRequestRemove(connection.id)
+                              return
+                            }
+                            setRemoval(connection)
+                            setRemoveOpen(true)
+                          }
+                        : undefined
+                    }
                   />
                 </li>
               )
@@ -303,7 +353,13 @@ export default function ServiceConnectionSelector({
                 render={
                   <Button variant="ghost" disabled={disabled} className="justify-start px-2" />
                 }
-                onClick={() => onConnect(service.id, 'oauth')}
+                onClick={async () => {
+                  try {
+                    await onConnect(service.id, 'oauth')
+                  } catch (error) {
+                    reportClientError(error)
+                  }
+                }}
               >
                 <span className="i-ri-add-line size-4" aria-hidden="true" />
                 {t(($) => $['connections.accounts.addAccount'], { ns: 'share' })}
@@ -312,10 +368,14 @@ export default function ServiceConnectionSelector({
             {service.methods.includes('api-key') && (
               <PopoverClose
                 render={
-                  <Button variant="ghost" disabled={disabled} className="justify-start px-2" />
+                  <Button
+                    variant="ghost"
+                    disabled={disabled || !service.credentialSchemas?.length}
+                    className="justify-start px-2"
+                  />
                 }
                 onClick={() => {
-                  if (disabled) return
+                  if (disabled || !service.credentialSchemas?.length) return
                   skipReturnFocusRef.current = true
                   if (onRequestAddApiKey) {
                     onRequestAddApiKey(service.id)
@@ -338,6 +398,7 @@ export default function ServiceConnectionSelector({
           mode={editor.mode}
           connectionName={editor.mode === 'replace' ? editor.connection.name : undefined}
           readmeUrl={service.readmeUrl}
+          credentialSchemas={service.credentialSchemas}
           open={editorOpen}
           onOpenChange={setEditorOpen}
           onCloseComplete={() => setEditor(null)}
@@ -348,6 +409,18 @@ export default function ServiceConnectionSelector({
           }
           finalFocus={triggerRef}
           disabled={disabled || (editor.mode === 'replace' && !onReplace)}
+        />
+      )}
+      {removal && (
+        <RemoveConnectionDialog
+          key={removal.id}
+          name={removal.name}
+          method={removal.method}
+          open={removeOpen}
+          onOpenChange={setRemoveOpen}
+          onConfirm={() => onRemove?.(service.id, removal.id)}
+          finalFocus={triggerRef}
+          disabled={disabled || !onRemove}
         />
       )}
     </>

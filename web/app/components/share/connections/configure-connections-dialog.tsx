@@ -27,6 +27,9 @@ type Props = Omit<
 type ApiKeyEditor = {
   serviceId: string
   readmeUrl?: string
+  credentialSchemas: NonNullable<
+    ComponentProps<typeof RequiredServices>['services'][number]['credentialSchemas']
+  >
 } & ({ mode: 'add' } | { mode: 'replace'; connectionId: string; name: string })
 
 export default function ConfigureConnectionsDialog({
@@ -38,15 +41,18 @@ export default function ConfigureConnectionsDialog({
   onReplace,
   onRemove,
   isResponding = false,
+  isMutating = false,
 }: Props) {
   const { t } = useTranslation(['share', 'common'])
   const [open, setOpen] = useState(false)
   const [apiKeyEditor, setApiKeyEditor] = useState<ApiKeyEditor | null>(null)
   const [apiKeyEditorOpen, setApiKeyEditorOpen] = useState(false)
   const configurationTitleRef = useRef<HTMLHeadingElement>(null)
+  const actionsDisabled = isResponding || isMutating
   const requestReplacement = (serviceId: string, connectionId: string) => {
-    if (isResponding || !onReplace) return
+    if (actionsDisabled || !onReplace) return
     const service = services.find((item) => item.id === serviceId)
+    if (!service?.credentialSchemas?.length) return
     const connection = service?.availableConnections.find((item) => item.id === connectionId)
     if (!connection) return
     setApiKeyEditor({
@@ -55,14 +61,20 @@ export default function ConfigureConnectionsDialog({
       connectionId,
       name: connection.name,
       readmeUrl: service?.readmeUrl,
+      credentialSchemas: service.credentialSchemas,
     })
     setApiKeyEditorOpen(true)
   }
   const requestAddApiKey = (serviceId: string) => {
-    if (isResponding) return
+    if (actionsDisabled) return
     const service = services.find((item) => item.id === serviceId)
-    if (!service?.methods.includes('api-key')) return
-    setApiKeyEditor({ mode: 'add', serviceId, readmeUrl: service.readmeUrl })
+    if (!service?.methods.includes('api-key') || !service.credentialSchemas?.length) return
+    setApiKeyEditor({
+      mode: 'add',
+      serviceId,
+      readmeUrl: service.readmeUrl,
+      credentialSchemas: service.credentialSchemas,
+    })
     setApiKeyEditorOpen(true)
   }
 
@@ -97,6 +109,7 @@ export default function ConfigureConnectionsDialog({
               onConnect={onConnect}
               onConnectionChange={onConnectionChange}
               disabled={isResponding}
+              isMutating={isMutating}
               onReconnect={onReconnect}
               onReplace={onReplace}
               onRequestReplace={requestReplacement}
@@ -112,6 +125,7 @@ export default function ConfigureConnectionsDialog({
           mode={apiKeyEditor.mode}
           connectionName={apiKeyEditor.mode === 'replace' ? apiKeyEditor.name : ''}
           readmeUrl={apiKeyEditor.readmeUrl}
+          credentialSchemas={apiKeyEditor.credentialSchemas}
           open={apiKeyEditorOpen}
           onOpenChange={setApiKeyEditorOpen}
           onCloseComplete={() => setApiKeyEditor(null)}
@@ -121,7 +135,7 @@ export default function ConfigureConnectionsDialog({
               : onReplace?.(apiKeyEditor.serviceId, apiKeyEditor.connectionId, values)
           }
           finalFocus={configurationTitleRef}
-          disabled={isResponding || (apiKeyEditor.mode === 'replace' && !onReplace)}
+          disabled={actionsDisabled || (apiKeyEditor.mode === 'replace' && !onReplace)}
         />
       )}
     </Dialog>

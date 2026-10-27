@@ -13,6 +13,10 @@ export default function RequiredConnectionSetup({
   onReconnect,
   onReplace,
   onRemove,
+  disabled,
+  onRequestReplace,
+  onRequestAddApiKey,
+  isMutating,
   className,
 }: ComponentProps<typeof RequiredServices>) {
   const { t } = useTranslation(['share'])
@@ -37,6 +41,10 @@ export default function RequiredConnectionSetup({
         onReconnect={onReconnect}
         onReplace={onReplace}
         onRemove={onRemove}
+        disabled={disabled}
+        onRequestReplace={onRequestReplace}
+        onRequestAddApiKey={onRequestAddApiKey}
+        isMutating={isMutating}
       />
     </section>
   )

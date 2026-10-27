@@ -3,12 +3,15 @@
 import type { ApiKeyValues } from './api-key-dialog'
 import type { RequiredConnection } from './required-connections'
 import type { ConnectionActions } from './service-connection-selector'
+import type { FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { reportClientError } from '@/service/client-error'
 import ApiKeyDialog from './api-key-dialog'
+import RemoveConnectionDialog from './remove-connection-dialog'
 import ServiceConnectionSelector from './service-connection-selector'
 
 export type ConnectionMethod = 'oauth' | 'api-key'
@@ -16,6 +19,7 @@ export type ConnectionMethod = 'oauth' | 'api-key'
 export type RequiredConnectionService = RequiredConnection & {
   description: string
   readmeUrl?: string
+  credentialSchemas?: FormSchema[]
   availableConnections: readonly {
     id: string
     name: string
@@ -35,6 +39,7 @@ type Props = ConnectionActions & {
   ) => void | Promise<void>
   onConnectionChange: (serviceId: string, connectionId: string) => void
   disabled?: boolean
+  isMutating?: boolean
   className?: string
 }
 
@@ -68,6 +73,10 @@ function ServiceItem({
   const rowRef = useRef<HTMLLIElement>(null)
   const addApiKeyTriggerRef = useRef<HTMLButtonElement>(null)
   const [addApiKeyOpen, setAddApiKeyOpen] = useState(false)
+  const [removal, setRemoval] = useState<
+    RequiredConnectionService['availableConnections'][number] | null
+  >(null)
+  const [removeOpen, setRemoveOpen] = useState(false)
   const canOAuth = service.methods.includes('oauth')
   const canApiKey = service.methods.includes('api-key')
   const selectedConnection = service.availableConnections.find(
@@ -128,6 +137,15 @@ function ServiceItem({
             onRequestReplace={onRequestReplace}
             onRequestAddApiKey={onRequestAddApiKey}
             onRemove={onRemove}
+            onRequestRemove={(connectionId) => {
+              if (disabled || !onRemove) return
+              const connection = service.availableConnections.find(
+                (item) => item.id === connectionId,
+              )
+              if (!connection) return
+              setRemoval(connection)
+              setRemoveOpen(true)
+            }}
           />
         ) : (
           <>
@@ -136,7 +154,13 @@ function ServiceItem({
                 disabled={disabled}
                 variant="secondary-accent"
                 aria-describedby={`${nameId} ${descriptionId}`}
-                onClick={() => onConnect(service.id, 'oauth')}
+                onClick={async () => {
+                  try {
+                    await onConnect(service.id, 'oauth')
+                  } catch (error) {
+                    reportClientError(error)
+                  }
+                }}
               >
                 {t(($) => $['connections.setup.connect'], { ns: 'share' })}
               </Button>
@@ -150,11 +174,11 @@ function ServiceItem({
               <Button
                 ref={addApiKeyTriggerRef}
                 focusableWhenDisabled
-                disabled={disabled}
+                disabled={disabled || !service.credentialSchemas?.length}
                 variant="secondary-accent"
                 aria-describedby={`${nameId} ${descriptionId}`}
                 onClick={() => {
-                  if (disabled) return
+                  if (disabled || !service.credentialSchemas?.length) return
                   if (onRequestAddApiKey) onRequestAddApiKey(service.id)
                   else setAddApiKeyOpen(true)
                 }}
@@ -168,12 +192,27 @@ function ServiceItem({
       <ApiKeyDialog
         mode="add"
         readmeUrl={service.readmeUrl}
+        credentialSchemas={service.credentialSchemas}
         open={addApiKeyOpen}
         onOpenChange={setAddApiKeyOpen}
         onSave={(values) => onConnect(service.id, 'api-key', values)}
         finalFocus={() => addApiKeyTriggerRef.current ?? rowRef.current}
         disabled={disabled}
       />
+      {removal && (
+        <RemoveConnectionDialog
+          key={removal.id}
+          name={removal.name}
+          method={removal.method}
+          open={removeOpen}
+          onOpenChange={setRemoveOpen}
+          onConfirm={() => onRemove?.(service.id, removal.id)}
+          finalFocus={() =>
+            rowRef.current?.querySelector<HTMLElement>('button:not(:disabled)') ?? rowRef.current
+          }
+          disabled={disabled || !onRemove}
+        />
+      )}
     </li>
   )
 }
@@ -189,7 +228,9 @@ export default function RequiredServices({
   onRequestAddApiKey,
   onRemove,
   className,
+  isMutating = false,
 }: Props) {
+  const actionsDisabled = disabled || isMutating
   if (services.length === 0) return null
 
   return (
@@ -200,7 +241,7 @@ export default function RequiredServices({
           service={service}
           onConnect={onConnect}
           onConnectionChange={onConnectionChange}
-          disabled={disabled}
+          disabled={actionsDisabled}
           onReconnect={onReconnect}
           onReplace={onReplace}
           onRequestReplace={onRequestReplace}

@@ -10,6 +10,7 @@ import { useState } from 'react'
 import ConfigureConnectionsButton from '@/app/components/share/connections/configure-connections-button'
 import ConfigureConnectionsDialog from '@/app/components/share/connections/configure-connections-dialog'
 import ManageConnectionButton from '@/app/components/share/connections/manage-connection-button'
+import { useDemoCredentialSchemas } from './use-demo-credential-schemas'
 
 const initialServices: readonly RequiredConnectionService[] = [
   {
@@ -67,6 +68,7 @@ const initialServices: readonly RequiredConnectionService[] = [
 ]
 
 export default function ConfigureConnectionsDemo() {
+  const credentialSchemas = useDemoCredentialSchemas()
   const [services, setServices] = useState(initialServices)
   const [dialogHandle] = useState(() => createDialogHandle())
 
@@ -163,7 +165,7 @@ export default function ConfigureConnectionsDemo() {
       </div>
       <ConfigureConnectionsDialog
         handle={dialogHandle}
-        services={services}
+        services={services.map((service) => ({ ...service, credentialSchemas }))}
         onConnect={handleConnect}
         onConnectionChange={handleConnectionChange}
         onReconnect={handleRestoreConnection}

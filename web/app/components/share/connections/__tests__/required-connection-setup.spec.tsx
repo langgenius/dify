@@ -1,7 +1,8 @@
 import type { RequiredConnectionService } from '../required-services'
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import RequiredConnectionSetup from '../required-connection-setup'
+import { credentialSchemas, renderConnectionUi as render } from './credential-schema-fixture'
 
 const services: readonly RequiredConnectionService[] = [
   {
@@ -10,6 +11,7 @@ const services: readonly RequiredConnectionService[] = [
     description: 'Read messages to draft replies.',
     availableConnections: [],
     methods: ['oauth'],
+    credentialSchemas,
   },
   {
     id: 'notion',
@@ -17,6 +19,7 @@ const services: readonly RequiredConnectionService[] = [
     description: 'Search workspace documentation.',
     availableConnections: [],
     methods: ['api-key'],
+    credentialSchemas,
   },
 ]
 

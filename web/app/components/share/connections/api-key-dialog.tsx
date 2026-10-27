@@ -1,6 +1,8 @@
 'use client'
 
+import type { EndUserConnectionCreatePayload } from '@dify/contracts/api/web/types.gen'
 import type { DialogContentProps } from '@langgenius/dify-ui/dialog'
+import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -11,33 +13,24 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
-import { Form } from '@langgenius/dify-ui/form'
-import { Input } from '@langgenius/dify-ui/input'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { useCallback, useRef, useState } from 'react'
+import { ORPCError } from '@orpc/client'
+import { useForm, useSelector } from '@tanstack/react-form'
+import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AuthForm from '@/app/components/base/form/form-scenarios/auth'
+import { FormTypeEnum } from '@/app/components/base/form/types'
+import { toast } from '@/app/notifications'
+import { isAbortError } from '@/service/client-error'
 
 export type ApiKeyValues = {
   name: string
-  apiKey: string
-}
-
-type Props = {
-  mode: 'add' | 'replace'
-  connectionName?: string
-  readmeUrl?: string
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onCloseComplete?: () => void
-  onSave: (values: ApiKeyValues) => void | Promise<void>
-  finalFocus?: DialogContentProps['finalFocus']
-  disabled?: boolean
+  credentials: EndUserConnectionCreatePayload['credentials']
 }
 
 type ApiKeyFormProps = {
   mode: 'add' | 'replace'
   connectionName?: string
+  credentialSchemas?: FormSchema[]
   readmeUrl?: string
   onSave: (values: ApiKeyValues) => void | Promise<void>
   onClose: () => void
@@ -45,9 +38,19 @@ type ApiKeyFormProps = {
   disabled?: boolean
 }
 
+type Props = Omit<ApiKeyFormProps, 'onClose' | 'onSavingChange'> & {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onCloseComplete?: () => void
+  finalFocus?: DialogContentProps['finalFocus']
+}
+
+const NAME_FIELD = '__connection_name__'
+
 export function ApiKeyForm({
   mode,
   connectionName = '',
+  credentialSchemas,
   readmeUrl,
   onSave,
   onClose,
@@ -55,36 +58,73 @@ export function ApiKeyForm({
   disabled = false,
 }: ApiKeyFormProps) {
   const { t } = useTranslation(['share', 'plugin', 'common'])
-  const [name, setName] = useState(connectionName)
-  const [apiKey, setApiKey] = useState('')
   const [saving, setSaving] = useState(false)
-  const [failed, setFailed] = useState(false)
+  const [credentialsInvalid, setCredentialsInvalid] = useState(false)
   const savingRef = useRef(false)
-  const focusName = useCallback((input: HTMLInputElement | null) => {
-    input?.focus({ preventScroll: true })
-  }, [])
-  const nameLabel = t(($) => $['auth.authorizationName'], { ns: 'plugin' })
-  const apiKeyLabel = t(($) => $['connections.setup.apiKey'], { ns: 'share' })
-  const invalidKeyMessage = t(($) => $['connections.apiKeys.validationError'], { ns: 'share' })
-  const trimmedApiKey = apiKey.trim()
-  // Temporary demo validation until API key verification is available from the API.
-  const validApiKey = trimmedApiKey.startsWith('sk')
-  const invalidApiKey = trimmedApiKey.length > 0 && !validApiKey
-  const requiredMessage = (field: string) =>
-    t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field })
+  const formRef = useRef<FormRefObject>(null)
+  const formId = useId()
+  const formSchemas = useMemo<FormSchema[]>(() => {
+    const requiredName = ({ value }: { value: unknown }) =>
+      typeof value === 'string' && value.trim()
+        ? undefined
+        : t(($) => $['errorMsg.fieldRequired'], {
+            ns: 'common',
+            field: t(($) => $['auth.authorizationName'], { ns: 'plugin' }),
+          })
+    return [
+      {
+        name: NAME_FIELD,
+        type: FormTypeEnum.textInput,
+        label: t(($) => $['auth.authorizationName'], { ns: 'plugin' }),
+        required: true,
+        default: connectionName,
+        validators: { onMount: requiredName, onChange: requiredName, onBlur: requiredName },
+      },
+      ...(credentialSchemas ?? []),
+    ]
+  }, [connectionName, credentialSchemas, t])
+  const defaultValues = useMemo<Record<string, unknown>>(
+    () => Object.fromEntries(formSchemas.map((schema) => [schema.name, schema.default])),
+    [formSchemas],
+  )
+  const form = useForm({ defaultValues })
+  const invalid = useSelector(form.store, (state) =>
+    formSchemas.some((schema) => {
+      const visible =
+        schema.show_on?.every(
+          (condition) => state.values[condition.variable] === condition.value,
+        ) ?? true
+      return visible && !!state.fieldMeta[schema.name]?.errors.length
+    }),
+  )
+  const hasName = useSelector(form.store, (state) => {
+    const name = state.values[NAME_FIELD]
+    return typeof name === 'string' && !!name.trim()
+  })
 
   const save = async () => {
-    if (disabled || savingRef.current || !name.trim() || !validApiKey) return
+    if (disabled || savingRef.current || !credentialSchemas?.length) return
+    const result = formRef.current?.getFormValues({ needCheckValidatedValues: true })
+    if (!result?.isCheckValidated) return
+    const values: Record<string, unknown> = result.values
+    const name = values[NAME_FIELD]
+    if (typeof name !== 'string' || !name.trim()) return
+    const credentials = Object.fromEntries(
+      credentialSchemas.map((schema) => [schema.name, values[schema.name]]),
+    )
     savingRef.current = true
     setSaving(true)
     onSavingChange?.(true)
-    setFailed(false)
+    setCredentialsInvalid(false)
     let saved = false
     try {
-      await onSave({ name: name.trim(), apiKey: trimmedApiKey })
+      await onSave({ name: name.trim(), credentials })
       saved = true
-    } catch {
-      setFailed(true)
+    } catch (error) {
+      if (isAbortError(error)) return
+      if (error instanceof ORPCError && error.code === 'connection_credentials_invalid')
+        setCredentialsInvalid(true)
+      else toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
     } finally {
       savingRef.current = false
       setSaving(false)
@@ -94,7 +134,7 @@ export function ApiKeyForm({
   }
 
   return (
-    <Form className="contents" onFormSubmit={() => void save()}>
+    <>
       <DialogHeader>
         <DialogTitle>
           {mode === 'add'
@@ -118,66 +158,19 @@ export function ApiKeyForm({
             {t(($) => $['readmeInfo.needHelpCheckReadme'], { ns: 'plugin' })}
           </a>
         )}
-        <Field
-          name="name"
-          className="gap-2"
-          validate={(value) =>
-            typeof value === 'string' && value.trim() ? null : requiredMessage(nameLabel)
-          }
-        >
-          <FieldLabel>{nameLabel}</FieldLabel>
-          <Input
-            ref={focusName}
-            value={name}
-            onValueChange={setName}
-            autoComplete="off"
-            disabled={disabled || saving}
-            required
-          />
-          <FieldError>{requiredMessage(nameLabel)}</FieldError>
-        </Field>
-        <Field
-          name="apiKey"
-          className="gap-2"
-          validationMode="onChange"
-          validate={(value) => {
-            const key = typeof value === 'string' ? value.trim() : ''
-            if (!key) return requiredMessage(apiKeyLabel)
-            return key.startsWith('sk') ? null : invalidKeyMessage
-          }}
-        >
-          <FieldLabel>
-            {apiKeyLabel}
-            <span aria-hidden="true" className="ms-1 text-text-destructive-secondary">
-              *
-            </span>
-          </FieldLabel>
-          <InputGroup>
-            <InputGroupInput
-              type="password"
-              value={apiKey}
-              onValueChange={setApiKey}
-              placeholder={t(($) => $['connections.apiKeys.newKeyPlaceholder'], { ns: 'share' })}
-              autoComplete="new-password"
-              spellCheck={false}
-              autoCapitalize="none"
-              disabled={disabled || saving}
-              required
-            />
-            {invalidApiKey && (
-              <InputGroupAddon align="inline-end">
-                <span
-                  aria-hidden="true"
-                  className="i-ri-error-warning-line size-4 text-text-destructive"
-                />
-              </InputGroupAddon>
-            )}
-          </InputGroup>
-          <FieldError className={invalidApiKey ? 'text-text-warning' : undefined} />
-        </Field>
-        {failed && (
+        <AuthForm
+          id={formId}
+          ref={formRef}
+          formFromProps={form}
+          formSchemas={formSchemas}
+          disabled={disabled || saving}
+          preventDefaultSubmit
+          onSubmit={() => void save()}
+          onChange={() => setCredentialsInvalid(false)}
+        />
+        {credentialsInvalid && (
           <p role="alert" className="system-sm-regular text-text-destructive">
-            {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            {t(($) => $['connections.apiKeys.validationError'], { ns: 'share' })}
           </p>
         )}
       </DialogBody>
@@ -187,20 +180,22 @@ export function ApiKeyForm({
         </Button>
         <Button
           type="submit"
+          form={formId}
           variant="primary"
-          disabled={disabled || !name.trim() || !validApiKey}
+          disabled={disabled || !credentialSchemas?.length || !hasName || invalid}
           loading={saving}
         >
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
       </DialogFooter>
-    </Form>
+    </>
   )
 }
 
 export default function ApiKeyDialog({
   mode,
   connectionName,
+  credentialSchemas,
   readmeUrl,
   open,
   onOpenChange,
@@ -210,6 +205,7 @@ export default function ApiKeyDialog({
   disabled,
 }: Props) {
   const savingRef = useRef(false)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   return (
     <Dialog
@@ -222,6 +218,8 @@ export default function ApiKeyDialog({
       }}
     >
       <DialogContent
+        ref={contentRef}
+        initialFocus={() => contentRef.current?.querySelector<HTMLInputElement>('input') ?? false}
         className="w-140"
         finalFocus={finalFocus}
         backdropProps={{ forceRender: true }}
@@ -229,6 +227,7 @@ export default function ApiKeyDialog({
         <ApiKeyForm
           mode={mode}
           connectionName={connectionName}
+          credentialSchemas={credentialSchemas}
           readmeUrl={readmeUrl}
           onSave={onSave}
           onClose={() => onOpenChange(false)}

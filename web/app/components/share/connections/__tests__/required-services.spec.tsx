@@ -1,9 +1,11 @@
 import type { RequiredConnectionService } from '../required-services'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { createDeferred } from '@/test/deferred'
 import RequiredServices from '../required-services'
+import { credentialSchemas, renderConnectionUi as render } from './credential-schema-fixture'
 
 const services: readonly RequiredConnectionService[] = [
   {
@@ -17,6 +19,7 @@ const services: readonly RequiredConnectionService[] = [
     ],
     selectedConnectionId: 'gmail-personal',
     methods: ['oauth'],
+    credentialSchemas,
   },
   {
     id: 'github',
@@ -25,6 +28,7 @@ const services: readonly RequiredConnectionService[] = [
     description: 'Read repositories to answer questions.',
     availableConnections: [],
     methods: ['oauth'],
+    credentialSchemas,
   },
   {
     id: 'notion',
@@ -32,6 +36,7 @@ const services: readonly RequiredConnectionService[] = [
     description: 'Search workspace documentation.',
     availableConnections: [],
     methods: ['api-key'],
+    credentialSchemas,
   },
   {
     id: 'youtube',
@@ -39,10 +44,115 @@ const services: readonly RequiredConnectionService[] = [
     description: 'Find videos related to your questions.',
     availableConnections: [],
     methods: ['oauth', 'api-key'],
+    credentialSchemas,
   },
 ]
 
 describe('RequiredServices', () => {
+  it('closes removal normally and focuses the new Connect action after deleting the final connection', async () => {
+    const user = userEvent.setup()
+    const deletion = createDeferred()
+    const onRemove = vi.fn()
+    function LastConnection() {
+      const [connections, setConnections] = useState<
+        RequiredConnectionService['availableConnections']
+      >([{ id: 'last-account', name: 'research@example.com', method: 'oauth', status: 'active' }])
+      return (
+        <RequiredServices
+          services={[
+            {
+              id: 'source-one',
+              name: 'Research provider',
+              description: 'Read research documents.',
+              methods: ['oauth'],
+              availableConnections: connections,
+              selectedConnectionId: connections[0]?.id,
+            },
+          ]}
+          onConnect={vi.fn()}
+          onConnectionChange={vi.fn()}
+          onRemove={async (sourceId, connectionId) => {
+            onRemove(sourceId, connectionId)
+            await deletion.promise
+            setConnections((current) =>
+              current.filter((connection) => connection.id !== connectionId),
+            )
+          }}
+        />
+      )
+    }
+    render(<LastConnection />)
+    await user.click(screen.getByRole('button', { name: 'Research provider' }))
+    const popover = await screen.findByRole('dialog', {
+      name: 'share.connections.accounts.title:{"provider":"Research provider"}',
+    })
+    await user.click(
+      within(popover).getByRole('button', {
+        name: 'share.connections.accounts.moreActions:{"account":"research@example.com"}',
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'share.connections.accounts.remove' }),
+    )
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: 'app.endUser.disconnectConnectionTitle',
+    })
+    await user.click(within(confirmation).getByRole('button', { name: 'app.endUser.disconnect' }))
+    expect(onRemove).toHaveBeenCalledExactlyOnceWith('source-one', 'last-account')
+    await act(async () => deletion.resolve())
+    await waitFor(() => expect(confirmation).not.toBeInTheDocument())
+    const connect = screen.getByRole('button', { name: 'share.connections.setup.connect' })
+    await waitFor(() => expect(connect).toHaveFocus())
+    expect(screen.queryByRole('button', { name: 'Research provider' })).not.toBeInTheDocument()
+  })
+
+  it('blocks connection operations while a mutation is pending', async () => {
+    const user = userEvent.setup()
+    const onConnect = vi.fn()
+    const onConnectionChange = vi.fn()
+    const props = { services, onConnect, onConnectionChange }
+    render(<RequiredServices {...props} isMutating />)
+    const github = screen.getByRole('listitem', { name: 'GitHub' })
+    const connect = within(github).getByRole('button', { name: 'share.connections.setup.connect' })
+    const selector = screen.getByRole('button', { name: 'Gmail' })
+    expect(connect).toBeDisabled()
+    expect(selector).toHaveAttribute('aria-disabled', 'true')
+    await user.click(connect)
+    await user.click(selector)
+    expect(onConnect).not.toHaveBeenCalled()
+    expect(onConnectionChange).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('keeps OAuth available while disabling API Key creation without its credential schema', async () => {
+    const user = userEvent.setup()
+    const onConnect = vi.fn()
+    render(
+      <RequiredServices
+        services={[
+          {
+            id: 'provider',
+            name: 'Provider',
+            description: 'Read documents.',
+            methods: ['oauth', 'api-key'],
+            availableConnections: [],
+          },
+        ]}
+        onConnect={onConnect}
+        onConnectionChange={vi.fn()}
+      />,
+    )
+    const oauth = screen.getByRole('button', { name: 'share.connections.setup.connect' })
+    const apiKey = screen.getByRole('button', { name: 'share.connections.setup.addApiKey' })
+    expect(oauth).toBeEnabled()
+    expect(apiKey).toHaveAttribute('aria-disabled', 'true')
+    await user.click(apiKey)
+    expect(onConnect).not.toHaveBeenCalled()
+    await user.click(oauth)
+    expect(onConnect).toHaveBeenCalledExactlyOnceWith('provider', 'oauth')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it.each(['cancel', 'escape'] as const)(
     'restores focus to a disabled empty-service Add trigger after %s without allowing activation',
     async (dismissal) => {
@@ -153,7 +263,7 @@ describe('RequiredServices', () => {
     await waitFor(() => expect(confirmed).not.toBeInTheDocument())
     expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key', {
       name: 'Notion key',
-      apiKey: 'sk-new-secret',
+      credentials: { api_key: 'sk-new-secret' },
     })
     expect(screen.getByRole('button', { name: 'Notion' })).toHaveTextContent('Notion key')
     expect(screen.getByRole('button', { name: 'Gmail' })).toHaveTextContent('alex@example.com')
@@ -220,7 +330,7 @@ describe('RequiredServices', () => {
     expect(onConnect.mock.calls).toEqual([
       ['github', 'oauth'],
       ['youtube', 'oauth'],
-      ['notion', 'api-key', { name: 'Notion key', apiKey: 'sk-notion-secret' }],
+      ['notion', 'api-key', { name: 'Notion key', credentials: { api_key: 'sk-notion-secret' } }],
     ])
     expect(onConnectionChange).not.toHaveBeenCalled()
   })

@@ -1,10 +1,11 @@
 import type { RequiredConnectionService } from '../required-services'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { createDeferred } from '@/test/deferred'
 import ConfigureConnections from './configure-connections-fixture'
+import { credentialSchemas, renderConnectionUi as render } from './credential-schema-fixture'
 
 const services: readonly RequiredConnectionService[] = [
   {
@@ -12,6 +13,7 @@ const services: readonly RequiredConnectionService[] = [
     name: 'Gmail',
     description: 'Read messages to draft replies.',
     methods: ['oauth', 'api-key'],
+    credentialSchemas,
     availableConnections: [
       { id: 'gmail-personal', name: 'alex@example.com', method: 'oauth' },
       { id: 'gmail-key', name: 'Personal key', method: 'api-key' },
@@ -23,6 +25,7 @@ const services: readonly RequiredConnectionService[] = [
     name: 'Notion',
     description: 'Search workspace documentation.',
     methods: ['oauth', 'api-key'],
+    credentialSchemas,
     availableConnections: [],
   },
 ]
@@ -32,6 +35,7 @@ const invalidService: RequiredConnectionService = {
   name: 'Google Search',
   description: 'Search the web.',
   methods: ['api-key'],
+  credentialSchemas,
   availableConnections: [{ id: 'key', name: 'Personal key', method: 'api-key', status: 'invalid' }],
   selectedConnectionId: 'key',
 }
@@ -130,7 +134,7 @@ describe('ConfigureConnections', () => {
     await user.click(save)
     expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key', {
       name: 'Shared Notion key',
-      apiKey: 'sk-notion',
+      credentials: { api_key: 'sk-notion' },
     })
     await act(async () => pendingAdd.resolve())
     expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
@@ -170,7 +174,7 @@ describe('ConfigureConnections', () => {
     await user.click(within(replaceForm).getByRole('button', { name: 'common.operation.save' }))
     expect(onReplace).toHaveBeenCalledExactlyOnceWith('search', 'key', {
       name: 'Restored Search key',
-      apiKey: 'sk-search',
+      credentials: { api_key: 'sk-search' },
     })
     expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
       configuredDialog,
@@ -279,7 +283,7 @@ describe('ConfigureConnections', () => {
     expect(resumed).toBe(configuration)
     expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key', {
       name: 'Notion key',
-      apiKey: 'sk-notion-secret',
+      credentials: { api_key: 'sk-notion-secret' },
     })
     expect(within(resumed).getByRole('button', { name: 'Notion' })).toHaveTextContent('Notion key')
     expect(within(resumed).getByRole('button', { name: 'Gmail' })).toHaveTextContent(
@@ -426,7 +430,7 @@ describe('ConfigureConnections', () => {
 
     expect(onReplace).toHaveBeenCalledExactlyOnceWith('search', 'key', {
       name: 'Replacement key',
-      apiKey: 'sk-replacement-key',
+      credentials: { api_key: 'sk-replacement-key' },
     })
     const resumed = await screen.findByRole('dialog', {
       name: 'share.connections.configure.title',
@@ -458,6 +462,7 @@ describe('ConfigureConnections', () => {
       name: id,
       description: 'Connection required by this app.',
       methods: ['oauth', 'api-key'],
+      credentialSchemas,
       availableConnections: [],
       ...overrides,
     })
@@ -615,7 +620,7 @@ describe('ConfigureConnections', () => {
     await user.click(within(addDialog).getByRole('button', { name: 'common.operation.save' }))
     expect(onConnect).toHaveBeenCalledExactlyOnceWith('notion', 'api-key', {
       name: 'Notion key',
-      apiKey: 'sk-notion-secret',
+      credentials: { api_key: 'sk-notion-secret' },
     })
     expect(await screen.findByRole('dialog', { name: 'share.connections.configure.title' })).toBe(
       dialog,
