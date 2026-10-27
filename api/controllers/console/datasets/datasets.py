@@ -471,7 +471,6 @@ class DatasetListApi(Resource):
         )
 
         accessible_dataset_ids: list[str] | None = None
-        include_own_datasets = False
         if dify_config.RBAC_ENABLED:
             whitelist_scope = enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources(
                 str(current_tenant_id),
@@ -489,7 +488,6 @@ class DatasetListApi(Resource):
                 }
             if getattr(whitelist_scope, "unrestricted", False):
                 filtered_dataset_ids = permission_dataset_ids
-                include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
             else:
                 # A restricted dataset whitelist is the highest-priority visibility gate:
                 # default readonly, per-dataset permission overrides, and own-dataset
@@ -504,7 +502,6 @@ class DatasetListApi(Resource):
                 current_tenant_id,
                 user=current_user,
                 accessible_dataset_ids=accessible_dataset_ids,
-                include_own_datasets=include_own_datasets,
                 session=session,
             )
         else:
@@ -518,7 +515,6 @@ class DatasetListApi(Resource):
                 query.tag_ids,
                 query.include_all,
                 accessible_dataset_ids=accessible_dataset_ids,
-                include_own_datasets=include_own_datasets,
             )
 
         permission_keys_map = {}

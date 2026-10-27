@@ -296,11 +296,39 @@ class TestDatasetServiceRetrieval:
                 tenant_id="tenant-1",
                 user=user,
                 accessible_dataset_ids=[accessible.id],
-                include_own_datasets=True,
             )
 
         assert total == 2
         assert {dataset.id for dataset in datasets} == {accessible.id, owned.id}
+
+    def test_get_datasets_maintainer_visible_even_with_empty_accessible_ids(
+        self, config_overrides: Callable[..., None], sqlite_session: Session
+    ) -> None:
+        user = _account(role=TenantAccountRole.NORMAL)
+        owned = _dataset(dataset_id="owned", name="Owned", maintainer=user.id)
+        hidden = _dataset(dataset_id="hidden", name="Hidden", maintainer="other")
+        sqlite_session.add_all([owned, hidden])
+        sqlite_session.commit()
+
+        config_overrides(RBAC_ENABLED=True)
+
+        with (
+            patch(
+                "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
+                return_value=SimpleNamespace(workspace=SimpleNamespace(permission_keys=[])),
+            ),
+        ):
+            datasets, total = DatasetService.get_datasets(
+                page=1,
+                per_page=20,
+                session=sqlite_session,
+                tenant_id="tenant-1",
+                user=user,
+                accessible_dataset_ids=[],
+            )
+
+        assert total == 1
+        assert {dataset.id for dataset in datasets} == {owned.id}
 
     def test_get_datasets_without_user_keeps_only_team_visible_rows(
         self, config_overrides: Callable[..., None], sqlite_session: Session
@@ -337,12 +365,32 @@ class TestDatasetServiceRetrieval:
             "tenant-1",
             user=user,
             accessible_dataset_ids=[accessible.id, "not-requested"],
-            include_own_datasets=True,
             session=sqlite_session,
         )
 
         assert total == 2
         assert {dataset.id for dataset in datasets} == {accessible.id, owned.id}
+
+    def test_get_datasets_by_ids_maintainer_visible_even_with_empty_accessible_ids(
+        self, config_overrides: Callable[..., None], sqlite_session: Session
+    ) -> None:
+        user = _account(role=TenantAccountRole.NORMAL)
+        owned = _dataset(dataset_id="owned", name="Owned", maintainer=user.id)
+        hidden = _dataset(dataset_id="hidden", name="Hidden", maintainer="other")
+        sqlite_session.add_all([owned, hidden])
+        sqlite_session.commit()
+
+        config_overrides(RBAC_ENABLED=True)
+        datasets, total = DatasetService.get_datasets_by_ids(
+            [owned.id, hidden.id],
+            "tenant-1",
+            user=user,
+            accessible_dataset_ids=[],
+            session=sqlite_session,
+        )
+
+        assert total == 1
+        assert {dataset.id for dataset in datasets} == {owned.id}
 
     def test_get_datasets_rbac_without_user_returns_no_rows(
         self, config_overrides: Callable[..., None], sqlite_session: Session

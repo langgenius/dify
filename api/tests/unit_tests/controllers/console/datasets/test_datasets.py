@@ -306,7 +306,6 @@ class TestDatasetList(_UsesSQLiteSession):
             ):
                 method(api, self.session, "tenant-1", current_user)
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == []
-        assert get_datasets.call_args.kwargs["include_own_datasets"] is False
 
     def test_get_default_read_is_unrestricted_when_whitelist_unrestricted(
         self, app: Flask, config_overrides: Callable[..., None]
@@ -359,7 +358,6 @@ class TestDatasetList(_UsesSQLiteSession):
             ):
                 method(api, MagicMock(), "tenant-1", current_user)
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == ["dataset-whitelist-only"]
-        assert get_datasets.call_args.kwargs["include_own_datasets"] is False
 
     def test_get_restricted_whitelist_ignores_dataset_read_overrides(
         self, app: Flask, config_overrides: Callable[..., None]
@@ -401,7 +399,6 @@ class TestDatasetList(_UsesSQLiteSession):
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == [
             "dataset-whitelist-only",
         ]
-        assert get_datasets.call_args.kwargs["include_own_datasets"] is False
 
     def test_get_with_ids_applies_dataset_visibility(self, app: Flask, config_overrides: Callable[..., None]):
         config_overrides(RBAC_ENABLED=True)
@@ -429,7 +426,6 @@ class TestDatasetList(_UsesSQLiteSession):
         assert get_datasets_by_ids.call_args.kwargs == {
             "user": current_user,
             "accessible_dataset_ids": [],
-            "include_own_datasets": False,
             "session": session,
         }
 
