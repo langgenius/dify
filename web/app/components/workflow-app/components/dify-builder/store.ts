@@ -23,6 +23,7 @@ import {
   difyBuilderSessionErrorCodeAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
+  difyBuilderTaskControlAtom,
 } from './session/state'
 import { shouldStartBuildSession } from './utils'
 
@@ -173,9 +174,39 @@ export const difyBuilderInteractionBusyAtom = atom(
   (get) =>
     get(difyBuilderStartFixMutationAtom).isPending ||
     get(difyBuilderSessionBusyAtom) ||
+    get(difyBuilderTaskControlAtom) !== null ||
     (get(difyBuilderRunActiveAtom) && !get(difyBuilderInterruptedAtom)) ||
     get(difyBuilderCanvasRefreshingAtom),
 )
+export const difyBuilderTaskControlOperationAtom = atom((get) => {
+  const control = get(difyBuilderTaskControlAtom)
+  if (control) return control.operation
+  if (get(difyBuilderRunActiveAtom) && !get(difyBuilderInterruptedAtom)) return 'stop'
+  return get(difyBuilderSessionViewAtom)?.run_status === 'paused' ? 'resume' : null
+})
+export const difyBuilderCanControlTaskAtom = atom((get) => {
+  const runtime = get(difyBuilderRuntimeAtom)
+  const control = get(difyBuilderTaskControlAtom)
+  if (!runtime?.enabled || !runtime.canEdit) return false
+  if (control) return control.phase === 'unknown'
+  const view = get(difyBuilderSessionViewAtom)
+  const command = get(difyBuilderActiveCommandAtom)
+  if (get(difyBuilderTaskControlOperationAtom) === 'stop')
+    return Boolean(get(difyBuilderSessionIdAtom) && (view?.version || command?.version))
+  return (
+    view?.run_status === 'paused' &&
+    !view.canvas_read_only &&
+    !get(difyBuilderSessionBusyAtom) &&
+    get(difyBuilderCanvasReadyAtom)
+  )
+})
+export const difyBuilderControlTaskAtom = atom(null, (get) => {
+  const runtime = get(difyBuilderRuntimeAtom)
+  if (!runtime || !get(difyBuilderCanControlTaskAtom)) return Promise.resolve(false)
+  return get(difyBuilderTaskControlOperationAtom) === 'stop'
+    ? runtime.session.stopTask()
+    : runtime.session.resumeTask()
+})
 export const difyBuilderRetryCanvasRefreshAtom = atom(null, (get) => {
   const runtime = get(difyBuilderRuntimeAtom)
   if (!runtime || !get(difyBuilderCanvasRefreshFailedAtom) || get(difyBuilderInteractionBusyAtom))
@@ -404,6 +435,7 @@ export const difyBuilderSubmitActionAtom = atom(
       !runtime?.enabled ||
       !runtime.canEdit ||
       get(difyBuilderSessionBusyAtom) ||
+      get(difyBuilderTaskControlAtom) !== null ||
       (selectedActionId === 'cancel_test' && !nativeCancel) ||
       (!nativeCancel && (get(difyBuilderInteractionBusyAtom) || !get(difyBuilderCanvasReadyAtom)))
     )

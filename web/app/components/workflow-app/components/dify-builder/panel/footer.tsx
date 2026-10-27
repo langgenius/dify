@@ -8,7 +8,7 @@ import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skel
 import DifyBuilderComposer from '../composer'
 import { useBuilderText } from '../copy/use-builder-text'
 import { DifyBuilderInteractionDock } from '../interactions/interaction-dock'
-import { difyBuilderSessionBusyAtom } from '../session/state'
+import { difyBuilderSessionBusyAtom, difyBuilderTaskControlAtom } from '../session/state'
 import {
   difyBuilderActiveInteractionAtom,
   difyBuilderCanvasReadyAtom,
@@ -26,6 +26,7 @@ import {
   difyBuilderRunActiveAtom,
   difyBuilderSessionIdAtom,
   difyBuilderSubmitActionAtom,
+  difyBuilderTaskControlOperationAtom,
   difyBuilderTestExecutionAtom,
   difyBuilderViewVersionAtom,
 } from '../store'
@@ -84,8 +85,10 @@ export const DifyBuilderPanelFooter = ({
   const { locale, renderText } = useBuilderText()
   const { t } = useTranslation(['common', 'difyBuilder', 'workflow'], { lng: locale })
   const testExecution = useAtomValue(difyBuilderTestExecutionAtom)
+  const taskControlOperation = useAtomValue(difyBuilderTaskControlOperationAtom)
   const nativeCancel = useAtomValue(difyBuilderNativeCancelAtom)
   const commandBusy = useAtomValue(difyBuilderSessionBusyAtom)
+  const taskControl = useAtomValue(difyBuilderTaskControlAtom)
   const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
   const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
@@ -108,7 +111,10 @@ export const DifyBuilderPanelFooter = ({
     localInteractionResponse.baseVersion === viewVersion,
   )
   const interactionVisible =
-    interactionPending && !interactionSubmitted && (!runActive || interrupted)
+    interactionPending &&
+    !interactionSubmitted &&
+    (!runActive || interrupted) &&
+    taskControlOperation === null
   const interactionKey = interactionRef
     ? `${sessionId}:${interactionRef.action_id}:${interactionRef.card_seq}`
     : decision
@@ -149,7 +155,7 @@ export const DifyBuilderPanelFooter = ({
           <div className="mx-4 mb-2 flex justify-end">
             <Button
               size="small"
-              disabled={commandBusy}
+              disabled={commandBusy || taskControl !== null}
               onClick={() => {
                 void submitInteraction('cancel_test', nativeCancel.payload ?? {}, {
                   renderText,

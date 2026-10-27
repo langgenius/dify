@@ -16,6 +16,11 @@ export type DifyBuilderRetryableMessage = {
   turnId: string
 }
 
+export type DifyBuilderTaskControl = {
+  operation: 'stop' | 'resume'
+  phase: 'saving' | 'pending' | 'unknown'
+}
+
 export const difyBuilderSessionViewAtom = atom<SessionView | null>(null)
 export const difyBuilderReplyLanguageAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.reply_language ?? '',
@@ -30,6 +35,7 @@ export const difyBuilderLocalUserMessageAtom = atom<DifyBuilderLocalUserMessage 
 export const difyBuilderConversationHasMoreAtom = atom(false)
 export const difyBuilderConversationLoadingAtom = atom(false)
 export const difyBuilderSessionBusyAtom = atom(false)
+export const difyBuilderTaskControlAtom = atom<DifyBuilderTaskControl | null>(null)
 export const difyBuilderSessionLastErrorAtom = atom('')
 export const difyBuilderSessionErrorCodeAtom = atom<BuilderErrorCode | null>(null)
 export const difyBuilderRetryableMessageAtom = atom<DifyBuilderRetryableMessage | null>(null)
@@ -46,6 +52,7 @@ export const difyBuilderSessionScopedAtoms = [
   difyBuilderConversationHasMoreAtom,
   difyBuilderConversationLoadingAtom,
   difyBuilderSessionBusyAtom,
+  difyBuilderTaskControlAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionErrorCodeAtom,
   difyBuilderRetryableMessageAtom,

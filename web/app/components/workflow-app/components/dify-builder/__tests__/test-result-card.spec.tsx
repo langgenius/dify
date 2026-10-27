@@ -103,6 +103,8 @@ const runtime: DifyBuilderRuntime = {
     loadOlderConversation: vi.fn(),
     refresh: vi.fn(),
     restore: vi.fn(),
+    stopTask: vi.fn(),
+    resumeTask: vi.fn(),
     runAction: vi.fn(),
     sendMessage: vi.fn(),
     updateModel: vi.fn(),

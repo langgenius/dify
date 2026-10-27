@@ -1,4 +1,7 @@
-import type { DifyBuilderReceiptSnapshot } from '@dify/contracts/api/console/dify-builder/types.gen'
+import type {
+  DifyBuilderReceiptSnapshot,
+  DifyBuilderTaskControlPayload,
+} from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ChecklistErrorPayload, SessionModel } from '../types'
 import { consoleClient } from '@/service/console'
 
@@ -79,6 +82,17 @@ export const createEditSession = (
 export const getSession = (sessionId: string, signal: AbortSignal) =>
   consoleClient.difyBuilder.sessions.bySessionId.get(
     { params: { session_id: sessionId } },
+    { context: { silent: true }, signal },
+  )
+
+export const controlSessionTask = (
+  sessionId: string,
+  operation: 'stop' | 'resume',
+  body: DifyBuilderTaskControlPayload,
+  signal: AbortSignal,
+) =>
+  consoleClient.difyBuilder.sessions.bySessionId[operation].post(
+    { params: { session_id: sessionId }, body },
     { context: { silent: true }, signal },
   )
 

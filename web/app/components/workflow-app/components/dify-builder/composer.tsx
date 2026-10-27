@@ -1,3 +1,5 @@
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -5,13 +7,17 @@ import TextareaAutosize from 'react-textarea-autosize'
 import { useDifyBuilderInteractionLocale } from './interactions/use-interaction-locale'
 import DifyBuilderModelSelector from './model-selector'
 import { DifyBuilderModelStatus } from './model-status'
-import { difyBuilderSessionErrorCodeAtom } from './session/state'
+import { difyBuilderSessionErrorCodeAtom, difyBuilderTaskControlAtom } from './session/state'
 import {
   difyBuilderCanComposeAtom,
+  difyBuilderCanControlTaskAtom,
   difyBuilderCanSendDraftAtom,
+  difyBuilderCanvasReadyAtom,
+  difyBuilderControlTaskAtom,
   difyBuilderDraftAtom,
   difyBuilderInteractionBusyAtom,
   difyBuilderSendDraftAtom,
+  difyBuilderTaskControlOperationAtom,
 } from './store'
 import { useDifyBuilderModel } from './use-dify-builder-model'
 
@@ -69,20 +75,64 @@ const DifyBuilderPromptInput = ({ descriptionId }: { descriptionId?: string }) =
   )
 }
 
-const DifyBuilderSendButton = ({ hasModel }: { hasModel: boolean }) => {
+const DifyBuilderComposerAction = ({
+  hasModel,
+  descriptionId,
+}: {
+  hasModel: boolean
+  descriptionId?: string
+}) => {
   const locale = useDifyBuilderInteractionLocale()
   const { t } = useTranslation(['difyBuilder'], { lng: locale })
   const canSend = useAtomValue(difyBuilderCanSendDraftAtom) && hasModel
+  const canControl = useAtomValue(difyBuilderCanControlTaskAtom)
+  const operation = useAtomValue(difyBuilderTaskControlOperationAtom)
+  const control = useAtomValue(difyBuilderTaskControlAtom)
+  const controlTask = useSetAtom(difyBuilderControlTaskAtom)
+  const pending = control !== null && control.phase !== 'unknown'
+  const label =
+    operation === 'stop'
+      ? t(($) => $['taskControl.stop'])
+      : operation === 'resume'
+        ? t(($) => $['taskControl.resume'])
+        : t(($) => $.messageSend)
+  const icon = pending
+    ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+    : operation === 'stop'
+      ? 'i-ri-stop-fill'
+      : operation === 'resume'
+        ? 'i-ri-play-fill'
+        : 'i-ri-send-plane-2-fill'
 
   return (
-    <button
-      type="submit"
-      disabled={!canSend}
-      aria-label={t(($) => $.messageSend, { ns: 'difyBuilder' })}
-      className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border-[0.5px] border-components-button-primary-border bg-components-button-primary-bg text-components-button-primary-text outline-hidden hover:border-components-button-primary-border-hover hover:bg-components-button-primary-bg-hover focus-visible:ring-1 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:border-components-button-primary-border-disabled disabled:bg-components-button-primary-bg-disabled disabled:text-components-button-primary-text-disabled"
-    >
-      <span aria-hidden className="i-ri-send-plane-2-fill size-4" />
-    </button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <IconButton
+            type={operation ? 'button' : 'submit'}
+            size="lg"
+            variant="primary"
+            disabled={operation ? !canControl : !canSend}
+            focusableWhenDisabled={pending}
+            aria-label={label}
+            aria-describedby={descriptionId}
+            onClick={
+              operation
+                ? (event) => {
+                    // A fast Resume can turn this same button into Stop before
+                    // the second click of a double-click reaches it.
+                    if (event.detail > 1) return
+                    void controlTask()
+                  }
+                : undefined
+            }
+          >
+            <span aria-hidden className={`${icon} size-4`} />
+          </IconButton>
+        }
+      />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -96,10 +146,38 @@ const DifyBuilderComposer = () => {
   const rejected = useAtomValue(difyBuilderSessionErrorCodeAtom) === 'model_unavailable'
   const statusId = useId()
   const showStatus = !hasModel || rejected
+  const control = useAtomValue(difyBuilderTaskControlAtom)
+  const operation = useAtomValue(difyBuilderTaskControlOperationAtom)
+  const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
+  const controlStatusId = useId()
+  const controlStatus =
+    control?.phase === 'unknown'
+      ? t(($) => $['taskControl.unknown'])
+      : control?.phase === 'saving'
+        ? t(($) => $['taskControl.saving'])
+        : control
+          ? control.operation === 'stop'
+            ? t(($) => $['taskControl.stopping'])
+            : t(($) => $['taskControl.resuming'])
+          : operation === 'stop'
+            ? t(($) => $['taskControl.running'])
+            : operation === 'resume'
+              ? canvasReady
+                ? t(($) => $['taskControl.paused'])
+                : t(($) => $['taskControl.syncing'])
+              : null
+  const descriptionId =
+    [showStatus && statusId, controlStatus && controlStatusId].filter(Boolean).join(' ') ||
+    undefined
 
   return (
     <>
       {showStatus && <DifyBuilderModelStatus {...modelState} id={statusId} rejected={rejected} />}
+      {controlStatus && (
+        <p id={controlStatusId} aria-live="polite" className="sr-only">
+          {controlStatus}
+        </p>
+      )}
       <form
         aria-label={t(($) => $.messagePlaceholder, { ns: 'difyBuilder' })}
         className="mx-4 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px] focus-within:border-components-input-border-active-prompt-1"
@@ -110,10 +188,13 @@ const DifyBuilderComposer = () => {
         }}
       >
         <div className="flex flex-col items-end justify-end p-1.5">
-          <DifyBuilderPromptInput descriptionId={showStatus ? statusId : undefined} />
+          <DifyBuilderPromptInput descriptionId={descriptionId} />
           <div className="flex h-8 w-full shrink-0 items-center justify-between gap-2 ps-1">
             <DifyBuilderModelSelector {...modelState} />
-            <DifyBuilderSendButton hasModel={hasModel} />
+            <DifyBuilderComposerAction
+              hasModel={hasModel}
+              descriptionId={controlStatus ? controlStatusId : undefined}
+            />
           </div>
         </div>
       </form>

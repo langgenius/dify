@@ -154,6 +154,8 @@ const renderPanel = (
       getTrace: vi.fn(() => ({ entries: [], truncated: false })),
       loadOlderConversation: vi.fn(async () => true),
       restore: vi.fn(async () => true),
+      stopTask: vi.fn(async () => true),
+      resumeTask: vi.fn(async () => true),
       reset: mocks.reset,
       runAction: mocks.runAction,
       sendMessage: mocks.sendMessage,

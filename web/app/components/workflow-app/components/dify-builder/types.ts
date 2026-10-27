@@ -97,6 +97,8 @@ export type DifyBuilderSessionController = {
   loadOlderConversation: () => Promise<boolean>
   refresh: () => Promise<boolean>
   restore: (sessionId: string) => Promise<boolean>
+  stopTask: () => Promise<boolean>
+  resumeTask: () => Promise<boolean>
   runAction: (
     actionId: string,
     payload?: Record<string, unknown>,

@@ -39,6 +39,8 @@ const createRuntime = (
     refresh: async () => true,
     reset: vi.fn(),
     restore: async () => true,
+    stopTask: async () => true,
+    resumeTask: async () => true,
     runAction: async () => true,
     sendMessage: async () => true,
     startBuild: async () => true,
