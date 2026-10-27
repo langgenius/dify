@@ -1,0 +1,35 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  sawone-security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Run SawOne Agentic Scanner
+        uses: hackin2minutes-oss/sawone-agentic-action@v1
+        # zizmor: ignore[unpinned-uses]
+        with:
+          severity: HIGH,CRITICAL
+          enforce: false
+          languages: en,ar
+
+      - name: Upload Security Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sawone-agentic-reports
+          path: sawone-agentic-reports/
+          overwrite: true
