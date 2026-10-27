@@ -658,7 +658,8 @@ const RecipientsContent = ({
                 }
                 aria-invalid={emailError}
                 aria-describedby={emailError ? `${nodeId}-recipient-email-error` : undefined}
-                className="h-5 w-0 min-w-4 grow basis-4 rounded-none border-0 bg-transparent px-1 py-0 shadow-none hover:bg-transparent focus:bg-transparent focus:shadow-none"
+                // oxlint-disable-next-line shadcn/no-restyle -- The enclosing recipient editor paints the shared focus ring around its chips and input.
+                className="h-5 w-0 min-w-4 grow basis-4 rounded-none border-0 bg-transparent px-1 py-0 shadow-none hover:bg-transparent focus:bg-transparent focus:shadow-none focus:ring-0"
               />
               {emailDraft.includes('@') && (
                 <Button size="small" onClick={addOneTimeEmail}>
