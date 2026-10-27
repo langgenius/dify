@@ -16,7 +16,12 @@ from dify_app import DifyApp
 from extensions.ext_login import login_manager
 from libs import login
 from libs.login import AccountWithTenant
-from libs.rate_limit import LIMIT_AUTHORIZE_APPROVE, LIMIT_AUTHORIZE_CLIENT_PUBLIC, limiter_prefix
+from libs.rate_limit import (
+    LIMIT_AUTHORIZE_APPROVE,
+    LIMIT_AUTHORIZE_CLIENT_PUBLIC,
+    LIMIT_CLIENT_AUTH_FAILURE,
+    limiter_prefix,
+)
 from models.account import Account, AccountStatus
 from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
 from services.oauth_authorize_service import OAuthAuthorizeService
@@ -31,6 +36,7 @@ from tests.helpers.unit.services.oauth_authorization_code_fakes import (
     CONFIDENTIAL_SECRET,
     ISSUER,
     PUBLIC_ID,
+    PUBLIC_REDIRECT,
     VERIFIER,
     WORKSPACE_ID,
     DictRedis,
@@ -52,6 +58,8 @@ _PREFIX = "/openapi/v1/oauth/authorize"
 _TOKEN = "/openapi/v1/oauth/token"
 QUERY_REDIRECT = "https://app.example/cb?tenant=a%20b"
 DEVICE_CLIENT_ID = "difyctl"
+IP_A = "192.0.2.10"
+IP_B = "198.51.100.20"
 
 
 @dataclass
@@ -184,7 +192,9 @@ def _basic(client_id: str, secret: str) -> dict[str, str]:
     return {"Authorization": "Basic " + base64.b64encode(f"{client_id}:{secret}".encode()).decode()}
 
 
-def _redeem(world: _World, code: str, *, headers: dict[str, str] | None = None, **fields: str) -> TestResponse:
+def _redeem(
+    world: _World, code: str, *, headers: dict[str, str] | None = None, ip: str = IP_A, **fields: str
+) -> TestResponse:
     data = {
         "grant_type": "authorization_code",
         "code": code,
@@ -192,7 +202,7 @@ def _redeem(world: _World, code: str, *, headers: dict[str, str] | None = None, 
         "redirect_uri": CONFIDENTIAL_REDIRECT,
         **fields,
     }
-    return world.app.test_client().post(_TOKEN, data=data, headers=headers or {})
+    return world.app.test_client().post(_TOKEN, data=data, headers=headers or {}, environ_overrides={"REMOTE_ADDR": ip})
 
 
 class TestAuthorizeClientLookupCases:
@@ -410,7 +420,7 @@ class TestAuthorizationCodeTokenCases:
         assert response.headers["WWW-Authenticate"].startswith("Basic")
 
     @staticmethod
-    def test_ten_failures_lock_one_client_id_only(world: _World) -> None:
+    def test_ten_failures_lock_one_client_from_one_ip_only(world: _World) -> None:
         def fail(client_id: str) -> TestResponse:
             return _redeem(world, "any", headers=_basic(client_id, "wrong"))
 
@@ -422,6 +432,10 @@ class TestAuthorizationCodeTokenCases:
         assert locked.get_json() == {"error": "temporarily_unavailable"}
         assert "WWW-Authenticate" not in locked.headers
 
+        code = _approved_code(world, client_id=DEVICE_CLIENT_ID)
+        from_b = _redeem(world, code, headers=_basic(DEVICE_CLIENT_ID, CONFIDENTIAL_SECRET), ip=IP_B)
+        assert from_b.status_code == 200, from_b.get_json()
+
         assert fail("other").status_code == 401
         device_poll = world.app.test_client().post(
             _TOKEN,
@@ -430,7 +444,46 @@ class TestAuthorizationCodeTokenCases:
                 "client_id": DEVICE_CLIENT_ID,
                 "device_code": "device-1",
             },
+            environ_overrides={"REMOTE_ADDR": IP_A},
         )
         assert device_poll.status_code == 200
         assert device_poll.get_json()["access_token"] == "dfoa_device"
         assert world.device.polls == [DEVICE_CLIENT_ID]
+        failure_prefix = limiter_prefix(LIMIT_CLIENT_AUTH_FAILURE)
+        assert {key for key in world.hits.hits if key.startswith(failure_prefix)} == {
+            f"{failure_prefix}:client:{DEVICE_CLIENT_ID}:ip:{IP_A}",
+            f"{failure_prefix}:client:other:ip:{IP_A}",
+        }
+
+    @staticmethod
+    def test_unknown_client_is_401_every_time_and_never_counted(world: _World) -> None:
+        for _ in range(11):
+            response = _redeem(world, "any", headers=_basic("unknown-client", "guess"))
+            assert response.status_code == 401
+            assert response.get_json() == {"error": "invalid_client"}
+
+        assert world.hits.hits == {}
+
+    @staticmethod
+    @pytest.mark.parametrize("credentials", ["form", "basic"])
+    def test_public_client_with_an_empty_secret_is_treated_as_no_secret(world: _World, credentials: str) -> None:
+        code = _approved_code(world, client_id=PUBLIC_ID, redirect_uri=PUBLIC_REDIRECT)
+        if credentials == "form":
+            response = _redeem(world, code, client_id=PUBLIC_ID, client_secret="", redirect_uri=PUBLIC_REDIRECT)
+        else:
+            response = _redeem(world, code, headers=_basic(PUBLIC_ID, ""), redirect_uri=PUBLIC_REDIRECT)
+
+        assert response.status_code == 200, response.get_json()
+        assert response.get_json()["access_token"] == "dfoa_token-1"
+
+    @staticmethod
+    @pytest.mark.parametrize("credentials", ["form", "basic"])
+    def test_confidential_client_with_an_empty_secret_still_fails(world: _World, credentials: str) -> None:
+        code = _approved_code(world)
+        if credentials == "form":
+            response = _redeem(world, code, client_id=CONFIDENTIAL_ID, client_secret="")
+        else:
+            response = _redeem(world, code, headers=_basic(CONFIDENTIAL_ID, ""))
+
+        assert response.status_code == 401
+        assert response.get_json() == {"error": "invalid_client"}

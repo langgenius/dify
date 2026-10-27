@@ -27,6 +27,8 @@ BEARER = "Bearer"
 def _token_request(body: dict[str, str]) -> TokenRequest:
     basic = basic_client_credentials()
     client_id, client_secret = basic or (body.get("client_id"), body.get("client_secret"))
+    # An empty secret (form `client_secret=` or Basic `id:`) means none was sent.
+    client_secret = client_secret or None
     return TokenRequest(
         grant_type=body.get("grant_type", ""),
         client_id=client_id,

@@ -89,7 +89,12 @@ class AuthorizationCodeGrantHandler:
         self._settings = settings
 
     def __call__(self, request: TokenRequest) -> TokenGrantResult:
-        client = authenticate_client(self._clients, client_id=request.client_id, client_secret=request.client_secret)
+        client = authenticate_client(
+            self._clients,
+            client_id=request.client_id,
+            client_secret=request.client_secret,
+            source_ip=request.poll_ip,
+        )
         if GrantType.AUTHORIZATION_CODE not in client.grant_types:
             raise TokenEndpointError(TokenErrorCode.UNAUTHORIZED_CLIENT)
         record = self._redeem(client, request)

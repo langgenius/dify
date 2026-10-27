@@ -65,7 +65,7 @@ LIMIT_AUTHORIZE_APPROVE = RateLimit(
     window=timedelta(hours=1),
     scopes=(RateLimitScope.CONSOLE_ACCOUNT,),
 )
-# Keyed by the caller as ``client:{client_id}``; only failed client authentications count.
+# Keyed by the caller as ``client:{client_id}:ip:{source_ip}``; only wrong secrets of known clients count.
 LIMIT_CLIENT_AUTH_FAILURE = RateLimit(name="client_auth_failure", limit=10, window=timedelta(minutes=15), scopes=())
 LIMIT_ME_PER_ACCOUNT = RateLimit(
     name="me_per_account", limit=60, window=timedelta(minutes=1), scopes=(RateLimitScope.ACCOUNT,)
