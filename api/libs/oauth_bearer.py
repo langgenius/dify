@@ -20,7 +20,7 @@ from werkzeug.exceptions import ServiceUnavailable
 from configs import dify_config
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT, Scope, SubjectType, TokenType
 from libs.rate_limit import enforce_bearer_rate_limit
-from models import OAuthAccessToken
+from models import OpenAPIOAuthAccessToken
 
 logger = logging.getLogger(__name__)
 
@@ -217,8 +217,8 @@ class OAuthAccessTokenResolver:
         replays are idempotent.
         """
         stmt = (
-            update(OAuthAccessToken)
-            .where(OAuthAccessToken.id == row_id, OAuthAccessToken.revoked_at.is_(None))
+            update(OpenAPIOAuthAccessToken)
+            .where(OpenAPIOAuthAccessToken.id == row_id, OpenAPIOAuthAccessToken.revoked_at.is_(None))
             .values(revoked_at=datetime.now(UTC), token_hash=None)
         )
         result = session.execute(stmt)
@@ -281,15 +281,15 @@ class _TokenTypeResolver:
         self._parent.cache_set_positive(token_hash, resolved)
         return resolved
 
-    def _matches_subject(self, row: ResolvedRow | OAuthAccessToken) -> bool:
+    def _matches_subject(self, row: ResolvedRow | OpenAPIOAuthAccessToken) -> bool:
         return (row.account_id is not None) == self._token_type.subject.bound_to_account
 
-    def _load_from_db(self, session: Session, token_hash: str) -> OAuthAccessToken | None:
+    def _load_from_db(self, session: Session, token_hash: str) -> OpenAPIOAuthAccessToken | None:
         return (
-            session.query(OAuthAccessToken)
+            session.query(OpenAPIOAuthAccessToken)
             .filter(
-                OAuthAccessToken.token_hash == token_hash,
-                OAuthAccessToken.revoked_at.is_(None),
+                OpenAPIOAuthAccessToken.token_hash == token_hash,
+                OpenAPIOAuthAccessToken.revoked_at.is_(None),
             )
             .one_or_none()
         )

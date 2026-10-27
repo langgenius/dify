@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_redis import redis_client
 from models.account import Account
-from models.oauth import OAuthAccessToken
+from models.oauth import OpenAPIOAuthAccessToken
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import EnvironmentOAuthDeviceTokenTTLPolicy, OAuthDeviceTokenIssuanceGateway
@@ -153,7 +153,7 @@ def test_concurrent_logins_respect_cap(db_session_with_containers: Session) -> N
     with sessions() as check:
         live = check.scalar(
             select(func.count())
-            .select_from(OAuthAccessToken)
-            .where(OAuthAccessToken.account_id == account.id, OAuthAccessToken.revoked_at.is_(None))
+            .select_from(OpenAPIOAuthAccessToken)
+            .where(OpenAPIOAuthAccessToken.account_id == account.id, OpenAPIOAuthAccessToken.revoked_at.is_(None))
         )
     assert live == max_sessions

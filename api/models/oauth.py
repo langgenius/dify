@@ -92,7 +92,7 @@ class DatasourceOauthTenantParamConfig(TypeBase):
     )
 
 
-class OAuthAccessToken(TypeBase):
+class OpenAPIOAuthAccessToken(TypeBase):
     """Device-flow bearer. account_id NOT NULL ⇒ dfoa_ (Dify account,
     subject_issuer = "dify:account" sentinel); account_id NULL +
     subject_issuer = verified IdP issuer ⇒ dfoe_ (external SSO, EE-only).
@@ -102,7 +102,8 @@ class OAuthAccessToken(TypeBase):
     WHERE revoked_at IS NULL would otherwise fail to rotate in place.
     """
 
-    __tablename__ = "oauth_access_tokens"
+    __tablename__ = "openapi_oauth_access_tokens"
+    # The constraint name predates the table rename (migration e3a7c5d9f182).
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="oauth_access_tokens_pkey"),)
 
     id: Mapped[str] = mapped_column(
@@ -128,11 +129,11 @@ class OAuthAccessToken(TypeBase):
     )
 
 
-class OAuthClient(TypeBase):
-    __tablename__ = "oauth_clients"
+class OpenAPIOAuthClient(TypeBase):
+    __tablename__ = "openapi_oauth_clients"
     __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="oauth_clients_pkey"),
-        sa.Index("uq_oauth_clients_client_id", "client_id", unique=True),
+        sa.PrimaryKeyConstraint("id", name="openapi_oauth_clients_pkey"),
+        sa.Index("uq_openapi_oauth_clients_client_id", "client_id", unique=True),
     )
 
     id: Mapped[str] = mapped_column(
@@ -151,21 +152,21 @@ class OAuthClient(TypeBase):
     )
 
 
-class OAuthRefreshToken(TypeBase):
-    __tablename__ = "oauth_refresh_tokens"
+class OpenAPIOAuthRefreshToken(TypeBase):
+    __tablename__ = "openapi_oauth_refresh_tokens"
     __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="oauth_refresh_tokens_pkey"),
-        sa.Index("uq_oauth_refresh_tokens_token_hash", "token_hash", unique=True),
+        sa.PrimaryKeyConstraint("id", name="openapi_oauth_refresh_tokens_pkey"),
+        sa.Index("uq_openapi_oauth_refresh_tokens_token_hash", "token_hash", unique=True),
         sa.Index(
-            "idx_oauth_refresh_tokens_grant",
+            "idx_openapi_oauth_refresh_tokens_grant",
             "subject_email",
             "subject_issuer",
             "client_id",
             "device_label",
             mysql_length={"subject_email": 191, "subject_issuer": 191, "device_label": 191},
         ),
-        sa.Index("idx_oauth_refresh_tokens_account_id", "account_id"),
-        sa.Index("idx_oauth_refresh_tokens_family_id", "family_id"),
+        sa.Index("idx_openapi_oauth_refresh_tokens_account_id", "account_id"),
+        sa.Index("idx_openapi_oauth_refresh_tokens_family_id", "family_id"),
     )
 
     id: Mapped[str] = mapped_column(

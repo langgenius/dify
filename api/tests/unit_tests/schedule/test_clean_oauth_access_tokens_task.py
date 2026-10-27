@@ -3,15 +3,15 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.oauth import OAuthAccessToken, OAuthRefreshToken
+from models.oauth import OpenAPIOAuthAccessToken, OpenAPIOAuthRefreshToken
 from schedule.clean_oauth_access_tokens_task import clean_oauth_tokens
 
 NOW = datetime(2026, 10, 26, 12, tzinfo=UTC)
 RETENTION = timedelta(days=30)
 
 
-def _refresh(label: str, *, expires_at: datetime, rotated_at: datetime | None = None) -> OAuthRefreshToken:
-    row = OAuthRefreshToken(
+def _refresh(label: str, *, expires_at: datetime, rotated_at: datetime | None = None) -> OpenAPIOAuthRefreshToken:
+    row = OpenAPIOAuthRefreshToken(
         family_id="99999999-9999-9999-9999-999999999999",
         token_hash=f"hash-{label}",
         subject_email="ada@example.com",
@@ -25,8 +25,8 @@ def _refresh(label: str, *, expires_at: datetime, rotated_at: datetime | None = 
     return row
 
 
-def _access(label: str, *, expires_at: datetime, revoked_at: datetime | None = None) -> OAuthAccessToken:
-    return OAuthAccessToken(
+def _access(label: str, *, expires_at: datetime, revoked_at: datetime | None = None) -> OpenAPIOAuthAccessToken:
+    return OpenAPIOAuthAccessToken(
         subject_email="ada@example.com",
         subject_issuer="dify:account",
         account_id="11111111-1111-1111-1111-111111111111",
@@ -41,8 +41,8 @@ def _access(label: str, *, expires_at: datetime, revoked_at: datetime | None = N
 
 def _labels(session: Session) -> tuple[set[str], set[str]]:
     session.expire_all()
-    access = set(session.scalars(select(OAuthAccessToken.device_label)).all())
-    refresh = set(session.scalars(select(OAuthRefreshToken.device_label)).all())
+    access = set(session.scalars(select(OpenAPIOAuthAccessToken.device_label)).all())
+    refresh = set(session.scalars(select(OpenAPIOAuthRefreshToken.device_label)).all())
     return access, refresh
 
 

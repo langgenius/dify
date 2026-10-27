@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from enums.oauth_client import OAuthClientKind
 from models.model import OAuthProviderApp
-from models.oauth import OAuthClient
+from models.oauth import OpenAPIOAuthClient
 from repositories.oauth_client_repository import SQLAlchemyOAuthClientRepository
 from services.oauth_clients import OAuthClientRegistry, ResolvedClient, hash_client_secret
 from services.oauth_token_contracts import GrantType
@@ -25,7 +25,7 @@ class _FixedSource:
 @pytest.fixture
 def engine() -> Iterator[Engine]:
     engine = create_engine("sqlite://")
-    cast(Table, OAuthClient.__table__).create(engine)
+    cast(Table, OpenAPIOAuthClient.__table__).create(engine)
     cast(Table, OAuthProviderApp.__table__).create(engine)
     yield engine
     engine.dispose()
@@ -44,7 +44,7 @@ def _create(
     grant_types: Sequence[str] = (GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN),
     client_secret_hash: str | None = hash_client_secret("s3cret"),
     logo_uri: str | None = None,
-) -> OAuthClient:
+) -> OpenAPIOAuthClient:
     return repository.create(
         client_id="claude-desktop",
         kind=kind,

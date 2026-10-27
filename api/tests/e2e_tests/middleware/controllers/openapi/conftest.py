@@ -16,7 +16,7 @@ from enums import DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models import Account, App, AppMode, OAuthAccessToken, Tenant, TenantAccountJoin, TenantStatus
+from models import Account, App, AppMode, OpenAPIOAuthAccessToken, Tenant, TenantAccountJoin, TenantStatus
 from models.account import AccountStatus
 from models.enums import AppStatus
 
@@ -69,8 +69,8 @@ def app_in_workspace(flask_app: Flask, workspace_account) -> Generator[App]:
 @pytest.fixture
 def mint_token(flask_app: Flask):
     """Factory fixture; tracks minted rows and deletes them on teardown so
-    the auth-related test runs don't accumulate `oauth_access_tokens` rows."""
-    minted: list[OAuthAccessToken] = []
+    the auth-related test runs don't accumulate `openapi_oauth_access_tokens` rows."""
+    minted: list[OpenAPIOAuthAccessToken] = []
 
     def _mint(
         token: str,
@@ -79,9 +79,9 @@ def mint_token(flask_app: Flask):
         prefix: str,
         subject_email: str,
         subject_issuer: str | None,
-    ) -> OAuthAccessToken:
+    ) -> OpenAPIOAuthAccessToken:
         with flask_app.app_context():
-            row = OAuthAccessToken(
+            row = OpenAPIOAuthAccessToken(
                 token_hash=_sha256(token),
                 prefix=prefix,
                 account_id=account_id,

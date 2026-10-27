@@ -22,7 +22,7 @@ from controllers.openapi.auth.subjects import AccountSubject
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, BearerAuthenticator, OAuthAccessTokenResolver, Resolver
 from models import Account
-from models.oauth import OAuthAccessToken
+from models.oauth import OpenAPIOAuthAccessToken
 from services.entities.feature_entities import (
     LicenseStatus,
 )
@@ -177,7 +177,7 @@ class _OneRowSession:
     sqlite fixture — same reason `test_auth_matrix._MemoryResolver` exists.
     """
 
-    def __init__(self, row: OAuthAccessToken) -> None:
+    def __init__(self, row: OpenAPIOAuthAccessToken) -> None:
         self._row = row
         self.updates: list[object] = []
 
@@ -187,7 +187,7 @@ class _OneRowSession:
     def filter(self, *_criteria: object) -> _OneRowSession:
         return self
 
-    def one_or_none(self) -> OAuthAccessToken:
+    def one_or_none(self) -> OpenAPIOAuthAccessToken:
         return self._row
 
     def execute(self, statement: object) -> SimpleNamespace:
@@ -198,9 +198,9 @@ class _OneRowSession:
         return None
 
 
-def _expired_row() -> OAuthAccessToken:
+def _expired_row() -> OpenAPIOAuthAccessToken:
     """Live in every respect but its expiry, so expiry is the only refusal."""
-    row = OAuthAccessToken(
+    row = OpenAPIOAuthAccessToken(
         subject_email="account@example.com",
         client_id="openapi-client",
         device_label="laptop",

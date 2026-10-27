@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from enums.oauth_client import OAuthClientKind
 from models.model import OAuthProviderApp
-from models.oauth import OAuthClient
+from models.oauth import OpenAPIOAuthClient
 from services.oauth_clients import ResolvedClient
 from services.oauth_token_contracts import GrantType
 
@@ -18,7 +18,7 @@ class SQLAlchemyOAuthClientRepository:
 
     def resolve(self, client_id: str) -> ResolvedClient | None:
         with self._session_factory() as session:
-            row = session.scalar(select(OAuthClient).where(OAuthClient.client_id == client_id))
+            row = session.scalar(select(OpenAPIOAuthClient).where(OpenAPIOAuthClient.client_id == client_id))
         if row is None:
             return None
         return ResolvedClient(
@@ -42,8 +42,8 @@ class SQLAlchemyOAuthClientRepository:
         grant_types: Sequence[GrantType],
         client_secret_hash: str | None = None,
         logo_uri: str | None = None,
-    ) -> OAuthClient:
-        row = OAuthClient(
+    ) -> OpenAPIOAuthClient:
+        row = OpenAPIOAuthClient(
             client_id=client_id,
             kind=kind,
             display_name=display_name,

@@ -1,4 +1,4 @@
-"""DELETE oauth_access_tokens past retention, and refresh tokens past expiry.
+"""DELETE openapi_oauth_access_tokens past retention, and refresh tokens past expiry.
 
 Revocation is UPDATE (token_id stays for audits) so access rows accumulate
 across re-logins, and expired-but-never-presented rows have no hard-expire
@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 import app
 from configs import dify_config
 from extensions.ext_database import db
-from models.oauth import OAuthAccessToken, OAuthRefreshToken
+from models.oauth import OpenAPIOAuthAccessToken, OpenAPIOAuthRefreshToken
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class CleanedOAuthTokens:
 
 
 def _delete_in_batches(
-    session: Session, model: type[OAuthAccessToken | OAuthRefreshToken], candidates: ColumnElement[bool]
+    session: Session, model: type[OpenAPIOAuthAccessToken | OpenAPIOAuthRefreshToken], candidates: ColumnElement[bool]
 ) -> int:
     total = 0
     while True:
@@ -51,19 +51,21 @@ def _delete_in_batches(
 def clean_oauth_tokens(session: Session, *, now: datetime, retention: timedelta) -> CleanedOAuthTokens:
     cutoff = now - retention
     access_candidates = or_(
-        OAuthAccessToken.revoked_at < cutoff,
+        OpenAPIOAuthAccessToken.revoked_at < cutoff,
         # Zombies: expired but never re-presented, so middleware never flipped them.
-        (OAuthAccessToken.revoked_at.is_(None)) & (OAuthAccessToken.expires_at < cutoff),
+        (OpenAPIOAuthAccessToken.revoked_at.is_(None)) & (OpenAPIOAuthAccessToken.expires_at < cutoff),
     )
     return CleanedOAuthTokens(
-        access_tokens=_delete_in_batches(session, OAuthAccessToken, access_candidates),
-        refresh_tokens=_delete_in_batches(session, OAuthRefreshToken, OAuthRefreshToken.expires_at <= now),
+        access_tokens=_delete_in_batches(session, OpenAPIOAuthAccessToken, access_candidates),
+        refresh_tokens=_delete_in_batches(
+            session, OpenAPIOAuthRefreshToken, OpenAPIOAuthRefreshToken.expires_at <= now
+        ),
     )
 
 
 @app.celery.task(queue="retention")
 def clean_oauth_access_tokens_task():
-    click.echo(click.style("Start clean oauth_access_tokens.", fg="green"))
+    click.echo(click.style("Start clean openapi_oauth_access_tokens.", fg="green"))
     retention_days = int(dify_config.OAUTH_ACCESS_TOKEN_RETENTION_DAYS)
     start_at = time.perf_counter()
 
@@ -73,7 +75,7 @@ def clean_oauth_access_tokens_task():
     end_at = time.perf_counter()
     click.echo(
         click.style(
-            f"Cleaned {cleaned.access_tokens} oauth_access_tokens rows older than {retention_days}d and "
+            f"Cleaned {cleaned.access_tokens} openapi_oauth_access_tokens rows older than {retention_days}d and "
             f"{cleaned.refresh_tokens} expired oauth_refresh_tokens rows in {end_at - start_at:.2f}s",
             fg="green",
         )

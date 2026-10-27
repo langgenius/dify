@@ -66,7 +66,7 @@ from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, Te
 from models.enums import EndUserType
 from models.model import App, EndUser
 from models.model import AppMode as _auth_matrix_AppMode
-from models.oauth import OAuthAccessToken
+from models.oauth import OpenAPIOAuthAccessToken
 from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.enterprise.enterprise_service import WebAppAccessMode as _requirements_WebAppAccessMode
 from services.entities.feature_entities import (
@@ -2375,7 +2375,7 @@ class TestAuthMatrixCases:
                 token_id=token_id,
                 expires_at=None,
             )
-            row = OAuthAccessToken(
+            row = OpenAPIOAuthAccessToken(
                 token_hash=sha256_hex(raw),
                 prefix=prefix,
                 account_id=account_id,

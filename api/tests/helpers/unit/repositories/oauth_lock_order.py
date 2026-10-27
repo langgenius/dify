@@ -16,7 +16,7 @@ from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.sql import ClauseElement
 
 # Every path takes the account row first, then access rows, then refresh rows.
-LOCK_ORDER = ("accounts", "oauth_access_tokens", "oauth_refresh_tokens")
+LOCK_ORDER = ("accounts", "openapi_oauth_access_tokens", "openapi_oauth_refresh_tokens")
 
 _TARGET_TABLE = re.compile(r"\b(?:FROM|UPDATE)\s+(\w+)")
 

@@ -1,4 +1,4 @@
-"""add oauth_refresh_tokens table
+"""add openapi_oauth_refresh_tokens table
 
 Revision ID: d8f2b6c1e947
 Revises: c7e1a9d4b352
@@ -32,7 +32,7 @@ def upgrade():
         id_kwargs["server_default"] = sa.text("uuidv7()")
 
     op.create_table(
-        "oauth_refresh_tokens",
+        "openapi_oauth_refresh_tokens",
         sa.Column("id", models.types.StringUUID(), **id_kwargs),
         sa.Column("family_id", models.types.StringUUID(), nullable=False),
         sa.Column("token_hash", sa.String(length=64), nullable=False),
@@ -50,25 +50,27 @@ def upgrade():
             server_default=sa.func.current_timestamp(),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id", name="oauth_refresh_tokens_pkey"),
+        sa.PrimaryKeyConstraint("id", name="openapi_oauth_refresh_tokens_pkey"),
     )
-    op.create_index("uq_oauth_refresh_tokens_token_hash", "oauth_refresh_tokens", ["token_hash"], unique=True)
+    op.create_index(
+        "uq_openapi_oauth_refresh_tokens_token_hash", "openapi_oauth_refresh_tokens", ["token_hash"], unique=True
+    )
     # ``mysql_length`` truncates each long text column to 191 chars in the
     # index: (191+191+64+191)*4 = 2548 bytes at utf8mb4, under InnoDB's
     # 3072-byte index limit. Same prefix lengths as ``uq_oauth_active_per_device``.
     op.create_index(
-        "idx_oauth_refresh_tokens_grant",
-        "oauth_refresh_tokens",
+        "idx_openapi_oauth_refresh_tokens_grant",
+        "openapi_oauth_refresh_tokens",
         ["subject_email", "subject_issuer", "client_id", "device_label"],
         mysql_length={"subject_email": 191, "subject_issuer": 191, "device_label": 191},
     )
-    op.create_index("idx_oauth_refresh_tokens_account_id", "oauth_refresh_tokens", ["account_id"])
-    op.create_index("idx_oauth_refresh_tokens_family_id", "oauth_refresh_tokens", ["family_id"])
+    op.create_index("idx_openapi_oauth_refresh_tokens_account_id", "openapi_oauth_refresh_tokens", ["account_id"])
+    op.create_index("idx_openapi_oauth_refresh_tokens_family_id", "openapi_oauth_refresh_tokens", ["family_id"])
 
 
 def downgrade():
-    op.drop_index("idx_oauth_refresh_tokens_family_id", table_name="oauth_refresh_tokens")
-    op.drop_index("idx_oauth_refresh_tokens_account_id", table_name="oauth_refresh_tokens")
-    op.drop_index("idx_oauth_refresh_tokens_grant", table_name="oauth_refresh_tokens")
-    op.drop_index("uq_oauth_refresh_tokens_token_hash", table_name="oauth_refresh_tokens")
-    op.drop_table("oauth_refresh_tokens")
+    op.drop_index("idx_openapi_oauth_refresh_tokens_family_id", table_name="openapi_oauth_refresh_tokens")
+    op.drop_index("idx_openapi_oauth_refresh_tokens_account_id", table_name="openapi_oauth_refresh_tokens")
+    op.drop_index("idx_openapi_oauth_refresh_tokens_grant", table_name="openapi_oauth_refresh_tokens")
+    op.drop_index("uq_openapi_oauth_refresh_tokens_token_hash", table_name="openapi_oauth_refresh_tokens")
+    op.drop_table("openapi_oauth_refresh_tokens")

@@ -10,7 +10,7 @@ from commands import oauth_client
 from core.db.session_factory import session_factory
 from enums.oauth_client import OAuthClientKind
 from models.model import OAuthProviderApp
-from models.oauth import OAuthClient
+from models.oauth import OpenAPIOAuthClient
 from services.oauth_clients import hash_client_secret
 from services.oauth_token_contracts import GrantType
 
@@ -20,7 +20,7 @@ REDIRECT = "https://example.com/cb"
 @pytest.fixture
 def engine(monkeypatch: pytest.MonkeyPatch) -> Iterator[Engine]:
     engine = create_engine("sqlite://")
-    cast(Table, OAuthClient.__table__).create(engine)
+    cast(Table, OpenAPIOAuthClient.__table__).create(engine)
     cast(Table, OAuthProviderApp.__table__).create(engine)
     maker = sessionmaker(engine, class_=Session)
     monkeypatch.setattr(session_factory, "get_session_maker", lambda: maker)
@@ -32,9 +32,9 @@ def _create(*args: str) -> Result:
     return CliRunner().invoke(oauth_client, ["create", *args])
 
 
-def _rows(engine: Engine) -> list[OAuthClient]:
+def _rows(engine: Engine) -> list[OpenAPIOAuthClient]:
     with Session(engine) as session:
-        return list(session.scalars(select(OAuthClient)))
+        return list(session.scalars(select(OpenAPIOAuthClient)))
 
 
 def test_creates_public_client(engine: Engine) -> None:

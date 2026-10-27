@@ -152,7 +152,7 @@ from .model import (
     TrialApp,
     UploadFile,
 )
-from .oauth import DatasourceOauthParamConfig, DatasourceProvider, OAuthAccessToken
+from .oauth import DatasourceOauthParamConfig, DatasourceProvider, OpenAPIOAuthAccessToken
 from .onboarding import AccountStepByStepTourState
 from .provider import (
     LoadBalancingModelConfig,
@@ -344,7 +344,7 @@ __all__ = [
     "MessageChain",
     "MessageFeedback",
     "MessageFile",
-    "OAuthAccessToken",
+    "OpenAPIOAuthAccessToken",
     "OperationLog",
     "PermissionEnum",
     "PinnedConversation",

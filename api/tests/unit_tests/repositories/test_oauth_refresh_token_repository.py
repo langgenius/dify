@@ -5,7 +5,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.oauth_bearer import sha256_hex
-from models.oauth import OAuthRefreshToken
+from models.oauth import OpenAPIOAuthRefreshToken
 from repositories.oauth_refresh_token_repository import (
     REFRESH_TOKEN_PREFIX,
     RefreshTokenRecord,
@@ -64,7 +64,7 @@ def test_insert_stores_only_the_hash_and_find_returns_the_record(sqlite_session_
 
     assert token.startswith(REFRESH_TOKEN_PREFIX)
     with sqlite_session_factory() as session:
-        row = session.scalars(select(OAuthRefreshToken)).one()
+        row = session.scalars(select(OpenAPIOAuthRefreshToken)).one()
     assert row.token_hash == sha256_hex(token)
     assert token not in (row.token_hash, row.family_id)
 
@@ -103,8 +103,8 @@ def test_find_returns_the_family_each_token_was_stored_with(
 def _set_rotated_at(factory: sessionmaker[Session], token: str, rotated_at: datetime) -> None:
     with factory() as session, session.begin():
         session.execute(
-            update(OAuthRefreshToken)
-            .where(OAuthRefreshToken.token_hash == sha256_hex(token))
+            update(OpenAPIOAuthRefreshToken)
+            .where(OpenAPIOAuthRefreshToken.token_hash == sha256_hex(token))
             .values(rotated_at=rotated_at)
         )
 
@@ -175,7 +175,7 @@ def test_spend_rejects_an_expired_or_deleted_token(sqlite_session_factory: sessi
     expired = _found(repo, _issue(sqlite_session_factory, lifetime=timedelta(seconds=-1)))
     deleted = _found(repo, _issue(sqlite_session_factory))
     with sqlite_session_factory() as session, session.begin():
-        session.execute(delete(OAuthRefreshToken).where(OAuthRefreshToken.id == deleted.id))
+        session.execute(delete(OpenAPIOAuthRefreshToken).where(OpenAPIOAuthRefreshToken.id == deleted.id))
 
     for record in (expired, deleted):
         with pytest.raises(RefreshTokenRejectedError) as caught:

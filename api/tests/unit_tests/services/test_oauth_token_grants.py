@@ -14,7 +14,7 @@ import services.oauth_token_grants as token_grants_module
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import OAuthAccessTokenResolver, sha256_hex
 from machinery.context import AccountRequestContext, RequestContext
-from models.oauth import OAuthAccessToken, OAuthRefreshToken
+from models.oauth import OpenAPIOAuthAccessToken, OpenAPIOAuthRefreshToken
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
 from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
@@ -478,7 +478,9 @@ class TestAuthorizationCodeGrantCases:
         first = world.handler(_code_request(_approve(world)))
         second = world.handler(_code_request(_approve(world)))
 
-        live = sqlite_session.scalars(select(OAuthAccessToken).where(OAuthAccessToken.revoked_at.is_(None))).all()
+        live = sqlite_session.scalars(
+            select(OpenAPIOAuthAccessToken).where(OpenAPIOAuthAccessToken.revoked_at.is_(None))
+        ).all()
         assert {row.id for row in live} == {first.payload["token_id"], second.payload["token_id"]}
         assert {row.client_id for row in live} == {CONFIDENTIAL_ID}
         assert len({row.device_label for row in live}) == 2
@@ -670,41 +672,49 @@ class _RefreshWorld:
             self.refresh(token, client_id=client_id)
         return caught.value
 
-    def refresh_row(self, token: str | None) -> OAuthRefreshToken | None:
+    def refresh_row(self, token: str | None) -> OpenAPIOAuthRefreshToken | None:
         assert token is not None
         with self.factory() as session:
-            return session.scalar(select(OAuthRefreshToken).where(OAuthRefreshToken.token_hash == sha256_hex(token)))
+            return session.scalar(
+                select(OpenAPIOAuthRefreshToken).where(OpenAPIOAuthRefreshToken.token_hash == sha256_hex(token))
+            )
 
-    def refresh_rows(self) -> list[OAuthRefreshToken]:
+    def refresh_rows(self) -> list[OpenAPIOAuthRefreshToken]:
         with self.factory() as session:
-            return list(session.scalars(select(OAuthRefreshToken)).all())
+            return list(session.scalars(select(OpenAPIOAuthRefreshToken)).all())
 
-    def access_row(self, result: TokenGrantResult) -> OAuthAccessToken:
+    def access_row(self, result: TokenGrantResult) -> OpenAPIOAuthAccessToken:
         with self.factory() as session:
-            row = session.get(OAuthAccessToken, result.payload["token_id"])
+            row = session.get(OpenAPIOAuthAccessToken, result.payload["token_id"])
             assert row is not None
             return row
 
     def live_access_ids(self) -> set[str]:
         with self.factory() as session:
-            return set(session.scalars(select(OAuthAccessToken.id).where(OAuthAccessToken.revoked_at.is_(None))))
+            return set(
+                session.scalars(select(OpenAPIOAuthAccessToken.id).where(OpenAPIOAuthAccessToken.revoked_at.is_(None)))
+            )
 
     def set_refresh(self, token: str | None, **values: object) -> None:
         assert token is not None
         with self.factory() as session, session.begin():
             session.execute(
-                update(OAuthRefreshToken).where(OAuthRefreshToken.token_hash == sha256_hex(token)).values(**values)
+                update(OpenAPIOAuthRefreshToken)
+                .where(OpenAPIOAuthRefreshToken.token_hash == sha256_hex(token))
+                .values(**values)
             )
 
     def set_access(self, result: TokenGrantResult, **values: object) -> None:
         with self.factory() as session, session.begin():
             session.execute(
-                update(OAuthAccessToken).where(OAuthAccessToken.id == result.payload["token_id"]).values(**values)
+                update(OpenAPIOAuthAccessToken)
+                .where(OpenAPIOAuthAccessToken.id == result.payload["token_id"])
+                .values(**values)
             )
 
     def delete_access_rows(self) -> None:
         with self.factory() as session, session.begin():
-            session.execute(delete(OAuthAccessToken))
+            session.execute(delete(OpenAPIOAuthAccessToken))
 
     def account_context(self, token_id: str | None = None) -> AccountRequestContext:
         return AccountRequestContext(request_id="r1", trace_id=None, account_id=ACCOUNT_ID, access_token_id=token_id)
@@ -1029,8 +1039,8 @@ class TestRefreshTokenGrantCases:
             refresh_world.refresh(login.refresh_token)
 
         assert log.tables[0] == "accounts"
-        assert "oauth_access_tokens" in log.tables
-        assert "oauth_refresh_tokens" in log.tables
+        assert "openapi_oauth_access_tokens" in log.tables
+        assert "openapi_oauth_refresh_tokens" in log.tables
         assert log.follows_lock_order()
 
     @staticmethod

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import sha256_hex
-from models.oauth import OAuthAccessToken, OAuthRefreshToken
+from models.oauth import OpenAPIOAuthAccessToken, OpenAPIOAuthRefreshToken
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTokenRepository
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
@@ -72,9 +72,9 @@ class _Harness:
             lifetime=REFRESH_LIFETIME,
         )
 
-    def access_row(self, token: IssuedOAuthToken) -> OAuthAccessToken:
+    def access_row(self, token: IssuedOAuthToken) -> OpenAPIOAuthAccessToken:
         with self.factory() as session:
-            row = session.get(OAuthAccessToken, token.token_id)
+            row = session.get(OpenAPIOAuthAccessToken, token.token_id)
             assert row is not None
             return row
 
@@ -83,10 +83,10 @@ class _Harness:
             return (
                 session.scalar(
                     select(func.count())
-                    .select_from(OAuthRefreshToken)
+                    .select_from(OpenAPIOAuthRefreshToken)
                     .where(
-                        OAuthRefreshToken.client_id == grant.client_id,
-                        OAuthRefreshToken.device_label == grant.device_label,
+                        OpenAPIOAuthRefreshToken.client_id == grant.client_id,
+                        OpenAPIOAuthRefreshToken.device_label == grant.device_label,
                     )
                 )
                 or 0

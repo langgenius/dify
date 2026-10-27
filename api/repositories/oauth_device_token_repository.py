@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
 from models.account import Account
-from models.oauth import OAuthAccessToken
+from models.oauth import OpenAPIOAuthAccessToken
 from repositories.oauth_refresh_token_repository import (
     REFRESH_TOKEN_PREFIX,
     LiveRefreshToken,
@@ -37,19 +37,19 @@ from services.oauth_device_contracts import (
 logger = logging.getLogger(__name__)
 
 _GRANT_COLUMNS = (
-    OAuthAccessToken.subject_email,
-    OAuthAccessToken.subject_issuer,
-    OAuthAccessToken.client_id,
-    OAuthAccessToken.device_label,
+    OpenAPIOAuthAccessToken.subject_email,
+    OpenAPIOAuthAccessToken.subject_issuer,
+    OpenAPIOAuthAccessToken.client_id,
+    OpenAPIOAuthAccessToken.device_label,
 )
 
 _SESSION_COLUMNS = (
-    OAuthAccessToken.id,
-    OAuthAccessToken.token_hash,
-    OAuthAccessToken.prefix,
-    OAuthAccessToken.created_at,
-    OAuthAccessToken.last_used_at,
-    OAuthAccessToken.expires_at,
+    OpenAPIOAuthAccessToken.id,
+    OpenAPIOAuthAccessToken.token_hash,
+    OpenAPIOAuthAccessToken.prefix,
+    OpenAPIOAuthAccessToken.created_at,
+    OpenAPIOAuthAccessToken.last_used_at,
+    OpenAPIOAuthAccessToken.expires_at,
     *_GRANT_COLUMNS,
 )
 
@@ -72,10 +72,10 @@ def _grant_of(row: Row[Any]) -> GrantKey | None:
 
 def _grant_filter(grant: GrantKey) -> ColumnElement[bool]:
     return and_(
-        OAuthAccessToken.subject_email == grant.subject_email,
-        OAuthAccessToken.subject_issuer == grant.subject_issuer,
-        OAuthAccessToken.client_id == grant.client_id,
-        OAuthAccessToken.device_label == grant.device_label,
+        OpenAPIOAuthAccessToken.subject_email == grant.subject_email,
+        OpenAPIOAuthAccessToken.subject_issuer == grant.subject_issuer,
+        OpenAPIOAuthAccessToken.client_id == grant.client_id,
+        OpenAPIOAuthAccessToken.device_label == grant.device_label,
     )
 
 
@@ -91,8 +91,8 @@ def lock_account(session: Session, account_id: str) -> None:
 
 def _owned_by(account_id: str | None) -> ColumnElement[bool]:
     if account_id is None:
-        return OAuthAccessToken.account_id.is_(None)
-    return OAuthAccessToken.account_id == account_id
+        return OpenAPIOAuthAccessToken.account_id.is_(None)
+    return OpenAPIOAuthAccessToken.account_id == account_id
 
 
 @dataclass(frozen=True)
@@ -104,9 +104,9 @@ class OwnedGrant:
 
 def find_live_access_grant(session: Session, token_hash: str) -> OwnedGrant | None:
     row = session.execute(
-        select(OAuthAccessToken.account_id, *_GRANT_COLUMNS).where(
-            OAuthAccessToken.token_hash == token_hash,
-            OAuthAccessToken.revoked_at.is_(None),
+        select(OpenAPIOAuthAccessToken.account_id, *_GRANT_COLUMNS).where(
+            OpenAPIOAuthAccessToken.token_hash == token_hash,
+            OpenAPIOAuthAccessToken.revoked_at.is_(None),
         )
     ).first()
     if row is None:
@@ -122,18 +122,20 @@ def _revoke_access_rows(session: Session, rows_filter: ColumnElement[bool], *, n
     their hash too, so ``rollback_rotation`` can never bring them back.
     """
     rows = session.execute(
-        select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
-        .where(rows_filter, OAuthAccessToken.token_hash.is_not(None))
+        select(OpenAPIOAuthAccessToken.id, OpenAPIOAuthAccessToken.token_hash)
+        .where(rows_filter, OpenAPIOAuthAccessToken.token_hash.is_not(None))
         .with_for_update()
     ).all()
     if rows:
         ids = [row.id for row in rows]
         session.execute(
-            update(OAuthAccessToken)
-            .where(OAuthAccessToken.id.in_(ids), OAuthAccessToken.revoked_at.is_(None))
+            update(OpenAPIOAuthAccessToken)
+            .where(OpenAPIOAuthAccessToken.id.in_(ids), OpenAPIOAuthAccessToken.revoked_at.is_(None))
             .values(revoked_at=now)
         )
-        session.execute(update(OAuthAccessToken).where(OAuthAccessToken.id.in_(ids)).values(token_hash=None))
+        session.execute(
+            update(OpenAPIOAuthAccessToken).where(OpenAPIOAuthAccessToken.id.in_(ids)).values(token_hash=None)
+        )
     return [row.token_hash for row in rows]
 
 
@@ -159,12 +161,14 @@ def revoke_session_grant(session: Session, *, account_id: str, session_id: str, 
     """
     lock_account(session, account_id)
     access = session.execute(
-        select(*_GRANT_COLUMNS).where(OAuthAccessToken.id == session_id, OAuthAccessToken.account_id == account_id)
+        select(*_GRANT_COLUMNS).where(
+            OpenAPIOAuthAccessToken.id == session_id, OpenAPIOAuthAccessToken.account_id == account_id
+        )
     ).first()
     if access is not None:
         grant = _grant_of(access)
         if grant is None:
-            return _revoke_access_rows(session, OAuthAccessToken.id == session_id, now=now)
+            return _revoke_access_rows(session, OpenAPIOAuthAccessToken.id == session_id, now=now)
         return revoke_grant_rows(session, grant, account_id=account_id, now=now)
     grant = refresh_token_grant(session, account_id=account_id, token_id=session_id)
     if grant is None:
@@ -211,15 +215,17 @@ def _live_sessions(session: Session, *, account_id: str, now: datetime) -> dict[
     Its last use is the latest of its access row's last use (or creation) and
     its newest refresh token's issue time.
     """
-    last_used = func.coalesce(OAuthAccessToken.last_used_at, OAuthAccessToken.created_at).label("last_used")
+    last_used = func.coalesce(OpenAPIOAuthAccessToken.last_used_at, OpenAPIOAuthAccessToken.created_at).label(
+        "last_used"
+    )
     access_rows = session.execute(
         select(*_SESSION_COLUMNS, last_used)
         .where(
-            OAuthAccessToken.account_id == account_id,
-            OAuthAccessToken.revoked_at.is_(None),
-            OAuthAccessToken.expires_at > now,
+            OpenAPIOAuthAccessToken.account_id == account_id,
+            OpenAPIOAuthAccessToken.revoked_at.is_(None),
+            OpenAPIOAuthAccessToken.expires_at > now,
         )
-        .order_by(last_used.asc(), OAuthAccessToken.id.asc())
+        .order_by(last_used.asc(), OpenAPIOAuthAccessToken.id.asc())
     ).all()
     sessions: dict[_SessionKey, _LiveSession] = {}
     for row in access_rows:
@@ -240,8 +246,8 @@ def _latest_access_rows(session: Session, *, account_id: str, grants: Sequence[G
         return {}
     rows = session.execute(
         select(*_SESSION_COLUMNS)
-        .where(OAuthAccessToken.account_id == account_id, or_(*(_grant_filter(grant) for grant in grants)))
-        .order_by(OAuthAccessToken.created_at.asc(), OAuthAccessToken.id.asc())
+        .where(OpenAPIOAuthAccessToken.account_id == account_id, or_(*(_grant_filter(grant) for grant in grants)))
+        .order_by(OpenAPIOAuthAccessToken.created_at.asc(), OpenAPIOAuthAccessToken.id.asc())
     )
     # Ascending order, so each grant keeps its newest row.
     return {grant: row for row in rows if (grant := _grant_of(row)) is not None}
@@ -369,24 +375,27 @@ class SQLAlchemyOAuthDeviceTokenRepository:
                 lock_account(session, token.account_id)
 
             prior = session.execute(
-                select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
+                select(OpenAPIOAuthAccessToken.id, OpenAPIOAuthAccessToken.token_hash)
                 .where(
-                    OAuthAccessToken.subject_email == token.subject_email,
-                    OAuthAccessToken.subject_issuer == token.subject_issuer,
-                    OAuthAccessToken.client_id == token.client_id,
-                    OAuthAccessToken.device_label == token.device_label,
+                    OpenAPIOAuthAccessToken.subject_email == token.subject_email,
+                    OpenAPIOAuthAccessToken.subject_issuer == token.subject_issuer,
+                    OpenAPIOAuthAccessToken.client_id == token.client_id,
+                    OpenAPIOAuthAccessToken.device_label == token.device_label,
+                    OpenAPIOAuthAccessToken.revoked_at.is_(None),
                 )
                 .order_by(OAuthAccessToken.revoked_at.is_not(None))
                 .limit(1)
                 .with_for_update()
             ).first()
             if prior is not None:
-                session.execute(update(OAuthAccessToken).where(OAuthAccessToken.id == prior.id).values(revoked_at=now))
+                session.execute(
+                    update(OpenAPIOAuthAccessToken).where(OpenAPIOAuthAccessToken.id == prior.id).values(revoked_at=now)
+                )
 
             if token.account_id is not None:
                 eviction = self._evict_over_cap(session, token=token, account_id=token.account_id, now=now)
 
-            record = OAuthAccessToken(
+            record = OpenAPIOAuthAccessToken(
                 subject_email=token.subject_email,
                 subject_issuer=token.subject_issuer,
                 account_id=token.account_id,
@@ -473,8 +482,8 @@ class SQLAlchemyOAuthDeviceTokenRepository:
         if access_rows:
             # The hash stays so rollback_rotation can restore the row.
             session.execute(
-                update(OAuthAccessToken)
-                .where(OAuthAccessToken.id.in_([row.id for row in access_rows]))
+                update(OpenAPIOAuthAccessToken)
+                .where(OpenAPIOAuthAccessToken.id.in_([row.id for row in access_rows]))
                 .values(revoked_at=now)
             )
         return _Eviction(
@@ -485,11 +494,11 @@ class SQLAlchemyOAuthDeviceTokenRepository:
     def rollback_rotation(self, rotation: OAuthDeviceTokenRotation) -> bool:
         new_hash: str | None = None
         with self._session_factory() as session:
-            record = session.scalar(
-                select(OAuthAccessToken)
+            current = session.scalar(
+                select(OpenAPIOAuthAccessToken)
                 .where(
-                    OAuthAccessToken.id == rotation.token_id,
-                    OAuthAccessToken.token_hash == new_hash,
+                    OpenAPIOAuthAccessToken.id == rotation.token_id,
+                    OpenAPIOAuthAccessToken.revoked_at.is_(None),
                 )
                 .with_for_update()
             )
@@ -503,10 +512,10 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             session.flush()
             if rotation.replaced_token_id is not None:
                 predecessor = session.scalar(
-                    select(OAuthAccessToken)
+                    select(OpenAPIOAuthAccessToken)
                     .where(
-                        OAuthAccessToken.id == rotation.replaced_token_id,
-                        OAuthAccessToken.revoked_at.is_not(None),
+                        OpenAPIOAuthAccessToken.id == rotation.replaced_token_id,
+                        OpenAPIOAuthAccessToken.revoked_at.is_not(None),
                     )
                     .with_for_update()
                 )
@@ -516,11 +525,11 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             if rotation.evicted_token_ids:
                 # A row whose hash was cleared was revoked by the user since; keep it revoked.
                 session.execute(
-                    update(OAuthAccessToken)
+                    update(OpenAPIOAuthAccessToken)
                     .where(
-                        OAuthAccessToken.id.in_(rotation.evicted_token_ids),
-                        OAuthAccessToken.revoked_at.is_not(None),
-                        OAuthAccessToken.token_hash.is_not(None),
+                        OpenAPIOAuthAccessToken.id.in_(rotation.evicted_token_ids),
+                        OpenAPIOAuthAccessToken.revoked_at.is_not(None),
+                        OpenAPIOAuthAccessToken.token_hash.is_not(None),
                     )
                     .values(revoked_at=None)
                 )

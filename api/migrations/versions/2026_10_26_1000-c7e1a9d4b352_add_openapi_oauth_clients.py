@@ -1,4 +1,4 @@
-"""add oauth_clients table
+"""add openapi_oauth_clients table
 
 Revision ID: c7e1a9d4b352
 Revises: b9d3f7a5c102
@@ -34,7 +34,7 @@ def upgrade():
         id_kwargs["server_default"] = sa.text("uuidv7()")
 
     op.create_table(
-        "oauth_clients",
+        "openapi_oauth_clients",
         sa.Column("id", models.types.StringUUID(), **id_kwargs),
         sa.Column("client_id", sa.String(length=64), nullable=False),
         sa.Column("kind", sa.String(length=32), nullable=False),
@@ -49,11 +49,11 @@ def upgrade():
             server_default=sa.func.current_timestamp(),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint("id", name="oauth_clients_pkey"),
+        sa.PrimaryKeyConstraint("id", name="openapi_oauth_clients_pkey"),
     )
-    op.create_index("uq_oauth_clients_client_id", "oauth_clients", ["client_id"], unique=True)
+    op.create_index("uq_openapi_oauth_clients_client_id", "openapi_oauth_clients", ["client_id"], unique=True)
 
 
 def downgrade():
-    op.drop_index("uq_oauth_clients_client_id", table_name="oauth_clients")
-    op.drop_table("oauth_clients")
+    op.drop_index("uq_openapi_oauth_clients_client_id", table_name="openapi_oauth_clients")
+    op.drop_table("openapi_oauth_clients")
