@@ -3699,9 +3699,11 @@ Strict (extra='forbid').
 
 #### RegistrationErrorCode
 
+RFC 7591 client registration error codes.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| RegistrationErrorCode | string |  |  |
+| RegistrationErrorCode | string | RFC 7591 client registration error codes. |  |
 
 #### ReleaseCheckName
 

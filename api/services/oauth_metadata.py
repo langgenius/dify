@@ -30,22 +30,24 @@ def authorization_server_metadata(request_origin: str) -> dict[str, Any]:
     if browser_flow:
         grants = [*DEFAULT_GRANT_TYPES, *grants]
 
+    # RFC 8414 requires response_types_supported even without an authorization endpoint.
     document: dict[str, Any] = {
         "issuer": issuer,
         "token_endpoint": f"{issuer}/oauth/token",
         "revocation_endpoint": f"{issuer}/oauth/revoke",
         "device_authorization_endpoint": f"{issuer}/oauth/device/code",
         "grant_types_supported": [grant.value for grant in grants],
-        "response_types_supported": [CODE_RESPONSE_TYPE],
+        "response_types_supported": [],
         "code_challenge_methods_supported": [method.value for method in PkceMethod],
         "token_endpoint_auth_methods_supported": auth_methods,
         "revocation_endpoint_auth_methods_supported": auth_methods,
         "client_id_metadata_document_supported": cimd_enabled(),
-        "authorization_response_iss_parameter_supported": True,
     }
     if browser_flow:
         web_origin = (dify_config.CONSOLE_WEB_URL or request_origin).rstrip("/")
         document["authorization_endpoint"] = web_origin + AUTHORIZE_PAGE_PATH
+        document["response_types_supported"] = [CODE_RESPONSE_TYPE]
+        document["authorization_response_iss_parameter_supported"] = True
     if dcr_enabled():
         document["registration_endpoint"] = f"{issuer}/oauth/register"
     return document

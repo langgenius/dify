@@ -5,12 +5,8 @@ from libs.oauth_bearer import sha256_hex
 from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
 from services.oauth_authorize_service import OAuthAuthorizeService
 from services.oauth_client_auth import authenticate_client
-from services.oauth_client_metadata import MAX_REDIRECT_URIS
-from services.oauth_client_registration import (
-    OAuthClientRegistrationService,
-    RegistrationError,
-    RegistrationErrorCode,
-)
+from services.oauth_client_metadata import MAX_REDIRECT_URIS, RegistrationErrorCode
+from services.oauth_client_registration import OAuthClientRegistrationService, RegistrationError
 from services.oauth_clients import OAuthClientRegistry
 from services.oauth_token_contracts import GrantType
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (

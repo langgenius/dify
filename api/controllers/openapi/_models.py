@@ -30,7 +30,13 @@ from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
 from services.oauth_authorize_service import AuthorizeErrorCode
-from services.oauth_client_registration import RegistrationErrorCode
+from services.oauth_client_metadata import (
+    MAX_CLIENT_NAME_LENGTH,
+    MAX_LOGO_URI_LENGTH,
+    MAX_REDIRECT_URI_LENGTH,
+    MAX_REDIRECT_URIS,
+    RegistrationErrorCode,
+)
 from services.oauth_token_contracts import GrantType
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
@@ -210,9 +216,9 @@ RegistrableGrantType = Literal[GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_T
 class OAuthRegisterRequest(BaseModel):
     """RFC 7591 client metadata; unknown fields are ignored."""
 
-    redirect_uris: list[Annotated[str, Field(max_length=2048)]] = Field(max_length=10)
-    client_name: str | None = Field(default=None, max_length=255)
-    logo_uri: str | None = Field(default=None, max_length=1024)
+    redirect_uris: list[Annotated[str, Field(max_length=MAX_REDIRECT_URI_LENGTH)]] = Field(max_length=MAX_REDIRECT_URIS)
+    client_name: str | None = Field(default=None, max_length=MAX_CLIENT_NAME_LENGTH)
+    logo_uri: str | None = Field(default=None, max_length=MAX_LOGO_URI_LENGTH)
     grant_types: list[RegistrableGrantType] | None = None
     response_types: list[Literal["code"]] | None = None
     token_endpoint_auth_method: TokenEndpointAuthMethod | None = None

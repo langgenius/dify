@@ -1,6 +1,6 @@
 """Client metadata checks shared by dynamic registration (RFC 7591) and metadata documents (CIMD)."""
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from enum import StrEnum
 
 from services.oauth_redirect import is_valid_logo_uri, is_valid_redirect_uri, redirect_host
@@ -15,26 +15,26 @@ DEFAULT_GRANT_TYPES = (GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN)
 CODE_RESPONSE_TYPE = "code"
 
 
-class MetadataErrorKind(StrEnum):
-    """Values match the RFC 7591 error codes so a registration error can be built from them."""
+class RegistrationErrorCode(StrEnum):
+    """RFC 7591 client registration error codes."""
 
     INVALID_REDIRECT_URI = "invalid_redirect_uri"
     INVALID_CLIENT_METADATA = "invalid_client_metadata"
 
 
 class InvalidClientMetadataError(Exception):
-    def __init__(self, kind: MetadataErrorKind, description: str) -> None:
+    def __init__(self, code: RegistrationErrorCode, description: str) -> None:
         super().__init__(description)
-        self.kind = kind
+        self.code = code
         self.description = description
 
 
 def invalid_metadata(description: str) -> InvalidClientMetadataError:
-    return InvalidClientMetadataError(MetadataErrorKind.INVALID_CLIENT_METADATA, description)
+    return InvalidClientMetadataError(RegistrationErrorCode.INVALID_CLIENT_METADATA, description)
 
 
 def _invalid_redirect_uri(description: str = "redirect_uris holds an invalid URI") -> InvalidClientMetadataError:
-    return InvalidClientMetadataError(MetadataErrorKind.INVALID_REDIRECT_URI, description)
+    return InvalidClientMetadataError(RegistrationErrorCode.INVALID_REDIRECT_URI, description)
 
 
 def optional_string(metadata: Mapping[str, object], field: str, *, max_length: int) -> str | None:
@@ -48,19 +48,39 @@ def optional_string(metadata: Mapping[str, object], field: str, *, max_length: i
     return value
 
 
-def string_list(metadata: Mapping[str, object], field: str, *, kind: MetadataErrorKind) -> list[str] | None:
+def string_list(metadata: Mapping[str, object], field: str, *, code: RegistrationErrorCode) -> list[str] | None:
     value = metadata.get(field)
     if value is None:
         return None
     if not isinstance(value, list):
-        raise InvalidClientMetadataError(kind, f"{field} must be an array of strings")
+        raise InvalidClientMetadataError(code, f"{field} must be an array of strings")
     if not all(isinstance(item, str) for item in value):
-        raise InvalidClientMetadataError(kind, f"{field} must be an array of strings")
+        raise InvalidClientMetadataError(code, f"{field} must be an array of strings")
     return value
 
 
+def known_grant_types(
+    values: Iterable[str], *, allowed: Iterable[GrantType] = DEFAULT_GRANT_TYPES
+) -> tuple[GrantType, ...]:
+    """The allowed grants named in ``values``, in order and without repeats; any other value is dropped."""
+    by_value = {grant.value: grant for grant in allowed}
+    return tuple(dict.fromkeys(by_value[value] for value in values if value in by_value))
+
+
+def supported_grant_types(values: Sequence[str]) -> tuple[GrantType, ...]:
+    """Like ``known_grant_types``, but a value that is not a registrable grant is invalid metadata."""
+    grants = known_grant_types(values)
+    if len(grants) < len(set(values)):
+        raise invalid_metadata("grant_types holds an unsupported grant")
+    return grants
+
+
+def client_display_name(client_name: str | None, *, fallback: str) -> str:
+    return (client_name or "").strip() or fallback
+
+
 def validated_redirect_uris(metadata: Mapping[str, object]) -> tuple[str, ...]:
-    uris = string_list(metadata, "redirect_uris", kind=MetadataErrorKind.INVALID_REDIRECT_URI)
+    uris = string_list(metadata, "redirect_uris", code=RegistrationErrorCode.INVALID_REDIRECT_URI)
     if not uris:
         raise _invalid_redirect_uri("redirect_uris is required")
     if len(uris) > MAX_REDIRECT_URIS:

@@ -90,7 +90,7 @@ class FakeClientRepository:
         grant_types: Sequence[GrantType],
         client_secret_hash: str | None = None,
         logo_uri: str | None = None,
-    ) -> OpenAPIOAuthClient:
+    ) -> None:
         assert len(display_name) <= MAX_DISPLAY_NAME_LENGTH
         assert logo_uri is None or len(logo_uri) <= MAX_LOGO_URI_COLUMN_LENGTH
         row = OpenAPIOAuthClient(
@@ -103,7 +103,6 @@ class FakeClientRepository:
             logo_uri=logo_uri,
         )
         self.rows[client_id] = row
-        return row
 
     def resolve(self, client_id: str) -> ResolvedClient | None:
         row = self.rows.get(client_id)

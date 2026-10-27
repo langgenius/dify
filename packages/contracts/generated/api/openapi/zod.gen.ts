@@ -1775,6 +1775,8 @@ export const zPublishResponse = z.object({
 
 /**
  * RegistrationErrorCode
+ *
+ * RFC 7591 client registration error codes.
  */
 export const zRegistrationErrorCode = z.enum(['invalid_client_metadata', 'invalid_redirect_uri'])
 

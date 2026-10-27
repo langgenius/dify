@@ -4,21 +4,21 @@ import secrets
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Protocol
 
 from enums.oauth_client import OAuthClientKind, TokenEndpointAuthMethod
 from libs.oauth_bearer import sha256_hex
-from models.oauth import OpenAPIOAuthClient
 from services.oauth_client_metadata import (
     CODE_RESPONSE_TYPE,
     DEFAULT_GRANT_TYPES,
     MAX_CLIENT_NAME_LENGTH,
     InvalidClientMetadataError,
-    MetadataErrorKind,
+    RegistrationErrorCode,
+    client_display_name,
     invalid_metadata,
     optional_string,
     string_list,
+    supported_grant_types,
     validated_logo_uri,
     validated_redirect_uris,
 )
@@ -28,11 +28,6 @@ from services.oauth_token_contracts import GrantType
 CLIENT_ID_PREFIX = "dcr_"
 CLIENT_ID_BYTES = 16
 CLIENT_SECRET_BYTES = 32
-
-
-class RegistrationErrorCode(StrEnum):
-    INVALID_REDIRECT_URI = "invalid_redirect_uri"
-    INVALID_CLIENT_METADATA = "invalid_client_metadata"
 
 
 class RegistrationError(Exception):
@@ -65,24 +60,21 @@ class ClientCreator(Protocol):
         grant_types: Sequence[GrantType],
         client_secret_hash: str | None = None,
         logo_uri: str | None = None,
-    ) -> OpenAPIOAuthClient: ...
+    ) -> None: ...
 
 
 def _grant_types(metadata: Mapping[str, object]) -> tuple[GrantType, ...]:
-    values = string_list(metadata, "grant_types", kind=MetadataErrorKind.INVALID_CLIENT_METADATA)
+    values = string_list(metadata, "grant_types", code=RegistrationErrorCode.INVALID_CLIENT_METADATA)
     if values is None:
         return DEFAULT_GRANT_TYPES
-    allowed = {grant.value: grant for grant in DEFAULT_GRANT_TYPES}
-    if not all(value in allowed for value in values):
-        raise invalid_metadata("grant_types holds an unsupported grant")
-    grants = tuple(dict.fromkeys(allowed[value] for value in values))
+    grants = supported_grant_types(values)
     if GrantType.AUTHORIZATION_CODE not in grants:
         raise invalid_metadata("grant_types must include authorization_code")
     return grants
 
 
 def _check_response_types(metadata: Mapping[str, object]) -> None:
-    values = string_list(metadata, "response_types", kind=MetadataErrorKind.INVALID_CLIENT_METADATA)
+    values = string_list(metadata, "response_types", code=RegistrationErrorCode.INVALID_CLIENT_METADATA)
     if values is None:
         return
     if values != [CODE_RESPONSE_TYPE]:
@@ -112,9 +104,9 @@ class OAuthClientRegistrationService:
             _check_response_types(metadata)
             auth_method = _auth_method(metadata)
         except InvalidClientMetadataError as error:
-            raise RegistrationError(RegistrationErrorCode(error.kind.value), error.description) from None
+            raise RegistrationError(error.code, error.description) from None
 
-        display_name = (client_name or "").strip() or redirect_host(redirect_uris[0])
+        display_name = client_display_name(client_name, fallback=redirect_host(redirect_uris[0]))
         client_id = CLIENT_ID_PREFIX + secrets.token_urlsafe(CLIENT_ID_BYTES)
         kind = auth_method.kind
         client_secret = secrets.token_urlsafe(CLIENT_SECRET_BYTES) if kind == OAuthClientKind.CONFIDENTIAL else None

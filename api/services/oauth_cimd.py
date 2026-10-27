@@ -26,7 +26,9 @@ from services.oauth_client_metadata import (
     DEFAULT_GRANT_TYPES,
     MAX_CLIENT_NAME_LENGTH,
     InvalidClientMetadataError,
-    MetadataErrorKind,
+    RegistrationErrorCode,
+    client_display_name,
+    known_grant_types,
     optional_string,
     string_list,
     validated_logo_uri,
@@ -218,11 +220,10 @@ def _check_host_is_public(host: str, resolve_host: Callable[[str], Sequence[str]
 
 
 def _grant_types(document: Mapping[str, object]) -> frozenset[GrantType]:
-    values = string_list(document, "grant_types", kind=MetadataErrorKind.INVALID_CLIENT_METADATA)
+    values = string_list(document, "grant_types", code=RegistrationErrorCode.INVALID_CLIENT_METADATA)
     if values is None:
         return frozenset(DEFAULT_GRANT_TYPES)
-    allowed = {grant.value: grant for grant in DEFAULT_GRANT_TYPES}
-    grants = frozenset(allowed[value] for value in values if value in allowed)
+    grants = frozenset(known_grant_types(values))
     if GrantType.AUTHORIZATION_CODE not in grants:
         raise CimdRejectedError
     return grants
@@ -265,7 +266,7 @@ def _parse_document(url: str, host: str, body: bytes) -> ResolvedClient:
         client_id=url,
         storage_client_id=cimd_storage_id(url),
         kind=OAuthClientKind.PUBLIC,
-        display_name=(client_name or "").strip() or host,
+        display_name=client_display_name(client_name, fallback=host),
         logo_uri=_logo_uri(document),
         redirect_uris=redirect_uris,
         grant_types=grant_types,

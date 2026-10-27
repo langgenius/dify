@@ -6,9 +6,10 @@ from typing import Final
 from flask import Blueprint, Response, request
 
 from services.oauth_metadata import protected_resource_metadata_url
+from services.oauth_resource import OPENAPI_PATH
 from services.oauth_token_adapters import discovery_enabled
 
-OAUTH_PATH_PREFIX: Final = "/openapi/v1/oauth/"
+OAUTH_PATH_PREFIX: Final = f"{OPENAPI_PATH}/oauth/"
 BEARER_SCHEME: Final = "bearer"
 RESOURCE_METADATA_PARAM: Final = "resource_metadata"
 

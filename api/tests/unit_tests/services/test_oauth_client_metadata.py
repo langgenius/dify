@@ -7,13 +7,16 @@ from services.oauth_client_metadata import (
     MAX_REDIRECT_URI_LENGTH,
     MAX_REDIRECT_URIS,
     InvalidClientMetadataError,
-    MetadataErrorKind,
+    RegistrationErrorCode,
+    client_display_name,
+    known_grant_types,
     optional_string,
     string_list,
+    supported_grant_types,
     validated_logo_uri,
     validated_redirect_uris,
 )
-from services.oauth_client_registration import RegistrationErrorCode
+from services.oauth_token_contracts import GrantType
 
 GOOD = "https://agent.example/cb"
 
@@ -40,7 +43,7 @@ def test_bad_redirect_uris_raise_the_redirect_kind(value: object) -> None:
     with pytest.raises(InvalidClientMetadataError) as caught:
         validated_redirect_uris({"redirect_uris": value})
 
-    assert caught.value.kind is MetadataErrorKind.INVALID_REDIRECT_URI
+    assert caught.value.code is RegistrationErrorCode.INVALID_REDIRECT_URI
 
 
 def test_optional_string_accepts_absent_and_within_limit() -> None:
@@ -53,14 +56,14 @@ def test_optional_string_rejects_wrong_type_or_length(value: object) -> None:
     with pytest.raises(InvalidClientMetadataError) as caught:
         optional_string({"client_name": value}, "client_name", max_length=MAX_CLIENT_NAME_LENGTH)
 
-    assert caught.value.kind is MetadataErrorKind.INVALID_CLIENT_METADATA
+    assert caught.value.code is RegistrationErrorCode.INVALID_CLIENT_METADATA
 
 
-def test_string_list_uses_the_requested_kind() -> None:
-    assert string_list({}, "grant_types", kind=MetadataErrorKind.INVALID_CLIENT_METADATA) is None
+def test_string_list_uses_the_requested_code() -> None:
+    assert string_list({}, "grant_types", code=RegistrationErrorCode.INVALID_CLIENT_METADATA) is None
     with pytest.raises(InvalidClientMetadataError) as caught:
-        string_list({"grant_types": [1]}, "grant_types", kind=MetadataErrorKind.INVALID_REDIRECT_URI)
-    assert caught.value.kind is MetadataErrorKind.INVALID_REDIRECT_URI
+        string_list({"grant_types": [1]}, "grant_types", code=RegistrationErrorCode.INVALID_REDIRECT_URI)
+    assert caught.value.code is RegistrationErrorCode.INVALID_REDIRECT_URI
 
 
 def test_logo_uri_rules() -> None:
@@ -71,6 +74,43 @@ def test_logo_uri_rules() -> None:
             validated_logo_uri({"logo_uri": bad})
 
 
-@pytest.mark.parametrize("kind", list(MetadataErrorKind))
-def test_every_metadata_error_kind_is_a_registration_error_code(kind: MetadataErrorKind) -> None:
-    assert RegistrationErrorCode(kind.value)
+FUTURE_GRANT = "urn:future:grant"
+
+
+def test_known_grant_types_keep_order_and_drop_repeats_and_unknown_values() -> None:
+    values = ["refresh_token", FUTURE_GRANT, "authorization_code", "refresh_token", GrantType.DEVICE_CODE.value]
+
+    assert known_grant_types(values) == (GrantType.REFRESH_TOKEN, GrantType.AUTHORIZATION_CODE)
+
+
+def test_known_grant_types_read_against_a_wider_allowed_set() -> None:
+    values = [GrantType.DEVICE_CODE.value, FUTURE_GRANT, "authorization_code"]
+
+    assert known_grant_types(values, allowed=GrantType) == (GrantType.DEVICE_CODE, GrantType.AUTHORIZATION_CODE)
+
+
+def test_supported_grant_types_accept_registrable_grants() -> None:
+    values = ["authorization_code", "refresh_token", "authorization_code"]
+
+    assert supported_grant_types(values) == (GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN)
+
+
+@pytest.mark.parametrize("unsupported", [FUTURE_GRANT, GrantType.DEVICE_CODE.value, ""])
+def test_supported_grant_types_reject_any_other_value(unsupported: str) -> None:
+    with pytest.raises(InvalidClientMetadataError) as caught:
+        supported_grant_types(["authorization_code", unsupported])
+    assert caught.value.code is RegistrationErrorCode.INVALID_CLIENT_METADATA
+
+
+@pytest.mark.parametrize(
+    ("client_name", "expected"),
+    [
+        ("Agent", "Agent"),
+        ("  Agent  ", "Agent"),
+        (None, "agent.example"),
+        ("", "agent.example"),
+        ("   ", "agent.example"),
+    ],
+)
+def test_client_display_name_falls_back_to_the_host(client_name: str | None, expected: str) -> None:
+    assert client_display_name(client_name, fallback="agent.example") == expected

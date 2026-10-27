@@ -43,8 +43,8 @@ def _create(
     grant_types: Sequence[str] = (GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN),
     client_secret_hash: str | None = sha256_hex("s3cret"),
     logo_uri: str | None = None,
-) -> OpenAPIOAuthClient:
-    return repository.create(
+) -> None:
+    repository.create(
         client_id="claude-desktop",
         kind=kind,
         display_name=display_name,

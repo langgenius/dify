@@ -1,4 +1,4 @@
-"""SQLAlchemy persistence adapter for pre-registered OAuth clients."""
+"""SQLAlchemy persistence adapter for dynamically registered OAuth clients."""
 
 from collections.abc import Sequence
 
@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from enums.oauth_client import OAuthClientKind
 from models.oauth import OpenAPIOAuthClient
+from services.oauth_client_metadata import known_grant_types
 from services.oauth_clients import ResolvedClient
 from services.oauth_token_contracts import GrantType
 
@@ -27,7 +28,7 @@ class SQLAlchemyOAuthClientRepository:
             display_name=row.display_name,
             logo_uri=row.logo_uri,
             redirect_uris=tuple(row.redirect_uris),
-            grant_types=_known_grant_types(row.grant_types),
+            grant_types=frozenset(known_grant_types(row.grant_types, allowed=GrantType)),
             secret_hash=row.client_secret_hash,
         )
 
@@ -41,7 +42,7 @@ class SQLAlchemyOAuthClientRepository:
         grant_types: Sequence[GrantType],
         client_secret_hash: str | None = None,
         logo_uri: str | None = None,
-    ) -> OpenAPIOAuthClient:
+    ) -> None:
         row = OpenAPIOAuthClient(
             client_id=client_id,
             kind=kind,
@@ -54,9 +55,6 @@ class SQLAlchemyOAuthClientRepository:
         with self._session_factory() as session:
             session.add(row)
             session.commit()
-            session.refresh(row)
-            session.expunge(row)
-        return row
 
     def mark_token_issued(self, client_id: str) -> None:
         with self._session_factory() as session, session.begin():
@@ -65,8 +63,3 @@ class SQLAlchemyOAuthClientRepository:
                 .where(OpenAPIOAuthClient.client_id == client_id, OpenAPIOAuthClient.last_token_at.is_(None))
                 .values(last_token_at=func.now())
             )
-
-
-def _known_grant_types(raw: Sequence[str]) -> frozenset[GrantType]:
-    known = {grant.value: grant for grant in GrantType}
-    return frozenset(known[value] for value in raw if value in known)

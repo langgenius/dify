@@ -81,6 +81,9 @@ def test_authorization_code_off_gives_the_reduced_document(config_overrides: Con
     assert doc["grant_types_supported"] == ["urn:ietf:params:oauth:grant-type:device_code"]
     assert doc["client_id_metadata_document_supported"] is False
     assert doc["device_authorization_endpoint"] == "https://req.example.com/openapi/v1/oauth/device/code"
+    # RFC 8414 requires response_types_supported even with no authorization endpoint; none are supported then.
+    assert doc["response_types_supported"] == []
+    assert "authorization_response_iss_parameter_supported" not in doc
 
 
 def test_protected_resource_document() -> None:
