@@ -129,6 +129,9 @@ override-dependencies = [
 
 [dependency-groups]
 
+# Opt-in XLSX reader. Not included in tool.uv.default-groups.
+xlsx-wolfxl = ["wolfxl>=2.0.17,<2.1"]
+
 ############################################################
 # [ Dev ] dependency group
 # Required for development and running tests

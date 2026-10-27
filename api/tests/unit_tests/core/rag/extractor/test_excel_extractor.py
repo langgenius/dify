@@ -1,3 +1,4 @@
+import importlib.util
 import io
 from pathlib import Path
 from types import SimpleNamespace
@@ -92,6 +93,26 @@ def _get_upload_files(session_maker: sessionmaker[Session]) -> list[UploadFile]:
 
 
 class TestExcelExtractor:
+    def test_installed_xlsx_reader(self, tmp_path):
+        import openpyxl
+
+        if importlib.util.find_spec("wolfxl") is None:
+            assert excel_module.load_workbook is openpyxl.load_workbook
+        else:
+            assert excel_module.load_workbook is importlib.import_module("wolfxl").load_workbook
+
+        path = tmp_path / "reader.xlsx"
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        assert sheet is not None
+        sheet.append(["Name", "Count"])
+        sheet.append(["Alice", 3])
+        workbook.save(path)
+        workbook.close()
+
+        documents = ExcelExtractor(str(path)).extract()
+        assert [document.page_content for document in documents] == ['"Name":"Alice";"Count":"3"']
+
     def test_extract_xlsx_with_hyperlinks_and_sheet_skip(self, monkeypatch: pytest.MonkeyPatch):
         sheet_with_data = _FakeSheet(
             header_rows=[("Name", "Link")],

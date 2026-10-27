@@ -13,7 +13,6 @@ import os
 from typing import TypedDict, override
 
 import pandas as pd
-from openpyxl import load_workbook
 from sqlalchemy import select
 
 from configs import dify_config
@@ -25,6 +24,13 @@ from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+
+try:
+    from wolfxl import load_workbook  # pyrefly: ignore[missing-import]
+except ModuleNotFoundError as exc:
+    if exc.name != "wolfxl":
+        raise
+    from openpyxl import load_workbook
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +82,7 @@ class ExcelExtractor(BaseExtractor):
 
     @override
     def extract(self) -> list[Document]:
-        """Load from Excel file in xls or xlsx format using Pandas and openpyxl."""
+        """Load Excel files using Pandas and the installed optional XLSX reader."""
         documents = []
         file_extension = os.path.splitext(self._file_path)[-1].lower()
 
@@ -289,7 +295,7 @@ class ExcelExtractor(BaseExtractor):
         )
 
     def _get_image_bytes(self, image) -> bytes | None:
-        """Return embedded image bytes from an openpyxl image object."""
+        """Return embedded image bytes from a worksheet image object."""
         data_loader = getattr(image, "_data", None)
         if not callable(data_loader):
             return None
@@ -307,7 +313,7 @@ class ExcelExtractor(BaseExtractor):
             return None
 
     def _get_image_extension(self, image) -> str | None:
-        """Resolve an image extension from openpyxl metadata."""
+        """Resolve an image extension from worksheet image metadata."""
         image_format = getattr(image, "format", None)
         if isinstance(image_format, str) and image_format.strip():
             return image_format.strip().lower()
