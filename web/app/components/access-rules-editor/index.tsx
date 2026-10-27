@@ -24,7 +24,7 @@ export type AccessPolicyMemberBindingRemoval = {
   accountIds: string[]
 }
 
-export type AccessRulesEditorProps = {
+type AccessRulesEditorProps = {
   rules: { policy?: Pick<AccessPolicy, 'id' | 'name'> | null }[]
   userAccessSettings: ResourceUserAccessPolicies[]
   isLoadingRules: boolean

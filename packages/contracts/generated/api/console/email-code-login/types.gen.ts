@@ -15,6 +15,56 @@ export type SimpleResultDataResponse = {
   result: string
 }
 
+export type AccountBannedError = ErrorResponse & {
+  code: 'account_banned'
+  status: 400
+}
+
+export type AccountInFreezeError = ErrorResponse & {
+  code: 'account_in_freeze'
+  status: 400
+}
+
+export type EmailDomainSuspendedError = ErrorResponse & {
+  code: 'email_domain_suspended'
+  status: 400
+}
+
+export type TurnstileVerificationFailedError = ErrorResponse & {
+  code: 'turnstile_verification_failed'
+  status: 400
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type EmailCodeLoginRateLimitExceededError = ErrorResponse & {
+  code: 'email_code_login_rate_limit_exceeded'
+  status: 429
+}
+
+export type EmailSendIpLimitError = ErrorResponse & {
+  code: 'email_send_ip_limit'
+  status: 429
+}
+
+export type EmailCodeLoginServiceUnavailableError = ErrorResponse & {
+  code: 'email_code_login_service_unavailable'
+  status: 503
+}
+
+export type TurnstileServiceUnavailableError = ErrorResponse & {
+  code: 'turnstile_service_unavailable'
+  status: 503
+}
+
 export type EmailCodeLoginPayload = {
   code: string
   email: string
@@ -28,12 +78,61 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type AccountNotFoundError = ErrorResponse & {
+  code: 'account_not_found'
+  status: 400
+}
+
+export type EmailCodeError = ErrorResponse & {
+  code: 'email_code_error'
+  status: 400
+}
+
+export type InvalidEmailError = ErrorResponse & {
+  code: 'invalid_email'
+  status: 400
+}
+
+export type InvalidOrExpiredTokenError = ErrorResponse & {
+  code: 'invalid_or_expired_token'
+  status: 400
+}
+
+export type LimitExceededError = ErrorResponse & {
+  code: 'limit_exceeded'
+  status: 400
+}
+
+export type NormalizedEmailAlreadyInUseError = ErrorResponse & {
+  code: 'normalized_email_already_in_use'
+  status: 400
+}
+
+export type NotAllowedCreateWorkspaceError = ErrorResponse & {
+  code: 'not_allowed_create_workspace'
+  status: 400
+}
+
 export type PostEmailCodeLoginData = {
   body: EmailCodeSendPayload
   path?: never
   query?: never
   url: '/email-code-login'
 }
+
+export type PostEmailCodeLoginErrors = {
+  400:
+    | AccountBannedError
+    | AccountInFreezeError
+    | EmailDomainSuspendedError
+    | TurnstileVerificationFailedError
+    | ErrorResponse
+  429: EmailCodeLoginRateLimitExceededError | EmailSendIpLimitError | ErrorResponse
+  503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostEmailCodeLoginError = PostEmailCodeLoginErrors[keyof PostEmailCodeLoginErrors]
 
 export type PostEmailCodeLoginResponses = {
   200: SimpleResultDataResponse
@@ -48,6 +147,27 @@ export type PostEmailCodeLoginValidityData = {
   query?: never
   url: '/email-code-login/validity'
 }
+
+export type PostEmailCodeLoginValidityErrors = {
+  400:
+    | AccountBannedError
+    | AccountInFreezeError
+    | AccountNotFoundError
+    | EmailCodeError
+    | EmailDomainSuspendedError
+    | InvalidEmailError
+    | InvalidOrExpiredTokenError
+    | LimitExceededError
+    | NormalizedEmailAlreadyInUseError
+    | NotAllowedCreateWorkspaceError
+    | TurnstileVerificationFailedError
+    | ErrorResponse
+  503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostEmailCodeLoginValidityError =
+  PostEmailCodeLoginValidityErrors[keyof PostEmailCodeLoginValidityErrors]
 
 export type PostEmailCodeLoginValidityResponses = {
   200: SimpleResultResponse

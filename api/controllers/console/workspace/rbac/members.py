@@ -6,9 +6,11 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.rbac import rbac_language
+from controllers.common.schema import query_params_from_model
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.rbac.schemas import (
+    _AccessControlLanguageQuery,
     _ReplaceMemberRolesRequest,
 )
 from extensions.ext_application_services import application_services
@@ -46,6 +48,7 @@ class RBACMyPermissionsApi(Resource):
 @console_ns.route("/workspaces/current/rbac/members/<uuid:member_id>/rbac-roles")
 class RBACMemberRolesApi(Resource):
     @console_account_admission()
+    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
     @console_ns.response(200, "Success", console_ns.models[dto.MemberRolesResponse.__name__])
     def get(self, context: RequestContext, member_id):
         return dump_response(

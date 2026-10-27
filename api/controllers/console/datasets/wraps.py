@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from controllers.console.datasets.error import PipelineNotFoundError
 from extensions.ext_database import db
+from libs.external_api import document_errors
 from libs.login import current_account_with_tenant
 from models.dataset import Pipeline
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -32,4 +33,4 @@ def get_rag_pipeline[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
 
         return view_func(*args, **kwargs)
 
-    return decorated_view
+    return document_errors(decorated_view, PipelineNotFoundError)

@@ -288,8 +288,10 @@ const normalizeEnterpriseOpenApi = () => {
   return document
 }
 
+export const enterpriseDocument = normalizeEnterpriseOpenApi()
+
 export default defineConfig({
-  input: normalizeEnterpriseOpenApi(),
+  input: enterpriseDocument,
   output: {
     module: { extension: '.ts' },
     entryFile: false,

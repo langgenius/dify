@@ -284,6 +284,15 @@ it('replaces an existing image only after selecting a file and confirms the new 
 })
 
 it('preserves a linked icon on cancellation and only replaces it after confirmation', async () => {
+  function loadedImage() {
+    const image = document.createElement('img')
+    Object.defineProperties(image, {
+      complete: { value: true },
+      naturalWidth: { value: 32 },
+    })
+    return image
+  }
+  vi.spyOn(window, 'Image').mockImplementation(loadedImage)
   const user = userEvent.setup()
   const client = new QueryClient()
   client.setQueryData(emojiCatalogOptions.queryKey, [])

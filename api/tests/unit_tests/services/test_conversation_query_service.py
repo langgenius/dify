@@ -11,7 +11,7 @@ from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.file import FILE_MODEL_IDENTITY, File
-from models.enums import ConversationFromSource, EndUserType
+from models.enums import ConversationFromSource, EndUserType, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser, InstalledApp
 from models.utils.file_input_compat import restore_input_files
 from repositories.conversation_repository import ConversationRepository
@@ -62,11 +62,11 @@ def query_context(request: pytest.FixtureRequest, sqlite_session_factory: sessio
                 app_id=app.id,
                 mode=AppMode.CHAT,
                 name="Original",
-                inputs={},
+                _inputs={},
                 from_source=ConversationFromSource.CONSOLE,
                 from_account_id=account_id,
                 from_end_user_id=None,
-                invoke_from=invoke_from,
+                invoke_from=InvokeFrom(invoke_from),
                 is_deleted=False,
             )
         else:
@@ -79,11 +79,11 @@ def query_context(request: pytest.FixtureRequest, sqlite_session_factory: sessio
                 app_id=app.id,
                 mode=AppMode.CHAT,
                 name="Original",
-                inputs={},
+                _inputs={},
                 from_source=ConversationFromSource.API,
                 from_account_id=None,
                 from_end_user_id=user.id,
-                invoke_from=invoke_from,
+                invoke_from=InvokeFrom(invoke_from),
                 is_deleted=False,
             )
         session.add(conversation)
@@ -228,7 +228,7 @@ def test_invalid_file_input_error_propagates_after_repository_connection_is_clos
     service = ConversationQueryService(
         conversations=ConversationRepository(session_factory=sqlite_session_factory), restore_inputs=restore_input_files
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="'invalid' is not a valid FileTransferMethod"):
         service.get_page(
             scope=query_context.scope,
             invoke_from=query_context.invoke_from,

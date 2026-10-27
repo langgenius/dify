@@ -37,7 +37,7 @@ from models.workflow import (
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_service import SnippetService
-from tests.unit_tests.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account
 
 
 def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: dict) -> Workflow:
@@ -49,11 +49,11 @@ def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: d
         kind=WorkflowKind.SNIPPET.value,
         version=version,
         graph=json.dumps(graph),
-        features=json.dumps(features),
+        _features=json.dumps(features),
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 
@@ -857,11 +857,11 @@ def test_delete_snippet_keeps_agent_with_persisted_external_owner(
         type=WorkflowType.WORKFLOW,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
     external_binding = WorkflowAgentNodeBinding(
         tenant_id=snippet.tenant_id,
@@ -945,7 +945,7 @@ def test_delete_draft_variable_files_removes_storage_objects(
 
 
 def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch: pytest.MonkeyPatch) -> None:
-    from tests.unit_tests.config_override import apply_config_overrides
+    from tests.helpers.unit.config_override import apply_config_overrides
 
     snippet = _snippet()
     archive_storage = SimpleNamespace(

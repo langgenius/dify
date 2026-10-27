@@ -16,11 +16,12 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { toast } from '@/app/notifications'
-import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { isUnauthorizedError } from '@/service/http-error'
 import { useLogout } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
 import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
@@ -70,7 +71,7 @@ export default function OAuthAuthorize() {
     error: profileError,
   } = useQuery({
     ...userProfileQueryOptions(),
-    throwOnError: (err) => !isLegacyBase401(err),
+    throwOnError: (err) => !isUnauthorizedError(err),
   })
   const isLoggedIn = !!userProfileResp && !profileError
   const userProfile = userProfileResp?.profile

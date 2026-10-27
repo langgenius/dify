@@ -120,7 +120,7 @@ def delete_conversation_related_data(self, conversation_id: str) -> None:
     except Exception as exc:
         logger.exception("Failed to delete data for conversation_id: %s", conversation_id)
         countdown = min(_RETRY_DELAY_SECONDS * (2**self.request.retries), 10 * 60)
-        raise self.retry(exc=exc, countdown=countdown)
+        raise self.retry(exc=exc, countdown=countdown) from exc
 
     end_at = time.perf_counter()
     logger.info(

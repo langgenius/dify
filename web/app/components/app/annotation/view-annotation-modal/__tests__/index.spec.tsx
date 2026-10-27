@@ -1,204 +1,138 @@
-import type { Mock } from 'vite-plus/test'
-import type { AnnotationItem, HitHistoryItem } from '../../type'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { consoleClient } from '@/service/console'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import { fetchHitHistoryList } from '@/service/annotation'
-import ViewAnnotationModal from '../index'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { List } from '../../list'
 
-const mockFormatTime = vi.fn(() => 'formatted-time')
-
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({
-    formatTime: mockFormatTime,
-  }),
+const api = vi.hoisted(() => ({
+  history: vi.fn<typeof consoleClient.apps.byAppId.annotations.byAnnotationId.hitHistories.get>(),
 }))
-
-vi.mock('@/service/annotation', () => ({
-  fetchHitHistoryList: vi.fn(),
+vi.mock('@/hooks/use-timestamp', () => ({ default: () => ({ formatTime: () => 'Created time' }) }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.annotations.byAnnotationId.hitHistories.get': (input) => api.history(input),
+    }),
+  }
+})
+const emptyHistory = { data: [], total: 0, page: 1, limit: 10, has_more: false }
+const items = ['a', 'b'].map((id) => ({
+  id,
+  question: `Question ${id}`,
+  answer: `Answer ${id}`,
+  hit_count: 0,
 }))
-
-vi.mock('../../edit-annotation-modal/edit-item', () => {
-  const EditItemType = {
-    Query: 'query',
-    Answer: 'answer',
-  }
-  return {
-    default: ({
-      type,
-      content,
-      onSave,
-    }: {
-      type: string
-      content: string
-      onSave: (value: string) => void
-    }) => (
-      <div>
-        <div data-testid={`content-${type}`}>{content}</div>
-        <button data-testid={`edit-${type}`} onClick={() => onSave(`${type}-updated`)}>
-          edit-
-          {type}
-        </button>
-      </div>
-    ),
-    EditItemType,
-  }
-})
-
-const fetchHitHistoryListMock = fetchHitHistoryList as Mock
-
-const createAnnotationItem = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
-  id: overrides.id ?? 'annotation-id',
-  question: overrides.question ?? 'question',
-  answer: overrides.answer ?? 'answer',
-  created_at: overrides.created_at ?? 1700000000,
-  hit_count: overrides.hit_count ?? 0,
-})
-
-const createHitHistoryItem = (overrides: Partial<HitHistoryItem> = {}): HitHistoryItem => ({
-  id: overrides.id ?? 'hit-id',
-  question: overrides.question ?? 'query',
-  match: overrides.match ?? 'match',
-  response: overrides.response ?? 'response',
-  source: overrides.source ?? 'source',
-  score: overrides.score ?? 0.42,
-  created_at: overrides.created_at ?? 1700000000,
-})
-
-const renderComponent = (props?: Partial<React.ComponentProps<typeof ViewAnnotationModal>>) => {
-  const item = createAnnotationItem()
-  const mergedProps: React.ComponentProps<typeof ViewAnnotationModal> = {
-    appId: 'app-id',
-    isShow: true,
-    onHide: vi.fn(),
-    item,
-    onSave: vi.fn().mockResolvedValue(undefined),
-    onRemove: vi.fn().mockResolvedValue(undefined),
-    ...props,
-  }
-  return {
-    ...render(<ViewAnnotationModal {...mergedProps} />),
-    props: mergedProps,
-  }
+function setup() {
+  const user = userEvent.setup()
+  const view = renderWithConsoleQuery(
+    <List
+      appId="app-id"
+      list={items}
+      onEdited={vi.fn()}
+      onRemoved={vi.fn()}
+      selectedIds={[]}
+      onSelectedIdsChange={vi.fn()}
+      onBatchDelete={vi.fn()}
+    />,
+  )
+  return { user, ...view }
 }
+beforeEach(() => {
+  api.history.mockResolvedValue(emptyHistory)
+})
 
-describe('ViewAnnotationModal', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    fetchHitHistoryListMock.mockResolvedValue({ data: [], total: 0 })
+it('loads history only when selected and preserves the annotation draft when switching tabs', async () => {
+  const { user } = setup()
+  await user.click(screen.getByRole('button', { name: 'Question a' }))
+  expect(api.history).not.toHaveBeenCalled()
+  const answer = screen.getByRole('region', { name: 'appAnnotation.editModal.answerName' })
+  await user.click(within(answer).getByRole('button', { name: 'common.operation.edit' }))
+  const textbox = within(answer).getByRole('textbox')
+  await user.clear(textbox)
+  await user.type(textbox, 'Unsaved answer')
+  await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.hitHistory' }))
+  expect(await screen.findByText('appAnnotation.viewModal.noHitHistory')).toBeVisible()
+  expect(api.history).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-id', annotation_id: 'a' },
+    query: { page: 1, limit: 10 },
   })
+  await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.annotatedResponse' }))
+  expect(textbox).toHaveValue('Unsaved answer')
+})
 
-  it('should render annotation tab and allow saving updated query', async () => {
-    // Arrange
-    const { props } = renderComponent()
+it('reports history failures and retries without presenting them as an empty history', async () => {
+  api.history.mockRejectedValueOnce(new Error('Offline'))
+  const { user } = setup()
+  await user.click(screen.getByRole('button', { name: 'Question a' }))
+  await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.hitHistory' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+  expect(screen.queryByText('appAnnotation.viewModal.noHitHistory')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  expect(await screen.findByText('appAnnotation.viewModal.noHitHistory')).toBeVisible()
+})
 
-    await waitFor(() => {
-      expect(fetchHitHistoryListMock).toHaveBeenCalled()
-    })
-
-    // Act
-    fireEvent.click(screen.getByTestId('edit-query'))
-
-    // Assert
-    await waitFor(() => {
-      expect(props.onSave).toHaveBeenCalledWith('query-updated', props.item.answer)
-    })
+it('does not show a previous annotation response when its request completes late', async () => {
+  const pending =
+    createDeferred<
+      Awaited<
+        ReturnType<typeof consoleClient.apps.byAppId.annotations.byAnnotationId.hitHistories.get>
+      >
+    >()
+  api.history.mockReturnValueOnce(pending.promise)
+  const { user } = setup()
+  await user.click(screen.getByRole('button', { name: 'Question a' }))
+  await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.hitHistory' }))
+  await waitFor(() => expect(api.history).toHaveBeenCalledOnce())
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(screen.getByRole('button', { name: 'Question b' }))
+  await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.hitHistory' }))
+  expect(await screen.findByText('appAnnotation.viewModal.noHitHistory')).toBeVisible()
+  pending.resolve({
+    ...emptyHistory,
+    total: 1,
+    data: [{ id: 'old', question: 'Old hit', score: 0 }],
   })
+  await waitFor(() => expect(api.history).toHaveBeenCalledTimes(2))
+  expect(screen.queryByText('Old hit')).not.toBeInTheDocument()
+})
 
-  it('should render annotation tab and allow saving updated answer', async () => {
-    // Arrange
-    const { props } = renderComponent()
-
-    await waitFor(() => {
-      expect(fetchHitHistoryListMock).toHaveBeenCalled()
-    })
-
-    // Act
-    fireEvent.click(screen.getByTestId('edit-answer'))
-
-    // Assert
-    await waitFor(() => {
-      expect(props.onSave).toHaveBeenCalledWith(props.item.question, 'answer-updated')
-    })
-  })
-
-  it('switches named panels with the keyboard while preserving the drawer name', async () => {
-    const user = userEvent.setup()
-    // Arrange
-    const { props } = renderComponent()
-
-    await waitFor(() => {
-      expect(fetchHitHistoryListMock).toHaveBeenCalled()
-    })
-
-    // Act
-    expect(
-      screen.getByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' }),
-    ).toBeInTheDocument()
-    await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.annotatedResponse' }))
-    await user.keyboard('{ArrowRight}{Enter}')
-    expect(screen.getByRole('tab', { name: 'appAnnotation.viewModal.hitHistory' })).toHaveFocus()
-    expect(
-      screen.getByRole('tabpanel', { name: 'appAnnotation.viewModal.hitHistory' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByTestId('edit-query')).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' }),
-    ).toBeInTheDocument()
-
-    // Assert
-    // Assert
-    expect(await screen.findByText('appAnnotation.viewModal.noHitHistory'))!.toBeInTheDocument()
-    expect(mockFormatTime).toHaveBeenCalledWith(props.item.created_at, 'appLog.dateTimeFormat')
-  })
-
-  it('should render hit history entries with their hit count when data exists', async () => {
-    const hits = [
-      createHitHistoryItem({ question: 'user input' }),
-      createHitHistoryItem({ id: 'hit-2', question: 'second' }),
-    ]
-    fetchHitHistoryListMock.mockResolvedValue({ data: hits, total: 15 })
-
-    renderComponent()
-
-    fireEvent.click(await screen.findByText('appAnnotation.viewModal.hitHistory'))
-
-    expect(await screen.findByText('user input'))!.toBeInTheDocument()
-    expect(screen.getByText('15 appAnnotation.viewModal.hits'))!.toBeInTheDocument()
-    expect(mockFormatTime).toHaveBeenCalledWith(hits[0]!.created_at, 'appLog.dateTimeFormat')
-  })
-
-  it('should confirm before removing the annotation and hide on success', async () => {
-    const { props } = renderComponent()
-
-    fireEvent.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
-    expect(
-      await screen.findByText('appDebug.feature.annotation.removeConfirm'),
-    )!.toBeInTheDocument()
-
-    const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
-    fireEvent.click(confirmButton)
-
-    await waitFor(() => {
-      expect(props.onRemove).toHaveBeenCalledTimes(1)
-      expect(props.onHide).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  it('should close the remove confirmation when cancelled', async () => {
-    renderComponent()
-
-    fireEvent.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
-    expect(
-      await screen.findByText('appDebug.feature.annotation.removeConfirm'),
-    )!.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-
-    await waitFor(() => {
-      expect(
-        screen.queryByText('appDebug.feature.annotation.removeConfirm'),
-      ).not.toBeInTheDocument()
-    })
+it('renders zero scores and loads the requested history page without retaining the previous rows', async () => {
+  api.history.mockImplementation(async ({ query }) => ({
+    ...emptyHistory,
+    page: query?.page ?? 1,
+    total: 11,
+    has_more: query?.page === 1,
+    data:
+      query?.page === 2
+        ? [{ id: 'last-hit', question: 'Last hit', score: null }]
+        : Array.from({ length: 10 }, (_, index) => ({
+            id: `hit-${index}`,
+            question: `Hit ${index}`,
+            match: 'Matched question',
+            response: 'Annotated response',
+            source: 'web_app',
+            score: index / 10,
+            created_at: 1710000000,
+          })),
+  }))
+  const { user } = setup()
+  await user.click(screen.getByRole('button', { name: 'Question a' }))
+  await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.hitHistory' }))
+  const firstHit = await screen.findByRole('row', { name: /^Hit 0 / })
+  expect(within(firstHit).getByRole('cell', { name: '0.00' })).toBeVisible()
+  expect(within(firstHit).getByRole('cell', { name: 'Annotated response' })).toBeVisible()
+  expect(within(firstHit).getByRole('cell', { name: 'Created time' })).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+  const lastHit = await screen.findByRole('row', { name: /^Last hit / })
+  expect(within(lastHit).getAllByRole('cell', { name: '-' })).toHaveLength(2)
+  expect(screen.queryByRole('row', { name: /^Hit 0 / })).not.toBeInTheDocument()
+  expect(api.history).toHaveBeenLastCalledWith({
+    params: { app_id: 'app-id', annotation_id: 'a' },
+    query: { page: 2, limit: 10 },
   })
 })

@@ -307,7 +307,7 @@ class AgentPackageResourceExporter:
 
         skill_file_ids = [item.file_id for item in soul.config_skills if not item.is_missing]
         tool_files = self._tool_files(session=session, tenant_id=tenant_id, file_ids=skill_file_ids)
-        for skill_ref, portable_skill_ref in zip(soul.config_skills, resource_data["config_skills"]):
+        for skill_ref, portable_skill_ref in zip(soul.config_skills, resource_data["config_skills"], strict=False):
             if skill_ref.is_missing:
                 continue
             resource_id = f"s_{skill_offset + len(skill_sources) + 1:06d}"
@@ -335,7 +335,7 @@ class AgentPackageResourceExporter:
         ]
         file_tool_files = self._tool_files(session=session, tenant_id=tenant_id, file_ids=tool_file_refs)
         upload_files = self._upload_files(session=session, tenant_id=tenant_id, file_ids=upload_file_refs)
-        for file_ref, portable_file_ref in zip(soul.config_files, resource_data["config_files"]):
+        for file_ref, portable_file_ref in zip(soul.config_files, resource_data["config_files"], strict=False):
             if file_ref.is_missing:
                 continue
             resource_id = f"f_{file_offset + len(file_sources) + 1:06d}"

@@ -30,6 +30,7 @@ def test_unauthorized_handler_returns_json_response() -> None:
     assert json.loads(response.get_data(as_text=True)) == {
         "code": "unauthorized",
         "message": "Unauthorized.",
+        "status": 401,
     }
 
 

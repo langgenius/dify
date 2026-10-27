@@ -20,5 +20,11 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "contentMappers": [
+    {
+      "package": "@dify/openapi-content-mapper",
+      "extensions": [".openapi", ".openapi-source"]
+    }
+  ]
 }

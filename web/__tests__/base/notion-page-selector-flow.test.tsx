@@ -1,13 +1,13 @@
-import type { DataSourceCredential } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { DataSourceNotionWorkspace } from '@/models/common'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import NotionPageSelector from '@/app/components/base/notion-page-selector/base'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 
-const mockInvalidPreImportNotionPages = vi.fn()
-const mockSetSettingsDestination = vi.fn()
 const mockUsePreImportNotionPages = vi.fn()
 
 vi.mock('@tanstack/react-virtual', () => ({
@@ -22,22 +22,22 @@ vi.mock('@tanstack/react-virtual', () => ({
   }),
 }))
 
-vi.mock('@/service/knowledge/use-import', () => ({
-  usePreImportNotionPages: (params: { datasetId: string; credentialId: string }) =>
-    mockUsePreImportNotionPages(params),
-  useInvalidPreImportNotionPages: () => mockInvalidPreImportNotionPages,
-}))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'notion.preImport.pages.get': (input) => mockUsePreImportNotionPages(input),
+    }),
+  }
 })
 
 const buildCredential = (
   id: string,
   name: string,
   workspaceName: string,
-): DataSourceCredential => ({
+): DatasourceCredentialResponse => ({
   id,
   name,
   type: CredentialTypeEnum.OAUTH2,
@@ -49,7 +49,7 @@ const buildCredential = (
   },
 })
 
-const credentials: DataSourceCredential[] = [
+const credentials: DatasourceCredentialResponse[] = [
   buildCredential('c1', 'Cred 1', 'Workspace 1'),
   buildCredential('c2', 'Cred 2', 'Workspace 2'),
 ]
@@ -107,16 +107,16 @@ const workspacePagesByCredential: Record<string, DataSourceNotionWorkspace[]> = 
   ],
 }
 
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithConsoleQuery, () => ({ onUrlUpdate }))
+
 describe('Base Notion Page Selector Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUsePreImportNotionPages.mockImplementation(
-      ({ credentialId }: { credentialId: string }) => ({
-        data: {
-          notion_info: workspacePagesByCredential[credentialId] ?? workspacePagesByCredential.c1,
-        },
-        isFetching: false,
-        isError: false,
+      ({ query }: { query: { credential_id: string } }) => ({
+        notion_info:
+          workspacePagesByCredential[query.credential_id] ?? workspacePagesByCredential.c1,
       }),
     )
   })
@@ -135,7 +135,7 @@ describe('Base Notion Page Selector Flow', () => {
       />,
     )
 
-    await user.click(screen.getByRole('checkbox', { name: 'Root 1' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Root 1' }))
 
     expect(onSelect).toHaveBeenLastCalledWith(
       expect.arrayContaining([
@@ -174,15 +174,17 @@ describe('Base Notion Page Selector Flow', () => {
       />,
     )
 
+    await screen.findByText('Root 1')
     expect(onSelectCredential).toHaveBeenCalledWith('c1')
 
     await user.click(screen.getByRole('combobox', { name: /Workspace 1/ }))
     await user.click(screen.getByRole('option', { name: /Workspace 2/ }))
 
-    expect(mockInvalidPreImportNotionPages).toHaveBeenCalledWith({
-      datasetId: 'dataset-1',
-      credentialId: 'c2',
-    })
+    await waitFor(() =>
+      expect(mockUsePreImportNotionPages).toHaveBeenCalledWith({
+        query: { dataset_id: 'dataset-1', credential_id: 'c2' },
+      }),
+    )
     expect(onSelect).toHaveBeenCalledWith([])
 
     await waitFor(() => {
@@ -193,6 +195,8 @@ describe('Base Notion Page Selector Flow', () => {
     await user.click(
       screen.getByRole('button', { name: 'common.dataSource.notion.selector.configure' }),
     )
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+    )
   })
 })

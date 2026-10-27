@@ -228,7 +228,7 @@ class AliyunLogStorePG:
                         result = []
                         for row in cursor.fetchall():
                             row_dict = {}
-                            for col, val in zip(columns, row):
+                            for col, val in zip(columns, row, strict=False):
                                 row_dict[col] = "" if val is None else str(val)
                             result.append(row_dict)
 

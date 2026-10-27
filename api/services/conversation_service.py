@@ -5,9 +5,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import get_credit_usage_app_type
-from core.llm_generator.llm_generator import LLMGenerator
-from core.model_context import use_credit_usage_metadata
 from factories import variable_factory
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
@@ -27,12 +24,6 @@ logger = logging.getLogger(__name__)
 
 
 class ConversationService:
-    @staticmethod
-    def generate_name(*, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str) -> str:
-        """Generate a conversation title with the appropriate credit usage metadata."""
-        with use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_mode)}):
-            return LLMGenerator.generate_conversation_name(tenant_id, query, conversation_id, app_id)
-
     @classmethod
     def get_conversation(
         cls, app_model: App, conversation_id: str, user: Account | EndUser | None, *, session: Session
@@ -45,7 +36,7 @@ class ConversationService:
                 Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
                 Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
                 Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
-                Conversation.is_deleted == False,
+                Conversation.is_deleted.is_(False),
             )
             .limit(1)
         )

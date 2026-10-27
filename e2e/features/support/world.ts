@@ -1,4 +1,5 @@
 import type { IWorldOptions } from '@cucumber/cucumber'
+import type { DefaultModelResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { APIRequestContext, Browser, BrowserContext, Download, Page } from '@playwright/test'
 import type { AuthSessionMetadata } from '../../fixtures/auth.ts'
 import type { ConsoleClient } from '../../support/api/console-client.ts'
@@ -51,6 +52,7 @@ export type WorkflowPreviewFixture = {
 export const createAgentBuilderWorldState = () => ({
   fixtures: {
     agentDecisionModel: undefined as AgentBuilderChatModel | undefined,
+    defaultChatModel: undefined as DefaultModelResponse | undefined,
     preseededResources: {} as Record<string, AgentBuilderPreseededResource>,
     speechToTextModel: undefined as AgentBuilderChatModel | undefined,
     stableModel: undefined as AgentBuilderChatModel | undefined,

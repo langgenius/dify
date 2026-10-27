@@ -1,5 +1,5 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
-import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { EditableOutputConfig, EditingState, OutputDraft } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
@@ -20,8 +20,8 @@ import {
   OUTPUT_NAME_PATTERN_SOURCE,
 } from './utils'
 
-const CANCEL_HOTKEY = 'Escape' satisfies Hotkey
-const CONFIRM_HOTKEY = 'Mod+Enter' satisfies Hotkey
+const CANCEL_HOTKEY = 'Escape' satisfies HotkeyChord
+const CONFIRM_HOTKEY = 'Mod+Enter' satisfies HotkeyChord
 
 function ConfirmHotkeyHint() {
   const displayKeys = formatForDisplay(CONFIRM_HOTKEY, { parts: true })
@@ -140,7 +140,7 @@ export function OutputEditCard({
           </Field>
           <OutputTypeSelect value={draft.type} onChange={(value) => updateDraft({ type: value })} />
           <Field name="required" className="contents">
-            <FieldLabel className="flex h-6 items-center gap-x-1 system-xs-regular text-text-tertiary">
+            <FieldLabel className="flex h-6 cursor-pointer items-center gap-x-1 system-xs-regular text-text-tertiary">
               <Switch
                 size="xs"
                 checked={draft.required}

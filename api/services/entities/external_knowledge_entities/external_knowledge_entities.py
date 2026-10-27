@@ -1,12 +1,12 @@
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 
 class AuthorizationConfig(BaseModel):
     type: Literal[None, "basic", "bearer", "custom"]
-    api_key: Union[None, str] = None
-    header: Union[None, str] = None
+    api_key: None | str = None
+    header: None | str = None
 
 
 class Authorization(BaseModel):

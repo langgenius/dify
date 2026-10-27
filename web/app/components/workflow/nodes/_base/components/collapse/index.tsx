@@ -73,7 +73,7 @@ export function CollapseIndicator() {
   return (
     <span
       aria-hidden="true"
-      className="i-custom-vender-solid-general-arrow-down-round-fill size-4 rotate-270 cursor-pointer text-text-quaternary transition-transform group-hover/collapse:text-text-secondary group-data-panel-open/collapse:rotate-0 motion-reduce:transition-none"
+      className="i-custom-vender-solid-general-arrow-down-round-fill size-4 -rotate-90 cursor-pointer text-text-quaternary transition-transform group-hover/collapse:text-text-secondary group-data-panel-open/collapse:rotate-0 motion-reduce:transition-none"
     />
   )
 }

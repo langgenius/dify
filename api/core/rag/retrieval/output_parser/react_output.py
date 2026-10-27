@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, NamedTuple, Union
+from typing import Any, NamedTuple
 
 
 @dataclass
@@ -10,7 +10,7 @@ class ReactAction:
 
     tool: str
     """The name of the Tool to execute."""
-    tool_input: Union[str, dict[str, Any]]
+    tool_input: str | dict[str, Any]
     """The input to pass in to the Tool."""
     log: str
     """Additional information to log about the action."""

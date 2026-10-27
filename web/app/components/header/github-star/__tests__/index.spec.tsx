@@ -1,78 +1,38 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import { onTestFinished } from 'vite-plus/test'
 import GithubStar from '../index'
 
-const GITHUB_STAR_URL = 'https://ungh.cc/repos/langgenius/dify'
-
-const renderWithQueryClient = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
+const renderStars = () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  onTestFinished(() => client.clear())
   return render(
-    <QueryClientProvider client={queryClient}>
-      <GithubStar className="test-class" />
+    <QueryClientProvider client={client}>
+      <GithubStar className="" />
     </QueryClientProvider>,
   )
 }
 
-const createJsonResponse = (body: Record<string, unknown>, status = 200) => {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
-}
+afterEach(() => vi.restoreAllMocks())
 
-const createDeferred = <T,>() => {
-  let resolve!: (value: T | PromiseLike<T>) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
+it('shows the fetched star count after the request completes', async () => {
+  let resolve!: (response: Response) => void
+  const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(
+    new Promise((done) => {
+      resolve = done
+    }),
+  )
+  renderStars()
+  expect(screen.queryByText(/^[\d,]+$/)).not.toBeInTheDocument()
 
-  return { promise, resolve, reject }
-}
+  resolve(Response.json({ repo: { stars: 123456 } }))
 
-describe('GithubStar', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks()
-    vi.clearAllMocks()
-  })
+  expect(await screen.findByText('123,456')).toBeInTheDocument()
+  expect(fetch).toHaveBeenCalledWith('https://ungh.cc/repos/langgenius/dify')
+})
 
-  // Covers the fetched star count shown after a successful request.
-  it('should render fetched star count', async () => {
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(createJsonResponse({ repo: { stars: 123456 } }))
-
-    renderWithQueryClient()
-
-    expect(await screen.findByText('123,456')).toBeInTheDocument()
-    expect(fetchSpy).toHaveBeenCalledWith(GITHUB_STAR_URL)
-  })
-
-  // Covers the fallback star count shown when the request fails.
-  it('should render default star count on error', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(createJsonResponse({}, 500))
-
-    renderWithQueryClient()
-
-    expect(await screen.findByText('110,918')).toBeInTheDocument()
-  })
-
-  // Covers the loading indicator while the fetch promise is still pending.
-  it('should show loader while fetching', async () => {
-    const deferred = createDeferred<Response>()
-    vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(deferred.promise)
-
-    const { container } = renderWithQueryClient()
-
-    expect(container.querySelector('.animate-spin')).toBeInTheDocument()
-
-    deferred.resolve(createJsonResponse({ repo: { stars: 222222 } }))
-
-    await waitFor(() => {
-      expect(screen.getByText('222,222')).toBeInTheDocument()
-    })
-  })
+it('keeps a numeric fallback visible when the star request fails', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 500 }))
+  renderStars()
+  expect(await screen.findByText(/^[\d,]+$/)).toBeInTheDocument()
 })

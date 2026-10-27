@@ -9,6 +9,7 @@ import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
 import { getBuiltInAccessUrls } from '../shared/utils'
+import { ApiSecretKeyButton } from './api-secret-key-button'
 
 type ServiceApiAccessPointCardProps = {
   appInfo: AppDetailWithSite
@@ -58,11 +59,13 @@ export function ServiceApiAccessPointCard({
 
   return (
     <ServiceApiCardView
-      apiKeyButtonProps={{
-        appId: appInfo.id,
-        canManage,
-        disabled: availability !== 'available',
-      }}
+      apiKeyAction={
+        <ApiSecretKeyButton
+          appId={appInfo.id}
+          canManage={canManage}
+          disabled={availability !== 'available'}
+        />
+      }
       apiUrl={apiUrl}
       appMode={appInfo.mode}
       available={availability === 'available'}

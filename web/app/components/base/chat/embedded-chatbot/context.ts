@@ -23,7 +23,7 @@ export type EmbeddedChatbotContextValue = {
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
-  handleStartChat: (callback?: any) => void
+  handleStartChat: (callback?: () => void) => void
   handleChangeConversation: (conversationId: string) => void
   handleNewConversationCompleted: (newConversationId: string) => void
   chatShouldReloadKey: string

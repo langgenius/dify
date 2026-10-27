@@ -35,7 +35,7 @@ function RadioControl({ className, ...props }: RadioControlProps) {
       keepMounted
       className={(state) =>
         cn(
-          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0 transition-colors motion-reduce:transition-none',
+          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0',
           'border border-components-radio-border bg-components-radio-bg shadow-xs shadow-shadow-shadow-3',
           'hover:border-components-radio-border-hover hover:bg-components-radio-bg-hover',
           'data-checked:border-[5px] data-checked:border-components-radio-border-checked data-checked:hover:border-components-radio-border-checked-hover',
@@ -57,7 +57,7 @@ function Radio<Value = string>({ className, ...props }: RadioProps<Value>) {
     <BaseRadio.Root<Value>
       className={(state) =>
         cn(
-          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0 transition-colors motion-reduce:transition-none',
+          'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0',
           'border border-components-radio-border bg-components-radio-bg shadow-xs shadow-shadow-shadow-3',
           'hover:border-components-radio-border-hover hover:bg-components-radio-bg-hover',
           checkedControlFocusClassName,
