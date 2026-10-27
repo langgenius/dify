@@ -2648,7 +2648,7 @@ export type HumanInputNodeData = {
   recipients_spec: Array<Contact | DynamicEmail | OnetimeEmail | Initiator | AllWorkspaceContacts>
   retry_config?: RetryConfig
   timeout?: number
-  timeout_unit?: TimeoutUnit501031274512StrictStrictFalse
+  timeout_unit?: TimeoutUnit94384271860208StrictStrictFalse
   title?: string
   type?: 'human-input'
   user_actions?: Array<UserActionConfig>
@@ -3263,7 +3263,7 @@ export type AllWorkspaceContacts = {
   type?: 'all_workspace_contacts'
 }
 
-export type TimeoutUnit501031274512StrictStrictFalse = 'day' | 'hour'
+export type TimeoutUnit94384271860208StrictStrictFalse = 'day' | 'hour'
 
 export type UserActionConfig = {
   button_style?: ButtonStyle
