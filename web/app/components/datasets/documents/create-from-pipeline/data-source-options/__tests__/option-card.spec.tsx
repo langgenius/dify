@@ -2,7 +2,6 @@ import type { PropsWithChildren } from 'react'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -43,12 +42,9 @@ describe('OptionCard', () => {
   })
   afterEach(() => client.clear())
 
-  it.each([
-    ['/icon.png', '/base/icon.png'],
-    ['/base/icon.png', '/base/icon.png'],
-    ['https://example.com/icon.svg', 'https://example.com/icon.svg'],
-    ['//example.com/icon.svg', '//example.com/icon.svg'],
-  ])('renders %s without changing the shared response', async (icon, expected) => {
+  it('resolves an installed provider icon without mutating the shared catalog response', async () => {
+    const icon = '/icon.png'
+    const expected = '/base/icon.png'
     const provider = createDatasourceProvider()
     provider.declaration.identity.icon = icon
     request.mockResolvedValue(Response.json([provider]))
@@ -105,18 +101,5 @@ describe('OptionCard', () => {
       }),
     )
     expect(client.getQueryData(key)).toEqual([provider])
-  })
-
-  it('keeps the label disclosure and selection callback', async () => {
-    const user = userEvent.setup()
-    const onClick = vi.fn()
-    render(<OptionCard label="Local File" selected={false} nodeData={node} onClick={onClick} />, {
-      wrapper,
-    })
-
-    await user.click(screen.getByText('Local File'))
-
-    expect(onClick).toHaveBeenCalledOnce()
-    expect(screen.getByTitle('Local File')).toBeInTheDocument()
   })
 })

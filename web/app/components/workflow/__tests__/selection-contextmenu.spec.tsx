@@ -1,56 +1,35 @@
 import type { Edge, Node } from '../types'
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect } from 'react'
-import { useNodes } from 'reactflow'
+import { useEdges, useNodes } from 'reactflow'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { fullWorkflowAccessControl } from '../hooks-store'
 import { SelectionContextmenu } from '../selection-contextmenu'
 import { useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
+import { CanvasNodesCatalogProbe } from './canvas-nodes-catalog-probe'
 import { createEdge, createNode } from './fixtures'
 import { renderWorkflowFlowComponent } from './workflow-test-env'
 
 let latestNodes: Node[] = []
+let latestEdges: Edge[] = []
 let latestHistoryEvent: string | undefined
-const mockGetNodesReadOnly = vi.fn()
-const mockHandleNodesCopy = vi.fn()
-const mockHandleNodesDuplicate = vi.fn()
-const mockHandleNodesDelete = vi.fn()
-const mockHandleCreateSnippet = vi.fn()
-const mockCreateSnippetDialogRender = vi.fn()
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['snippets.create_and_modify'] as string[],
 }))
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
 
-vi.mock('@/app/components/snippets/hooks/use-create-snippet', async () => {
-  const React = await vi.importActual<typeof import('react')>('react')
-
-  return {
-    useCreateSnippet: () => {
-      const [isOpen, setIsOpen] = React.useState(false)
-
-      return {
-        createSnippetMutation: { isPending: false },
-        handleCloseCreateSnippetDialog: () => setIsOpen(false),
-        handleCreateSnippet: mockHandleCreateSnippet,
-        handleOpenCreateSnippetDialog: () => setIsOpen(true),
-        isCreateSnippetDialogOpen: isOpen,
-        isCreatingSnippet: false,
-      }
-    },
-  }
-})
-
+// The dialog form is independently tested; keep this boundary focused on the prepared graph.
 vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
   CreateSnippetDialog: (props: {
     isOpen: boolean
@@ -60,37 +39,18 @@ vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
       viewport: { x: number; y: number; zoom: number }
     }
     inputFields?: Array<{ variable: string }>
-  }) => {
-    mockCreateSnippetDialogRender(props)
-
-    return props.isOpen ? <div data-testid="create-snippet-dialog" /> : null
-  },
+  }) =>
+    props.isOpen ? (
+      <section role="dialog" aria-label="Create snippet">
+        <output aria-label="Selected snippet graph">{JSON.stringify(props.selectedGraph)}</output>
+        <output aria-label="Snippet input fields">{JSON.stringify(props.inputFields ?? [])}</output>
+      </section>
+    ) : null,
 }))
-
-vi.mock('../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../hooks/use-workflow')>()
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({
-      getNodesReadOnly: mockGetNodesReadOnly,
-    }),
-  }
-})
-
-vi.mock('../hooks/use-nodes-interactions', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../hooks/use-nodes-interactions')>()
-  return {
-    ...actual,
-    useNodesInteractions: () => ({
-      handleNodesCopy: mockHandleNodesCopy,
-      handleNodesDuplicate: mockHandleNodesDuplicate,
-      handleNodesDelete: mockHandleNodesDelete,
-    }),
-  }
-})
 
 const RuntimeProbe = () => {
   latestNodes = useNodes() as Node[]
+  latestEdges = useEdges() as Edge[]
   const { store } = useWorkflowHistoryStore()
 
   useEffect(() => {
@@ -104,6 +64,7 @@ const RuntimeProbe = () => {
 }
 
 const hooksStoreProps = {
+  accessControl: fullWorkflowAccessControl,
   doSyncWorkflowDraft: vi.fn().mockResolvedValue(undefined),
 }
 
@@ -125,20 +86,35 @@ const renderSelectionMenu = (options?: {
   initialStoreState?: Record<string, unknown>
 }) => {
   latestNodes = []
+  latestEdges = []
   latestHistoryEvent = undefined
 
   const nodes = options?.nodes ?? []
   const edges = options?.edges ?? []
 
+  const { queryClient } = createConsoleQueryWrapper({
+    appDslVersion: '1.0.0',
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  })
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+
   return renderWorkflowFlowComponent(
     <div id="workflow-container" style={{ width: 800, height: 600 }}>
       <RuntimeProbe />
+      <CanvasNodesCatalogProbe />
       <SelectionMenuHarness />
     </div>,
     {
       nodes,
       edges,
       hooksStoreProps,
+      queryClient,
       historyStore: { nodes, edges },
       initialStoreState: options?.initialStoreState,
       reactFlowProps: { fitView: false },
@@ -148,94 +124,119 @@ const renderSelectionMenu = (options?: {
 
 describe('SelectionContextmenu', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     latestNodes = []
+    latestEdges = []
     latestHistoryEvent = undefined
-    mockGetNodesReadOnly.mockReset()
-    mockGetNodesReadOnly.mockReturnValue(false)
-    mockHandleNodesCopy.mockReset()
-    mockHandleNodesDuplicate.mockReset()
-    mockHandleNodesDelete.mockReset()
-    mockHandleCreateSnippet.mockReset()
-    mockCreateSnippetDialogRender.mockReset()
     mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
   })
 
+  const createSelectedGraph = () => ({
+    nodes: [
+      createNode({
+        id: 'n1',
+        selected: true,
+        width: 80,
+        height: 40,
+        data: { selected: true, _isBundled: true },
+      }),
+      createNode({
+        id: 'n2',
+        selected: true,
+        position: { x: 140, y: 0 },
+        width: 80,
+        height: 40,
+        data: { selected: true, _isBundled: true },
+      }),
+    ],
+    edges: [createEdge({ id: 'n1-n2', source: 'n1', target: 'n2' })],
+  })
+
+  const expectGraphAction = async (
+    action: 'copy' | 'duplicate' | 'delete',
+    store: ReturnType<typeof renderSelectionMenu>['store'],
+  ) => {
+    if (action === 'copy') {
+      expect(store.getState().clipboardElements.map((node) => node.id)).toEqual(['n1', 'n2'])
+      expect(store.getState().clipboardEdges.map((edge) => edge.id)).toEqual(['n1-n2'])
+      expect(latestNodes).toHaveLength(2)
+      expect(latestEdges).toHaveLength(1)
+      return
+    }
+
+    if (action === 'duplicate') {
+      await waitFor(() => expect(latestNodes).toHaveLength(4))
+      expect(latestEdges).toHaveLength(2)
+      expect(latestNodes.map((node) => node.id)).toEqual(expect.arrayContaining(['n1', 'n2']))
+      expect(latestEdges).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'n1-n2', source: 'n1', target: 'n2' }),
+        ]),
+      )
+      const duplicatedNodeIds = latestNodes
+        .filter((node) => !['n1', 'n2'].includes(node.id))
+        .map((node) => node.id)
+      const duplicatedEdge = latestEdges.find(
+        (edge) => edge.source !== 'n1' || edge.target !== 'n2',
+      )
+      expect(duplicatedNodeIds).toHaveLength(2)
+      expect(duplicatedEdge).toBeDefined()
+      expect(new Set([duplicatedEdge!.source, duplicatedEdge!.target])).toEqual(
+        new Set(duplicatedNodeIds),
+      )
+      return
+    }
+
+    await waitFor(() => expect(latestNodes).toHaveLength(0))
+    expect(latestEdges).toHaveLength(0)
+  }
+
   it.each([
-    { key: 'c', action: mockHandleNodesCopy },
-    { key: 'd', action: mockHandleNodesDuplicate },
-    { key: 'Delete', action: mockHandleNodesDelete },
-  ])('runs $key for the menu selection and closes the menu', async ({ key, action }) => {
+    { key: 'c', action: 'copy' as const },
+    { key: 'd', action: 'duplicate' as const },
+    { key: 'Delete', action: 'delete' as const },
+  ])('runs $key on the selected graph and closes the menu', async ({ key, action }) => {
     const user = userEvent.setup()
-    renderSelectionMenu({
-      nodes: [createNode({ id: 'n1', selected: true }), createNode({ id: 'n2', selected: true })],
+    const graph = createSelectedGraph()
+    const { store } = renderSelectionMenu({
+      ...graph,
       initialStoreState: { contextMenuTarget: { type: 'selection' } },
     })
     const item = await screen.findByRole('menuitem', { name: /common.copy/ })
     act(() => item.focus())
     const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+
     await user.keyboard(key.length === 1 ? `{${mod}>}${key}{/${mod}}` : `{${key}}`)
-    expect(action).toHaveBeenCalledTimes(1)
+
+    await expectGraphAction(action, store)
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('should not render when selection context menu target is absent', () => {
     renderSelectionMenu()
 
-    expect(screen.queryByText('operator.vertical')).not.toBeInTheDocument()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('should render menu items when selection context menu target is present', async () => {
-    const nodes = [
-      createNode({ id: 'n1', selected: true, width: 80, height: 40 }),
-      createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
-    ]
-    const { store } = renderSelectionMenu({ nodes })
-
-    act(() => {
-      store.setState({ contextMenuTarget: { type: 'selection' } })
+  it.each([
+    { name: /common.copy/, action: 'copy' as const },
+    { name: /common.duplicate/, action: 'duplicate' as const },
+    { name: /operation.delete/, action: 'delete' as const },
+  ])('runs the $action menu item on the selected graph', async ({ name, action }) => {
+    const user = userEvent.setup()
+    const graph = createSelectedGraph()
+    const { store } = renderSelectionMenu({
+      ...graph,
+      initialStoreState: { contextMenuTarget: { type: 'selection' } },
     })
 
-    await waitFor(() => {
-      expect(screen.getByRole('menuitem', { name: /operator.alignLeft/ })).toBeInTheDocument()
-    })
-  })
+    await user.click(await screen.findByRole('menuitem', { name }))
 
-  it('should render and execute copy/duplicate/delete operations', async () => {
-    const nodes = [
-      createNode({ id: 'n1', selected: true, width: 80, height: 40 }),
-      createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
-    ]
-    const { store } = renderSelectionMenu({ nodes })
-
-    act(() => {
-      store.setState({ contextMenuTarget: { type: 'selection' } })
-    })
-
-    await waitFor(() => {
-      expect(screen.getByRole('menuitem', { name: /common.copy/ })).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByRole('menuitem', { name: /common.copy/ }))
-    expect(mockHandleNodesCopy).toHaveBeenCalledTimes(1)
-    expect(store.getState().contextMenuTarget).toBeUndefined()
-
-    act(() => {
-      store.setState({ contextMenuTarget: { type: 'selection' } })
-    })
-    fireEvent.click(screen.getByRole('menuitem', { name: /common.duplicate/ }))
-    expect(mockHandleNodesDuplicate).toHaveBeenCalledTimes(1)
-    expect(store.getState().contextMenuTarget).toBeUndefined()
-
-    act(() => {
-      store.setState({ contextMenuTarget: { type: 'selection' } })
-    })
-    fireEvent.click(screen.getByRole('menuitem', { name: /operation.delete/ }))
-    expect(mockHandleNodesDelete).toHaveBeenCalledTimes(1)
+    await expectGraphAction(action, store)
     expect(store.getState().contextMenuTarget).toBeUndefined()
   })
 
   it('should open create snippet dialog with selected graph from the top menu item', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({ id: 'n1', selected: true, width: 80, height: 40 }),
       createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
@@ -251,21 +252,21 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(
+    await user.click(
       await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
     )
 
-    expect(screen.getByTestId('create-snippet-dialog')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Create snippet' })).toBeInTheDocument()
     expect(store.getState().contextMenuTarget).toBeUndefined()
 
-    const dialogProps = mockCreateSnippetDialogRender.mock.calls.at(-1)?.[0]
-    expect(dialogProps.selectedGraph.nodes.map((node: Node) => node.id)).toEqual(['n1', 'n2'])
-    expect(dialogProps.selectedGraph.nodes.every((node: Node) => node.selected === false)).toBe(
-      true,
-    )
-    expect(dialogProps.selectedGraph.edges).toHaveLength(1)
-    expect(dialogProps.selectedGraph.viewport).toEqual({ x: 490, y: 380, zoom: 1 })
-    expect(dialogProps.selectedGraph.edges[0]).toEqual(
+    const selectedGraph = JSON.parse(
+      screen.getByLabelText('Selected snippet graph').textContent ?? '{}',
+    ) as { nodes: Node[]; edges: Edge[]; viewport: { x: number; y: number; zoom: number } }
+    expect(selectedGraph.nodes.map((node) => node.id)).toEqual(['n1', 'n2'])
+    expect(selectedGraph.nodes.every((node) => node.selected === false)).toBe(true)
+    expect(selectedGraph.edges).toHaveLength(1)
+    expect(selectedGraph.viewport).toEqual({ x: 490, y: 380, zoom: 1 })
+    expect(selectedGraph.edges[0]).toEqual(
       expect.objectContaining({
         source: 'n1',
         target: 'n2',
@@ -295,6 +296,7 @@ describe('SelectionContextmenu', () => {
   })
 
   it('should add input fields for variable references outside of the selected graph', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({
         id: 'n1',
@@ -321,12 +323,14 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(
+    await user.click(
       await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
     )
 
-    const dialogProps = mockCreateSnippetDialogRender.mock.calls.at(-1)?.[0]
-    expect(dialogProps.inputFields).toEqual([
+    const inputFields = JSON.parse(
+      screen.getByLabelText('Snippet input fields').textContent ?? '[]',
+    ) as Array<{ label: string; variable: string; type: PipelineInputVarType; required: boolean }>
+    expect(inputFields).toEqual([
       {
         label: 'topic',
         variable: 'topic',
@@ -340,14 +344,23 @@ describe('SelectionContextmenu', () => {
         required: true,
       },
     ])
-    expect(dialogProps.selectedGraph.nodes[0].data.prompt_template).toBe(
-      'Use {{#start.topic#}} and {{#n2.answer#}}',
-    )
-    expect(dialogProps.selectedGraph.nodes[0].data.query_variable_selector).toEqual([
-      'start',
-      'topic',
-    ])
-    expect(dialogProps.selectedGraph.nodes[0].data.env_reference).toBe('{{#start.API_KEY#}}')
+    const selectedGraph = JSON.parse(
+      screen.getByLabelText('Selected snippet graph').textContent ?? '{}',
+    ) as {
+      nodes: Array<
+        Node & {
+          data: Node['data'] & {
+            prompt_template: string
+            query_variable_selector: string[]
+            env_reference: string
+          }
+        }
+      >
+    }
+    const snippetData = selectedGraph.nodes[0]!.data
+    expect(snippetData.prompt_template).toBe('Use {{#start.topic#}} and {{#n2.answer#}}')
+    expect(snippetData.query_variable_selector).toEqual(['start', 'topic'])
+    expect(snippetData.env_reference).toBe('{{#start.API_KEY#}}')
   })
 
   it.each([BlockEnum.Answer, BlockEnum.End, BlockEnum.Start])(
@@ -387,7 +400,7 @@ describe('SelectionContextmenu', () => {
   })
 
   it('should align selected nodes to the left and save history', async () => {
-    vi.useFakeTimers()
+    const user = userEvent.setup()
     const nodes = [
       createNode({ id: 'n1', selected: true, position: { x: 20, y: 40 }, width: 40, height: 20 }),
       createNode({ id: 'n2', selected: true, position: { x: 140, y: 90 }, width: 60, height: 30 }),
@@ -397,8 +410,8 @@ describe('SelectionContextmenu', () => {
       nodes,
       edges: [createEdge({ source: 'n1', target: 'n2' })],
       initialStoreState: {
-        helpLineHorizontal: { y: 10 } as never,
-        helpLineVertical: { x: 10 } as never,
+        helpLineHorizontal: { top: 10, left: 0, width: 100 },
+        helpLineVertical: { top: 0, left: 10, height: 100 },
       },
     })
 
@@ -406,7 +419,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(latestNodes.find((node) => node.id === 'n1')?.position.x).toBe(20)
     expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(20)
@@ -416,15 +429,14 @@ describe('SelectionContextmenu', () => {
 
     act(() => {
       store.getState().flushPendingSync()
-      vi.advanceTimersByTime(600)
     })
 
     expect(hooksStoreProps.doSyncWorkflowDraft).toHaveBeenCalled()
-    expect(latestHistoryEvent).toBe('NodeDragStop')
-    vi.useRealTimers()
+    await waitFor(() => expect(latestHistoryEvent).toBe('NodeDragStop'))
   })
 
   it('should distribute selected nodes horizontally', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({ id: 'n1', selected: true, position: { x: 0, y: 10 }, width: 20, height: 20 }),
       createNode({ id: 'n2', selected: true, position: { x: 100, y: 20 }, width: 20, height: 20 }),
@@ -439,12 +451,13 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /operator.distributeHorizontal/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operator.distributeHorizontal/ }))
 
     expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(150)
   })
 
   it('should ignore child nodes when the selected container is aligned', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({
         id: 'container',
@@ -452,7 +465,7 @@ describe('SelectionContextmenu', () => {
         position: { x: 200, y: 0 },
         width: 100,
         height: 80,
-        data: { _children: [{ nodeId: 'child', nodeType: 'code' as never }] },
+        data: { _children: [{ nodeId: 'child', nodeType: BlockEnum.Code }] },
       }),
       createNode({
         id: 'child',
@@ -478,14 +491,15 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(40)
     expect(latestNodes.find((node) => node.id === 'other')?.position.x).toBe(40)
     expect(latestNodes.find((node) => node.id === 'child')?.position.x).toBe(210)
   })
 
-  it('should cancel when align bounds cannot be resolved', () => {
+  it('should cancel when align bounds cannot be resolved', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({ id: 'n1', selected: true }),
       createNode({ id: 'n2', selected: true, position: { x: 80, y: 20 } }),
@@ -497,39 +511,43 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
+    expect(latestNodes.map(({ id, position }) => ({ id, position }))).toEqual(
+      nodes.map(({ id, position }) => ({ id, position })),
+    )
   })
 
-  it('should cancel without aligning when nodes are read only', () => {
-    mockGetNodesReadOnly.mockReturnValue(true)
+  it('should cancel without aligning when nodes are read only', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({ id: 'n1', selected: true, width: 40, height: 20 }),
       createNode({ id: 'n2', selected: true, position: { x: 80, y: 20 }, width: 40, height: 20 }),
     ]
 
-    const { store } = renderSelectionMenu({ nodes })
+    const { store } = renderSelectionMenu({ nodes, initialStoreState: { canvasReadOnly: true } })
 
     act(() => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(latestNodes.find((node) => node.id === 'n1')?.position.x).toBe(0)
     expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(80)
   })
 
-  it('should cancel when alignable nodes shrink to one item', () => {
+  it('should cancel when alignable nodes shrink to one item', async () => {
+    const user = userEvent.setup()
     const nodes = [
       createNode({
         id: 'container',
         selected: true,
         width: 40,
         height: 20,
-        data: { _children: [{ nodeId: 'child', nodeType: 'code' as never }] },
+        data: { _children: [{ nodeId: 'child', nodeType: BlockEnum.Code }] },
       }),
       createNode({
         id: 'child',
@@ -546,7 +564,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await user.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(0)

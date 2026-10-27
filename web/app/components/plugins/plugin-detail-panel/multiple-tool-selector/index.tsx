@@ -1,17 +1,18 @@
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
-import { useAllMCPTools } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   disabled?: boolean
@@ -46,7 +47,9 @@ const MultipleToolSelector = ({
 
   const { t } = useTranslation(['appDebug', 'plugin'])
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const addToolButtonRef = React.useRef<HTMLButtonElement>(null)
   const toolItemTriggerByKeyRef = useRefWithInit(() => new Map<string, HTMLButtonElement>())
   const pendingFocusTargetRef = React.useRef<{ toolKey?: string } | null>(null)
@@ -143,10 +146,7 @@ const MultipleToolSelector = ({
               {required && <span className="text-red-500">*</span>}
               <span
                 aria-hidden
-                className={cn(
-                  'i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 text-text-quaternary group-hover/collapse:text-text-secondary',
-                  !toolsOpen && 'rotate-270',
-                )}
+                className="i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-hover/collapse:text-text-secondary group-data-panel-open/collapse:rotate-0 motion-reduce:transition-none"
               />
             </CollapsibleTrigger>
           ) : (

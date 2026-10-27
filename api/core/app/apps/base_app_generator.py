@@ -2,7 +2,7 @@ import logging
 import threading
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
-from typing import TYPE_CHECKING, Any, Union, final
+from typing import TYPE_CHECKING, Any, final
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import set_committed_value
@@ -250,8 +250,10 @@ class BaseAppGenerator:
                             return float(value)
                         else:
                             return int(value)
-                    except ValueError:
-                        raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
+                    except ValueError as caught_error:
+                        raise ValueError(
+                            f"{variable_entity.variable} in input form must be a valid number"
+                        ) from caught_error
                 case _:
                     raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
 
@@ -310,7 +312,7 @@ class BaseAppGenerator:
         return value
 
     @classmethod
-    def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str]]):
+    def convert_to_event_stream(cls, generator: Mapping | Generator[Mapping | str]):
         """
         Convert messages into event stream
         """

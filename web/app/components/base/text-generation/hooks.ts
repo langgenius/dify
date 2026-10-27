@@ -12,7 +12,11 @@ export const useTextGeneration = () => {
   const [isResponding, setIsResponding] = useState(false)
   const [completion, setCompletion] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
-  const handleSend = async (url: string, data: any, { onNotifyError }: SendOptions = {}) => {
+  const handleSend = async (
+    url: string,
+    data: Record<string, unknown>,
+    { onNotifyError }: SendOptions = {},
+  ) => {
     if (isResponding) {
       toast.info(t(($) => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
       return false

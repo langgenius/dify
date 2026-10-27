@@ -10,6 +10,7 @@ import { loadI18nResource } from '@/i18n/load-resource'
 import { supportedLocales } from '@/i18n/locale'
 import { getInitOptions } from '@/i18n/settings'
 import { getStreamedResources, mergeResources } from '@/i18n/streamed-resources'
+import { I18nDirectionProvider } from './i18n-direction'
 import { I18nResourceStream } from './i18n-stream'
 
 export function I18nClientProvider({
@@ -47,7 +48,7 @@ export function I18nClientProvider({
   return (
     <I18nextProvider i18n={initial.i18n}>
       <I18nResourceStream id={streamId} initial={initial.resources} nonce={nonce} />
-      {children}
+      <I18nDirectionProvider syncDocument>{children}</I18nDirectionProvider>
     </I18nextProvider>
   )
 }

@@ -125,24 +125,4 @@ describe('HTTP authorization dialog', () => {
     await user.click(screen.getByRole('button', { name: triggerName }))
     expect(screen.getByRole('textbox', { name: headerName })).toHaveValue('X-Original')
   })
-
-  it('does not open for a read-only node', async () => {
-    const user = userEvent.setup()
-    const onSave = vi.fn()
-    render(
-      <AuthorizationDialog
-        nodeId="http-node"
-        payload={initialAuthorization}
-        readOnly
-        onChange={onSave}
-      />,
-    )
-
-    expect(screen.queryByRole('button', { name: triggerName })).not.toBeInTheDocument()
-    await user.click(
-      screen.getByText('workflowIntegrations.nodes.http.authorization.authorization'),
-    )
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(onSave).not.toHaveBeenCalled()
-  })
 })

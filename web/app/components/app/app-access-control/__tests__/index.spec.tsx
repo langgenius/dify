@@ -32,26 +32,16 @@ vi.mock('@/service/access-control', () => ({
     mockUseSearchForWhiteListCandidates(...args),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['system-features'],
-        queryOptions: (options: Record<string, unknown> = {}) => ({
-          queryKey: ['system-features'],
-          ...options,
-        }),
-      },
-    },
-    enterprise: {
-      webAppAuth: {
-        updateWebAppWhitelistSubjects: {
-          mutationOptions: () => ({ mutationFn: mockMutateAsync }),
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'enterprise.webAppAuth.updateWebAppWhitelistSubjects': (input) => mockMutateAsync(input),
+    }),
+  }
+})
 
 describe('AccessControl', () => {
   beforeEach(() => {

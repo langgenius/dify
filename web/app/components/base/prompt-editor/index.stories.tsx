@@ -1,8 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { useState } from 'react'
+import { useId, useState } from 'react'
+import { fn } from 'storybook/test'
+
+type PromptEditorMockProps = {
+  id?: string
+  value?: string
+  onChange?: (value: string) => void
+  placeholder?: string
+  editable?: boolean
+  compact?: boolean
+  className?: string
+  wrapperClassName?: string
+}
 
 // Mock component to avoid complex initialization issues
 const PromptEditorMock = ({
+  id,
   value,
   onChange,
   placeholder,
@@ -10,7 +23,7 @@ const PromptEditorMock = ({
   compact,
   className,
   wrapperClassName,
-}: any) => {
+}: PromptEditorMockProps) => {
   const [content, setContent] = useState(value || '')
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -21,6 +34,7 @@ const PromptEditorMock = ({
   return (
     <div className={wrapperClassName}>
       <textarea
+        id={id}
         className={`w-full resize-none outline-hidden ${compact ? 'text-[13px] leading-5' : 'text-sm/6'} ${className}`}
         value={content}
         onChange={handleChange}
@@ -71,13 +85,14 @@ const meta = {
       description: 'CSS class for editor wrapper',
     },
   },
+  args: { onChange: fn() },
 } satisfies Meta<typeof PromptEditorMock>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
 // Interactive demo wrapper
-const PromptEditorDemo = (args: any) => {
+const PromptEditorDemo = (args: PromptEditorMockProps) => {
   const [value, setValue] = useState(args.value || '')
 
   return (
@@ -88,7 +103,7 @@ const PromptEditorDemo = (args: any) => {
           value={value}
           onChange={(text: string) => {
             setValue(text)
-            console.log('Content changed:', text)
+            args.onChange?.(text)
           }}
         />
       </div>
@@ -182,15 +197,19 @@ export const CustomPlaceholder: Story = {
 
 // Multiple editors
 const MultipleEditorsDemo = () => {
+  const id = useId()
   const [systemPrompt, setSystemPrompt] = useState('You are a helpful assistant.')
   const [userPrompt, setUserPrompt] = useState('')
 
   return (
     <div style={{ width: '700px' }} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-gray-700">System Prompt</label>
+        <label htmlFor={`${id}-system`} className="text-sm font-medium text-gray-700">
+          System Prompt
+        </label>
         <div className="min-h-25 rounded-lg border border-gray-300 bg-blue-50 p-4">
           <PromptEditorMock
+            id={`${id}-system`}
             value={systemPrompt}
             onChange={setSystemPrompt}
             placeholder="Enter system instructions..."
@@ -199,9 +218,12 @@ const MultipleEditorsDemo = () => {
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-gray-700">User Prompt</label>
+        <label htmlFor={`${id}-user`} className="text-sm font-medium text-gray-700">
+          User Prompt
+        </label>
         <div className="min-h-25 rounded-lg border border-gray-300 p-4">
           <PromptEditorMock
+            id={`${id}-user`}
             value={userPrompt}
             onChange={setUserPrompt}
             placeholder="Enter user message template..."
@@ -237,6 +259,7 @@ export const MultipleEditors: Story = {
 
 // Real-world example - Email template
 const EmailTemplateDemo = () => {
+  const id = useId()
   const [subject, setSubject] = useState('Welcome to our platform!')
   const [body, setBody] = useState(`Hi,
 
@@ -252,9 +275,12 @@ The Team`)
       <h3 className="mb-4 text-lg font-semibold">Email Template Editor</h3>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-gray-700">Subject Line</label>
+          <label htmlFor={`${id}-subject`} className="text-sm font-medium text-gray-700">
+            Subject Line
+          </label>
           <div className="rounded-lg border border-gray-300 p-3">
             <PromptEditorMock
+              id={`${id}-subject`}
               value={subject}
               onChange={setSubject}
               placeholder="Enter email subject..."
@@ -263,9 +289,12 @@ The Team`)
           </div>
         </div>
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-gray-700">Email Body</label>
+          <label htmlFor={`${id}-body`} className="text-sm font-medium text-gray-700">
+            Email Body
+          </label>
           <div className="min-h-50 rounded-lg border border-gray-300 p-4">
             <PromptEditorMock
+              id={`${id}-body`}
               value={body}
               onChange={setBody}
               placeholder="Type your email content... Use / to insert variables"

@@ -5,7 +5,7 @@ from typing import Any, cast, override
 from urllib.parse import urlparse
 
 from elasticsearch import ConnectionError as ElasticsearchConnectionError
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, NotFoundError
 from flask import current_app
 from packaging.version import parse as parse_version
 from pydantic import BaseModel, model_validator
@@ -140,9 +140,9 @@ class ElasticSearchVector(BaseVector):
                 raise ConnectionError("Failed to connect to Elasticsearch")
 
         except ElasticsearchConnectionError as e:
-            raise ConnectionError(f"Vector database connection error: {str(e)}")
+            raise ConnectionError(f"Vector database connection error: {str(e)}") from e
         except Exception as e:
-            raise ConnectionError(f"Elasticsearch client initialization failed: {str(e)}")
+            raise ConnectionError(f"Elasticsearch client initialization failed: {str(e)}") from e
 
         return client
 
@@ -195,8 +195,15 @@ class ElasticSearchVector(BaseVector):
             self.delete_by_ids(ids)
 
     @override
-    def delete(self):
-        self._client.indices.delete(index=self._collection_name)
+    def delete(self) -> None:
+        try:
+            self._client.indices.delete(index=self._collection_name)
+        except NotFoundError as exc:
+            error = exc.body.get("error") if isinstance(exc.body, dict) else None
+            if not isinstance(error, dict) or error.get("type") != "index_not_found_exception":
+                raise
+            # A previous attempt may have deleted the index before a relational commit failed.
+            logger.debug("Elasticsearch index already absent: %s", self._collection_name)
 
     @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -365,6 +372,6 @@ class ElasticSearchVectorFactory(AbstractVectorFactory):
 
         return ElasticSearchVector(
             index_name=collection_name,
-            config=ElasticSearchConfig(**config_dict),
+            config=ElasticSearchConfig.model_validate(config_dict),
             attributes=[],
         )

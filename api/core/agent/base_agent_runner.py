@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from decimal import Decimal
-from typing import Union, cast
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -14,7 +14,10 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
+    DifyRunContext,
+    InvokeFrom,
     ModelConfigWithCredentialsEntity,
+    UserFrom,
 )
 from core.app.file_access import DatabaseFileAccessController
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
@@ -44,6 +47,9 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile, load_annotation_reply_config
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
 
@@ -52,6 +58,7 @@ class BaseAgentRunner(AppRunner):
     def __init__(
         self,
         *,
+        execution_driver: "WorkflowRunDriver",
         session: Session,
         tenant_id: str,
         application_generate_entity: AgentChatAppGenerateEntity,
@@ -66,6 +73,7 @@ class BaseAgentRunner(AppRunner):
         memory: TokenBufferMemory | None = None,
         prompt_messages: list[PromptMessage] | None = None,
     ):
+        self._execution_driver = execution_driver
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
@@ -143,12 +151,22 @@ class BaseAgentRunner(AppRunner):
         convert tool to prompt message tool
         """
         tool_entity = ToolManager.get_agent_tool_runtime(
+            execution_driver=self._execution_driver,
             tenant_id=self.tenant_id,
             app_id=self.app_config.app_id,
             agent_tool=tool,
             user_id=self.user_id,
             invoke_from=self.application_generate_entity.invoke_from,
         )
+        invoke_from = self.application_generate_entity.invoke_from
+        if isinstance(invoke_from, InvokeFrom):
+            tool_entity.runtime.dify_run_context = DifyRunContext(
+                tenant_id=self.tenant_id,
+                app_id=self.app_config.app_id,
+                user_id=self.user_id,
+                user_from=(UserFrom.ACCOUNT if invoke_from.runs_as_account() else UserFrom.END_USER),
+                invoke_from=invoke_from,
+            )
         assert tool_entity.entity.description
         message_tool = PromptMessageTool(
             name=tool.tool_name,
@@ -269,10 +287,10 @@ class BaseAgentRunner(AppRunner):
         self,
         agent_thought_id: str,
         tool_name: str | None,
-        tool_input: Union[str, dict, None],
+        tool_input: str | dict | None,
         thought: str | None,
-        observation: Union[str, dict, None],
-        tool_invoke_meta: Union[str, dict, None],
+        observation: str | dict | None,
+        tool_invoke_meta: str | dict | None,
         answer: str | None,
         messages_ids: list[str],
         llm_usage: LLMUsage | None = None,
@@ -408,9 +426,9 @@ class BaseAgentRunner(AppRunner):
                         else:
                             tool_responses = dict.fromkeys(tool_names, observation_payload)
 
-                        for tool in tool_names:
-                            # generate a uuid for tool call
-                            tool_call_id = str(uuid.uuid4())
+                        for index, tool in enumerate(tool_names):
+                            # Keep IDs stable across turns so replayed history can use prompt caching.
+                            tool_call_id = str(uuid.uuid5(uuid.NAMESPACE_OID, f"{agent_thought.id}:{index}:{tool}"))
                             tool_calls.append(
                                 AssistantPromptMessage.ToolCall(
                                     id=tool_call_id,

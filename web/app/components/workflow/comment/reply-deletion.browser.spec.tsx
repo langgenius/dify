@@ -1,11 +1,12 @@
-import type { WorkflowCommentDetail } from './types'
+import type { WorkflowCommentDetail } from '@dify/contracts/api/console/apps/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Suspense, useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
+import { EditorResourceScope } from '../editor-resource/provider'
 import { CommentThread } from './thread'
 
-vi.mock('@/next/navigation', () => ({ useParams: () => ({ appId: 'app-1' }) }))
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({ flowToScreenPosition: (position: { x: number; y: number }) => position }),
   useViewport: () => ({ x: 0, y: 0, zoom: 1 }),
@@ -20,7 +21,7 @@ vi.mock('../store', () => ({
 }))
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
-    queryKey: ['profile'],
+    queryKey: consoleQueryKey('account.profile.get'),
     queryFn: async () => ({ profile: { id: 'author', name: 'Alice', avatar_url: null } }),
   }),
 }))
@@ -54,18 +55,20 @@ function Fixture({ onDelete }: { onDelete: (id: string) => void }) {
   )
   return (
     <QueryClientProvider client={queryClient}>
-      <Suspense fallback={<p>Loading profile</p>}>
-        <button type="button">Outside thread</button>
-        <div id="workflow-container" style={{ position: 'relative', width: 1000, height: 650 }}>
-          <CommentThread
-            comment={comment}
-            onClose={() => {}}
-            onReply={() => {}}
-            onReplyEdit={() => {}}
-            onReplyDeleteDirect={onDelete}
-          />
-        </div>
-      </Suspense>
+      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        <Suspense fallback={<p>Loading profile</p>}>
+          <button type="button">Outside thread</button>
+          <div id="workflow-container" style={{ position: 'relative', width: 1000, height: 650 }}>
+            <CommentThread
+              comment={comment}
+              onClose={() => {}}
+              onReply={() => {}}
+              onReplyEdit={() => {}}
+              onReplyDeleteDirect={onDelete}
+            />
+          </div>
+        </Suspense>
+      </EditorResourceScope>
     </QueryClientProvider>
   )
 }

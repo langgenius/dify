@@ -45,20 +45,20 @@ def ref(sqlite_session_factory: sessionmaker[Session]) -> InstalledAppConversati
             app_id=app.id,
             mode=AppMode.CHAT,
             name="Original",
-            inputs={"count": 0},
+            _inputs={"count": 0},
             from_source=ConversationFromSource.CONSOLE,
             from_account_id=account_id,
             from_end_user_id=None,
-            updated_at=_TIME,
             is_deleted=False,
         )
+        conversation.updated_at = _TIME
         session.add(conversation)
         session.flush()
         session.add(
             Message(
                 app_id=app.id,
                 conversation_id=conversation.id,
-                inputs={},
+                _inputs={},
                 query="First",
                 message={},
                 message_unit_price=Decimal(0),

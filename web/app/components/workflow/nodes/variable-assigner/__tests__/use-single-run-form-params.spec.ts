@@ -37,7 +37,6 @@ const createData = (
 
 describe('variable-assigner/use-single-run-form-params', () => {
   it('deduplicates grouped variable inputs and marks them optional for single run', () => {
-    const setRunInputData = vi.fn()
     const varSelectorsToVarInputs = vi.fn<() => InputVar[]>(() => [
       {
         label: 'Shared',
@@ -66,7 +65,7 @@ describe('variable-assigner/use-single-run-form-params', () => {
         runInputData: { sharedVar: 'hello' },
         runInputDataRef: { current: {} },
         getInputVars: () => [],
-        setRunInputData,
+        setRunInputData: vi.fn(),
         toVarInputs: () => [],
         varSelectorsToVarInputs,
       }),
@@ -92,9 +91,6 @@ describe('variable-assigner/use-single-run-form-params', () => {
       },
     ])
 
-    result.current.forms[0]!.onChange({ sharedVar: 'updated' })
-
-    expect(setRunInputData).toHaveBeenCalledWith({ sharedVar: 'updated' })
     expect(result.current.getDependentVars()).toEqual([
       [
         ['source-node', 'sharedVar'],

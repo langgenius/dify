@@ -1,646 +1,245 @@
+import type { ComponentProps } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
+import { AppToaster } from '@/app/notifications/app-toaster'
+import { createDeferred } from '@/test/deferred'
 import ImagePreview from '../image-preview'
-
-type _HotkeyHandler = () => void
-
-const mocks = vi.hoisted(() => ({
-  notify: vi.fn(),
-  downloadUrl: vi.fn(),
-  windowOpen: vi.fn<(...args: unknown[]) => Window | null>(),
-  clipboardWrite: vi.fn<(items: ClipboardItem[]) => Promise<void>>(),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  default: {
-    notify: (...args: Parameters<typeof mocks.notify>) => mocks.notify(...args),
-  },
-  toast: {
-    success: (message: string) => mocks.notify({ type: 'success', message }),
-    error: (message: string) => mocks.notify({ type: 'error', message }),
-    warning: (message: string) => mocks.notify({ type: 'warning', message }),
-    info: (message: string) => mocks.notify({ type: 'info', message }),
-  },
-}))
-
-vi.mock('@/utils/download', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/utils/download')>()),
-  downloadUrl: (...args: Parameters<typeof mocks.downloadUrl>) => mocks.downloadUrl(...args),
-}))
-
-const getOverlay = () => screen.getByTestId('image-preview-container') as HTMLDivElement
-const getCloseButton = () =>
-  screen.getByRole('button', { name: 'common.operation.cancel' }) as HTMLButtonElement
-const getCopyButton = () =>
-  screen.getByRole('button', { name: 'common.operation.copyImage' }) as HTMLButtonElement
-const getZoomOutButton = () =>
-  screen.getByRole('button', { name: 'common.operation.zoomOut' }) as HTMLButtonElement
-const getZoomInButton = () =>
-  screen.getByRole('button', { name: 'common.operation.zoomIn' }) as HTMLButtonElement
-const getDownloadButton = () =>
-  screen.getByRole('button', { name: 'common.operation.download' }) as HTMLButtonElement
-const getOpenInTabButton = () =>
-  screen.getByRole('button', { name: 'common.operation.openInNewTab' }) as HTMLButtonElement
 
 const base64Image = 'aGVsbG8='
 const dataImage = `data:image/png;base64,${base64Image}`
+const button = (action: string) =>
+  screen.getByRole('button', { name: `common.operation.${action}` })
 
-describe('ImagePreview', () => {
-  const originalClipboardItem = globalThis.ClipboardItem
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockImplementation(async () => new Response(new Blob(['image'], { type: 'image/png' }))),
-    )
-
-    if (!navigator.clipboard) {
-      Object.defineProperty(globalThis.navigator, 'clipboard', {
-        value: {
-          write: vi.fn(),
-        },
-        writable: true,
-        configurable: true,
-      })
-    }
-    const clipboardTarget = navigator.clipboard as {
-      write: (items: ClipboardItem[]) => Promise<void>
-    }
-    // In some test environments `write` lives on the prototype rather than
-    // the clipboard instance itself; locate the actual owner so vi.spyOn
-    // patches the right object.
-    const writeOwner = Object.prototype.hasOwnProperty.call(clipboardTarget, 'write')
-      ? clipboardTarget
-      : (Object.getPrototypeOf(clipboardTarget) as {
-          write: (items: ClipboardItem[]) => Promise<void>
-        })
-    vi.spyOn(writeOwner, 'write').mockImplementation((items: ClipboardItem[]) => {
-      return mocks.clipboardWrite(items)
+const setup = (props: Partial<ComponentProps<typeof ImagePreview>> = {}) => {
+  const user = userEvent.setup()
+  const write = navigator.clipboard.write.bind(navigator.clipboard)
+  const clipboardWrite = vi
+    .spyOn(navigator.clipboard, 'write')
+    .mockImplementation(async (items) => {
+      // A browser consumes promised image data before reporting a successful clipboard write.
+      await Promise.all(items.map((item) => item.getType('image/png')))
+      await write(items)
     })
-
-    globalThis.ClipboardItem = class {
-      public readonly data: Record<string, Blob | Promise<Blob>>
-
-      constructor(data: Record<string, Blob | Promise<Blob>>) {
-        this.data = data
-      }
-    } as unknown as typeof ClipboardItem
-    vi.spyOn(window, 'open').mockImplementation((...args: Parameters<Window['open']>) => {
-      return mocks.windowOpen(...args)
-    })
-  })
-
-  afterEach(() => {
-    globalThis.ClipboardItem = originalClipboardItem
-    vi.restoreAllMocks()
-    vi.unstubAllGlobals()
-  })
-
-  describe('Rendering', () => {
-    it('should render preview in portal with image from url', () => {
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-
-      const overlay = getOverlay()
-      expect(overlay).toBeInTheDocument()
-      expect(screen.getByRole('dialog', { name: 'Preview Image' })).toBeInTheDocument()
-      expect(screen.getByTestId('image-preview-container')).not.toHaveAttribute('aria-label')
-      expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
-      expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute(
-        'src',
-        'https://example.com/image.png',
-      )
-    })
-
-    it.each(['', '   '])('names the dialog when the image title is %j', (title) => {
-      render(<ImagePreview url={dataImage} title={title} onCancel={vi.fn()} />)
-
-      expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
-    })
-
-    it('should convert plain base64 string into data image src', () => {
-      render(<ImagePreview url={base64Image} title="Preview Image" onCancel={vi.fn()} />)
-
-      expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute('src', dataImage)
-    })
-  })
-
-  describe('Hotkeys', () => {
-    it('should trigger esc/left/right handlers from keyboard', async () => {
-      const onCancel = vi.fn()
-      const onPrev = vi.fn()
-      const onNext = vi.fn()
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={onCancel}
-          onPrev={onPrev}
-          onNext={onNext}
-        />,
-      )
-
-      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowLeft', code: 'ArrowLeft' })
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowRight', code: 'ArrowRight' })
-
-      expect(onCancel).toHaveBeenCalledTimes(1)
-      expect(onPrev).toHaveBeenCalledTimes(1)
-      expect(onNext).toHaveBeenCalledTimes(1)
-    })
-
-    it('leaves outside arrows and unavailable image navigation unclaimed', () => {
-      render(
-        <ImagePreview url="https://example.com/image.png" title="Preview" onCancel={vi.fn()} />,
-      )
-      const outside = new KeyboardEvent('keydown', {
-        key: 'ArrowUp',
-        bubbles: true,
-        cancelable: true,
-      })
-      fireEvent(document.body, outside)
-      expect(outside.defaultPrevented).toBe(false)
-      const unavailable = new KeyboardEvent('keydown', {
-        key: 'ArrowRight',
-        bubbles: true,
-        cancelable: true,
-      })
-      fireEvent(screen.getByRole('dialog'), unavailable)
-      expect(unavailable.defaultPrevented).toBe(false)
-    })
-
-    it('should zoom in and out from keyboard up/down hotkeys', async () => {
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-      const image = screen.getByRole('img', { name: 'Preview Image' })
-
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowUp', code: 'ArrowUp' })
-      await waitFor(() => {
-        expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
-      })
-
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowDown', code: 'ArrowDown' })
-      await waitFor(() => {
-        expect(image).toHaveStyle({ transform: 'scale(1) translate(0px, 0px)' })
-      })
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should not close when image content is clicked', () => {
-      const onCancel = vi.fn()
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={onCancel}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('img', { name: 'Preview Image' }))
-
-      expect(onCancel).not.toHaveBeenCalled()
-    })
-
-    it('should call onCancel when close button is clicked', async () => {
-      const user = userEvent.setup()
-      const onCancel = vi.fn()
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={onCancel}
-        />,
-      )
-
-      const closeButton = getCloseButton()
-      await user.click(closeButton)
-
-      expect(onCancel).toHaveBeenCalledTimes(1)
-    })
-
-    it('should zoom in and out with wheel interactions', async () => {
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-      const overlay = getOverlay()
-      const image = screen.getByRole('img', { name: 'Preview Image' })
-
-      act(() => {
-        overlay.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -100 }))
-      })
-      await waitFor(() => {
-        expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
-      })
-
-      act(() => {
-        overlay.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: 100 }))
-      })
-      await waitFor(() => {
-        expect(image).toHaveStyle({ transform: 'scale(1) translate(0px, 0px)' })
-      })
-    })
-
-    it('should update position while dragging when zoomed in and stop dragging on mouseup', async () => {
-      const user = userEvent.setup()
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-
-      const overlay = getOverlay()
-      const image = screen.getByRole('img', { name: 'Preview Image' }) as HTMLImageElement
-      const imageParent = image.parentElement
-      if (!imageParent) throw new Error('Image parent element not found')
-
-      vi.spyOn(image, 'getBoundingClientRect').mockReturnValue({
-        width: 200,
-        height: 120,
-        top: 0,
-        left: 0,
-        bottom: 120,
-        right: 200,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      } as DOMRect)
-      vi.spyOn(imageParent, 'getBoundingClientRect').mockReturnValue({
-        width: 100,
-        height: 100,
-        top: 0,
-        left: 0,
-        bottom: 100,
-        right: 100,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      } as DOMRect)
-
-      const zoomInButton = getZoomInButton()
-      await user.click(zoomInButton)
-
-      act(() => {
-        overlay.dispatchEvent(
-          new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }),
-        )
-      })
-      await waitFor(() => {
-        expect(image.style.transition).toBe('none')
-      })
-
-      act(() => {
-        overlay.dispatchEvent(
-          new MouseEvent('mousemove', { bubbles: true, clientX: 200, clientY: -100 }),
-        )
-      })
-
-      await waitFor(() => {
-        expect(image).toHaveStyle({ transform: 'scale(1.2) translate(70px, -22px)' })
-      })
-
-      act(() => {
-        document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
-      })
-      await waitFor(() => {
-        expect(image.style.transition).toContain('transform 0.2s ease-in-out')
-      })
-    })
-  })
-
-  describe('Action Buttons', () => {
-    it.each(['https://example.com/image.png', '/image-proxy/github/example'])(
-      'should open valid url %s in new tab',
-      async (url) => {
-        const user = userEvent.setup()
-        render(<ImagePreview url={url} title="Preview Image" onCancel={vi.fn()} />)
-
-        const openInTabButton = getOpenInTabButton()
-        await user.click(openInTabButton)
-
-        expect(mocks.windowOpen).toHaveBeenCalledWith(url, '_blank')
-      },
-    )
-
-    it('should open data image by writing to popup window document', async () => {
-      const user = userEvent.setup()
-      const write = vi.fn()
-      mocks.windowOpen.mockReturnValue({
-        document: {
-          write,
-        },
-      } as unknown as Window)
-
-      render(<ImagePreview url={dataImage} title="Preview Image" onCancel={vi.fn()} />)
-
-      const openInTabButton = getOpenInTabButton()
-      await user.click(openInTabButton)
-
-      expect(mocks.windowOpen).toHaveBeenCalledWith()
-      expect(write).toHaveBeenCalledWith(`<img src="${dataImage}" alt="Preview Image" />`)
-    })
-
-    it('should show error toast when opening unsupported url', async () => {
-      const user = userEvent.setup()
-      render(<ImagePreview url="file:///tmp/image.png" title="Preview Image" onCancel={vi.fn()} />)
-
-      const openInTabButton = getOpenInTabButton()
-      await user.click(openInTabButton)
-
-      expect(mocks.notify).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Unable to open image: file:///tmp/image.png',
-      })
-    })
-
-    it('keeps the preview open and reports clipboard denial without downloading or navigating', async () => {
-      const user = userEvent.setup()
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      mocks.clipboardWrite.mockRejectedValue(new Error('copy failed'))
-
-      render(<ImagePreview url={dataImage} title="Preview Image" onCancel={vi.fn()} />)
-
-      const copyButton = getCopyButton()
-      await user.click(copyButton)
-
-      await waitFor(() =>
-        expect(mocks.notify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.operation.imageCopyFailed',
-        }),
-      )
-      expect(mocks.downloadUrl).not.toHaveBeenCalled()
-      expect(mocks.windowOpen).not.toHaveBeenCalled()
-      expect(getOverlay()).toBeInTheDocument()
-      expect(consoleErrorSpy).toHaveBeenCalled()
-      consoleErrorSpy.mockRestore()
-    })
-
-    it('copies a remote PNG and starts the clipboard write before the image fetch resolves', async () => {
-      const user = userEvent.setup()
-      const png = new Blob(['png bytes'], { type: 'image/png' })
-      let resolveFetch!: (response: Response) => void
-      const fetchMock = vi.fn(
-        () =>
-          new Promise<Response>((resolve) => {
-            resolveFetch = resolve
-          }),
-      )
-      vi.stubGlobal('fetch', fetchMock)
-      let copiedBlob: Blob | undefined
-      mocks.clipboardWrite.mockImplementation(async ([item]) => {
-        copiedBlob = await (item as unknown as { data: Record<string, Promise<Blob>> }).data[
-          'image/png'
-        ]
-      })
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-
-      await user.click(getCopyButton())
-
-      expect(mocks.clipboardWrite).toHaveBeenCalledTimes(1)
-      expect(copiedBlob).toBeUndefined()
-      resolveFetch(new Response(png))
-      await waitFor(() =>
-        expect(mocks.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' })),
-      )
-      expect(copiedBlob?.type).toBe('image/png')
-      expect(await copiedBlob?.text()).toBe('png bytes')
-      expect(mocks.downloadUrl).not.toHaveBeenCalled()
-    })
-
-    it('converts a JPEG to PNG instead of labelling JPEG bytes as PNG', async () => {
-      const user = userEvent.setup()
-      const jpeg = new Blob(['jpeg bytes'], { type: 'image/jpeg' })
-      const png = new Blob(['encoded png'], { type: 'image/png' })
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(jpeg)))
-      const bitmap = { width: 12, height: 8, close: vi.fn() }
-      vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(bitmap))
-      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
-        drawImage: vi.fn(),
-      } as unknown as CanvasRenderingContext2D)
-      vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) =>
-        callback(png),
-      )
-      let copiedBlob: Blob | undefined
-      mocks.clipboardWrite.mockImplementation(async ([item]) => {
-        copiedBlob = await (item as unknown as { data: Record<string, Promise<Blob>> }).data[
-          'image/png'
-        ]
-      })
-      render(
-        <ImagePreview
-          url="https://example.com/image.jpg"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-
-      await user.click(getCopyButton())
-
-      await waitFor(() => expect(copiedBlob).toBe(png))
-      expect(bitmap.close).toHaveBeenCalled()
-      expect(mocks.downloadUrl).not.toHaveBeenCalled()
-    })
-
-    it('reports an image fetch failure without leaving the preview', async () => {
-      const user = userEvent.setup()
-      vi.spyOn(console, 'error').mockImplementation(() => {})
-      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
-      mocks.clipboardWrite.mockImplementation(async ([item]) => {
-        await (item as unknown as { data: Record<string, Promise<Blob>> }).data['image/png']
-      })
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-
-      await user.click(getCopyButton())
-
-      await waitFor(() =>
-        expect(mocks.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })),
-      )
-      expect(mocks.downloadUrl).not.toHaveBeenCalled()
-      expect(mocks.windowOpen).not.toHaveBeenCalled()
-      expect(getOverlay()).toBeInTheDocument()
-    })
-
-    it('should copy image and show success toast', async () => {
-      const user = userEvent.setup()
-      mocks.clipboardWrite.mockResolvedValue()
-      render(<ImagePreview url={dataImage} title="Preview Image" onCancel={vi.fn()} />)
-
-      const copyButton = getCopyButton()
-      await user.click(copyButton)
-
-      await waitFor(() => {
-        expect(mocks.clipboardWrite).toHaveBeenCalledTimes(1)
-      })
-      expect(mocks.notify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'success',
-        }),
-      )
-    })
-
-    it.each([
-      ['https://example.com/image.png', 'Preview Image'],
-      ['/image-proxy/github/example', ''],
-      [dataImage, 'Screenshot.png'],
-    ])('downloads image bytes without opening a tab for %s', async (url, title) => {
-      const user = userEvent.setup()
-      const createObjectURL = vi
-        .spyOn(window.URL, 'createObjectURL')
-        .mockReturnValue('blob:download-image')
-      const revokeObjectURL = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {})
-      const downloads: { href: string; name: string; target: string }[] = []
-      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
-        this: HTMLAnchorElement,
-      ) {
-        downloads.push({ href: this.href, name: this.download, target: this.target })
-      })
-      render(<ImagePreview url={url} title={title} onCancel={vi.fn()} />)
-      await user.click(getDownloadButton())
-
-      await waitFor(() =>
-        expect(downloads).toEqual([
-          {
-            href: 'blob:download-image',
-            name: title || 'image.png',
-            target: '',
-          },
-        ]),
-      )
-      const blob = createObjectURL.mock.calls[0]?.[0] as Blob
-      expect(blob.type).toBe('image/png')
-      expect(await blob.text()).toBe('image')
-      expect(revokeObjectURL).toHaveBeenCalledWith('blob:download-image')
-      expect(mocks.windowOpen).not.toHaveBeenCalled()
-      expect(getOverlay()).toBeInTheDocument()
-    })
-
-    it.each(['network', 'http'])(
-      'keeps the preview open when a download fails: %s',
-      async (failure) => {
-        const user = userEvent.setup()
-        if (failure === 'network')
-          vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
-        else vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 403 }))
-        const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-        render(<ImagePreview url="https://example.com/image.png" title="" onCancel={vi.fn()} />)
-        await user.click(getDownloadButton())
-
-        await waitFor(() =>
-          expect(mocks.notify).toHaveBeenCalledWith({
-            type: 'error',
-            message: 'common.operation.downloadFailed',
-          }),
-        )
-        expect(click).not.toHaveBeenCalled()
-        expect(mocks.windowOpen).not.toHaveBeenCalled()
-        expect(getOverlay()).toBeInTheDocument()
-      },
-    )
-
-    it('should zoom with dedicated zoom buttons', async () => {
-      const user = userEvent.setup()
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-      const image = screen.getByRole('img', { name: 'Preview Image' })
-
-      const zoomInButton = getZoomInButton()
-      const zoomOutButton = getZoomOutButton()
-      await user.click(zoomInButton)
-      await waitFor(() => {
-        expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
-      })
-
-      await user.click(zoomOutButton)
-      await waitFor(() => {
-        expect(image).toHaveStyle({ transform: 'scale(1) translate(0px, 0px)' })
-      })
-    })
-
-    it('should zoom out below 1 without resetting position', async () => {
-      const user = userEvent.setup()
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-      const image = screen.getByRole('img', { name: 'Preview Image' })
-
-      await user.click(getZoomOutButton())
-      await waitFor(() => {
-        expect(image).toHaveStyle({ transform: 'scale(0.8333333333333334) translate(0px, 0px)' })
-      })
-    })
-
-    it('should keep drag move stable when rect data is unavailable', async () => {
-      const user = userEvent.setup()
-      render(
-        <ImagePreview
-          url="https://example.com/image.png"
-          title="Preview Image"
-          onCancel={vi.fn()}
-        />,
-      )
-
-      const overlay = getOverlay()
-      const image = screen.getByRole('img', { name: 'Preview Image' }) as HTMLImageElement
-      const imageParent = image.parentElement
-      if (!imageParent) throw new Error('Image parent element not found')
-
-      vi.spyOn(image, 'getBoundingClientRect').mockReturnValue(undefined as unknown as DOMRect)
-      vi.spyOn(imageParent, 'getBoundingClientRect').mockReturnValue(
-        undefined as unknown as DOMRect,
-      )
-
-      await user.click(getZoomInButton())
-      act(() => {
-        overlay.dispatchEvent(
-          new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 10 }),
-        )
-        overlay.dispatchEvent(
-          new MouseEvent('mousemove', { bubbles: true, clientX: 120, clientY: 60 }),
-        )
-      })
-
-      expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
-    })
-  })
+  const windowOpen = vi.spyOn(window, 'open').mockReturnValue(null)
+  const download = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  const onCancel = vi.fn()
+  render(
+    <>
+      <ImagePreview
+        url="https://example.com/image.png"
+        title="Preview Image"
+        onCancel={onCancel}
+        {...props}
+      />
+      <AppToaster timeout={0} />
+    </>,
+  )
+  return { user, clipboardWrite, windowOpen, download, onCancel }
+}
+const readPng = async () => {
+  const [item] = await navigator.clipboard.read()
+  expect(item?.types).toEqual(['image/png'])
+  return item!.getType('image/png')
+}
+
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => new Response(new Blob(['image'], { type: 'image/png' }))),
+  )
 })
+afterEach(() => {
+  toast.dismiss()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
+it.each([
+  ['https://example.com/image.png', 'https://example.com/image.png'],
+  [base64Image, dataImage],
+])('shows the preview source for %s', (url, src) => {
+  setup({ url })
+  expect(screen.getByRole('dialog', { name: 'Preview Image' })).toBeInTheDocument()
+  expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute('src', src)
+})
+
+it.each(['', '   '])('names an untitled preview for %j', (title) => {
+  setup({ title })
+  expect(screen.getByRole('dialog', { name: 'workflow.common.preview' })).toBeInTheDocument()
+})
+
+it('navigates the preview with arrows and closes with Escape', async () => {
+  const onPrev = vi.fn()
+  const onNext = vi.fn()
+  const { user, onCancel } = setup({ onPrev, onNext })
+  await user.click(screen.getByRole('img', { name: 'Preview Image' }))
+  await user.keyboard('{ArrowLeft}{ArrowRight}{Escape}')
+  expect(onPrev).toHaveBeenCalledOnce()
+  expect(onNext).toHaveBeenCalledOnce()
+  expect(onCancel).toHaveBeenCalledOnce()
+})
+
+it('leaves outside arrows and unavailable navigation unclaimed', () => {
+  setup()
+  const outside = new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })
+  fireEvent(document.body, outside)
+  expect(outside.defaultPrevented).toBe(false)
+  const unavailable = new KeyboardEvent('keydown', {
+    key: 'ArrowRight',
+    bubbles: true,
+    cancelable: true,
+  })
+  fireEvent(screen.getByRole('dialog', { name: 'Preview Image' }), unavailable)
+  expect(unavailable.defaultPrevented).toBe(false)
+})
+
+it('keeps the image open until the close action is chosen', async () => {
+  const { user, onCancel } = setup()
+  await user.click(screen.getByRole('img', { name: 'Preview Image' }))
+  expect(onCancel).not.toHaveBeenCalled()
+  await user.click(button('cancel'))
+  expect(onCancel).toHaveBeenCalledOnce()
+})
+
+it.each(['https://example.com/image.png', '/image-proxy/github/example'])(
+  'opens %s in a new tab',
+  async (url) => {
+    const { user, windowOpen } = setup({ url })
+    await user.click(button('openInNewTab'))
+    expect(windowOpen).toHaveBeenCalledWith(url, '_blank')
+  },
+)
+
+it.each([dataImage, base64Image])(
+  'opens inline image %s with its title treated as text',
+  async (url) => {
+    render(<iframe title="Image tab" />)
+    const popup = screen.getByTitle<HTMLIFrameElement>('Image tab').contentWindow
+    if (!popup) throw new Error('Popup document unavailable')
+    const title = '\" /><script>window.injected = true</script>'
+    const { user, windowOpen } = setup({ url, title })
+    windowOpen.mockReturnValue(popup)
+    await user.click(button('openInNewTab'))
+    expect(windowOpen).toHaveBeenCalledOnce()
+    const image = popup.document.querySelector('img')
+    expect(image?.src).toBe(dataImage)
+    expect(image?.alt).toBe(title)
+    expect(popup.document.querySelector('script')).toBeNull()
+  },
+)
+
+it('reports unsupported URLs without opening a tab', async () => {
+  const { user, windowOpen } = setup({ url: 'file:///tmp/image.png' })
+  await user.click(button('openInNewTab'))
+  expect(await screen.findByText('Unable to open image: file:///tmp/image.png')).toBeInTheDocument()
+  expect(windowOpen).not.toHaveBeenCalled()
+})
+
+it.each(['permission', 'fetch'] as const)(
+  'reports clipboard %s failure without downloading or navigating',
+  async (failure) => {
+    const { user, clipboardWrite, windowOpen, download, onCancel } = setup()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    if (failure === 'permission')
+      clipboardWrite.mockRejectedValueOnce(new Error('Clipboard denied'))
+    else vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    await user.click(button('copyImage'))
+    expect(await screen.findByText('common.operation.imageCopyFailed')).toBeInTheDocument()
+    expect(download).not.toHaveBeenCalled()
+    expect(windowOpen).not.toHaveBeenCalled()
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Preview Image' })).toBeInTheDocument()
+  },
+)
+
+it('starts the clipboard write in the click gesture before the remote PNG arrives', async () => {
+  const request = createDeferred<Response>()
+  vi.mocked(fetch).mockReturnValueOnce(request.promise)
+  const { user, clipboardWrite, download } = setup()
+  await user.click(button('copyImage'))
+  expect(clipboardWrite).toHaveBeenCalledOnce()
+  expect(screen.queryByText('common.operation.imageCopied')).not.toBeInTheDocument()
+  expect(await navigator.clipboard.read()).toEqual([])
+  await act(async () =>
+    request.resolve(new Response(new Blob(['png bytes'], { type: 'image/png' }))),
+  )
+  expect(await screen.findByText('common.operation.imageCopied')).toBeInTheDocument()
+  const png = await readPng()
+  expect(png.type).toBe('image/png')
+  expect(await png.text()).toBe('png bytes')
+  expect(download).not.toHaveBeenCalled()
+})
+
+it('converts JPEG bytes to PNG for the clipboard', async () => {
+  vi.mocked(fetch).mockResolvedValueOnce(
+    new Response(new Blob(['jpeg bytes'], { type: 'image/jpeg' })),
+  )
+  const png = new Blob(['encoded png'], { type: 'image/png' })
+  const bitmap: ImageBitmap = { width: 12, height: 8, close: vi.fn() }
+  vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(bitmap))
+  const context = document.createElement('canvas').getContext('2d')
+  if (!context) throw new Error('Canvas context unavailable')
+  vi.spyOn(context, 'drawImage').mockImplementation(() => {})
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context)
+  vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => callback(png))
+  const { user } = setup({ url: 'https://example.com/image.jpg' })
+  await user.click(button('copyImage'))
+  expect(await screen.findByText('common.operation.imageCopied')).toBeInTheDocument()
+  const copied = await readPng()
+  expect(copied.type).toBe('image/png')
+  expect(await copied.text()).toBe('encoded png')
+  expect(bitmap.close).toHaveBeenCalledOnce()
+})
+
+it('copies an inline image and reports success', async () => {
+  const { user } = setup({ url: dataImage })
+  await user.click(button('copyImage'))
+  expect(await screen.findByText('common.operation.imageCopied')).toBeInTheDocument()
+  expect(fetch).toHaveBeenCalledWith(dataImage)
+  expect(await (await readPng()).text()).toBe('image')
+})
+
+it.each([
+  ['https://example.com/image.png', 'Preview Image'],
+  ['/image-proxy/github/example', ''],
+  [dataImage, 'Screenshot.png'],
+])('downloads image bytes without opening a tab for %s', async (url, title) => {
+  const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:download-image')
+  const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+  const { user, download, windowOpen, onCancel } = setup({ url, title })
+  const downloads: { href: string; name: string; target: string }[] = []
+  download.mockImplementation(function (this: HTMLAnchorElement) {
+    downloads.push({ href: this.href, name: this.download, target: this.target })
+  })
+  await user.click(button('download'))
+  await waitFor(() =>
+    expect(downloads).toEqual([
+      { href: 'blob:download-image', name: title || 'image.png', target: '' },
+    ]),
+  )
+  const blob = createObjectURL.mock.calls[0]?.[0]
+  if (!(blob instanceof Blob)) throw new Error('Expected downloaded image bytes')
+  expect(blob.type).toBe('image/png')
+  expect(await blob.text()).toBe('image')
+  expect(revokeObjectURL).toHaveBeenCalledWith('blob:download-image')
+  expect(windowOpen).not.toHaveBeenCalled()
+  expect(onCancel).not.toHaveBeenCalled()
+})
+
+it.each(['network', 'http'])(
+  'keeps the preview open when a download fails: %s',
+  async (failure) => {
+    if (failure === 'network')
+      vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    else vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 403 }))
+    const { user, download, windowOpen, onCancel } = setup()
+    await user.click(button('download'))
+    expect(await screen.findByText('common.operation.downloadFailed')).toBeInTheDocument()
+    expect(download).not.toHaveBeenCalled()
+    expect(windowOpen).not.toHaveBeenCalled()
+    expect(onCancel).not.toHaveBeenCalled()
+  },
+)
