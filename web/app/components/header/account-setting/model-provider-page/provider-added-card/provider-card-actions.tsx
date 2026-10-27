@@ -14,20 +14,20 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
-import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import PluginInfoContent from '@/app/components/plugins/plugin-page/plugin-info'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
@@ -228,10 +228,10 @@ function ProviderCardActions(props: Props) {
 
   return (
     <>
-      <DropdownMenu open={!!version && versionMenuOpen} onOpenChange={setVersionMenuRequested}>
+      <Menu open={!!version && versionMenuOpen} onOpenChange={setVersionMenuRequested}>
         {!!version &&
           (canChangeVersion ? (
-            <DropdownMenuTrigger
+            <MenuTrigger
               render={
                 <Button
                   variant="ghost"
@@ -252,18 +252,18 @@ function ProviderCardActions(props: Props) {
           ) : (
             <Badge uppercase={false} text={version} hasRedCornerMark={hasNewVersion} />
           ))}
-        <DropdownMenuContent
+        <MenuContent
           className="max-h-[min(16rem,var(--available-height))]"
           align="start"
           aria-labelledby={versionMenuLabelId}
         >
-          <DropdownMenuGroup>
-            <DropdownMenuGroupLabel id={versionMenuLabelId}>
+          <MenuGroup>
+            <MenuGroupLabel id={versionMenuLabelId}>
               {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
-            </DropdownMenuGroupLabel>
+            </MenuGroupLabel>
             {version && versionsQuery.data && detail && autoUpgradeSettings.data ? (
               versionsQuery.data.data.versions.map((item) => (
-                <DropdownMenuItem
+                <MenuItem
                   key={item.unique_identifier}
                   disabled={version === item.version}
                   onClick={() => {
@@ -286,10 +286,10 @@ function ProviderCardActions(props: Props) {
                   <span className="ms-auto text-text-tertiary">
                     {formatDate(item.created_at, dateFormat)}
                   </span>
-                </DropdownMenuItem>
+                </MenuItem>
               ))
             ) : (
-              <DropdownMenuItem
+              <MenuItem
                 closeOnClick={false}
                 onClick={() => {
                   if (versionsQuery.isError) void versionsQuery.refetch()
@@ -298,11 +298,11 @@ function ProviderCardActions(props: Props) {
                 }}
               >
                 {t(($) => $['operation.retry'], { ns: 'common' })}
-              </DropdownMenuItem>
+              </MenuItem>
             )}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </MenuGroup>
+        </MenuContent>
+      </Menu>
       {source === PluginSource.debugging && (
         <Badge
           className="border-state-warning-active bg-state-warning-hover text-text-warning"
@@ -332,7 +332,7 @@ function ProviderCardActions(props: Props) {
           </TooltipContent>
         </Tooltip>
       )}
-      <OperationDropdown
+      <OperationMenu
         source={source}
         onInfo={handleInfo}
         onCheckVersion={handleUpdate}

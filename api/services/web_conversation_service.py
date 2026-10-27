@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
-from models.enums import CreatorUserRole
 from models.model import App, EndUser
 from models.web import PinnedConversation
 from services.conversation_service import ConversationService
@@ -56,56 +55,3 @@ class WebConversationService:
             exclude_ids=exclude_ids,
             sort_by=sort_by,
         )
-
-    @classmethod
-    def pin(cls, app_model: App, conversation_id: str, user: Account | EndUser | None, session: Session):
-        if not user:
-            return
-        pinned_conversation = session.scalar(
-            select(PinnedConversation)
-            .where(
-                PinnedConversation.app_id == app_model.id,
-                PinnedConversation.conversation_id == conversation_id,
-                PinnedConversation.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
-                PinnedConversation.created_by == user.id,
-            )
-            .limit(1)
-        )
-
-        if pinned_conversation:
-            return
-
-        conversation = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation_id, user=user, session=session
-        )
-
-        pinned_conversation = PinnedConversation(
-            app_id=app_model.id,
-            conversation_id=conversation.id,
-            created_by_role=CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER,
-            created_by=user.id,
-        )
-
-        session.add(pinned_conversation)
-        session.commit()
-
-    @classmethod
-    def unpin(cls, app_model: App, conversation_id: str, user: Account | EndUser | None, session: Session):
-        if not user:
-            return
-        pinned_conversation = session.scalar(
-            select(PinnedConversation)
-            .where(
-                PinnedConversation.app_id == app_model.id,
-                PinnedConversation.conversation_id == conversation_id,
-                PinnedConversation.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
-                PinnedConversation.created_by == user.id,
-            )
-            .limit(1)
-        )
-
-        if not pinned_conversation:
-            return
-
-        session.delete(pinned_conversation)
-        session.commit()

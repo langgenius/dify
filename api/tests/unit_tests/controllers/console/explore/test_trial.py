@@ -5,7 +5,6 @@ import zipfile
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
-from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
 from typing import Literal, cast, override
@@ -29,14 +28,12 @@ import controllers.console.explore.trial as trial_module
 import controllers.console.explore.trial_app_admission as _trial_audio_admission_module
 import controllers.console.explore.trial_app_admission as _trial_file_upload_admission_module
 import controllers.console.explore.trial_app_admission as _trial_generation_admission_module
-import controllers.console.explore.trial_app_admission as _trial_suggested_questions_admission_module
 import controllers.console.files as files_module
 import controllers.console.remote_files as remote_module
 import controllers.console.wraps as console_wraps
 import libs.login as login_module
 import services.app_service as app_module
 import services.file_service as file_module
-import services.message_service as message_module
 from constants import COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_CSRF_TOKEN
 from controllers.common.errors import UnauthorizedError
 from controllers.console import api as console_api
@@ -57,9 +54,6 @@ from core.errors.error import (
 )
 from core.file import remote_fetcher
 from core.helper import encrypter
-from core.model_context import get_credit_usage_metadata
-from core.model_manager import ModelInstance
-from core.ops.ops_trace_manager import TraceTask
 from core.plugin.plugin_service import PluginService
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolParameter
@@ -67,30 +61,24 @@ from core.tools.errors import ToolSSRFError
 from core.tools.tool_manager import ToolManager
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
-from extensions.ext_database import db
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
 from extensions.ext_storage import StorageType
-from graphon.model_runtime.entities import AssistantPromptMessage, PromptMessage
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError, InvokeError
 from graphon.variables import SecretVariable, StringVariable
 from libs.external_api import ExternalApi
 from libs.token import generate_csrf_token
 from machinery.errors import ActiveWorkspaceRequiredError
-from models import Account, AccountTrialAppRecord, Conversation, Message, Tenant, TrialApp
+from models import Account, AccountTrialAppRecord, Tenant, TrialApp
 from models import App as _trial_audio_App
 from models import App as _trial_file_upload_App
 from models import App as _trial_generation_App
 from models import App as _trial_preview_App
 from models import App as _trial_preview_details_App
-from models import App as _trial_suggested_questions_App
 from models import AppMode as _trial_audio_AppMode
 from models import AppMode as _trial_file_upload_AppMode
 from models import AppMode as _trial_generation_AppMode
 from models import AppMode as _trial_preview_AppMode
 from models import AppMode as _trial_preview_details_AppMode
-from models import AppMode as _trial_suggested_questions_AppMode
 from models import UploadFile as _trial_file_upload_UploadFile
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.agent import (
@@ -105,7 +93,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.dataset import Dataset
-from models.enums import ConversationFromSource, CreatorUserRole, CustomizeTokenStrategy, TagType
+from models.enums import CreatorUserRole, CustomizeTokenStrategy, TagType
 from models.model import App as _trial_agent_config_App
 from models.model import AppMode as _trial_agent_config_AppMode
 from models.model import AppModelConfig, IconType, RecommendedApp, Site, Tag, TagBinding
@@ -139,12 +127,6 @@ from services.errors.conversation import ConversationCompletedError, Conversatio
 from services.errors.llm import InvokeRateLimitError
 from services.feature_service import FeatureService
 from services.file_service import FileService
-from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
-from services.message_suggested_questions_service import (
-    SuggestedQuestionsAccount,
-    SuggestedQuestionsActor,
-    SuggestedQuestionsActorNotFoundError,
-)
 from services.recommended_app_query_service import (
     RecommendedAppCatalogPage,
     RecommendedAppDetailRecord,
@@ -3492,583 +3474,3 @@ class TestTrialPreviewDetailsCases:
                 )
         _trial_preview_details_assert_error(harness.get(endpoint), 400, "app_unavailable")
         assert harness.io.decryptions == []
-
-
-"""Trial suggested questions through HTTP, real ownership queries, and SQLite."""
-
-
-@dataclass
-class _TrialSuggestedQuestionsFeatures:
-    enabled: bool = True
-    setup_completed: bool = True
-    events: list[str] = field(default_factory=list)
-
-    def is_trial_enabled(self) -> bool:
-        self.events.append("feature")
-        return self.enabled
-
-
-@dataclass
-class _Provider:
-    read_sessions: list[Session]
-    app_id: str
-    model_sessions: list[Session] = field(default_factory=list)
-    token_calls: int = 0
-    tenant_ids: list[str] = field(default_factory=list)
-    prompts: list[str] = field(default_factory=list)
-    traces: list[TraceTask] = field(default_factory=list)
-    questions: list[str] = field(default_factory=lambda: ["Next question?", "Another question?"])
-    failure: Exception | None = None
-    missing_model: bool = False
-    app_type: str = "chatbot"
-
-    def get_default_model_instance(self, *, tenant_id: str, model_type: ModelType) -> ModelInstance:
-        assert model_type == ModelType.LLM
-        self.tenant_ids.append(tenant_id)
-        session = db.session()
-        assert session.get(_trial_suggested_questions_App, self.app_id) is not None
-        self.model_sessions.append(session)
-        if self.missing_model:
-            raise ProviderTokenNotInitError("No default model")
-        return cast(ModelInstance, self)
-
-    def assert_queries_closed(self) -> None:
-        assert all(
-            not session.in_transaction() and not session.identity_map
-            for session in self.read_sessions + self.model_sessions
-        )
-
-    def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
-        self.assert_queries_closed()
-        self.token_calls += 1
-        if self.failure is not None:
-            raise self.failure
-        return len(prompt_messages)
-
-    def get_model_schema(self) -> AIModelEntity:
-        self.assert_queries_closed()
-        return AIModelEntity.model_construct(parameter_rules=[])
-
-    def invoke_llm(
-        self,
-        *,
-        prompt_messages: list[PromptMessage],
-        model_parameters: Mapping[str, object],
-        stop: list[str],
-        stream: bool,
-    ) -> LLMResult:
-        self.assert_queries_closed()
-        assert self.tenant_ids == [self.tenant_ids[0]] * 2
-        assert get_credit_usage_metadata() == {"app_type": self.app_type, "created_by": "suggested_questions"}
-        assert model_parameters == {"max_tokens": 256, "temperature": 0.0}
-        assert stop == []
-        assert stream is False
-        prompt = prompt_messages[0].get_text_content()
-        assert "Suggest concise follow-ups" in prompt
-        self.prompts.append(prompt)
-        return LLMResult(
-            model="question-model",
-            message=AssistantPromptMessage(content=json.dumps(self.questions)),
-            usage=LLMUsage.empty_usage(),
-        )
-
-    def add_trace_task(self, task: TraceTask) -> None:
-        self.traces.append(task)
-
-
-@dataclass(frozen=True)
-class _TrialSuggestedQuestionsTrialappservices:
-    access: TrialAppAccessService
-
-
-@dataclass(frozen=True)
-class _TrialSuggestedQuestionsApplicationservices:
-    trial_apps: _TrialSuggestedQuestionsTrialappservices
-    recommended_app_queries: _TrialSuggestedQuestionsFeatures
-    message_suggested_questions: MessageSuggestedQuestionsRuntime
-
-
-@dataclass(frozen=True)
-class _TrialSuggestedQuestionsHarness:
-    app: Flask
-    account: Account
-    target: _trial_suggested_questions_App
-    trial: TrialApp
-    conversation: Conversation
-    message: Message
-    config: AppModelConfig
-    factory: sessionmaker[Session]
-    features: _TrialSuggestedQuestionsFeatures
-    provider: _Provider
-    legacy_sessions: list[Session]
-
-    def get(self, *, app_id: str | None = None, message_id: str | None = None) -> TestResponse:
-        return self.app.test_client().get(
-            f"/trial-apps/{app_id or self.target.id}/messages/{message_id or self.message.id}/suggested-questions"
-        )
-
-    def assert_closed(self) -> None:
-        assert all(
-            not session.in_transaction() and not session.identity_map
-            for session in self.provider.read_sessions + self.legacy_sessions
-        )
-
-    def usage(self) -> int | None:
-        with self.factory() as session:
-            return session.scalar(
-                select(AccountTrialAppRecord.count).where(
-                    AccountTrialAppRecord.app_id == self.target.id,
-                    AccountTrialAppRecord.account_id == self.account.id,
-                )
-            )
-
-
-def _trial_suggested_questions_assert_error(
-    response: TestResponse, status: int, code: str, message: str | None = None
-) -> None:
-    assert response.status_code == status, response.get_json()
-    body = response.get_json()
-    assert body["code"] == code
-    assert body["status"] == status
-    assert body["message"]
-    if message is not None:
-        assert body["message"] == message
-    assert response.headers["Content-Type"] == "application/json"
-
-
-class TestTrialSuggestedQuestionsCases:
-    @staticmethod
-    @pytest.fixture
-    def harness(
-        monkeypatch: pytest.MonkeyPatch,
-        config_overrides: Callable[..., None],
-        sqlite_session_factory: sessionmaker[Session],
-        sqlite_engine: Engine,
-    ) -> Iterator[_TrialSuggestedQuestionsHarness]:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, INIT_PASSWORD="", LOGIN_DISABLED=False)
-        features = _TrialSuggestedQuestionsFeatures()
-        account = Account(name="Trial viewer", email="trial@example.com")
-        account._current_tenant = Tenant(name="Viewer workspace")
-        target = _trial_suggested_questions_App(
-            tenant_id=str(uuid4()),
-            name="Trial app",
-            mode=_trial_suggested_questions_AppMode.CHAT,
-            enable_site=True,
-            enable_api=False,
-        )
-        target.id = str(uuid4())
-        trial = TrialApp(app_id=target.id, tenant_id=str(uuid4()), trial_limit=3)
-        config = AppModelConfig(
-            app_id=target.id,
-            suggested_questions_after_answer='{"enabled":true,"prompt":"Suggest concise follow-ups"}',
-        )
-        with sqlite_session_factory.begin() as session:
-            session.add_all([account, target, trial, config])
-            session.flush()
-            target.app_model_config_id = config.id
-            conversation = Conversation(
-                app_id=target.id,
-                app_model_config_id=config.id,
-                mode=_trial_suggested_questions_AppMode.CHAT,
-                name="Trial conversation",
-                _inputs={},
-                from_source=ConversationFromSource.CONSOLE,
-                from_account_id=account.id,
-            )
-            session.add(conversation)
-            session.flush()
-            message = Message(
-                app_id=target.id,
-                conversation_id=conversation.id,
-                _inputs={},
-                query="What is a trial?",
-                message={},
-                message_unit_price=Decimal(0),
-                answer="A way to try an app.",
-                answer_unit_price=Decimal(0),
-                currency="USD",
-                from_source=ConversationFromSource.CONSOLE,
-                from_account_id=account.id,
-            )
-            session.add(message)
-
-        read_sessions: list[Session] = []
-        read_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-
-        @event.listens_for(read_factory, "after_begin")
-        def track_read(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
-            read_sessions.append(session)
-
-        provider = _Provider(read_sessions, target.id)
-        services = _TrialSuggestedQuestionsApplicationservices(
-            trial_apps=_TrialSuggestedQuestionsTrialappservices(
-                access=TrialAppAccessService(apps=TrialAppRepository(session_factory=read_factory))
-            ),
-            recommended_app_queries=features,
-            message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=read_factory),
-        )
-
-        def setup_completed() -> bool:
-            features.events.append("setup")
-            return features.setup_completed
-
-        def csrf(_request: Request, account_id: str) -> None:
-            assert account_id == account.id
-            features.events.append("csrf")
-
-        for module in (trial_module, _trial_suggested_questions_admission_module):
-            monkeypatch.setattr(module, "application_services", lambda: services)
-        monkeypatch.setattr(console_wraps, "_is_setup_completed", setup_completed)
-        monkeypatch.setattr(login_module, "current_user", account)
-        monkeypatch.setattr(login_module, "check_csrf_token", csrf)
-
-        def model_manager(*, tenant_id: str) -> _Provider:
-            assert tenant_id == target.tenant_id
-            return provider
-
-        def trace_manager(*, app_id: str) -> _Provider:
-            assert app_id == target.id
-            return provider
-
-        monkeypatch.setattr(message_module.ModelManager, "for_tenant", model_manager)
-        monkeypatch.setattr(message_module, "TraceQueueManager", trace_manager)
-
-        app = Flask(__name__)
-        app.config.update(TESTING=True, RESTX_ERROR_404_HELP=False, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
-        db.init_app(app)
-        legacy_sessions: list[Session] = []
-
-        def track_legacy(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
-            legacy_sessions.append(session)
-
-        event.listen(db.session.session_factory, "after_begin", track_legacy)
-        login_manager = DifyLoginManager()
-        login_manager.init_app(app)
-        login_manager.unauthorized_handler(unauthorized_handler)
-        api = ExternalApi(app)
-        api.add_resource(
-            trial_module.TrialMessageSuggestedQuestionApi,
-            "/trial-apps/<uuid:app_id>/messages/<uuid:message_id>/suggested-questions",
-        )
-        yield _TrialSuggestedQuestionsHarness(
-            app,
-            account,
-            target,
-            trial,
-            conversation,
-            message,
-            config,
-            sqlite_session_factory,
-            features,
-            provider,
-            legacy_sessions,
-        )
-        event.remove(db.session.session_factory, "after_begin", track_legacy)
-        with app.app_context():
-            db.session.remove()
-            db.engine.dispose()
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        "mode",
-        [
-            _trial_suggested_questions_AppMode.CHAT,
-            _trial_suggested_questions_AppMode.AGENT_CHAT,
-            _trial_suggested_questions_AppMode.AGENT,
-        ],
-    )
-    @pytest.mark.parametrize("questions", [["Next question?", "Another question?"], []])
-    def test_questions_keep_response_history_owner_and_usage(
-        harness: _TrialSuggestedQuestionsHarness, questions: list[str], mode: _trial_suggested_questions_AppMode
-    ) -> None:
-        harness.provider.questions = questions
-        harness.provider.app_type = {
-            _trial_suggested_questions_AppMode.CHAT: "chatbot",
-            _trial_suggested_questions_AppMode.AGENT_CHAT: "agent",
-            _trial_suggested_questions_AppMode.AGENT: "agent_v2",
-        }[mode]
-        with harness.factory.begin() as session:
-            session.execute(
-                update(_trial_suggested_questions_App)
-                .where(_trial_suggested_questions_App.id == harness.target.id)
-                .values(mode=mode)
-            )
-            session.execute(update(Conversation).where(Conversation.id == harness.conversation.id).values(mode=mode))
-        with harness.factory.begin() as session:
-            session.add_all(
-                [
-                    AccountTrialAppRecord(app_id=harness.target.id, account_id=harness.account.id, count=1),
-                    AccountTrialAppRecord(app_id=harness.target.id, account_id=str(uuid4()), count=3),
-                ]
-            )
-
-        response = harness.get()
-
-        assert response.status_code == 200, response.get_json()
-        assert response.get_json() == {"data": questions}
-        assert response.headers["Content-Type"] == "application/json"
-        assert int(response.headers["Content-Length"]) == len(response.data)
-        assert len(harness.provider.prompts) == 1
-        assert "Human: What is a trial?\nAssistant: A way to try an app." in harness.provider.prompts[0]
-        assert harness.provider.tenant_ids == [harness.target.tenant_id] * 2
-        assert harness.target.tenant_id not in {harness.trial.tenant_id, harness.account.current_tenant_id}
-        assert len(harness.provider.traces) == 1
-        assert harness.features.events == ["setup", "csrf", "feature"]
-        assert harness.usage() == 1
-        assert len(harness.provider.model_sessions) == 2
-        harness.assert_closed()
-
-    @staticmethod
-    @pytest.mark.parametrize("entity", ["message", "conversation"])
-    @pytest.mark.parametrize("mismatch", ["missing", "app", "account", "source", "end-user"])
-    def test_message_and_conversation_require_complete_owner_chain(
-        harness: _TrialSuggestedQuestionsHarness, entity: str, mismatch: str
-    ) -> None:
-        message_id = harness.message.id
-        with harness.factory.begin() as session:
-            record = (
-                session.get(Message, harness.message.id)
-                if entity == "message"
-                else session.get(Conversation, harness.conversation.id)
-            )
-            assert record is not None
-            match mismatch:
-                case "missing":
-                    if entity == "message":
-                        message_id = str(uuid4())
-                    else:
-                        session.delete(record)
-                case "app":
-                    record.app_id = str(uuid4())
-                case "account":
-                    record.from_account_id = str(uuid4())
-                case "source":
-                    record.from_source = ConversationFromSource.API
-                case "end-user":
-                    record.from_end_user_id = str(uuid4())
-
-        response = harness.get(message_id=message_id)
-
-        _trial_suggested_questions_assert_error(
-            response, 404, "not_found", "Message not found" if entity == "message" else "Conversation not found"
-        )
-        assert harness.provider.prompts == []
-        assert harness.usage() is None
-        harness.assert_closed()
-
-    @staticmethod
-    def test_deleted_conversation_is_not_visible(harness: _TrialSuggestedQuestionsHarness) -> None:
-        with harness.factory.begin() as session:
-            session.execute(
-                update(Conversation).where(Conversation.id == harness.conversation.id).values(is_deleted=True)
-            )
-        _trial_suggested_questions_assert_error(harness.get(), 404, "not_found", "Conversation not found")
-        assert harness.provider.prompts == []
-        harness.assert_closed()
-
-    @staticmethod
-    @pytest.mark.parametrize("config", [None, '{"enabled":false}'])
-    def test_disabled_or_unset_suggestions_have_specific_error(
-        harness: _TrialSuggestedQuestionsHarness, config: str | None
-    ) -> None:
-        with harness.factory.begin() as session:
-            session.execute(
-                update(AppModelConfig)
-                .where(AppModelConfig.id == harness.config.id)
-                .values(suggested_questions_after_answer=config)
-            )
-        _trial_suggested_questions_assert_error(harness.get(), 403, "app_suggested_questions_after_answer_disabled")
-        assert harness.provider.prompts == []
-        harness.assert_closed()
-
-    @staticmethod
-    def test_absent_default_model_keeps_empty_success(harness: _TrialSuggestedQuestionsHarness) -> None:
-        harness.provider.missing_model = True
-        response = harness.get()
-        assert response.status_code == 200
-        assert response.get_json() == {"data": []}
-        assert harness.provider.prompts == []
-        assert harness.provider.traces == []
-        harness.assert_closed()
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        "mode", [_trial_suggested_questions_AppMode.COMPLETION, _trial_suggested_questions_AppMode.WORKFLOW]
-    )
-    def test_unsupported_app_modes_fail_before_runtime(
-        harness: _TrialSuggestedQuestionsHarness, mode: _trial_suggested_questions_AppMode
-    ) -> None:
-        with harness.factory.begin() as session:
-            session.execute(
-                update(_trial_suggested_questions_App)
-                .where(_trial_suggested_questions_App.id == harness.target.id)
-                .values(mode=mode)
-            )
-        _trial_suggested_questions_assert_error(harness.get(), 400, "not_chat_app")
-        assert len(harness.provider.read_sessions) == 1
-        assert harness.legacy_sessions == []
-        harness.assert_closed()
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        ("denial", "status", "code"),
-        [
-            ("setup", 401, "not_setup"),
-            ("feature", 403, "trial_app_feature_disabled"),
-            ("missing_trial", 403, "trial_app_not_allowed"),
-            ("missing_app", 403, "trial_app_not_allowed"),
-            ("quota", 403, "trial_app_limit_exceeded"),
-            ("uninitialized", 400, "account_not_initialized"),
-            ("unauthenticated", 401, "unauthorized"),
-        ],
-    )
-    def test_admission_blocks_before_runtime(
-        harness: _TrialSuggestedQuestionsHarness, monkeypatch: pytest.MonkeyPatch, denial: str, status: int, code: str
-    ) -> None:
-        if denial == "setup":
-            harness.features.setup_completed = False
-        elif denial == "feature":
-            harness.features.enabled = False
-        elif denial == "uninitialized":
-            harness.account.status = AccountStatus.UNINITIALIZED
-        elif denial == "unauthenticated":
-            monkeypatch.setattr(login_module, "current_user", None)
-        else:
-            with harness.factory.begin() as session:
-                if denial == "missing_trial":
-                    session.execute(delete(TrialApp).where(TrialApp.app_id == harness.target.id))
-                elif denial == "missing_app":
-                    session.execute(
-                        delete(_trial_suggested_questions_App).where(
-                            _trial_suggested_questions_App.id == harness.target.id
-                        )
-                    )
-                else:
-                    session.add(AccountTrialAppRecord(app_id=harness.target.id, account_id=harness.account.id, count=3))
-        response = harness.get()
-        if denial == "unauthenticated":
-            assert response.status_code == 401
-            assert response.get_json() == {"code": "unauthorized", "message": "Unauthorized.", "status": 401}
-        else:
-            _trial_suggested_questions_assert_error(response, status, code)
-        assert harness.legacy_sessions == []
-        assert harness.provider.prompts == []
-        harness.assert_closed()
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        ("failure", "code", "message"),
-        [
-            (
-                ProviderTokenNotInitError("Missing tenant credentials"),
-                "provider_not_initialize",
-                "Missing tenant credentials",
-            ),
-            (QuotaExceededError(), "provider_quota_exceeded", None),
-            (ModelCurrentlyNotSupportError(), "model_currently_not_support", None),
-            (InvokeError("Provider unavailable"), "completion_request_error", "Provider unavailable"),
-        ],
-    )
-    def test_token_count_failures_preserve_specific_errors_and_close_session(
-        harness: _TrialSuggestedQuestionsHarness, failure: Exception, code: str, message: str | None
-    ) -> None:
-        harness.provider.failure = failure
-        _trial_suggested_questions_assert_error(harness.get(), 400, code, message)
-        assert harness.provider.token_calls == 1
-        assert harness.provider.prompts == []
-        assert harness.provider.traces == []
-        assert harness.usage() is None
-        harness.assert_closed()
-
-    @staticmethod
-    @pytest.mark.parametrize("failure", [None, InvokeError("Provider unavailable")])
-    def test_runtime_preserves_outer_request_session(
-        harness: _TrialSuggestedQuestionsHarness, failure: Exception | None
-    ) -> None:
-        harness.provider.failure = failure
-        with harness.app.app_context():
-            outer_session = db.session()
-            app_model = outer_session.get(_trial_suggested_questions_App, harness.target.id)
-            assert app_model is not None
-            app_model.name = "Pending caller change"
-
-            response = harness.get()
-
-            assert response.status_code == (200 if failure is None else 400)
-            assert db.session() is outer_session
-            assert outer_session.in_transaction()
-            assert app_model in outer_session.dirty
-            assert app_model.name == "Pending caller change"
-            assert harness.provider.model_sessions
-            for inner_session in harness.provider.model_sessions:
-                assert inner_session is not outer_session
-                assert not inner_session.in_transaction()
-                assert not inner_session.identity_map
-        harness.assert_closed()
-        with harness.factory() as session:
-            saved_app = session.get(_trial_suggested_questions_App, harness.target.id)
-            assert saved_app is not None
-            assert saved_app.name == "Trial app"
-
-    @staticmethod
-    def test_advanced_chat_without_published_workflow_keeps_empty_success(
-        harness: _TrialSuggestedQuestionsHarness,
-    ) -> None:
-        with harness.factory.begin() as session:
-            session.execute(
-                update(_trial_suggested_questions_App)
-                .where(_trial_suggested_questions_App.id == harness.target.id)
-                .values(mode=_trial_suggested_questions_AppMode.ADVANCED_CHAT)
-            )
-        response = harness.get()
-        assert response.status_code == 200
-        assert response.get_json() == {"data": []}
-        assert len(harness.provider.read_sessions) == 2
-        assert harness.provider.prompts == []
-        assert harness.usage() is None
-        harness.assert_closed()
-
-    @staticmethod
-    @pytest.mark.parametrize(
-        ("failure", "status", "code", "message"),
-        [
-            (AppDefinitionUnavailableError("App changed after admission"), 400, "app_unavailable", None),
-            (
-                SuggestedQuestionsActorNotFoundError("Account disappeared"),
-                401,
-                "unauthorized",
-                "Account no longer exists.",
-            ),
-        ],
-    )
-    def test_reload_errors_have_explicit_http_mapping(
-        harness: _TrialSuggestedQuestionsHarness,
-        monkeypatch: pytest.MonkeyPatch,
-        failure: Exception,
-        status: int,
-        code: str,
-        message: str | None,
-    ) -> None:
-        def reject_reload(
-            _self: MessageSuggestedQuestionsRuntime,
-            *,
-            app_id: str,
-            app_owner_tenant_id: str,
-            expected_app_mode: str,
-            actor: SuggestedQuestionsActor,
-            message_id: str,
-        ) -> list[str]:
-            assert (app_id, app_owner_tenant_id, expected_app_mode, message_id) == (
-                harness.target.id,
-                harness.target.tenant_id,
-                harness.target.mode,
-                harness.message.id,
-            )
-            assert actor == SuggestedQuestionsAccount(account_id=harness.account.id, invoke_from="explore")
-            raise failure
-
-        monkeypatch.setattr(MessageSuggestedQuestionsRuntime, "get_suggested_questions", reject_reload)
-        _trial_suggested_questions_assert_error(harness.get(), status, code, message)
-        assert harness.provider.prompts == []
-        assert harness.usage() is None
-        harness.assert_closed()

@@ -44,12 +44,8 @@ import {
   ContextMenuTrigger,
 } from '@langgenius/dify-ui/context-menu'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Menu, MenuContent, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   ScrollArea,
@@ -1353,21 +1349,22 @@ export function FileTree({
               {t(($) => $['skillManagement.detail.fileCount'], { count: fileCount })}
             </h2>
             {!readonly && (
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger
+              <Menu modal={false}>
+                <MenuTrigger
                   aria-label={tCommon(($) => $['operation.add'])}
                   className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
                   disabled={!detail || isMutating}
                 >
                   <span aria-hidden className="i-ri-add-line size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
+                </MenuTrigger>
+                <MenuContent
+                  align="end"
                   data-skill-file-menu
                   onKeyDown={handleRootMenuKeyDown}
                   className={skillFileMenuPopupClassName}
                 >
                   <RootFileActionMenuItems
-                    kind="dropdown"
+                    kind="menu"
                     onCreateFile={() =>
                       setInlineAction({
                         kind: 'create',
@@ -1382,8 +1379,8 @@ export function FileTree({
                     }
                     onUploadFiles={() => uploadInputRef.current?.click()}
                   />
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </MenuContent>
+              </Menu>
             )}
             <input
               ref={uploadInputRef}

@@ -4,6 +4,7 @@ from typing import cast
 
 from flask import current_app, got_request_exception
 
+from core.logging.context import get_request_id
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
 from services.errors.base import NoPermissionError
@@ -90,6 +91,33 @@ class NoFileUploadedError(BaseHTTPException):
 class NotFoundError(BaseHTTPException):
     error_code = "not_found"
     code = 404
+
+
+class ConversationNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_not_found"
+    description = "The conversation was not found for this user and app."
+    code = HTTPStatus.NOT_FOUND
+
+
+class ConversationFirstMessageNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_first_message_not_found"
+    description = "The conversation has no message from which to generate a name."
+    code = HTTPStatus.NOT_FOUND
+
+
+class MessageFeedbackRatingRequiredError(BaseHTTPException):
+    error_code = "message_feedback_rating_required"
+    description = "A rating is required when there is no existing feedback to remove."
+    code = HTTPStatus.BAD_REQUEST
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.data = {
+            "code": self.error_code,
+            "message": self.description,
+            "status": self.code,
+            "details": {"request_id": get_request_id()},
+        }
 
 
 class UnauthorizedError(BaseHTTPException):

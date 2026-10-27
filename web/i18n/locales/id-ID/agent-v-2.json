@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Memuat basis pengetahuan Agent…",
   "agentDetail.configure.knowledgeFs.rebind": "Tautan impor: pilih kembali basis pengetahuan Agent ini atau ganti dengan basis pengetahuan Agent yang tersedia.",
   "agentDetail.configure.knowledgeFs.retry": "Coba lagi",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "Pengambilan dari basis pengetahuan Agent tidak tersedia pada penerapan ini. Minta administrator untuk mengaktifkannya.",
   "agentDetail.configure.knowledgeFs.select": "Pilih hingga 10 basis pengetahuan Agent",
   "agentDetail.configure.knowledgeFs.title": "Basis pengetahuan Agent",
   "agentDetail.configure.knowledgeFs.unavailable": "Basis pengetahuan Agent ini tidak tersedia atau Anda tidak memiliki izin untuk menggunakannya di Agen ini.",

@@ -1,13 +1,24 @@
 'use client'
 
 import type { KnowledgeUpgrade } from '../upgrade/knowledge-upgrade-context-value'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useInfiniteQuery, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { createParser, parseAsString, useQueryState } from 'nuqs'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { CreatorFilter } from '@/app/components/datasets/creator-filter'
@@ -22,7 +33,9 @@ import { TagManagementModal } from '@/features/tag-management/components/tag-man
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { hasPermission } from '@/utils/permission'
+import { DeleteKnowledgeForm } from '../delete-knowledge-form'
 import { KnowledgeUpgradeCard } from '../upgrade/knowledge-upgrade-card'
 import { useKnowledgeUpgrade } from '../upgrade/knowledge-upgrade-context-value'
 import { matchesKnowledgeUpgradeFilters } from '../upgrade/knowledge-upgrade-filters'
@@ -96,6 +109,20 @@ export function NewKnowledgeList({
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
+  const listRef = useRef<HTMLElement>(null)
+  const [deleteDialog] = useState(() =>
+    createAlertDialogHandle<{
+      id: string
+      name: string
+      adjacentFocusTargets: HTMLElement[]
+      fallbackFocus: { current: HTMLElement | null }
+    }>(),
+  )
+  const deletion = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const docLink = useDocLink()
   const { data: apiBaseInfo } = useQuery(consoleQuery.datasets.apiBaseInfo.get.queryOptions())
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
@@ -241,8 +268,10 @@ export function NewKnowledgeList({
 
   return (
     <section
+      ref={listRef}
+      tabIndex={-1}
       aria-label={t(($) => $.new)}
-      className="relative flex grow flex-col overflow-y-auto bg-background-body"
+      className="relative flex grow flex-col overflow-y-auto bg-background-body focus-visible:outline-2 focus-visible:outline-state-accent-solid"
     >
       <header className="sticky top-0 z-10 flex flex-col gap-3.5 bg-background-body px-4 pt-4 pb-2 sm:px-8">
         <div className="flex min-h-6 flex-wrap items-center justify-between gap-2">
@@ -406,6 +435,17 @@ export function NewKnowledgeList({
                 <KnowledgeSpaceCard
                   key={knowledgeSpace.control_space_id}
                   knowledgeSpace={knowledgeSpace}
+                  onDelete={(item) =>
+                    deleteDialog.openWithPayload({
+                      id: knowledgeSpace.control_space_id,
+                      name:
+                        knowledgeSpace.technical_summary?.name ?? knowledgeSpace.control_space_id,
+                      adjacentFocusTargets: getAdjacentFocusTargets(item, (sibling) =>
+                        sibling.querySelector<HTMLElement>(':scope > a[href], :scope > button'),
+                      ),
+                      fallbackFocus: { current: null },
+                    })
+                  }
                   highlighted={highlightedControlSpaceId === knowledgeSpace.control_space_id}
                   onOpenTagManagement={() => setShowTagManagementModal(true)}
                 />
@@ -431,6 +471,55 @@ export function NewKnowledgeList({
           </div>
         )}
       </div>
+      <AlertDialog
+        handle={deleteDialog}
+        onOpenChange={(open, details) => {
+          if (!open && deletion.isPending && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) deletion.reset()
+        }}
+      >
+        {({ payload }) => (
+          <AlertDialogContent
+            finalFocus={() => {
+              const fallback = payload?.fallbackFocus.current
+              if (!fallback) return true
+              const target =
+                payload.adjacentFocusTargets.find((element) => element.isConnected) ?? fallback
+              target.focus({ preventScroll: true })
+              return false
+            }}
+          >
+            {payload && (
+              <DeleteKnowledgeForm
+                knowledgeName={payload.name}
+                isPending={deletion.isPending}
+                error={
+                  deletion.error
+                    ? getHttpErrorStatus(deletion.error) !== undefined
+                      ? deletion.error.message
+                      : tCommon(($) => $['api.actionFailed'])
+                    : undefined
+                }
+                onSubmit={() => {
+                  if (deletion.isPending) return
+                  deletion.mutate(
+                    { params: { control_space_id: payload.id } },
+                    {
+                      onSuccess: () => {
+                        payload.fallbackFocus.current = listRef.current
+                        deleteDialog.close()
+                      },
+                    },
+                  )
+                }}
+              />
+            )}
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
       <TagManagementModal
         type="knowledge"
         show={showTagManagementModal}

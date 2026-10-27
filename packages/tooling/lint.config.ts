@@ -284,7 +284,7 @@ export const stylingContractRules = {
         },
         {
           pattern:
-            '^(Input|Textarea|InputGroup|InputGroupInput|NumberFieldGroup|NumberFieldInput|ComboboxInputGroup|ComboboxInput|AutocompleteInputGroup|AutocompleteInput|DropdownMenuInputGroup|DropdownMenuInput)$',
+            '^(Input|Textarea|InputGroup|InputGroupInput|NumberFieldGroup|NumberFieldInput|ComboboxInputGroup|ComboboxInput|AutocompleteInputGroup|AutocompleteInput|MenuInputGroup|MenuInput)$',
           allow: ['*'],
           deny: focusIndicatorOverrides,
           message:

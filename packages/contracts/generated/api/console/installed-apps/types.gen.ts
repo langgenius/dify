@@ -613,8 +613,6 @@ export type TextToAudioPayload = {
   voice?: string | null
 }
 
-export type AudioBinaryResponse = Blob | File
-
 export type ProviderNotSupportTextToSpeechError = ErrorResponse & {
   code: 'provider_not_support_text_to_speech'
   status: 400
@@ -1385,7 +1383,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
-  400: NotChatAppError | ErrorResponse
+  400: AppUnavailableError | NotChatAppError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404:
     | ConversationNotFoundError
@@ -1417,7 +1415,7 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = 
 }
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors = {
-  400: MessageFeedbackRatingRequiredError | ErrorResponse
+  400: AppUnavailableError | MessageFeedbackRatingRequiredError | ErrorResponse
   403: AccessDeniedError | ErrorResponse
   404: InstalledAppNotFoundError | MessageNotFoundError | ErrorResponse
   503: WebAppAccessUnavailableError | ErrorResponse
@@ -1675,7 +1673,7 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioError =
   PostInstalledAppsByInstalledAppIdTextToAudioErrors[keyof PostInstalledAppsByInstalledAppIdTextToAudioErrors]
 
 export type PostInstalledAppsByInstalledAppIdTextToAudioResponses = {
-  200: AudioBinaryResponse
+  200: Blob | File
 }
 
 export type PostInstalledAppsByInstalledAppIdTextToAudioResponse =

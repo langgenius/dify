@@ -37,12 +37,16 @@ class _DummyConverter(AppGenerateResponseConverter[WorkflowAppBlockingResponse])
         return {"kind": "blocking-simple", "task_id": blocking_response.task_id}
 
     @classmethod
-    def convert_stream_full_response(cls, stream_response: Generator[AppStreamResponse]) -> Generator[dict | str]:
+    def convert_stream_full_response(
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, object] | str]:
         cls.stream_full_calls.append(stream_response)
         yield {"kind": "stream-full"}
 
     @classmethod
-    def convert_stream_simple_response(cls, stream_response: Generator[AppStreamResponse]) -> Generator[dict | str]:
+    def convert_stream_simple_response(
+        cls, stream_response: Generator[AppStreamResponse]
+    ) -> Generator[dict[str, object] | str]:
         cls.stream_simple_calls.append(stream_response)
         yield {"kind": "stream-simple"}
 

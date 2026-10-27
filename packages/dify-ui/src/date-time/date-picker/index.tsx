@@ -29,6 +29,8 @@ import {
 } from '../internal/picker-parts'
 import { usePickerValue } from '../internal/use-picker-value'
 
+type DatePickerLabels = CalendarPanelLabels & { close: string }
+
 type DatePickerChangeEventReason = PickerChangeEventReason
 type DatePickerChangeEventDetails = PickerChangeEventDetails
 
@@ -39,12 +41,13 @@ type DatePickerProps = PickerFieldProps &
     defaultValue?: string | null
     /** Called on day confirmation, clearing or form reset. */
     onValueChange?: (value: string | null, details: DatePickerChangeEventDetails) => void
-    labels?: Partial<CalendarPanelLabels>
+    labels?: Partial<DatePickerLabels>
   }
 type ContextValue = Omit<
   DatePickerProps,
-  'value' | 'defaultValue' | 'onValueChange' | 'children'
+  'value' | 'defaultValue' | 'onValueChange' | 'children' | 'labels'
 > & {
+  labels: DatePickerLabels
   value: Exclude<DatePickerProps['value'], undefined>
   commit: (value: string | null, details: DatePickerChangeEventDetails) => boolean
 }
@@ -54,13 +57,14 @@ function useContext() {
   if (!context) throw new Error('DatePicker parts require DatePicker.')
   return context
 }
-const defaultLabels: CalendarPanelLabels = {
+const defaultLabels: DatePickerLabels = {
   previousMonth: 'Previous month',
   nextMonth: 'Next month',
   chooseMonthAndYear: 'Choose month and year',
   month: 'Month',
   year: 'Year',
   cancel: 'Cancel',
+  close: 'Close',
   apply: 'OK',
   unavailable: 'This date is unavailable.',
 }
@@ -92,16 +96,14 @@ function DatePicker({
       props.isDateUnavailable?.(value)),
   )
 
+  const labels = { ...defaultLabels, ...props.labels }
+
   return (
-    <Context.Provider value={{ ...props, value, commit }}>
+    <Context.Provider value={{ ...props, value, commit, labels }}>
       <PickerRoot
         {...props}
         invalid={props.invalid || unavailable}
-        validationMessage={
-          unavailable
-            ? (props.labels?.unavailable ?? defaultLabels.unavailable)
-            : props.validationMessage
-        }
+        validationMessage={unavailable ? labels.unavailable : props.validationMessage}
         placeholder={props.placeholder ?? 'Select date'}
         displayValue={
           parsedValue
@@ -134,9 +136,9 @@ const DatePickerClear = PickerClear
 const DatePickerLabel = PickerLabel
 const DatePickerValue = PickerValue
 function DatePickerContent(props: DatePickerContentProps) {
-  const { value } = useContext()
+  const { value, labels } = useContext()
   return (
-    <PickerContent {...props}>
+    <PickerContent {...props} closeLabel={labels.close}>
       <Session key={value ?? ''} />
     </PickerContent>
   )
@@ -166,7 +168,7 @@ function Session() {
       minDate={minDate}
       maxDate={maxDate}
       isDateUnavailable={isDateUnavailable}
-      labels={{ ...defaultLabels, ...labels }}
+      labels={labels}
     />
   )
 }
