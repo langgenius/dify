@@ -23,7 +23,31 @@ from core.workflow.nodes.human_input.entities import (
     UserActionConfig,
 )
 from core.workflow.nodes.human_input.enums import ValueSourceType
+from factories.file_url_factory import re_sign_file_urls
 from graphon.variables.segments import ArrayFileSegment, Segment
+
+
+def refresh_form_file_urls(form: ResolvedForm) -> ResolvedForm:
+    """Copy display content with fresh file URLs without resolving variables again."""
+    refreshed_urls: dict[str, str] = {}
+
+    # Reuse each replacement across fragments and the legacy rendering so both
+    # representations expose exactly the same signature in a single response.
+    return form.model_copy(
+        update={
+            "parts": tuple(
+                part.model_copy(
+                    update={"text": re_sign_file_urls(part.text, preserve_url=True, replacements=refreshed_urls)}
+                )
+                if isinstance(part, MarkdownFragment)
+                else part
+                for part in form.parts
+            ),
+            "legacy_form_content": re_sign_file_urls(
+                form.legacy_form_content, preserve_url=True, replacements=refreshed_urls
+            ),
+        }
+    )
 
 
 @dataclass(frozen=True, slots=True)

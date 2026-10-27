@@ -4,6 +4,7 @@ import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import NoReturn
+from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 import pytest
@@ -24,6 +25,7 @@ from core.human_input_v2.resolved_form import (
     UserAction,
 )
 from core.human_input_v2.shared.values import ContactId, NormalizedEmail, TenantId
+from core.tools.signature import sign_tool_file, verify_tool_file_signature
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import Contact, DynamicEmail, OnetimeEmail
 from graphon.file.enums import FileTransferMethod, FileType
@@ -58,6 +60,7 @@ from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchem
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
 from services.human_input_v2.email_otp_service import EmailOtpService
+from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_tenant
 
 _NOW = datetime(2030, 1, 1)
@@ -225,6 +228,84 @@ def test_unknown_token_is_not_found(public_form: PublicForm) -> None:
     assert response.status_code == 404
     assert response.json is not None
     assert response.json["code"] == "human_input_form_not_found"
+
+
+def test_reads_refresh_file_signatures_without_changing_the_snapshot(
+    public_form: PublicForm, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, FILES_URL="https://files.example.com", FILES_ACCESS_TIMEOUT=300)
+    file_id = str(uuid4())
+    monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
+    old_url = sign_tool_file(file_id, ".pdf")
+    content = f"[Report]({old_url}) {{{{#$output.note#}}}}"
+    snapshot = public_form.form.resolved_form.model_copy(
+        update={
+            "parts": (
+                MarkdownFragment(text=f"[Report]({old_url}) "),
+                ParagraphInput(output_variable_name="note", default_value="Draft"),
+            ),
+            "legacy_form_content": content,
+        }
+    )
+    with public_form.sessions.begin() as session:
+        session.execute(
+            sa.update(HumanInputForm).where(HumanInputForm.id == public_form.form.id).values(resolved_form=snapshot)
+        )
+
+    urls: list[str] = []
+    for now in (1700000400, 1700000500):
+        monkeypatch.setattr("core.tools.signature.time.time", lambda now=now: now)
+        response = public_form.client.get(_PATH)
+        assert response.status_code == 200
+        assert response.json is not None
+        url = response.json["form_content"].removeprefix("[Report](").removesuffix(") {{#$output.note#}}")
+        query = parse_qs(urlsplit(url).query)
+        assert query["timestamp"] == [str(now)]
+        assert verify_tool_file_signature(file_id, query["timestamp"][0], query["nonce"][0], query["sign"][0])
+        assert urlsplit(url).path == urlsplit(old_url).path
+        urls.append(url)
+    assert urls[0] != old_url
+    assert urls[0] != urls[1]
+    with public_form.sessions() as session:
+        stored = session.get(HumanInputForm, public_form.form.id)
+        assert stored is not None
+        assert stored.resolved_form == snapshot
+
+
+@pytest.mark.parametrize("denial", ["auth_type", "recipient", "submitted", "timeout", "expired", "deadline"])
+def test_denied_file_form_does_not_return_its_content(public_form: PublicForm, denial: str) -> None:
+    url = sign_tool_file(str(uuid4()), ".pdf")
+    content = f"[Report]({url})"
+    snapshot = public_form.form.resolved_form.model_copy(
+        update={"parts": (MarkdownFragment(text=content),), "legacy_form_content": content}
+    )
+    with public_form.sessions.begin() as session:
+        session.execute(sa.update(HumanInputForm).values(resolved_form=snapshot))
+        match denial:
+            case "auth_type":
+                session.execute(sa.update(HumanInputDelivery).values(auth_type=SubmissionAuthType.CONSOLE))
+            case "recipient":
+                session.execute(sa.delete(HumanInputRecipient))
+            case "submitted":
+                SQLAlchemyFormRepository(session, public_form.form.tenant_id, public_form.form.app_id).submit_form(
+                    public_form.form.id,
+                    submitted_by_recipient_id=public_form.recipient.id,
+                    submitted_by_delivery_id=session.scalars(sa.select(HumanInputDelivery)).one().id,
+                    selected_action_id="approve",
+                    raw_submission_inputs={},
+                    normalized_submission_data={},
+                )
+            case "timeout":
+                session.execute(sa.update(HumanInputForm).values(status=HumanInputFormStatus.TIMEOUT))
+            case "expired":
+                session.execute(sa.update(HumanInputForm).values(status=HumanInputFormStatus.EXPIRED))
+            case "deadline":
+                session.execute(sa.update(HumanInputForm).values(expiration_time=_NOW))
+    response = public_form.client.get(_PATH)
+    assert response.status_code in (404, 412)
+    assert response.json is not None
+    assert "form_content" not in response.json
+    assert url not in response.get_data(as_text=True)
 
 
 @pytest.mark.parametrize("auth_type", [SubmissionAuthType.CONSOLE, SubmissionAuthType.WEB_APP, SubmissionAuthType.IM])

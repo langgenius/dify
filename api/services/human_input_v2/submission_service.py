@@ -3,7 +3,7 @@
 import hashlib
 import logging
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum, StrEnum, auto
 
 from kombu.exceptions import OperationalError
@@ -16,6 +16,7 @@ from core.human_input_v2.resolved_form import FileInput, FileListInput, Markdown
 from core.human_input_v2.shared.values import AccountId, TenantId, WorkspaceScope
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from factories.file_factory import build_from_mapping
+from factories.human_input_v2_form_presentation import refresh_form_file_urls
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FileUploadConfig
 from graphon.variables.factory import build_segment
@@ -197,7 +198,7 @@ class HumanInputSubmissionService:
         if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
             raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
         self._record_form_view(form, ip_address=ip_address)
-        return form
+        return replace(form, resolved_form=refresh_form_file_urls(form.resolved_form))
 
     def submit_console_form(
         self, *, account_id: AccountId, form_token: str, action: str, inputs: Mapping[str, JsonValue]
@@ -223,7 +224,7 @@ class HumanInputSubmissionService:
         """Read an active email-proof form before any OTP is requested or verified."""
         form = self.authorize_public_form(form_token=form_token)
         self._record_form_view(form, ip_address=ip_address)
-        return form
+        return replace(form, resolved_form=refresh_form_file_urls(form.resolved_form))
 
     def _record_form_view(self, form: Form, *, ip_address: str | None) -> None:
         with self._session_factory() as session, session.begin():

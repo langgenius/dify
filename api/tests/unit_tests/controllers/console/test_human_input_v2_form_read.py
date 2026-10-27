@@ -3,6 +3,7 @@
 import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 import pytest
@@ -15,6 +16,7 @@ from controllers.console.human_input_v2 import form as controller
 from core.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput, ResolvedForm, UserAction
 from core.human_input_v2.shared.values import ContactId, TenantId
+from core.tools.signature import sign_tool_file, verify_tool_file_signature
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import Contact
 from dify_app import DifyApp
@@ -159,11 +161,97 @@ def test_requires_console_login(console_form: ConsoleForm) -> None:
     assert console_form.client.get(_PATH).status_code == 401
 
 
+def test_reads_refresh_file_signatures_without_changing_the_snapshot(
+    console_form: ConsoleForm, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, FILES_URL="https://files.example.com", FILES_ACCESS_TIMEOUT=300)
+    file_id = str(uuid4())
+    monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
+    old_url = sign_tool_file(file_id, ".pdf")
+    content = f"[Report]({old_url}) {{{{#$output.note#}}}}"
+    snapshot = console_form.form.resolved_form.model_copy(
+        update={
+            "parts": (
+                MarkdownFragment(text=f"[Report]({old_url}) "),
+                ParagraphInput(output_variable_name="note", default_value="Draft"),
+            ),
+            "legacy_form_content": content,
+        }
+    )
+    with console_form.sessions.begin() as session:
+        session.execute(
+            sa.update(HumanInputForm).where(HumanInputForm.id == console_form.form.id).values(resolved_form=snapshot)
+        )
+
+    urls: list[str] = []
+    for now in (1700000400, 1700000500):
+        monkeypatch.setattr("core.tools.signature.time.time", lambda now=now: now)
+        response = console_form.client.get(_PATH)
+        assert response.status_code == 200
+        assert response.json is not None
+        resolved = response.json["resolved_form"]
+        refreshed_content = resolved["legacy_form_content"]
+        assert resolved["parts"][0]["text"] + "{{#$output.note#}}" == refreshed_content
+        url = refreshed_content.removeprefix("[Report](").removesuffix(") {{#$output.note#}}")
+        query = parse_qs(urlsplit(url).query)
+        assert query["timestamp"] == [str(now)]
+        assert verify_tool_file_signature(
+            file_id,
+            query["timestamp"][0],
+            query["nonce"][0],
+            query["sign"][0],
+        )
+        assert urlsplit(url).path == urlsplit(old_url).path
+        urls.append(url)
+    assert urls[0] != old_url
+    assert urls[0] != urls[1]
+    with console_form.sessions() as session:
+        stored = session.get(HumanInputForm, console_form.form.id)
+        assert stored is not None
+        assert stored.resolved_form == snapshot
+
+
 def test_unknown_token_is_not_found(console_form: ConsoleForm) -> None:
     response = console_form.client.get("/console/api/form/human-input/v2/unknown")
     assert response.status_code == 404
     assert response.json is not None
     assert response.json["code"] == "not_found"
+
+
+@pytest.mark.parametrize("denial", ["login", "recipient", "submitted", "timeout", "expired", "deadline"])
+def test_denied_file_form_does_not_return_its_content(console_form: ConsoleForm, denial: str) -> None:
+    url = sign_tool_file(str(uuid4()), ".pdf")
+    content = f"[Report]({url})"
+    snapshot = console_form.form.resolved_form.model_copy(
+        update={"parts": (MarkdownFragment(text=content),), "legacy_form_content": content}
+    )
+    with console_form.sessions.begin() as session:
+        session.execute(sa.update(HumanInputForm).values(resolved_form=snapshot))
+        match denial:
+            case "login":
+                console_form.actor = None
+            case "recipient":
+                session.execute(sa.delete(HumanInputContactIdentity))
+            case "submitted":
+                SQLAlchemyFormRepository(session, console_form.form.tenant_id, console_form.form.app_id).submit_form(
+                    console_form.form.id,
+                    submitted_by_recipient_id=console_form.recipient.id,
+                    submitted_by_delivery_id=session.scalars(sa.select(HumanInputDelivery)).one().id,
+                    selected_action_id="approve",
+                    raw_submission_inputs={},
+                    normalized_submission_data={},
+                )
+            case "timeout":
+                session.execute(sa.update(HumanInputForm).values(status=HumanInputFormStatus.TIMEOUT))
+            case "expired":
+                session.execute(sa.update(HumanInputForm).values(status=HumanInputFormStatus.EXPIRED))
+            case "deadline":
+                session.execute(sa.update(HumanInputForm).values(expiration_time=_NOW))
+    response = console_form.client.get(_PATH)
+    assert response.status_code in (401, 404, 409, 410)
+    assert response.json is not None
+    assert "resolved_form" not in response.json
+    assert url not in response.get_data(as_text=True)
 
 
 @pytest.mark.parametrize("auth_type", [SubmissionAuthType.EMAIL_OTP, SubmissionAuthType.WEB_APP, SubmissionAuthType.IM])
