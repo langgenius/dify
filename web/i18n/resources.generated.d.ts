@@ -65,7 +65,6 @@ export default interface Resources {
     'account.workspaceName': 'Workspace Name'
     'account.workspaceNamePlaceholder': 'Enter workspace name'
     'personalAccessToken.access': 'Access'
-    'personalAccessToken.deleted': 'Deleted'
     'personalAccessToken.active': 'Active'
     'personalAccessToken.all': 'All'
     'personalAccessToken.allIncludingFuture': 'All, including future'
@@ -81,6 +80,7 @@ export default interface Resources {
     'personalAccessToken.days': '{{count}} days'
     'personalAccessToken.deleteDescription': "Scripts and tools using it will stop working right away. This can't be undone."
     'personalAccessToken.deleteTitle': 'Delete {{name}} (••••{{suffix}})?'
+    'personalAccessToken.deleted': 'Deleted'
     'personalAccessToken.description': 'Connect tools and automation with your personal permissions.'
     'personalAccessToken.duplicateDescription': 'Creates a new token. The original token will stay unchanged.'
     'personalAccessToken.duplicateTitle': 'Duplicate personal access token'
@@ -114,7 +114,7 @@ export default interface Resources {
     'personalAccessToken.scopeTitle': 'Access scope'
     'personalAccessToken.searchResources': 'Search name, workspace or ID'
     'personalAccessToken.searchWorkspaces': 'Search workspace name or ID'
-    'personalAccessToken.secretUnavailable': 'The token was saved, but its secret could not be retrieved. Retry to retrieve the same token.'
+    'personalAccessToken.secretUnavailable': "The secret is shown only once. If you didn't save it, revoke this token and create a new one."
     'personalAccessToken.selected': 'Selected'
     'personalAccessToken.status': 'Status'
     'personalAccessToken.title': 'Personal access tokens'
