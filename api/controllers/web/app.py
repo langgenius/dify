@@ -21,6 +21,7 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
@@ -70,6 +71,7 @@ register_response_schema_models(
 class AppParameterApi(WebApiResource):
     """Resource for app variables."""
 
+    @error_responses(AgentNotPublishedError, AppUnavailableError)
     @web_ns.doc("Get App Parameters")
     @web_ns.doc(description="Retrieve the parameters for a specific app.")
     @web_ns.doc(
@@ -77,7 +79,6 @@ class AppParameterApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "App Not Found",
             500: "Internal Server Error",
         }
@@ -97,6 +98,7 @@ class AppParameterApi(WebApiResource):
 
 @web_ns.route("/meta")
 class AppMeta(WebApiResource):
+    @error_responses(AppUnavailableError)
     @web_ns.doc("Get App Meta")
     @web_ns.doc(description="Retrieve the metadata for a specific app.")
     @web_ns.doc(
@@ -104,7 +106,6 @@ class AppMeta(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "App Not Found",
             500: "Internal Server Error",
         }
@@ -122,6 +123,7 @@ class AppMeta(WebApiResource):
 
 @web_ns.route("/webapp/access-mode")
 class AppAccessMode(Resource):
+    @error_responses(InvalidArgumentError)
     @web_ns.doc("Get App Access Mode")
     @web_ns.doc(description="Retrieve the access mode for a web application (public or restricted).")
     @web_ns.doc(params=query_params_from_model(AppAccessModeQuery))

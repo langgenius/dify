@@ -72,6 +72,7 @@ describe('WorkflowLaunchDialog', () => {
         onOpenChange={vi.fn()}
       />,
     )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     rerender(
       <WorkflowLaunchDialog
         hiddenVariables={hiddenVariables}
@@ -85,7 +86,7 @@ describe('WorkflowLaunchDialog', () => {
   })
 
   it('renders nothing when there are no hidden variables', () => {
-    const { container } = render(
+    render(
       <WorkflowLaunchDialog
         hiddenVariables={[]}
         open
@@ -94,6 +95,6 @@ describe('WorkflowLaunchDialog', () => {
       />,
     )
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

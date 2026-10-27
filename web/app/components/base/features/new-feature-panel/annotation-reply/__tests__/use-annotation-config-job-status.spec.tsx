@@ -5,7 +5,7 @@ import { PathnameContext } from 'next/dist/shared/lib/hooks-client-context.share
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { renderHookWithConsoleQuery, renderWithConsoleQuery } from '@/test/console/query-data'
 import AnnotationReply from '../index'
 import useAnnotationConfig from '../use-annotation-config'
@@ -58,7 +58,7 @@ describe('annotation reply job status', () => {
           error_msg: errorMessage,
         })
       }
-      render(<AppToastHost timeout={0} />)
+      render(<AppToaster timeout={0} />)
       const { result } = renderHookWithConsoleQuery(() =>
         useAnnotationConfig({
           appId: 'test-app',
@@ -160,7 +160,7 @@ describe('annotation reply job status', () => {
           <FeaturesContext value={store}>
             <AnnotationReply />
           </FeaturesContext>
-          <AppToastHost timeout={0} />
+          <AppToaster timeout={0} />
         </PathnameContext>,
       )
 

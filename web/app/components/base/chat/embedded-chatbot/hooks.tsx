@@ -117,9 +117,9 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       } else if (localeFromSysVar) {
         // If locale is set as a system variable, use that
         await changeLanguage(localeFromSysVar)
-      } else if ((appInfo as unknown as AppData)?.site?.default_language) {
+      } else if ((appInfo as AppData)?.site?.default_language) {
         // Otherwise use the default from app config
-        await changeLanguage((appInfo as unknown as AppData).site?.default_language)
+        await changeLanguage((appInfo as AppData).site?.default_language)
       }
     }
     setLanguageFromParams()
@@ -428,7 +428,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     async (messageId, feedback) => {
       await updateFeedback(
         {
-          url: `/messages/${messageId}/feedbacks`,
+          messageId,
           body: { rating: feedback.rating, content: feedback.content },
         },
         appSourceType,

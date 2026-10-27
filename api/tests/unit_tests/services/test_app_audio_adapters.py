@@ -77,7 +77,7 @@ def harness(
             conversation_id=str(uuid4()),
             query="Question",
             answer=" Message answer ",
-            inputs={},
+            _inputs={},
             message={},
             message_unit_price=Decimal(0),
             answer_unit_price=Decimal(0),

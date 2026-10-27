@@ -6,6 +6,7 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -77,11 +78,11 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
             <span id={deleteLabelId}>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
           </AlertDialogTrigger>
           <AlertDialogContent backdropProps={{ forceRender: true }}>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {`${t(($) => $['operation.delete'], { ns: 'common' })} \u201C${apiBasedExtension.name}\u201D?`}
               </AlertDialogTitle>
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}

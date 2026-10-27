@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import cast
 
 from pydantic import TypeAdapter, ValidationError
+from sqlalchemy import cast as sql_cast
 from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
@@ -100,6 +101,41 @@ class SQLAlchemyDatasourceCredentialRepository:
         )
         with self._session_factory() as session:
             provider_record = session.scalar(query.limit(1))
+            return _datasource_credential_record(provider_record) if provider_record is not None else None
+
+    def get_visible_preferred(
+        self,
+        *,
+        workspace_id: str,
+        actor_id: str,
+        provider: str,
+        plugin_id: str,
+        credential_id: str | None,
+    ) -> DatasourceCredentialRecord | None:
+        """Return the requested visible credential, or the actor's preferred one when none is requested.
+
+        Without ``credential_id`` the workspace default wins, then the oldest visible credential.
+        """
+        query = select(DatasourceProvider).where(
+            DatasourceProvider.tenant_id == workspace_id,
+            DatasourceProvider.provider == provider,
+            DatasourceProvider.plugin_id == plugin_id,
+        )
+        if credential_id is not None:
+            query = query.where(DatasourceProvider.id == credential_id)
+        query = apply_credential_visibility_filter_for_actor(
+            query,
+            tenant_id=workspace_id,
+            model_id_column=DatasourceProvider.id,
+            model_user_id_column=DatasourceProvider.user_id,
+            model_visibility_column=DatasourceProvider.visibility,
+            credential_type=CredentialType.DATASOURCE_PROVIDER,
+            actor_id=actor_id,
+        )
+        with self._session_factory() as session:
+            provider_record = session.scalar(
+                query.order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc()).limit(1)
+            )
             return _datasource_credential_record(provider_record) if provider_record is not None else None
 
     def get_oauth_client_config(
@@ -205,6 +241,13 @@ def _update_datasource_credentials_if_unchanged(
     expires_at: int,
 ) -> bool:
     credentials = _CREDENTIALS_ADAPTER.validate_python(encrypted_credentials)
+    expected_credentials = _CREDENTIALS_ADAPTER.validate_python(record.encrypted_credentials)
+    credentials_match = DatasourceProvider.encrypted_credentials == expected_credentials
+    if session.get_bind().dialect.name == "mysql":
+        # MySQL otherwise compares the JSON column with the bound value as a string scalar.
+        credentials_match = DatasourceProvider.encrypted_credentials == sql_cast(
+            expected_credentials, DatasourceProvider.encrypted_credentials.type
+        )
     result = session.execute(
         update(DatasourceProvider)
         .where(
@@ -213,8 +256,7 @@ def _update_datasource_credentials_if_unchanged(
             DatasourceProvider.provider == record.provider,
             DatasourceProvider.plugin_id == record.plugin_id,
             DatasourceProvider.user_id == record.owner_id,
-            DatasourceProvider.encrypted_credentials
-            == _CREDENTIALS_ADAPTER.validate_python(record.encrypted_credentials),
+            credentials_match,
             DatasourceProvider.expires_at == record.expires_at,
         )
         .values(

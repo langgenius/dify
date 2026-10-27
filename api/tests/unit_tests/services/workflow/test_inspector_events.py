@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 from collections.abc import Generator, Iterator
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 from services.workflow import inspector_events
@@ -104,7 +103,7 @@ def test_publish_swallows_redis_errors() -> None:
     """Persistence must not crash if redis blows up — we publish best-effort."""
 
     class _BrokenRedis:
-        def publish(self, *_args: Any, **_kwargs: Any) -> None:
+        def publish(self, *_args: object, **_kwargs: object) -> None:
             raise RuntimeError("redis offline")
 
     with patch.object(inspector_events, "redis_client", _BrokenRedis()):
@@ -117,10 +116,10 @@ def test_publish_swallows_redis_errors() -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _make_fake_pubsub(messages: list[dict[str, Any] | None]) -> MagicMock:
+def _make_fake_pubsub(messages: list[dict[str, object] | None]) -> MagicMock:
     """Build a redis pubsub stub that replays ``messages`` then raises StopIteration."""
     pubsub = MagicMock()
-    it: Iterator[dict[str, Any] | None] = iter(messages)
+    it: Iterator[dict[str, object] | None] = iter(messages)
     pubsub.get_message.side_effect = lambda **_kwargs: next(it, None)
     return pubsub
 
@@ -206,7 +205,7 @@ def test_subscribe_skips_non_string_data_payloads() -> None:
     """``raw["data"]`` can be ``None`` / int / bytes — only str is decodable
     and the rest are silently skipped."""
     fake_pubsub = MagicMock()
-    msgs: list[dict[str, Any] | None] = [
+    msgs: list[dict[str, object] | None] = [
         {"data": None},  # missing payload
         {"data": 12345},  # int payload (shouldn't happen, defensive)
         {

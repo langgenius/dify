@@ -2,15 +2,18 @@ import type { Node, ValueSelector, Var } from '../../types'
 import type { VarGroupItem, VariableAssignerNodeType } from './types'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useNodes, useStoreApi } from 'reactflow'
-import { FlowType } from '@/types/common'
-import { useHooksStore } from '../../hooks-store/store'
+import {
+  editorResourceKindAtom,
+  isChatflowAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
-import { useIsChatMode, useWorkflow } from '../../hooks/use-workflow'
+import { useWorkflow } from '../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../hooks/use-workflow-variables'
 import { useWorkflowStore } from '../../store'
-import { filterSnippetSystemVars, isSnippetCanvas } from '../_base/hooks/snippet-input-field-vars'
+import { filterSnippetSystemVars } from '../_base/hooks/snippet-input-field-vars'
 
 export const useVariableAssigner = () => {
   const store = useStoreApi()
@@ -32,9 +35,7 @@ export const useVariableAssigner = () => {
               (group: VarGroupItem & { groupId: string }) => {
                 if (
                   group.groupId === groupId &&
-                  !group.variables.some(
-                    (item) => item.join('.') === (value as ValueSelector).join('.'),
-                  )
+                  !group.variables.some((item) => item.join('.') === value.join('.'))
                 ) {
                   return {
                     ...group,
@@ -48,10 +49,7 @@ export const useVariableAssigner = () => {
           },
         }
       } else {
-        if (
-          node.data.variables.some((item) => item.join('.') === (value as ValueSelector).join('.'))
-        )
-          return
+        if (node.data.variables.some((item) => item.join('.') === value.join('.'))) return
         payload = {
           variables: [...node.data.variables, value],
           output_type: varDetail.type,
@@ -126,9 +124,8 @@ export const useGetAvailableVars = () => {
   const nodes: Node[] = useNodes()
   const { getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
-  const isChatMode = useIsChatMode()
-  const isSnippetFlow =
-    useHooksStore((s) => s.configsMap?.flowType) === FlowType.snippet || isSnippetCanvas()
+  const isChatflow = useAtomValue(isChatflowAtom)
+  const isSnippetFlow = useAtomValue(editorResourceKindAtom) === 'snippet'
   const getAvailableVars = useCallback(
     (nodeId: string, handleId: string, filterVar: (v: Var) => boolean, hideEnv = false) => {
       const availableNodes: Node[] = []
@@ -143,7 +140,7 @@ export const useGetAvailableVars = () => {
         const availableVars = getNodeAvailableVars({
           parentNode,
           beforeNodes: uniqBy(availableNodes, 'id').filter((node) => node.id !== nodeId),
-          isChatMode,
+          isChatflow,
           hideEnv,
           hideChatVar: false,
           filterVar,
@@ -163,7 +160,7 @@ export const useGetAvailableVars = () => {
         getNodeAvailableVars({
           parentNode,
           beforeNodes: uniqBy(availableNodes, 'id').filter((node) => node.id !== nodeId),
-          isChatMode,
+          isChatflow,
           filterVar,
         }),
         isSnippetFlow,
@@ -173,7 +170,7 @@ export const useGetAvailableVars = () => {
       nodes,
       getBeforeNodesInSameBranchIncludeParent,
       getNodeAvailableVars,
-      isChatMode,
+      isChatflow,
       isSnippetFlow,
     ],
   )

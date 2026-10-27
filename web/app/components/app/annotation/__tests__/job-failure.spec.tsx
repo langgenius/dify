@@ -1,10 +1,9 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import Annotation from '../index'
 
 it('stops a failed disable job without refreshing annotation settings as successful', async () => {
@@ -45,10 +44,8 @@ it('stops a failed disable job without refreshing annotation settings as success
   try {
     renderWithConsoleQuery(
       <>
-        <Annotation
-          appDetail={createAppDetailFixture({ id: 'test-app', mode: AppModeEnum.CHAT })}
-        />
-        <AppToastHost timeout={0} />
+        <Annotation appDetail={createAppDetailFixture({ id: 'test-app', mode: 'chat' })} />
+        <AppToaster timeout={0} />
       </>,
     )
     const toggle = await screen.findByRole('switch')

@@ -1,19 +1,30 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import ArrayBoolList from '../array-bool-list'
 
-describe('ArrayBoolList', () => {
-  it('toggles, appends, and removes boolean values', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-    const { container } = render(<ArrayBoolList list={[true]} onChange={onChange} />)
+function BooleanArrayEditor() {
+  const [values, setValues] = useState([true])
+  return (
+    <>
+      <ArrayBoolList list={values} onChange={setValues} />
+      <output aria-label="Variable value">{JSON.stringify(values)}</output>
+    </>
+  )
+}
 
-    await user.click(screen.getByText('False'))
-    await user.click(screen.getByText('workflow.chatVariable.modal.addArrayValue'))
-    await user.click(container.querySelector('button') as HTMLButtonElement)
+it('updates, appends, and removes boolean values without losing existing edits', async () => {
+  const user = userEvent.setup()
+  render(<BooleanArrayEditor />)
 
-    expect(onChange).toHaveBeenNthCalledWith(1, [false])
-    expect(onChange).toHaveBeenNthCalledWith(2, [true, false])
-    expect(onChange).toHaveBeenNthCalledWith(3, [])
-  })
+  await user.click(screen.getByText('False'))
+  expect(screen.getByLabelText('Variable value')).toHaveTextContent('[false]')
+  await user.click(screen.getByText('True'))
+  expect(screen.getByLabelText('Variable value')).toHaveTextContent('[true]')
+  await user.click(
+    screen.getByRole('button', { name: 'workflow.chatVariable.modal.addArrayValue' }),
+  )
+  expect(screen.getByLabelText('Variable value')).toHaveTextContent('[true,false]')
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.remove' })[0]!)
+  expect(screen.getByLabelText('Variable value')).toHaveTextContent('[false]')
 })

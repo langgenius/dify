@@ -10,8 +10,8 @@ import { AnnotationEnableStatus, JobStatus } from '@/app/components/app/annotati
 import { toast } from '@/app/notifications'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
-import { consoleQuery } from '@/service/console'
+import { updateAnnotationStatus } from '@/service/annotation'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { sleep } from '@/utils'
 
 type Params = {
@@ -51,7 +51,9 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     let isCompleted = false
     while (!isCompleted) {
-      const res = await queryAnnotationJobStatus(appId, status, jobId)
+      const res = await consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get({
+        params: { app_id: appId, action: status, job_id: jobId },
+      })
       isCompleted = res.job_status === JobStatus.completed
       if (isCompleted) break
       if (res.job_status === JobStatus.error) {
@@ -78,8 +80,7 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
       produce(annotationConfig, (draft: AnnotationReplyConfig) => {
         draft.enabled = true
         draft.embedding_model = embeddingModel
-        if (draft.score_threshold === undefined || draft.score_threshold === null)
-          draft.score_threshold = ANNOTATION_DEFAULT.score_threshold
+        draft.score_threshold = score ?? draft.score_threshold ?? ANNOTATION_DEFAULT.score_threshold
       }),
     )
   }

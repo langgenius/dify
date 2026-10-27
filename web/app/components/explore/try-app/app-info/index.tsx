@@ -80,13 +80,7 @@ const AppInfo: FC<Props> = ({
       {/* name and icon */}
       <div className="flex shrink-0 grow-0 items-center gap-3">
         <div className="relative shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appDetail.site.icon_type}
-            icon={appDetail.site.icon ?? undefined}
-            background={appDetail.site.icon_background ?? undefined}
-            imageUrl={appDetail.site.icon_url ?? undefined}
-          />
+          <AppIcon size="large" icon={appDetail.site} />
           <AppTypeIcon
             wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"
             className="size-3"

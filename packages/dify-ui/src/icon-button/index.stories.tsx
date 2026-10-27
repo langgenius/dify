@@ -81,7 +81,8 @@ export const DestructiveIntent: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Destructive intent appears on hover while the resting action remains neutral.',
+        story:
+          'Enabled destructive actions show the same background and glyph color on hover and keyboard focus, while the resting action remains neutral.',
       },
     },
   },

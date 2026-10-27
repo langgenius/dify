@@ -1,0 +1,350 @@
+'use client'
+
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
+import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Translation, useTranslation } from 'react-i18next'
+import Link from '@/next/link'
+import { knowledgeFsTaskRecoveryPath } from '../knowledge-fs-task-error'
+import { newKnowledgeQualityPath } from '../routes'
+import { RecordTime, ResearchProcess } from './history'
+import { researchTaskCanRetry, researchTaskIsActive } from './model'
+import { RetrievalQualityWorkflow } from './quality-workflow'
+import { QueryImageThumbnail } from './query-image-thumbnail'
+import { EmptyState, EvidenceCard, FailedResult, ResearchAnswer, ResultSkeleton } from './results'
+import {
+  loadMoreSelectedRetrievalEvidenceAtom,
+  retrievalResultFactsAtom,
+  retrySelectedRetrievalDataAtom,
+} from './state/graph'
+import { retrievalCanQueryAtom, retrievalKnowledgeSpaceIdAtom } from './state/inputs'
+import { cancelRetrievalResearchAtom, retryRetrievalAtom } from './state/runtime'
+
+type ResearchExpansionState = Partial<Record<'active' | 'terminal', boolean>>
+
+function RetrievalResultSession() {
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeRetrieval'])
+  const { t: tCommon } = useTranslation(['common'])
+  const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
+  const {
+    currentEvidence,
+    currentEvidenceDocumentCount,
+    hasMoreEvidencePages,
+    localError,
+    researchAnswer,
+    researchEvents,
+    researchHasNextPage,
+    researchIsFetchingNextPage,
+    researchPlan,
+    researchRetryPending,
+    selected,
+    selectedCreatedAt,
+    selectedDataError,
+    selectedFailed,
+    selectedFailureMessageKey,
+    selectedHasNoResults,
+    selectedIsLoading,
+    selectedMode,
+    selectedQueryImages,
+    selectedResearchActive,
+    selectedResearchTask,
+    traceHasNextPage,
+    traceIsFetchingNextPage,
+  } = useAtomValueRawSync(retrievalResultFactsAtom)
+  const retryRetrieval = useSetAtom(retryRetrievalAtom)
+  const retrySelectedData = useSetAtom(retrySelectedRetrievalDataAtom)
+  const loadMoreEvidence = useSetAtom(loadMoreSelectedRetrievalEvidenceAtom)
+  const cancelResearch = useSetAtom(cancelRetrievalResearchAtom)
+  const [researchExpanded, setResearchExpanded] = useState<ResearchExpansionState>({})
+  const [showAll, setShowAll] = useState(false)
+  const [selectedCitation, setSelectedCitation] = useState<{
+    citationIndex: number
+    requestId: number
+    taskId: string
+  }>()
+  const selectedResearchTaskId = selectedResearchTask?.id
+  const selectedResearchFailure = selectedResearchTask?.failure ?? undefined
+  const selectedResearchRecoveryPath = selectedResearchFailure
+    ? knowledgeFsTaskRecoveryPath(selectedResearchFailure, knowledgeSpaceId)
+    : undefined
+  const selectedResearchRecoveryLabel =
+    selectedResearchFailure?.action === 'configure_model'
+      ? tCommon(($) => $['datasetMenus.settings'])
+      : selectedResearchFailure?.action === 'configure_source'
+        ? t(($) => $.openSource)
+        : selectedResearchFailure?.action === 'reupload'
+          ? t(($) => $.addDocument)
+          : undefined
+  const selectedResearchDefaultExpanded = researchTaskIsActive(selectedResearchTask)
+  const selectedResearchExpansionPhase = selectedResearchDefaultExpanded ? 'active' : 'terminal'
+  const selectedResearchExpanded = selectedResearchTask
+    ? (researchExpanded[selectedResearchExpansionPhase] ?? selectedResearchDefaultExpanded)
+    : false
+  const initialEvidenceCount = selectedMode === 'research' ? 5 : 3
+  const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, initialEvidenceCount)
+  const selectedCitationIndex =
+    selectedCitation && selectedCitation.taskId === selectedResearchTaskId
+      ? selectedCitation.citationIndex
+      : undefined
+
+  const toggleSelectedResearchProcess = () => {
+    if (!selectedResearchTask) return
+    setResearchExpanded((current) => ({
+      ...current,
+      [selectedResearchExpansionPhase]: !(
+        current[selectedResearchExpansionPhase] ?? selectedResearchDefaultExpanded
+      ),
+    }))
+  }
+
+  const jumpToResearchCitation = useCallback(
+    (citationIndex: number) => {
+      if (!selectedResearchTaskId || citationIndex < 0 || citationIndex >= currentEvidence.length)
+        return
+      setShowAll(true)
+      setSelectedCitation((current) => ({
+        citationIndex,
+        requestId: (current?.requestId ?? 0) + 1,
+        taskId: selectedResearchTaskId,
+      }))
+    },
+    [currentEvidence.length, selectedResearchTaskId],
+  )
+
+  useEffect(() => {
+    if (selectedCitationIndex === undefined || !selectedCitation) return
+    const target = document.getElementById(`research-evidence-${selectedCitationIndex + 1}`)
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    target.focus({ preventScroll: true })
+  }, [selectedCitation, selectedCitationIndex, visibleEvidence.length])
+
+  return (
+    <>
+      <div className="flex h-5 shrink-0 items-center gap-2 overflow-hidden pl-3">
+        <h2 className="shrink-0 system-sm-semibold leading-5 text-text-primary">
+          {selected?.kind === 'research'
+            ? t(($) => $['retrievalTest.researchResult'], { ns: 'knowledgeRetrieval' })
+            : t(($) => $['retrievalTest.result'], { ns: 'knowledgeRetrieval' })}
+        </h2>
+        <span className="shrink-0 rounded-md bg-divider-regular px-1.5 py-0.5 text-[11px] leading-4 font-medium text-text-tertiary capitalize">
+          {selectedMode
+            ? t(($) => $[`settings.retrievalMode.${selectedMode}`], { ns: 'knowledgeSpace' })
+            : ''}
+        </span>
+        {!selectedIsLoading && selectedCreatedAt !== undefined && (
+          <span className="shrink-0 text-[11px] leading-4 text-text-tertiary">
+            <RecordTime key={selectedCreatedAt} value={selectedCreatedAt} />
+          </span>
+        )}
+        <span className="min-w-0 flex-1" />
+        {selectedResearchTask && (
+          <button
+            type="button"
+            aria-pressed={selectedResearchExpanded}
+            className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            onClick={toggleSelectedResearchProcess}
+          >
+            <span aria-hidden className="i-ri-search-eye-line size-3.5" />
+            {t(($) => $['retrievalTest.processLog'], { ns: 'knowledgeRetrieval' })}
+          </button>
+        )}
+        {selectedResearchTask?.stage === 'completed' && (
+          <Link
+            href={newKnowledgeQualityPath(knowledgeSpaceId)}
+            className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            <span aria-hidden className="i-ri-equalizer-2-line size-3.5" />
+            {t(($) => $['retrievalTest.quality'], { ns: 'knowledgeRetrieval' })}
+          </Link>
+        )}
+      </div>
+
+      {selectedQueryImages.length > 0 && (
+        <ul
+          aria-label={t(($) => $['retrievalTest.queryImages'], { ns: 'knowledgeRetrieval' })}
+          className="flex shrink-0 gap-2 overflow-x-auto pl-3"
+        >
+          {selectedQueryImages.map((image) => (
+            <li key={image.uploadFileId} className="shrink-0">
+              <QueryImageThumbnail image={image} className="size-12" />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="min-h-0 flex-1 scrollbar-none overflow-y-auto">
+        {selectedResearchTask && (
+          <ResearchProcess
+            task={selectedResearchTask}
+            plan={researchPlan}
+            events={researchEvents}
+            evidenceCount={currentEvidence.length}
+            documentCount={currentEvidenceDocumentCount}
+            expanded={selectedResearchExpanded}
+            onToggle={toggleSelectedResearchProcess}
+            onCancel={
+              canQuery && selectedResearchActive
+                ? () => cancelResearch(selectedResearchTask.id)
+                : undefined
+            }
+          />
+        )}
+
+        {selectedResearchTask && researchAnswer.answer && (
+          <ResearchAnswer
+            answer={researchAnswer.answer}
+            citationCount={currentEvidence.length}
+            onCitationClick={jumpToResearchCitation}
+            researchTaskId={selectedResearchTask.id}
+            streaming={selectedResearchActive && !researchAnswer.persisted}
+          />
+        )}
+
+        {selectedIsLoading && <ResultSkeleton />}
+
+        {selectedFailed && (
+          <FailedResult
+            description={
+              localError ||
+              (selectedFailureMessageKey ? (
+                <Suspense fallback={null}>
+                  <Translation ns={['knowledgeErrors']}>
+                    {(tError) => tError(($) => $[selectedFailureMessageKey])}
+                  </Translation>
+                </Suspense>
+              ) : (
+                t(($) => $['retrievalTest.failedDescription'], { ns: 'knowledgeRetrieval' })
+              ))
+            }
+            onRetry={
+              canQuery &&
+              (selected?.kind !== 'research' || researchTaskCanRetry(selectedResearchTask))
+                ? retryRetrieval
+                : undefined
+            }
+            pending={selected?.kind === 'research' && researchRetryPending}
+            recovery={
+              selectedResearchRecoveryPath && selectedResearchRecoveryLabel
+                ? {
+                    href: selectedResearchRecoveryPath,
+                    label: selectedResearchRecoveryLabel,
+                  }
+                : undefined
+            }
+          />
+        )}
+
+        {selectedDataError && (
+          <FailedResult
+            description={t(($) => $['retrievalTest.failedDescription'], {
+              ns: 'knowledgeRetrieval',
+            })}
+            onRetry={retrySelectedData}
+          />
+        )}
+
+        {!selectedIsLoading &&
+          !selectedFailed &&
+          !selectedDataError &&
+          !selectedResearchActive &&
+          !researchAnswer.answer &&
+          (selectedHasNoResults || currentEvidence.length === 0) && (
+            <EmptyState
+              kind="no-results"
+              title={t(($) => $['retrievalTest.noChunksTitle'], { ns: 'knowledgeRetrieval' })}
+              description={t(($) => $['retrievalTest.noChunksDescription'], {
+                ns: 'knowledgeRetrieval',
+              })}
+            />
+          )}
+
+        {currentEvidence.length > 0 && (
+          <div className={cn(selectedResearchTask && 'mt-3')}>
+            {selectedResearchActive && (
+              <h3 className="flex h-6 items-start pb-2 pl-3 system-xs-medium text-text-tertiary">
+                {t(($) => $['retrievalTest.foundSoFar'], {
+                  ns: 'knowledgeRetrieval',
+                  count: currentEvidence.length,
+                })}
+              </h3>
+            )}
+            <div className="space-y-3">
+              {visibleEvidence.map((evidence, index) => (
+                <EvidenceCard
+                  key={evidence.id}
+                  citationTargetId={
+                    selectedResearchTask ? `research-evidence-${index + 1}` : undefined
+                  }
+                  citationTargeted={selectedCitationIndex === index}
+                  evidence={evidence}
+                  index={index}
+                />
+              ))}
+              {selectedResearchTask && selectedResearchActive && (
+                <div className="h-16.5 animate-pulse rounded-xl bg-components-panel-bg px-3 py-3.5 opacity-60 motion-reduce:animate-none">
+                  <div className="flex items-start justify-between">
+                    <div className="h-3 w-30 rounded-xs bg-divider-regular" />
+                    <div className="h-4 w-14 rounded-md bg-divider-subtle" />
+                  </div>
+                  <div className="mt-2.5 h-3 w-full rounded-xs bg-divider-subtle" />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!showAll && (currentEvidence.length > initialEvidenceCount || hasMoreEvidencePages) && (
+        <div className="shrink-0 pl-1">
+          <button
+            type="button"
+            className="flex items-center gap-1 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            onClick={() => setShowAll(true)}
+          >
+            {t(($) => $['retrievalTest.showAllChunks'], {
+              ns: 'knowledgeRetrieval',
+              count: currentEvidence.length,
+            })}
+            <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
+          </button>
+        </div>
+      )}
+
+      {showAll && (traceHasNextPage || researchHasNextPage) && (
+        <div className="shrink-0 pl-1">
+          <Button
+            loading={traceIsFetchingNextPage || researchIsFetchingNextPage}
+            onClick={loadMoreEvidence}
+          >
+            {t(($) => $.loadMore)}
+          </Button>
+        </div>
+      )}
+    </>
+  )
+}
+
+export function RetrievalResultPanel() {
+  const { t } = useTranslation(['knowledgeRetrieval'])
+  const { resultKey, selected } = useAtomValueRawSync(retrievalResultFactsAtom)
+
+  return (
+    <section className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl bg-background-body p-5">
+      {!selected && (
+        <EmptyState
+          title={t(($) => $['retrievalTest.emptyTitle'], { ns: 'knowledgeRetrieval' })}
+          description={t(($) => $['retrievalTest.emptyDescription'], { ns: 'knowledgeRetrieval' })}
+        />
+      )}
+      {selected && resultKey && (
+        <div className="flex h-full min-h-0 flex-col gap-3">
+          <RetrievalResultSession key={resultKey} />
+          <RetrievalQualityWorkflow />
+        </div>
+      )}
+    </section>
+  )
+}

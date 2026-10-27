@@ -1,13 +1,16 @@
 """Canonical error contract for the /openapi/v1 surface.
 
-``ErrorBody`` is the only wire shape an /openapi/v1 endpoint may emit for a
-non-2xx response (RFC 8628 device-flow responses excepted — that shape is
-mandated by the OAuth spec)::
+``ErrorBody`` is the wire shape an /openapi/v1 endpoint emits for a non-2xx
+response, with two exceptions: RFC 8628 device-flow responses (that shape is
+mandated by the OAuth spec), and a failed DSL import or import confirm, which
+answers 400 with the ``Import`` body (``status: failed`` and ``error``), as the
+console does::
 
     code     str                 semantic error code (OpenApiErrorCode member)
     message  str                 human-readable summary
     status   int                 HTTP status, duplicated in the body
     hint     str | None          actionable next step for the caller
+    hints    list[Hint] | None   ops the caller can run next, with ready input
     details  list[ErrorDetail]   per-field validation breakdown {type, loc, msg}
 
 ``OpenApiErrorFormatter`` is injected into ``ExternalApi`` so every
@@ -20,6 +23,7 @@ The transport-generic enum members, ``_CODE_BY_STATUS`` and the
 promote them to ``libs`` if a second surface adopts ``ErrorBody``.
 """
 
+import contextlib
 import logging
 from enum import StrEnum
 from typing import Any
@@ -27,6 +31,7 @@ from typing import Any
 from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
 
+from controllers.openapi._models import Hint
 from libs.external_api import http_status_message
 
 
@@ -66,8 +71,41 @@ class OpenApiErrorCode(StrEnum):
     MEMBER_LICENSE_EXCEEDED = "member_license_exceeded"
     HUMAN_INPUT_FORM_NOT_FOUND = "form_not_found"
     RECIPIENT_SURFACE_MISMATCH = "recipient_surface_mismatch"
+    KNOWLEDGE_FS_ACCESS_DENIED = "knowledge_fs_access_denied"
+    KNOWLEDGE_FS_CONFLICT = "knowledge_fs_conflict"
+    KNOWLEDGE_FS_INVALID_REQUEST = "knowledge_fs_invalid_request"
+    KNOWLEDGE_FS_REQUEST_REJECTED = "knowledge_fs_request_rejected"
+    KNOWLEDGE_FS_REQUEST_TOO_LARGE = "knowledge_fs_request_too_large"
+    KNOWLEDGE_FS_RESOURCE_NOT_FOUND = "knowledge_fs_resource_not_found"
+    KNOWLEDGE_FS_UNAVAILABLE = "knowledge_fs_unavailable"
     CATALOG_STALE = "catalog_stale"
     TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE = "trigger_workflow_service_mode_unavailable"
+    RUN_NOT_FOUND = "run_not_found"
+    VERSION_NOT_FOUND = "version_not_found"
+    VERSION_NOT_RESTORABLE = "version_not_restorable"
+    DRAFT_NOT_FOUND = "draft_not_found"
+    ENV_VARIABLE_NOT_FOUND = "env_variable_not_found"
+    SECRET_MASK_UNKNOWN_ID = "secret_mask_unknown_id"
+    WEBAPP_ACCESS_REQUIRES_EE = "webapp_access_requires_ee"
+    WEBAPP_ACCESS_UNAVAILABLE = "webapp_access_unavailable"
+    NODE_TYPE_NOT_FOUND = "node_type_not_found"
+    NODE_NOT_FOUND = "node_not_found"
+    WEBAPP_ACCESS_MODE_CONSOLE_ONLY = "webapp_access_mode_console_only"
+    WEBAPP_PUBLIC_ACCESS_DISABLED = "webapp_public_access_disabled"
+    SECRET_MASK_NOT_SECRET = "secret_mask_not_secret"
+    MARKETPLACE_DISABLED = "marketplace_disabled"
+    MARKETPLACE_UNAVAILABLE = "marketplace_unavailable"
+    PLUGIN_INSTALL_FORBIDDEN = "plugin_install_forbidden"
+    PLUGIN_NOT_INSTALLED = "plugin_not_installed"
+    PROVIDER_NOT_FOUND = "provider_not_found"
+    CREDENTIAL_INVALID = "credential_invalid"
+    CREDENTIAL_OAUTH_ONLY = "credential_oauth_only"
+    CREDENTIAL_NOT_FOUND = "credential_not_found"
+    PLUGIN_SERVICE_UNAVAILABLE = "plugin_service_unavailable"
+    DSL_INVALID = "dsl_invalid"
+    DRAFT_CHANGED = "draft_changed"
+    APP_MODE_MISMATCH = "app_mode_mismatch"
+    SERVICE_API_DISABLED = "service_api_disabled"
 
 
 class ErrorDetail(BaseModel):
@@ -85,6 +123,7 @@ class ErrorBody(BaseModel):
     message: str
     status: int
     hint: str | None = None
+    hints: list[Hint] | None = None
     details: list[ErrorDetail] | None = None
 
 
@@ -121,17 +160,21 @@ class OpenApiError(HTTPException):
     code = 400
     error_code: OpenApiErrorCode = OpenApiErrorCode.UNKNOWN
     hint: str | None = None
+    hints: list[Hint] | None = None
 
     def __init__(
         self,
         message: str | None = None,
         *,
         hint: str | None = None,
+        hints: list[Hint] | None = None,
         details: list[ErrorDetail] | None = None,
     ) -> None:
         super().__init__(description=message)
         if hint is not None:
             self.hint = hint
+        if hints is not None:
+            self.hints = hints
         self.details = details
 
 
@@ -153,9 +196,10 @@ class OpenApiErrorFormatter:
         try:
             body = ErrorBody(
                 code=self._resolve_code(e, status_code),
-                message=self._resolve_message(merged, status_code),
+                message=self._resolve_message(e, merged, status_code),
                 status=status_code,
                 hint=self._resolve_hint(e),
+                hints=e.hints if isinstance(e, OpenApiError) else None,
                 details=self._extract_details(e, merged),
             )
             wire = body.model_dump(mode="json", exclude_none=True)
@@ -170,20 +214,23 @@ class OpenApiErrorFormatter:
         # flask-restx Api.handle_error does `data = getattr(e, "data", default_data)`
         # AFTER our handler returns, so a pre-existing e.data (flask_restx.abort,
         # BaseHTTPException) would override the canonical body. Rewrite it.
-        try:
+        with contextlib.suppress(AttributeError):
             e.data = wire  # type: ignore[attr-defined]
-        except AttributeError:
-            pass
         return wire
 
     def _resolve_code(self, e: Exception, status_code: int) -> str:
         explicit = getattr(type(e), "error_code", None)
-        if isinstance(explicit, (OpenApiErrorCode, str)) and str(explicit) != "unknown":
-            return str(explicit)
+        return self.code_for(status_code, str(explicit) if isinstance(explicit, str) else None)
+
+    @staticmethod
+    def code_for(status_code: int, error_code: str | None) -> str:
+        """The wire ``code`` for an exception class's ``error_code`` (if any) at this status."""
+        if error_code is not None and error_code != "unknown":
+            return error_code
         return str(_CODE_BY_STATUS.get(status_code, OpenApiErrorCode.UNKNOWN))
 
-    def _resolve_message(self, merged: dict[str, Any], status_code: int) -> str:
-        if status_code >= 500:
+    def _resolve_message(self, e: Exception, merged: dict[str, Any], status_code: int) -> str:
+        if status_code >= 500 and not isinstance(e, OpenApiError):
             return _GENERIC_500_MESSAGE
         message = merged.get("message")
         if isinstance(message, str) and message:
@@ -259,6 +306,48 @@ class RecipientSurfaceMismatch(OpenApiError):  # noqa: N818
     hint = "Action it through its channel (web app or console)."
 
 
+class KnowledgeFsInvalidRequestError(OpenApiError):
+    code = 400
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_INVALID_REQUEST
+    description = "The Agent Knowledge Base request is invalid."
+
+
+class KnowledgeFsAccessDeniedError(OpenApiError):
+    code = 403
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_ACCESS_DENIED
+    description = "Access to this Agent Knowledge Base is denied."
+
+
+class KnowledgeFsResourceNotFoundError(OpenApiError):
+    code = 404
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_RESOURCE_NOT_FOUND
+    description = "The Agent Knowledge Base or entry was not found."
+
+
+class KnowledgeFsConflictError(OpenApiError):
+    code = 409
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_CONFLICT
+    description = "The Agent Knowledge Base request conflicts with the current state."
+
+
+class KnowledgeFsRequestTooLargeError(OpenApiError):
+    code = 413
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_REQUEST_TOO_LARGE
+    description = "The Agent Knowledge Base request exceeds the allowed size."
+
+
+class KnowledgeFsRequestRejectedError(OpenApiError):
+    code = 422
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_REQUEST_REJECTED
+    description = "The Agent Knowledge Base request could not be processed."
+
+
+class KnowledgeFsUnavailableError(OpenApiError):
+    code = 503
+    error_code = OpenApiErrorCode.KNOWLEDGE_FS_UNAVAILABLE
+    description = "Agent Knowledge Base is temporarily unavailable."
+
+
 class CatalogStale(OpenApiError):  # noqa: N818
     code = 412
     error_code = OpenApiErrorCode.CATALOG_STALE
@@ -270,3 +359,170 @@ class InvalidFilePart(OpenApiError):  # noqa: N818
     code = 422
     error_code = OpenApiErrorCode.INVALID_PARAM
     description = "A request part could not be used"
+
+
+class RunNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.RUN_NOT_FOUND
+    description = "No run with this id exists for this app."
+
+
+class VersionNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.VERSION_NOT_FOUND
+    description = "No version with this id exists for this app."
+
+
+class WebAppAccessRequiresEE(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.WEBAPP_ACCESS_REQUIRES_EE
+    description = "Web-app access control needs Dify Enterprise with web-app sign-in turned on."
+
+
+class WebAppAccessUnavailable(OpenApiError):  # noqa: N818
+    code = 503
+    error_code = OpenApiErrorCode.WEBAPP_ACCESS_UNAVAILABLE
+    description = "Web-app access could not be read or changed."
+    hint = "Enterprise is unreachable or did not answer."
+
+
+class NodeTypeNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.NODE_TYPE_NOT_FOUND
+    description = "No node type with this name exists on this server."
+    hint = "List the node types with get.node_type."
+
+
+class NodeNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.NODE_NOT_FOUND
+    description = "The draft has no node with this id."
+
+
+class WebAppAccessModeConsoleOnly(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.WEBAPP_ACCESS_MODE_CONSOLE_ONLY
+    description = "Member lists for access_mode private must be chosen in the Dify console."
+    hint = "Use public, private_all or sso_verified here."
+
+
+class WebAppPublicAccessDisabled(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.WEBAPP_PUBLIC_ACCESS_DISABLED
+    description = "This server does not allow web apps with access_mode public."
+    hint = "Use private_all or sso_verified."
+
+
+class VersionNotRestorable(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.VERSION_NOT_RESTORABLE
+    description = "Only a published version can be restored."
+
+
+class DraftNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.DRAFT_NOT_FOUND
+    description = "This app has no draft."
+
+
+class EnvVariableNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.ENV_VARIABLE_NOT_FOUND
+    description = "The draft has no environment variable with this id."
+
+
+class SecretMaskUnknownId(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.SECRET_MASK_UNKNOWN_ID
+    description = "The value is the masked secret placeholder, but env_id is not an existing secret."
+
+
+class SecretMaskNotSecret(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.SECRET_MASK_NOT_SECRET
+    description = "The value is the masked secret placeholder, which only a secret value_type can keep."
+
+
+class MarketplaceDisabled(OpenApiError):  # noqa: N818
+    code = 503
+    error_code = OpenApiErrorCode.MARKETPLACE_DISABLED
+    description = "Marketplace is disabled on this server."
+    hint = "Ask an admin to install the plugin."
+
+
+class MarketplaceUnavailable(OpenApiError):  # noqa: N818
+    code = 503
+    error_code = OpenApiErrorCode.MARKETPLACE_UNAVAILABLE
+    description = "The marketplace did not answer."
+
+
+class PluginInstallForbidden(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.PLUGIN_INSTALL_FORBIDDEN
+    description = "Plugin install is not allowed here."
+
+
+class PluginNotInstalled(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.PLUGIN_NOT_INSTALLED
+    description = "This plugin is not installed in the workspace."
+    hint = "List installed plugins with get.plugin."
+
+
+class ProviderNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.PROVIDER_NOT_FOUND
+    description = "No provider with this id in the workspace."
+    hint = "Provider ids look like langgenius/openai/openai; get.plugin shows them under provides."
+
+
+class CredentialInvalid(OpenApiError):  # noqa: N818
+    code = 422
+    error_code = OpenApiErrorCode.CREDENTIAL_INVALID
+    description = "The provider rejected these credentials; nothing was saved."
+
+
+class CredentialOAuthOnly(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.CREDENTIAL_OAUTH_ONLY
+    description = "This provider uses OAuth."
+    hint = "Ask the user to authorize it in the console."
+
+
+class CredentialNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.CREDENTIAL_NOT_FOUND
+    description = "No credential with this id for this provider that you can see."
+    hint = "List them with the describe op of the provider."
+
+
+class PluginServiceUnavailable(OpenApiError):  # noqa: N818
+    code = 503
+    error_code = OpenApiErrorCode.PLUGIN_SERVICE_UNAVAILABLE
+    description = "Plugin service is unavailable."
+
+
+class DslInvalid(OpenApiError):  # noqa: N818
+    code = 422
+    error_code = OpenApiErrorCode.DSL_INVALID
+    description = "The DSL has problems the import refuses; each is in details with its location"
+
+
+class DraftChanged(OpenApiError):  # noqa: N818
+    code = 409
+    error_code = OpenApiErrorCode.DRAFT_CHANGED
+    description = "The draft changed after it was exported. Export it again and reapply your edits."
+
+
+class AppModeMismatch(OpenApiError):  # noqa: N818
+    code = 422
+    error_code = OpenApiErrorCode.APP_MODE_MISMATCH
+    description = "This op does not serve apps of this mode."
+    hint = "describe.console_app shows the app's mode."
+
+
+class ServiceApiDisabled(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.SERVICE_API_DISABLED
+    description = "This app's Service API is turned off."
+    hint = "A workspace admin can turn it on; hints holds the op."

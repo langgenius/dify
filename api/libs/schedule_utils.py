@@ -97,7 +97,7 @@ def convert_12h_to_24h(time_str: str) -> tuple[int, int]:
         hour = int(time_parts[0])
         minute = int(time_parts[1])
     except ValueError as e:
-        raise ValueError(f"Invalid time values: {e}")
+        raise ValueError(f"Invalid time values: {e}") from e
 
     if hour < 1 or hour > 12:
         raise ValueError(f"Invalid hour: {hour}. Must be between 1 and 12")

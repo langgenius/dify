@@ -160,20 +160,22 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
           )}
         </>
       </FeatureCard>
-      <ConfigParamModal
-        appId={appId}
-        isInit
-        isShow={isShowAnnotationConfigInit}
-        onHide={() => {
-          setIsShowAnnotationConfigInit(false)
-          // showChooseFeatureTrue()
-        }}
-        onSave={async (embeddingModel, score) => {
-          await handleEnableAnnotation(embeddingModel, score)
-          setIsShowAnnotationConfigInit(false)
-        }}
-        annotationConfig={annotationReply as any}
-      />
+      {isShowAnnotationConfigInit && (
+        <ConfigParamModal
+          appId={appId}
+          isInit
+          isShow={isShowAnnotationConfigInit}
+          onHide={() => {
+            setIsShowAnnotationConfigInit(false)
+            // showChooseFeatureTrue()
+          }}
+          onSave={async (embeddingModel, score) => {
+            await handleEnableAnnotation(embeddingModel, score)
+            setIsShowAnnotationConfigInit(false)
+          }}
+          annotationConfig={annotationReply as any}
+        />
+      )}
       {isShowAnnotationFullModal && (
         <AnnotationFullModal
           show={isShowAnnotationFullModal}

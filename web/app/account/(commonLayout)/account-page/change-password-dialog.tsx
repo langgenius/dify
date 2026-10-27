@@ -5,8 +5,11 @@ import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -14,6 +17,7 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { ORPCError } from '@orpc/client'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,15 +37,14 @@ type PasswordFieldProps = {
   label: string
   autoComplete: 'current-password' | 'new-password'
   readOnly: boolean
-  className?: string
 }
 
-function PasswordField({ name, label, autoComplete, readOnly, className }: PasswordFieldProps) {
+function PasswordField({ name, label, autoComplete, readOnly }: PasswordFieldProps) {
   const { t } = useTranslation(['login'])
   const [visible, setVisible] = useState(false)
 
   return (
-    <Field name={name} className={className}>
+    <Field name={name}>
       <FieldLabel className="system-sm-semibold">{label}</FieldLabel>
       <InputGroup>
         <InputGroupInput
@@ -104,40 +107,42 @@ function ChangePasswordForm({
   }
 
   return (
-    <Form<ChangePasswordFormValues> onFormSubmit={handleSubmit}>
-      <DialogTitle className="mb-6 title-2xl-semi-bold text-text-primary">
-        {isPasswordSet
-          ? t(($) => $['account.resetPassword'], { ns: 'accountSettings' })
-          : t(($) => $['account.setPassword'], { ns: 'accountSettings' })}
-      </DialogTitle>
-      {isPasswordSet && (
+    <Form<ChangePasswordFormValues> className="contents" onFormSubmit={handleSubmit}>
+      <DialogHeader>
+        <DialogTitle>
+          {isPasswordSet
+            ? t(($) => $['account.resetPassword'], { ns: 'accountSettings' })
+            : t(($) => $['account.setPassword'], { ns: 'accountSettings' })}
+        </DialogTitle>
+      </DialogHeader>
+      <DialogBody className="space-y-8">
+        {isPasswordSet && (
+          <PasswordField
+            name="current-password"
+            label={t(($) => $['account.currentPassword'], { ns: 'accountSettings' })}
+            autoComplete="current-password"
+            readOnly={isPending}
+          />
+        )}
         <PasswordField
-          name="current-password"
-          label={t(($) => $['account.currentPassword'], { ns: 'accountSettings' })}
-          autoComplete="current-password"
+          name="new-password"
+          label={
+            isPasswordSet
+              ? t(($) => $['account.newPassword'], { ns: 'accountSettings' })
+              : t(($) => $['account.password'], { ns: 'accountSettings' })
+          }
+          autoComplete="new-password"
           readOnly={isPending}
         />
-      )}
-      <PasswordField
-        name="new-password"
-        label={
-          isPasswordSet
-            ? t(($) => $['account.newPassword'], { ns: 'accountSettings' })
-            : t(($) => $['account.password'], { ns: 'accountSettings' })
-        }
-        autoComplete="new-password"
-        readOnly={isPending}
-        className="mt-8"
-      />
-      <PasswordField
-        name="confirm-password"
-        label={t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
-        autoComplete="new-password"
-        readOnly={isPending}
-        className="mt-8"
-      />
-      <div className="mt-10 flex justify-end">
-        <DialogClose render={<Button className="mr-2" disabled={isPending} />}>
+        <PasswordField
+          name="confirm-password"
+          label={t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
+          autoComplete="new-password"
+          readOnly={isPending}
+        />
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose render={<Button disabled={isPending} />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
         <Button type="submit" loading={isPending} variant="primary">
@@ -145,7 +150,7 @@ function ChangePasswordForm({
             ? t(($) => $['operation.reset'], { ns: 'common' })
             : t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
-      </div>
+      </DialogFooter>
     </Form>
   )
 }
@@ -169,9 +174,10 @@ export function ChangePasswordDialog({ isPasswordSet }: { isPasswordSet: boolean
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       actionsRef.current?.close()
     } catch (error) {
-      // The request layer already reports every error the server answered with.
+      // HTTP error notifications are owned by the request layer.
       // Only report a failure that never produced a response.
-      if (error instanceof Error && error.message) toast.error(error.message)
+      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
+        toast.error(error.message)
     }
   }
 
@@ -188,7 +194,7 @@ export function ChangePasswordDialog({ isPasswordSet }: { isPasswordSet: boolean
           ? t(($) => $['account.resetPassword'], { ns: 'accountSettings' })
           : t(($) => $['account.setPassword'], { ns: 'accountSettings' })}
       </DialogTrigger>
-      <DialogContent className="w-105! p-6!">
+      <DialogContent className="w-105">
         <ChangePasswordForm
           isPasswordSet={isPasswordSet}
           isPending={updatePassword.isPending}

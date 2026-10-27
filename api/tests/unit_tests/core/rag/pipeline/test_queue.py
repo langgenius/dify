@@ -75,13 +75,7 @@ class TestTenantIsolatedTaskQueue:
     """Test cases for TenantIsolatedTaskQueue functionality."""
 
     @pytest.fixture
-    def mock_redis_client(self) -> MagicMock:
-        """Mock Redis client for testing."""
-        mock_redis = MagicMock()
-        return mock_redis
-
-    @pytest.fixture
-    def sample_queue(self, mock_redis_client: MagicMock) -> TenantIsolatedTaskQueue:
+    def sample_queue(self) -> TenantIsolatedTaskQueue:
         """Create a sample TenantIsolatedTaskQueue instance."""
         return TenantIsolatedTaskQueue("tenant-123", "test-key")
 
