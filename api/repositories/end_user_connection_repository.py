@@ -333,6 +333,8 @@ class EndUserConnectionRepository:
                     )
                 ),
             ).rowcount
+            if transferred == 0:
+                return 0
             if session.scalar(sa.select(AppConnection.id).where(*self._app_selection_scope(account)).limit(1)):
                 session.execute(sa.delete(AppConnection).where(*self._app_selection_scope(guest)))
             else:

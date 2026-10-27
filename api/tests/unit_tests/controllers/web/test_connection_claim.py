@@ -800,7 +800,7 @@ def test_claimable_passports_validate_batch_and_capability(
     )
 
 
-def test_batch_failure_preserves_committed_items_and_can_be_retried(harness: ClaimHarness) -> None:
+def test_batch_retry_transfers_remaining_connections_only(harness: ClaimHarness) -> None:
     base = harness.oauth.base
     first = base.service.create_api_key(base.context, base.command())
     with base.sessions.begin() as session:
@@ -826,12 +826,13 @@ def test_batch_failure_preserves_committed_items_and_can_be_retried(harness: Cla
             if second_context.end_user_id in parameters:
                 raise RuntimeError("private database failure")
 
+    payload = {"passports": [harness.guest_passport, second_token, harness.guest_passport]}
     event.listen(engine, "before_cursor_execute", fail_second)
     try:
         response = harness.client.post(
             "/api/connections/claim",
             headers={"Authorization": f"Bearer {harness.proof}"},
-            json={"passports": [harness.guest_passport, second_token, harness.guest_passport]},
+            json=payload,
         )
     finally:
         event.remove(engine, "before_cursor_execute", fail_second)
@@ -847,10 +848,16 @@ def test_batch_failure_preserves_committed_items_and_can_be_retried(harness: Cla
     retry = harness.client.post(
         "/api/connections/claim",
         headers={"Authorization": f"Bearer {harness.proof}"},
-        json={"passports": [second_token]},
+        json=payload,
     )
-    assert retry.get_json()["data"][0]["claimed_connections"] == 1
+    assert [item["claimed_connections"] for item in retry.get_json()["data"]] == [0, 1, 0]
     assert base.service.get_connection(harness.account, second.id).id == second.id
+    newest = base.service.create_api_key(base.context, base.command("new-guest-secret"))
+    again = harness.client.post(
+        "/api/connections/claim", headers={"Authorization": f"Bearer {harness.proof}"}, json=payload
+    )
+    assert [item["claimed_connections"] for item in again.get_json()["data"]] == [1, 0, 0]
+    assert base.service.get_connection(harness.account, newest.id).id == newest.id
 
 
 @pytest.mark.parametrize("payload", [{"passports": []}, {"passports": ["candidate"] * 51}])

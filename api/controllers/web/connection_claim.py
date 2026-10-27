@@ -140,9 +140,10 @@ class ConnectionClaimApi(Resource):
         "An unavailable preflight dependency returns 503; neither failure starts a transfer. "
         "Items run in input order with independent transactions; every item returns its index and success or failure. "
         "Success includes the App code, Account App Passport and this item's transferred Connection count. "
-        "Duplicates and retries transfer remaining Guest Connections only; zero means none remain. "
+        "Retries skip transfers for Guests with no remaining Connections and report zero; "
+        "new Guest Connections are included. "
         "Account defaults take precedence; Conversation choices and history are preserved. "
-        "Retry failed items only; no cross-App atomicity is provided."
+        "Resubmit the same batch or retry failed items separately; no cross-App atomicity is provided."
     )
     @web_ns.expect(web_ns.models[ConnectionClaimPayload.__name__])
     @web_ns.response(200, "Guest Connection claim results", web_ns.models[ConnectionClaimResponse.__name__])
