@@ -27,8 +27,8 @@ def test_account_response_requires_execution_tenant_membership(
         app_id="app-1",
         created_by="account-1",
         created_by_role=CreatorUserRole.ACCOUNT,
-        offload_data=[],
     )
+    execution.offload_data = []
     result = WorkflowNodeExecutionRepository(sqlite_session_factory).execution_record(execution, include_details=True)
     assert result["created_by_end_user"] is None
     if tenant_id == "tenant-1":
@@ -51,8 +51,8 @@ def test_end_user_response_requires_execution_tenant_and_app(
         app_id="app-1",
         created_by="end-user-1",
         created_by_role=CreatorUserRole.END_USER,
-        offload_data=[],
     )
+    execution.offload_data = []
     result = WorkflowNodeExecutionRepository(sqlite_session_factory).execution_record(execution, include_details=True)
     assert result["created_by_account"] is None
     if (tenant_id, app_id) == ("tenant-1", "app-1"):
