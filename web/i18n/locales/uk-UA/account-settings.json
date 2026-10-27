@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Область доступу",
   "personalAccessToken.searchResources": "Пошук за назвою, робочим простором або ID",
   "personalAccessToken.searchWorkspaces": "Пошук за назвою або ID робочого простору",
-  "personalAccessToken.secretUnavailable": "Токен збережено, але отримати його секрет не вдалося. Спробуйте знову, щоб отримати той самий токен.",
+  "personalAccessToken.secretUnavailable": "Секрет відображається лише один раз. Якщо ви його не зберегли, відкличте цей токен і створіть новий.",
   "personalAccessToken.selected": "Вибрані",
   "personalAccessToken.status": "Статус",
   "personalAccessToken.title": "Персональні токени доступу",

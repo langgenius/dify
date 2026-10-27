@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Erişim kapsamı",
   "personalAccessToken.searchResources": "Ad, çalışma alanı veya kimlik ara",
   "personalAccessToken.searchWorkspaces": "Çalışma alanı adı veya kimliği ara",
-  "personalAccessToken.secretUnavailable": "Belirteç kaydedildi ancak gizli değeri alınamadı. Aynı belirteci almak için yeniden deneyin.",
+  "personalAccessToken.secretUnavailable": "Gizli değer yalnızca bir kez gösterilir. Kaydetmediyseniz bu belirteci iptal edip yenisini oluşturun.",
   "personalAccessToken.selected": "Seçilenler",
   "personalAccessToken.status": "Durum",
   "personalAccessToken.title": "Kişisel erişim belirteçleri",

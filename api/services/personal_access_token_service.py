@@ -153,7 +153,6 @@ class PersonalAccessTokenRecord:
     summary: PersonalAccessTokenSummary
     account_id: str
     secret_digest: str = field(repr=False)
-    secret_ciphertext: bytes = field(repr=False)
     creation_key: str | None = None
     creation_fingerprint: str | None = None
     scopes: PersonalAccessTokenScopes = PersonalAccessTokenScopes()
@@ -215,10 +214,10 @@ class PersonalAccessTokenStore(Protocol):
     ) -> tuple[PersonalAccessTokenWorkspaceView, ...]: ...
 
 
-class PersonalAccessTokenCipher(Protocol):
-    def encrypt(self, secret: str, *, token_id: str, account_id: str) -> bytes: ...
-
-    def decrypt(self, ciphertext: bytes, *, token_id: str, account_id: str) -> str: ...
+@dataclass(frozen=True, slots=True)
+class PersonalAccessTokenCreateResult:
+    token: PersonalAccessTokenSummary
+    secret: str | None
 
 
 class PersonalAccessTokenService:
@@ -226,13 +225,11 @@ class PersonalAccessTokenService:
         self,
         *,
         tokens: PersonalAccessTokenStore,
-        cipher: PersonalAccessTokenCipher,
         apps: ConsoleAppService,
         datasets: DatasetApplicationService,
         deployments: PersonalAccessTokenDeploymentCatalog,
     ) -> None:
         self._tokens = tokens
-        self._cipher = cipher
         self._apps = apps
         self._datasets = datasets
         self._deployments = deployments
@@ -245,7 +242,7 @@ class PersonalAccessTokenService:
         expiration_days: int | None,
         creation_key: str | None = None,
         scopes: PersonalAccessTokenScopes,
-    ) -> PersonalAccessTokenSummary:
+    ) -> PersonalAccessTokenCreateResult:
         name = name.strip()
         if not name or len(name) > 255:
             raise ValueError("Name must contain between 1 and 255 characters.")
@@ -269,7 +266,10 @@ class PersonalAccessTokenService:
         if creation_key is not None:
             previous = self._tokens.find_creation(context.account_id, creation_key, fingerprint)
             if previous is not None:
-                return self.details(context, token_id=previous.id).token
+                return PersonalAccessTokenCreateResult(
+                    token=self.details(context, token_id=previous.id).token,
+                    secret=None,
+                )
         validated = self._validate_app_runner_resources(context.account_id, scopes, existing=frozenset())
         token_id = str(uuidv7())
         secret = f"{TokenType.PERSONAL_ACCESS.prefix}{secrets.token_urlsafe(32)}"
@@ -290,7 +290,6 @@ class PersonalAccessTokenService:
                 summary=summary,
                 account_id=context.account_id,
                 secret_digest=hashlib.sha256(secret.encode()).hexdigest(),
-                secret_ciphertext=self._cipher.encrypt(secret, token_id=token_id, account_id=context.account_id),
                 creation_key=creation_key,
                 creation_fingerprint=fingerprint,
                 scopes=scopes,
@@ -305,7 +304,7 @@ class PersonalAccessTokenService:
         )
         # The validated selections and repository transaction already establish the
         # creation response. A second remote lookup could fail after the write.
-        return created
+        return PersonalAccessTokenCreateResult(token=created, secret=secret if created.id == token_id else None)
 
     def list_tokens(
         self, context: AccountRequestContext, *, page: int, limit: int
@@ -377,16 +376,6 @@ class PersonalAccessTokenService:
                 else frozenset()
             )
         raise PersonalAccessTokenAccessDeniedError("Unsupported PAT operation.")
-
-    def copy_secret(self, context: AccountRequestContext, *, token_id: str) -> str:
-        record = self._tokens.get(context.account_id, token_id)
-        if record.summary.expires_at is not None and record.summary.expires_at <= naive_utc_now():
-            raise PersonalAccessTokenExpiredError()
-        secret = self._cipher.decrypt(record.secret_ciphertext, token_id=token_id, account_id=context.account_id)
-        logger.info(
-            "PAT secret retrieved account_id=%s token_id=%s trace_id=%s", context.account_id, token_id, context.trace_id
-        )
-        return secret
 
     def revoke(self, context: AccountRequestContext, *, token_id: str) -> None:
         self._tokens.revoke(context.account_id, token_id)

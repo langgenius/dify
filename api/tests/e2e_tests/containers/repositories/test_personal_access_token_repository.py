@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
+from tests.unit_tests.model_factories import make_account, make_app, make_tenant
 
 from libs.datetime_utils import naive_utc_now
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -15,7 +16,6 @@ from services.personal_access_token_service import (
     PersonalAccessTokenScopes,
     PersonalAccessTokenSummary,
 )
-from tests.unit_tests.model_factories import make_account, make_app, make_tenant
 
 
 def test_long_deployment_name_survives_creation_edit_and_parent_deletion(db_session_with_containers: Session) -> None:
@@ -72,7 +72,6 @@ def test_long_deployment_name_survives_creation_edit_and_parent_deletion(db_sess
             ),
             account_id=account.id,
             secret_digest=uuid4().hex * 2,
-            secret_ciphertext=b"test-ciphertext",
             scopes=scopes,
             validated_resources=(resource,),
         )
@@ -139,7 +138,6 @@ def test_removed_resource_keeps_live_workspace_name_in_scope_details(db_session_
             ),
             account_id=account.id,
             secret_digest=uuid4().hex * 2,
-            secret_ciphertext=b"test-ciphertext",
             scopes=PersonalAccessTokenScopes(
                 resource_mode="selected",
                 resources=(PersonalAccessTokenResourceRef("app", app.id),),

@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Ambito di accesso",
   "personalAccessToken.searchResources": "Cerca nome, spazio di lavoro o ID",
   "personalAccessToken.searchWorkspaces": "Cerca nome o ID dello spazio di lavoro",
-  "personalAccessToken.secretUnavailable": "Il token è stato salvato, ma non è stato possibile recuperarne il segreto. Riprova per recuperare lo stesso token.",
+  "personalAccessToken.secretUnavailable": "Il segreto viene mostrato una sola volta. Se non l’hai salvato, revoca questo token e creane uno nuovo.",
   "personalAccessToken.selected": "Selezionati",
   "personalAccessToken.status": "Stato",
   "personalAccessToken.title": "Token di accesso personali",

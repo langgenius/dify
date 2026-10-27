@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "存取範圍",
   "personalAccessToken.searchResources": "搜尋名稱、工作空間或 ID",
   "personalAccessToken.searchWorkspaces": "搜尋工作空間名稱或 ID",
-  "personalAccessToken.secretUnavailable": "權杖已儲存，但無法取得密鑰。重試可取得同一權杖。",
+  "personalAccessToken.secretUnavailable": "密鑰只會顯示一次。如果沒有保存，請撤銷此權杖並重新建立。",
   "personalAccessToken.selected": "指定項目",
   "personalAccessToken.status": "狀態",
   "personalAccessToken.title": "個人存取權杖",

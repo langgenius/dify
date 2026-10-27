@@ -2376,8 +2376,6 @@ export const tools = {
   get: get53,
 }
 
-export const get54 = oc
-
 export const post31 = oc
   .route({
     inputStructure: 'detailed',
@@ -2392,6 +2390,8 @@ export const post31 = oc
 export const switch_ = {
   post: post31,
 }
+
+export const get54 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',

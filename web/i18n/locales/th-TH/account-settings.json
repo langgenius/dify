@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "ขอบเขตการเข้าถึง",
   "personalAccessToken.searchResources": "ค้นหาชื่อ พื้นที่ทำงาน หรือ ID",
   "personalAccessToken.searchWorkspaces": "ค้นหาชื่อหรือ ID ของพื้นที่ทำงาน",
-  "personalAccessToken.secretUnavailable": "บันทึกโทเค็นแล้ว แต่ดึงค่าลับไม่ได้ ลองอีกครั้งเพื่อดึงโทเค็นเดิม",
+  "personalAccessToken.secretUnavailable": "ค่าลับจะแสดงเพียงครั้งเดียว หากไม่ได้บันทึกไว้ ให้เพิกถอนโทเค็นนี้แล้วสร้างใหม่",
   "personalAccessToken.selected": "ที่เลือก",
   "personalAccessToken.status": "สถานะ",
   "personalAccessToken.title": "โทเค็นการเข้าถึงส่วนบุคคล",

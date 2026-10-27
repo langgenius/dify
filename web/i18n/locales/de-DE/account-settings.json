@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Zugriffsumfang",
   "personalAccessToken.searchResources": "Nach Name, Arbeitsbereich oder ID suchen",
   "personalAccessToken.searchWorkspaces": "Nach Name oder ID des Arbeitsbereichs suchen",
-  "personalAccessToken.secretUnavailable": "Das Token wurde gespeichert, aber sein Geheimnis konnte nicht abgerufen werden. Versuche es erneut, um dasselbe Token abzurufen.",
+  "personalAccessToken.secretUnavailable": "Das Geheimnis wird nur einmal angezeigt. Wenn du es nicht gespeichert hast, widerrufe dieses Token und erstelle ein neues.",
   "personalAccessToken.selected": "Ausgewählte",
   "personalAccessToken.status": "Status",
   "personalAccessToken.title": "Persönliche Zugriffstoken",

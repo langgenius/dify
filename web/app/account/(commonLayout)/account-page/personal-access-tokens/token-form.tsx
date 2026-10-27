@@ -1,8 +1,8 @@
 import type {
+  PersonalAccessTokenCreatedResponse,
   PersonalAccessTokenCreatePayload,
   PersonalAccessTokenDetailResponse,
   PersonalAccessTokenResourceResponse,
-  PersonalAccessTokenResponse,
   PersonalAccessTokenWorkspaceResponse,
 } from '@dify/contracts/api/console/account/types.gen'
 import type { SubmitEvent } from 'react'
@@ -77,7 +77,7 @@ export default function TokenForm({
     initial?.workspaces.filter((item) => !duplicate || item.available) ?? [],
   )
   const [expanded, setExpanded] = useState<'resources' | 'workspaces'>('resources')
-  const [created, setCreated] = useState<PersonalAccessTokenResponse | null>(null)
+  const [created, setCreated] = useState<PersonalAccessTokenCreatedResponse | null>(null)
   const { copied, failed: copyFailed, copySecret } = useTokenClipboard()
   const attemptRef = useRef<{ fingerprint: string; key: string } | null>(null)
   const create = useMutation(
@@ -85,12 +85,6 @@ export default function TokenForm({
   )
   const update = useMutation(
     consoleQuery.account.personalAccessTokens.byTokenId.patch.mutationOptions({
-      context: { silent: true },
-    }),
-  )
-  const secret = useMutation(
-    consoleQuery.account.personalAccessTokens.byTokenId.secret.post.mutationOptions({
-      gcTime: 0,
       context: { silent: true },
     }),
   )
@@ -147,10 +141,7 @@ export default function TokenForm({
     create.mutate(
       { body, headers: { 'Idempotency-Key': attemptRef.current.key } },
       {
-        onSuccess: (token) => {
-          setCreated(token)
-          secret.mutate({ params: { token_id: token.id } })
-        },
+        onSuccess: setCreated,
       },
     )
   }
@@ -185,18 +176,18 @@ export default function TokenForm({
               ? new Date(created.expires_at).toLocaleDateString(i18n.language)
               : t(($) => $['personalAccessToken.never'])}
           </p>
-          {secret.data ? (
+          {created.secret ? (
             <div className="flex items-center gap-2">
               <Input
                 aria-label={t(($) => $['resourceAccessToken.token'])}
                 readOnly
-                value={secret.data.secret}
+                value={created.secret}
                 className="font-mono"
               />
               <Button
                 variant="primary"
                 onClick={() => {
-                  if (secret.data) return copySecret(secret.data.secret)
+                  return copySecret(created.secret ?? '')
                 }}
               >
                 {copied
@@ -205,21 +196,13 @@ export default function TokenForm({
               </Button>
             </div>
           ) : (
-            <Button
-              loading={secret.isPending}
-              onClick={() => secret.mutate({ params: { token_id: created.id } })}
-            >
-              {t(($) => $['operation.retry'], { ns: 'common' })}
-            </Button>
+            <p role="alert" className="system-xs-regular text-text-warning">
+              {t(($) => $['personalAccessToken.secretUnavailable'])}
+            </p>
           )}
           {copyFailed && (
             <p role="alert" className="mt-2 system-xs-regular text-text-warning">
               {t(($) => $['operation.copyErrorFailed'], { ns: 'common' })}
-            </p>
-          )}
-          {secret.isError && (
-            <p role="alert" className="mt-2 system-xs-regular text-text-warning">
-              {t(($) => $['personalAccessToken.secretUnavailable'])}
             </p>
           )}
           <p className="mt-2 system-xs-regular text-text-tertiary">

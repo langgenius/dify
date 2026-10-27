@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Domeniu de acces",
   "personalAccessToken.searchResources": "Caută nume, spațiu de lucru sau ID",
   "personalAccessToken.searchWorkspaces": "Caută numele sau ID-ul spațiului de lucru",
-  "personalAccessToken.secretUnavailable": "Tokenul a fost salvat, dar secretul său nu a putut fi recuperat. Reîncearcă pentru a recupera același token.",
+  "personalAccessToken.secretUnavailable": "Secretul este afișat o singură dată. Dacă nu l-ai salvat, revocă acest token și creează unul nou.",
   "personalAccessToken.selected": "Selectate",
   "personalAccessToken.status": "Stare",
   "personalAccessToken.title": "Tokenuri de acces personal",

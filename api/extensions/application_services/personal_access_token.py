@@ -9,7 +9,6 @@ from libs.token import extract_console_cookie_token, extract_csrf_token, extract
 from repositories.personal_access_token_repository import PersonalAccessTokenRepository
 from services.app.console_service import ConsoleAppService
 from services.knowledge.datasets.application import DatasetApplicationService
-from services.personal_access_token_cipher import AESPersonalAccessTokenCipher
 from services.personal_access_token_deployments import ConsolePersonalAccessTokenDeploymentCatalog
 from services.personal_access_token_service import PersonalAccessTokenService
 
@@ -25,7 +24,6 @@ def build_personal_access_token_service(
             headers=_console_headers,
             enabled=lambda: dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE,
         ),
-        cipher=AESPersonalAccessTokenCipher(key=lambda: dify_config.PAT_ENCRYPTION_KEY),
         apps=apps,
         datasets=datasets,
     )

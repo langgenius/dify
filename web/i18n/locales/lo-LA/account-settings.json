@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "ຂອບເຂດການເຂົ້າເຖິງ",
   "personalAccessToken.searchResources": "ຄົ້ນຫາຊື່, ພື້ນທີ່ເຮັດວຽກ ຫຼື ID",
   "personalAccessToken.searchWorkspaces": "ຄົ້ນຫາຊື່ ຫຼື ID ຂອງພື້ນທີ່ເຮັດວຽກ",
-  "personalAccessToken.secretUnavailable": "ບັນທຶກໂທເຄັນແລ້ວ ແຕ່ດຶງຄ່າລັບບໍ່ໄດ້. ລອງອີກຄັ້ງເພື່ອດຶງໂທເຄັນເດີມ.",
+  "personalAccessToken.secretUnavailable": "ຄ່າລັບຈະສະແດງພຽງຄັ້ງດຽວ. ຖ້າບໍ່ໄດ້ບັນທຶກ ໃຫ້ຖອນໂທເຄັນນີ້ແລ້ວສ້າງໃໝ່.",
   "personalAccessToken.selected": "ທີ່ເລືອກ",
   "personalAccessToken.status": "ສະຖານະ",
   "personalAccessToken.title": "ໂທເຄັນເຂົ້າເຖິງສ່ວນບຸກຄົນ",

@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Périmètre d’accès",
   "personalAccessToken.searchResources": "Rechercher un nom, un espace de travail ou un ID",
   "personalAccessToken.searchWorkspaces": "Rechercher un nom ou un ID d’espace de travail",
-  "personalAccessToken.secretUnavailable": "Le jeton a été enregistré, mais son secret n’a pas pu être récupéré. Réessayez pour récupérer le même jeton.",
+  "personalAccessToken.secretUnavailable": "Le secret n’est affiché qu’une seule fois. Si vous ne l’avez pas enregistré, révoquez ce jeton et créez-en un nouveau.",
   "personalAccessToken.selected": "Sélection",
   "personalAccessToken.status": "Statut",
   "personalAccessToken.title": "Jetons d’accès personnels",

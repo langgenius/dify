@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "访问范围",
   "personalAccessToken.searchResources": "搜索名称、工作空间或 ID",
   "personalAccessToken.searchWorkspaces": "搜索工作空间名称或 ID",
-  "personalAccessToken.secretUnavailable": "令牌已保存，但无法获取密钥。重试可获取同一令牌。",
+  "personalAccessToken.secretUnavailable": "密钥仅显示一次。如果没有保存，请撤销此令牌并重新创建。",
   "personalAccessToken.selected": "指定项",
   "personalAccessToken.status": "状态",
   "personalAccessToken.title": "个人访问令牌",

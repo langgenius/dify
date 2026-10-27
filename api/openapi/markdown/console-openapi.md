@@ -361,7 +361,7 @@ Deprecated. Use PATCH /account/profile instead.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Personal access token created | **application/json**: [PersonalAccessTokenResponse](#personalaccesstokenresponse)<br> |
+| 201 | Personal access token created | **application/json**: [PersonalAccessTokenCreatedResponse](#personalaccesstokencreatedresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /account/personal-access-tokens/{token_id}
@@ -410,20 +410,6 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Updated scopes | **application/json**: [PersonalAccessTokenDetailResponse](#personalaccesstokendetailresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /account/personal-access-tokens/{token_id}/secret
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| token_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Complete personal access token | **application/json**: [PersonalAccessTokenSecretResponse](#personalaccesstokensecretresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/profile
@@ -30631,6 +30617,25 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | resource_scope | [PersonalAccessTokenResourceScopePayload](#personalaccesstokenresourcescopepayload) |  | No |
 | workspace_scope | [PersonalAccessTokenWorkspaceScopePayload](#personalaccesstokenworkspacescopepayload) |  | No |
 
+#### PersonalAccessTokenCreatedResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| expires_at | string |  | Yes |
+| id | string |  | Yes |
+| last_used_at | string |  | Yes |
+| name | string |  | Yes |
+| resource_count | integer |  | Yes |
+| resource_scope_mode | string, <br>**Available values:** "all", "none", "selected" | *Enum:* `"all"`, `"none"`, `"selected"` | Yes |
+| secret | string |  | Yes |
+| secret_last_four | string |  | Yes |
+| status | string, <br>**Available values:** "access_issue", "active", "expired" | *Enum:* `"access_issue"`, `"active"`, `"expired"` | Yes |
+| unavailable_count | integer |  | Yes |
+| version | integer |  | Yes |
+| workspace_count | integer |  | Yes |
+| workspace_scope_mode | string, <br>**Available values:** "all", "none", "selected" | *Enum:* `"all"`, `"none"`, `"selected"` | Yes |
+
 #### PersonalAccessTokenDetailResponse
 
 | Name | Type | Description | Required |
@@ -30709,12 +30714,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | version | integer |  | Yes |
 | workspace_count | integer |  | Yes |
 | workspace_scope_mode | string, <br>**Available values:** "all", "none", "selected" | *Enum:* `"all"`, `"none"`, `"selected"` | Yes |
-
-#### PersonalAccessTokenSecretResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| secret | string |  | Yes |
 
 #### PersonalAccessTokenUpdatePayload
 

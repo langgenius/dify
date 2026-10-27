@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Giriş əhatəsi",
   "personalAccessToken.searchResources": "Ad, iş sahəsi və ya ID axtar",
   "personalAccessToken.searchWorkspaces": "İş sahəsinin adını və ya ID-sini axtar",
-  "personalAccessToken.secretUnavailable": "Token saxlanıldı, lakin gizli dəyəri əldə edilə bilmədi. Eyni tokeni əldə etmək üçün yenidən cəhd edin.",
+  "personalAccessToken.secretUnavailable": "Gizli dəyər yalnız bir dəfə göstərilir. Saxlamamısınızsa, bu tokeni ləğv edib yenisini yaradın.",
   "personalAccessToken.selected": "Seçilənlər",
   "personalAccessToken.status": "Status",
   "personalAccessToken.title": "Şəxsi giriş tokenləri",

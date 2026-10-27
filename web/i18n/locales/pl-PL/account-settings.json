@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Zakres dostępu",
   "personalAccessToken.searchResources": "Szukaj nazwy, obszaru roboczego lub ID",
   "personalAccessToken.searchWorkspaces": "Szukaj nazwy lub ID obszaru roboczego",
-  "personalAccessToken.secretUnavailable": "Token zapisano, ale nie udało się pobrać jego sekretu. Spróbuj ponownie, aby pobrać ten sam token.",
+  "personalAccessToken.secretUnavailable": "Sekret jest wyświetlany tylko raz. Jeśli go nie zapisano, unieważnij ten token i utwórz nowy.",
   "personalAccessToken.selected": "Wybrane",
   "personalAccessToken.status": "Status",
   "personalAccessToken.title": "Osobiste tokeny dostępu",

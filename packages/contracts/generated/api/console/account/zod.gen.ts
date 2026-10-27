@@ -434,9 +434,9 @@ export const zInvalidAccountPasswordError = zErrorResponse.and(
 )
 
 /**
- * PersonalAccessTokenResponse
+ * PersonalAccessTokenCreatedResponse
  */
-export const zPersonalAccessTokenResponse = z.object({
+export const zPersonalAccessTokenCreatedResponse = z.object({
   created_at: z.iso.datetime(),
   expires_at: z.iso.datetime().nullable(),
   id: z.string(),
@@ -444,30 +444,13 @@ export const zPersonalAccessTokenResponse = z.object({
   name: z.string(),
   resource_count: z.int(),
   resource_scope_mode: z.enum(['all', 'none', 'selected']),
+  secret: z.string().nullable(),
   secret_last_four: z.string(),
   status: z.enum(['access_issue', 'active', 'expired']),
   unavailable_count: z.int(),
   version: z.int(),
   workspace_count: z.int(),
   workspace_scope_mode: z.enum(['all', 'none', 'selected']),
-})
-
-/**
- * PersonalAccessTokenListResponse
- */
-export const zPersonalAccessTokenListResponse = z.object({
-  data: z.array(zPersonalAccessTokenResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
- * PersonalAccessTokenSecretResponse
- */
-export const zPersonalAccessTokenSecretResponse = z.object({
-  secret: z.string(),
 })
 
 /**
@@ -549,6 +532,36 @@ export const zPersonalAccessTokenWorkspaceCandidateResponse = z.object({
   data: z.array(zPersonalAccessTokenWorkspaceResponse),
   has_more: z.boolean(),
   next_cursor: z.int().nullable(),
+})
+
+/**
+ * PersonalAccessTokenResponse
+ */
+export const zPersonalAccessTokenResponse = z.object({
+  created_at: z.iso.datetime(),
+  expires_at: z.iso.datetime().nullable(),
+  id: z.string(),
+  last_used_at: z.iso.datetime().nullable(),
+  name: z.string(),
+  resource_count: z.int(),
+  resource_scope_mode: z.enum(['all', 'none', 'selected']),
+  secret_last_four: z.string(),
+  status: z.enum(['access_issue', 'active', 'expired']),
+  unavailable_count: z.int(),
+  version: z.int(),
+  workspace_count: z.int(),
+  workspace_scope_mode: z.enum(['all', 'none', 'selected']),
+})
+
+/**
+ * PersonalAccessTokenListResponse
+ */
+export const zPersonalAccessTokenListResponse = z.object({
+  data: z.array(zPersonalAccessTokenResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -798,7 +811,7 @@ export const zPostAccountPersonalAccessTokensHeaders = z.object({
 /**
  * Personal access token created
  */
-export const zPostAccountPersonalAccessTokensResponse = zPersonalAccessTokenResponse
+export const zPostAccountPersonalAccessTokensResponse = zPersonalAccessTokenCreatedResponse
 
 export const zDeleteAccountPersonalAccessTokensByTokenIdPath = z.object({
   token_id: z.uuid(),
@@ -828,16 +841,6 @@ export const zPatchAccountPersonalAccessTokensByTokenIdPath = z.object({
  * Updated scopes
  */
 export const zPatchAccountPersonalAccessTokensByTokenIdResponse = zPersonalAccessTokenDetailResponse
-
-export const zPostAccountPersonalAccessTokensByTokenIdSecretPath = z.object({
-  token_id: z.uuid(),
-})
-
-/**
- * Complete personal access token
- */
-export const zPostAccountPersonalAccessTokensByTokenIdSecretResponse =
-  zPersonalAccessTokenSecretResponse
 
 /**
  * Success
