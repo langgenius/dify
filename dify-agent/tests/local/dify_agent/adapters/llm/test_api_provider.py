@@ -7,7 +7,7 @@ import pytest
 from graphon.model_runtime.entities.message_entities import UserPromptMessage
 from pydantic_ai.exceptions import ModelHTTPError
 
-from dify_agent.adapters.llm.provider import DifyApiLLMClient
+from dify_agent.adapters.llm.provider import DifyApiLLMClient, DifyApiLLMProvider
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 from ._test_support import build_stream_error, build_stream_response, single_text_chunk
@@ -155,5 +155,36 @@ def test_api_client_maps_stream_quota_error_to_http_429() -> None:
                 ]
             assert exc_info.value.status_code == 429
             assert "Insufficient hosted model quota" in str(exc_info.value)
+
+    asyncio.run(scenario())
+
+
+def test_provider_borrows_lifespan_owned_http_client_across_reentries() -> None:
+    """The provider never creates, swaps, or closes the caller's lifespan client."""
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(trust_env=False) as http_client:
+            provider = DifyApiLLMProvider(
+                plugin_id="acme/custom-model",
+                inner_api_url="http://dify-api",
+                inner_api_key="inner-secret",
+                execution_context=_execution_context(),
+                agent_run_id="run-1",
+                http_client=http_client,
+            )
+            assert provider.client.http_client is http_client
+
+            async with provider:
+                assert provider.client.http_client is http_client
+            assert not http_client.is_closed
+
+            # Re-entering (including nested entry) must keep the borrowed client.
+            async with provider, provider:
+                assert provider.client.http_client is http_client
+            assert provider.client.http_client is http_client
+            assert not http_client.is_closed
+
+        # Only the caller's own exit closes the client.
+        assert http_client.is_closed
 
     asyncio.run(scenario())

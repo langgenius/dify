@@ -1,8 +1,10 @@
+from collections.abc import Iterator
 from decimal import Decimal
 
 import pytest
+from fastapi import FastAPI
 from pydantic import ValidationError
-from pydantic_ai.messages import FinalResultEvent
+from pydantic_ai.messages import FinalResultEvent, UnknownCapabilityEvent, UnknownCustomEvent
 
 from dify_agent.protocol.snapshot import SessionSnapshot
 import dify_agent.protocol as protocol_exports
@@ -14,6 +16,7 @@ from dify_agent.protocol.schemas import (
     PydanticAIStreamRunEvent,
     RunCancelledEvent,
     RunCancelledEventData,
+    RunEventsResponse,
     RunFailedEvent,
     RunFailedEventData,
     RunFailureType,
@@ -278,3 +281,74 @@ def test_create_run_request_rejects_removed_top_level_purpose() -> None:
 def test_removed_non_terminal_payload_events_are_rejected(event_type: str) -> None:
     with pytest.raises(ValidationError):
         _ = RUN_EVENT_ADAPTER.validate_python({"run_id": "run-1", "type": event_type, "data": {}})
+
+
+def test_fastapi_openapi_builds_for_run_events_response() -> None:
+    """The data schema drops only its OpenAPI-invalid outer discriminator."""
+
+    app = FastAPI()
+
+    @app.get("/events", response_model=RunEventsResponse)
+    def events() -> RunEventsResponse:
+        return RunEventsResponse(run_id="run-1", events=[])
+
+    spec = app.openapi()
+
+    data_schema = spec["components"]["schemas"]["PydanticAIStreamRunEvent"]["properties"]["data"]
+    assert "discriminator" not in data_schema
+    assert len(data_schema["oneOf"]) > 1
+
+    def discriminators(node: object) -> Iterator[object]:
+        if isinstance(node, dict):
+            if "discriminator" in node:
+                yield node["discriminator"]
+            for value in node.values():
+                yield from discriminators(value)
+        elif isinstance(node, list):
+            for item in node:
+                yield from discriminators(item)
+
+    for discriminator in discriminators(spec):
+        mapping = discriminator.get("mapping") if isinstance(discriminator, dict) else None
+        for value in (mapping or {}).values():
+            assert isinstance(value, str)
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected_type", "identity_key", "identity_value"),
+    [
+        (
+            {"event_kind": "custom", "name": "vendor_signal", "score": 1},
+            UnknownCustomEvent,
+            "name",
+            "vendor_signal",
+        ),
+        (
+            {"event_kind": "capability", "kind": "acme_tool", "score": 1},
+            UnknownCapabilityEvent,
+            "kind",
+            "acme_tool",
+        ),
+    ],
+    ids=["unknown-custom", "unknown-capability"],
+)
+def test_stream_event_data_round_trips_unknown_event_families(
+    payload: dict, expected_type: type, identity_key: str, identity_value: str
+) -> None:
+    event = PydanticAIStreamRunEvent(run_id="run-1", data=payload)
+
+    # Unknown event families flatten unmatched wire fields into `data`.
+    assert isinstance(event.data, expected_type)
+    assert event.data.data == {"score": 1}
+    assert getattr(event.data, identity_key) == identity_value
+
+    decoded = RUN_EVENT_ADAPTER.validate_json(RUN_EVENT_ADAPTER.dump_json(event))
+    assert isinstance(decoded, PydanticAIStreamRunEvent)
+    assert isinstance(decoded.data, expected_type)
+    assert decoded.data.data == {"score": 1}
+    assert getattr(decoded.data, identity_key) == identity_value
+
+
+def test_stream_event_data_rejects_invalid_event_kind() -> None:
+    with pytest.raises(ValidationError):
+        PydanticAIStreamRunEvent(run_id="run-1", data={"event_kind": "not_a_kind"})

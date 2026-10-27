@@ -366,8 +366,46 @@ async def test_cancellation_during_remote_observation_deletes_job_and_releases_l
         assert snap.layers["shell"] == {"initialized": True, "job_ids": [], "job_offsets": {}}
         saved = history.State.model_validate(snap.layers["history"])
         responses = [m for m in saved.messages if isinstance(m, ModelResponse)]
-        assert responses[-1].state == "interrupted"
+        # pydantic-ai-slim 2.53 appends a trailing interrupted ModelRequest after
+        # the completed tool-call response; the response itself stays complete.
+        assert responses[-1].state == "complete"
+        requests_ = [m for m in saved.messages if isinstance(m, ModelRequest)]
+        assert requests_[-1].state == "interrupted"
         assert not client.is_closed
+
+        seen: list[list] = []
+
+        async def resumed_stream(messages, info):
+            seen.append(list(messages))
+            yield "resumed"
+
+        scripts_before = len(commands.scripts)
+        second, second_sink = run_runner(
+            request(*runtime_specs(), snapshot=snap, user="continue"),
+            services,
+            monkeypatch,
+            resumed_stream,
+            run_id="resumed",
+        )
+        await second.run()
+        terminal = second_sink.events["resumed"][-1]
+        assert isinstance(terminal, RunSucceededEvent)
+        assert terminal.data.output == "resumed"
+        # The cancelled remote command is never re-executed on resume.
+        assert len(commands.scripts) == scripts_before
+        # The interrupted shell_run call is repaired with a ToolReturnPart ahead
+        # of the fresh user prompt (both are parts of the resumed request).
+        return_pos = prompt_pos = None
+        for message_index, message in enumerate(seen[0]):
+            if not isinstance(message, ModelRequest):
+                continue
+            for part_index, part in enumerate(message.parts):
+                if isinstance(part, ToolReturnPart) and part.tool_call_id == "call":
+                    return_pos = (message_index, part_index)
+                if isinstance(part, UserPromptPart) and part.content == "continue":
+                    prompt_pos = (message_index, part_index)
+        assert return_pos is not None and prompt_pos is not None
+        assert return_pos < prompt_pos
 
 
 @pytest.mark.anyio
