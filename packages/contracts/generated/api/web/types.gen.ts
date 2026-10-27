@@ -184,6 +184,16 @@ export type ConnectionClaimPayload = {
   passports: Array<string>
 }
 
+export type ConnectionClaimPreflightDetails = {
+  failures: Array<ConnectionClaimFailureResponse>
+}
+
+export type ConnectionClaimPreflightFailedError = ErrorResponse & {
+  code: 'connection_claim_preflight_failed'
+  details?: ConnectionClaimPreflightDetails
+  status: 400
+}
+
 export type ConnectionClaimResponse = {
   data: Array<ConnectionClaimSuccessResponse | ConnectionClaimFailureResponse>
 }
@@ -194,6 +204,11 @@ export type ConnectionClaimSuccessResponse = {
   claimed_connections: number
   index: number
   status: 'success'
+}
+
+export type ConnectionClaimUnavailableError = ErrorResponse & {
+  code: 'connection_claim_unavailable'
+  status: 503
 }
 
 export type ConnectionConfigurationInvalidError = ErrorResponse & {
@@ -1791,7 +1806,9 @@ export type PostConnectionsClaimData = {
 }
 
 export type PostConnectionsClaimErrors = {
+  400: ConnectionClaimPreflightFailedError | ErrorResponse
   401: EndUserLoginRequiredError | ErrorResponse
+  503: ConnectionClaimUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

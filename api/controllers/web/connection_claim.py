@@ -15,10 +15,15 @@ from controllers.web import web_ns
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppNotFoundError
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.token import extract_webapp_access_token
-from services.end_user_connections.claim import ConnectionClaimFailure, ConnectionClaimUnavailableError
+from services.end_user_connections.claim import (
+    ConnectionClaimFailure,
+    ConnectionClaimPreflightError,
+    ConnectionClaimUnavailableError,
+)
 from services.end_user_connections.errors import ConnectionConflictError, ConnectionIdentityError
 from services.web_passport_service import (
     WebPassportAccessDeniedError,
@@ -49,12 +54,12 @@ class ConnectionClaimSuccessResponse(ResponseModel):
 
 class ConnectionClaimErrorResponse(ResponseModel):
     code: Literal[
-        "unauthorized",
         "app_not_found",
-        "end_user_login_required",
-        "web_app_access_denied",
-        "connection_conflict",
         "connection_claim_unavailable",
+        "connection_conflict",
+        "end_user_login_required",
+        "unauthorized",
+        "web_app_access_denied",
     ]
     message: str
     status: int
@@ -66,6 +71,23 @@ class ConnectionClaimFailureResponse(ResponseModel):
     error: ConnectionClaimErrorResponse
 
 
+class ConnectionClaimPreflightDetails(BaseModel):
+    failures: list[ConnectionClaimFailureResponse]
+
+
+class ConnectionClaimPreflightHTTPError(BaseHTTPException):
+    code = 400
+    error_code = "connection_claim_preflight_failed"
+    description = "Connection claim preflight failed. No Connections were transferred."
+    details_model = ConnectionClaimPreflightDetails
+
+
+class ConnectionClaimUnavailableHTTPError(BaseHTTPException):
+    code = 503
+    error_code = "connection_claim_unavailable"
+    description = "Connection claim is temporarily unavailable. Please retry."
+
+
 class ConnectionClaimResponse(ResponseModel):
     data: list[
         Annotated[ConnectionClaimSuccessResponse | ConnectionClaimFailureResponse, Field(discriminator="status")]
@@ -75,7 +97,7 @@ class ConnectionClaimResponse(ResponseModel):
 def claim_error_response(failure: ConnectionClaimFailure) -> ConnectionClaimErrorResponse:
     error = failure.error
     if isinstance(error, ConnectionIdentityError):
-        return ConnectionClaimErrorResponse(code="unauthorized", status=401, message="Invalid Guest Passport.")
+        return ConnectionClaimErrorResponse(code="unauthorized", status=401, message=str(error))
     if isinstance(error, WebPassportNotFoundError):
         return ConnectionClaimErrorResponse(
             code="app_not_found", status=404, message=str(WebAppNotFoundError.description)
@@ -113,7 +135,9 @@ class ConnectionClaimApi(Resource):
         description="Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. "
         "Submit Guest Passports in passports, with one Account Web login proof in Authorization. "
         "Complete the login handoff through /api/passport before asking the user to confirm Claim. "
-        "Account authentication and capability failures reject the batch before any transfer. "
+        "Validate every source Passport and Account App admission before any transfer or identity creation. "
+        "Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. "
+        "An unavailable preflight dependency returns 503; neither failure starts a transfer. "
         "Items run in input order with independent transactions; every item returns its index and success or failure. "
         "Success includes the App code, Account App Passport and this item's transferred Connection count. "
         "Duplicates and retries transfer remaining Guest Connections only; zero means none remain. "
@@ -122,16 +146,33 @@ class ConnectionClaimApi(Resource):
     )
     @web_ns.expect(web_ns.models[ConnectionClaimPayload.__name__])
     @web_ns.response(200, "Guest Connection claim results", web_ns.models[ConnectionClaimResponse.__name__])
-    @error_responses(ConnectionLoginRequiredError)
+    @error_responses(
+        ConnectionLoginRequiredError, ConnectionClaimPreflightHTTPError, ConnectionClaimUnavailableHTTPError
+    )
     @model_validate(ConnectionClaimPayload)
     def post(self, payload: ConnectionClaimPayload):
         with web_login_errors():
             if not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
                 raise WebPassportAccountExchangeDisabledError()
             login_token = extract_webapp_access_token(request) or ""
-            results = application_services().end_user_connection_claims.claim(
-                payload.passports, access_token=login_token
-            )
+            try:
+                results = application_services().end_user_connection_claims.claim(
+                    payload.passports, access_token=login_token
+                )
+            except ConnectionClaimPreflightError as exc:
+                error = ConnectionClaimPreflightHTTPError()
+                assert error.data is not None
+                error.data["details"] = ConnectionClaimPreflightDetails(
+                    failures=[
+                        ConnectionClaimFailureResponse(
+                            status="failed", index=failure.index, error=claim_error_response(failure)
+                        )
+                        for failure in exc.failures
+                    ]
+                ).model_dump(mode="json")
+                raise error from exc
+            except ConnectionClaimUnavailableError as exc:
+                raise ConnectionClaimUnavailableHTTPError() from exc
         data: list[ConnectionClaimSuccessResponse | ConnectionClaimFailureResponse] = []
         for result in results:
             if isinstance(result, ConnectionClaimFailure):
@@ -184,6 +225,7 @@ class ClaimablePassportsApi(Resource):
         description="Check anonymous Passports held by this browser across Web Apps without changing identity or data. "
         "Submit local candidates; return their request indices, App names/codes and current Connection counts. "
         "Invalid, expired, duplicate, Account, SSO and empty candidates are omitted. No Account login is required. "
+        "connection_count counts all currently Guest-owned Connections, including ones needing reconnection. "
         "This is advisory: actual Claim rechecks ownership and Account App admission."
     )
     @web_ns.expect(web_ns.models[ClaimablePassportsPayload.__name__])

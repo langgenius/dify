@@ -149,7 +149,7 @@ Stop a running completion message task.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /connections/claim
-Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Account authentication and capability failures reject the batch before any transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Duplicates and retries transfer remaining Guest Connections only; zero means none remain. Account defaults take precedence; Conversation choices and history are preserved. Retry failed items only; no cross-App atomicity is provided.
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Duplicates and retries transfer remaining Guest Connections only; zero means none remain. Account defaults take precedence; Conversation choices and history are preserved. Retry failed items only; no cross-App atomicity is provided.
 
 #### Request Body
 
@@ -162,11 +162,13 @@ Claim up to 50 anonymous browser Passports across Web Apps for one authenticated
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Guest Connection claim results | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionClaimPreflightFailedError](#connectionclaimpreflightfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [ConnectionClaimUnavailableError](#connectionclaimunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /connections/claimable-passports
-Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account, SSO and empty candidates are omitted. No Account login is required. This is advisory: actual Claim rechecks ownership and Account App admission.
+Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account, SSO and empty candidates are omitted. No Account login is required. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
 
 #### Request Body
 
@@ -1474,6 +1476,20 @@ Completion request failed.
 | ---- | ---- | ----------- | -------- |
 | passports | [ string ] |  | Yes |
 
+#### ConnectionClaimPreflightDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| failures | [ [ConnectionClaimFailureResponse](#connectionclaimfailureresponse) ] |  | Yes |
+
+#### ConnectionClaimPreflightFailedError
+
+Connection claim preflight failed. No Connections were transferred.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionClaimPreflightFailedError |  | Connection claim preflight failed. No Connections were transferred. |  |
+
 #### ConnectionClaimResponse
 
 | Name | Type | Description | Required |
@@ -1489,6 +1505,14 @@ Completion request failed.
 | claimed_connections | integer | Number transferred by this item; zero when no Guest Connections remain | Yes |
 | index | integer |  | Yes |
 | status | string |  | Yes |
+
+#### ConnectionClaimUnavailableError
+
+Connection claim is temporarily unavailable. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionClaimUnavailableError |  | Connection claim is temporarily unavailable. Please retry. |  |
 
 #### ConnectionConfigurationInvalidError
 

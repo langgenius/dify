@@ -11,6 +11,8 @@ import {
   zAudioTooLargeError,
   zAuthenticationFailedError,
   zCompletionRequestError,
+  zConnectionClaimPreflightFailedError,
+  zConnectionClaimUnavailableError,
   zConnectionConfigurationInvalidError,
   zConnectionConflictError,
   zConnectionCredentialsInvalidError,
@@ -339,12 +341,12 @@ export const completionMessages = {
 }
 
 /**
- * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Account authentication and capability failures reject the batch before any transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Duplicates and retries transfer remaining Guest Connections only; zero means none remain. Account defaults take precedence; Conversation choices and history are preserved. Retry failed items only; no cross-App atomicity is provided.
+ * Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Duplicates and retries transfer remaining Guest Connections only; zero means none remain. Account defaults take precedence; Conversation choices and history are preserved. Retry failed items only; no cross-App atomicity is provided.
  */
 export const post6 = oc
   .route({
     description:
-      "Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Account authentication and capability failures reject the batch before any transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Duplicates and retries transfer remaining Guest Connections only; zero means none remain. Account defaults take precedence; Conversation choices and history are preserved. Retry failed items only; no cross-App atomicity is provided.",
+      "Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Complete the login handoff through /api/passport before asking the user to confirm Claim. Validate every source Passport and Account App admission before any transfer or identity creation. Preflight failures return 400 connection_claim_preflight_failed with details.failures indexed by input. An unavailable preflight dependency returns 503; neither failure starts a transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Duplicates and retries transfer remaining Guest Connections only; zero means none remain. Account defaults take precedence; Conversation choices and history are preserved. Retry failed items only; no cross-App atomicity is provided.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postConnectionsClaim',
@@ -353,19 +355,23 @@ export const post6 = oc
   })
   .input(z.object({ body: zPostConnectionsClaimBody }))
   .output(zPostConnectionsClaimResponse)
-  .errors({ end_user_login_required: { status: 401, data: zEndUserLoginRequiredError } })
+  .errors({
+    connection_claim_preflight_failed: { status: 400, data: zConnectionClaimPreflightFailedError },
+    connection_claim_unavailable: { status: 503, data: zConnectionClaimUnavailableError },
+    end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
+  })
 
 export const claim = {
   post: post6,
 }
 
 /**
- * Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account, SSO and empty candidates are omitted. No Account login is required. This is advisory: actual Claim rechecks ownership and Account App admission.
+ * Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account, SSO and empty candidates are omitted. No Account login is required. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.
  */
 export const post7 = oc
   .route({
     description:
-      'Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account, SSO and empty candidates are omitted. No Account login is required. This is advisory: actual Claim rechecks ownership and Account App admission.',
+      'Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account, SSO and empty candidates are omitted. No Account login is required. connection_count counts all currently Guest-owned Connections, including ones needing reconnection. This is advisory: actual Claim rechecks ownership and Account App admission.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postConnectionsClaimablePassports',

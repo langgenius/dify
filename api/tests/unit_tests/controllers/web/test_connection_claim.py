@@ -241,6 +241,9 @@ def test_claim_preserves_credentials_ids_and_independent_choices(
         ]
     checks, exchanges = len(base.auth.calls), harness.oauth.handler.exchanges
     config_overrides(END_USER_AUTH_ALLOW_ANONYMOUS=False)
+    preview = harness.client.post("/api/connections/claimable-passports", json={"passports": [harness.guest_passport]})
+    assert preview.status_code == 200
+    assert preview.get_json()["data"][0]["connection_count"] == 2
     response = harness.claim()
     assert response.status_code == 200
     assert response.headers["Cache-Control"] == "no-store"
@@ -388,8 +391,9 @@ def test_claim_requires_both_valid_scoped_identities(harness: ClaimHarness, fail
     if failure in {"authority_payload", "handoff_payload"}:
         assert response.status_code == 422
     elif failure in {"expired_guest", "account_as_guest", "wrong_app"}:
-        assert response.status_code == 200
-        item = response.get_json()["data"][0]
+        assert response.status_code == 400
+        assert response.get_json()["code"] == "connection_claim_preflight_failed"
+        item = response.get_json()["details"]["failures"][0]
         assert item["status"] == "failed"
         assert item["error"]["status"] == (404 if failure == "wrong_app" else 401)
     else:
@@ -611,7 +615,9 @@ def test_claim_creates_account_app_identity_on_first_visit(harness: ClaimHarness
         assert guest_acceptance_count > 0
 
 
-def test_discovery_and_batch_claim_are_scoped_across_apps(harness: ClaimHarness) -> None:
+def test_discovery_and_batch_claim_are_scoped_across_apps(
+    harness: ClaimHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
     base = harness.oauth.base
     selected = base.service.create_api_key(base.context, base.command())
     with base.sessions.begin() as session:
@@ -690,15 +696,51 @@ def test_discovery_and_batch_claim_are_scoped_across_apps(harness: ClaimHarness)
     response = harness.client.post(
         "/api/connections/claim",
         headers={"Authorization": f"Bearer {harness.proof}"},
-        json={"passports": [harness.guest_passport, "invalid", other_token, harness.guest_passport]},
+        json={"passports": [harness.guest_passport, "invalid", other_token, expired]},
+    )
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "connection_claim_preflight_failed"
+    failures = response.get_json()["details"]["failures"]
+    assert [item["index"] for item in failures] == [1, 3]
+    assert all(item["error"]["code"] == "unauthorized" for item in failures)
+    assert base.service.get_connection(base.context, selected.id).id == selected.id
+    with base.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUser)) == before
+
+    auth = harness.services.web_passport._auth
+    with monkeypatch.context() as patch:
+        patch.setattr(auth, "is_webapp_auth_enabled", lambda: True)
+        patch.setattr(
+            auth,
+            "get_app_auth_type",
+            lambda app_id: WebAppAuthType.PUBLIC if app_id == base.context.app_id else WebAppAuthType.INTERNAL,
+        )
+        patch.setattr(auth, "is_account_allowed", lambda _app, _account: False)
+        response = harness.client.post(
+            "/api/connections/claim",
+            headers={"Authorization": f"Bearer {harness.proof}"},
+            json={"passports": [harness.guest_passport, other_token]},
+        )
+    assert response.status_code == 400
+    failures = response.get_json()["details"]["failures"]
+    assert len(failures) == 1
+    assert failures[0]["index"] == 1
+    assert failures[0]["error"]["code"] == "web_app_access_denied"
+    assert base.service.get_connection(base.context, selected.id).id == selected.id
+    with base.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUser)) == before
+
+    response = harness.client.post(
+        "/api/connections/claim",
+        headers={"Authorization": f"Bearer {harness.proof}"},
+        json={"passports": [harness.guest_passport, other_token, harness.guest_passport]},
     )
     assert response.status_code == 200
     assert response.headers["Cache-Control"] == "no-store"
     items = response.get_json()["data"]
-    assert [item["index"] for item in items] == [0, 1, 2, 3]
-    assert [item["status"] for item in items] == ["success", "failed", "success", "success"]
-    assert items[1]["error"]["code"] == "unauthorized"
-    for index, app_code, count in ((0, harness.oauth.app_code, 1), (2, other_code, 1), (3, harness.oauth.app_code, 0)):
+    assert [item["index"] for item in items] == [0, 1, 2]
+    assert all(item["status"] == "success" for item in items)
+    for index, app_code, count in ((0, harness.oauth.app_code, 1), (1, other_code, 1), (2, harness.oauth.app_code, 0)):
         assert items[index]["app_code"] == app_code
         assert items[index]["claimed_connections"] == count
         assert harness.signer.verify(items[index]["access_token"])["app_code"] == app_code
@@ -842,10 +884,33 @@ def test_batch_claim_preserves_enterprise_app_admission(
     monkeypatch.setattr(auth, "get_app_auth_type", lambda _app: auth_type)
     monkeypatch.setattr(auth, "is_account_allowed", lambda _app, _account: False)
     response = harness.claim()
-    assert response.status_code == 200
-    item = response.get_json()["data"][0]
+    assert response.status_code == 400
+    assert response.get_json()["code"] == "connection_claim_preflight_failed"
+    item = response.get_json()["details"]["failures"][0]
     assert item["status"] == "failed"
     assert item["error"]["code"] == (
         "web_app_access_denied" if auth_type == WebAppAuthType.INTERNAL else "end_user_login_required"
     )
+    assert base.service.get_connection(base.context, selected.id).id == selected.id
+
+
+def test_preflight_dependency_failure_starts_no_transfer(harness: ClaimHarness) -> None:
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    engine = base.sessions.kw["bind"]
+
+    def fail_preflight(
+        _connection: object, _cursor: object, statement: str, _parameters: object, _context: object, _executemany: bool
+    ) -> None:
+        if statement.startswith("SELECT apps.tenant_id, apps.name, count(end_user_connections.id)"):
+            raise RuntimeError("private database failure")
+
+    event.listen(engine, "before_cursor_execute", fail_preflight)
+    try:
+        response = harness.claim()
+    finally:
+        event.remove(engine, "before_cursor_execute", fail_preflight)
+    assert response.status_code == 503
+    assert response.get_json()["code"] == "connection_claim_unavailable"
+    assert "private database failure" not in response.get_data(as_text=True)
     assert base.service.get_connection(base.context, selected.id).id == selected.id

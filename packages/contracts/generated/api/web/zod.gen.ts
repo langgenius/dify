@@ -195,6 +195,13 @@ export const zConnectionClaimPayload = z.object({
 })
 
 /**
+ * ConnectionClaimPreflightDetails
+ */
+export const zConnectionClaimPreflightDetails = z.object({
+  failures: z.array(zConnectionClaimFailureResponse),
+})
+
+/**
  * ConnectionClaimSuccessResponse
  */
 export const zConnectionClaimSuccessResponse = z.object({
@@ -497,6 +504,31 @@ export const zCompletionRequestError = zErrorResponse.and(
   z.object({
     code: z.literal('completion_request_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionClaimPreflightFailedError
+ *
+ * Connection claim preflight failed. No Connections were transferred.
+ */
+export const zConnectionClaimPreflightFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_claim_preflight_failed'),
+    details: zConnectionClaimPreflightDetails.optional(),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionClaimUnavailableError
+ *
+ * Connection claim is temporarily unavailable. Please retry.
+ */
+export const zConnectionClaimUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_claim_unavailable'),
+    status: z.literal(503),
   }),
 )
 

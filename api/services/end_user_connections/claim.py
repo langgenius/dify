@@ -62,6 +62,12 @@ class ConnectionClaimFailure:
     )
 
 
+class ConnectionClaimPreflightError(ConnectionError):
+    def __init__(self, failures: Sequence[ConnectionClaimFailure]) -> None:
+        super().__init__("Connection claim preflight failed. No Connections were transferred.")
+        self.failures = tuple(failures)
+
+
 class ConnectionClaimService:
     def __init__(
         self,
@@ -123,11 +129,32 @@ class ConnectionClaimService:
             raise WebPassportUnauthorizedError("Account login required.") from exc
         if identity.token_source != "webapp_account_login" or identity.account_id is None:
             raise WebPassportUnauthorizedError("Account Web login required.")
-        results: list[ConnectionClaimResult | ConnectionClaimFailure] = []
+        sources: list[tuple[int, ConnectionClaimSource]] = []
+        failures: list[ConnectionClaimFailure] = []
         for index, token in enumerate(passports):
             try:
                 source = self._source(token)
-                # Ordinary Passport issuance owns Account authentication and Enterprise admission.
+                self._passports.authorize_account(app_code=source.app_code, access_token=access_token)
+                sources.append((index, source))
+            except (
+                ConnectionIdentityError,
+                WebPassportUnauthorizedError,
+                WebPassportNotFoundError,
+                WebPassportAuthenticationRequiredError,
+                WebPassportAccessDeniedError,
+            ) as exc:
+                failures.append(ConnectionClaimFailure(index, exc))
+            except Exception as exc:
+                logger.exception("Connection Claim preflight failed for candidate %s", index)
+                raise ConnectionClaimUnavailableError() from exc
+        if failures:
+            raise ConnectionClaimPreflightError(failures)
+
+        results: list[ConnectionClaimResult | ConnectionClaimFailure] = []
+        for index, source in sources:
+            try:
+                # Preflight is advisory across transactions; recheck expiry and current App admission.
+                self._tokens.verify(passports[index])
                 passport = self._passports.issue_for_account(app_code=source.app_code, access_token=access_token)
                 claims = self._tokens.verify(passport.access_token)
                 target_id = claims.get("end_user_id")

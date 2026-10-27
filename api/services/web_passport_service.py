@@ -134,6 +134,11 @@ class WebPassportService:
         Legacy anonymous restoration remains independent; no Guest record or
         conversation history is claimed by selecting the Account identity.
         """
+        app, claims = self.authorize_account(app_code=app_code, access_token=access_token)
+        return self._exchange_account_token(app, claims)
+
+    def authorize_account(self, *, app_code: str, access_token: str) -> tuple[WebAppRecord, WebAppLoginClaims]:
+        """Check Account login and App admission without creating an EndUser or issuing a Passport."""
         if not self._account_passports_enabled:
             raise WebPassportAccountExchangeDisabledError("Account Passport exchange is not enabled.")
         app = self._passports.get_active_web_app(app_code)
@@ -151,7 +156,7 @@ class WebPassportService:
             raise WebPassportAuthenticationRequiredError("Please login as external user.")
         if auth_type == WebAppAuthType.INTERNAL and not self._auth.is_account_allowed(app.app_id, claims.account_id):
             raise WebPassportAccessDeniedError("Account cannot access this web app.")
-        return self._exchange_account_token(app, claims)
+        return app, claims
 
     def _decode_login_token(self, token: str | None) -> WebAppLoginClaims | None:
         if not token:
