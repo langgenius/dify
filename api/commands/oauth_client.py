@@ -13,7 +13,8 @@ from services.oauth_token_contracts import GrantType
 RESERVED_CLIENT_ID_PREFIXES = ("dcr_", "cimd:")
 CLIENT_ID_MAX_LENGTH = 64
 CLIENT_SECRET_BYTES = 32
-DEFAULT_GRANT_TYPES = (GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN)
+# The device grant uses OPENAPI_KNOWN_CLIENT_IDS, not these clients.
+CLIENT_GRANT_TYPES = (GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN)
 
 
 @click.group("oauth-client", help="Manage pre-registered OAuth clients.")
@@ -31,6 +32,13 @@ def _validate_client_id(repository: SQLAlchemyOAuthClientRepository, client_id: 
         raise click.UsageError(f"client id {client_id!r} already exists")
 
 
+def _validate_grant_types(grant_types: Sequence[GrantType]) -> None:
+    if GrantType.AUTHORIZATION_CODE not in grant_types:
+        raise click.UsageError(
+            f"grant types must include {GrantType.AUTHORIZATION_CODE.value!r}: it is how a user logs in"
+        )
+
+
 def _validate_redirect_uris(redirect_uris: Sequence[str]) -> None:
     for uri in redirect_uris:
         if not is_valid_redirect_uri(uri):
@@ -46,8 +54,8 @@ def _validate_redirect_uris(redirect_uris: Sequence[str]) -> None:
     "--grant-type",
     "grant_types",
     multiple=True,
-    type=click.Choice([grant.value for grant in GrantType]),
-    help="Allowed grant type. Repeatable. Default: authorization_code and refresh_token.",
+    type=click.Choice([grant.value for grant in CLIENT_GRANT_TYPES]),
+    help="Allowed grant type. Repeatable; must include authorization_code. Default: both.",
 )
 @click.option("--logo-uri", default=None, help="Logo URL shown on the consent page.")
 def create(
@@ -58,6 +66,10 @@ def create(
     grant_types: tuple[str, ...],
     logo_uri: str | None,
 ) -> None:
+    if not display_name.strip():
+        raise click.UsageError("name must not be empty")
+    chosen_grant_types = [GrantType(value) for value in grant_types] or list(CLIENT_GRANT_TYPES)
+    _validate_grant_types(chosen_grant_types)
     repository = SQLAlchemyOAuthClientRepository(session_factory=session_factory.get_session_maker())
     _validate_client_id(repository, client_id)
     _validate_redirect_uris(redirect_uris)
@@ -70,7 +82,7 @@ def create(
         kind=OAuthClientKind.CONFIDENTIAL if confidential else OAuthClientKind.PUBLIC,
         display_name=display_name,
         redirect_uris=redirect_uris,
-        grant_types=[GrantType(value) for value in grant_types] or DEFAULT_GRANT_TYPES,
+        grant_types=chosen_grant_types,
         client_secret_hash=hash_client_secret(secret) if secret else None,
         logo_uri=logo_uri,
     )

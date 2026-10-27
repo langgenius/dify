@@ -155,3 +155,31 @@ def test_rejects_invalid_logo(engine: Engine, logo: str) -> None:
 
     assert result.exit_code == 2
     assert _rows(engine) == []
+
+
+@pytest.mark.parametrize("grant_type", [GrantType.DEVICE_CODE.value, "client_credentials"])
+def test_offers_only_browser_grant_types(engine: Engine, grant_type: str) -> None:
+    result = _create(
+        "--client-id", "dev", "--name", "Dev", "--redirect-uri", REDIRECT, "--grant-type", grant_type
+    )  # fmt: skip
+
+    assert result.exit_code == 2
+    assert _rows(engine) == []
+
+
+def test_refresh_only_client_is_usage_error(engine: Engine) -> None:
+    result = _create(
+        "--client-id", "dev", "--name", "Dev", "--redirect-uri", REDIRECT, "--grant-type", "refresh_token"
+    )  # fmt: skip
+
+    assert result.exit_code == 2
+    assert "authorization_code" in result.output
+    assert _rows(engine) == []
+
+
+@pytest.mark.parametrize("name", ["", "   "])
+def test_rejects_an_empty_name(engine: Engine, name: str) -> None:
+    result = _create("--client-id", "c", "--name", name, "--redirect-uri", REDIRECT)
+
+    assert result.exit_code == 2
+    assert _rows(engine) == []
