@@ -29,29 +29,29 @@ from typing import TYPE_CHECKING
 from sqlalchemy.orm.state import InstanceState
 
 from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import require_instance
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import require_instance
 
 if TYPE_CHECKING:
     from core.dify_builder.models import Actor
     from runtime_contracts.builder.native.contracts import (
         NativeTestContextRef,
     )
-    from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+    from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
         CapacityOwnerCase,
     )
-    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
+    from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import ContinuationCase
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import (
+    from tests.e2e_tests.containers.core.workflow import (
         test_builder_native_continuation as _fixture_types_0,
     )
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import (
+    from tests.e2e_tests.containers.core.workflow import (
         test_builder_native_continuation as _fixture_types_0,
     )
 
@@ -88,28 +88,28 @@ from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 from services.dify_builder.revision import execution_revision
 from services.dify_builder.serde import context_to_dict
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     CapacityOwnerCase,
     require_present,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import ContinuationCase
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     continuation_case as continuation_case,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_dispatch_claims import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_dispatch_claims import (
     migrated_dispatch_claims as migrated_dispatch_claims,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     native_owner as native_owner,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import no_live as no_live  # noqa: PLC0414
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import raw_ledger_case
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import no_live as no_live  # noqa: PLC0414
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import raw_ledger_case
 
 
 @pytest.fixture
@@ -154,21 +154,23 @@ def _peer(
             )
             actor = Actor(tenant_id=tenant.id, account_id=actor.account_id)
         if another_app or another_tenant:
-            app = App(
-                **{
-                    a.key: require_instance(inspect_orm(app), InstanceState).attrs[a.key].value
-                    for a in inspect(App).column_attrs
-                    if a.key != "id"
-                }
-            )
+            app_values = {
+                a.key: require_instance(inspect_orm(app), InstanceState).attrs[a.key].value
+                for a in inspect(App).column_attrs
+                if a.key != "id"
+            }
+            app = App()
+            for key, value in app_values.items():
+                setattr(app, key, value)
             app.id, app.tenant_id = str(uuid4()), actor.tenant_id
-            workflow = Workflow(
-                **{
-                    a.key: require_instance(inspect_orm(workflow), InstanceState).attrs[a.key].value
-                    for a in inspect(Workflow).column_attrs
-                    if a.key != "id"
-                }
-            )
+            workflow_values = {
+                a.key: require_instance(inspect_orm(workflow), InstanceState).attrs[a.key].value
+                for a in inspect(Workflow).column_attrs
+                if a.key != "id"
+            }
+            workflow = Workflow()
+            for key, value in workflow_values.items():
+                setattr(workflow, key, value)
             workflow.id, workflow.app_id, workflow.tenant_id = str(uuid4()), app.id, actor.tenant_id
             app.workflow_id = workflow.id
             session.add_all((app, workflow))
