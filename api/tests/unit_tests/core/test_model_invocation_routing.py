@@ -519,7 +519,7 @@ def test_readiness_uses_redirect_and_pins_installed_version(
         source=SimpleNamespace(mode="chat"),
         target=SimpleNamespace(minimum_plugin_version="0.1.0", model="fixture-target"),
     )
-    mocker.patch(
+    registry = mocker.patch(
         "core.model_invocation_routing.model_mappings",
         return_value={(plan().logical_provider, ModelType.LLM, "gpt-4o"): rule},
     )
@@ -544,9 +544,11 @@ def test_readiness_uses_redirect_and_pins_installed_version(
     if edited:
         with pytest.raises(ModelRouteUnavailable):
             validate_migration_readiness(plan().tenant_id, "fixture-v1")
+        registry.assert_called_once_with("fixture-v1")
         client.get_model_schema.assert_not_called()
         return
     readiness = validate_migration_readiness(plan().tenant_id, "fixture-v1")
+    registry.assert_called_once_with("fixture-v1")
     assert readiness["credential_fingerprint"] == plan().expected_credential_fingerprint
     args = client.get_model_schema.call_args.args
     assert args[2:6] == ("langgenius/openai", "openai", "llm", "gpt-4o")
@@ -612,6 +614,7 @@ def test_llm_inventory_is_real_strict_canonical_json_without_null_dimension(mock
     )
     record = SimpleNamespace(
         mapping_revision="fixture-v1",
+        pool_types=["paid"],
         source_schema_digest=digest,
         operations=plan().operations,
         source=SimpleNamespace(mode="chat"),
@@ -625,6 +628,7 @@ def test_llm_inventory_is_real_strict_canonical_json_without_null_dimension(mock
     )
     provider = configuration()
     provider.provider.models = [schema]
+    provider.provider.supported_model_types = [ModelType.LLM]
     manager = Mock()
     manager.get_configurations.return_value = [(plan().logical_provider, provider)]
     mocker.patch("core.plugin.impl.model_runtime_factory.create_plugin_provider_manager", return_value=manager)
