@@ -1826,7 +1826,10 @@ export const get27 = oc
     z.object({ params: zGetAppsByAppIdChatMessagesPath, query: zGetAppsByAppIdChatMessagesQuery }),
   )
   .output(zGetAppsByAppIdChatMessagesResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const chatMessages = {
   get: get27,
@@ -2112,7 +2115,10 @@ export const get32 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdMessagesByMessageIdPath }))
   .output(zGetAppsByAppIdMessagesByMessageIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const byMessageId2 = {
   get: get32,
