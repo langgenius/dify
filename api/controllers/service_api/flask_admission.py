@@ -5,7 +5,6 @@ from functools import wraps
 from typing import Concatenate
 
 from flask import request
-from werkzeug.exceptions import Unauthorized
 
 from controllers.common.errors import ForbiddenError, InvalidArgumentError, NotFoundError, UnauthorizedError
 from controllers.service_api.app import error as http_errors
@@ -152,10 +151,7 @@ def _admit_service_api_app() -> ServiceApiAppRecord:
         app_id = next(iter(grant.app_ids))
         tenant_id = grant.tenant_id
     else:
-        try:
-            token = validate_and_get_api_token("app")
-        except Unauthorized as error:
-            raise UnauthorizedError(error.description) from error
+        token = validate_and_get_api_token("app")
         app_id = token.app_id
         tenant_id = token.tenant_id
     try:
