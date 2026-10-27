@@ -708,7 +708,8 @@ class SegmentMutationService:
         segment_ref = scope.document.ref.segment(str(uuid4()))
         saved = False
         try:
-            with self._indexing_state.lock(f"add_segment_lock_document_id_{scope.document.id}", timeout=600):
+            # Share the existing Service API batch lease while allocating positions.
+            with self._indexing_state.lock(f"multi_add_segment_lock_document_id_{scope.document.id}", timeout=600):
                 self._store.save_segment(
                     segment_ref,
                     {
