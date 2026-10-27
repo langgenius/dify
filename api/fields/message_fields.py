@@ -66,10 +66,10 @@ class MessageListItem(ResponseModel):
     query: str
     answer: str = Field(validation_alias="re_sign_file_url_answer")
     feedback: SimpleFeedback | None = Field(default=None, validation_alias="user_feedback")
-    retriever_resources: list[RetrieverResource]
+    retriever_resources: list[RetrieverResource] = Field(default_factory=list)
     created_at: Int64 | None = None
-    agent_thoughts: list[AgentThought]
-    message_files: list[MessageFile]
+    agent_thoughts: list[AgentThought] = Field(default_factory=list)
+    message_files: list[MessageFile] = Field(default_factory=list)
     message_tokens: int = 0
     answer_tokens: int = 0
     provider_response_latency: FloatNumber = 0
@@ -92,6 +92,11 @@ class MessageListItem(ResponseModel):
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+    @field_validator("retriever_resources", "agent_thoughts", "message_files", mode="before")
+    @classmethod
+    def _normalize_null_list_fields(cls, value: list[JSONValueType] | None) -> list[JSONValueType]:
+        return [] if value is None else value
 
 
 class WebMessageListItem(MessageListItem):
