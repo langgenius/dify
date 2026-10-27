@@ -5,15 +5,17 @@ import importlib.util
 import json
 import re
 import threading
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
-from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import httpx
 import jwt
 import pytest
 import requests
+from azure.core.credentials import AccessToken
 from azure.core.exceptions import ClientAuthenticationError
 from botbuilder.schema import ConversationResourceResponse, ResourceResponse
 from botframework.connector.auth import ChannelValidation, ClaimsIdentity, JwtTokenExtractor
@@ -25,6 +27,7 @@ from pytest_mock import MockerFixture
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
+    AuthenticatedIMEvent,
     CardAssessment,
     CorrelationToken,
     CredentialTestFailure,
@@ -34,7 +37,9 @@ from core.human_input_v2.im_integration.adapters import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
+    IMEventConsumer,
     IMEventIngressKind,
+    IMWebhookHandler,
     MessageAccepted,
     MessageLocator,
     MessageSendingError,
@@ -64,7 +69,7 @@ _UUID_PATTERN = re.compile(r"\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{
 
 def _credentials() -> MSTeamsCredentials:
     return MSTeamsCredentials(
-        provider="ms_teams",
+        provider=IMProvider.MS_TEAMS,
         tenant_id="11111111-1111-1111-1111-111111111111",
         client_id="22222222-2222-2222-2222-222222222222",
         client_secret="test-only-client-secret",
@@ -72,7 +77,7 @@ def _credentials() -> MSTeamsCredentials:
 
 
 class _Consumer:
-    def accept(self, event, *, request_ip_address: str | None = None) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
         del request_ip_address
         del event
         return EventAcceptance.ACCEPTED
@@ -83,7 +88,7 @@ class _RecordingConsumer:
         self.acceptance = acceptance
         self.events = []
 
-    def accept(self, event, *, request_ip_address: str | None = None) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
         del request_ip_address
         self.events.append(event)
         return self.acceptance
@@ -94,7 +99,7 @@ class _ThreadSafeRecordingConsumer:
         self._lock = threading.Lock()
         self.events = []
 
-    def accept(self, event, *, request_ip_address: str | None = None) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
         del request_ip_address
         with self._lock:
             self.events.append(event)
@@ -102,7 +107,7 @@ class _ThreadSafeRecordingConsumer:
 
 
 class _FailingConsumer:
-    def accept(self, event, *, request_ip_address: str | None = None) -> EventAcceptance:
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
         del request_ip_address
         del event
         raise RuntimeError("sensitive consumer details")
@@ -125,10 +130,12 @@ def _unsigned_token(claims: dict[str, object]) -> str:
     return f"{header}.{payload}."
 
 
-def _adapter_with_tokens(mocker, *, graph_claims: dict[str, object], bot_claims: dict[str, object]):
+def _adapter_with_tokens(
+    mocker: MockerFixture, *, graph_claims: dict[str, object], bot_claims: dict[str, object]
+) -> tuple[ms_teams.MSTeamsIMProviderAdapter, MagicMock, MagicMock, MagicMock]:
     mocker.patch("core.file.remote_fetcher.make_request", return_value=httpx.Response(404))
     graph_credential = mocker.patch.object(ms_teams, "ClientSecretCredential", autospec=True).return_value
-    graph_credential.get_token.return_value = SimpleNamespace(token=_unsigned_token(graph_claims))
+    graph_credential.get_token.return_value = AccessToken(expires_on=2000000000, token=_unsigned_token(graph_claims))
     graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
     graph_client.get.return_value = httpx.Response(200, json={"value": []})
     bot_credentials = mocker.patch.object(ms_teams, "_MSTeamsBotCredentials", autospec=True).return_value
@@ -234,7 +241,9 @@ def _webhook_request(activity: dict[str, object], *, authorization: str = "Beare
     )
 
 
-def _authenticated_webhook_handler(mocker, consumer):
+def _authenticated_webhook_handler(
+    mocker: MockerFixture, consumer: IMEventConsumer
+) -> tuple[ms_teams.MSTeamsIMProviderAdapter, IMWebhookHandler, MagicMock]:
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -269,11 +278,13 @@ def test_ms_teams_adapter_class_is_available() -> None:
 
 
 def test_ms_teams_adapter_rejects_any_other_credential_type() -> None:
+    # Model an untyped caller to retain the runtime rejection beyond static guarantees.
+    adapter_constructor: Callable[..., ms_teams.MSTeamsIMProviderAdapter] = ms_teams.MSTeamsIMProviderAdapter
     with pytest.raises(TypeError):
-        ms_teams.MSTeamsIMProviderAdapter(None)
+        adapter_constructor(None)
 
 
-def test_construction_exposes_webhook_only_capabilities_without_provider_io(mocker) -> None:
+def test_construction_exposes_webhook_only_capabilities_without_provider_io(mocker: MockerFixture) -> None:
     assert all(hasattr(ms_teams, name) for name in ("ClientSecretCredential", "_MSTeamsBotCredentials", "httpx"))
     graph_credential = mocker.patch.object(ms_teams, "ClientSecretCredential", autospec=True).return_value
     graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
@@ -296,13 +307,13 @@ def test_construction_exposes_webhook_only_capabilities_without_provider_io(mock
     assert graph_client.close.call_count == 2
 
 
-def test_credential_test_confirms_graph_permission_bot_auth_and_tenant(mocker) -> None:
+def test_credential_test_confirms_graph_permission_bot_auth_and_tenant(mocker: MockerFixture) -> None:
     adapter, graph_credential, graph_client, bot_credentials = _adapter_with_tokens(
         mocker,
         graph_claims={},
         bot_claims={},
     )
-    graph_credential.get_token.return_value = SimpleNamespace(token="opaque-graph-access-token")
+    graph_credential.get_token.return_value = AccessToken(expires_on=2000000000, token="opaque-graph-access-token")
     bot_credentials.get_access_token.return_value = "opaque-bot-access-token"
     graph_client.get.return_value = httpx.Response(200, json={"value": []})
 
@@ -329,11 +340,11 @@ def test_credential_test_rejects_revoked_credentials_after_a_cached_success(
         def __init__(self, *_args: object, **_kwargs: object) -> None:
             self.cached = False
 
-        def get_token(self, _scope: str) -> SimpleNamespace:
+        def get_token(self, _scope: str) -> AccessToken:
             if not self.cached and not credentials_valid and rejected_scope == "graph":
                 raise ClientAuthenticationError("AADSTS7000215: invalid client secret")
             self.cached = True
-            return SimpleNamespace(token="opaque-graph-token")
+            return AccessToken(expires_on=2000000000, token="opaque-graph-token")
 
         def close(self) -> None:
             pass
@@ -362,7 +373,7 @@ def test_credential_test_rejects_revoked_credentials_after_a_cached_success(
     assert rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
 
 
-def test_credential_test_returns_safe_typed_failures(mocker) -> None:
+def test_credential_test_returns_safe_typed_failures(mocker: MockerFixture) -> None:
     adapter, _, graph_client, bot_credentials = _adapter_with_tokens(mocker, graph_claims={}, bot_claims={})
     graph_client.get.return_value = httpx.Response(
         403,
@@ -390,7 +401,7 @@ def test_credential_test_returns_safe_typed_failures(mocker) -> None:
     assert "sensitive provider details" not in rejected.reason
 
 
-def test_credential_test_treats_transient_bot_auth_failure_as_unknown(mocker) -> None:
+def test_credential_test_treats_transient_bot_auth_failure_as_unknown(mocker: MockerFixture) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -414,15 +425,15 @@ def test_credential_test_treats_transient_bot_auth_failure_as_unknown(mocker) ->
     assert result.kind is CredentialTestFailureKind.UNKNOWN
 
 
-def test_credential_test_preserves_the_configured_tenant_identity(mocker) -> None:
+def test_credential_test_preserves_the_configured_tenant_identity(mocker: MockerFixture) -> None:
     credentials = MSTeamsCredentials(
-        provider="ms_teams",
+        provider=IMProvider.MS_TEAMS,
         tenant_id="AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
         client_id="BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
         client_secret="test-only-client-secret",
     )
     graph_credential = mocker.patch.object(ms_teams, "ClientSecretCredential", autospec=True).return_value
-    graph_credential.get_token.return_value = SimpleNamespace(token="opaque-graph-access-token")
+    graph_credential.get_token.return_value = AccessToken(expires_on=2000000000, token="opaque-graph-access-token")
     graph_client = mocker.patch.object(ms_teams.httpx, "Client", autospec=True).return_value
     graph_client.get.return_value = httpx.Response(200, json={"value": []})
     bot_credentials = mocker.patch.object(ms_teams, "_MSTeamsBotCredentials", autospec=True).return_value
@@ -434,7 +445,9 @@ def test_credential_test_preserves_the_configured_tenant_identity(mocker) -> Non
     assert result == CredentialTestSuccess(adapter.provider, credentials.tenant_id.lower())
 
 
-def test_credential_test_propagates_graph_and_bot_execution_failures(mocker, caplog) -> None:
+def test_credential_test_propagates_graph_and_bot_execution_failures(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
     adapter, graph_credential, graph_client, bot_credentials = _adapter_with_tokens(
         mocker,
         graph_claims={},
@@ -467,7 +480,7 @@ def test_credential_test_propagates_graph_and_bot_execution_failures(mocker, cap
     assert "sensitive bot failure" not in caplog.text
 
 
-def test_directory_returns_one_ordered_complete_graph_snapshot(mocker) -> None:
+def test_directory_returns_one_ordered_complete_graph_snapshot(mocker: MockerFixture) -> None:
     adapter, _, graph_client, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -513,7 +526,7 @@ def test_directory_returns_one_ordered_complete_graph_snapshot(mocker) -> None:
 
 
 @pytest.mark.parametrize("status", [200, 404, 403, 500])
-def test_directory_reads_avatar_with_provider_authentication(mocker, status: int) -> None:
+def test_directory_reads_avatar_with_provider_authentication(mocker: MockerFixture, status: int) -> None:
     adapter, credential, graph_client, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -597,7 +610,7 @@ def test_directory_reads_avatar_from_captured_graph_response(mocker: MockerFixtu
     assert result.entries[0].avatar.data == image_bytes
 
 
-def test_directory_batch_keeps_other_avatars_when_graph_returns_captured_image_not_found(mocker) -> None:
+def test_directory_batch_keeps_other_avatars_when_graph_returns_captured_image_not_found(mocker: MockerFixture) -> None:
     adapter, _, graph_client, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -638,7 +651,7 @@ def test_directory_batch_keeps_other_avatars_when_graph_returns_captured_image_n
     assert result.entries[2].avatar.data == b"last"
 
 
-def test_directory_discards_partial_entries_and_rejects_untrusted_pagination(mocker) -> None:
+def test_directory_discards_partial_entries_and_rejects_untrusted_pagination(mocker: MockerFixture) -> None:
     adapter, _, graph_client, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -668,7 +681,7 @@ def test_directory_discards_partial_entries_and_rejects_untrusted_pagination(moc
     graph_client.get.assert_called_once()
 
 
-def test_directory_normalizes_blank_optional_fields_and_rejects_pagination_loops(mocker) -> None:
+def test_directory_normalizes_blank_optional_fields_and_rejects_pagination_loops(mocker: MockerFixture) -> None:
     adapter, _, graph_client, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -705,7 +718,9 @@ def test_directory_normalizes_blank_optional_fields_and_rejects_pagination_loops
     assert graph_client.get.call_count == 2
 
 
-def test_directory_normalizes_unexpected_failure_without_provider_details(mocker, caplog) -> None:
+def test_directory_normalizes_unexpected_failure_without_provider_details(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
     adapter, _, graph_client, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -733,7 +748,7 @@ def test_directory_normalizes_unexpected_failure_without_provider_details(mocker
     [(None, "**Review requested**"), ("### Review", "# \\#\\#\\# Review\n\n**Review requested**")],
 )
 def test_text_send_resolves_personal_conversation_and_returns_exact_reference(
-    mocker, subject: str | None, expected: str
+    mocker: MockerFixture, subject: str | None, expected: str
 ) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
         mocker,
@@ -763,7 +778,7 @@ def test_text_send_resolves_personal_conversation_and_returns_exact_reference(
 
     assert isinstance(accepted, MessageAccepted)
     assert "sanitized-conversation" not in repr(accepted.locator)
-    conversation_parameters = connector.conversations.create_conversation.call_args.args[0]
+    conversation_parameters = create_conversation.call_args.args[0]
     assert conversation_parameters.tenant_id == _credentials().tenant_id
     assert conversation_parameters.bot.id == f"28:{_credentials().client_id}"
     assert [member.id for member in conversation_parameters.members] == ["sanitized-user-a"]
@@ -777,7 +792,7 @@ def test_text_send_resolves_personal_conversation_and_returns_exact_reference(
     assert connector.config.retry_policy.retries == 0
 
 
-def test_text_send_failure_is_safe_and_does_not_replay_message_creation(mocker) -> None:
+def test_text_send_failure_is_safe_and_does_not_replay_message_creation(mocker: MockerFixture) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -813,20 +828,20 @@ def test_text_send_failure_is_safe_and_does_not_replay_message_creation(mocker) 
     ("conversation_response", "message_response", "expected_send_count"),
     [
         (None, ResourceResponse(id="unused"), 0),
-        (ConversationResourceResponse(id=None), ResourceResponse(id="unused"), 0),
+        (ConversationResourceResponse.deserialize({"id": None}), ResourceResponse(id="unused"), 0),
         (
             ConversationResourceResponse(id="sanitized-conversation", service_url="https://example.invalid/"),
             ResourceResponse(id="unused"),
             0,
         ),
         (ConversationResourceResponse(id="sanitized-conversation"), None, 1),
-        (ConversationResourceResponse(id="sanitized-conversation"), ResourceResponse(id=None), 1),
+        (ConversationResourceResponse(id="sanitized-conversation"), ResourceResponse.deserialize({"id": None}), 1),
     ],
 )
 def test_text_send_requires_typed_exact_provider_acceptance(
-    mocker,
-    conversation_response,
-    message_response,
+    mocker: MockerFixture,
+    conversation_response: object,
+    message_response: object,
     expected_send_count: int,
 ) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
@@ -856,7 +871,7 @@ def test_text_send_requires_typed_exact_provider_acceptance(
     assert send_to_conversation.call_count == expected_send_count
 
 
-def test_card_assessment_accepts_complete_adaptive_card_intent_without_provider_io(mocker) -> None:
+def test_card_assessment_accepts_complete_adaptive_card_intent_without_provider_io(mocker: MockerFixture) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -879,7 +894,9 @@ def test_card_assessment_accepts_complete_adaptive_card_intent_without_provider_
 
 
 @pytest.mark.parametrize("input_type", ["file", "file-list"])
-def test_card_assessment_rejects_any_unsupported_input_as_one_complete_intent(mocker, input_type: str) -> None:
+def test_card_assessment_rejects_any_unsupported_input_as_one_complete_intent(
+    mocker: MockerFixture, input_type: str
+) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -910,7 +927,7 @@ def test_card_assessment_rejects_any_unsupported_input_as_one_complete_intent(mo
     ],
     ids=("unsupported-action-style", "provider-payload-limit"),
 )
-def test_card_assessment_rejects_unpreservable_presentation_facts(mocker, intent: ResolvedForm) -> None:
+def test_card_assessment_rejects_unpreservable_presentation_facts(mocker: MockerFixture, intent: ResolvedForm) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -931,7 +948,7 @@ def test_card_assessment_rejects_unpreservable_presentation_facts(mocker, intent
     assert assessment.reason
 
 
-def test_unrepresentable_card_send_fails_before_provider_state_creation(mocker) -> None:
+def test_unrepresentable_card_send_fails_before_provider_state_creation(mocker: MockerFixture) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -980,7 +997,7 @@ def test_unrepresentable_card_send_fails_before_provider_state_creation(mocker) 
     ids=("empty-options", "empty-option", "duplicate-options", "duplicate-input", "empty-markdown"),
 )
 def test_card_assessment_rejects_unpreservable_resolved_controls_and_presentation(
-    mocker,
+    mocker: MockerFixture,
     intent: ResolvedForm,
 ) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
@@ -1002,7 +1019,7 @@ def test_card_assessment_rejects_unpreservable_resolved_controls_and_presentatio
     assert assessment.representable is False
 
 
-def test_card_send_rejects_correlation_that_exceeds_provider_payload_limit_before_io(mocker) -> None:
+def test_card_send_rejects_correlation_that_exceeds_provider_payload_limit_before_io(mocker: MockerFixture) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -1050,7 +1067,7 @@ def test_card_renderer_omits_unsupported_teams_action_style(button_style: Button
     ]
 
 
-def test_card_send_preserves_controls_actions_and_correlation_in_one_message(mocker) -> None:
+def test_card_send_preserves_controls_actions_and_correlation_in_one_message(mocker: MockerFixture) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -1129,7 +1146,7 @@ def test_card_send_preserves_controls_actions_and_correlation_in_one_message(moc
     ]
 
 
-def test_card_locator_updates_the_exact_activity_after_adapter_recreation(mocker) -> None:
+def test_card_locator_updates_the_exact_activity_after_adapter_recreation(mocker: MockerFixture) -> None:
     adapter, _, _, bot_credentials = _adapter_with_tokens(
         mocker,
         graph_claims={
@@ -1206,7 +1223,7 @@ def test_message_locator_serializes_only_the_locator_payload() -> None:
     }
 
 
-def test_message_locator_rejects_a_malformed_serialized_value_without_provider_io(mocker) -> None:
+def test_message_locator_rejects_a_malformed_serialized_value_without_provider_io(mocker: MockerFixture) -> None:
     reference = _locator()
     serialized_value = str(reference)
     replacement_character = "A" if serialized_value[-1] != "A" else "B"
@@ -1246,7 +1263,7 @@ def test_message_locator_rejects_a_malformed_serialized_value_without_provider_i
     ],
 )
 def test_card_update_rejects_incompatible_reference_without_provider_io(
-    mocker,
+    mocker: MockerFixture,
     reference: MessageLocator,
 ) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
@@ -1282,8 +1299,8 @@ def test_card_update_rejects_incompatible_reference_without_provider_io(
     ],
 )
 def test_card_update_classifies_provider_failure_without_replaying_or_leaking_details(
-    mocker,
-    caplog,
+    mocker: MockerFixture,
+    caplog: pytest.LogCaptureFixture,
     provider_error: str,
     expected_kind: ReplacementErrorKind,
 ) -> None:
@@ -1330,7 +1347,7 @@ def test_card_update_classifies_provider_failure_without_replaying_or_leaking_de
 
 @pytest.mark.parametrize("include_event_id", [True, False])
 def test_webhook_authenticates_tenant_and_preserves_the_complete_activity_payload(
-    mocker,
+    mocker: MockerFixture,
     include_event_id: bool,
 ) -> None:
     adapter, _, _, _ = _adapter_with_tokens(
@@ -1388,7 +1405,7 @@ def test_webhook_authenticates_tenant_and_preserves_the_complete_activity_payloa
     ],
 )
 def test_webhook_maps_consumer_acceptance_to_bot_framework_ack(
-    mocker,
+    mocker: MockerFixture,
     acceptance: EventAcceptance,
     expected_status: int,
 ) -> None:
@@ -1402,7 +1419,7 @@ def test_webhook_maps_consumer_acceptance_to_bot_framework_ack(
     authenticate_request.assert_awaited_once()
 
 
-def test_webhook_rejects_authentication_and_tenant_mismatch_before_consumer(mocker) -> None:
+def test_webhook_rejects_authentication_and_tenant_mismatch_before_consumer(mocker: MockerFixture) -> None:
     consumer = _RecordingConsumer()
     _, handler, authenticate_request = _authenticated_webhook_handler(mocker, consumer)
     authenticate_request.side_effect = PermissionError("sensitive token details")
@@ -1486,7 +1503,7 @@ def test_webhook_rejects_authentication_and_tenant_mismatch_before_consumer(mock
     ids=("method", "missing-auth", "duplicate-auth", "content-type", "body", "non-object", "duplicate-content-type"),
 )
 def test_webhook_rejects_invalid_http_boundary_without_authentication_or_consumption(
-    mocker,
+    mocker: MockerFixture,
     webhook_request: WebhookRequest,
 ) -> None:
     consumer = _RecordingConsumer()
@@ -1499,7 +1516,7 @@ def test_webhook_rejects_invalid_http_boundary_without_authentication_or_consump
     authenticate_request.assert_not_awaited()
 
 
-def test_webhook_rejects_invalid_activity_shape_and_service_url_before_authentication(mocker) -> None:
+def test_webhook_rejects_invalid_activity_shape_and_service_url_before_authentication(mocker: MockerFixture) -> None:
     consumer = _RecordingConsumer()
     _, handler, authenticate_request = _authenticated_webhook_handler(mocker, consumer)
 
@@ -1515,7 +1532,9 @@ def test_webhook_rejects_invalid_activity_shape_and_service_url_before_authentic
 
 
 @pytest.mark.parametrize("non_standard_value", [float("nan"), float("inf"), float("-inf")])
-def test_webhook_rejects_non_standard_json_constants_before_authentication(mocker, non_standard_value: float) -> None:
+def test_webhook_rejects_non_standard_json_constants_before_authentication(
+    mocker: MockerFixture, non_standard_value: float
+) -> None:
     consumer = _RecordingConsumer()
     _, handler, authenticate_request = _authenticated_webhook_handler(mocker, consumer)
     activity = _teams_activity_body()
@@ -1528,7 +1547,7 @@ def test_webhook_rejects_non_standard_json_constants_before_authentication(mocke
     authenticate_request.assert_not_awaited()
 
 
-def test_webhook_accepts_authoritative_tenant_with_blank_event_id_and_no_provider_time(mocker) -> None:
+def test_webhook_accepts_authoritative_tenant_with_blank_event_id_and_no_provider_time(mocker: MockerFixture) -> None:
     consumer = _RecordingConsumer()
     _, handler, _ = _authenticated_webhook_handler(mocker, consumer)
     activity = _teams_activity_body()
@@ -1546,7 +1565,7 @@ def test_webhook_accepts_authoritative_tenant_with_blank_event_id_and_no_provide
     assert consumer.events[0].occurred_at is None
 
 
-def test_webhook_rejects_an_identity_not_marked_authenticated(mocker) -> None:
+def test_webhook_rejects_an_identity_not_marked_authenticated(mocker: MockerFixture) -> None:
     consumer = _RecordingConsumer()
     _, handler, authenticate_request = _authenticated_webhook_handler(mocker, consumer)
     authenticate_request.return_value = ClaimsIdentity({}, False)
@@ -1557,7 +1576,9 @@ def test_webhook_rejects_an_identity_not_marked_authenticated(mocker) -> None:
     assert consumer.events == []
 
 
-def test_webhook_consumer_failure_is_safe_and_not_acknowledged(mocker, caplog) -> None:
+def test_webhook_consumer_failure_is_safe_and_not_acknowledged(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
     _, handler, _ = _authenticated_webhook_handler(mocker, _FailingConsumer())
 
     response = handler.handle(_webhook_request(_teams_activity_body()))
@@ -1567,7 +1588,7 @@ def test_webhook_consumer_failure_is_safe_and_not_acknowledged(mocker, caplog) -
     assert "sensitive consumer details" not in caplog.text
 
 
-def test_webhook_handler_remains_usable_after_root_close(mocker) -> None:
+def test_webhook_handler_remains_usable_after_root_close(mocker: MockerFixture) -> None:
     consumer = _RecordingConsumer()
     adapter, handler, _ = _authenticated_webhook_handler(mocker, consumer)
     adapter.close()
@@ -1579,7 +1600,7 @@ def test_webhook_handler_remains_usable_after_root_close(mocker) -> None:
     assert len(consumer.events) == 1
 
 
-def test_webhook_handler_supports_overlapping_calls_without_shared_request_state(mocker) -> None:
+def test_webhook_handler_supports_overlapping_calls_without_shared_request_state(mocker: MockerFixture) -> None:
     consumer = _ThreadSafeRecordingConsumer()
     adapter, _, _, _ = _adapter_with_tokens(
         mocker,
@@ -1595,7 +1616,7 @@ def test_webhook_handler_supports_overlapping_calls_without_shared_request_state
         },
     )
 
-    async def authenticate_request(*args, **kwargs):
+    async def authenticate_request(*args: object, **kwargs: object) -> ClaimsIdentity:
         del args, kwargs
         return ClaimsIdentity({"aud": _credentials().client_id}, True)
 
@@ -1636,7 +1657,7 @@ def test_committed_ms_teams_fixture_contains_only_sanitized_protocol_evidence() 
     assert fixture["value"]["correlation_token"] == "test-only-correlation"
 
 
-def test_webhook_official_jwt_validation_rejects_tampering_wrong_audience_and_expiry(mocker) -> None:
+def test_webhook_official_jwt_validation_rejects_tampering_wrong_audience_and_expiry(mocker: MockerFixture) -> None:
     signing_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     wrong_signing_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     public_jwk = RSAAlgorithm.to_jwk(signing_key.public_key(), as_dict=True)

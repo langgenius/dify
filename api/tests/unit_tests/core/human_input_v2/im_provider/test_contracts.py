@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import operator
+from collections.abc import Callable
 from dataclasses import FrozenInstanceError, fields
 from datetime import datetime
-from typing import get_type_hints
+from typing import NewType, get_type_hints
 
 import pytest
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import adapters as im_adapters
@@ -56,8 +58,7 @@ def test_resolved_slack_credentials_are_strict_immutable_and_secret_safe() -> No
         SlackCredentials.model_validate({**credentials.model_dump(), "unexpected": "value"})
     with pytest.raises(ValidationError):
         SlackCredentials.model_validate({**credentials.model_dump(), "provider": IMProvider.FEISHU})
-    with pytest.raises(ValidationError):
-        credentials.client_id = "changed"
+    pytest.raises(ValidationError, setattr, credentials, "client_id", "changed")
 
 
 def test_resolved_slack_credentials_require_app_token_only_for_socket_mode() -> None:
@@ -81,14 +82,12 @@ def test_provider_neutral_values_are_immutable() -> None:
     directory = Directory((DirectoryEntry(ProviderUserId("user-1"), None, None),))
     success = CredentialTestSuccess(IMProvider.SLACK, "team-1")
 
-    with pytest.raises(FrozenInstanceError):
-        directory.entries = ()
-    with pytest.raises(FrozenInstanceError):
-        success.provider_tenant_id = "team-2"
+    pytest.raises(FrozenInstanceError, setattr, directory, "entries", ())
+    pytest.raises(FrozenInstanceError, setattr, success, "provider_tenant_id", "team-2")
 
 
 def test_card_event_contract_is_immutable_and_requires_json_inputs() -> None:
-    source_inputs = {"nested": {"values": [1, True, None, "text"]}}
+    source_inputs: dict[str, JsonValue] = {"nested": {"values": [1, True, None, "text"]}}
     event = IMCardEvent(
         provider_user_id=ProviderUserId("user"),
         action_id="approve",
@@ -98,16 +97,15 @@ def test_card_event_contract_is_immutable_and_requires_json_inputs() -> None:
 
     source_inputs["nested"] = "changed"
     assert event.inputs == {"nested": {"values": [1, True, None, "text"]}}
-    with pytest.raises(TypeError):
-        event.inputs["other"] = "value"
-    with pytest.raises(TypeError):
-        del event.inputs["nested"]
-    with pytest.raises(FrozenInstanceError):
-        event.action_id = "changed"
+    pytest.raises(TypeError, operator.setitem, event.inputs, "other", "value")
+    pytest.raises(TypeError, operator.delitem, event.inputs, "nested")
+    pytest.raises(FrozenInstanceError, setattr, event, "action_id", "changed")
     with pytest.raises(ValueError, match="card event action identifier must not be empty"):
         IMCardEvent(ProviderUserId("user"), "", {}, CorrelationToken("token"))
+    # Model an untyped caller to retain the runtime rejection beyond static guarantees.
+    event_constructor: Callable[..., IMCardEvent] = IMCardEvent
     with pytest.raises(TypeError):
-        IMCardEvent(ProviderUserId("user"), "approve", {"invalid": object()}, CorrelationToken("token"))
+        event_constructor(ProviderUserId("user"), "approve", {"invalid": object()}, CorrelationToken("token"))
 
 
 def test_card_event_nested_json_values_remain_mutable() -> None:
@@ -208,8 +206,10 @@ def test_authenticated_event_requires_exported_closed_ingress_kind() -> None:
         "payload",
     )
 
+    # Model an untyped caller omitting a required constructor argument.
+    event_constructor: Callable[..., AuthenticatedIMEvent] = AuthenticatedIMEvent
     with pytest.raises(TypeError, match="ingress_kind"):
-        AuthenticatedIMEvent(
+        event_constructor(
             provider=IMProvider.SLACK,
             provider_tenant_id="tenant-1",
             event_id="event-1",
@@ -235,6 +235,7 @@ def test_message_locator_contract_is_a_nominal_runtime_string() -> None:
     stored_value = "opaque-locator-value"
     locator = MessageLocator(stored_value)
 
+    assert isinstance(MessageLocator, NewType)
     assert MessageLocator.__supertype__ is str
     assert isinstance(locator, str)
     assert type(locator) is str

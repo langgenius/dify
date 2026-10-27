@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from types import SimpleNamespace
 from typing import NoReturn
 
 import pytest
@@ -318,7 +317,7 @@ def test_non_redis_runtime_errors_are_not_silently_treated_as_cache_failures(
     [
         (_ProviderError(401), _ProviderError),
         (_ProviderError(500), _ProviderError),
-        (SimpleNamespace(body=None), IMProviderError),
+        (GetTokenResponse().from_map({"body": None}), IMProviderError),
         (_token_response(token=""), IMProviderError),
         (_token_response(expires_in=0), IMProviderError),
         (_token_response(expires_in=True), IMProviderError),

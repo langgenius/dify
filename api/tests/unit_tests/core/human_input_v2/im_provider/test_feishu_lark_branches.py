@@ -5,7 +5,6 @@ import hashlib
 import inspect
 import json
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from typing import cast, get_type_hints, is_protocol
 
 import pytest
@@ -35,16 +34,6 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
     UserAction,
 )
-
-
-class _CallRecorder:
-    def __init__(self, result: dict[str, object]) -> None:
-        self.result = result
-        self.requests: list[object] = []
-
-    def __call__(self, request: object, _option: object = None) -> dict[str, object]:
-        self.requests.append(request)
-        return self.result
 
 
 def test_stream_factory_returns_private_concrete_type_without_stream_contract_stub() -> None:
@@ -77,29 +66,6 @@ def test_stream_errors_use_integrated_provider_contract_split() -> None:
     assert not hasattr(adapter_module, "IMStreamRunError")
 
 
-class _ClientBuilder:
-    def __init__(self, client: object) -> None:
-        self.client = client
-
-    def app_id(self, _value: str) -> _ClientBuilder:
-        return self
-
-    def app_secret(self, _value: str) -> _ClientBuilder:
-        return self
-
-    def domain(self, _value: str) -> _ClientBuilder:
-        return self
-
-    def enable_set_token(self, _value: bool) -> _ClientBuilder:
-        return self
-
-    def log_level(self, _value: object) -> _ClientBuilder:
-        return self
-
-    def build(self) -> object:
-        return self.client
-
-
 def _credentials() -> FeishuCredentials:
     return FeishuCredentials(
         provider=IMProvider.FEISHU,
@@ -125,25 +91,85 @@ def _intent(
 
 
 def test_official_gateway_builds_every_sdk_request_with_pagination(monkeypatch: pytest.MonkeyPatch) -> None:
-    tenant_call = _CallRecorder({"code": 0, "data": {"tenant": {"tenant_key": "tenant_sanitized"}}})
-    scope_call = _CallRecorder({"code": 0, "data": {"department_ids": [], "user_ids": [], "has_more": False}})
-    department_call = _CallRecorder({"code": 0, "data": {"items": [], "has_more": False}})
-    user_call = _CallRecorder({"code": 0, "data": {"items": [], "has_more": False}})
-    create_call = _CallRecorder({"code": 0, "data": {"message_id": "om_sanitized"}})
-    patch_call = _CallRecorder({"code": 0, "data": {}})
-    client = SimpleNamespace(
-        tenant=SimpleNamespace(v2=SimpleNamespace(tenant=SimpleNamespace(query=tenant_call))),
-        contact=SimpleNamespace(
-            v3=SimpleNamespace(
-                scope=SimpleNamespace(list=scope_call),
-                department=SimpleNamespace(children=department_call),
-                user=SimpleNamespace(find_by_department=user_call),
-            )
-        ),
-        im=SimpleNamespace(v1=SimpleNamespace(message=SimpleNamespace(create=create_call, patch=patch_call))),
-    )
-    monkeypatch.setattr(adapter_module.lark.Client, "builder", lambda: _ClientBuilder(client))
+    client = adapter_module.lark.Client.builder().app_id("test-app").app_secret("test-secret").build()
+    assert client.tenant is not None
+    assert client.contact is not None
+    assert client.im is not None
+    tenant_requests: list[adapter_module.tenant.v2.QueryTenantRequest] = []
 
+    def tenant_call(
+        request: adapter_module.tenant.v2.QueryTenantRequest, option: adapter_module.lark.RequestOption | None = None
+    ) -> adapter_module.tenant.v2.QueryTenantResponse:
+        del option
+        tenant_requests.append(request)
+        return adapter_module.tenant.v2.QueryTenantResponse(
+            {"code": 0, "data": {"tenant": {"tenant_key": "tenant_sanitized"}}}
+        )
+
+    monkeypatch.setattr(client.tenant.v2.tenant, "query", tenant_call)
+    scope_requests: list[adapter_module.contact.v3.ListScopeRequest] = []
+
+    def scope_call(
+        request: adapter_module.contact.v3.ListScopeRequest, option: adapter_module.lark.RequestOption | None = None
+    ) -> adapter_module.contact.v3.ListScopeResponse:
+        del option
+        scope_requests.append(request)
+        return adapter_module.contact.v3.ListScopeResponse(
+            {"code": 0, "data": {"department_ids": [], "user_ids": [], "has_more": False}}
+        )
+
+    monkeypatch.setattr(client.contact.v3.scope, "list", scope_call)
+    department_requests: list[adapter_module.contact.v3.ChildrenDepartmentRequest] = []
+
+    def department_call(
+        request: adapter_module.contact.v3.ChildrenDepartmentRequest,
+        option: adapter_module.lark.RequestOption | None = None,
+    ) -> adapter_module.contact.v3.ChildrenDepartmentResponse:
+        del option
+        department_requests.append(request)
+        return adapter_module.contact.v3.ChildrenDepartmentResponse(
+            {"code": 0, "data": {"items": [], "has_more": False}}
+        )
+
+    monkeypatch.setattr(client.contact.v3.department, "children", department_call)
+    user_requests: list[adapter_module.contact.v3.FindByDepartmentUserRequest] = []
+
+    def user_call(
+        request: adapter_module.contact.v3.FindByDepartmentUserRequest,
+        option: adapter_module.lark.RequestOption | None = None,
+    ) -> adapter_module.contact.v3.FindByDepartmentUserResponse:
+        del option
+        user_requests.append(request)
+        return adapter_module.contact.v3.FindByDepartmentUserResponse(
+            {"code": 0, "data": {"items": [], "has_more": False}}
+        )
+
+    monkeypatch.setattr(client.contact.v3.user, "find_by_department", user_call)
+    create_requests: list[adapter_module.im.v1.CreateMessageRequest] = []
+
+    def create_call(
+        request: adapter_module.im.v1.CreateMessageRequest, option: adapter_module.lark.RequestOption | None = None
+    ) -> adapter_module.im.v1.CreateMessageResponse:
+        del option
+        create_requests.append(request)
+        return adapter_module.im.v1.CreateMessageResponse({"code": 0, "data": {"message_id": "om_sanitized"}})
+
+    monkeypatch.setattr(client.im.v1.message, "create", create_call)
+    patch_requests: list[adapter_module.im.v1.PatchMessageRequest] = []
+
+    def patch_call(
+        request: adapter_module.im.v1.PatchMessageRequest, option: adapter_module.lark.RequestOption | None = None
+    ) -> adapter_module.im.v1.PatchMessageResponse:
+        del option
+        patch_requests.append(request)
+        return adapter_module.im.v1.PatchMessageResponse({"code": 0, "data": {}})
+
+    monkeypatch.setattr(client.im.v1.message, "patch", patch_call)
+
+    def build_client(_builder: object) -> adapter_module.lark.Client:
+        return client
+
+    monkeypatch.setattr(type(adapter_module.lark.Client.builder()), "build", build_client)
     gateway = adapter_module._create_sdk_gateway(_credentials(), "https://open.feishu.cn")
     department = adapter_module._DepartmentIdentity("dept_sanitized", "department_id")
 
@@ -153,16 +179,19 @@ def test_official_gateway_builds_every_sdk_request_with_pagination(monkeypatch: 
     assert gateway.list_users(department, "users-next")["code"] == 0
     assert gateway.create_message("union_sanitized", "text", '{"text":"hello"}')["code"] == 0
     assert gateway.patch_message("om_sanitized", '{"schema":"2.0"}')["code"] == 0
-    assert len(tenant_call.requests) == len(scope_call.requests) == len(department_call.requests) == 1
-    assert len(user_call.requests) == len(create_call.requests) == len(patch_call.requests) == 1
-    assert department_call.requests[0].paths["department_id"] == "dept_sanitized"
-    assert ("page_token", "scope-next") in scope_call.requests[0].queries
+    assert len(tenant_requests) == len(scope_requests) == len(department_requests) == 1
+    assert len(user_requests) == len(create_requests) == len(patch_requests) == 1
+    assert department_requests[0].paths["department_id"] == "dept_sanitized"
+    assert ("page_token", "scope-next") in scope_requests[0].queries
 
 
 def test_official_gateway_rejects_an_incomplete_sdk_client(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = SimpleNamespace(tenant=None, contact=object(), im=object())
-    monkeypatch.setattr(adapter_module.lark.Client, "builder", lambda: _ClientBuilder(client))
+    client = adapter_module.lark.Client()
 
+    def build_client(_builder: object) -> adapter_module.lark.Client:
+        return client
+
+    monkeypatch.setattr(type(adapter_module.lark.Client.builder()), "build", build_client)
     with pytest.raises(RuntimeError, match="required services"):
         adapter_module._OfficialSDKGateway(_credentials(), "https://open.feishu.cn")
 

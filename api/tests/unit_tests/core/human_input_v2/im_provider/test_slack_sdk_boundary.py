@@ -1117,6 +1117,7 @@ def test_real_socket_request_serialization_is_acked_only_after_acceptance(
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     consumer = _RecordingConsumer()
     stream = adapter.create_stream_handler(consumer)
+    assert stream is not None
 
     stream.start()
 
@@ -1130,7 +1131,7 @@ def test_real_socket_request_serialization_is_acked_only_after_acceptance(
 
     stream.stop()
 
-    assert transport.closed is True
+    assert transport.closed
 
 
 @pytest.mark.parametrize("failure_stage", ["connect", "close"])
@@ -1155,6 +1156,7 @@ def test_socket_transport_failures_are_normalized(
     monkeypatch.setattr(slack_adapter_module, "SocketModeClient", _FailingSocketTransport)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     stream = adapter.create_stream_handler(_RecordingConsumer())
+    assert stream is not None
 
     if failure_stage == "connect":
         with pytest.raises(IMStreamStartError):
@@ -1211,6 +1213,7 @@ def test_socket_sdk_disconnect_listeners_are_observable_and_safe(
     monkeypatch.setattr(slack_adapter_module, "SocketModeClient", _ListenerSocketTransport)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     stream = adapter.create_stream_handler(consumer)
+    assert stream is not None
 
     with caplog.at_level("ERROR", logger=slack_adapter_module.__name__):
         stream.start()
@@ -1225,7 +1228,7 @@ def test_socket_sdk_disconnect_listeners_are_observable_and_safe(
 
     transport = _ListenerSocketTransport.instance
     assert transport is not None
-    assert transport.closed is True
+    assert transport.closed
     assert len(transport.responses) == 1
     assert len(consumer.events) == 1
     assert sensitive_marker not in caplog.text
@@ -1262,6 +1265,7 @@ def test_socket_start_waits_for_transport_construction(
     monkeypatch.setattr(slack_adapter_module, "SocketModeClient", _ConstructionBlockedSocketTransport)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     stream = adapter.create_stream_handler(_RecordingConsumer())
+    assert stream is not None
 
     def _manage_stream() -> None:
         try:
@@ -1288,7 +1292,7 @@ def test_socket_start_waits_for_transport_construction(
     owner_thread.join(2)
 
     assert not owner_thread.is_alive()
-    assert transport.closed is True
+    assert transport.closed
     assert lifecycle_errors == []
 
 
@@ -1334,6 +1338,7 @@ def test_socket_start_waits_for_connection_readiness_and_accepts_sdk_callback(
     monkeypatch.setattr(slack_adapter_module, "SocketModeClient", _SuccessfulSocketTransport)
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     stream = adapter.create_stream_handler(consumer)
+    assert stream is not None
 
     def _manage_stream() -> None:
         try:
@@ -1362,5 +1367,5 @@ def test_socket_start_waits_for_connection_readiness_and_accepts_sdk_callback(
     owner_thread.join(2)
 
     assert not owner_thread.is_alive()
-    assert transport.closed is True
+    assert transport.closed
     assert lifecycle_errors == []

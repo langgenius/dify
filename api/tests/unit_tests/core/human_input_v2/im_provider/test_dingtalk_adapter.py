@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from email.message import Message
 from io import BytesIO
 from pathlib import Path
-from types import SimpleNamespace
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 from urllib.parse import urlparse
@@ -17,7 +17,6 @@ from alibabacloud_dingtalk.robot_1_0.models import (
     BatchSendOTOHeaders,
     BatchSendOTORequest,
     BatchSendOTOResponse,
-    BatchSendOTOResponseBody,
 )
 from alibabacloud_tea_util.models import RuntimeOptions
 from pydantic import ValidationError
@@ -131,7 +130,7 @@ class _FakeDirectoryHTTPClient:
         status_code, payload = self._route(parsed)
         if not 200 <= status_code < 300:
             raise urllib_error.HTTPError(
-                url, status_code, "provider HTTP failure", {}, BytesIO(json.dumps(payload).encode())
+                url, status_code, "provider HTTP failure", Message(), BytesIO(json.dumps(payload).encode())
             )
         return dingtalk_module._DirectoryHTTPResponse(json.dumps(payload, separators=(",", ":")).encode(), status_code)
 
@@ -147,7 +146,7 @@ class _FakeDirectoryHTTPClient:
         status_code, payload = self._route(parsed)
         if not 200 <= status_code < 300:
             raise urllib_error.HTTPError(
-                url, status_code, "provider HTTP failure", {}, BytesIO(json.dumps(payload).encode())
+                url, status_code, "provider HTTP failure", Message(), BytesIO(json.dumps(payload).encode())
             )
         return dingtalk_module._DirectoryHTTPResponse(json.dumps(payload, separators=(",", ":")).encode(), status_code)
 
@@ -162,8 +161,8 @@ class _Consumer:
         return EventAcceptance.ACCEPTED
 
 
-def _token_response(token: str = "sanitized-access-token", expires_in: int = 7200) -> object:
-    return SimpleNamespace(body=SimpleNamespace(access_token=token, expires_in=expires_in))
+def _token_response(token: str = "sanitized-access-token", expires_in: int = 7200) -> GetTokenResponse:
+    return GetTokenResponse(body=GetTokenResponseBody(access_token=token, expires_in=expires_in))
 
 
 def _send_response(
@@ -173,15 +172,17 @@ def _send_response(
     filtered: list[str] | None = None,
     flow_controlled: list[str] | None = None,
     invalid: list[str] | None = None,
-) -> object:
-    return SimpleNamespace(
-        status_code=status_code,
-        body=SimpleNamespace(
-            process_query_key=process_query_key,
-            filtered_staff_id_list=filtered,
-            flow_controlled_staff_id_list=flow_controlled,
-            invalid_staff_id_list=invalid,
-        ),
+) -> BatchSendOTOResponse:
+    return BatchSendOTOResponse().from_map(
+        {
+            "statusCode": status_code,
+            "body": {
+                "processQueryKey": process_query_key,
+                "filteredStaffIdList": filtered,
+                "flowControlledStaffIdList": flow_controlled,
+                "invalidStaffIdList": invalid,
+            },
+        }
     )
 
 
@@ -628,7 +629,7 @@ def test_credential_test_normalizes_sdk_failures_without_provider_material(
         assert captured.value is token_response
 
 
-def test_credential_test_preserves_oauth_provider_error_code(monkeypatch) -> None:
+def test_credential_test_preserves_oauth_provider_error_code(monkeypatch: pytest.MonkeyPatch) -> None:
     clients = iter(
         (
             _FakeOAuthClient(
@@ -868,9 +869,9 @@ def test_default_token_provider_uses_complete_sdk_responses_without_cache() -> N
     "response",
     [
         _MalformedTokenResponse(body=None),
-        GetTokenResponse(status_code=200, body=GetTokenResponseBody(access_token="fake-token", expires_in=True)),
-        GetTokenResponse(status_code=200, body=GetTokenResponseBody(access_token="fake-token", expires_in=-1)),
-        SimpleNamespace(body=SimpleNamespace(access_token=object(), expires_in=7200)),
+        GetTokenResponse().from_map({"statusCode": 200, "body": {"access_token": "fake-token", "expires_in": True}}),
+        GetTokenResponse().from_map({"statusCode": 200, "body": {"access_token": "fake-token", "expires_in": -1}}),
+        GetTokenResponse().from_map({"body": {"access_token": object(), "expires_in": 7200}}),
     ],
 )
 def test_default_token_provider_rejects_malformed_sdk_responses(response: object) -> None:
@@ -1185,15 +1186,17 @@ def test_messaging_accepts_complete_sdk_response_and_locator_round_trips_through
     subject: str | None, expected: str
 ) -> None:
     token_provider = _FakeTokenProvider("fake-access-token-message-001")
-    response = BatchSendOTOResponse(
-        headers={"content-type": "application/json", "x-acs-request-id": "fake-request-message-001"},
-        status_code=200,
-        body=BatchSendOTOResponseBody(
-            filtered_staff_id_list=[],
-            flow_controlled_staff_id_list=[],
-            invalid_staff_id_list=[],
-            process_query_key="fake-process-query-key-001",
-        ),
+    response = BatchSendOTOResponse().from_map(
+        {
+            "headers": {"content-type": "application/json", "x-acs-request-id": "fake-request-message-001"},
+            "statusCode": 200,
+            "body": {
+                "filteredStaffIdList": [],
+                "flowControlledStaffIdList": [],
+                "invalidStaffIdList": [],
+                "processQueryKey": "fake-process-query-key-001",
+            },
+        }
     )
     robot = _FakeRobotClient(response)
 
@@ -1216,21 +1219,19 @@ def test_messaging_accepts_complete_sdk_response_and_locator_round_trips_through
 @pytest.mark.parametrize(
     "response",
     [
-        SimpleNamespace(body=None),
-        SimpleNamespace(status_code=200, body=None),
-        SimpleNamespace(status_code=200, body=SimpleNamespace(process_query_key=" ")),
-        SimpleNamespace(status_code=200, body=SimpleNamespace(process_query_key=42)),
-        SimpleNamespace(status_code=True, body=SimpleNamespace(process_query_key="fake-key")),
-        SimpleNamespace(status_code="200", body=SimpleNamespace(process_query_key="fake-key")),
-        SimpleNamespace(status_code=199, body=SimpleNamespace(process_query_key="fake-key")),
-        SimpleNamespace(status_code=300, body=SimpleNamespace(process_query_key="fake-key")),
-        SimpleNamespace(
-            status_code=200,
-            body=SimpleNamespace(process_query_key="fake-key", invalid_staff_id_list="fake-user-001"),
+        BatchSendOTOResponse().from_map({"body": None}),
+        BatchSendOTOResponse().from_map({"statusCode": 200, "body": None}),
+        BatchSendOTOResponse().from_map({"statusCode": 200, "body": {"processQueryKey": " "}}),
+        BatchSendOTOResponse().from_map({"statusCode": 200, "body": {"processQueryKey": 42}}),
+        BatchSendOTOResponse().from_map({"statusCode": True, "body": {"processQueryKey": "fake-key"}}),
+        BatchSendOTOResponse().from_map({"statusCode": "200", "body": {"processQueryKey": "fake-key"}}),
+        BatchSendOTOResponse().from_map({"statusCode": 199, "body": {"processQueryKey": "fake-key"}}),
+        BatchSendOTOResponse().from_map({"statusCode": 300, "body": {"processQueryKey": "fake-key"}}),
+        BatchSendOTOResponse().from_map(
+            {"statusCode": 200, "body": {"processQueryKey": "fake-key", "invalidStaffIdList": "fake-user-001"}}
         ),
-        SimpleNamespace(
-            status_code=200,
-            body=SimpleNamespace(process_query_key="fake-key", filtered_staff_id_list=object()),
+        BatchSendOTOResponse().from_map(
+            {"statusCode": 200, "body": {"processQueryKey": "fake-key", "filteredStaffIdList": object()}}
         ),
     ],
 )

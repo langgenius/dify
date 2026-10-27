@@ -194,6 +194,7 @@ def test_sanitized_submit_fixture_decodes_exact_unicode_round_trip(activity_type
         inputs={"comment-🧪": "Ready 🚀", "decision": "ship"},
         correlation_token=CorrelationToken("correlation-🔐"),
     )
+    assert isinstance(result, IMCardEvent)
     assert "__dify.human_input" not in result.inputs
 
 

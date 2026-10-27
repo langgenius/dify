@@ -975,9 +975,12 @@ def test_webhook_signature_verifier_failures_are_safe_and_unauthenticated(
 ) -> None:
     consumer = _RecordingConsumer()
     handler = _adapter(mocker, mocker.create_autospec(WebClient, instance=True)).create_webhook_handler(consumer)
-    verifier = mocker.Mock()
-    verifier.is_valid.side_effect = verification_failure
-    mocker.patch.object(slack_adapter_module, "SignatureVerifier", return_value=verifier)
+
+    def fail_verification(self: slack_adapter_module.SignatureVerifier, **kwargs: object) -> bool:
+        del self, kwargs
+        raise verification_failure
+
+    mocker.patch.object(slack_adapter_module.SignatureVerifier, "is_valid", new=fail_verification)
     body = json.dumps({"type": "event_callback", "team_id": "sanitized-team", "event": {"type": "message"}}).encode()
 
     with caplog.at_level(logging.ERROR, logger=slack_adapter_module.__name__):
@@ -1240,6 +1243,7 @@ def test_socket_control_frames_and_not_accepted_business_events_are_not_acked(mo
 
     mocker.patch.object(slack_adapter_module, "SocketModeClient", _FakeSocketModeClient)
     stream = _adapter(mocker, mocker.create_autospec(WebClient, instance=True)).create_stream_handler(consumer)
+    assert stream is not None
 
     stream.start()
 
@@ -1251,7 +1255,7 @@ def test_socket_control_frames_and_not_accepted_business_events_are_not_acked(mo
 
     stream.stop()
 
-    assert socket_client.closed is True
+    assert socket_client.closed
 
 
 def test_socket_stop_before_start_opens_no_connection_and_consumes_one_shot(mocker: MockerFixture) -> None:
@@ -1259,6 +1263,7 @@ def test_socket_stop_before_start_opens_no_connection_and_consumes_one_shot(mock
     stream = _adapter(mocker, mocker.create_autospec(WebClient, instance=True)).create_stream_handler(
         _RecordingConsumer()
     )
+    assert stream is not None
 
     stream.stop()
     stream.stop()
@@ -1312,6 +1317,7 @@ def test_socket_remote_disconnect_is_observable_without_adapter_lifecycle_transi
 
     mocker.patch.object(slack_adapter_module, "SocketModeClient", _ListenerSocketModeClient)
     stream = _adapter(mocker, mocker.create_autospec(WebClient, instance=True)).create_stream_handler(consumer)
+    assert stream is not None
 
     with caplog.at_level(logging.ERROR, logger=slack_adapter_module.__name__):
         stream.start()
@@ -1326,7 +1332,7 @@ def test_socket_remote_disconnect_is_observable_without_adapter_lifecycle_transi
 
     socket_client = _ListenerSocketModeClient.instance
     assert socket_client is not None
-    assert socket_client.closed is True
+    assert socket_client.closed
     assert len(socket_client.responses) == 1
     assert len(consumer.events) == 1
     assert sensitive_marker not in caplog.text
@@ -1364,6 +1370,7 @@ def test_socket_close_listener_after_local_stop_is_normal_and_redacted(
     stream = _adapter(mocker, mocker.create_autospec(WebClient, instance=True)).create_stream_handler(
         _RecordingConsumer()
     )
+    assert stream is not None
 
     with caplog.at_level(logging.ERROR, logger=slack_adapter_module.__name__):
         stream.start()
@@ -1371,7 +1378,7 @@ def test_socket_close_listener_after_local_stop_is_normal_and_redacted(
 
     socket_client = _LocallyClosedSocketModeClient.instance
     assert socket_client is not None
-    assert socket_client.closed is True
+    assert socket_client.closed
     assert sensitive_marker not in caplog.text
 
 
@@ -1402,6 +1409,7 @@ def test_socket_connect_failure_is_normalized_and_cleans_up_partial_resources(
     stream = _adapter(mocker, mocker.create_autospec(WebClient, instance=True)).create_stream_handler(
         _RecordingConsumer()
     )
+    assert stream is not None
 
     with caplog.at_level(logging.ERROR, logger=slack_adapter_module.__name__):
         with pytest.raises(IMStreamStartError) as raised:
@@ -1411,7 +1419,7 @@ def test_socket_connect_failure_is_normalized_and_cleans_up_partial_resources(
     socket_client = _FailingSocketModeClient.instance
     assert socket_client is not None
     assert socket_client.connect_calls == 1
-    assert socket_client.closed is True
+    assert socket_client.closed
     assert sensitive_marker not in str(raised.value)
     assert sensitive_marker not in caplog.text
 
@@ -1465,6 +1473,7 @@ def test_socket_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mock
     mocker.patch.object(slack_adapter_module, "SocketModeClient", _FakeSocketModeClient)
     adapter = _adapter(mocker, mocker.create_autospec(WebClient, instance=True))
     stream = adapter.create_stream_handler(consumer)
+    assert stream is not None
 
     stream.start()
     assert consumer_started.wait(2)
@@ -1480,7 +1489,7 @@ def test_socket_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mock
     assert stop_finished.wait(2)
     socket_client = _FakeSocketModeClient.instance
     assert socket_client is not None
-    assert socket_client.closed is True
+    assert socket_client.closed
 
     release_consumer.set()
     stop_thread.join(2)
@@ -1490,6 +1499,6 @@ def test_socket_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mock
     assert not stop_thread.is_alive()
     assert not socket_client.callback_thread.is_alive()
     assert stop_finished.is_set()
-    assert socket_client.closed is True
+    assert socket_client.closed
     assert len(socket_client.responses) == 1
     assert consumer.calls == 1

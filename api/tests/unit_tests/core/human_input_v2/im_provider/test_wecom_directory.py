@@ -92,7 +92,10 @@ class _UserAPI:
 
 class _TagAPI:
     def __init__(self, route: Callable[[int], object] | None = None) -> None:
-        self._route = route or (lambda _tag_id: {"errcode": 0, "userlist": [], "partylist": []})
+        def empty_tag(_tag_id: int) -> dict[str, object]:
+            return {"errcode": 0, "userlist": [], "partylist": []}
+
+        self._route = route or empty_tag
         self.calls: list[int] = []
 
     def get_users(self, tag_id: int) -> object:

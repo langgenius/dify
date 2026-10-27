@@ -6,6 +6,7 @@ import threading
 from collections.abc import Callable, Mapping
 from dataclasses import fields
 from datetime import datetime
+from typing import override
 
 import pytest
 from lark_oapi.core.exception import EventException
@@ -142,7 +143,7 @@ class _FakeStreamClient:
 class _DispatcherStreamClient:
     def __init__(
         self,
-        credentials: FeishuCredentials,
+        credentials: FeishuCredentials | LarkCredentials,
         domain: str,
         callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
         payload: bytes,
@@ -173,6 +174,7 @@ class _BlockingCloseStreamClient(_FakeStreamClient):
         self.close_started = threading.Event()
         self.release_close = threading.Event()
 
+    @override
     def stop(self) -> None:
         self.stop_calls += 1
         self._trace.append("sdk-stop-start")
@@ -191,6 +193,7 @@ class _BlockingFailingCloseStreamClient(_BlockingCloseStreamClient):
         super().__init__(callback, trace)
         self._sensitive_marker = sensitive_marker
 
+    @override
     def stop(self) -> None:
         self.stop_calls += 1
         self._trace.append("sdk-stop-start")
@@ -210,6 +213,7 @@ class _BlockingStartStreamClient(_FakeStreamClient):
         self.start_entered = threading.Event()
         self.cancel_start = threading.Event()
 
+    @override
     def start(self) -> None:
         self.start_calls += 1
         self._trace.append("sdk-start")
@@ -217,6 +221,7 @@ class _BlockingStartStreamClient(_FakeStreamClient):
         assert self.cancel_start.wait(timeout=2)
         raise RuntimeError("sensitive cancelled start details")
 
+    @override
     def stop(self) -> None:
         self.stop_calls += 1
         self._trace.append("sdk-stop")
@@ -236,6 +241,7 @@ class _DeferredWireAckStreamClient(_FakeStreamClient):
         self.release_ack_write = threading.Event()
         self.ack_written = threading.Event()
 
+    @override
     def emit(self, event: Mapping[str, object], *, ack_error: Exception | None = None) -> None:
         del ack_error
         acknowledged = False
@@ -252,6 +258,7 @@ class _DeferredWireAckStreamClient(_FakeStreamClient):
             self._trace.append("ack-written")
             self.ack_written.set()
 
+    @override
     def stop(self) -> None:
         self.stop_calls += 1
         assert self.ack_written.wait(timeout=2)
@@ -392,7 +399,7 @@ def test_per_client_sdk_transport_owns_and_closes_its_loop(
     client = adapter_module._PerClientSDKWSClient(
         credentials=_credentials(provider),
         domain=domain,
-        event_handler=object(),
+        event_handler=adapter_module.lark.EventDispatcherHandler.builder("", "").build(),
     )
     start_errors: list[Exception] = []
 
@@ -422,7 +429,11 @@ def test_factory_is_lazy_and_start_returns_only_after_sdk_ready(
     trace: list[str] = []
     clients: list[_FakeStreamClient] = []
 
-    def factory(_credentials, _domain, callback):
+    def factory(
+        _credentials: FeishuCredentials | LarkCredentials,
+        _domain: str,
+        callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
+    ) -> _FakeStreamClient:
         client = _FakeStreamClient(callback, trace)
         clients.append(client)
         return client
@@ -585,7 +596,11 @@ def test_card_dispatcher_preserves_native_payload_without_event_stream_parsing(
     assert isinstance(expected_native_payload, str)
     clients: list[_DispatcherStreamClient] = []
 
-    def create_client(credentials, domain: str, callback):
+    def create_client(
+        credentials: FeishuCredentials | LarkCredentials,
+        domain: str,
+        callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
+    ) -> _DispatcherStreamClient:
         client = _DispatcherStreamClient(credentials, domain, callback, payload)
         clients.append(client)
         return client
@@ -936,6 +951,7 @@ def test_stop_surfaces_operator_safe_error_when_sdk_close_fails(
     sensitive_marker = "sensitive SDK close details"
 
     class CloseFailingStreamClient(_FakeStreamClient):
+        @override
         def stop(self) -> None:
             self.stop_calls += 1
             raise RuntimeError(sensitive_marker)
@@ -1073,7 +1089,11 @@ def test_stop_waits_when_failed_start_claims_a_slow_sdk_close(
             assert release_close.wait(timeout=2)
             trace.append("sdk-close-end")
 
-    def factory(_credentials, _domain, _callback):
+    def factory(
+        _credentials: FeishuCredentials | LarkCredentials,
+        _domain: str,
+        _callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
+    ) -> SlowCloseClient:
         trace.append("factory-enter")
         factory_entered.set()
         assert release_factory.wait(timeout=2)
@@ -1086,6 +1106,7 @@ def test_stop_waits_when_failed_start_claims_a_slow_sdk_close(
             self.blocked_thread: threading.Thread | None = None
             self._blocked_once = False
 
+        @override
         def wait(self, timeout: float | None = None) -> bool:
             if threading.current_thread() is self.blocked_thread and not self._blocked_once:
                 stop_waiting_for_client.set()
@@ -1165,7 +1186,11 @@ def test_stream_wrappers_have_equivalent_observable_lifecycle_traces(monkeypatch
     }
     clients: dict[str, _FakeStreamClient] = {}
 
-    def factory(_credentials, domain, callback):
+    def factory(
+        _credentials: FeishuCredentials | LarkCredentials,
+        domain: str,
+        callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
+    ) -> _FakeStreamClient:
         client = _FakeStreamClient(callback, traces[domain])
         clients[domain] = client
         return client

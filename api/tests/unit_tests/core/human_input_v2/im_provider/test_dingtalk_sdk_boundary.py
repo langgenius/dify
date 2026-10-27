@@ -6,7 +6,6 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from types import SimpleNamespace
 from urllib.parse import urlparse
 
 import httpx
@@ -302,7 +301,7 @@ def test_public_adapter_round_trips_fresh_credentials_directory_and_text(
         (_SDKError(500), CredentialTestFailureKind.UNKNOWN),
         (_MalformedTokenResponse(body=None), CredentialTestFailureKind.UNKNOWN),
         (
-            GetTokenResponse(status_code=200, body=GetTokenResponseBody(access_token="fake-token", expires_in=0)),
+            GetTokenResponse().from_map({"statusCode": 200, "body": {"access_token": "fake-token", "expires_in": 0}}),
             CredentialTestFailureKind.UNKNOWN,
         ),
     ],
@@ -422,7 +421,7 @@ def test_public_directory_discards_late_partial_state_and_detects_bad_cursor(
         _message_response(filtered=["fake-user-001"]),
         _message_response(flow_controlled=["fake-user-001"]),
         _message_response(invalid=["fake-user-001"]),
-        SimpleNamespace(body=SimpleNamespace(process_query_key="fake-key", invalid_staff_id_list=object())),
+        BatchSendOTOResponse().from_map({"body": {"processQueryKey": "fake-key", "invalidStaffIdList": object()}}),
     ],
 )
 def test_public_messaging_returns_one_safe_failure_without_replay(

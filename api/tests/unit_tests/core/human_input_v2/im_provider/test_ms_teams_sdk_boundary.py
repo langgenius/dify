@@ -10,12 +10,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from types import SimpleNamespace
 from typing import override
 
 import httpx
 import jwt
 import pytest
+from azure.core.credentials import AccessToken
 from botframework.connector import ConnectorClient
 from botframework.connector.auth import (
     ChannelValidation,
@@ -201,11 +201,11 @@ class _GraphCredential:
         self.error = error
         self.close_count = 0
 
-    def get_token(self, scope: str) -> SimpleNamespace:
+    def get_token(self, scope: str) -> AccessToken:
         assert scope == "https://graph.microsoft.com/.default"
         if self.error is not None:
             raise self.error
-        return SimpleNamespace(token=self.token)
+        return AccessToken(expires_on=2000000000, token=self.token)
 
     def close(self) -> None:
         self.close_count += 1
@@ -261,7 +261,7 @@ def _adapter(
         graph_responses if graph_responses is not None else [httpx.Response(200, json={"value": []})]
     )
     graph_client = httpx.Client(transport=httpx.MockTransport(graph_boundary), timeout=2)
-    bot_credentials = MicrosoftAppCredentials(
+    bot_credentials = ms_teams._MSTeamsBotCredentials(
         selected_credentials.client_id,
         selected_credentials.client_secret,
         channel_auth_tenant=selected_credentials.tenant_id,

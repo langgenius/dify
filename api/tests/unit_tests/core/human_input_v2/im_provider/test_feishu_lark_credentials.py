@@ -20,12 +20,14 @@ def test_resolved_credentials_are_strict_frozen_and_secret_safe(
     resolved_type: type[FeishuCredentials] | type[LarkCredentials],
     provider: IMProvider,
 ) -> None:
-    credentials = resolved_type(
-        provider=provider,
-        app_id="cli_sanitized_app",
-        app_secret="sanitized-app-secret",
-        verification_token="sanitized-verification-token",
-        encrypt_key="sanitized-encrypt-key",
+    credentials = resolved_type.model_validate(
+        {
+            "provider": provider,
+            "app_id": "cli_sanitized_app",
+            "app_secret": "sanitized-app-secret",
+            "verification_token": "sanitized-verification-token",
+            "encrypt_key": "sanitized-encrypt-key",
+        }
     )
 
     rendered = repr(credentials)
@@ -33,28 +35,31 @@ def test_resolved_credentials_are_strict_frozen_and_secret_safe(
     assert "sanitized-verification-token" not in rendered
     assert "sanitized-encrypt-key" not in rendered
     with pytest.raises(ValidationError) as validation_error:
-        resolved_type(
-            provider=provider,
-            app_id="cli_sanitized_app",
-            app_secret="",
-            verification_token="sanitized-verification-token",
-            encrypt_key="sanitized-encrypt-key",
+        resolved_type.model_validate(
+            {
+                "provider": provider,
+                "app_id": "cli_sanitized_app",
+                "app_secret": "",
+                "verification_token": "sanitized-verification-token",
+                "encrypt_key": "sanitized-encrypt-key",
+            }
         )
     assert "sanitized-verification-token" not in str(validation_error.value)
     assert "sanitized-encrypt-key" not in str(validation_error.value)
     with pytest.raises(ValidationError):
         resolved_type.model_validate({**credentials.model_dump(), "unexpected": "value"})
-    with pytest.raises(ValidationError):
-        credentials.app_id = "changed"
+    pytest.raises(ValidationError, setattr, credentials, "app_id", "changed")
 
 
 def test_feishu_request_projection_requires_and_maps_complete_credentials() -> None:
-    request = FeishuCredentialRequest(
-        provider=IMProvider.FEISHU,
-        app_id="cli_new_app",
-        app_secret="new-app-secret",
-        verification_token="new-verification-token",
-        encrypt_key=None,
+    request = FeishuCredentialRequest.model_validate(
+        {
+            "provider": IMProvider.FEISHU,
+            "app_id": "cli_new_app",
+            "app_secret": "new-app-secret",
+            "verification_token": "new-verification-token",
+            "encrypt_key": None,
+        }
     )
 
     resolved = request.to_owner_credentials()
@@ -69,12 +74,14 @@ def test_feishu_request_projection_requires_and_maps_complete_credentials() -> N
 
 
 def test_lark_request_projection_applies_new_and_cleared_secrets() -> None:
-    request = LarkCredentialRequest(
-        provider=IMProvider.LARK,
-        app_id="cli_new_app",
-        app_secret="new-app-secret",
-        verification_token=None,
-        encrypt_key="new-encrypt-key",
+    request = LarkCredentialRequest.model_validate(
+        {
+            "provider": IMProvider.LARK,
+            "app_id": "cli_new_app",
+            "app_secret": "new-app-secret",
+            "verification_token": None,
+            "encrypt_key": "new-encrypt-key",
+        }
     )
 
     resolved = request.to_owner_credentials()

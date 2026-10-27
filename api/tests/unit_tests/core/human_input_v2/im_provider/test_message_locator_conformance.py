@@ -28,7 +28,13 @@ _ASCII_TEXT = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_:
 
 @dataclass(frozen=True, slots=True)
 class _PayloadCase:
-    payload_cls: type[_Base64JSONLocatorPayload]
+    payload_cls: type[
+        slack_module._SlackLocatorPayload
+        | feishu_lark_module._FeishuLarkLocatorPayload
+        | ms_teams_module._MSTeamsLocatorPayload
+        | dingtalk_module._DingTalkLocatorPayload
+        | wecom_module._WeComLocatorPayload
+    ]
     example: dict[str, object]
     valid_providers: tuple[IMProvider, ...]
     expected_fields: frozenset[str]
@@ -143,7 +149,7 @@ def _non_blank_text(*, max_size: int = 24) -> st.SearchStrategy[str]:
 
 
 @st.composite
-def _teams_service_url(draw) -> str:
+def _teams_service_url(draw: st.DrawFn) -> str:
     path = draw(st.text(alphabet="abcdefghijklmnopqrstuvwxyz0123456789-/", min_size=0, max_size=24))
     return f"https://smba.trafficmanager.net/{path}" if path else "https://smba.trafficmanager.net/teams/"
 
@@ -178,8 +184,7 @@ def test_private_locator_payload_models_are_strict_frozen_scalar_only_and_provid
     assert get_type_hints(payload_cls.decode)["return"] in {Self, payload_cls}
 
     mutable_field = next(field_name for field_name in case.example if field_name not in {"v", "p"})
-    with pytest.raises(ValidationError):
-        setattr(payload, mutable_field, "mutated")
+    pytest.raises(ValidationError, setattr, payload, mutable_field, "mutated")
     with pytest.raises(ValidationError):
         payload_cls.model_validate({**case.example, "unexpected": "value"})
     with pytest.raises(ValidationError):
@@ -228,7 +233,9 @@ def test_locator_json_shape_is_exact_and_round_trips_through_public_scalar_bound
     assert isinstance(decoded_json, dict)
     assert set(decoded_json) == case.expected_fields
     assert decoded_json["v"] == 1
-    assert decoded_json["p"] == case.example["p"].value
+    expected_provider = case.example["p"]
+    assert isinstance(expected_provider, IMProvider)
+    assert decoded_json["p"] == expected_provider.value
 
 
 @pytest.mark.parametrize(
@@ -326,7 +333,9 @@ def test_slack_locator_payload_obeys_the_codec_law(channel_id: str, message_ts: 
     provider=st.sampled_from((IMProvider.FEISHU, IMProvider.LARK)),
     message_id=_non_blank_text(),
 )
-def test_feishu_lark_locator_payload_obeys_the_codec_law(provider: IMProvider, message_id: str) -> None:
+def test_feishu_lark_locator_payload_obeys_the_codec_law(
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK], message_id: str
+) -> None:
     payload = feishu_lark_module._FeishuLarkLocatorPayload(
         v=1,
         p=provider,

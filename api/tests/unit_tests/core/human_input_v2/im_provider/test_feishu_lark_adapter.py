@@ -5,7 +5,7 @@ import json
 from collections.abc import Mapping
 from pathlib import Path
 from threading import Barrier, Lock
-from typing import Literal, overload
+from typing import Literal, overload, override
 
 import httpx
 import pytest
@@ -62,7 +62,7 @@ class FakeSDKGateway:
         self.user_responses: list[Mapping[str, object] | Exception] = []
         self.create_responses: list[Mapping[str, object] | Exception] = []
         self.patch_responses: list[Mapping[str, object] | Exception] = []
-        self.calls: list[tuple[str, object]] = []
+        self.calls: list[tuple[str, tuple[str, str, str | None] | tuple[str, str | None] | str | None]] = []
 
     @staticmethod
     def _next(responses: list[Mapping[str, object] | Exception]) -> Mapping[str, object]:
@@ -110,6 +110,7 @@ class FakeSDKGateway:
 class IdentityAwareFakeSDKGateway(FakeSDKGateway):
     """Capture the private department identity sent across the SDK boundary."""
 
+    @override
     def list_departments(
         self,
         department_id: adapter_module._DepartmentIdentity,
@@ -121,6 +122,7 @@ class IdentityAwareFakeSDKGateway(FakeSDKGateway):
         self.calls.append(("list_departments", (department_id.value, department_id.id_type, page_token)))
         return self._next(self.department_responses)
 
+    @override
     def list_users(
         self, department_id: adapter_module._DepartmentIdentity, page_token: str | None
     ) -> Mapping[str, object]:
@@ -392,11 +394,11 @@ def test_credential_failure_is_classified_and_safe(
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
 @pytest.mark.parametrize("stage", ["tenant", "scope", "department"])
 def test_credential_failure_preserves_provider_code_and_explicit_permission_violations(
-    monkeypatch,
-    provider,
-    stage,
+    monkeypatch: pytest.MonkeyPatch,
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
+    stage: str,
 ) -> None:
-    rejection = {
+    rejection: dict[str, object] = {
         "code": 99991672,
         "data": {},
         "msg": "raw message with sanitized-app-secret",
@@ -419,7 +421,9 @@ def test_credential_failure_preserves_provider_code_and_explicit_permission_viol
 
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK])
-def test_credential_failure_preserves_token_endpoint_error_code(monkeypatch, provider) -> None:
+def test_credential_failure_preserves_token_endpoint_error_code(
+    monkeypatch: pytest.MonkeyPatch, provider: Literal[IMProvider.FEISHU, IMProvider.LARK]
+) -> None:
     gateway = FakeSDKGateway()
     gateway.tenant_responses.append(ObtainAccessTokenException("token rejected", 10014, "sanitized-app-secret"))
 
@@ -434,7 +438,9 @@ def test_credential_failure_preserves_token_endpoint_error_code(monkeypatch, pro
 @pytest.mark.parametrize(
     "error_details", [None, {}, {"permission_violations": [{"type": "field", "subject": "user_id"}]}]
 )
-def test_credential_failure_does_not_infer_permissions_from_error_code(monkeypatch, error_details) -> None:
+def test_credential_failure_does_not_infer_permissions_from_error_code(
+    monkeypatch: pytest.MonkeyPatch, error_details: Mapping[str, object] | None
+) -> None:
     gateway = FakeSDKGateway()
     gateway.tenant_responses.append({"code": 99991672, "error": error_details})
 
@@ -1212,8 +1218,12 @@ def test_text_send_uses_union_id_and_preserves_markdown_in_one_creation(
     assert isinstance(result, MessageAccepted)
     creation = [call for call in gateway.calls if call[0] == "create_message"]
     assert len(creation) == 1
-    receive_id, msg_type, content = creation[0][1]
+    arguments = creation[0][1]
+    assert isinstance(arguments, tuple)
+    assert len(arguments) == 3
+    receive_id, msg_type, content = arguments
     assert (receive_id, msg_type) == ("union_sanitized_user", "interactive")
+    assert isinstance(content, str)
     assert json.loads(content) == {"schema": "2.0", "body": {"elements": expected_elements}}
 
 
@@ -1233,6 +1243,9 @@ def test_text_send_preserves_body_markdown_without_a_subject(
 
     assert isinstance(result, MessageAccepted)
     creation = next(call for call in gateway.calls if call[0] == "create_message")
+    assert isinstance(creation[1], tuple)
+    assert len(creation[1]) == 3
+    assert isinstance(creation[1][2], str)
     assert json.loads(creation[1][2]) == {
         "schema": "2.0",
         "body": {"elements": [{"tag": "markdown", "content": "Decision: **Approve**"}]},
@@ -1373,8 +1386,13 @@ def test_card_renderer_matches_provider_confirmed_form_contract(
     creations = [call for call in gateway.calls if call[0] == "create_message"]
     assert len(creations) == 1
     creation = creations[0]
-    _, msg_type, content = creation[1]
+    arguments = creation[1]
+    assert isinstance(arguments, tuple)
+    assert len(arguments) == 3
+    _, msg_type, content = arguments
+    assert isinstance(content, str)
     assert msg_type == "interactive"
+    assert isinstance(content, str)
     assert json.loads(content) == adapter_module._MSFeishuLarkCardCodec().encode(
         intent,
         CorrelationToken("synthetic-correlation-token"),
@@ -1454,7 +1472,10 @@ def test_reference_round_trips_and_updates_only_exact_original_message(
 
     assert result is None
     mutation = next(call for call in replacement_gateway.calls if call[0] == "patch_message")
+    assert isinstance(mutation[1], tuple)
+    assert len(mutation[1]) == 2
     assert mutation[1][0] == "om_sanitized_card"
+    assert isinstance(mutation[1][1], str)
     static_card = json.loads(mutation[1][1])
     assert static_card == {
         "schema": "2.0",
@@ -1498,6 +1519,8 @@ def test_reference_survives_provider_app_secret_rotation(
 
     assert result is None
     mutation = next(call for call in replacement_gateway.calls if call[0] == "patch_message")
+    assert isinstance(mutation[1], tuple)
+    assert len(mutation[1]) == 2
     assert mutation[1][0] == "om_sanitized_card"
 
 

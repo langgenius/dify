@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from controllers.console.human_input_v2.providers import MSTeamsCredentialsInput as MSTeamsCredentialUpdate
+from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import credentials as provider_credentials
 
 
@@ -14,7 +15,7 @@ def test_ms_teams_credential_projections_are_field_complete_and_secret_safe() ->
     assert set(MSTeamsCredentialUpdate.model_fields) == {"provider", "tenant_id", "client_id", "client_secret"}
 
     credentials = resolved_type(
-        provider="ms_teams",
+        provider=IMProvider.MS_TEAMS,
         tenant_id="11111111-1111-1111-1111-111111111111",
         client_id="22222222-2222-2222-2222-222222222222",
         client_secret="test-only-client-secret",

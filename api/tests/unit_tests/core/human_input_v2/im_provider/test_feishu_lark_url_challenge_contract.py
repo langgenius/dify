@@ -11,7 +11,12 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, EventAcceptance, WebhookRequest
+from core.human_input_v2.im_integration.adapters import (
+    AuthenticatedIMEvent,
+    EventAcceptance,
+    IMWebhookHandler,
+    WebhookRequest,
+)
 from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
 from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
@@ -62,7 +67,7 @@ def _create_handler(
     *,
     verification_token: str | None,
     encrypt_key: str | None,
-):
+) -> IMWebhookHandler:
     gateway = _NoRemoteGateway()
     monkeypatch.setattr(adapter_module, "_create_sdk_gateway", lambda _credentials, _domain: gateway)
     credential_values = {

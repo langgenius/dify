@@ -5,6 +5,7 @@ import hmac
 import json
 import logging
 import threading
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from types import MappingProxyType
@@ -15,11 +16,14 @@ import pytest
 from pytest_mock import MockerFixture
 from slack_sdk.errors import SlackApiError, SlackClientError
 from slack_sdk.socket_mode.request import SocketModeRequest
+from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
+from slack_sdk.web.slack_response import SlackResponse
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import (
+    AuthenticatedIMEvent,
     CorrelationToken,
     CredentialTestFailure,
     CredentialTestFailureKind,
@@ -58,13 +62,16 @@ _RECEIVED_AT = datetime(2026, 8, 6, 8, 0, 0)
 _REQUEST_TIMESTAMP = str(int(_RECEIVED_AT.replace(tzinfo=UTC).timestamp()))
 
 
-class SlackResponse:
-    def __init__(self, values: dict[str, object], *, headers: dict[str, str] | None = None) -> None:
-        self._values = values
-        self.headers = headers or {}
-
-    def get(self, key: str, default: object = None) -> object:
-        return self._values.get(key, default)
+def _slack_response(values: dict[str, object], *, headers: dict[str, str] | None = None) -> SlackResponse:
+    return SlackResponse(
+        client=WebClient(token="test-token"),
+        http_verb="POST",
+        api_url="https://slack.com/api/test",
+        req_args={},
+        data=values,
+        headers=headers or {},
+        status_code=200,
+    )
 
 
 class FakeWebClient(WebClient):
@@ -87,15 +94,18 @@ class FakeWebClient(WebClient):
             raise response
         return response
 
-    def auth_test(self) -> SlackResponse:
+    @override
+    def auth_test(self, **kwargs: object) -> SlackResponse:
         self.auth_calls += 1
         return self._next(self.auth_responses)
 
-    def apps_connections_open(self, *, app_token: str) -> SlackResponse:
+    @override
+    def apps_connections_open(self, *, app_token: str, **kwargs: object) -> SlackResponse:
         del app_token
         self.connection_calls += 1
         return self._next(self.connection_responses)
 
+    @override
     def users_list(self, **kwargs: object) -> SlackResponse:
         self.directory_calls.append(kwargs)
         return self._next(self.directory_responses)
@@ -105,6 +115,7 @@ class FakeWebClient(WebClient):
         self.post_calls.append(kwargs)
         return self._next(self.post_responses)
 
+    @override
     def chat_update(self, **kwargs: object) -> SlackResponse:
         self.update_calls.append(kwargs)
         return self._next(self.update_responses)
@@ -115,7 +126,7 @@ class RecordingConsumer:
         self.acceptance = acceptance
         self.events = []
 
-    def accept(self, event, *, request_ip_address: str | None = None):
+    def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
         del request_ip_address
         self.events.append(event)
         return self.acceptance
@@ -137,14 +148,14 @@ def _credentials(
 
 
 def _successful_auth_response(team_id: str = "team-1") -> SlackResponse:
-    return SlackResponse(
+    return _slack_response(
         {"ok": True, "team_id": team_id},
         headers={"x-oauth-scopes": "chat:write,users:read,users:read.email"},
     )
 
 
 def _adapter(
-    mocker,
+    mocker: MockerFixture,
     client: FakeWebClient,
     credentials: SlackCredentials | None = None,
 ) -> SlackIMProviderAdapter:
@@ -224,7 +235,7 @@ def _signed_request(body: bytes, *, signature: str | None = None) -> WebhookRequ
     )
 
 
-def test_construction_and_capability_inspection_perform_no_provider_io(mocker) -> None:
+def test_construction_and_capability_inspection_perform_no_provider_io(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     adapter = _adapter(mocker, client)
     consumer = RecordingConsumer()
@@ -244,10 +255,10 @@ def test_construction_and_capability_inspection_perform_no_provider_io(mocker) -
     adapter.close()
 
 
-def test_credential_test_authenticates_both_tokens_and_checks_baseline_scopes(mocker) -> None:
+def test_credential_test_authenticates_both_tokens_and_checks_baseline_scopes(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
-    client.connection_responses.append(SlackResponse({"ok": True, "url": "wss://example.invalid"}))
+    client.connection_responses.append(_slack_response({"ok": True, "url": "wss://example.invalid"}))
     adapter = _adapter(mocker, client)
 
     result = adapter.test_credentials()
@@ -257,7 +268,7 @@ def test_credential_test_authenticates_both_tokens_and_checks_baseline_scopes(mo
     assert client.connection_calls == 1
 
 
-def test_credential_test_does_not_require_socket_mode_app_token(mocker) -> None:
+def test_credential_test_does_not_require_socket_mode_app_token(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
     adapter = _adapter(mocker, client, _credentials(app_token=None))
@@ -269,7 +280,7 @@ def test_credential_test_does_not_require_socket_mode_app_token(mocker) -> None:
     assert client.connection_calls == 0
 
 
-def test_stream_capability_is_unavailable_without_socket_mode_app_token(mocker) -> None:
+def test_stream_capability_is_unavailable_without_socket_mode_app_token(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     adapter = _adapter(mocker, client, _credentials(app_token=None))
 
@@ -277,9 +288,9 @@ def test_stream_capability_is_unavailable_without_socket_mode_app_token(mocker) 
     assert adapter.create_webhook_handler(RecordingConsumer()) is not None
 
 
-def test_credential_test_returns_safe_typed_failures(mocker) -> None:
+def test_credential_test_returns_safe_typed_failures(mocker: MockerFixture) -> None:
     client = FakeWebClient()
-    api_response = SlackResponse({"ok": False, "error": "invalid_auth", "sensitive": "must-not-leak"})
+    api_response = _slack_response({"ok": False, "error": "invalid_auth", "sensitive": "must-not-leak"})
     client.auth_responses.append(SlackApiError("raw-provider-message", response=api_response))
     adapter = _adapter(mocker, client)
 
@@ -293,19 +304,19 @@ def test_credential_test_returns_safe_typed_failures(mocker) -> None:
 
     second_client = FakeWebClient()
     second_client.auth_responses.append(
-        SlackResponse({"ok": True}, headers={"x-oauth-scopes": "chat:write,users:read,users:read.email"})
+        _slack_response({"ok": True}, headers={"x-oauth-scopes": "chat:write,users:read,users:read.email"})
     )
     second_adapter = _adapter(mocker, second_client)
     with pytest.raises(IMProviderError, match="workspace identity"):
         second_adapter.test_credentials()
 
 
-def test_credential_test_reports_only_scopes_explicitly_missing_from_provider_response(mocker) -> None:
+def test_credential_test_reports_only_scopes_explicitly_missing_from_provider_response(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.auth_responses.append(
         SlackApiError(
             "secret raw message",
-            response=SlackResponse(
+            response=_slack_response(
                 {
                     "error": "missing_scope",
                     "needed": "users:read,users:read.email",
@@ -323,9 +334,9 @@ def test_credential_test_reports_only_scopes_explicitly_missing_from_provider_re
     assert "secret raw message" not in repr(result)
 
 
-def test_credential_test_identifies_missing_baseline_scopes_from_granted_scopes(mocker) -> None:
+def test_credential_test_identifies_missing_baseline_scopes_from_granted_scopes(mocker: MockerFixture) -> None:
     client = FakeWebClient()
-    client.auth_responses.append(SlackResponse({"team_id": "T1"}, headers={"x-oauth-scopes": "users:read"}))
+    client.auth_responses.append(_slack_response({"team_id": "T1"}, headers={"x-oauth-scopes": "users:read"}))
 
     result = _adapter(mocker, client).test_credentials()
 
@@ -341,12 +352,14 @@ def test_credential_test_identifies_missing_baseline_scopes_from_granted_scopes(
         {"needed": ["users:read.email"], "provided": "users:read"},
     ],
 )
-def test_credential_test_keeps_error_code_without_guessing_unavailable_scope_details(mocker, scope_details) -> None:
+def test_credential_test_keeps_error_code_without_guessing_unavailable_scope_details(
+    mocker: MockerFixture, scope_details: dict[str, object]
+) -> None:
     client = FakeWebClient()
     client.auth_responses.append(
         SlackApiError(
             "raw secret",
-            response=SlackResponse(
+            response=_slack_response(
                 {
                     "error": "missing_scope",
                     **scope_details,
@@ -363,17 +376,19 @@ def test_credential_test_keeps_error_code_without_guessing_unavailable_scope_det
 
 
 @pytest.mark.parametrize("connection_url", ["", "   "])
-def test_credential_test_rejects_blank_socket_url(mocker, connection_url: str) -> None:
+def test_credential_test_rejects_blank_socket_url(mocker: MockerFixture, connection_url: str) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
-    client.connection_responses.append(SlackResponse({"ok": True, "url": connection_url}))
+    client.connection_responses.append(_slack_response({"ok": True, "url": connection_url}))
     adapter = _adapter(mocker, client)
 
     with pytest.raises(IMProviderError, match="connection URL"):
         adapter.test_credentials()
 
 
-def test_credential_test_normalizes_unexpected_socket_failure_without_details(mocker, caplog) -> None:
+def test_credential_test_normalizes_unexpected_socket_failure_without_details(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
     sensitive_marker = "sensitive socket credential details"
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
@@ -387,11 +402,11 @@ def test_credential_test_normalizes_unexpected_socket_failure_without_details(mo
     assert sensitive_marker not in caplog.text
 
 
-def test_directory_returns_one_ordered_complete_snapshot(mocker) -> None:
+def test_directory_returns_one_ordered_complete_snapshot(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.directory_responses.extend(
         (
-            SlackResponse(
+            _slack_response(
                 {
                     "ok": True,
                     "members": [
@@ -412,7 +427,7 @@ def test_directory_returns_one_ordered_complete_snapshot(mocker) -> None:
                     "response_metadata": {"next_cursor": "cursor-2"},
                 }
             ),
-            SlackResponse(
+            _slack_response(
                 {
                     "ok": True,
                     "members": [
@@ -454,7 +469,7 @@ def test_directory_projects_avatar_from_captured_user(mocker: MockerFixture) -> 
         ),
     )
     client.directory_responses.append(
-        SlackResponse(
+        _slack_response(
             {"ok": True, "members": [json.loads(fixture.read_text())], "response_metadata": {"next_cursor": ""}}
         )
     )
@@ -472,7 +487,7 @@ def test_directory_projects_avatar_from_captured_user(mocker: MockerFixture) -> 
 def test_directory_accepts_unavailable_avatar(mocker: MockerFixture, profile: dict[str, object]) -> None:
     client = FakeWebClient()
     client.directory_responses.append(
-        SlackResponse(
+        _slack_response(
             {"ok": True, "members": [{"id": "user", "profile": profile}], "response_metadata": {"next_cursor": ""}}
         )
     )
@@ -486,7 +501,7 @@ def test_directory_accepts_unavailable_avatar(mocker: MockerFixture, profile: di
 def test_directory_excludes_slack_owned_special_users(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.directory_responses.append(
-        SlackResponse(
+        _slack_response(
             {
                 "ok": True,
                 "members": [
@@ -530,7 +545,7 @@ def test_directory_excludes_slack_owned_special_users(mocker: MockerFixture) -> 
 def test_directory_rejects_unhashable_provider_user_id_without_raising(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.directory_responses.append(
-        SlackResponse(
+        _slack_response(
             {
                 "ok": True,
                 "members": [{"id": [], "profile": {}}],
@@ -546,18 +561,18 @@ def test_directory_rejects_unhashable_provider_user_id_without_raising(mocker: M
     assert result.reason == "Slack returned an invalid directory entry."
 
 
-def test_directory_page_failure_discards_entries(mocker) -> None:
+def test_directory_page_failure_discards_entries(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.directory_responses.extend(
         (
-            SlackResponse(
+            _slack_response(
                 {
                     "ok": True,
                     "members": [{"id": "user-1", "profile": {}}],
                     "response_metadata": {"next_cursor": "cursor-2"},
                 }
             ),
-            SlackApiError("provider details", SlackResponse({"ok": False, "error": "ratelimited"})),
+            SlackApiError("provider details", _slack_response({"ok": False, "error": "ratelimited"})),
         )
     )
     adapter = _adapter(mocker, client)
@@ -603,11 +618,11 @@ def test_directory_page_failure_discards_entries(mocker) -> None:
     ),
 )
 def test_directory_rejects_malformed_pagination_without_partial_snapshot(
-    mocker,
+    mocker: MockerFixture,
     response_values: dict[str, object],
 ) -> None:
     client = FakeWebClient()
-    client.directory_responses.append(SlackResponse(response_values))
+    client.directory_responses.append(_slack_response(response_values))
     adapter = _adapter(mocker, client)
 
     result = adapter.directory.read_directory()
@@ -618,18 +633,18 @@ def test_directory_rejects_malformed_pagination_without_partial_snapshot(
     assert client.directory_calls == [{"limit": 200}]
 
 
-def test_directory_second_page_malformed_pagination_discards_all_accumulated_entries(mocker) -> None:
+def test_directory_second_page_malformed_pagination_discards_all_accumulated_entries(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.directory_responses.extend(
         (
-            SlackResponse(
+            _slack_response(
                 {
                     "ok": True,
                     "members": [{"id": "user-1", "profile": {}}],
                     "response_metadata": {"next_cursor": "cursor-2"},
                 }
             ),
-            SlackResponse(
+            _slack_response(
                 {
                     "ok": True,
                     "members": [{"id": "user-2", "profile": {}}],
@@ -649,18 +664,18 @@ def test_directory_second_page_malformed_pagination_discards_all_accumulated_ent
     assert client.directory_calls == [{"limit": 200}, {"limit": 200, "cursor": "cursor-2"}]
 
 
-def test_directory_rejects_repeated_pagination_cursor_without_request_loop(mocker) -> None:
+def test_directory_rejects_repeated_pagination_cursor_without_request_loop(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.directory_responses.extend(
         (
-            SlackResponse(
+            _slack_response(
                 {
                     "ok": True,
                     "members": [{"id": "user-1", "profile": {}}],
                     "response_metadata": {"next_cursor": "cursor-2"},
                 }
             ),
-            SlackResponse(
+            _slack_response(
                 {
                     "ok": True,
                     "members": [{"id": "user-2", "profile": {}}],
@@ -678,10 +693,10 @@ def test_directory_rejects_repeated_pagination_cursor_without_request_loop(mocke
     assert client.directory_calls == [{"limit": 200}, {"limit": 200, "cursor": "cursor-2"}]
 
 
-def test_directory_accepts_mapping_and_sequence_sdk_values(mocker) -> None:
+def test_directory_accepts_mapping_and_sequence_sdk_values(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.directory_responses.append(
-        SlackResponse(
+        _slack_response(
             {
                 "ok": True,
                 "members": (
@@ -705,10 +720,10 @@ def test_directory_accepts_mapping_and_sequence_sdk_values(mocker) -> None:
     assert result.entries[0].display_name == "First"
 
 
-def test_text_send_attempts_creation_once_and_returns_persistable_locator(mocker) -> None:
+def test_text_send_attempts_creation_once_and_returns_persistable_locator(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
-    client.post_responses.append(SlackResponse({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
+    client.post_responses.append(_slack_response({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
     adapter = _adapter(mocker, client)
 
     result = adapter.messaging.send_text(ProviderUserId("user-1"), "Exact **CommonMark**")
@@ -725,10 +740,10 @@ def test_text_send_attempts_creation_once_and_returns_persistable_locator(mocker
     assert client.post_calls == [{"channel": "user-1", "markdown_text": "Exact **CommonMark**"}]
 
 
-def test_card_send_returns_persistable_locator(mocker) -> None:
+def test_card_send_returns_persistable_locator(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
-    client.post_responses.append(SlackResponse({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
+    client.post_responses.append(_slack_response({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
     adapter = _adapter(mocker, client)
 
     result = adapter.dynamic_card_messaging.send_card(
@@ -748,11 +763,11 @@ def test_card_send_returns_persistable_locator(mocker) -> None:
     assert client.auth_calls == 0
 
 
-def test_static_replacement_accepts_locator_across_adapter_instances(mocker) -> None:
+def test_static_replacement_accepts_locator_across_adapter_instances(mocker: MockerFixture) -> None:
     source_client = FakeWebClient()
     source_client.auth_responses.append(_successful_auth_response("T0123456789"))
     source_client.post_responses.append(
-        SlackResponse({"ok": True, "channel": "D0123456789", "ts": "1712345678.123456"})
+        _slack_response({"ok": True, "channel": "D0123456789", "ts": "1712345678.123456"})
     )
     source_adapter = _adapter(mocker, source_client)
     accepted = source_adapter.dynamic_card_messaging.send_card(
@@ -764,7 +779,7 @@ def test_static_replacement_accepts_locator_across_adapter_instances(mocker) -> 
 
     replacement_client = FakeWebClient()
     replacement_client.auth_responses.append(_successful_auth_response("T0123456789"))
-    replacement_client.update_responses.append(SlackResponse({"ok": True}))
+    replacement_client.update_responses.append(_slack_response({"ok": True}))
     replacement_adapter = _adapter(mocker, replacement_client)
 
     result = replacement_adapter.dynamic_card_messaging.replace_with_static(
@@ -785,11 +800,11 @@ def test_static_replacement_accepts_locator_across_adapter_instances(mocker) -> 
     ]
 
 
-def test_static_replacement_updates_the_exact_message_from_a_valid_locator(mocker) -> None:
+def test_static_replacement_updates_the_exact_message_from_a_valid_locator(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
-    client.post_responses.append(SlackResponse({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
-    client.update_responses.append(SlackResponse({"ok": True}))
+    client.post_responses.append(_slack_response({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
+    client.update_responses.append(_slack_response({"ok": True}))
     adapter = _adapter(mocker, client)
     accepted = adapter.messaging.send_text(ProviderUserId("user-1"), "Body")
     assert isinstance(accepted, MessageAccepted)
@@ -810,7 +825,7 @@ def test_static_replacement_updates_the_exact_message_from_a_valid_locator(mocke
     ]
 
 
-def test_static_replacement_rejects_foreign_reference_without_provider_io(mocker) -> None:
+def test_static_replacement_rejects_foreign_reference_without_provider_io(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     adapter = _adapter(mocker, client)
 
@@ -824,11 +839,11 @@ def test_static_replacement_rejects_foreign_reference_without_provider_io(mocker
     assert client.update_calls == []
 
 
-def test_message_send_failure_is_safe_and_never_replayed(mocker) -> None:
+def test_message_send_failure_is_safe_and_never_replayed(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
     client.post_responses.append(
-        SlackApiError("raw message", SlackResponse({"ok": False, "error": "internal_error", "token": "secret"}))
+        SlackApiError("raw message", _slack_response({"ok": False, "error": "internal_error", "token": "secret"}))
     )
     adapter = _adapter(mocker, client)
 
@@ -841,7 +856,7 @@ def test_message_send_failure_is_safe_and_never_replayed(mocker) -> None:
 
 
 @pytest.mark.parametrize("input_type", ["file", "file-list"])
-def test_card_assessment_rejects_file_controls_without_side_effects(mocker, input_type: str) -> None:
+def test_card_assessment_rejects_file_controls_without_side_effects(mocker: MockerFixture, input_type: str) -> None:
     client = FakeWebClient()
     adapter = _adapter(mocker, client)
 
@@ -879,10 +894,10 @@ def test_card_assessment_uses_static_select_option_limit(
     assert client.post_calls == []
 
 
-def test_card_send_preserves_controls_actions_defaults_and_correlation(mocker) -> None:
+def test_card_send_preserves_controls_actions_defaults_and_correlation(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
-    client.post_responses.append(SlackResponse({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
+    client.post_responses.append(_slack_response({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
     adapter = _adapter(mocker, client)
     intent = _intent(input_type="select")
 
@@ -917,10 +932,10 @@ def test_card_send_preserves_controls_actions_defaults_and_correlation(mocker) -
         assert action_value["action_id"] == element["action_id"]
 
 
-def test_paragraph_uses_resolved_default_in_assessment_and_rendering(mocker) -> None:
+def test_paragraph_uses_resolved_default_in_assessment_and_rendering(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.auth_responses.append(_successful_auth_response())
-    client.post_responses.append(SlackResponse({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
+    client.post_responses.append(_slack_response({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
     adapter = _adapter(mocker, client)
     intent = _intent_with_paragraph_default("Resolved default")
 
@@ -939,11 +954,11 @@ def test_paragraph_uses_resolved_default_in_assessment_and_rendering(mocker) -> 
     assert input_element["initial_value"] == "Resolved default"
 
 
-def test_static_replacement_validates_reference_before_one_exact_mutation(mocker) -> None:
+def test_static_replacement_validates_reference_before_one_exact_mutation(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     client.auth_responses.extend((_successful_auth_response(), _successful_auth_response()))
-    client.post_responses.append(SlackResponse({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
-    client.update_responses.append(SlackResponse({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
+    client.post_responses.append(_slack_response({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
+    client.update_responses.append(_slack_response({"ok": True, "channel": "dm-1", "ts": "1000.000001"}))
     adapter = _adapter(mocker, client)
     accepted = adapter.dynamic_card_messaging.send_card(
         ProviderUserId("user-1"),
@@ -974,7 +989,7 @@ def test_static_replacement_validates_reference_before_one_exact_mutation(mocker
     assert "markdown_text" not in update_call
 
 
-def test_webhook_authenticates_challenge_and_business_events_before_consumer(mocker) -> None:
+def test_webhook_authenticates_challenge_and_business_events_before_consumer(mocker: MockerFixture) -> None:
     client = FakeWebClient()
     adapter = _adapter(mocker, client)
     consumer = RecordingConsumer()
@@ -1020,7 +1035,9 @@ def test_webhook_authenticates_challenge_and_business_events_before_consumer(moc
     ],
     ids=("missing-signature", "invalid-signature"),
 )
-def test_url_verification_rejects_unauthenticated_challenge(mocker, authentication_headers) -> None:
+def test_url_verification_rejects_unauthenticated_challenge(
+    mocker: MockerFixture, authentication_headers: tuple[tuple[str, str], ...]
+) -> None:
     adapter = _adapter(mocker, FakeWebClient())
     consumer = RecordingConsumer()
     handler = adapter.create_webhook_handler(consumer)
@@ -1038,7 +1055,7 @@ def test_url_verification_rejects_unauthenticated_challenge(mocker, authenticati
     assert consumer.events == []
 
 
-def test_webhook_not_accepted_is_not_successfully_acknowledged(mocker) -> None:
+def test_webhook_not_accepted_is_not_successfully_acknowledged(mocker: MockerFixture) -> None:
     adapter = _adapter(mocker, FakeWebClient())
     consumer = RecordingConsumer(EventAcceptance.NOT_ACCEPTED)
     handler = adapter.create_webhook_handler(consumer)
@@ -1050,9 +1067,11 @@ def test_webhook_not_accepted_is_not_successfully_acknowledged(mocker) -> None:
     assert len(consumer.events) == 1
 
 
-def test_webhook_consumer_exception_returns_safe_failure(mocker, caplog) -> None:
+def test_webhook_consumer_exception_returns_safe_failure(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
     class FailingConsumer:
-        def accept(self, event, *, request_ip_address: str | None = None):
+        def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
             del request_ip_address
             del event
             raise RuntimeError("sensitive consumer details")
@@ -1069,7 +1088,7 @@ def test_webhook_consumer_exception_returns_safe_failure(mocker, caplog) -> None
     assert "sensitive consumer details" not in caplog.text
 
 
-def test_stream_start_delivers_complete_sdk_serialization_and_stop_is_idempotent(mocker) -> None:
+def test_stream_start_delivers_complete_sdk_serialization_and_stop_is_idempotent(mocker: MockerFixture) -> None:
     consumer = RecordingConsumer()
     request = SocketModeRequest(
         type="events_api",
@@ -1083,27 +1102,31 @@ def test_stream_start_delivers_complete_sdk_serialization_and_stop_is_idempotent
     )
 
     class FakeSocketModeClient:
-        instances = []
+        instances: list[FakeSocketModeClient] = []
 
-        def __init__(self, **kwargs):
-            self.socket_mode_request_listeners = []
-            self.responses = []
+        def __init__(
+            self, *, on_error_listeners: list[Callable[[Exception], None]] | None = None, **kwargs: object
+        ) -> None:
+            self.on_error_listeners = on_error_listeners or []
+            self.socket_mode_request_listeners: list[Callable[[object, SocketModeRequest], None]] = []
+            self.responses: list[SocketModeResponse] = []
             self.closed = False
             self.kwargs = kwargs
             self.__class__.instances.append(self)
 
-        def connect(self):
+        def connect(self) -> None:
             self.socket_mode_request_listeners[0](self, request)
 
-        def send_socket_mode_response(self, response):
+        def send_socket_mode_response(self, response: SocketModeResponse) -> None:
             self.responses.append(response)
 
-        def close(self):
+        def close(self) -> None:
             self.closed = True
 
     mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
     adapter = _adapter(mocker, FakeWebClient())
     stream = adapter.create_stream_handler(consumer)
+    assert stream is not None
 
     stream.start()
 
@@ -1123,12 +1146,14 @@ def test_stream_start_delivers_complete_sdk_serialization_and_stop_is_idempotent
     stream.stop()
     stream.stop()
 
-    assert socket_client.closed is True
+    assert socket_client.closed
     with pytest.raises(IMStreamStartError, match="already been started"):
         stream.start()
 
 
-def test_stream_consumer_exception_is_one_event_failure(mocker, caplog) -> None:
+def test_stream_consumer_exception_is_one_event_failure(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
     first_request = SocketModeRequest(
         type="events_api",
         envelope_id="envelope-1",
@@ -1144,7 +1169,7 @@ def test_stream_consumer_exception_is_one_event_failure(mocker, caplog) -> None:
         def __init__(self) -> None:
             self.calls = 0
 
-        def accept(self, event, *, request_ip_address: str | None = None):
+        def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
             del request_ip_address
             del event
             self.calls += 1
@@ -1153,28 +1178,32 @@ def test_stream_consumer_exception_is_one_event_failure(mocker, caplog) -> None:
             return EventAcceptance.ACCEPTED
 
     class FakeSocketModeClient:
-        instances = []
+        instances: list[FakeSocketModeClient] = []
 
-        def __init__(self, **kwargs):
+        def __init__(
+            self, *, on_error_listeners: list[Callable[[Exception], None]] | None = None, **kwargs: object
+        ) -> None:
+            self.on_error_listeners = on_error_listeners or []
             del kwargs
-            self.socket_mode_request_listeners = []
-            self.responses = []
+            self.socket_mode_request_listeners: list[Callable[[object, SocketModeRequest], None]] = []
+            self.responses: list[SocketModeResponse] = []
             self.closed = False
             self.__class__.instances.append(self)
 
-        def connect(self):
+        def connect(self) -> None:
             return None
 
-        def send_socket_mode_response(self, response):
+        def send_socket_mode_response(self, response: SocketModeResponse) -> None:
             self.responses.append(response)
 
-        def close(self):
+        def close(self) -> None:
             self.closed = True
 
     mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
     adapter = _adapter(mocker, FakeWebClient())
     consumer = FailOnceConsumer()
     stream = adapter.create_stream_handler(consumer)
+    assert stream is not None
 
     with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
         stream.start()
@@ -1188,10 +1217,12 @@ def test_stream_consumer_exception_is_one_event_failure(mocker, caplog) -> None:
     assert consumer.calls == 2
     assert len(socket_client.responses) == 1
     assert socket_client.responses[0].envelope_id == "envelope-2"
-    assert socket_client.closed is True
+    assert socket_client.closed
 
 
-def test_stream_protocol_response_exception_is_one_event_failure(mocker, caplog) -> None:
+def test_stream_protocol_response_exception_is_one_event_failure(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
     first_request = SocketModeRequest(
         type="events_api",
         envelope_id="envelope-1",
@@ -1204,30 +1235,34 @@ def test_stream_protocol_response_exception_is_one_event_failure(mocker, caplog)
     )
 
     class FakeSocketModeClient:
-        instances = []
+        instances: list[FakeSocketModeClient] = []
 
-        def __init__(self, **kwargs):
+        def __init__(
+            self, *, on_error_listeners: list[Callable[[Exception], None]] | None = None, **kwargs: object
+        ) -> None:
+            self.on_error_listeners = on_error_listeners or []
             del kwargs
-            self.socket_mode_request_listeners = []
+            self.socket_mode_request_listeners: list[Callable[[object, SocketModeRequest], None]] = []
             self.response_attempts = 0
             self.closed = False
             self.__class__.instances.append(self)
 
-        def connect(self):
+        def connect(self) -> None:
             return None
 
-        def send_socket_mode_response(self, response):
+        def send_socket_mode_response(self, response: SocketModeResponse) -> None:
             del response
             self.response_attempts += 1
             if self.response_attempts == 1:
                 raise SlackClientError("sensitive response details")
 
-        def close(self):
+        def close(self) -> None:
             self.closed = True
 
     mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
     adapter = _adapter(mocker, FakeWebClient())
     stream = adapter.create_stream_handler(RecordingConsumer())
+    assert stream is not None
 
     with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
         stream.start()
@@ -1239,28 +1274,34 @@ def test_stream_protocol_response_exception_is_one_event_failure(mocker, caplog)
 
     assert "sensitive response details" not in caplog.text
     assert socket_client.response_attempts == 2
-    assert socket_client.closed is True
+    assert socket_client.closed
 
 
-def test_stream_wraps_connect_exception_as_safe_start_error_and_cleans_up(mocker, caplog) -> None:
+def test_stream_wraps_connect_exception_as_safe_start_error_and_cleans_up(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
     class FakeSocketModeClient:
-        instances = []
+        instances: list[FakeSocketModeClient] = []
 
-        def __init__(self, **kwargs):
+        def __init__(
+            self, *, on_error_listeners: list[Callable[[Exception], None]] | None = None, **kwargs: object
+        ) -> None:
+            self.on_error_listeners = on_error_listeners or []
             del kwargs
-            self.socket_mode_request_listeners = []
+            self.socket_mode_request_listeners: list[Callable[[object, SocketModeRequest], None]] = []
             self.closed = False
             self.__class__.instances.append(self)
 
-        def connect(self):
+        def connect(self) -> None:
             raise RuntimeError("sensitive connect details")
 
-        def close(self):
+        def close(self) -> None:
             self.closed = True
 
     mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
     adapter = _adapter(mocker, FakeWebClient())
     stream = adapter.create_stream_handler(RecordingConsumer())
+    assert stream is not None
 
     with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
         with pytest.raises(IMStreamStartError) as raised:
@@ -1273,7 +1314,9 @@ def test_stream_wraps_connect_exception_as_safe_start_error_and_cleans_up(mocker
     assert FakeSocketModeClient.instances[0].closed is True
 
 
-def test_stream_runtime_error_is_observable_without_adapter_lifecycle_transition(mocker, caplog) -> None:
+def test_stream_runtime_error_is_observable_without_adapter_lifecycle_transition(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
     sensitive_marker = "sensitive remote socket error"
     consumer = RecordingConsumer()
     request = SocketModeRequest(
@@ -1283,31 +1326,35 @@ def test_stream_runtime_error_is_observable_without_adapter_lifecycle_transition
     )
 
     class FailingSocketModeClient:
-        instances = []
+        instances: list[FailingSocketModeClient] = []
 
-        def __init__(self, **kwargs):
+        def __init__(
+            self, *, on_error_listeners: list[Callable[[Exception], None]] | None = None, **kwargs: object
+        ) -> None:
+            self.on_error_listeners = on_error_listeners or []
             self.kwargs = kwargs
-            self.socket_mode_request_listeners = []
-            self.responses = []
+            self.socket_mode_request_listeners: list[Callable[[object, SocketModeRequest], None]] = []
+            self.responses: list[SocketModeResponse] = []
             self.closed = False
             self.__class__.instances.append(self)
 
-        def connect(self):
+        def connect(self) -> None:
             return None
 
-        def send_socket_mode_response(self, response):
+        def send_socket_mode_response(self, response: SocketModeResponse) -> None:
             self.responses.append(response)
 
-        def close(self):
+        def close(self) -> None:
             self.closed = True
 
     mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FailingSocketModeClient)
     stream = _adapter(mocker, FakeWebClient()).create_stream_handler(consumer)
+    assert stream is not None
 
     with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
         stream.start()
         socket_client = FailingSocketModeClient.instances[0]
-        socket_client.kwargs["on_error_listeners"][0](RuntimeError(sensitive_marker))
+        socket_client.on_error_listeners[0](RuntimeError(sensitive_marker))
         socket_client.socket_mode_request_listeners[0](socket_client, request)
         stream.stop()
 
@@ -1315,10 +1362,10 @@ def test_stream_runtime_error_is_observable_without_adapter_lifecycle_transition
     assert len(socket_client.responses) == 1
     assert sensitive_marker not in caplog.text
     assert "Slack Socket Mode remote error" in caplog.text
-    assert socket_client.closed is True
+    assert socket_client.closed
 
 
-def test_stream_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mocker) -> None:
+def test_stream_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mocker: MockerFixture) -> None:
     consumer_started = threading.Event()
     release_consumer = threading.Event()
     stop_finished = threading.Event()
@@ -1332,7 +1379,7 @@ def test_stream_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mock
         def __init__(self) -> None:
             self.calls = 0
 
-        def accept(self, event, *, request_ip_address: str | None = None):
+        def accept(self, event: AuthenticatedIMEvent, *, request_ip_address: str | None = None) -> EventAcceptance:
             del request_ip_address
             del event
             self.calls += 1
@@ -1341,27 +1388,31 @@ def test_stream_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mock
             return EventAcceptance.ACCEPTED
 
     class FakeSocketModeClient:
-        instances = []
+        instances: list[FakeSocketModeClient] = []
 
-        def __init__(self, **kwargs):
+        def __init__(
+            self, *, on_error_listeners: list[Callable[[Exception], None]] | None = None, **kwargs: object
+        ) -> None:
+            self.on_error_listeners = on_error_listeners or []
             del kwargs
-            self.socket_mode_request_listeners = []
-            self.responses = []
+            self.socket_mode_request_listeners: list[Callable[[object, SocketModeRequest], None]] = []
+            self.responses: list[SocketModeResponse] = []
             self.closed = False
             self.__class__.instances.append(self)
 
-        def connect(self):
+        def connect(self) -> None:
             return None
 
-        def send_socket_mode_response(self, response):
+        def send_socket_mode_response(self, response: SocketModeResponse) -> None:
             self.responses.append(response)
 
-        def close(self):
+        def close(self) -> None:
             self.closed = True
 
     mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
     blocking_consumer = BlockingConsumer()
     stream = _adapter(mocker, FakeWebClient()).create_stream_handler(blocking_consumer)
+    assert stream is not None
     stream.start()
     socket_client = FakeSocketModeClient.instances[0]
     listener = socket_client.socket_mode_request_listeners[0]
@@ -1377,7 +1428,7 @@ def test_stream_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mock
     stop_thread.start()
 
     assert stop_finished.wait(2)
-    assert socket_client.closed is True
+    assert socket_client.closed
 
     release_consumer.set()
     callback_thread.join(2)
@@ -1386,26 +1437,32 @@ def test_stream_stop_delegates_to_sdk_without_waiting_for_inflight_consumer(mock
     assert not callback_thread.is_alive()
     assert not stop_thread.is_alive()
     assert stop_finished.is_set()
-    assert socket_client.closed is True
+    assert socket_client.closed
     assert len(socket_client.responses) == 1
 
 
-def test_stream_wraps_close_exception_as_safe_stop_error(mocker, caplog) -> None:
+def test_stream_wraps_close_exception_as_safe_stop_error(
+    mocker: MockerFixture, caplog: pytest.LogCaptureFixture
+) -> None:
 
     class FakeSocketModeClient:
-        def __init__(self, **kwargs):
+        def __init__(
+            self, *, on_error_listeners: list[Callable[[Exception], None]] | None = None, **kwargs: object
+        ) -> None:
+            self.on_error_listeners = on_error_listeners or []
             del kwargs
-            self.socket_mode_request_listeners = []
+            self.socket_mode_request_listeners: list[Callable[[object, SocketModeRequest], None]] = []
 
-        def connect(self):
+        def connect(self) -> None:
             return None
 
-        def close(self):
+        def close(self) -> None:
             raise RuntimeError("sensitive close details")
 
     mocker.patch("core.human_input_v2.im_integration.adapters.slack.SocketModeClient", FakeSocketModeClient)
     adapter = _adapter(mocker, FakeWebClient())
     stream = adapter.create_stream_handler(RecordingConsumer())
+    assert stream is not None
 
     with caplog.at_level(logging.ERROR, logger="core.human_input_v2.im_integration.adapters.slack"):
         stream.start()
