@@ -11,6 +11,7 @@ from controllers.common.access_response import register_auth_error_response
 from controllers.common.fields import EventStreamResponse, SimpleResultResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.openapi._catalog import attach_catalog
+from controllers.openapi._challenge import attach_resource_metadata_challenge
 from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
 from controllers.openapi._models import (
     AccountPayload,
@@ -173,6 +174,7 @@ from services.entities.dsl_entities import CheckDependenciesResult, Import
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)
+attach_resource_metadata_challenge(bp)
 register_auth_error_response(bp)
 attach_catalog(bp)
 
