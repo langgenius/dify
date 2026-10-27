@@ -162,6 +162,7 @@ class OAuthRefreshToken(TypeBase):
             "subject_issuer",
             "client_id",
             "device_label",
+            mysql_length={"subject_email": 191, "subject_issuer": 191, "device_label": 191},
         ),
         sa.Index("idx_oauth_refresh_tokens_account_id", "account_id"),
         sa.Index("idx_oauth_refresh_tokens_family_id", "family_id"),

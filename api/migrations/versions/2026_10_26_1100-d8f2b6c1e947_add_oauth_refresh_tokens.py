@@ -53,10 +53,14 @@ def upgrade():
         sa.PrimaryKeyConstraint("id", name="oauth_refresh_tokens_pkey"),
     )
     op.create_index("uq_oauth_refresh_tokens_token_hash", "oauth_refresh_tokens", ["token_hash"], unique=True)
+    # ``mysql_length`` truncates each long text column to 191 chars in the
+    # index: (191+191+64+191)*4 = 2548 bytes at utf8mb4, under InnoDB's
+    # 3072-byte index limit. Same prefix lengths as ``uq_oauth_active_per_device``.
     op.create_index(
         "idx_oauth_refresh_tokens_grant",
         "oauth_refresh_tokens",
         ["subject_email", "subject_issuer", "client_id", "device_label"],
+        mysql_length={"subject_email": 191, "subject_issuer": 191, "device_label": 191},
     )
     op.create_index("idx_oauth_refresh_tokens_account_id", "oauth_refresh_tokens", ["account_id"])
     op.create_index("idx_oauth_refresh_tokens_family_id", "oauth_refresh_tokens", ["family_id"])
