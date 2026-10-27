@@ -174,7 +174,7 @@ SELECTED_GUARDS = [
     'api/tests/unit_tests/services/dify_builder/test_serde.py::test_repair_loop_fields_round_trip',
     'api/tests/unit_tests/services/dify_builder/test_serde.py::test_repair_loop_fields_default_when_absent',
     "api/tests/unit_tests/core/dify_builder/test_handlers_edit.py::test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate",
-    "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
+    "api/tests/unit_tests/controllers/console/app/test_workflow.py::TestWorkflowCases::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
 ]
 FILES = list(dict.fromkeys(FILES))
 code = pytest.main([
