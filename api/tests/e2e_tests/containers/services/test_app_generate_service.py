@@ -14,6 +14,7 @@ from models import App
 from models.enums import EndUserType
 from models.model import EndUser
 from models.workflow import Workflow
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
 from tests.e2e_tests.containers.helpers import generate_valid_password
@@ -215,10 +216,14 @@ class TestAppGenerateService:
         workflow = Workflow(
             id=str(uuid.uuid4()),
             app_id=app.id,
-            name=fake.company(),
-            description=fake.text(max_nb_chars=100),
-            type="workflow",
-            status="published",
+            tenant_id=app.tenant_id,
+            marked_name=fake.company(),
+            marked_comment=fake.text(max_nb_chars=100),
+            type=ModelWorkflowType.WORKFLOW,
+            version="published",
+            graph='{"nodes": [], "edges": []}',
+            _features="{}",
+            created_by=app.created_by,
         )
 
         db_session_with_containers.add(workflow)
