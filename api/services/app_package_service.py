@@ -285,15 +285,15 @@ class AppPackageService(RosterAgentPackageReader):
         return package
 
     def _validate_workflow_tools(self, package: PreparedAppPackage) -> None:
-        # Each nested archive is bounded on its own, so also bound what all of them expand to.
-        expanded_size = 0
+        # Each nested archive is bounded on its own; the App and every workflow it calls also share one limit.
+        expanded_size = len(package.dsl.encode("utf-8")) + sum(member.size for member in package.members.values())
         for tool in package.workflow_tools:
             with self.read_workflow_tool(package, tool) as nested:
                 expanded_size += len(nested.dsl.encode("utf-8")) + sum(
                     member.size for member in nested.members.values()
                 )
             if expanded_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
-                raise RosterAgentPackageTooLargeError("App package workflow tools exceed the size limit")
+                raise RosterAgentPackageTooLargeError("App package and its workflow tools exceed the size limit")
 
     @staticmethod
     def _require_confirmed_version(app_data: dict[str, Any]) -> None:
@@ -420,6 +420,7 @@ class AppPackageService(RosterAgentPackageReader):
     ) -> list[_WorkflowToolExport]:
         """Package every workflow reachable through Workflow Tools, at the version each tool runs."""
         exports: list[_WorkflowToolExport] = []
+        exported_size = 0
         visited: set[str] = set()
         pending = [data]
         try:
@@ -447,6 +448,11 @@ class AppPackageService(RosterAgentPackageReader):
                         resources=resources,
                         workflow_tools=[],
                     )
+                    exported_size += package.size
+                    # Stop before packaging further workflows that the final archive could not hold anyway.
+                    if exported_size > dify_config.AGENT_PACKAGE_MAX_BYTES:
+                        package.close()
+                        raise RosterAgentPackageTooLargeError("App package workflow tools exceed the size limit")
                     exports.append(
                         _WorkflowToolExport(
                             definition={

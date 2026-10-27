@@ -1,6 +1,8 @@
 """Console use cases exercise ports without a request or an ORM session."""
 
+import base64
 import json
+import os
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, field, replace
@@ -1531,6 +1533,24 @@ def test_export_stops_at_the_workflow_tool_limit(
     config_overrides(APP_PACKAGE_MAX_WORKFLOW_TOOLS=1)
 
     with pytest.raises(RosterAgentPackageTooLargeError, match="too many workflow tools"):
+        app_services.console.export(workspaces.source, workspaces.caller_app_id, AppExportOptions())
+
+
+def test_export_stops_once_the_workflow_tools_outgrow_the_package_limit(
+    app_services: AppServices,
+    workspaces: Workspaces,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+) -> None:
+    _call_ranker_from_summarizer(sqlite_session_factory, workspaces, [])
+    with sqlite_session_factory.begin() as session:
+        for app in session.scalars(select(App).where(App.id != workspaces.caller_app_id)):
+            # Random data keeps each packaged workflow near its uncompressed size.
+            app.description = base64.b64encode(os.urandom(180_000)).decode()
+    # Each workflow fits on its own; the two together do not.
+    config_overrides(AGENT_PACKAGE_MAX_BYTES=300_000)
+
+    with pytest.raises(RosterAgentPackageTooLargeError, match="App package workflow tools exceed"):
         app_services.console.export(workspaces.source, workspaces.caller_app_id, AppExportOptions())
 
 

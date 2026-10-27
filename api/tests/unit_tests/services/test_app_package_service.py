@@ -1080,6 +1080,14 @@ class TestWorkflowToolPackageCases:
         with pytest.raises(RosterAgentPackageTooLargeError, match="workflow tools exceed"):
             AppPackageService().read_package(_bundle([member, member]))
 
+    @staticmethod
+    def test_the_app_and_its_workflow_tools_share_one_size_limit(config_overrides: Callable[..., None]) -> None:
+        member = _nested_package(f"{_WORKFLOW_DSL}  description: {'a' * 60_000}\n")
+        root_dsl = f"{_WORKFLOW_DSL}  description: {'b' * 50_000}\n"
+        config_overrides(AGENT_PACKAGE_MAX_BYTES=100_000)
+        with pytest.raises(RosterAgentPackageTooLargeError, match="App package and its workflow tools exceed"):
+            AppPackageService().read_package(_bundle([member], root_dsl=root_dsl))
+
 
 """Packaged image icons travel with Apps and receive destination-owned file ids."""
 
