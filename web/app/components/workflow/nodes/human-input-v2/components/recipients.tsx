@@ -1,7 +1,6 @@
 'use client'
 
 import type { ContactRecipientOption, ContactRecipientOptionProvider } from '../contact-provider'
-import type { HumanInputV2RecipientType } from '../recipient-utils'
 import type { HumanInputV2Recipient } from '../types'
 import type { Node, ValueSelector, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -25,14 +24,12 @@ import { consoleQuery } from '@/service/console'
 import { useContactRecipientOptionProvider } from '../contact-provider'
 import {
   addRecipient,
-  createRecipientDraft,
   findConflictingContact,
   getRecipientCanonicalKey,
   getRecipientValidationError,
   hasDuplicateRecipients,
   removeRecipient,
   replaceContactRecipient,
-  updateRecipient,
 } from '../recipient-utils'
 import { RecipientAvatar } from './recipient-avatar'
 import { RecipientContactPreview } from './recipient-contact-preview'
@@ -50,27 +47,9 @@ type RecipientsProps = {
 const getOptionLabel = (option: ContactRecipientOption) =>
   option.email ? `${option.name} · ${option.email}` : option.name
 
-type RecipientEditorState = {
-  index?: number
-  draft: HumanInputV2Recipient
-}
-
 type ContactSourceFilter = 'all' | ContactRecipientOption['source']
 
-const recipientTypes: HumanInputV2RecipientType[] = [
-  'contact',
-  'dynamic_email',
-  'onetime_email',
-  'initiator',
-  'all_workspace_contacts',
-]
-
 const contactSourceFilters: ContactSourceFilter[] = ['all', 'workspace', 'organization', 'external']
-
-const cloneRecipient = (recipient: HumanInputV2Recipient): HumanInputV2Recipient => {
-  if (recipient.type === 'dynamic_email') return { ...recipient, selector: [...recipient.selector] }
-  return { ...recipient }
-}
 
 const RecipientsContent = ({
   nodeId,
@@ -81,7 +60,7 @@ const RecipientsContent = ({
   workspace,
   availableNodes = [],
 }: RecipientsProps & { provider: ContactRecipientOptionProvider }) => {
-  const { t } = useTranslation(['workflow', 'contacts', 'common'])
+  const { t } = useTranslation(['workflow', 'contacts'])
   const [open, setOpen] = useState(false)
   const [searchFromInput, setSearchFromInput] = useState(false)
   const [query, setQuery] = useState('')
@@ -109,8 +88,6 @@ const RecipientsContent = ({
   const searchQueryRef = useRef('')
   const [emailDraft, setEmailDraft] = useState('')
   const [emailError, setEmailError] = useState(false)
-  const [editor, setEditor] = useState<RecipientEditorState>()
-  const [editorError, setEditorError] = useState<'invalid' | 'duplicate'>()
   const firstOptionRef = useRef<HTMLButtonElement>(null)
   const recipientInputRef = useRef<HTMLInputElement>(null)
   const variableTriggerRef = useRef<HTMLButtonElement>(null)
@@ -305,67 +282,6 @@ const RecipientsContent = ({
     setOpen(false)
   }
 
-  const openEditor = (index?: number) => {
-    if (index !== undefined && !value[index]) return
-    const draft =
-      index === undefined ? createRecipientDraft('onetime_email') : cloneRecipient(value[index]!)
-    setEditor({ index, draft })
-    setEditorError(undefined)
-    if (draft.type === 'contact') void loadOptions('')
-  }
-
-  const closeEditor = () => {
-    setEditor(undefined)
-    setEditorError(undefined)
-  }
-
-  const setEditorType = (type: HumanInputV2RecipientType) => {
-    setEditor((current) => current && { ...current, draft: createRecipientDraft(type) })
-    setEditorError(undefined)
-    if (type === 'contact') void loadOptions('')
-  }
-
-  const saveEditor = () => {
-    if (!editor) return
-    if (getRecipientValidationError(editor.draft)) {
-      setEditorError('invalid')
-      return
-    }
-
-    if (editor.draft.type === 'contact') {
-      const contactId = editor.draft.contact_id
-      const option = options.find((option) => option.id === contactId) ?? resolvedMap.get(contactId)
-      if (
-        option &&
-        findConflictingContact(
-          value.filter((_, index) => index !== editor.index),
-          option,
-          resolvedOptions,
-        )
-      ) {
-        setEditorError('duplicate')
-        return
-      }
-    }
-
-    const draftKey = getRecipientCanonicalKey(editor.draft)
-    const duplicate = value.some(
-      (recipient, index) =>
-        index !== editor.index && getRecipientCanonicalKey(recipient) === draftKey,
-    )
-    if (duplicate) {
-      setEditorError('duplicate')
-      return
-    }
-
-    onChange(
-      editor.index === undefined
-        ? [...value, editor.draft]
-        : updateRecipient(value, editor.index, editor.draft),
-    )
-    closeEditor()
-  }
-
   const getRecipientLabel = (recipient: HumanInputV2Recipient) => {
     if (recipient.type === 'all_workspace_contacts')
       return (
@@ -386,9 +302,6 @@ const RecipientsContent = ({
     }
     return recipient.email
   }
-
-  const editorNodeId = editor?.draft.type === 'dynamic_email' ? editor.draft.selector[0] : undefined
-  const editorNode = availableNodes.find((node) => node.id === editorNodeId)
 
   return (
     <section className="px-4 pt-2" aria-labelledby={`${nodeId}-recipients-label`}>
@@ -438,7 +351,7 @@ const RecipientsContent = ({
                 'rounded-[5px] bg-util-colors-blue-blue-50 text-text-accent',
               invalid && 'bg-state-destructive-hover text-text-destructive',
               !readonly &&
-                'border-0 text-start focus-visible:ring-1 focus-visible:ring-state-accent-solid',
+                'border-0 text-start focus:bg-util-colors-blue-blue-50 focus:inset-ring-1 focus:inset-ring-state-accent-solid focus-visible:ring-1 focus-visible:ring-state-accent-solid',
             )
             const chipContent = (
               <>
@@ -529,21 +442,34 @@ const RecipientsContent = ({
                 <button
                   key={key}
                   type="button"
-                  aria-label={
-                    contact
-                      ? getOptionLabel(contact)
-                      : readonly
-                        ? undefined
-                        : t(($) => $['nodes.humanInputV2.recipients.edit'], {
-                            ns: 'workflow',
-                            recipient: getRecipientLabel(recipient) || recipient.type,
-                          })
-                  }
+                  aria-label={contact ? getOptionLabel(contact) : getRecipientLabel(recipient)}
+                  aria-keyshortcuts={readonly ? undefined : 'Backspace Delete'}
                   className={cn(
                     chipClassName,
                     'focus-visible:ring-1 focus-visible:ring-state-accent-solid',
                   )}
-                  onClick={!readonly && !contact ? () => openEditor(index) : undefined}
+                  onKeyDown={
+                    readonly
+                      ? undefined
+                      : (event) => {
+                          if (
+                            event.nativeEvent.isComposing ||
+                            event.altKey ||
+                            event.ctrlKey ||
+                            event.metaKey ||
+                            event.shiftKey ||
+                            (event.key !== 'Backspace' && event.key !== 'Delete')
+                          )
+                            return
+                          event.preventDefault()
+                          event.stopPropagation()
+                          if (event.repeat) return
+                          onChange(removeRecipient(value, index))
+                          setSearchFromInput(true)
+                          setOpen(false)
+                          recipientInputRef.current?.focus()
+                        }
+                  }
                 >
                   {chipContent}
                 </button>
@@ -560,11 +486,7 @@ const RecipientsContent = ({
                 </Tooltip>
               )
             return contact ? (
-              <RecipientContactPreview
-                key={key}
-                contact={contact}
-                onEdit={readonly ? undefined : () => openEditor(index)}
-              >
+              <RecipientContactPreview key={key} contact={contact} selectOnClick={!readonly}>
                 {chip}
               </RecipientContactPreview>
             ) : (
@@ -613,7 +535,6 @@ const RecipientsContent = ({
                     event.stopPropagation()
                     if (event.repeat) return
                     const lastIndex = value.length - 1
-                    if (editor?.index === lastIndex) closeEditor()
                     onChange(removeRecipient(value, lastIndex))
                     setSearchFromInput(true)
                     setOpen(false)
@@ -658,7 +579,8 @@ const RecipientsContent = ({
                 }
                 aria-invalid={emailError}
                 aria-describedby={emailError ? `${nodeId}-recipient-email-error` : undefined}
-                className="h-5 w-0 min-w-4 grow basis-4 rounded-none border-0 bg-transparent px-1 py-0 shadow-none hover:bg-transparent focus:bg-transparent focus:shadow-none"
+                // oxlint-disable-next-line shadcn/no-restyle -- The enclosing recipient editor paints the shared focus ring around its chips and input.
+                className="h-5 w-0 min-w-4 grow basis-4 rounded-none border-0 bg-transparent px-1 py-0 shadow-none hover:bg-transparent focus:bg-transparent focus:shadow-none focus:ring-0"
               />
               {emailDraft.includes('@') && (
                 <Button size="small" onClick={addOneTimeEmail}>
@@ -1008,257 +930,6 @@ const RecipientsContent = ({
           </div>
         )}
       </div>
-
-      {editor && !readonly && (
-        <div
-          className="mt-2 space-y-2 rounded-lg border border-components-panel-border bg-components-panel-bg p-2"
-          role="group"
-          aria-labelledby={`${nodeId}-recipient-editor-title`}
-          aria-describedby={editorError ? `${nodeId}-recipient-editor-error` : undefined}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div
-              id={`${nodeId}-recipient-editor-title`}
-              className="system-xs-semibold-uppercase text-text-secondary"
-            >
-              {t(
-                ($) =>
-                  $[
-                    editor.index === undefined
-                      ? 'nodes.humanInputV2.recipients.addRecipient'
-                      : 'nodes.humanInputV2.recipients.editRecipient'
-                  ],
-                { ns: 'workflow' },
-              )}
-            </div>
-            <button
-              type="button"
-              className="flex size-5 items-center justify-center rounded-md border-0 bg-transparent focus-visible:ring-1 focus-visible:ring-state-accent-solid"
-              aria-label={t(($) => $['nodes.humanInputV2.recipients.cancel'], {
-                ns: 'workflow',
-              })}
-              onClick={closeEditor}
-            >
-              <span className="i-ri-close-line size-3.5" aria-hidden />
-            </button>
-          </div>
-
-          <div
-            className="flex flex-wrap gap-1"
-            role="group"
-            aria-label={t(($) => $['nodes.humanInputV2.recipients.typeLabel'], { ns: 'workflow' })}
-          >
-            {recipientTypes.map((type) => (
-              <button
-                key={type}
-                type="button"
-                aria-pressed={editor.draft.type === type}
-                className={cn(
-                  'rounded-md border border-components-button-secondary-border px-2 py-1 system-xs-medium text-text-secondary focus-visible:ring-1 focus-visible:ring-state-accent-solid',
-                  editor.draft.type === type &&
-                    'bg-state-accent-solid text-text-primary-on-surface',
-                )}
-                onClick={() => setEditorType(type)}
-              >
-                {t(($) => $[`nodes.humanInputV2.recipients.type.${type}`], {
-                  ns: 'workflow',
-                })}
-              </button>
-            ))}
-          </div>
-
-          {editor.draft.type === 'onetime_email' && (
-            <Input
-              aria-label={t(($) => $['nodes.humanInputV2.recipients.emailLabel'], {
-                ns: 'workflow',
-              })}
-              aria-invalid={editorError === 'invalid'}
-              value={editor.draft.email}
-              onChange={(event) => {
-                setEditor((current) =>
-                  current && current.draft.type === 'onetime_email'
-                    ? { ...current, draft: { ...current.draft, email: event.target.value } }
-                    : current,
-                )
-                setEditorError(undefined)
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  saveEditor()
-                }
-              }}
-            />
-          )}
-
-          {editor.draft.type === 'contact' && (
-            <div className="space-y-1">
-              <Input
-                aria-label={t(($) => $['nodes.humanInputV2.recipients.search'], {
-                  ns: 'workflow',
-                })}
-                placeholder={t(($) => $['nodes.humanInputV2.recipients.searchPlaceholder'], {
-                  ns: 'workflow',
-                })}
-                onChange={(event) => void loadOptions(event.target.value)}
-              />
-              <div className="max-h-32 overflow-y-auto">
-                {loading && (
-                  <div role="status" className="p-2 system-xs-regular text-text-tertiary">
-                    {t(($) => $['nodes.humanInputV2.recipients.loading'], { ns: 'workflow' })}
-                  </div>
-                )}
-                {!loading && loadError && (
-                  <div role="alert" className="p-2 system-xs-regular text-text-destructive">
-                    {t(($) => $['nodes.humanInputV2.recipients.loadError'], { ns: 'workflow' })}
-                  </div>
-                )}
-                {!loading &&
-                  options.map((option) => (
-                    <button
-                      key={option.id}
-                      type="button"
-                      aria-pressed={
-                        editor.draft.type === 'contact' && editor.draft.contact_id === option.id
-                      }
-                      className="flex w-full items-center justify-between rounded-md border-0 bg-transparent px-2 py-1 text-start system-xs-regular text-text-secondary hover:bg-state-base-hover focus-visible:bg-state-base-hover"
-                      onClick={() => {
-                        setEditor(
-                          (current) =>
-                            current && {
-                              ...current,
-                              draft: { type: 'contact', contact_id: option.id },
-                            },
-                        )
-                        setEditorError(undefined)
-                      }}
-                    >
-                      <span>{getOptionLabel(option)}</span>
-                    </button>
-                  ))}
-                {hasMore && !loading && (
-                  <Button
-                    size="small"
-                    loading={loadingMore}
-                    disabled={loadingMore}
-                    onClick={loadMore}
-                  >
-                    {t(($) => $['common.loadMore'], { ns: 'workflow' })}
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {editor.draft.type === 'dynamic_email' && (
-            <div className="flex items-center justify-between gap-2 rounded-md bg-components-input-bg-normal px-2 py-1">
-              <div className="min-w-0 flex-1 system-xs-regular text-text-secondary">
-                {editor.draft.selector.length ? (
-                  <VariableLabelInEditor
-                    variables={editor.draft.selector}
-                    nodeType={editorNode?.data.type}
-                    nodeTitle={editorNode?.data.title}
-                  />
-                ) : (
-                  t(($) => $['nodes.humanInputV2.recipients.variableRequired'], {
-                    ns: 'workflow',
-                  })
-                )}
-              </div>
-              <VarReferencePicker
-                nodeId={nodeId}
-                readonly={false}
-                value={editor.draft.selector}
-                isShowNodeName
-                filterVar={(variable: Var) =>
-                  variable.type === VarType.string || variable.type === VarType.secret
-                }
-                trigger={
-                  <Button size="small">
-                    {t(($) => $['nodes.humanInputV2.recipients.chooseVariable'], {
-                      ns: 'workflow',
-                    })}
-                  </Button>
-                }
-                onChange={(selector) => {
-                  if (!Array.isArray(selector)) return
-                  setEditor(
-                    (current) =>
-                      current && {
-                        ...current,
-                        draft: {
-                          type: 'dynamic_email',
-                          selector: selector as ValueSelector,
-                        },
-                      },
-                  )
-                  setEditorError(undefined)
-                }}
-              />
-            </div>
-          )}
-
-          {editor.draft.type === 'all_workspace_contacts' && (
-            <div className="rounded-md bg-components-input-bg-normal px-2 py-1.5 system-xs-regular text-text-secondary">
-              {t(($) => $['nodes.humanInputV2.recipients.allWorkspaceContactsDescription'], {
-                ns: 'workflow',
-              })}
-            </div>
-          )}
-
-          {editor.draft.type === 'initiator' && (
-            <div className="rounded-md bg-components-input-bg-normal px-2 py-1.5 system-xs-regular text-text-secondary">
-              {t(($) => $['nodes.humanInputV2.recipients.initiatorDescription'], {
-                ns: 'workflow',
-              })}
-            </div>
-          )}
-
-          {editorError && (
-            <div
-              id={`${nodeId}-recipient-editor-error`}
-              role="alert"
-              className="system-xs-regular text-text-destructive"
-            >
-              {t(
-                ($) =>
-                  $[
-                    editorError === 'duplicate'
-                      ? 'nodes.humanInputV2.error.recipientDuplicate'
-                      : 'nodes.humanInputV2.error.recipientInvalid'
-                  ],
-                { ns: 'workflow' },
-              )}
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2">
-            {editor.index !== undefined && (
-              <Button
-                variant="ghost"
-                size="small"
-                aria-label={t(($) => $['nodes.humanInputV2.recipients.remove'], {
-                  ns: 'workflow',
-                  recipient: getRecipientLabel(value[editor.index]!) || editor.draft.type,
-                })}
-                className="me-auto text-text-destructive"
-                onClick={() => {
-                  onChange(removeRecipient(value, editor.index!))
-                  closeEditor()
-                }}
-              >
-                {t(($) => $['operation.remove'], { ns: 'common' })}
-              </Button>
-            )}
-            <Button variant="ghost" size="small" onClick={closeEditor}>
-              {t(($) => $['nodes.humanInputV2.recipients.cancel'], { ns: 'workflow' })}
-            </Button>
-            <Button size="small" onClick={saveEditor}>
-              {t(($) => $['nodes.humanInputV2.recipients.confirm'], { ns: 'workflow' })}
-            </Button>
-          </div>
-        </div>
-      )}
     </section>
   )
 }

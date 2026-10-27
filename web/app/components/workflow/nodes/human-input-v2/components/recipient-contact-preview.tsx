@@ -10,7 +10,7 @@ import { RecipientAvatar } from './recipient-avatar'
 type RecipientContactPreviewProps = {
   contact: ContactRecipientOption
   children: ReactElement
-  onEdit?: () => void
+  selectOnClick?: boolean
   conflictingContact?: ContactRecipientOption
   onReplace?: () => void
 }
@@ -18,7 +18,7 @@ type RecipientContactPreviewProps = {
 export function RecipientContactPreview({
   contact,
   children,
-  onEdit,
+  selectOnClick,
   conflictingContact,
   onReplace,
 }: RecipientContactPreviewProps) {
@@ -33,10 +33,9 @@ export function RecipientContactPreview({
     <Popover
       open={open}
       onOpenChange={(nextOpen, details) => {
-        if (onEdit && details.reason === 'trigger-press') {
+        if (selectOnClick && details.reason === 'trigger-press') {
           details.cancel()
           setOpen(false)
-          onEdit()
           return
         }
         setOpen(nextOpen)
