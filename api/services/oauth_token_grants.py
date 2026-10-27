@@ -28,6 +28,7 @@ from services.oauth_device_contracts import (
     RefreshTokenIssue,
     RefreshTokenRejectedError,
     RefreshTokenReusedError,
+    UnsupportedClientError,
     default_device_label,
 )
 from services.oauth_grant_revoker import GrantRevoker
@@ -49,6 +50,7 @@ _DEVICE_ERROR_TO_TOKEN_ERROR: Mapping[type[OAuthDeviceError], TokenErrorCode] = 
     AccessDeniedError: TokenErrorCode.ACCESS_DENIED,
     ExpiredTokenError: TokenErrorCode.EXPIRED_TOKEN,
     ClientMismatchError: TokenErrorCode.INVALID_CLIENT,
+    UnsupportedClientError: TokenErrorCode.INVALID_CLIENT,
 }
 
 
@@ -63,6 +65,7 @@ class DeviceCodeGrantHandler:
     def __call__(self, request: TokenRequest) -> TokenGrantResult:
         if not request.client_id or not request.device_code:
             raise TokenEndpointError(TokenErrorCode.INVALID_REQUEST)
+        _check_requested_resource(request)
         try:
             payload = self._device.poll_device_grant(
                 client_id=request.client_id,
@@ -75,6 +78,16 @@ class DeviceCodeGrantHandler:
                 raise
             raise TokenEndpointError(code) from error
         return TokenGrantResult(payload=payload)
+
+
+def _check_requested_resource(request: TokenRequest) -> None:
+    """RFC 8707: a ``resource`` sent on the token request must name this API."""
+    if request.resource is None:
+        return
+    try:
+        resolve_resource(request.resource, issuer=openapi_issuer_url(request.request_origin))
+    except InvalidResourceError:
+        raise TokenEndpointError(TokenErrorCode.INVALID_TARGET) from None
 
 
 def _active_account(accounts: OAuthDeviceAccountQuery, account_id: str) -> AccountSnapshot:
@@ -191,10 +204,7 @@ class AuthorizationCodeGrantHandler:
             return
         if request.resource == record.resource:
             return
-        try:
-            resolve_resource(request.resource, issuer=openapi_issuer_url(request.request_origin))
-        except InvalidResourceError:
-            raise TokenEndpointError(TokenErrorCode.INVALID_TARGET) from None
+        _check_requested_resource(request)
         raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
 
 
@@ -233,6 +243,7 @@ class RefreshTokenGrantHandler:
         )
         if GrantType.REFRESH_TOKEN not in client.grant_types:
             raise TokenEndpointError(TokenErrorCode.UNAUTHORIZED_CLIENT)
+        _check_requested_resource(request)
         record = self._find(client, request)
         account = _active_account(self._accounts, record.account_id)
         # The access token is keyed by the account's current email; a changed one names another grant.

@@ -925,7 +925,7 @@ def test_external_issuer_is_required_before_persistence(issuer: str) -> None:
 
 
 def test_poll_device_grant_rejects_other_client() -> None:
-    harness = _harness()
+    harness = _harness(settings=FakeSettings(known_client_ids=frozenset({"difyctl", "other"})))
     harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
     harness.store.poll_decision = SlowDownDecision.SLOW_DOWN
 
@@ -936,6 +936,17 @@ def test_poll_device_grant_rejects_other_client() -> None:
     assert "ABCD-EFGH" in harness.store.states
     result = harness.service.poll_device_grant(client_id="difyctl", device_code="device-1", poll_ip="127.0.0.1")
     assert result["token"] == "secret-token"
+
+
+@pytest.mark.parametrize("device_code", ["device-1", "unknown-device"], ids=["known-code", "unknown-code"])
+def test_poll_device_grant_rejects_client_off_the_allowlist(device_code: str) -> None:
+    harness = _harness(settings=FakeSettings(known_client_ids=frozenset({"other-cli"})))
+    harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
+
+    with pytest.raises(UnsupportedClientError):
+        harness.service.poll_device_grant(client_id="difyctl", device_code=device_code, poll_ip="127.0.0.1")
+
+    assert "ABCD-EFGH" in harness.store.states
 
 
 @pytest.mark.parametrize(

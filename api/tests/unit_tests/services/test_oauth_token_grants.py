@@ -39,6 +39,7 @@ from services.oauth_device_contracts import (
     PollPayload,
     PollTooFastError,
     RefreshTokenIssue,
+    UnsupportedClientError,
 )
 from services.oauth_grant_revoker import GrantRevoker
 from services.oauth_server_service import OAuthServerRequestError, OAuthServerService
@@ -115,7 +116,9 @@ def _handler(device: FakeDevice) -> DeviceCodeGrantHandler:
     return DeviceCodeGrantHandler(device)
 
 
-def _request(*, client_id: str | None = "difyctl", device_code: str | None = "device-1") -> TokenRequest:
+def _request(
+    *, client_id: str | None = "difyctl", device_code: str | None = "device-1", resource: str | None = None
+) -> TokenRequest:
     return TokenRequest(
         grant_type=GrantType.DEVICE_CODE,
         client_id=client_id,
@@ -125,7 +128,7 @@ def _request(*, client_id: str | None = "difyctl", device_code: str | None = "de
         redirect_uri=None,
         device_code=device_code,
         refresh_token=None,
-        resource=None,
+        resource=resource,
         scope=None,
         poll_ip="127.0.0.1",
         request_origin="https://api.example",
@@ -147,6 +150,7 @@ def test_device_grant_success_maps_to_token_response() -> None:
         (AccessDeniedError, TokenErrorCode.ACCESS_DENIED),
         (ExpiredTokenError, TokenErrorCode.EXPIRED_TOKEN),
         (ClientMismatchError, TokenErrorCode.INVALID_CLIENT),
+        (UnsupportedClientError, TokenErrorCode.INVALID_CLIENT),
     ],
 )
 def test_device_grant_errors_use_standard_names(
@@ -156,6 +160,20 @@ def test_device_grant_errors_use_standard_names(
         _handler(FakeDevice(error=device_error()))(_request())
 
     assert caught.value.code is token_error
+
+
+@pytest.mark.parametrize("resource", ["https://api.example", "https://other.example/openapi/v1"])
+def test_device_grant_unknown_resource_is_invalid_target(resource: str) -> None:
+    device = FakeDevice()
+    with pytest.raises(TokenEndpointError) as caught:
+        _handler(device)(_request(resource=resource))
+
+    assert caught.value.code is TokenErrorCode.INVALID_TARGET
+    assert device.calls == 0
+
+
+def test_device_grant_canonical_resource_is_accepted() -> None:
+    assert _handler(FakeDevice())(_request(resource=ISSUER)).payload
 
 
 def test_device_grant_unmapped_error_is_reraised() -> None:
@@ -597,6 +615,7 @@ def _refresh_request(
     *,
     client_id: str | None = CONFIDENTIAL_ID,
     client_secret: str | None = CONFIDENTIAL_SECRET,
+    resource: str | None = None,
 ) -> TokenRequest:
     return TokenRequest(
         grant_type=GrantType.REFRESH_TOKEN,
@@ -607,7 +626,7 @@ def _refresh_request(
         redirect_uri=None,
         device_code=None,
         refresh_token=token,
-        resource=None,
+        resource=resource,
         scope=None,
         poll_ip="127.0.0.1",
         request_origin="https://api.example/",
@@ -796,6 +815,29 @@ def _assert_close(value: datetime, expected: datetime) -> None:
 
 @pytest.mark.usefixtures("client_auth_hits", "issuer_from_origin")
 class TestRefreshTokenGrantCases:
+    @staticmethod
+    def test_refresh_with_the_canonical_resource_rotates(refresh_world: _RefreshWorld) -> None:
+        login = refresh_world.login()
+
+        rotated = refresh_world.handler(_refresh_request(login.refresh_token, resource=ISSUER))
+
+        assert rotated.refresh_token not in (None, login.refresh_token)
+
+    @staticmethod
+    @pytest.mark.parametrize("resource", ["https://api.example", "https://other.example/openapi/v1"])
+    def test_refresh_with_an_unknown_resource_is_invalid_target_and_keeps_the_token(
+        refresh_world: _RefreshWorld, resource: str
+    ) -> None:
+        login = refresh_world.login()
+
+        with pytest.raises(TokenEndpointError) as caught:
+            refresh_world.handler(_refresh_request(login.refresh_token, resource=resource))
+
+        assert caught.value.code is TokenErrorCode.INVALID_TARGET
+        row = refresh_world.refresh_row(login.refresh_token)
+        assert row is not None
+        assert row.rotated_at is None
+
     @staticmethod
     def test_login_returns_a_refresh_token_for_the_same_grant(refresh_world: _RefreshWorld) -> None:
         login = refresh_world.login()

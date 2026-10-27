@@ -346,6 +346,9 @@ class OAuthDeviceApplicationService:
         return poll_payload
 
     def poll_device_grant(self, *, client_id: str, device_code: str, poll_ip: str) -> PollPayload:
+        # Checked on every poll, so a client taken off the allowlist after /device/code gets no token.
+        if client_id not in self._settings.known_client_ids:
+            raise UnsupportedClientError
         state = self._store.load_by_device_code(device_code)
         if state is not None and state.client_id != client_id:
             raise ClientMismatchError
