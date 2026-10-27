@@ -6,7 +6,8 @@ from alembic.script import ScriptDirectory
 
 _VERSIONS = Path(__file__).resolve().parents[4] / "migrations/versions"
 _MAIN_HEAD = "d6b9e2f1a407"
-# KnowledgeFS revisions run in this order after main's head, without merge revisions.
+# KnowledgeFS revisions run in this order right after main's head, without merge revisions.
+# Later revisions may follow the chain.
 _KNOWLEDGE_FS_CHAIN = [
     "a4e7c2f91b30",
     "b7f2a9d41c60",
@@ -30,8 +31,12 @@ def _scripts() -> ScriptDirectory:
     return ScriptDirectory(str(_VERSIONS.parent))
 
 
-def test_knowledge_fs_chain_ends_in_the_single_head() -> None:
-    assert _scripts().get_heads() == [_KNOWLEDGE_FS_CHAIN[-1]]
+def test_single_head_descends_from_the_knowledge_fs_chain() -> None:
+    scripts = _scripts()
+    heads = scripts.get_heads()
+
+    assert len(heads) == 1
+    assert _KNOWLEDGE_FS_CHAIN[-1] in {revision.revision for revision in scripts.iterate_revisions(heads[0], "base")}
 
 
 def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
@@ -43,7 +48,7 @@ def test_upgrade_from_main_head_applies_knowledge_fs_chain_linearly() -> None:
         if revision.revision not in applied_on_main
     ]
 
-    assert pending == _KNOWLEDGE_FS_CHAIN
+    assert pending[: len(_KNOWLEDGE_FS_CHAIN)] == _KNOWLEDGE_FS_CHAIN
     for parent, revision in zip([_MAIN_HEAD, *_KNOWLEDGE_FS_CHAIN[:-1]], _KNOWLEDGE_FS_CHAIN, strict=True):
         script = scripts.get_revision(revision)
         assert script is not None
