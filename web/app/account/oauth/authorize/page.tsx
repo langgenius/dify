@@ -22,11 +22,13 @@ import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
+import { authorizeClientQueryOptions, OAuthAuthorizeError } from '@/service/oauth-authorize'
 import { useLogout } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
+import { OpenApiConsent } from './components/openapi-consent'
 import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
-export default function OAuthAuthorize() {
+function CreatorsPlatformAuthorize() {
   const { t } = useTranslation(['common', 'oauth'])
 
   const SCOPE_INFO_MAP: Record<
@@ -293,4 +295,49 @@ export default function OAuthAuthorize() {
       </div>
     </div>
   )
+}
+
+const OPENAPI_REQUEST_ERROR_CODES = new Set(['invalid_redirect_uri', 'invalid_request'])
+
+function isOpenApiRequestError(error: unknown) {
+  return (
+    error instanceof OAuthAuthorizeError &&
+    error.status === 400 &&
+    OPENAPI_REQUEST_ERROR_CODES.has(error.code)
+  )
+}
+
+export default function OAuthAuthorize() {
+  const { t } = useTranslation(['oauth'])
+  const searchParams = useSearchParams()
+  const clientId = searchParams.get('client_id') || ''
+  const redirectUri = searchParams.get('redirect_uri') ?? ''
+  // Every OpenAPI client sends PKCE; a request without it is a creators-platform one.
+  const isOpenApiCandidate = Boolean(clientId && searchParams.get('code_challenge'))
+  const { data: client, error } = useQuery(
+    authorizeClientQueryOptions(clientId, redirectUri, isOpenApiCandidate),
+  )
+  const isLookupPending = isOpenApiCandidate && !client && !error
+
+  if (isLookupPending) {
+    return (
+      <div className="bg-background-default-subtle">
+        <LoadingPlaceholder className="h-full" />
+      </div>
+    )
+  }
+
+  if (client) return <OpenApiConsent client={client} searchParams={searchParams} />
+
+  if (isOpenApiRequestError(error)) {
+    return (
+      <div className="flex flex-col gap-4 bg-background-default-subtle text-text-secondary">
+        <div className="body-md-regular">
+          {t(($) => $['openapi.error.invalidRequest'], { ns: 'oauth' })}
+        </div>
+      </div>
+    )
+  }
+
+  return <CreatorsPlatformAuthorize />
 }

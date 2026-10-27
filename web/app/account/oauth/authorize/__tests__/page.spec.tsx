@@ -387,3 +387,138 @@ describe('OAuthAuthorize', () => {
     expect((await screen.findAllByText('Hyphenated OAuth App')).length).toBeGreaterThan(0)
   })
 })
+
+describe('OAuthAuthorize OpenAPI client lookup', () => {
+  const openApiParams = {
+    client_id: 'openapi-client',
+    redirect_uri: 'http://127.0.0.1:8123/callback',
+    code_challenge: 'challenge-1',
+    code_challenge_method: 'S256',
+    resource: 'https://dify.test/openapi/v1',
+    state: 'state-1',
+  }
+  const clientView = {
+    client_id: 'openapi-client',
+    display_name: 'Local CLI',
+    logo_uri: null,
+    redirect_host: '127.0.0.1',
+    localhost_only: true,
+  }
+  const fetchMock = vi.fn()
+
+  function stubLookup(status: number, body: unknown) {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (String(url).startsWith('/openapi/v1/oauth/authorize/client')) {
+        return new Response(JSON.stringify(body), { status })
+      }
+      throw new Error(`Unexpected fetch: ${url}`)
+    })
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.profileLoggedIn = true
+    mocks.searchParams = new URLSearchParams(openApiParams)
+    mockProviderResponses({ autoAuthorize: true })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('location', {
+      href: 'https://dify.test/account/oauth/authorize',
+      origin: 'https://dify.test',
+      replace: mocks.replaceDocument,
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('does not look up a request without PKCE', async () => {
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'client-1',
+      redirect_uri: 'https://client.example.com/callback',
+    })
+    mockProviderResponses({ autoAuthorize: false })
+    renderPage()
+
+    expect(await screen.findByRole('button', { name: /continue/i })).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('renders the OpenAPI consent and never auto-authorizes', async () => {
+    stubLookup(200, clientView)
+    renderPage()
+
+    expect(await screen.findByText('Local CLI')).toBeInTheDocument()
+    expect(screen.getByText(/127\.0\.0\.1/)).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('oauth.openapi.localhostWarning')
+    expect(findRequest('/oauth/provider')).toBeUndefined()
+    expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
+    const lookupUrl = String(fetchMock.mock.calls[0]![0])
+    expect(new URL(lookupUrl, 'https://dify.test').searchParams.get('redirect_uri')).toBe(
+      openApiParams.redirect_uri,
+    )
+  })
+
+  it('still sends redirect_uri on the lookup when it is empty', async () => {
+    mocks.searchParams = new URLSearchParams({
+      client_id: 'openapi-client',
+      code_challenge: 'challenge-1',
+    })
+    stubLookup(400, { error: 'invalid_redirect_uri' })
+    renderPage()
+
+    await screen.findByText('oauth.openapi.error.invalidRequest')
+    const lookupUrl = new URL(String(fetchMock.mock.calls[0]![0]), 'https://dify.test')
+    expect(lookupUrl.searchParams.get('redirect_uri')).toBe('')
+  })
+
+  it.each([
+    ['unknown client', 400, { error: 'invalid_client' }],
+    ['feature off', 404, { error: 'not_found' }],
+    ['rate limited', 429, { error: 'rate_limited' }],
+    ['server error', 500, {}],
+  ])('falls through to the creators-platform flow on %s', async (_name, status, body) => {
+    stubLookup(status, body)
+    mockProviderResponses({ autoAuthorize: false })
+    renderPage()
+
+    expect(await screen.findByRole('button', { name: /continue/i })).toBeInTheDocument()
+    expect(findRequest('/oauth/provider')).toBeDefined()
+  })
+
+  it('falls through to the creators-platform flow on a network error', async () => {
+    fetchMock.mockRejectedValue(new TypeError('network down'))
+    mockProviderResponses({ autoAuthorize: false })
+    renderPage()
+
+    expect(await screen.findByRole('button', { name: /continue/i })).toBeInTheDocument()
+  })
+
+  it.each(['invalid_redirect_uri', 'invalid_request'])(
+    'shows the OpenAPI error view for %s and never navigates',
+    async (code) => {
+      stubLookup(400, { error: code })
+      renderPage()
+
+      expect(await screen.findByText('oauth.openapi.error.invalidRequest')).toBeInTheDocument()
+      expect(findRequest('/oauth/provider')).toBeUndefined()
+      expect(globalThis.location.href).toBe('https://dify.test/account/oauth/authorize')
+      expect(mocks.push).not.toHaveBeenCalled()
+      expect(mocks.replace).not.toHaveBeenCalled()
+    },
+  )
+
+  it('keeps the PKCE parameters on the sign-in link when logged out', async () => {
+    mocks.profileLoggedIn = false
+    stubLookup(200, clientView)
+    renderPage()
+
+    const link = await screen.findByRole('link', { name: 'oauth.login' })
+    const signIn = new URL(link.getAttribute('href')!, 'https://dify.test')
+    const returnUrl = new URL(signIn.searchParams.get('redirect_url')!)
+    expect(returnUrl.pathname).toBe('/account/oauth/authorize')
+    for (const [key, value] of Object.entries(openApiParams))
+      expect(returnUrl.searchParams.get(key)).toBe(value)
+  })
+})
