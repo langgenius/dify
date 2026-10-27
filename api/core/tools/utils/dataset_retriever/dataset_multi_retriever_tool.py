@@ -18,6 +18,7 @@ from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import Datas
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Document, DocumentSegment
+from repositories.knowledge.segment_read_adapter import sign_segment_content
 
 default_retrieval_model: DefaultRetrievalModelDict = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -93,7 +94,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             DocumentSegment.dataset_id.in_(self.dataset_ids),
             DocumentSegment.completed_at.isnot(None),
             DocumentSegment.status == "completed",
-            DocumentSegment.enabled == True,
+            DocumentSegment.enabled.is_(True),
             DocumentSegment.index_node_id.in_(index_node_ids),
         )
         segments = session.scalars(document_segment_stmt).all()
@@ -105,18 +106,19 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             )
             for segment in sorted_segments:
                 if segment.answer:
-                    document_context_list.append(f"question:{segment.get_sign_content()} answer:{segment.answer}")
+                    document_context_list.append(
+                        f"question:{sign_segment_content(segment, session=session)} answer:{segment.answer}"
+                    )
                 else:
-                    document_context_list.append(segment.get_sign_content())
+                    document_context_list.append(sign_segment_content(segment, session=session))
             if self.return_resource:
                 context_list: list[RetrievalSourceMetadata] = []
-                resource_number = 1
-                for segment in sorted_segments:
+                for resource_number, segment in enumerate(sorted_segments, start=1):
                     dataset = session.get(Dataset, segment.dataset_id)
                     document_stmt = select(Document).where(
                         Document.id == segment.document_id,
-                        Document.enabled == True,
-                        Document.archived == False,
+                        Document.enabled.is_(True),
+                        Document.archived.is_(False),
                     )
                     document = session.scalar(document_stmt)
                     if dataset and document:
@@ -143,7 +145,6 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                         else:
                             source.content = segment.content
                         context_list.append(source)
-                    resource_number += 1
 
                 for hit_callback in self.hit_callbacks:
                     hit_callback.return_retriever_resource_info(context_list)

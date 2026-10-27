@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
+import { getMaxVarNameLength, MAX_VAR_KEY_LENGTH } from '@/config'
 import {
   checkKey,
   checkKeys,
@@ -22,7 +23,8 @@ describe('Variable Utilities', () => {
     })
 
     it('should return error for key that is too long', () => {
-      const longKey = 'a'.repeat(101) // Assuming MAX_VAR_KEY_LENGTH is 100
+      expect(checkKey('a'.repeat(MAX_VAR_KEY_LENGTH))).toBe(true)
+      const longKey = 'a'.repeat(MAX_VAR_KEY_LENGTH + 1)
       expect(checkKey(longKey)).toBe('tooLong')
     })
 
@@ -164,7 +166,8 @@ describe('Variable Utilities', () => {
     it('should truncate long names', () => {
       const longKey = 'a'.repeat(100)
       const result = getNewVar(longKey, 'string')
-      expect(result.name.length).toBeLessThanOrEqual(result.key.length)
+      expect(result.name).toBe('a'.repeat(getMaxVarNameLength('a')))
+      expect(result.key).toBe(longKey)
     })
   })
 
@@ -190,13 +193,6 @@ describe('Variable Utilities', () => {
   })
 
   describe('getMarketplaceUrl', () => {
-    beforeEach(() => {
-      Object.defineProperty(window, 'location', {
-        value: { origin: 'https://example.com' },
-        writable: true,
-      })
-    })
-
     it('should add additional parameters', () => {
       const url = getMarketplaceUrl('/plugins', { category: 'ai', version: '1.0' })
       expect(url).toContain('category=ai')
@@ -232,7 +228,6 @@ describe('Variable Utilities', () => {
     })
 
     it('should not access window during server render', () => {
-      const originalWindow = window
       vi.stubGlobal('window', undefined)
 
       try {
@@ -240,7 +235,7 @@ describe('Variable Utilities', () => {
         expect(url).toContain('category=ai')
         expect(url).not.toContain('source=')
       } finally {
-        vi.stubGlobal('window', originalWindow)
+        vi.unstubAllGlobals()
       }
     })
 

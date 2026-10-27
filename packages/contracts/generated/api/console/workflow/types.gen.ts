@@ -6,6 +6,16 @@ export type ClientOptions = {
 
 export type EventStreamResponse = string
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type WorkflowPauseDetailsResponse = {
   paused_at?: string | null
   paused_nodes: Array<PausedNodeResponse>
@@ -32,6 +42,13 @@ export type GetWorkflowByWorkflowRunIdEventsData = {
   url: '/workflow/{workflow_run_id}/events'
 }
 
+export type GetWorkflowByWorkflowRunIdEventsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkflowByWorkflowRunIdEventsError =
+  GetWorkflowByWorkflowRunIdEventsErrors[keyof GetWorkflowByWorkflowRunIdEventsErrors]
+
 export type GetWorkflowByWorkflowRunIdEventsResponses = {
   200: EventStreamResponse
 }
@@ -49,8 +66,12 @@ export type GetWorkflowByWorkflowRunIdPauseDetailsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsErrors = {
-  404: unknown
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetWorkflowByWorkflowRunIdPauseDetailsError =
+  GetWorkflowByWorkflowRunIdPauseDetailsErrors[keyof GetWorkflowByWorkflowRunIdPauseDetailsErrors]
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsResponses = {
   200: WorkflowPauseDetailsResponse

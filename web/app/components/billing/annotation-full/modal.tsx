@@ -15,7 +15,7 @@ type Props = Readonly<{
   onHide: () => void
 }>
 const AnnotationFullModal: FC<Props> = ({ show, onHide }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'common'])
 
   return (
     <Dialog
@@ -24,7 +24,7 @@ const AnnotationFullModal: FC<Props> = ({ show, onHide }) => {
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="w-full">
         <DialogClose
           render={
             <IconButton

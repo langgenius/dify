@@ -19,6 +19,7 @@ from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import AppMode
+from repositories.entities.workflow_execution import WorkflowExecutionTiming
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -103,6 +104,7 @@ class DifyRunContext(BaseModel):
     app_type: CreditUsageAppType | None = None
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
+    workflow_tool_invocation_id: str | None = None
 
     @field_validator("created_by", mode="before")
     @classmethod
@@ -307,6 +309,9 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
     workflow_run_id: str | None = None
+    workflow_execution_timing: WorkflowExecutionTiming = Field(
+        default_factory=WorkflowExecutionTiming, exclude=True, repr=False
+    )
     query: str
 
     class SingleIterationRunEntity(BaseModel):
@@ -338,6 +343,11 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
     workflow_execution_id: str
+    workflow_execution_timing: WorkflowExecutionTiming = Field(
+        default_factory=WorkflowExecutionTiming, exclude=True, repr=False
+    )
+    # Legacy synchronous Tool callers cannot resume a paused execution.
+    allow_human_input: bool = True
 
     class SingleIterationRunEntity(BaseModel):
         """
@@ -376,7 +386,8 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     start_node_id: str | None = None
 
 
-from core.ops.ops_trace_manager import TraceQueueManager
+# Resolve circular model references after model definitions.
+from core.ops.ops_trace_manager import TraceQueueManager  # noqa: E402
 
 AppGenerateEntity.model_rebuild()
 EasyUIBasedAppGenerateEntity.model_rebuild()

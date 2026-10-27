@@ -1,30 +1,39 @@
+import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import QuotaPanel from '../quota-panel'
 
-let mockWorkspaceData:
-  | {
-      trial_credits: number
-      trial_credits_used: number
-      is_unlimited?: boolean
-      trial_credits_exhausted_at?: number
-      next_credit_reset_date: number
-    }
-  | undefined = {
-  trial_credits: 100,
-  trial_credits_used: 30,
+const createCredits = (
+  overrides: Partial<ModelProviderCreditsResponse> = {},
+): ModelProviderCreditsResponse => ({
+  quota_limit: 100,
+  quota_used: 30,
+  remaining_credits: 70,
+  is_unlimited: false,
+  is_exhausted: false,
+  exhausted_at: null,
   next_credit_reset_date: 1735603200,
-}
-let mockWorkspaceIsPending = false
+  pool_type: 'trial',
+  ...overrides,
+})
+let credits: ModelProviderCreditsResponse | undefined
+const getCredits = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.modelProviders.credits.get': getCredits,
+    }),
+  }
+})
 let mockTrialModels: string[] | undefined = ['langgenius/openai/openai']
-let mockPlugins = [
-  {
-    plugin_id: 'langgenius/openai',
-    latest_package_identifier: 'openai@1.0.0',
-  },
-]
 const mockFetchManifestFromMarketPlace = vi.fn(async (_uniqueIdentifier: string) => ({
   data: {
     plugin: {
@@ -62,51 +71,15 @@ vi.mock('@/service/plugins', () => ({
     mockFetchPluginInfoFromMarketPlace(params),
 }))
 
-vi.mock('@/app/components/base/icons/src/public/llm', () => {
-  const Icon = ({ label }: { label: string }) => <span>{label}</span>
-  return {
-    OpenaiSmall: () => <Icon label="openai" />,
-    AnthropicShortLight: () => <Icon label="anthropic" />,
-    Gemini: () => <Icon label="gemini" />,
-    Grok: () => <Icon label="x" />,
-    Deepseek: () => <Icon label="deepseek" />,
-    Tongyi: () => <Icon label="tongyi" />,
-  }
-})
-
-vi.mock('../use-trial-credits', () => ({
-  useTrialCredits: () => {
-    const isUnlimited = mockWorkspaceData?.is_unlimited ?? false
-    const rawTotalCredits = mockWorkspaceData?.trial_credits ?? 0
-    const rawUsedCredits = mockWorkspaceData?.trial_credits_used ?? 0
-    const totalCredits = isUnlimited ? rawTotalCredits : Math.max(rawTotalCredits, 0)
-    const usedCredits = isUnlimited
-      ? rawUsedCredits
-      : Math.min(Math.max(rawUsedCredits, 0), totalCredits)
-    const credits = isUnlimited ? -1 : Math.max(totalCredits - usedCredits, 0)
-    return {
+const renderQuotaPanel = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  if (credits)
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
       credits,
-      usedCredits,
-      totalCredits,
-      isUnlimited,
-      isExhausted: !isUnlimited && credits <= 0,
-      isLoading: mockWorkspaceIsPending && !mockWorkspaceData,
-      exhaustedAt: mockWorkspaceData?.trial_credits_exhausted_at,
-      nextCreditResetDate: mockWorkspaceData?.next_credit_reset_date,
-    }
-  },
-}))
-
-const renderQuotaPanel = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
-    trialModels: mockTrialModels ?? [],
-  })
-
-vi.mock('../../hooks', () => ({
-  useMarketplaceAllPlugins: () => ({
-    plugins: mockPlugins,
-  }),
-}))
+    )
+  return renderWithConsoleQuery(ui, { queryClient, trialModels: mockTrialModels ?? [] })
+}
 
 vi.mock(
   '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
@@ -163,14 +136,9 @@ describe('QuotaPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspaceData = {
-      trial_credits: 100,
-      trial_credits_used: 30,
-      next_credit_reset_date: 1735603200,
-    }
-    mockWorkspaceIsPending = false
+    credits = createCredits()
+    getCredits.mockReset().mockImplementation(() => new Promise(() => {}))
     mockTrialModels = ['langgenius/openai/openai']
-    mockPlugins = [{ plugin_id: 'langgenius/openai', latest_package_identifier: 'openai@1.0.0' }]
     mockFetchManifestFromMarketPlace.mockClear()
     mockFetchPluginInfoFromMarketPlace.mockReset()
     mockFetchPluginInfoFromMarketPlace.mockResolvedValue({
@@ -185,11 +153,10 @@ describe('QuotaPanel', () => {
   })
 
   it('should render loading state', () => {
-    mockWorkspaceData = undefined
-    mockWorkspaceIsPending = true
+    credits = undefined
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('should show used credits, total credits, and reset date', () => {
@@ -197,50 +164,55 @@ describe('QuotaPanel', () => {
 
     expect(screen.getByText(/modelProvider\.quota/)).toBeInTheDocument()
     expect(screen.getByText('30')).toBeInTheDocument()
-    expect(screen.getByText('/')).toHaveClass('font-normal', 'text-text-tertiary')
-    expect(screen.getByText('/')).not.toHaveClass('system-xl-semibold')
     expect(screen.getByText('100')).toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.used/)).toBeInTheDocument()
     expect(screen.queryByText(/modelProvider\.ranOutDate/)).not.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.resetDate/)).toBeInTheDocument()
   })
 
-  it('should keep quota content during background refetch when cached workspace exists', () => {
-    mockWorkspaceIsPending = true
-
-    renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
-
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  it('keeps cached quota visible during refetch and displays the updated response', async () => {
+    const request = createDeferred<ModelProviderCreditsResponse>()
+    getCredits.mockReturnValue(request.promise)
+    const { queryClient } = renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
+    act(() => {
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
+      })
+    })
+    await waitFor(() => expect(getCredits).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     expect(screen.getByText('30')).toBeInTheDocument()
+    await act(async () => request.resolve(createCredits({ quota_used: 40, remaining_credits: 60 })))
+    expect(await screen.findByText('40')).toBeInTheDocument()
+    expect(screen.queryByText('30')).not.toBeInTheDocument()
   })
 
-  it('should keep usage display within quota when usage is higher than quota', () => {
-    mockWorkspaceData = {
-      trial_credits: 10,
-      trial_credits_used: 999,
-      trial_credits_exhausted_at: 1733011200,
-      next_credit_reset_date: 0,
-    }
+  it('shows exhausted quota and the exhaustion date from the server', () => {
+    credits = createCredits({
+      quota_limit: 10,
+      quota_used: 10,
+      remaining_credits: 0,
+      is_exhausted: true,
+      exhausted_at: 1733011200,
+      next_credit_reset_date: null,
+    })
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     const usageNumbers = screen.getAllByText('10')
     expect(usageNumbers).toHaveLength(2)
-    usageNumbers.forEach((number) => expect(number).toHaveClass('text-text-destructive'))
-    expect(screen.getByText(/modelProvider\.used/)).toHaveClass('text-text-destructive')
     expect(screen.getByText(/modelProvider\.ranOutDate/)).toBeInTheDocument()
-    expect(screen.getByText('/')).toHaveClass('font-normal', 'text-text-tertiary')
-    expect(screen.getByText('/')).not.toHaveClass('system-xl-semibold', 'text-text-destructive')
     expect(screen.queryByText(/modelProvider\.resetDate/)).not.toBeInTheDocument()
   })
 
   it('should show unlimited credits instead of backend sentinel values', () => {
-    mockWorkspaceData = {
-      trial_credits: -1,
-      trial_credits_used: 999,
+    credits = createCredits({
+      quota_limit: -1,
+      quota_used: 999,
+      remaining_credits: -1,
       is_unlimited: true,
-      next_credit_reset_date: 0,
-    }
+      next_credit_reset_date: null,
+    })
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
@@ -251,9 +223,10 @@ describe('QuotaPanel', () => {
   })
 
   it('should open install modal when clicking an unsupported trial provider', async () => {
+    const user = userEvent.setup()
     renderQuotaPanel(<QuotaPanel providers={[]} />)
 
-    fireEvent.click(screen.getByText('openai'))
+    await user.click(screen.getByRole('button', { name: /modelNotSupported/ }))
 
     await waitFor(() => expect(screen.getByText('install modal')).toBeInTheDocument())
     expect(mockFetchManifestFromMarketPlace).toHaveBeenCalledWith('openai@1.0.0')
@@ -272,12 +245,13 @@ describe('QuotaPanel', () => {
   })
 
   it('should prevent duplicate marketplace requests while a provider is loading', async () => {
+    const user = userEvent.setup()
     mockFetchPluginInfoFromMarketPlace.mockImplementation(() => new Promise(() => {}))
     renderQuotaPanel(<QuotaPanel providers={[]} />)
     const providerButton = screen.getByLabelText(/modelNotSupported/)
 
-    fireEvent.click(providerButton)
-    fireEvent.click(providerButton)
+    await user.click(providerButton)
+    await user.click(providerButton)
 
     await waitFor(() => {
       expect(mockFetchPluginInfoFromMarketPlace).toHaveBeenCalledTimes(1)
@@ -287,25 +261,27 @@ describe('QuotaPanel', () => {
   })
 
   it('should allow retrying marketplace installation after a request failure', async () => {
+    const user = userEvent.setup()
     mockFetchPluginInfoFromMarketPlace.mockRejectedValueOnce(new Error('Marketplace unavailable'))
     renderQuotaPanel(<QuotaPanel providers={[]} />)
     const providerButton = screen.getByLabelText(/modelNotSupported/)
 
-    fireEvent.click(providerButton)
+    await user.click(providerButton)
 
     await waitFor(() => expect(providerButton).toHaveAttribute('aria-busy', 'false'))
     expect(screen.queryByText('install modal')).not.toBeInTheDocument()
 
-    fireEvent.click(providerButton)
+    await user.click(providerButton)
 
     await waitFor(() => expect(screen.getByText('install modal')).toBeInTheDocument())
     expect(mockFetchPluginInfoFromMarketPlace).toHaveBeenCalledTimes(2)
   })
 
   it('should close install modal when provider becomes installed', async () => {
+    const user = userEvent.setup()
     const { rerender } = renderQuotaPanel(<QuotaPanel providers={[]} />)
 
-    fireEvent.click(screen.getByText('openai'))
+    await user.click(screen.getByRole('button', { name: /modelNotSupported/ }))
     await waitFor(() => expect(screen.getByText('install modal')).toBeInTheDocument())
 
     rerender(<QuotaPanel providers={mockProviders} />)
@@ -320,15 +296,18 @@ describe('QuotaPanel', () => {
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
-    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /model(?:NotSupported|Supported|API)/ }),
+    ).not.toBeInTheDocument()
   })
 
-  it('should render installed custom providers without opening the install modal', () => {
+  it('should render installed custom providers without opening the install modal', async () => {
+    const user = userEvent.setup()
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
 
     expect(screen.getByLabelText(/modelAPI/)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('openai'))
+    await user.click(screen.getByRole('button', { name: /modelAPI/ }))
 
     expect(screen.queryByText('install modal')).not.toBeInTheDocument()
   })

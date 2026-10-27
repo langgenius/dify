@@ -19,7 +19,7 @@ const ModerationContent: FC<ModerationContentProps> = ({
   config,
   onConfigChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const [presetResponse, setPresetResponse] = useState(config.preset_response || '')
 
   const handleConfigChange = (field: string, value: boolean | string) => {

@@ -23,7 +23,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
   external_knowledge_id,
   onChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const externalKnowledgeApiQueryOptions =

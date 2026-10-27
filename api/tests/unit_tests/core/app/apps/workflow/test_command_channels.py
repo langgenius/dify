@@ -5,12 +5,13 @@ from unittest.mock import patch
 
 import pytest
 
+from core.app.apps.execution_coordinator import send_abort_command
 from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
     StopFlagCommandChannel,
 )
-from graphon.graph_engine.entities.commands import AbortCommand, PauseCommand
+from graphon.engine.command import AbortCommand, PauseCommand, RedisChannel
 
 
 class _CommandChannelStub:
@@ -25,6 +26,29 @@ class _CommandChannelStub:
 
     def send_command(self, command) -> None:
         self.sent.append(command)
+
+
+def test_send_abort_command_uses_workflow_redis_channel() -> None:
+    with patch.object(RedisChannel, "send_command", autospec=True) as send:
+        send_abort_command("task-id", reason="stop")
+
+    send.assert_called_once()
+    channel, command = send.call_args.args
+    assert channel._key == "workflow:task-id:commands"
+    assert isinstance(command, AbortCommand)
+    assert command.reason == "stop"
+
+
+def test_send_abort_command_preserves_legacy_fallback(caplog: pytest.LogCaptureFixture) -> None:
+    with patch.object(
+        RedisChannel, "send_command", autospec=True, side_effect=RuntimeError("redis unavailable")
+    ) as send:
+        send_abort_command("task-id")
+        send_abort_command("")
+
+    send.assert_called_once()
+    assert send.call_args.args[1].reason == "User requested stop"
+    assert "Failed to send Engine abort command for task task-id" in caplog.text
 
 
 def test_combined_command_channel_fetches_from_all_sources() -> None:
@@ -66,7 +90,7 @@ def test_combined_command_channel_continues_after_source_failure(caplog: pytest.
     combined = CombinedCommandChannel((failing, _CommandChannelStub([abort])))
 
     assert combined.fetch_commands() == [abort]
-    assert "Failed to fetch GraphEngine commands" in caplog.text
+    assert "Failed to fetch Engine commands" in caplog.text
 
 
 def test_celery_signal_command_channel_emits_abort_when_shutdown_starts() -> None:
@@ -97,18 +121,6 @@ def test_celery_signal_command_channel_emits_abort_once_per_instance() -> None:
     assert channel.fetch_commands() == []
 
 
-def test_celery_signal_command_channel_send_command_is_noop() -> None:
-    channel = CelerySignalCommandChannel(
-        shutdown_state_getter=lambda: False,
-        abort_reason="worker shutdown",
-    )
-    command = PauseCommand(reason="pause")
-
-    channel.send_command(command)
-
-    assert channel.fetch_commands() == []
-
-
 def test_stop_flag_command_channel_emits_abort_when_flag_is_set() -> None:
     channel = StopFlagCommandChannel(task_id="task-1", abort_reason="User requested stop")
 
@@ -128,14 +140,4 @@ def test_stop_flag_command_channel_emits_abort_once_per_instance() -> None:
 
     with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=True):
         assert len(channel.fetch_commands()) == 1
-        assert channel.fetch_commands() == []
-
-
-def test_stop_flag_command_channel_send_command_is_noop() -> None:
-    channel = StopFlagCommandChannel(task_id="task-1")
-    command = PauseCommand(reason="pause")
-
-    channel.send_command(command)
-
-    with patch("core.app.apps.workflow.command_channels.is_app_task_stop_flag_set", return_value=False):
         assert channel.fetch_commands() == []

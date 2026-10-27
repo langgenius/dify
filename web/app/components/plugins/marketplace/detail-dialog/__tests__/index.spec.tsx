@@ -1,63 +1,60 @@
-import type { Plugin } from '@/app/components/plugins/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import type { consoleClient } from '@/service/console'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import MarketplaceDetailDialog from '../index'
 
 const mocks = vi.hoisted(() => ({
-  install: vi.fn(),
+  install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
 }))
 
-vi.mock('../../utils', () => ({
-  getPluginLinkInMarketplace: (
-    plugin: Plugin,
-    params: {
-      canInstall?: string
-      installed: string
-      language: string
-      source?: string
-      theme?: string
-      view: string
-    },
-  ) =>
-    `about:blank?plugin=${plugin.org}/${plugin.name}&installed=${params.installed}&language=${params.language}&source=${params.source}&theme=${params.theme}&view=${params.view}&canInstall=${params.canInstall}`,
-}))
+// Preserve query construction while keeping the external iframe document local.
+vi.mock('../../utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils')>()
+  return {
+    ...actual,
+    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
+      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
+  }
+})
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.install.marketplace.post': mocks.install,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+    }),
+  }
+})
 
-vi.mock('../use-silent-install', () => ({
-  useSilentMarketplaceInstall: () => ({ install: mocks.install }),
-}))
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
-const plugin = {
-  type: 'plugin',
-  org: 'dify',
-  name: 'plugin-a',
-  plugin_id: 'plugin-a',
-  version: '1.0.0',
-  latest_version: '1.0.0',
-  latest_package_identifier: 'pkg',
-  icon: 'icon.png',
-  verified: true,
-  label: { 'en-US': 'Plugin A' },
-  brief: { 'en-US': 'Brief' },
-  description: { 'en-US': 'Description' },
-  introduction: 'Intro',
-  repository: 'https://github.com/dify/plugin-a',
-  category: PluginCategoryEnum.tool,
-  install_count: 42,
-  endpoint: { settings: [] },
-  tags: [],
-  badges: [],
-  verification: { authorized_category: 'community' },
-  from: 'marketplace',
-} as Plugin
+const plugin = createMarketplacePluginFixture()
 
 describe('MarketplaceDetailDialog', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.install.mockResolvedValue({ status: 'success' })
+    mocks.install.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
   })
 
   it('renders the marketplace detail route in modal mode and closes in place', async () => {
@@ -65,40 +62,30 @@ describe('MarketplaceDetailDialog', () => {
     const onOpenChange = vi.fn()
 
     render(
-      <ThemeProvider forcedTheme="dark">
+      <ThemeProvider defaultTheme="dark" enableSystem={false}>
         <MarketplaceDetailDialog open isInstalled plugin={plugin} onOpenChange={onOpenChange} />
       </ThemeProvider>,
     )
 
     const frame = screen.getByTitle('Plugin A · plugin.detailPanel.operation.detail')
-    expect(frame).toHaveAttribute(
-      'src',
-      // resolvedTheme maps the "system" preference to the concrete value, so
-      // the embedded detail page receives light/dark rather than "system".
-      'about:blank?plugin=dify/plugin-a&installed=true&language=en-US&source=http://localhost:3000&theme=light&view=modal&canInstall=true',
-    )
-    expect(document.querySelector('.bg-linear-to-t')).not.toBeInTheDocument()
+    const params = new URL(frame.getAttribute('src')!).searchParams
+    expect(Object.fromEntries(params)).toMatchObject({
+      installed: 'true',
+      language: 'en-US',
+      source: window.location.origin,
+      theme: 'dark',
+      view: 'modal',
+      canInstall: 'true',
+    })
+    expect(frame).toHaveAttribute('allow', 'clipboard-write')
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it('delegates clipboard-write permission to the marketplace detail iframe', () => {
-    render(
-      <ThemeProvider forcedTheme="dark">
-        <MarketplaceDetailDialog open isInstalled plugin={plugin} onOpenChange={vi.fn()} />
-      </ThemeProvider>,
-    )
-
-    expect(screen.getByTitle('Plugin A · plugin.detailPanel.operation.detail')).toHaveAttribute(
-      'allow',
-      'clipboard-write',
-    )
-  })
-
   it('installs from the embedded detail frame without opening a confirmation dialog', async () => {
     render(
-      <ThemeProvider forcedTheme="dark">
+      <ThemeProvider defaultTheme="dark" enableSystem={false}>
         <MarketplaceDetailDialog open isInstalled={false} plugin={plugin} onOpenChange={vi.fn()} />
       </ThemeProvider>,
     )
@@ -141,8 +128,10 @@ describe('MarketplaceDetailDialog', () => {
       }),
     )
 
-    expect(mocks.install).toHaveBeenCalledOnce()
-    expect(mocks.install).toHaveBeenCalledWith(plugin)
+    await waitFor(() => expect(mocks.install).toHaveBeenCalledOnce())
+    expect(mocks.install).toHaveBeenCalledWith({
+      body: { plugin_unique_identifiers: [plugin.latest_package_identifier] },
+    })
     expect(screen.queryByRole('dialog', { name: 'plugin.installModal.installPlugin' })).toBeNull()
 
     await waitFor(() => {
@@ -160,7 +149,7 @@ describe('MarketplaceDetailDialog', () => {
   it('does not install when the workspace lacks plugin.install', async () => {
     render(
       <PluginInstallPermissionProvider canInstallPlugin={false}>
-        <ThemeProvider forcedTheme="dark">
+        <ThemeProvider defaultTheme="dark" enableSystem={false}>
           <MarketplaceDetailDialog
             open
             isInstalled={false}
@@ -174,10 +163,7 @@ describe('MarketplaceDetailDialog', () => {
     const frame = screen.getByTitle(
       'Plugin A · plugin.detailPanel.operation.detail',
     ) as HTMLIFrameElement
-    expect(frame).toHaveAttribute(
-      'src',
-      'about:blank?plugin=dify/plugin-a&installed=false&language=en-US&source=http://localhost:3000&theme=light&view=modal&canInstall=false',
-    )
+    expect(new URL(frame.getAttribute('src')!).searchParams.get('canInstall')).toBe('false')
     const postMessage = vi.spyOn(frame.contentWindow!, 'postMessage')
     fireEvent(
       window,
@@ -206,17 +192,12 @@ describe('MarketplaceDetailDialog', () => {
 
   it('ignores a late install result after the timeout has already settled', async () => {
     vi.useFakeTimers()
-    let finishInstall: ((result: { status: 'success' }) => void) | undefined
-    mocks.install.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          finishInstall = resolve
-        }),
-    )
+    const installation = createDeferred<Awaited<ReturnType<typeof mocks.install>>>()
+    mocks.install.mockReturnValue(installation.promise)
 
     try {
       render(
-        <ThemeProvider forcedTheme="dark">
+        <ThemeProvider defaultTheme="dark" enableSystem={false}>
           <MarketplaceDetailDialog
             open
             isInstalled={false}
@@ -242,7 +223,7 @@ describe('MarketplaceDetailDialog', () => {
         }),
       )
 
-      await vi.advanceTimersByTimeAsync(5 * 60 * 1000)
+      await act(async () => vi.advanceTimersByTimeAsync(5 * 60 * 1000))
       expect(postMessage).toHaveBeenCalledWith(
         {
           type: 'dify-marketplace:install-plugin-status',
@@ -252,9 +233,11 @@ describe('MarketplaceDetailDialog', () => {
         'null',
       )
 
-      finishInstall?.({ status: 'success' })
-      await Promise.resolve()
-      await vi.runAllTimersAsync()
+      await act(async () => {
+        installation.resolve({ all_installed: true, task_id: '' })
+        await installation.promise
+        await vi.advanceTimersByTimeAsync(0)
+      })
 
       expect(postMessage).toHaveBeenCalledTimes(1)
     } finally {

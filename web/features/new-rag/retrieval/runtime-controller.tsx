@@ -1,0 +1,604 @@
+'use client'
+
+import type { KnowledgeFsResearchTaskResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { RetrievalTestMode } from './model'
+import type { KnowledgeQueryEvent } from './services/knowledge-query-events'
+import type { RetrievalComposerImage } from './state/scoped'
+import { useAtomValueRawSync, useSetAtom } from 'jotai'
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
+import { consoleClient } from '@/service/console'
+import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
+import { useKnowledgeModelSetupGuard } from '../use-knowledge-model-setup-guard'
+import { mergeResearchProgressEvent } from './history-utils'
+import {
+  extractRetrievalEvidence,
+  extractStreamError,
+  extractTraceId,
+  researchTaskCanRetry,
+  researchTaskIsActive,
+  shouldRefreshResearchPartials,
+} from './model'
+import { streamKnowledgeQuery } from './services/knowledge-query-events'
+import { streamResearchTaskEvents } from './services/research-task-events'
+import {
+  retrievalComposerModeAtom,
+  retrievalComposerQueryAtom,
+  retrievalComposerQueryImagesAtom,
+  retrievalRetainedImagesAtom,
+  retrievalRuntimeQueryFactsAtom,
+  retrievalSelectedAtom,
+  retrievalSelectedQueryImagesAtom,
+  retrievalSelectedResearchTaskAtom,
+} from './state/graph'
+import {
+  retrievalCanQueryAtom,
+  retrievalKnowledgeSpaceIdAtom,
+  retrievalLinkedSelectionAtom,
+} from './state/inputs'
+import { retrievalRuntimeBridgeAtom } from './state/runtime'
+import {
+  retrievalAdmittedResearchTasksAtom,
+  retrievalComposerDraftAtom,
+  retrievalComposerUploadPendingAtom,
+  retrievalLocalRunAtom,
+  retrievalLocalSelectedAtom,
+  retrievalRecordImagesAtom,
+  retrievalResearchEventsAtom,
+  retrievalResearchPlansAtom,
+  retrievalResearchRetryPendingAtom,
+} from './state/scoped'
+
+function structuredErrorMessage(value: unknown): string | undefined {
+  if (typeof value === 'string') return value.trim() || undefined
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const payload = value as Record<string, unknown>
+  return (
+    structuredErrorMessage(payload.error) ??
+    structuredErrorMessage(payload.message) ??
+    structuredErrorMessage(payload.detail)
+  )
+}
+
+function responseErrorMessage(body: string) {
+  const trimmedBody = body.trim()
+  if (!trimmedBody) return undefined
+  try {
+    return structuredErrorMessage(JSON.parse(trimmedBody) as unknown)
+  } catch {
+    return trimmedBody
+  }
+}
+
+async function queryFailure(error: unknown) {
+  let status: number | undefined
+  let message = error instanceof Error ? error.message : ''
+  if (error instanceof Response) {
+    status = error.status
+    try {
+      const body = await error.clone().text()
+      message = responseErrorMessage(body) ?? ''
+    } catch {
+      // The status and default copy are still enough to render a stable failure state.
+    }
+  } else if (error && typeof error === 'object' && 'status' in error) {
+    status = typeof error.status === 'number' ? error.status : undefined
+  }
+  const unavailableEmptySnapshot =
+    status === 503 &&
+    /published runtime snapshot unavailable|publication unavailable/i.test(message)
+  return {
+    message: unavailableEmptySnapshot ? undefined : message || undefined,
+    status: unavailableEmptySnapshot ? ('no-results' as const) : ('failed' as const),
+  }
+}
+
+export function RetrievalRuntimeController() {
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeRetrieval'])
+  const canQuery = useAtomValueRawSync(retrievalCanQueryAtom)
+  const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
+  const linkedSelection = useAtomValueRawSync(retrievalLinkedSelectionAtom)
+  const updateLocation = useSetAtom(retrievalLinkedSelectionAtom)
+  const query = useAtomValueRawSync(retrievalComposerQueryAtom)
+  const queryImages = useAtomValueRawSync(retrievalComposerQueryImagesAtom)
+  const selectedQueryImages = useAtomValueRawSync(retrievalSelectedQueryImagesAtom)
+  const retainedImages = useAtomValueRawSync(retrievalRetainedImagesAtom)
+  const mode = useAtomValueRawSync(retrievalComposerModeAtom)
+  const localRun = useAtomValueRawSync(retrievalLocalRunAtom)
+  const composerUploadPending = useAtomValueRawSync(retrievalComposerUploadPendingAtom)
+  const selected = useAtomValueRawSync(retrievalSelectedAtom)
+  const selectedResearchTask = useAtomValueRawSync(retrievalSelectedResearchTaskAtom)
+  const { refetchResearchDetail, refetchResearchPartials, refetchResearchTasks, refetchTraces } =
+    useAtomValueRawSync(retrievalRuntimeQueryFactsAtom)
+  const setRuntimeBridge = useSetAtom(retrievalRuntimeBridgeAtom)
+  const setComposerDraft = useSetAtom(retrievalComposerDraftAtom)
+  const setLocalRun = useSetAtom(retrievalLocalRunAtom)
+  const setLocalSelected = useSetAtom(retrievalLocalSelectedAtom)
+  const setRecordImages = useSetAtom(retrievalRecordImagesAtom)
+  const setResearchPlans = useSetAtom(retrievalResearchPlansAtom)
+  const setResearchEvents = useSetAtom(retrievalResearchEventsAtom)
+  const setAdmittedResearchTasks = useSetAtom(retrievalAdmittedResearchTasksAtom)
+  const setResearchRetryPending = useSetAtom(retrievalResearchRetryPendingAtom)
+  const {
+    configureModelSetup,
+    ensureModelReady,
+    modelReadiness,
+    modelSetupDialogOpen,
+    setModelSetupDialogOpen,
+  } = useKnowledgeModelSetupGuard(knowledgeSpaceId)
+  const sessionControllerRef = useRef<AbortController>(undefined)
+  const queryAbortControllerRef = useRef<AbortController>(undefined)
+  const consumedRetestTraceIdRef = useRef<string | undefined>(undefined)
+  const runInFlightRef = useRef(false)
+  const selectedResearchActive = researchTaskIsActive(selectedResearchTask)
+  const refreshedTerminalPartialsTaskIdRef = useRef<string | undefined>(undefined)
+  const previousSelectedResearchTaskRef = useRef<KnowledgeFsResearchTaskResponse | undefined>(
+    undefined,
+  )
+  const retainedPreviewUrlsRef = useRef(new Set<string>())
+
+  // The URL provider survives page navigation; asynchronous commands do not.
+  useLayoutEffect(() => {
+    const controller = new AbortController()
+    sessionControllerRef.current = controller
+    return () => controller.abort()
+  }, [])
+
+  const isSelectedResearchActive = useEffectEvent(() => selectedResearchActive)
+  // A selected task outside the loaded history pages is not in the admitted or listed tasks, so
+  // only its detail query learns that the stream reached a terminal stage.
+  // Final partials are refreshed by the active-to-terminal transition below, once the updated task
+  // is committed; refetching them here would race the partials observer that update replaces.
+  const refreshTerminalResearch = useEffectEvent(() =>
+    Promise.all([refetchResearchTasks(), refetchResearchDetail?.()]),
+  )
+
+  // Preview URLs are object URLs. Release one only once neither the composer nor any run in
+  // this session references it any more, and release everything when the page goes away.
+  useEffect(() => {
+    const retained = new Set(
+      retainedImages.flatMap((image) => (image.previewUrl ? [image.previewUrl] : [])),
+    )
+    for (const previewUrl of retainedPreviewUrlsRef.current) {
+      if (!retained.has(previewUrl)) URL.revokeObjectURL(previewUrl)
+    }
+    retainedPreviewUrlsRef.current = retained
+  }, [retainedImages])
+
+  useEffect(
+    () => () => {
+      for (const previewUrl of retainedPreviewUrlsRef.current) URL.revokeObjectURL(previewUrl)
+      retainedPreviewUrlsRef.current = new Set()
+    },
+    [],
+  )
+
+  useEffect(
+    () => () => {
+      queryAbortControllerRef.current?.abort()
+    },
+    [],
+  )
+
+  useEffect(() => {
+    const previousTask = previousSelectedResearchTaskRef.current
+    previousSelectedResearchTaskRef.current = selectedResearchTask
+    if (!shouldRefreshResearchPartials(previousTask, selectedResearchTask)) return
+    if (refreshedTerminalPartialsTaskIdRef.current === selectedResearchTask?.id) return
+    refreshedTerminalPartialsTaskIdRef.current = selectedResearchTask?.id
+    void refetchResearchPartials()
+  }, [refetchResearchPartials, selectedResearchTask])
+
+  const selectedResearchTaskId = selectedResearchTask?.id
+  useEffect(() => {
+    if (!selectedResearchTaskId) return
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        let cursor: string | undefined
+        while (!controller.signal.aborted) {
+          const capability = await consoleClient.knowledgeFs.tasks.byTaskId.streamCapability.post({
+            body: { control_space_id: knowledgeSpaceId },
+            params: { task_id: selectedResearchTaskId },
+          })
+          const stream = await streamResearchTaskEvents({
+            capability,
+            ...(cursor ? { cursor } : {}),
+            onEvent: (event) => {
+              if (controller.signal.aborted) return
+              setResearchEvents((current) => ({
+                ...current,
+                [selectedResearchTaskId]: mergeResearchProgressEvent(
+                  current[selectedResearchTaskId] ?? [],
+                  event,
+                ),
+              }))
+              setAdmittedResearchTasks((current) => {
+                const task = current[selectedResearchTaskId]
+                if (!task) return current
+                const eventTime = Date.parse(event.createdAt)
+                const updatedAt = Number.isFinite(eventTime)
+                  ? Math.max(task.updated_at, Math.floor(eventTime / 1000))
+                  : task.updated_at
+                return {
+                  ...current,
+                  [selectedResearchTaskId]: {
+                    ...task,
+                    ...(event.stage === 'canceled' ||
+                    event.stage === 'completed' ||
+                    event.stage === 'failed'
+                      ? { completed_at: updatedAt }
+                      : {}),
+                    stage: event.stage,
+                    updated_at: updatedAt,
+                  },
+                }
+              })
+              if (event.type === 'research_task.stage_changed' && event.stage === 'generating')
+                void refetchResearchPartials()
+              const terminal =
+                event.stage === 'canceled' ||
+                event.stage === 'completed' ||
+                event.stage === 'failed'
+              if (!terminal || !isSelectedResearchActive()) return
+              void refreshTerminalResearch()
+            },
+            signal: controller.signal,
+          })
+          if (stream.terminal || !stream.reconnect || !stream.cursor) return
+          cursor = stream.cursor
+        }
+      } catch {
+        // Task list and detail polling remain the fallback when capability streaming is unavailable.
+      }
+    })()
+    return () => controller.abort()
+  }, [
+    knowledgeSpaceId,
+    refetchResearchPartials,
+    refetchResearchTasks,
+    selectedResearchTaskId,
+    setAdmittedResearchTasks,
+    setResearchEvents,
+  ])
+
+  const runFastQuery = useCallback(
+    async (input?: {
+      images?: RetrievalComposerImage[]
+      mode: RetrievalTestMode
+      query: string
+    }) => {
+      const session = sessionControllerRef.current
+      if (!session || session.signal.aborted) return
+      const cleanQuery = (input?.query ?? query).trim()
+      const activeImages = input ? (input.images ?? []) : queryImages
+      if (!canQuery || (!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
+      const imageReferences = activeImages.map((image) => ({ uploadFileId: image.uploadFileId }))
+      runInFlightRef.current = true
+      const requestedMode = input?.mode ?? mode
+      const runMode = requestedMode === 'deep' ? 'deep' : 'fast'
+      if (
+        (
+          await ensureModelReady({
+            capability: runMode === 'deep' ? 'deep' : 'query',
+            intent: 'retrieval-test',
+          })
+        ).status !== 'ready'
+      ) {
+        runInFlightRef.current = false
+        return
+      }
+      if (session.signal.aborted) {
+        runInFlightRef.current = false
+        return
+      }
+      queryAbortControllerRef.current?.abort()
+      const controller = new AbortController()
+      queryAbortControllerRef.current = controller
+      const id = crypto.randomUUID()
+      const startedAt = Date.now()
+      setComposerDraft({ mode: runMode, query: cleanQuery })
+      setLocalRun({
+        evidence: [],
+        id,
+        mode: runMode,
+        query: cleanQuery,
+        queryImages: activeImages,
+        startedAt,
+        status: 'running',
+      })
+      setLocalSelected({ id, kind: 'local' })
+      void updateLocation({ research: null, retest: null, trace: null }, { history: 'replace' })
+      const events: KnowledgeQueryEvent[] = []
+      try {
+        const admission =
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.queries.admission.post({
+            body: {
+              mode: runMode,
+              query: cleanQuery,
+              ...(imageReferences.length ? { queryImages: imageReferences } : {}),
+            },
+            params: { control_space_id: knowledgeSpaceId },
+          })
+        await streamKnowledgeQuery({
+          admission,
+          onEvent: (event) => {
+            events.push(event)
+            const eventError = extractStreamError(
+              event.data && typeof event.data === 'object'
+                ? { ...event.data, event: event.event }
+                : { event: event.event, message: event.data },
+            )
+            if (eventError) throw new Error(eventError)
+            const eventEvidence = extractRetrievalEvidence(events.map((item) => item.data))
+            setLocalRun((current) =>
+              current?.id === id ? { ...current, evidence: eventEvidence } : current,
+            )
+          },
+          signal: controller.signal,
+        })
+        const eventData = events.map((event) => event.data)
+        const traceId = extractTraceId(eventData)
+        const evidence = extractRetrievalEvidence(eventData)
+        if (traceId && evidence.length === 0) {
+          const traceEvidence =
+            await consoleClient.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.evidence.get({
+              params: { control_space_id: knowledgeSpaceId, trace_id: traceId },
+              query: { limit: 100 },
+            })
+          evidence.push(...extractRetrievalEvidence(traceEvidence.data))
+        }
+        setLocalRun((current) =>
+          current?.id === id
+            ? {
+                ...current,
+                endedAt: Date.now(),
+                evidence,
+                status: 'completed',
+                traceId,
+              }
+            : current,
+        )
+        if (traceId) {
+          if (activeImages.length > 0)
+            setRecordImages((current) => ({ ...current, [`trace:${traceId}`]: activeImages }))
+          setLocalSelected({ id: traceId, kind: 'trace' })
+        }
+        await refetchTraces()
+      } catch (error) {
+        if (controller.signal.aborted) return
+        const failure = await queryFailure(error)
+        setLocalRun((current) =>
+          current?.id === id
+            ? {
+                ...current,
+                endedAt: Date.now(),
+                error: failure.message,
+                status: failure.status,
+              }
+            : current,
+        )
+      } finally {
+        if (queryAbortControllerRef.current === controller)
+          queryAbortControllerRef.current = undefined
+        runInFlightRef.current = false
+      }
+    },
+    [
+      canQuery,
+      ensureModelReady,
+      knowledgeSpaceId,
+      mode,
+      query,
+      queryImages,
+      refetchTraces,
+      setComposerDraft,
+      setLocalRun,
+      setLocalSelected,
+      setRecordImages,
+      updateLocation,
+    ],
+  )
+
+  const startResearch = useCallback(
+    async (input?: { images?: RetrievalComposerImage[]; query: string }) => {
+      const session = sessionControllerRef.current
+      if (!session || session.signal.aborted) return
+      const cleanQuery = (input?.query ?? query).trim()
+      const activeImages = input ? (input.images ?? []) : queryImages
+      if (!canQuery || (!cleanQuery && activeImages.length === 0) || runInFlightRef.current) return
+      const imageReferences = activeImages.map((image) => ({ uploadFileId: image.uploadFileId }))
+      runInFlightRef.current = true
+      try {
+        if (
+          (await ensureModelReady({ capability: 'research', intent: 'retrieval-test' })).status !==
+          'ready'
+        )
+          return
+        if (session.signal.aborted) return
+        const plan =
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.plan.post({
+            body: {
+              mode: 'research',
+              query: cleanQuery,
+              ...(imageReferences.length ? { queryImages: imageReferences } : {}),
+            },
+            params: { control_space_id: knowledgeSpaceId },
+          })
+        if (session.signal.aborted) return
+        const task = await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.post({
+          body: {
+            budgetUsd: plan.budget.budget_usd,
+            mode: 'research',
+            query: cleanQuery,
+            ...(imageReferences.length ? { queryImages: imageReferences } : {}),
+            topK: plan.retrieval_plan.top_k,
+          },
+          params: { control_space_id: knowledgeSpaceId },
+        })
+        if (session.signal.aborted) return
+        setAdmittedResearchTasks((current) => ({ ...current, [task.id]: task }))
+        setResearchPlans((current) => ({ ...current, [task.id]: plan }))
+        if (activeImages.length > 0)
+          setRecordImages((current) => ({ ...current, [`research:${task.id}`]: activeImages }))
+        setComposerDraft({
+          mode: 'research',
+          query: cleanQuery,
+          selectionKey: `research:${task.id}`,
+        })
+        setLocalSelected(undefined)
+        void updateLocation(
+          { research: task.id, retest: null, trace: null },
+          { history: 'push', shallow: false },
+        )
+        await refetchResearchTasks()
+      } catch {
+        if (session.signal.aborted) return
+        toast.error(t(($) => $['retrievalTest.failedDescription'], { ns: 'knowledgeRetrieval' }))
+      } finally {
+        runInFlightRef.current = false
+      }
+    },
+    [
+      canQuery,
+      ensureModelReady,
+      knowledgeSpaceId,
+      query,
+      queryImages,
+      refetchResearchTasks,
+      setAdmittedResearchTasks,
+      setComposerDraft,
+      setLocalSelected,
+      setRecordImages,
+      setResearchPlans,
+      t,
+      updateLocation,
+    ],
+  )
+
+  const cancelResearch = useCallback(
+    async (taskId: string) => {
+      if (!canQuery) return
+      try {
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.delete({
+          params: { control_space_id: knowledgeSpaceId, task_id: taskId },
+        })
+        await Promise.all([refetchResearchTasks(), refetchResearchPartials()])
+      } catch {
+        toast.error(t(($) => $.taskActionFailed))
+      }
+    },
+    [canQuery, knowledgeSpaceId, refetchResearchPartials, refetchResearchTasks, t],
+  )
+
+  const run = useCallback(() => {
+    // Images still uploading would be silently left out of the run, whichever control started it.
+    if (
+      !canQuery ||
+      composerUploadPending ||
+      selectedResearchActive ||
+      localRun?.status === 'running'
+    )
+      return
+    if (mode === 'research') void startResearch()
+    else void runFastQuery()
+  }, [
+    canQuery,
+    composerUploadPending,
+    localRun?.status,
+    mode,
+    runFastQuery,
+    selectedResearchActive,
+    startResearch,
+  ])
+
+  const retry = useCallback(async () => {
+    if (
+      !canQuery ||
+      composerUploadPending ||
+      runInFlightRef.current ||
+      selectedResearchActive ||
+      localRun?.status === 'running'
+    )
+      return
+    if (selected?.kind === 'research' && selectedResearchTask) {
+      if (!researchTaskCanRetry(selectedResearchTask)) return
+      setResearchRetryPending(true)
+      try {
+        // Replay the failed task with the images it was run with (session previews first,
+        // then the persisted references) rather than whatever the composer currently holds.
+        await startResearch({ images: selectedQueryImages, query: selectedResearchTask.query })
+      } finally {
+        setResearchRetryPending(false)
+      }
+      return
+    }
+    if (mode === 'research') void startResearch()
+    else void runFastQuery()
+  }, [
+    canQuery,
+    composerUploadPending,
+    localRun?.status,
+    mode,
+    runFastQuery,
+    selected?.kind,
+    selectedQueryImages,
+    selectedResearchActive,
+    selectedResearchTask,
+    setResearchRetryPending,
+    startResearch,
+  ])
+
+  useLayoutEffect(() => {
+    setRuntimeBridge({
+      cancelResearch: (taskId) => void cancelResearch(taskId),
+      retry,
+      run,
+      runFastQuery: (input) => void runFastQuery(input),
+    })
+  }, [cancelResearch, retry, run, runFastQuery, setRuntimeBridge])
+
+  const runRetest = useEffectEvent((command: { mode: RetrievalTestMode; query: string }) => {
+    if (!canQuery) return
+    // A retest replays the linked trace, so it carries that trace's images rather than any
+    // draft images the composer may currently hold.
+    const images = selectedQueryImages
+    if (command.mode === 'research') void startResearch({ images, query: command.query })
+    else void runFastQuery({ ...command, images })
+  })
+
+  useEffect(() => {
+    const linkedRetestTraceId = linkedSelection.retest
+    const linkedTraceId = linkedSelection.trace
+    if (
+      !linkedRetestTraceId ||
+      linkedTraceId !== linkedRetestTraceId ||
+      selected?.kind !== 'trace' ||
+      selected.id !== linkedRetestTraceId ||
+      // An image-only trace is ready once its images are restored, even with an empty query.
+      (!query.trim() && selectedQueryImages.length === 0) ||
+      consumedRetestTraceIdRef.current === linkedRetestTraceId
+    )
+      return
+    consumedRetestTraceIdRef.current = linkedRetestTraceId
+    runRetest({ mode, query })
+  }, [
+    linkedSelection.retest,
+    linkedSelection.trace,
+    mode,
+    query,
+    selected?.id,
+    selected?.kind,
+    selectedQueryImages.length,
+  ])
+
+  return (
+    <KnowledgeModelSetupDialog
+      open={modelSetupDialogOpen}
+      readiness={modelReadiness}
+      onConfigure={configureModelSetup}
+      onOpenChange={setModelSetupDialogOpen}
+    />
+  )
+}

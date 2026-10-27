@@ -21,7 +21,7 @@ from services.agent.workspace_service import (
     AgentWorkspaceService,
     WorkspaceOwnerScope,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _scope() -> WorkspaceOwnerScope:
@@ -54,7 +54,7 @@ def _workspace(
     updated_at: datetime | None = None,
     backend_workspace_ref: str = "workspace-ref",
 ) -> AgentWorkspace:
-    return AgentWorkspace(
+    row = AgentWorkspace(
         id=workspace_id,
         tenant_id=tenant_id,
         app_id=app_id,
@@ -64,8 +64,10 @@ def _workspace(
         backend_workspace_ref=backend_workspace_ref,
         status=status,
         active_guard=1 if status is AgentWorkingResourceStatus.ACTIVE else None,
-        updated_at=updated_at,
     )
+    if updated_at is not None:
+        row.updated_at = updated_at
+    return row
 
 
 def _binding(
@@ -79,7 +81,7 @@ def _binding(
     config_kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT,
     updated_at: datetime | None = None,
 ) -> AgentWorkspaceBinding:
-    return AgentWorkspaceBinding(
+    row = AgentWorkspaceBinding(
         id=binding_id,
         tenant_id=tenant_id,
         app_id=app_id,
@@ -90,8 +92,10 @@ def _binding(
         agent_config_version_kind=config_kind,
         backend_binding_ref=f"{binding_id}-ref",
         status=status,
-        updated_at=updated_at,
     )
+    if updated_at is not None:
+        row.updated_at = updated_at
+    return row
 
 
 def test_workspace_client_honors_the_configured_snapshot_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -637,3 +641,67 @@ def test_workspace_collection_final_delete_failure_propagates(
 
     assert exc_info.value is error
     client.destroy_execution_binding_sync.assert_called_once()
+
+
+def test_binding_creation_ignores_unavailable_metering_configuration(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_SANDBOX_METERING_ENABLED=True,
+        AGENT_SANDBOX_METERING_PROJECT_ID="",
+        AGENT_SANDBOX_METERING_START_AT="invalid",
+    )
+    client = _backend_client()
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+    binding = AgentWorkspaceService.create_binding(
+        session=sqlite_session,
+        scope=_scope(),
+        agent_id="agent-1",
+        base_home_snapshot_id=None,
+        agent_config_version_id="config-1",
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+    )
+    sqlite_session.commit()
+    assert binding.backend_binding_ref == "binding-ref"
+    client.create_execution_binding_sync.assert_called_once()
+
+
+def test_binding_lookups_ignore_bad_metering_configuration_and_remain_tenant_scoped(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_SANDBOX_METERING_ENABLED=True,
+        AGENT_SANDBOX_METERING_PROJECT_ID="",
+        AGENT_SANDBOX_METERING_START_AT="invalid",
+    )
+    workspace, binding = _workspace(), _binding()
+    sqlite_session.add_all([workspace, binding])
+    sqlite_session.commit()
+    assert (
+        AgentWorkspaceService.get_active_binding(
+            session=sqlite_session,
+            tenant_id=binding.tenant_id,
+            binding_id=binding.id,
+            expected_owner_scope=_scope(),
+        )
+        is binding
+    )
+    assert (
+        AgentWorkspaceService.resolve_active_binding_for_scope(
+            session=sqlite_session,
+            scope=_scope(),
+            agent_id=binding.agent_id,
+        )
+        is binding
+    )
+    assert (
+        AgentWorkspaceService.get_active_binding(
+            session=sqlite_session,
+            tenant_id="another-tenant",
+            binding_id=binding.id,
+            expected_owner_scope=_scope(),
+        )
+        is None
+    )

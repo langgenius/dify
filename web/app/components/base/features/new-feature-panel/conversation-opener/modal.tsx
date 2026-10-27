@@ -3,8 +3,18 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -13,8 +23,6 @@ import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getInputKeys } from '@/app/components/base/block-input'
-import Divider from '@/app/components/base/divider'
-import { Infotip } from '@/app/components/base/infotip'
 import { useKeyboardSortable } from '@/app/components/base/keyboard-sortable/use-keyboard-sortable'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { checkKeys, getNewVar } from '@/utils/var'
@@ -38,7 +46,9 @@ const OpeningSettingModal = ({
   workflowVariables = [],
   onAutoAddPromptVariable,
 }: OpeningSettingModalProps) => {
-  const { t } = useTranslation()
+  const questionsLabelId = React.useId()
+
+  const { t } = useTranslation(['appDebug', 'common'])
   const [tempValue, setTempValue] = useState(data?.opening_statement || '')
   useEffect(() => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect
@@ -119,7 +129,10 @@ const OpeningSettingModal = ({
     <span className="block wrap-break-word whitespace-pre-wrap">
       {t(($) => $['openingStatement.placeholderLine1'], { ns: 'appDebug' })}
       <br />
-      {t(($) => $['openingStatement.placeholderLine2'], { ns: 'appDebug' })}
+      {t(($) => $['openingStatement.placeholderLine2'], {
+        ns: 'appDebug',
+        variable: '{{variable}}',
+      })}
     </span>
   )
 
@@ -144,24 +157,21 @@ const OpeningSettingModal = ({
       <div>
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-1">
-            <div className="text-sm font-medium text-text-primary">
+            <div id={questionsLabelId} className="text-sm font-medium text-text-primary">
               {t(($) => $['openingStatement.openingQuestion'], { ns: 'appDebug' })}
             </div>
-            <Infotip
-              aria-label={t(($) => $['openingStatement.openingQuestionDescription'], {
-                ns: 'appDebug',
-              })}
-              className="size-3.5"
-              popupClassName="max-w-[220px] system-sm-regular text-text-secondary"
-            >
-              {t(($) => $['openingStatement.openingQuestionDescription'], { ns: 'appDebug' })}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={questionsLabelId} className="size-3.5" />
+              <InfotipContent aria-labelledby={questionsLabelId} className="max-w-55">
+                {t(($) => $['openingStatement.openingQuestionDescription'], { ns: 'appDebug' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <div className="text-xs leading-4.5 font-medium text-text-tertiary">
             {tempSuggestedQuestions.length}/{MAX_QUESTION_NUM}
           </div>
         </div>
-        <Divider bgStyle="gradient" className="mb-3 h-px" />
+        <Separator decorative variant="gradient" className="my-2 mb-3" />
         {announcement}
         <ReactSortable
           className="space-y-1"
@@ -192,7 +202,7 @@ const OpeningSettingModal = ({
               >
                 <IconButton
                   {...getHandleProps(index)}
-                  className="handle size-6 shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
+                  className="handle shrink-0 cursor-grab aria-pressed:bg-state-accent-hover"
                 >
                   <span aria-hidden="true" className="i-ri-draggable size-4 text-text-quaternary" />
                 </IconButton>
@@ -264,21 +274,14 @@ const OpeningSettingModal = ({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()} disablePointerDismissal>
-      <DialogContent className="mt-14 w-160 max-w-none rounded-2xl bg-components-panel-bg-blur p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="title-2xl-semi-bold text-text-primary">
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>
             {t(($) => $['feature.conversationOpener.title'], { ns: 'appDebug' })}
-          </div>
-          <button
-            type="button"
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            onClick={onCancel}
-          >
-            <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-          </button>
-        </div>
-        <div className="mb-8 space-y-4">
+          </DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="space-y-4">
           <div data-testid="opener-input-section" className="py-2">
             <div className="mb-3 text-sm font-medium text-text-primary">
               {t(($) => $['openingStatement.editorTitle'], { ns: 'appDebug' })}
@@ -310,15 +313,13 @@ const OpeningSettingModal = ({
           <div data-testid="opener-questions-section" className="py-2">
             {renderQuestions()}
           </div>
-        </div>
-        <div className="flex items-center justify-end">
-          <Button onClick={onCancel} className="mr-2">
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
+        </DialogBody>
+        <DialogFooter>
+          <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button variant="primary" onClick={() => handleSave()} disabled={isSaveDisabled}>
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
-        </div>
+        </DialogFooter>
         {isShowConfirmAddVar && (
           <ConfirmAddVar
             varNameArr={notIncludeKeys}

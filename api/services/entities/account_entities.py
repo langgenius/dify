@@ -52,6 +52,15 @@ class AccountCredentials:
 
 
 @dataclass(frozen=True, slots=True)
+class AccountAuthenticationSnapshot:
+    id: str
+    email: str
+    status: str
+    password_hash: str | None
+    password_salt: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class AccountPasswordDigest:
     password_hash: str
     password_salt: str

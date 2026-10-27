@@ -1,11 +1,12 @@
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getAvatarInitial } from '@/utils/avatar'
 import { getKeyboardMovement } from '../utils/keyboard-movement'
 import { MentionInput } from './mention-input'
 
@@ -28,7 +29,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
     const [content, setContent] = useState('')
     const [keyboardMoving, setKeyboardMoving] = useState(false)
     const moveDescriptionId = useId()
-    const { t } = useTranslation()
+    const { t } = useTranslation(['workflow', 'workflowComments'])
     const { data: userProfile } = useSuspenseQuery({
       ...userProfileQueryOptions(),
       select: (data) => data.profile,
@@ -53,21 +54,6 @@ export const CommentInput: FC<CommentInputProps> = memo(
       active: false,
       endHandler: undefined,
     })
-
-    useEffect(() => {
-      const handleGlobalKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          e.stopPropagation()
-          onCancel()
-        }
-      }
-
-      document.addEventListener('keydown', handleGlobalKeyDown, true)
-      return () => {
-        document.removeEventListener('keydown', handleGlobalKeyDown, true)
-      }
-    }, [onCancel])
 
     const handleMentionSubmit = useCallback(
       (content: string, mentionedUserIds: string[]) => {
@@ -146,13 +132,22 @@ export const CommentInput: FC<CommentInputProps> = memo(
     )
 
     return (
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The comment surface handles bubbling Escape after its child editor handles mentions.
       <div
         className={cn('absolute z-40 w-96', disabled && 'pointer-events-none opacity-80')}
         style={{
           left: position.x,
           top: position.y,
         }}
+        role="group"
         data-comment-input
+        onKeyDown={(event) => {
+          if (event.defaultPrevented || event.nativeEvent.isComposing || event.key !== 'Escape')
+            return
+          event.preventDefault()
+          event.stopPropagation()
+          onCancel()
+        }}
       >
         <div className="flex items-center gap-3">
           <IconButton
@@ -184,12 +179,10 @@ export const CommentInput: FC<CommentInputProps> = memo(
           >
             <div className="relative aspect-square h-8 w-8 shrink-0 rounded-tl-full rounded-tr-full rounded-br-full bg-primary-500 p-0.5">
               <div className="flex size-full items-center justify-center overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full bg-components-panel-bg-blur p-0.5">
-                <Avatar
-                  avatar={userProfile.avatar_url}
-                  name={userProfile.name}
-                  size="sm"
-                  className="block size-full rounded-full"
-                />
+                <Avatar size="sm" className="block size-full rounded-full" aria-hidden="true">
+                  <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+                  <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+                </Avatar>
               </div>
             </div>
           </IconButton>
@@ -207,7 +200,7 @@ export const CommentInput: FC<CommentInputProps> = memo(
                 value={content}
                 onChange={setContent}
                 onSubmit={handleMentionSubmit}
-                placeholder={t(($) => $['comments.placeholder.add'], { ns: 'workflow' })}
+                placeholder={t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })}
                 autoFocus={autoFocus}
                 disabled={disabled}
                 className="relative"

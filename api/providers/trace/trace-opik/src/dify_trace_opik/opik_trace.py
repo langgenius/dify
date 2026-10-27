@@ -63,12 +63,12 @@ def _seed_to_uuid4(seed: str) -> str:
     return str(uuid.UUID(bytes=bytes(ba)))
 
 
-def prepare_opik_uuid(user_datetime: datetime | None, user_uuid: str | None):
-    """Opik needs UUIDv7 while Dify uses UUIDv4 for identifier of most
-    messages and objects. The type-hints of BaseTraceInfo indicates that
-    objects start_time and message_id could be null which means we cannot map
-    it to a UUIDv7. Given that we have no way to identify that object
-    uniquely, generate a new random one UUIDv7 in that case.
+def prepare_opik_uuid(user_datetime: datetime | None, user_uuid: str | None) -> uuid.UUID:
+    """Preserve UUID4 mappings and deterministically adapt external trace IDs.
+
+    OpenTelemetry trace IDs and other external identifiers need not be UUID4,
+    which the Opik conversion helper requires. Reuse the existing stable seed
+    mapping for those identifiers. Missing identifiers retain random-ID behavior.
     """
 
     if user_datetime is None:
@@ -76,6 +76,13 @@ def prepare_opik_uuid(user_datetime: datetime | None, user_uuid: str | None):
 
     if user_uuid is None:
         user_uuid = str(uuid.uuid4())
+
+    try:
+        is_uuid4 = uuid.UUID(user_uuid).version == 4
+    except ValueError:
+        is_uuid4 = False
+    if not is_uuid4:
+        user_uuid = _seed_to_uuid4(user_uuid)
 
     return uuid4_to_uuid7(user_datetime, user_uuid)
 
@@ -447,14 +454,14 @@ class OpikDataTrace(BaseTraceInstance):
             logger.debug("Opik Trace created successfully")
             return trace
         except Exception as e:
-            raise ValueError(f"Opik Failed to create trace: {str(e)}")
+            raise ValueError(f"Opik Failed to create trace: {str(e)}") from e
 
     def add_span(self, opik_span_data: dict[str, Any]):
         try:
             self.opik_client.span(**opik_span_data)
             logger.debug("Opik Span created successfully")
         except Exception as e:
-            raise ValueError(f"Opik Failed to create span: {str(e)}")
+            raise ValueError(f"Opik Failed to create span: {str(e)}") from e
 
     def api_check(self):
         try:
@@ -462,11 +469,11 @@ class OpikDataTrace(BaseTraceInstance):
             return True
         except Exception as e:
             logger.info("Opik API check failed: %s", str(e), exc_info=True)
-            raise ValueError(f"Opik API check failed: {str(e)}")
+            raise ValueError(f"Opik API check failed: {str(e)}") from e
 
     def get_project_url(self):
         try:
             return self.opik_client.get_project_url(project_name=self.project)
         except Exception as e:
             logger.info("Opik get run url failed: %s", str(e), exc_info=True)
-            raise ValueError(f"Opik get run url failed: {str(e)}")
+            raise ValueError(f"Opik get run url failed: {str(e)}") from e

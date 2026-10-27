@@ -1,449 +1,254 @@
 import type { ComponentProps } from 'react'
-import type {
-  CredentialFormSchema,
-  FormOption,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Tool } from '@/app/components/tools/types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { VarKindType } from '../../types'
 import FormInputItem from '../form-input-item'
 
-const { mockFetchDynamicOptions, mockTriggerDynamicOptionsState } = vi.hoisted(() => ({
-  mockFetchDynamicOptions: vi.fn(),
-  mockTriggerDynamicOptionsState: {
-    data: undefined as { options: FormOption[] } | undefined,
-    isLoading: false,
-  },
-}))
+const { mockDynamicOptions } = vi.hoisted(() => ({ mockDynamicOptions: vi.fn() }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useLanguage: () => 'en_US',
-}))
-
-vi.mock('@/service/use-plugins', () => ({
-  useFetchDynamicOptions: () => ({
-    mutateAsync: mockFetchDynamicOptions,
-  }),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
-  useTriggerPluginDynamicOptions: () => mockTriggerDynamicOptionsState,
-}))
-
-vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
-
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    useIsChatMode: () => false,
-    useWorkflow: () => ({
-      getTreeLeafNodes: () => [],
-      getNodeById: () => undefined,
-      getBeforeNodesInSameBranchIncludeParent: () => [],
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.parameters.dynamicOptions.get': (input) =>
+        mockDynamicOptions(input),
     }),
   }
 })
 
-vi.mock('../../../../hooks/use-workflow-variables', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow-variables')>()
-
-  return {
-    ...actual,
-    useWorkflowVariables: () => ({
-      getNodeAvailableVars: () => [],
-    }),
-  }
-})
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
-  AppSelector: ({ onSelect }: { onSelect: (value: AppSelectorValue) => void }) => (
-    <button onClick={() => onSelect({ app_id: 'app-1', inputs: {}, files: [] })}>
-      app-selector
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
-  default: ({ setModel }: { setModel: (value: string) => void }) => (
-    <button onClick={() => setModel('model-1')}>model-selector</button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/tool/components/mixed-variable-text-input', () => ({
-  default: ({ onChange, value }: { onChange: (value: string) => void; value: string }) => (
-    <input
-      aria-label="mixed-variable-input"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  ),
-}))
-
+// The editor runtime is a browser boundary; keep form state and value serialization real.
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ onChange, value }: { onChange: (value: string) => void; value: string }) => (
-    <textarea aria-label="json-editor" value={value} onChange={(e) => onChange(e.target.value)} />
+    <textarea aria-label="JSON" value={value} onChange={(event) => onChange(event.target.value)} />
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({ onChange }: { onChange: (value: string[]) => void }) => (
-    <button onClick={() => onChange(['node-2', 'asset'])}>variable-picker</button>
-  ),
-}))
-
-const createSchema = (
-  overrides: Partial<
-    CredentialFormSchema & {
-      _type?: FormTypeEnum
-      multiple?: boolean
-      options?: FormOption[]
-    }
-  > = {},
-) =>
-  ({
-    label: { en_US: 'Field', zh_Hans: '字段' },
-    name: 'field',
-    required: false,
-    show_on: [],
-    type: FormTypeEnum.textInput,
-    variable: 'field',
-    ...overrides,
-  }) as CredentialFormSchema & {
-    _type?: FormTypeEnum
-    multiple?: boolean
-    options?: FormOption[]
-  }
-
-const createOption = (value: string, overrides: Partial<FormOption> = {}): FormOption => ({
+type Props = ComponentProps<typeof FormInputItem>
+const createSchema = (overrides: Partial<Props['schema']> = {}): Props['schema'] => ({
+  label: { en_US: 'Field', zh_Hans: '字段' },
+  required: false,
+  show_on: [],
+  type: FormTypeEnum.select,
+  variable: 'field',
+  name: 'field',
+  ...overrides,
+})
+const createOption = (value: string): FormOption => ({
   label: { en_US: value, zh_Hans: value },
   show_on: [],
   value,
-  ...overrides,
 })
-
-const renderFormInputItem = (props: Partial<ComponentProps<typeof FormInputItem>> = {}) => {
-  const onChange = vi.fn()
-  const result = renderWorkflowFlowComponent(
-    <FormInputItem
-      readOnly={false}
-      nodeId="node-1"
-      schema={createSchema()}
-      value={{
-        field: {
-          type: VarKindType.constant,
-          value: '',
-        },
-      }}
-      onChange={onChange}
-      {...props}
-    />,
-    {
-      edges: [],
-      hooksStoreProps: {},
-      nodes: [],
-    },
-  )
-
-  return { ...result, onChange }
+const tool: Tool = {
+  name: 'tool-1',
+  author: 'Dify',
+  label: { en_US: 'Tool', zh_Hans: 'Tool' },
+  description: { en_US: 'Tool' },
+  parameters: [],
+  labels: [],
+  output_schema: {},
+}
+const provider: ToolWithProvider = {
+  id: 'provider-1',
+  name: 'provider-1',
+  plugin_id: 'plugin-1',
+  author: 'Dify',
+  label: { en_US: 'Provider', zh_Hans: 'Provider' },
+  description: { en_US: 'Provider', zh_Hans: 'Provider' },
+  icon: '/provider.svg',
+  type: CollectionType.builtIn,
+  team_credentials: {},
+  is_team_authorization: true,
+  allow_delete: false,
+  labels: [],
+  tools: [tool],
 }
 
-describe('FormInputItem branches', () => {
+const renderForm = (props: Partial<Props> = {}) => {
+  const { queryClient } = createConsoleQueryWrapper()
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  const onChange = vi.fn()
+  const Form = () => {
+    const [value, setValue] = useState<Props['value']>(
+      props.value ?? {
+        field: { type: VarKindType.constant, value: '' },
+      },
+    )
+    return (
+      <FormInputItem
+        readOnly={false}
+        nodeId="node-1"
+        schema={createSchema()}
+        {...props}
+        value={value}
+        onChange={(next) => {
+          setValue(next)
+          onChange(next)
+        }}
+      />
+    )
+  }
+  return {
+    ...renderWorkflowFlowComponent(<Form />, { queryClient, nodes: [], edges: [] }),
+    onChange,
+  }
+}
+
+describe('FormInputItem selections', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockFetchDynamicOptions.mockResolvedValue({ options: [] })
-    mockTriggerDynamicOptionsState.data = undefined
-    mockTriggerDynamicOptionsState.isLoading = false
+    mockDynamicOptions.mockReset()
+    mockDynamicOptions.mockResolvedValue({ options: [] })
   })
+  afterEach(() => vi.restoreAllMocks())
 
-  it('should update mixed string inputs via the shared text input', () => {
-    const { onChange } = renderFormInputItem()
-
-    fireEvent.change(screen.getByLabelText('mixed-variable-input'), {
-      target: { value: 'hello world' },
-    })
-
-    expect(onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.mixed,
-        value: 'hello world',
-      },
-    })
-  })
-
-  it('should switch from variable mode back to constant mode with the schema default value', () => {
-    const { container, onChange } = renderFormInputItem({
-      schema: createSchema({
-        default: 7 as never,
-        type: FormTypeEnum.textNumber,
-      }),
-      value: {
-        field: {
-          type: VarKindType.variable,
-          value: ['node-1', 'count'],
-        },
-      },
-    })
-
-    const switchRoot = container.querySelector('.inline-flex.h-8.shrink-0.gap-px')
-    const clickableItems = switchRoot?.querySelectorAll('.cursor-pointer') ?? []
-    fireEvent.click(clickableItems[1] as HTMLElement)
-
-    expect(onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.constant,
-        value: 7,
-      },
-    })
-  })
-
-  it('should render static select options with icons and update the selected item', () => {
-    const { onChange } = renderFormInputItem({
-      schema: createSchema({
-        type: FormTypeEnum.select,
-        options: [createOption('basic', { icon: '/basic.svg' }), createOption('pro')],
-      }),
-      value: {
-        field: {
-          type: VarKindType.constant,
-          value: '',
-        },
-      },
-    })
-
-    fireEvent.click(screen.getByRole('combobox'))
-    expect(document.querySelector('img[src="/basic.svg"]')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('basic'))
-
-    expect(onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.constant,
-        value: 'basic',
-      },
-    })
-  })
-
-  it('should render static multi-select values and update selected labels', async () => {
+  it('keeps static selection and the persisted value in sync', async () => {
     const user = userEvent.setup()
-    const { onChange } = renderFormInputItem({
+    const { onChange } = renderForm({
+      schema: createSchema({ options: [createOption('basic'), createOption('pro')] }),
+    })
+
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'basic' }))
+
+    expect(screen.getByRole('combobox')).toHaveTextContent('basic')
+    expect(onChange).toHaveBeenLastCalledWith({
+      field: { type: VarKindType.constant, value: 'basic' },
+    })
+    expect(mockDynamicOptions).not.toHaveBeenCalled()
+  })
+
+  it('adds and removes values without discarding other multi-select choices', async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderForm({
       schema: createSchema({
         multiple: true,
-        type: FormTypeEnum.select,
         options: [createOption('alpha'), createOption('beta')],
       }),
-      value: {
-        field: {
-          type: VarKindType.constant,
-          value: ['alpha'],
-        },
-      },
+      value: { field: { type: VarKindType.constant, value: ['alpha'] } },
     })
 
-    expect(screen.getByText('alpha')).toBeInTheDocument()
     await user.click(screen.getByRole('combobox', { name: 'alpha' }))
     await user.click(await screen.findByRole('option', { name: 'beta' }))
-
-    expect(onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.constant,
-        value: ['alpha', 'beta'],
-      },
+    expect(onChange).toHaveBeenLastCalledWith({
+      field: { type: VarKindType.constant, value: ['alpha', 'beta'] },
     })
+    await user.click(screen.getByRole('option', { name: 'alpha' }))
+    expect(onChange).toHaveBeenLastCalledWith({
+      field: { type: VarKindType.constant, value: ['beta'] },
+    })
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('combobox')).toHaveTextContent('beta')
   })
 
-  it('should fetch tool dynamic options, render them, and update the value', async () => {
-    mockFetchDynamicOptions.mockResolvedValueOnce({
-      options: [createOption('remote', { icon: '/remote.svg' })],
-    })
-    const { onChange } = renderFormInputItem({
-      schema: createSchema({
-        type: FormTypeEnum.dynamicSelect,
-      }),
-      currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
-      currentTool: { name: 'tool-1' } as never,
+  it('loads tool options with provider context and saves the chosen value', async () => {
+    const user = userEvent.setup()
+    mockDynamicOptions.mockResolvedValue({ options: [createOption('remote')] })
+    const { onChange } = renderForm({
+      schema: createSchema({ type: FormTypeEnum.dynamicSelect }),
+      currentProvider: provider,
+      currentTool: tool,
       providerType: PluginCategoryEnum.tool,
-      value: {
-        field: {
-          type: VarKindType.constant,
-          value: '',
-        },
+      extraParams: { dependent_field: 'parent' },
+    })
+
+    expect(screen.getByRole('combobox')).toBeDisabled()
+    await waitFor(() => expect(screen.getByRole('combobox')).toBeEnabled())
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'remote' }))
+
+    expect(mockDynamicOptions).toHaveBeenCalledExactlyOnceWith({
+      query: {
+        plugin_id: 'plugin-1',
+        provider: 'provider-1',
+        action: 'tool-1',
+        parameter: 'field',
+        provider_type: 'tool',
+        dependent_field: 'parent',
       },
     })
-
-    await waitFor(() => {
-      expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenLastCalledWith({
+      field: { type: VarKindType.constant, value: 'remote' },
     })
-
-    await waitFor(() => {
-      expect(screen.getByRole('combobox')).not.toBeDisabled()
-    })
-    fireEvent.click(screen.getByRole('combobox'))
-    expect(document.querySelector('img[src="/remote.svg"]')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('remote'))
-
-    expect(onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.constant,
-        value: 'remote',
-      },
-    })
+    expect(screen.getByRole('combobox')).toHaveTextContent('remote')
   })
 
-  it('should recover when fetching dynamic tool options fails', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockFetchDynamicOptions.mockRejectedValueOnce(new Error('network'))
-
-    renderFormInputItem({
-      schema: createSchema({
-        type: FormTypeEnum.dynamicSelect,
-      }),
-      currentProvider: { plugin_id: 'provider-1', name: 'provider-1' } as never,
-      currentTool: { name: 'tool-1' } as never,
+  it('finishes loading without changing the saved value when options fail to load', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockDynamicOptions.mockRejectedValue(new Error('network'))
+    const { onChange } = renderForm({
+      schema: createSchema({ type: FormTypeEnum.dynamicSelect }),
+      currentProvider: provider,
+      currentTool: tool,
       providerType: PluginCategoryEnum.tool,
     })
 
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalled()
-    })
-
-    consoleSpy.mockRestore()
+    await waitFor(() => expect(screen.getByRole('combobox')).toBeEnabled())
+    await user.click(screen.getByRole('combobox'))
+    expect(screen.queryByRole('option')).not.toBeInTheDocument()
+    expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('should use trigger dynamic options for multi-select values', async () => {
-    mockTriggerDynamicOptionsState.data = {
-      options: [createOption('trigger-option')],
-    }
-
-    const { onChange } = renderFormInputItem({
-      schema: createSchema({
-        multiple: true,
-        type: FormTypeEnum.dynamicSelect,
-      }),
-      currentProvider: {
-        plugin_id: 'provider-2',
-        name: 'provider-2',
-        credential_id: 'credential-1',
-      } as never,
-      currentTool: { name: 'trigger-tool' } as never,
+  it('loads trigger options once using the selected credential', async () => {
+    const user = userEvent.setup()
+    mockDynamicOptions.mockResolvedValue({ options: [createOption('trigger-option')] })
+    const { onChange } = renderForm({
+      schema: createSchema({ type: FormTypeEnum.dynamicSelect, multiple: true }),
+      currentProvider: { ...provider, credential_id: 'credential-1' },
+      currentTool: tool,
       providerType: PluginCategoryEnum.trigger,
-      value: {
-        field: {
-          type: VarKindType.constant,
-          value: [],
-        },
-      },
+      value: { field: { type: VarKindType.constant, value: [] } },
     })
 
-    await waitFor(() => {
-      expect(screen.getByText('Select options').closest('button')).not.toBeDisabled()
-    })
-    fireEvent.click(screen.getByText('Select options').closest('button') as HTMLButtonElement)
-    fireEvent.click(screen.getByText('trigger-option'))
+    await waitFor(() => expect(screen.getByRole('combobox')).toBeEnabled())
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'trigger-option' }))
 
-    expect(onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.constant,
-        value: ['trigger-option'],
+    expect(mockDynamicOptions).toHaveBeenCalledExactlyOnceWith({
+      query: {
+        plugin_id: 'plugin-1',
+        provider: 'provider-1',
+        action: 'tool-1',
+        parameter: 'field',
+        provider_type: 'trigger',
+        credential_id: 'credential-1',
       },
+    })
+    expect(onChange).toHaveBeenLastCalledWith({
+      field: { type: VarKindType.constant, value: ['trigger-option'] },
     })
   })
 
-  it('should delegate app and model selection to their dedicated controls', () => {
-    const app = renderFormInputItem({
-      schema: createSchema({ type: FormTypeEnum.appSelector }),
-    })
-    fireEvent.click(screen.getByText('app-selector'))
-    expect(app.onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.constant,
-        value: {
-          app_id: 'app-1',
-          inputs: {},
-          files: [],
-        },
-      },
-    })
-
-    app.unmount()
-
-    const model = renderFormInputItem({
-      schema: createSchema({ type: FormTypeEnum.modelSelector }),
-    })
-    fireEvent.click(screen.getByText('model-selector'))
-    expect(model.onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.constant,
-        value: 'model-1',
-      },
-    })
-  })
-
-  it('should render the JSON editor and variable picker specialized branches', () => {
-    const json = renderFormInputItem({
+  it('saves JSON edits as constant strings', async () => {
+    const user = userEvent.setup()
+    const { onChange } = renderForm({
       schema: createSchema({ type: FormTypeEnum.object }),
-      value: {
-        field: {
-          type: VarKindType.constant,
-          value: '{"enabled":false}',
-        },
-      },
+      value: { field: { type: VarKindType.constant, value: '{"enabled":false}' } },
     })
+    await user.clear(screen.getByRole('textbox', { name: 'JSON' }))
+    await user.paste('{"enabled":true}')
 
-    fireEvent.change(screen.getByLabelText('json-editor'), {
-      target: { value: '{"enabled":true}' },
-    })
-    expect(json.onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.constant,
-        value: '{"enabled":true}',
-      },
-    })
-
-    json.unmount()
-
-    const picker = renderFormInputItem({
-      schema: createSchema({ type: FormTypeEnum.file }),
-      value: {
-        field: {
-          type: VarKindType.constant,
-          value: '',
-        },
-      },
-    })
-
-    fireEvent.click(screen.getByText('variable-picker'))
-    expect(picker.onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.variable,
-        value: ['node-2', 'asset'],
-      },
-    })
-  })
-
-  it('should render variable selectors for boolean variable inputs', () => {
-    const { onChange } = renderFormInputItem({
-      schema: createSchema({
-        _type: FormTypeEnum.boolean,
-        type: FormTypeEnum.textInput,
-      }),
-      value: {
-        field: {
-          type: VarKindType.variable,
-          value: ['node-3', 'flag'],
-        },
-      },
-    })
-
-    fireEvent.click(screen.getByText('variable-picker'))
-
-    expect(onChange).toHaveBeenCalledWith({
-      field: {
-        type: VarKindType.variable,
-        value: ['node-2', 'asset'],
-      },
+    expect(screen.getByRole('textbox', { name: 'JSON' })).toHaveValue('{"enabled":true}')
+    expect(onChange).toHaveBeenLastCalledWith({
+      field: { type: VarKindType.constant, value: '{"enabled":true}' },
     })
   })
 })

@@ -11,12 +11,12 @@ This is the PHP SDK for the Dify API, which allows you to easily integrate Dify 
 
 If you want to try the example, you can run `composer install` in this directory.
 
-In exist project, copy the `dify-client.php` to you project, and merge the following to your `composer.json` file, then run `composer install && composer dump-autoload` to install. Guzzle does not require 7.9, other versions have not been tested, but you can try.
+For an existing project, copy `dify-client.php` into your project and merge the following into `composer.json`, then run `composer install` and `composer dump-autoload`. Keep the dependency requirements aligned with this directory’s `composer.json`.
 
 ```json
 {
     "require": {
-        "guzzlehttp/guzzle": "^7.9"
+        "guzzlehttp/guzzle": "^7.15.2"
     },
     "autoload": {
         "files": ["path/to/dify-client.php"]
@@ -32,8 +32,12 @@ After installing the SDK, you can use it in your project like this:
 require 'vendor/autoload.php';
 
 $apiKey = 'your-api-key-here';
+$conversation_id = null; // Start a new conversation.
 
 $difyClient = new DifyClient($apiKey);
+
+// Self-hosted endpoints keep their full path with or without a trailing slash.
+$selfHostedClient = new DifyClient($apiKey, 'https://dify.example.com/dify/v1');
 
 // Create a completion client
 $completionClient = new CompletionClient($apiKey);
@@ -55,14 +59,14 @@ $fileForVision = [
 //     [
 //         "type" => "image",
 //         "transfer_method" => "local_file",
-//         "url" => "your_file_id"
+//         "upload_file_id" => "your_file_id"
 //     ]
 // ];
 
-// Create a completion client with vision model like gpt-4-vision
+// Create a completion client with a vision-capable model
 $response = $completionClient->create_completion_message(array("query" => "Describe this image."), "blocking", "user_id", $fileForVision);
 
-// Create a chat client with vision model like gpt-4-vision
+// Create a chat client with a vision-capable model
 $response = $chatClient->create_chat_message(array(), "Describe this image.", "user_id", "blocking", $conversation_id, $fileForVision);
 
 // File Upload
@@ -93,3 +97,8 @@ Replace 'your-api-key-here' with your actual Dify API key.
 ## License
 
 This SDK is released under the MIT License.
+
+## Tests
+
+After `composer install`, run `php tests/base_url_test.php` from this directory.
+The regression uses Guzzle's mock transport and does not contact an API or model provider.

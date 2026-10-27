@@ -1,14 +1,14 @@
-import { useCallback, useMemo } from 'react'
+import type { SortType } from '@/service/datasets'
+import { useCallback } from 'react'
 
 type RemoteSortField = 'hit_count' | 'created_at'
-const REMOTE_SORT_FIELDS = new Set<RemoteSortField>(['hit_count', 'created_at'])
 
 export type SortField = RemoteSortField | null
 export type SortOrder = 'asc' | 'desc'
 
 type UseDocumentSortOptions = {
   remoteSortValue: string
-  onRemoteSortChange: (nextSortValue: string) => void
+  onRemoteSortChange: (nextSortValue: SortType) => void
 }
 
 export const useDocumentSort = ({
@@ -18,9 +18,7 @@ export const useDocumentSort = ({
   const sortOrder: SortOrder = remoteSortValue.startsWith('-') ? 'desc' : 'asc'
   const sortKey = remoteSortValue.startsWith('-') ? remoteSortValue.slice(1) : remoteSortValue
 
-  const sortField = useMemo<SortField>(() => {
-    return REMOTE_SORT_FIELDS.has(sortKey as RemoteSortField) ? (sortKey as RemoteSortField) : null
-  }, [sortKey])
+  const sortField: SortField = sortKey === 'hit_count' || sortKey === 'created_at' ? sortKey : null
 
   const handleSort = useCallback(
     (field: SortField) => {

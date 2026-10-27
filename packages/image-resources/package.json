@@ -1,0 +1,36 @@
+{
+  "name": "@dify/image-resources",
+  "version": "0.0.0-private",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vp test run",
+    "type-check": "tsrs --noEmit --project tsconfig.json",
+    "check:images": "node check-image-resources.ts"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "catalog:",
+    "picomatch": "catalog:",
+    "sharp": "catalog:",
+    "svgo": "catalog:"
+  },
+  "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/picomatch": "catalog:",
+    "@typescript/native": "catalog:",
+    "tsrs": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "24.22.1",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": "^24.22.1"
+  }
+}

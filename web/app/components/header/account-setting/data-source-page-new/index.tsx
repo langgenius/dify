@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -10,10 +10,9 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { useGetDataSourceListAuth, useInvalidDataSourceListAuth } from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import UpdateSettingDialog from '../update-setting-dialog'
+import { UpdateSettingDialog } from '../update-setting-dialog'
 import Card from './card'
 import InstallFromMarketplace from './install-from-marketplace'
 
@@ -42,7 +41,7 @@ function DataSourceCardSkeleton() {
 }
 
 function DataSourceListSkeleton() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   return (
     <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })} className="space-y-2">
@@ -54,7 +53,8 @@ function DataSourceListSkeleton() {
 }
 
 const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSourcePageProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
+  const queryClient = useQueryClient()
   const renderI18nObject = useRenderI18nObject()
   const [searchText, setSearchText] = useState('')
   const { canSetPluginPreferences } = usePluginSettingsAccess()
@@ -62,14 +62,14 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_marketplace,
   })
-  const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth()
+  const { data, isLoading: isDataSourceListLoading } = useQuery(
+    consoleQuery.auth.plugin.datasource.list.get.queryOptions(),
+  )
   const { data: installedPluginList } = useInstalledPluginList({
     category: PluginCategoryEnum.datasource,
   })
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(installedPluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
-  const invalidateDataSourceList = useInvalidDataSourceList()
   const dataSources = useMemo(() => data?.result ?? [], [data?.result])
   const dataSourcePluginDetails = useMemo(() => {
     return pluginListWithLatestVersion.filter(
@@ -96,22 +96,26 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
   }, [dataSources, renderI18nObject, searchText])
   const handlePluginUpdate = useCallback(() => {
     invalidateInstalledPluginList()
-    invalidateDataSourceListAuth()
-    invalidateDataSourceList()
-  }, [invalidateDataSourceList, invalidateDataSourceListAuth, invalidateInstalledPluginList])
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.auth.plugin.datasource.list.get.queryKey(),
+    })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
+    })
+  }, [queryClient, invalidateInstalledPluginList])
 
   const toolbar = (
     <div
       className={
         stickyToolbar
           ? layout
-            ? 'flex w-full items-center justify-between gap-3'
-            : 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
-          : 'mb-2 flex items-center justify-between gap-3'
+            ? 'flex w-full flex-wrap items-center justify-between gap-3'
+            : 'sticky top-0 z-10 -mx-6 mb-2 flex flex-wrap items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
+          : 'mb-2 flex flex-wrap items-center justify-between gap-3'
       }
     >
       <SearchInput
-        className="w-50"
+        className="w-full min-w-0 sm:w-50"
         placeholder={t(($) => $['operation.search'], { ns: 'common' })}
         value={searchText}
         onValueChange={setSearchText}
@@ -123,6 +127,16 @@ const DataSourcePage = ({ layout, onOpenMarketplace, stickyToolbar }: DataSource
   const body = (
     <>
       {isDataSourceListLoading && <DataSourceListSkeleton />}
+      {!isDataSourceListLoading && !!searchText.trim() && (
+        <div role="status" className="sr-only">
+          {t(($) => $['category.datasources'], { ns: 'plugin' })}
+          {': '}
+          {t(($) => $['marketplace.pluginsResult'], {
+            ns: 'plugin',
+            num: filteredDataSources.length,
+          })}
+        </div>
+      )}
       {!isDataSourceListLoading && !dataSources.length && (
         <div
           className="mb-2 rounded-[10px] bg-workflow-process-bg p-4"

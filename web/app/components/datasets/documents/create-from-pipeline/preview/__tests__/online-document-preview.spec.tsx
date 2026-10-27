@@ -1,6 +1,9 @@
 import type { NotionPage } from '@/models/common'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import OnlineDocumentPreview from '../online-document-preview'
 
 // Uses global react-i18next mock from web/vitest.setup.ts
@@ -9,8 +12,8 @@ const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {
@@ -32,10 +35,18 @@ vi.mock('@/context/dataset-detail', () => ({
 
 // Mock usePreviewOnlineDocument hook - needs mock to control mutation behavior
 const mockMutateAsync = vi.fn()
-const mockUsePreviewOnlineDocument = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  usePreviewOnlineDocument: () => mockUsePreviewOnlineDocument(),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.preview.post': (
+        input: unknown,
+      ) => mockMutateAsync(input),
+    }),
+  }
+})
 
 // Mock data source store - needs mock to control store state
 const mockCurrentCredentialId = 'credential-123'
@@ -69,298 +80,76 @@ const defaultProps = {
 describe('OnlineDocumentPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToastError.mockReset()
     mockPipelineId.mockReturnValue('pipeline-123')
-    mockUsePreviewOnlineDocument.mockReturnValue({
-      mutateAsync: mockMutateAsync,
-      isPending: false,
-    })
-    mockMutateAsync.mockImplementation((params, callbacks) => {
-      callbacks.onSuccess({ content: 'Test content' })
-      return Promise.resolve({ content: 'Test content' })
+    mockGetState.mockReturnValue({ currentCredentialId: mockCurrentCredentialId })
+    mockMutateAsync.mockReset().mockResolvedValue({ content: 'Test content' })
+  })
+
+  it('requests the current page using the pipeline, node, workspace and credential', async () => {
+    mockGetState.mockReturnValue({ currentCredentialId: 'custom-credential' })
+    render(<OnlineDocumentPreview {...defaultProps} />)
+    expect(await screen.findByText('Test content')).toBeInTheDocument()
+    expect(screen.getByText('Test Notion Page')).toBeInTheDocument()
+    expect(screen.getByText('page')).toBeInTheDocument()
+    expect(mockMutateAsync).toHaveBeenCalledWith({
+      params: { pipeline_id: 'pipeline-123', node_id: 'datasource-node-123' },
+      body: {
+        datasource_type: 'online_document',
+        credential_id: 'custom-credential',
+        inputs: { workspace_id: 'workspace-456', page_id: 'page-123', type: 'page' },
+      },
     })
   })
 
-  describe('Rendering', () => {
-    it('should render the component with page information', () => {
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      // i18n mock returns key by default
-      expect(screen.getByText('datasetPipeline.addDocuments.stepOne.preview')).toBeInTheDocument()
-      expect(screen.getByText('Test Notion Page')).toBeInTheDocument()
-    })
-
-    it('should display page type', () => {
-      const currentPage = createMockNotionPage({ type: 'database' })
-
-      render(<OnlineDocumentPreview {...defaultProps} currentPage={currentPage} />)
-
-      expect(screen.getByText('database')).toBeInTheDocument()
-    })
-
-    it('should render close button', () => {
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
+  it('keeps content hidden until the request resolves and shows its character count', async () => {
+    const request = createDeferred<{ content: string }>()
+    mockMutateAsync.mockReturnValue(request.promise)
+    render(<OnlineDocumentPreview {...defaultProps} />)
+    await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledOnce())
+    expect(screen.queryByText('Hello')).not.toBeInTheDocument()
+    await act(async () => request.resolve({ content: 'Hello' }))
+    expect(await screen.findByText('Hello')).toBeInTheDocument()
+    expect(screen.getByText('5 datasetPipeline.addDocuments.characters')).toBeInTheDocument()
   })
 
-  describe('Data Fetching', () => {
-    it('should call mutateAsync with correct parameters on mount', async () => {
-      const currentPage = createMockNotionPage({
-        workspace_id: 'ws-123',
-        page_id: 'pg-456',
-        type: 'page',
-      })
-
-      render(
-        <OnlineDocumentPreview
-          {...defaultProps}
-          currentPage={currentPage}
-          datasourceNodeId="node-789"
-        />,
-      )
-
-      await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledWith(
-          {
-            workspaceID: 'ws-123',
-            pageID: 'pg-456',
-            pageType: 'page',
-            pipelineId: 'pipeline-123',
-            datasourceNodeId: 'node-789',
-            credentialId: mockCurrentCredentialId,
-          },
-          expect.objectContaining({
-            onSuccess: expect.any(Function),
-            onError: expect.any(Function),
-          }),
-        )
-      })
-    })
-
-    it('should fetch data again when page_id changes', async () => {
-      const currentPage1 = createMockNotionPage({ page_id: 'page-1' })
-      const currentPage2 = createMockNotionPage({ page_id: 'page-2' })
-
-      const { rerender } = render(
-        <OnlineDocumentPreview {...defaultProps} currentPage={currentPage1} />,
-      )
-
-      await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledTimes(1)
-      })
-
-      rerender(<OnlineDocumentPreview {...defaultProps} currentPage={currentPage2} />)
-
-      await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledTimes(2)
-      })
-    })
-
-    it('should handle empty pipelineId', async () => {
-      mockPipelineId.mockReturnValue(undefined)
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledWith(
-          expect.objectContaining({
-            pipelineId: '',
-          }),
-          expect.anything(),
-        )
-      })
-    })
+  it('loads the newly selected page without reusing the previous response', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<OnlineDocumentPreview {...defaultProps} />)
+    await screen.findByText('Test content')
+    mockMutateAsync.mockResolvedValue({ content: 'New page content' })
+    rerender(
+      <OnlineDocumentPreview
+        {...defaultProps}
+        currentPage={createMockNotionPage({ page_id: 'page-2', type: 'database' })}
+      />,
+    )
+    expect(await screen.findByText('New page content')).toBeInTheDocument()
+    expect(screen.queryByText('Test content')).not.toBeInTheDocument()
+    expect(mockMutateAsync).toHaveBeenCalledTimes(2)
+    expect(mockMutateAsync).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          inputs: expect.objectContaining({ page_id: 'page-2', type: 'database' }),
+        }),
+      }),
+    )
+    await user.click(screen.getByRole('button'))
+    expect(defaultProps.hidePreview).toHaveBeenCalledOnce()
   })
 
-  describe('Loading State', () => {
-    it('should render loading component when isPending is true', () => {
-      mockUsePreviewOnlineDocument.mockReturnValue({
-        mutateAsync: mockMutateAsync,
-        isPending: true,
-      })
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      // Loading component renders skeleton
-      expect(document.querySelector('.overflow-hidden')).toBeInTheDocument()
-    })
-
-    it('should not render markdown content when loading', () => {
-      mockUsePreviewOnlineDocument.mockReturnValue({
-        mutateAsync: mockMutateAsync,
-        isPending: true,
-      })
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      // Content area should not be present
-      expect(screen.queryByText('Test content')).not.toBeInTheDocument()
-    })
+  it('reports a rejected preview request', async () => {
+    mockMutateAsync.mockRejectedValue(new Error('Failed to fetch document'))
+    render(<OnlineDocumentPreview {...defaultProps} />)
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('Failed to fetch document'))
+    expect(screen.queryByText('Test content')).not.toBeInTheDocument()
   })
 
-  describe('Content Display', () => {
-    it('should render markdown content when loaded', async () => {
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onSuccess({ content: 'Markdown content here' })
-        return Promise.resolve({ content: 'Markdown content here' })
-      })
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      await waitFor(() => {
-        // Markdown component renders the content
-        const contentArea = document.querySelector('.overflow-hidden.px-6.py-5')
-        expect(contentArea).toBeInTheDocument()
-      })
-    })
-
-    it('should display character count', async () => {
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onSuccess({ content: 'Hello' }) // 5 characters
-        return Promise.resolve({ content: 'Hello' })
-      })
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      await waitFor(() => {
-        // Real formatNumberAbbreviated returns "5" for numbers < 1000
-        expect(screen.getByText(/5/)).toBeInTheDocument()
-      })
-    })
-
-    it('should format large character counts', async () => {
-      const longContent = 'a'.repeat(2500)
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onSuccess({ content: longContent })
-        return Promise.resolve({ content: longContent })
-      })
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      await waitFor(() => {
-        // Real formatNumberAbbreviated uses lowercase 'k': "2.5k"
-        expect(screen.getByText(/2\.5k/)).toBeInTheDocument()
-      })
-    })
-
-    it('should show character count based on fetched content', async () => {
-      // When content is set via onSuccess, character count is displayed
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onSuccess({ content: 'Test content' }) // 12 characters
-        return Promise.resolve({ content: 'Test content' })
-      })
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(screen.getByText(/12/)).toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('Error Handling', () => {
-    it('should show toast notification on error', async () => {
-      const errorMessage = 'Failed to fetch document'
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onError(new Error(errorMessage))
-        // Return a resolved promise to avoid unhandled rejection
-        return Promise.resolve()
-      })
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith(errorMessage)
-      })
-    })
-
-    it('should handle network errors', async () => {
-      const networkError = new Error('Network Error')
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onError(networkError)
-        // Return a resolved promise to avoid unhandled rejection
-        return Promise.resolve()
-      })
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockToastError).toHaveBeenCalledWith('Network Error')
-      })
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call hidePreview when close button is clicked', () => {
-      const hidePreview = vi.fn()
-
-      render(<OnlineDocumentPreview {...defaultProps} hidePreview={hidePreview} />)
-
-      // Find the close button in the header area (not toast buttons)
-      const headerArea = document.querySelector('.flex.gap-x-2.border-b')
-      const closeButton = headerArea?.querySelector('button')
-      expect(closeButton).toBeInTheDocument()
-      fireEvent.click(closeButton!)
-
-      expect(hidePreview).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle undefined page_name', () => {
-      const currentPage = createMockNotionPage({ page_name: '' })
-
-      render(<OnlineDocumentPreview {...defaultProps} currentPage={currentPage} />)
-
-      // Find the close button in the header area
-      const headerArea = document.querySelector('.flex.gap-x-2.border-b')
-      const closeButton = headerArea?.querySelector('button')
-      expect(closeButton).toBeInTheDocument()
-    })
-
-    it('should handle different page types', () => {
-      const currentPage = createMockNotionPage({ type: 'database' })
-
-      render(<OnlineDocumentPreview {...defaultProps} currentPage={currentPage} />)
-
-      expect(screen.getByText('database')).toBeInTheDocument()
-    })
-
-    it('should use credentialId from store', async () => {
-      mockGetState.mockReturnValue({
-        currentCredentialId: 'custom-credential',
-      })
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(mockMutateAsync).toHaveBeenCalledWith(
-          expect.objectContaining({
-            credentialId: 'custom-credential',
-          }),
-          expect.anything(),
-        )
-      })
-    })
-
-    it('should not render markdown content when content is empty and not pending', async () => {
-      mockMutateAsync.mockImplementation((params, callbacks) => {
-        callbacks.onSuccess({ content: '' })
-        return Promise.resolve({ content: '' })
-      })
-      mockUsePreviewOnlineDocument.mockReturnValue({
-        mutateAsync: mockMutateAsync,
-        isPending: false,
-      })
-
-      render(<OnlineDocumentPreview {...defaultProps} />)
-
-      // Content is empty, markdown area should still render but be empty
-      await waitFor(() => {
-        expect(screen.queryByText('Test content')).not.toBeInTheDocument()
-      })
-    })
+  it('keeps the empty response empty after the mutation finishes', async () => {
+    mockMutateAsync.mockResolvedValue({ content: '' })
+    const { queryClient } = render(<OnlineDocumentPreview {...defaultProps} />)
+    await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledOnce())
+    await waitFor(() => expect(queryClient.isMutating()).toBe(0))
+    expect(screen.getByText('0 datasetPipeline.addDocuments.characters')).toBeInTheDocument()
+    expect(screen.queryByText('Test content')).not.toBeInTheDocument()
   })
 })

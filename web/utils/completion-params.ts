@@ -2,6 +2,7 @@ import type {
   FormValue,
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { normalizeModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/utils'
 
 export const mergeValidCompletionParams = (
   oldParams: FormValue | undefined,
@@ -33,7 +34,11 @@ export const mergeValidCompletionParams = (
     switch (rule.type) {
       case 'int':
       case 'float': {
-        if (typeof value !== 'number') {
+        if (
+          typeof value !== 'number' ||
+          !Number.isFinite(value) ||
+          (rule.type === 'int' && !Number.isInteger(value))
+        ) {
           removedDetails[key] = 'invalid type'
           return
         }
@@ -61,7 +66,7 @@ export const mergeValidCompletionParams = (
           return
         }
         if (Array.isArray(rule.options) && rule.options.length) {
-          if (!(rule.options as string[]).includes(value)) {
+          if (!rule.options.includes(value)) {
             removedDetails[key] = 'unsupported option'
             return
           }
@@ -82,10 +87,13 @@ export const fetchModelParameterRulesForModel = async (
   provider: string,
   modelId: string,
 ): Promise<ModelParameterRule[]> => {
-  const { fetchModelParameterRules } = await import('@/service/common')
-  const url = `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
-  const { data: parameterRules } = await fetchModelParameterRules(url)
-  return parameterRules ?? []
+  const { consoleClient } = await import('@/service/console')
+  const { data: parameterRules } =
+    await consoleClient.workspaces.current.modelProviders.byProvider.models.parameterRules.get({
+      params: { provider },
+      query: { model: modelId },
+    })
+  return (parameterRules ?? []).map(normalizeModelParameterRule)
 }
 
 export const fetchAndMergeValidCompletionParams = async (

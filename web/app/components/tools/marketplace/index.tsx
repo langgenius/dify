@@ -6,7 +6,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useRouter } from '@/next/navigation'
@@ -30,7 +30,7 @@ const Marketplace = ({
   contentInset = 'default',
 }: MarketplaceProps) => {
   const locale = useLocale()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const { theme } = useTheme()
   const router = useRouter()
   const { canInstallPlugin } = usePluginSettingsAccess()
@@ -69,31 +69,31 @@ const Marketplace = ({
           </div>
           <div className="flex items-center text-center body-md-regular text-text-tertiary">
             {t(($) => $['marketplace.discover'], { ns: 'plugin' })}
-            <span className="relative ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+            <span className="relative ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
               {t(($) => $['category.models'], { ns: 'plugin' })}
             </span>
             ,
-            <span className="relative ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+            <span className="relative ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
               {t(($) => $['category.tools'], { ns: 'plugin' })}
             </span>
             ,
-            <span className="relative ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+            <span className="relative ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
               {t(($) => $['category.datasources'], { ns: 'plugin' })}
             </span>
             ,
-            <span className="relative ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+            <span className="relative ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
               {t(($) => $['category.triggers'], { ns: 'plugin' })}
             </span>
             ,
-            <span className="relative ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+            <span className="relative ms-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
               {t(($) => $['category.agents'], { ns: 'plugin' })}
             </span>
             ,
-            <span className="relative mr-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+            <span className="relative ms-1 me-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
               {t(($) => $['category.extensions'], { ns: 'plugin' })}
             </span>
             {t(($) => $['marketplace.and'], { ns: 'plugin' })}
-            <span className="relative mr-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+            <span className="relative ms-1 me-1 body-md-medium text-text-secondary after:absolute after:inset-s-0 after:bottom-[1.5px] after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
               {t(($) => $['category.bundles'], { ns: 'plugin' })}
             </span>
             {t(($) => $['operation.in'], { ns: 'common' })}
@@ -104,11 +104,14 @@ const Marketplace = ({
                 tags: filterPluginTags.join(','),
                 theme,
               })}
-              className="ml-1 flex items-center system-sm-medium text-text-accent"
+              className="ms-1 flex items-center system-sm-medium text-text-accent"
               target="_blank"
             >
               {t(($) => $['marketplace.difyMarketplace'], { ns: 'plugin' })}
-              <span aria-hidden="true" className="i-ri-arrow-right-up-line size-4" />
+              <span
+                aria-hidden="true"
+                className="i-ri-arrow-right-up-line size-4 rtl:-scale-x-100"
+              />
             </a>
           </div>
         </div>
@@ -116,7 +119,7 @@ const Marketplace = ({
       <div className="-mt-3.5 shrink-0 grow bg-background-default-subtle pb-2">
         {isLoading && page === 1 && (
           <div className="absolute top-1/2 left-1/2 -translate-1/2">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
         {(!isLoading || page > 1) && (

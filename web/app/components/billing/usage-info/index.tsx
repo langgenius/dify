@@ -1,17 +1,16 @@
 'use client'
 import type { MeterTone } from '@langgenius/dify-ui/meter'
-import type { ComponentType, FC, ReactNode } from 'react'
+import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Meter, MeterIndicator, MeterTrack } from '@langgenius/dify-ui/meter'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { NUM_INFINITE } from '../config'
 
 type Props = Readonly<{
   className?: string
-  Icon: ComponentType<{ className?: string }>
+  iconClassName: string
   name: string
   tooltip?: string
   usage: number
@@ -31,7 +30,7 @@ type Props = Readonly<{
 
 const UsageInfo: FC<Props> = ({
   className,
-  Icon,
+  iconClassName,
   name,
   tooltip,
   usage,
@@ -47,10 +46,13 @@ const UsageInfo: FC<Props> = ({
   isSandboxPlan = false,
   usageUnknown = false,
 }) => {
-  const { t } = useTranslation()
+  const labelId = React.useId()
+
+  const { t } = useTranslation(['billing'])
 
   const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
   const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold
+  const storageHelp = !usageUnknown && storageMode ? storageTooltip : undefined
 
   // Zero count quotas have no remaining capacity; storage keeps its separate limit convention.
   const isZeroQuota = !storageMode && total === 0
@@ -144,31 +146,25 @@ const UsageInfo: FC<Props> = ({
     </Meter>
   )
 
-  const wrapWithStorageTooltip = (children: ReactNode) => {
-    if (!usageUnknown && storageMode && storageTooltip) {
-      return (
-        <Tooltip>
-          <TooltipTrigger render={<div className="cursor-default">{children}</div>} />
-          <TooltipContent className="w-50 max-w-50">{storageTooltip}</TooltipContent>
-        </Tooltip>
-      )
-    }
-    return children
-  }
-
   return (
     <div
       role="group"
       aria-label={name}
       className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}
     >
-      {!hideIcon && Icon && <Icon className="size-4 text-text-tertiary" />}
+      {!hideIcon && iconClassName && (
+        <span aria-hidden className={cn(iconClassName, 'size-4 text-text-tertiary')} />
+      )}
       <dl className="flex flex-col gap-2">
         <dt className="flex items-center gap-1 system-xs-medium text-text-tertiary">
-          {name}
-          {tooltip && (
-            <Infotip aria-label={tooltip} popupClassName="w-[180px] max-w-[180px]">
-              {tooltip}
+          <span id={labelId}>{name}</span>
+          {(tooltip || storageHelp) && (
+            <Infotip>
+              <InfotipTrigger aria-labelledby={labelId} />
+              <InfotipContent aria-labelledby={labelId} className="w-45">
+                {tooltip && <p>{tooltip}</p>}
+                {storageHelp && <p>{storageHelp}</p>}
+              </InfotipContent>
             </Infotip>
           )}
         </dt>
@@ -176,11 +172,11 @@ const UsageInfo: FC<Props> = ({
           data-testid="billing-quota-value"
           className="flex items-center gap-1 system-md-semibold text-text-primary"
         >
-          {wrapWithStorageTooltip(usageDisplay)}
+          {usageDisplay}
           {rightInfo}
         </dd>
       </dl>
-      {!usageUnknown && wrapWithStorageTooltip(bar)}
+      {!usageUnknown && bar}
     </div>
   )
 }

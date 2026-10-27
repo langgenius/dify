@@ -3,6 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -10,9 +26,16 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
- * DefaultBlockConfigsResponse
+ * DraftWorkflowNotExistError
+ *
+ * Draft workflow need to be initialized.
  */
-export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unknown()))
+export const zDraftWorkflowNotExistError = zErrorResponse.and(
+  z.object({
+    code: z.literal('draft_workflow_not_exist'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * SnippetDraftSyncPayload
@@ -34,6 +57,18 @@ export const zWorkflowRestoreResponse = z.object({
   result: z.string(),
   updated_at: z.int(),
 })
+
+/**
+ * DraftWorkflowNotSyncError
+ *
+ * Workflow graph might have been modified, please refresh and resubmit.
+ */
+export const zDraftWorkflowNotSyncError = zErrorResponse.and(
+  z.object({
+    code: z.literal('draft_workflow_not_sync'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * SnippetDraftConfigResponse
@@ -61,6 +96,78 @@ export const zSnippetLoopNodeRunPayload = z.object({
 })
 
 /**
+ * AgentNotFoundError
+ *
+ * Agent not found.
+ */
+export const zAgentNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentSoulLockedError
+ *
+ * Agent Soul is locked for this workflow node.
+ */
+export const zAgentSoulLockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_soul_locked_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidComposerConfigError
+ *
+ * Invalid agent composer config.
+ */
+export const zInvalidComposerConfigError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_composer_config_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PlaintextSecretNotAllowedError
+ *
+ * Plaintext secret values are not allowed in Agent config.
+ */
+export const zPlaintextSecretNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('plaintext_secret_not_allowed_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentNameConflictError
+ *
+ * Agent name already exists.
+ */
+export const zAgentNameConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_name_conflict_error'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * WorkflowComposerCopyFromRosterPayload
  */
 export const zWorkflowComposerCopyFromRosterPayload = z.object({
@@ -68,6 +175,18 @@ export const zWorkflowComposerCopyFromRosterPayload = z.object({
   source_agent_id: z.string().min(1).max(255),
   source_snapshot_id: z.string().max(255).nullish(),
 })
+
+/**
+ * AgentVersionConflictError
+ *
+ * Agent config version changed. Please reload and try again.
+ */
+export const zAgentVersionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_conflict_error'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * SnippetDraftNodeRunPayload
@@ -99,11 +218,11 @@ export const zWorkflowDraftVariableUpdatePayload = z.object({
 })
 
 /**
- * PublishWorkflowPayload
+ * SnippetPublishWorkflowPayload
  *
  * Payload for publishing snippet workflow.
  */
-export const zPublishWorkflowPayload = z.object({
+export const zSnippetPublishWorkflowPayload = z.object({
   knowledge_base_setting: z.record(z.string(), z.unknown()).nullish(),
   marked_comment: z.string().max(100).nullish(),
   marked_name: z.string().max(20).nullish(),
@@ -115,6 +234,7 @@ export const zPublishWorkflowPayload = z.object({
 export const zWorkflowPublishResponse = z.object({
   created_at: z.int(),
   result: z.string(),
+  warning: z.string().nullish(),
 })
 
 /**
@@ -229,6 +349,19 @@ export const zWorkflowRunNodeExecutionListResponse = z.object({
 })
 
 /**
+ * DefaultBlockConfigItemResponse
+ */
+export const zDefaultBlockConfigItemResponse = z.object({
+  config: z.record(z.string(), z.unknown()),
+  type: z.string(),
+})
+
+/**
+ * DefaultBlockConfigsResponse
+ */
+export const zDefaultBlockConfigsResponse = z.array(zDefaultBlockConfigItemResponse)
+
+/**
  * WorkflowConversationVariableResponse
  */
 export const zWorkflowConversationVariableResponse = z.object({
@@ -326,7 +459,7 @@ export const zEnvironmentVariableListResponse = z.object({
   items: z.array(zEnvironmentVariableItemResponse),
 })
 
-export const zJsonValue = z
+export const zShallowJsonValue = z
   .union([
     z.string(),
     z.int(),
@@ -340,7 +473,7 @@ export const zJsonValue = z
 /**
  * GeneratedAppResponse
  */
-export const zGeneratedAppResponse = zJsonValue
+export const zGeneratedAppResponse = zShallowJsonValue
 
 /**
  * AgentConfigSnapshotSummaryResponse
@@ -501,6 +634,20 @@ export const zWorkflowDraftVariableFullContentResponse = z.object({
   value_type: z.string(),
 })
 
+export const zRecursiveJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(
+      z.string(),
+      z.lazy((): any => zRecursiveJsonValue),
+    ),
+    z.array(z.lazy((): any => zRecursiveJsonValue)),
+  ])
+  .nullable()
+
 /**
  * WorkflowDraftVariableResponse
  */
@@ -513,7 +660,7 @@ export const zWorkflowDraftVariableResponse = z.object({
   name: z.string(),
   selector: z.array(z.string()),
   type: z.string(),
-  value: zJsonValue,
+  value: zRecursiveJsonValue,
   value_type: z.string(),
   visible: z.boolean(),
 })
@@ -760,7 +907,7 @@ export const zAgentFeatureToggleConfig = z.object({
  * AgentTextToSpeechFeatureConfig
  */
 export const zAgentTextToSpeechFeatureConfig = z.object({
-  autoPlay: z.string().nullish(),
+  autoPlay: z.enum(['disabled', 'enabled']).nullish(),
   enabled: z.boolean().optional().default(false),
   language: z.string().nullish(),
   voice: z.string().nullish(),
@@ -817,6 +964,23 @@ export const zAgentHumanToolConfig = z.object({
 export const zAgentSoulHumanConfig = z.object({
   contacts: z.array(zAgentHumanContactConfig).optional(),
   tools: z.array(zAgentHumanToolConfig).optional(),
+})
+
+/**
+ * AgentKnowledgeSpaceConfig
+ *
+ * One read-only Agent Knowledge Base binding, addressed by stable ID or CLI alias.
+ *
+ * The control-space ID is Dify-owned, never the execution-plane space ID.
+ * ``is_missing`` preserves unresolved DSL references for editing; it never
+ * authorizes execution. Names/descriptions are author guidance, not authority.
+ */
+export const zAgentKnowledgeSpaceConfig = z.object({
+  control_space_id: z.string().length(36),
+  description: z.string().max(2000).nullish(),
+  id: z.string().min(1).max(255),
+  is_missing: z.boolean().optional().default(false),
+  name: z.string().min(1).max(120),
 })
 
 /**
@@ -925,6 +1089,27 @@ export const zDeclaredOutputFailureStrategy = z.object({
   default_value: z.unknown().optional(),
   on_failure: zOutputErrorStrategy.optional().default('stop'),
   retry: zDeclaredOutputRetryConfig.optional(),
+})
+
+/**
+ * WorkflowOutputRoute
+ *
+ * Stable workflow exit identity and its model-visible selection condition.
+ */
+export const zWorkflowOutputRoute = z.object({
+  id: z.string().min(1),
+  label: z.string().nullish(),
+  name: z.string().optional().default(''),
+})
+
+/**
+ * WorkflowOutputRoutes
+ *
+ * Enabled routes require at least two exits; drafts may omit conditions.
+ */
+export const zWorkflowOutputRoutes = z.object({
+  enabled: z.boolean().optional().default(false),
+  routes: z.array(zWorkflowOutputRoute).optional(),
 })
 
 /**
@@ -1043,9 +1228,11 @@ export const zAgentComposerKnowledgeDatasetCandidateResponse = z.object({
  * AgentComposerKnowledgeSetCandidateResponse
  */
 export const zAgentComposerKnowledgeSetCandidateResponse = z.object({
+  control_space_id: z.string().nullish(),
   datasets: z.array(zAgentComposerKnowledgeDatasetCandidateResponse).optional(),
   description: z.string().nullish(),
   id: z.string(),
+  missing: z.boolean().optional().default(false),
   missing_dataset_ids: z.array(z.string()).optional(),
   name: z.string(),
 })
@@ -1156,7 +1343,7 @@ export const zAgentSoulModelSettings = z.object({
   frequency_penalty: z.number().nullish(),
   max_tokens: z.int().nullish(),
   presence_penalty: z.number().nullish(),
-  response_format: zAgentModelResponseFormatConfig.nullish(),
+  response_format: z.union([z.string(), zAgentModelResponseFormatConfig]).nullish(),
   stop: z.array(z.string()).nullish(),
   temperature: z.number().nullish(),
   top_p: z.number().nullish(),
@@ -1237,6 +1424,7 @@ export const zWorkflowNodeJobConfig = z.object({
   human_contacts: z.array(zAgentHumanContactConfig).optional(),
   metadata: zWorkflowNodeJobMetadata.optional(),
   mode: zWorkflowNodeJobMode.optional().default('tell_agent_what_to_do'),
+  output_routes: zWorkflowOutputRoutes.optional(),
   previous_node_output_refs: z.array(zWorkflowPreviousNodeOutputRef).optional(),
   schema_version: z.int().optional().default(1),
   workflow_prompt: z.string().optional().default(''),
@@ -1519,16 +1707,15 @@ export const zAgentKnowledgeSetConfig = z.object({
 /**
  * AgentSoulKnowledgeConfig
  *
- * Top-level Agent v2 knowledge config.
+ * Agent Knowledge Base and Classic Knowledge Base bindings for an Agent.
  *
- * Agent v2 models knowledge as explicit sets instead of one flat
- * ``datasets`` / ``query_mode`` / ``query_config`` block. An empty ``sets``
- * list means no knowledge layer should be emitted at runtime, while set-name
- * uniqueness stays case-insensitive because runtime selection addresses sets
- * by name.
+ * ``spaces`` use the KnowledgeFS layer and ``sets`` use the Classic Knowledge
+ * Base layer. Both may be configured together; empty knowledge adds no runtime
+ * capability.
  */
 export const zAgentSoulKnowledgeConfig = z.object({
   sets: z.array(zAgentKnowledgeSetConfig).optional(),
+  spaces: z.array(zAgentKnowledgeSpaceConfig).max(10).optional(),
 })
 
 /**
@@ -1990,7 +2177,7 @@ export const zGetSnippetsBySnippetIdWorkflowsPublishPath = z.object({
  */
 export const zGetSnippetsBySnippetIdWorkflowsPublishResponse = zSnippetWorkflowResponse
 
-export const zPostSnippetsBySnippetIdWorkflowsPublishBody = zPublishWorkflowPayload
+export const zPostSnippetsBySnippetIdWorkflowsPublishBody = zSnippetPublishWorkflowPayload
 
 export const zPostSnippetsBySnippetIdWorkflowsPublishPath = z.object({
   snippet_id: z.uuid(),

@@ -19,11 +19,9 @@ from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DatasetQuerySource, DataSourceType, DocumentCreatedFrom
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     engine: Engine
-
-    def __init__(self, engine: Engine) -> None:
-        self.engine = engine
 
 
 @dataclass(frozen=True)
@@ -266,7 +264,7 @@ class TestOnToolEnd:
 
 class TestReturnRetrieverResourceInfo:
     def test_publish_called(self, handler: DatasetIndexToolCallbackHandler, mock_queue_manager, mocker: MockerFixture):
-        mock_event = mocker.patch("core.callback_handler.index_tool_callback_handler.QueueRetrieverResourcesEvent")
+        mocker.patch("core.callback_handler.index_tool_callback_handler.QueueRetrieverResourcesEvent")
         resources = [mocker.Mock()]
 
         handler.return_retriever_resource_info(resources)

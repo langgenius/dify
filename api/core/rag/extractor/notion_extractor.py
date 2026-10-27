@@ -1,17 +1,18 @@
 import json
 import logging
 import operator
+from collections.abc import Callable, Mapping
+from types import MappingProxyType
 from typing import Any, cast, override
 
 import httpx
 from sqlalchemy import update
 
-from configs import dify_config
+from core.rag.extractor.entity.extract_setting import StoredDocumentExtractionInput
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
-from services.datasource_provider_service import DatasourceProviderService
 
 logger = logging.getLogger(__name__)
 
@@ -41,36 +42,21 @@ class NotionExtractor(BaseExtractor):
         notion_obj_id: str,
         notion_page_type: str,
         tenant_id: str,
-        document_model: DocumentModel | None = None,
+        document_model: StoredDocumentExtractionInput | None = None,
         notion_access_token: str | None = None,
         credential_id: str | None = None,
+        *,
+        notion_token_loader: Callable[[], str],
     ):
         self._notion_access_token = None
         self._document_model = document_model
         self._notion_workspace_id = notion_workspace_id
         self._notion_obj_id = notion_obj_id
         self._notion_page_type = notion_page_type
-        self._credential_id = credential_id
         if notion_access_token:
             self._notion_access_token = notion_access_token
         else:
-            try:
-                self._notion_access_token = self._get_access_token(tenant_id, self._credential_id)
-            except Exception as e:
-                logger.warning(
-                    (
-                        "Failed to get Notion access token from datasource credentials: %s, "
-                        "falling back to environment variable NOTION_INTEGRATION_TOKEN"
-                    ),
-                    e,
-                )
-                integration_token = dify_config.NOTION_INTEGRATION_TOKEN
-                if integration_token is None:
-                    raise ValueError(
-                        "Must specify `integration_token` or set environment variable `NOTION_INTEGRATION_TOKEN`."
-                    ) from e
-
-                self._notion_access_token = integration_token
+            self._notion_access_token = notion_token_loader()
 
     @override
     def extract(self) -> list[Document]:
@@ -94,7 +80,9 @@ class NotionExtractor(BaseExtractor):
 
         return docs
 
-    def _get_notion_database_data(self, database_id: str, query_dict: dict[str, Any] = {}) -> list[Document]:
+    def _get_notion_database_data(
+        self, database_id: str, query_dict: Mapping[str, Any] = MappingProxyType({})
+    ) -> list[Document]:
         """Get all the pages from a Notion database."""
         assert self._notion_access_token is not None, "Notion access token is required"
 
@@ -103,7 +91,7 @@ class NotionExtractor(BaseExtractor):
         has_more = True
 
         while has_more:
-            current_query = query_dict.copy()
+            current_query = dict(query_dict)
             if next_cursor:
                 current_query["start_cursor"] = next_cursor
 
@@ -139,10 +127,7 @@ class NotionExtractor(BaseExtractor):
                         # join them all so no part of the value is dropped.
                         value = "".join(segment.get("plain_text", "") for segment in property_value[type])
                     elif type in {"select", "status"}:
-                        if property_value[type]:
-                            value = property_value[type]["name"]
-                        else:
-                            value = ""
+                        value = property_value[type]["name"] if property_value[type] else ""
                     else:
                         value = property_value[type]
                     data[property_name] = value
@@ -173,7 +158,7 @@ class NotionExtractor(BaseExtractor):
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=page_id)
         while True:
-            query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
+            query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
             try:
                 res = httpx.request(
                     "GET",
@@ -205,9 +190,8 @@ class NotionExtractor(BaseExtractor):
                 else:
                     if "rich_text" in result_obj:
                         for rich_text in result_obj["rich_text"]:
-                            # skip if doesn't have text object
-                            if "text" in rich_text:
-                                text = rich_text["text"]["content"]
+                            text = rich_text.get("plain_text") or rich_text.get("text", {}).get("content", "")
+                            if text:
                                 cur_result_text_arr.append(text)
 
                     result_block_id = result["id"]
@@ -236,7 +220,7 @@ class NotionExtractor(BaseExtractor):
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
         while True:
-            query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
+            query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
 
             res = httpx.request(
                 "GET",
@@ -263,9 +247,8 @@ class NotionExtractor(BaseExtractor):
                 else:
                     if "rich_text" in result_obj:
                         for rich_text in result_obj["rich_text"]:
-                            # skip if doesn't have text object
-                            if "text" in rich_text:
-                                text = rich_text["text"]["content"]
+                            text = rich_text.get("plain_text") or rich_text.get("text", {}).get("content", "")
+                            if text:
                                 prefix = "\t" * num_tabs
                                 cur_result_text_arr.append(prefix + text)
                     result_block_id = result["id"]
@@ -304,7 +287,7 @@ class NotionExtractor(BaseExtractor):
         start_cursor = None
         block_url = BLOCK_CHILD_URL_TMPL.format(block_id=block_id)
         while not done:
-            query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
+            query_dict: Mapping[str, Any] = MappingProxyType({}) if not start_cursor else {"start_cursor": start_cursor}
 
             res = httpx.request(
                 "GET",
@@ -346,7 +329,7 @@ class NotionExtractor(BaseExtractor):
         result_lines = "\n".join(result_lines_arr)
         return result_lines
 
-    def update_last_edited_time(self, document_model: DocumentModel | None):
+    def update_last_edited_time(self, document_model: StoredDocumentExtractionInput | None):
         if not document_model:
             return
 
@@ -357,8 +340,12 @@ class NotionExtractor(BaseExtractor):
 
         db.session.execute(
             update(DocumentModel)
-            .where(DocumentModel.id == document_model.id)
-            .values(data_source_info=json.dumps(data_source_info))
+            .where(
+                DocumentModel.id == document_model.id,
+                DocumentModel.tenant_id == document_model.tenant_id,
+                DocumentModel.dataset_id == document_model.dataset_id,
+            )
+            .values({DocumentModel.data_source_info: json.dumps(data_source_info)})
         )
         db.session.commit()
 
@@ -371,7 +358,7 @@ class NotionExtractor(BaseExtractor):
         else:
             retrieve_page_url = RETRIEVE_PAGE_URL_TMPL.format(page_id=obj_id)
 
-        query_dict: dict[str, Any] = {}
+        query_dict: Mapping[str, Any] = MappingProxyType({})
 
         res = httpx.request(
             "GET",
@@ -387,20 +374,3 @@ class NotionExtractor(BaseExtractor):
 
         data = res.json()
         return cast(str, data["last_edited_time"])
-
-    @classmethod
-    def _get_access_token(cls, tenant_id: str, credential_id: str | None) -> str:
-        # get credential from tenant_id and credential_id
-        if not credential_id:
-            raise Exception(f"No credential id found for tenant {tenant_id}")
-        datasource_provider_service = DatasourceProviderService()
-        credential = datasource_provider_service.get_datasource_credentials(
-            tenant_id=tenant_id,
-            credential_id=credential_id,
-            provider="notion_datasource",
-            plugin_id="langgenius/notion_datasource",
-        )
-        if not credential:
-            raise Exception(f"No notion credential found for tenant {tenant_id} and credential {credential_id}")
-
-        return cast(str, credential["integration_secret"])

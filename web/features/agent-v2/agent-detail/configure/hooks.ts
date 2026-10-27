@@ -2,15 +2,9 @@
 
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { useAtom, useAtomValue } from 'jotai'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useDefaultModel,
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useAtomValue } from 'jotai'
 import { getAgentACLCapabilities } from '@/features/agent-v2/acl'
 import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
-import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { consoleQuery } from '@/service/console'
 
 export function useAgentConfigureData(agentId: string, requestedVersionId: string | null) {
@@ -75,26 +69,6 @@ export function useAgentConfigureData(agentId: string, requestedVersionId: strin
     activeConfigSnapshot,
     agentSoulConfig,
     isPending,
-  }
-}
-
-export function useAgentConfigureModelOptions() {
-  const [model, setModel] = useAtom(agentComposerModelAtom)
-  const { data: defaultTextGenerationModel } = useDefaultModel(ModelTypeEnum.textGeneration)
-  const defaultModel = defaultTextGenerationModel
-    ? {
-        provider: defaultTextGenerationModel.provider.provider,
-        model: defaultTextGenerationModel.model,
-      }
-    : undefined
-  const currentModel = model ?? defaultModel
-  const { textGenerationModelList } =
-    useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
-
-  return {
-    currentModel,
-    setConfigureModel: setModel,
-    textGenerationModelList,
   }
 }
 

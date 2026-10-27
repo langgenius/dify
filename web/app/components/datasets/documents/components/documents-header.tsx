@@ -6,11 +6,11 @@ import type {
 } from '@/app/components/datasets/metadata/types'
 import type { SortType } from '@/service/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
-import Sort from '@/app/components/base/sort'
+import { Sort } from '@/app/components/base/sort'
 import AutoDisabledDocument from '@/app/components/datasets/common/document-status-with-action/auto-disabled-document'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
 import StatusWithAction from '@/app/components/datasets/common/document-status-with-action/status-with-action'
@@ -39,7 +39,7 @@ type DocumentsHeaderProps = {
   inputValue: string
   onStatusFilterChange: (value: string) => void
   onStatusFilterClear: () => void
-  onSortChange: (value: string) => void
+  onSortChange: (value: SortType) => void
   onInputChange: (value: string) => void
 
   // Metadata modal
@@ -84,7 +84,9 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   onBuiltInEnabledChange,
   onAddDocument,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset', 'datasetDocuments'])
+  const statusFilterId = useId()
+  const statusFilterLabelId = useId()
   const docLink = useDocLink()
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
 
@@ -106,17 +108,18 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
     [DOC_INDEX_STATUS_MAP, t],
   )
 
-  const sortItems: SelectOption[] = useMemo(
-    () => [
-      {
-        value: 'created_at',
-        name: t(($) => $['list.sort.uploadTime'], { ns: 'datasetDocuments' }) as string,
-      },
-      {
-        value: 'hit_count',
-        name: t(($) => $['list.sort.hitCount'], { ns: 'datasetDocuments' }) as string,
-      },
-    ],
+  const sortItems = useMemo(
+    () =>
+      [
+        {
+          value: 'created_at',
+          name: t(($) => $['list.sort.uploadTime'], { ns: 'datasetDocuments' }) as string,
+        },
+        {
+          value: 'hit_count',
+          name: t(($) => $['list.sort.hitCount'], { ns: 'datasetDocuments' }) as string,
+        },
+      ] as const,
     [t],
   )
 
@@ -152,7 +155,16 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
       <div className="flex flex-wrap items-center justify-between px-6 pt-4">
         {/* Left: Filters */}
         <div className="flex items-center gap-2">
+          <label
+            id={statusFilterLabelId}
+            htmlFor={statusFilterId}
+            className="system-sm-medium text-text-secondary"
+          >
+            {t(($) => $['list.table.header.status'], { ns: 'datasetDocuments' })}
+          </label>
           <Chip
+            id={statusFilterId}
+            aria-labelledby={statusFilterLabelId}
             className="w-40"
             showLeftIcon={false}
             value={statusFilterValue}
@@ -163,10 +175,14 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           <SearchInput className="w-50!" value={inputValue} onValueChange={onInputChange} />
           <div className="h-3.5 w-px bg-divider-regular"></div>
           <Sort
-            order={sortValue.startsWith('-') ? '-' : ''}
-            value={sortValue.replace('-', '')}
+            value={{
+              field: sortValue.endsWith('hit_count') ? 'hit_count' : 'created_at',
+              order: sortValue.startsWith('-') ? 'desc' : 'asc',
+            }}
             items={sortItems}
-            onSelect={(value) => onSortChange(String(value))}
+            onValueChange={({ field, order }) =>
+              onSortChange(order === 'desc' ? `-${field}` : field)
+            }
           />
         </div>
 

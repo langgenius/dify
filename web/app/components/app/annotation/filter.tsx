@@ -1,9 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
-import { useAnnotationsCount } from '@/service/use-log'
+import { consoleQuery } from '@/service/console'
 
 export type QueryParam = {
   keyword?: string
@@ -17,8 +18,12 @@ type IFilterProps = {
 }
 
 const Filter: FC<IFilterProps> = ({ appId, queryParams, setQueryParams, children }) => {
-  const { data, isLoading } = useAnnotationsCount(appId)
-  const { t } = useTranslation()
+  const { data, isLoading } = useQuery(
+    consoleQuery.apps.byAppId.annotations.count.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
+  const { t } = useTranslation(['common'])
   if (isLoading || !data) return null
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center justify-between gap-2">

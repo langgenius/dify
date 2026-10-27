@@ -1,16 +1,17 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { BlockEnum } from '@/app/components/workflow/types'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import ToolCallItem from '../tool-call'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
-    <div data-testid="code-editor">
-      <div data-testid="code-editor-title">{title}</div>
-      <div data-testid="code-editor-value">{JSON.stringify(value)}</div>
-    </div>
+    <section aria-label={typeof title === 'string' ? title : undefined} data-testid="code-editor">
+      <h3>{title}</h3>
+      <div>{JSON.stringify(value)}</div>
+    </section>
   ),
 }))
 
@@ -18,7 +19,8 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ type }: { type: BlockEnum }) => <div data-testid="block-icon" data-type={type} />,
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en'),
 }))
 
@@ -34,18 +36,6 @@ const mockToolCall = {
 }
 
 describe('ToolCallItem', () => {
-  it('should render tool name correctly for LLM', () => {
-    render(<ToolCallItem toolCall={mockToolCall} isLLM={true} />)
-    expect(screen.getByText('LLM')).toBeInTheDocument()
-    expect(screen.getByTestId('block-icon')).toHaveAttribute('data-type', BlockEnum.LLM)
-  })
-
-  it('should render tool name from label for non-LLM', () => {
-    render(<ToolCallItem toolCall={mockToolCall} isLLM={false} />)
-    expect(screen.getByText('Test Tool Label')).toBeInTheDocument()
-    expect(screen.getByTestId('block-icon')).toHaveAttribute('data-type', BlockEnum.Tool)
-  })
-
   it('should fallback to locale key with underscores when hyphenated key is missing', () => {
     vi.mocked(useLocale).mockReturnValueOnce('en-US')
     const fallbackLocaleToolCall = {
@@ -70,31 +60,24 @@ describe('ToolCallItem', () => {
     expect(screen.getByText('1 m 5.000 s')).toBeInTheDocument()
   })
 
-  it('should format token count in K units', () => {
-    render(<ToolCallItem toolCall={mockToolCall} isLLM={true} tokens={1200} />)
-    expect(screen.getByText('1.2K tokens')).toBeInTheDocument()
-  })
-
-  it('should format token count without unit for small values', () => {
-    render(<ToolCallItem toolCall={mockToolCall} isLLM={true} tokens={800} />)
-    expect(screen.getByText('800 tokens')).toBeInTheDocument()
-  })
-
-  it('should format token count in M units', () => {
-    render(<ToolCallItem toolCall={mockToolCall} isLLM={true} tokens={1200000} />)
-    expect(screen.getByText('1.2M tokens')).toBeInTheDocument()
-  })
-
-  it('should handle collapse/expand', () => {
+  it('reveals tool inputs and outputs and hides them when collapsed', async () => {
+    const user = userEvent.setup()
     render(<ToolCallItem toolCall={mockToolCall} isLLM={false} />)
 
     expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText(/Test Tool Label/i))
-    expect(screen.getAllByTestId('code-editor')).toHaveLength(2)
+    await user.click(screen.getByText('Test Tool Label'))
+    const editors = screen.getAllByTestId('code-editor')
+    expect(editors[0]).toHaveTextContent('INPUT')
+    expect(editors[0]).toHaveTextContent('{"query":"hello"}')
+    expect(editors[1]).toHaveTextContent('OUTPUT')
+    expect(editors[1]).toHaveTextContent('{"result":"world"}')
+    await user.click(screen.getByText('Test Tool Label'))
+    expect(screen.queryByTestId('code-editor')).not.toBeInTheDocument()
   })
 
-  it('should display error message when status is error', () => {
+  it('should display error message when status is error', async () => {
+    const user = userEvent.setup()
     const errorToolCall = {
       ...mockToolCall,
       status: 'error',
@@ -102,45 +85,42 @@ describe('ToolCallItem', () => {
     }
     render(<ToolCallItem toolCall={errorToolCall} isLLM={false} />)
 
-    fireEvent.click(screen.getByText(/Test Tool Label/i))
+    await user.click(screen.getByText('Test Tool Label'))
     expect(screen.getByText('Something went wrong')).toBeInTheDocument()
   })
 
-  it('should display LLM specific fields when expanded', () => {
-    render(
-      <ToolCallItem
-        toolCall={mockToolCall}
-        isLLM={true}
-        observation="test observation"
-        finalAnswer="test final answer"
-        isFinal={true}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('LLM'))
-
-    const titles = screen.getAllByTestId('code-editor-title')
-    const titleTexts = titles.map((t) => t.textContent)
-
-    expect(titleTexts).toContain('INPUT')
-    expect(titleTexts).toContain('OUTPUT')
-    expect(titleTexts).toContain('OBSERVATION')
-    expect(titleTexts).toContain('FINAL ANSWER')
+  it.each([
+    [800, '800'],
+    [1200, '1.2K'],
+    [1200000, '1.2M'],
+  ])('formats %s LLM tokens as %s', (tokens, formatted) => {
+    render(<ToolCallItem toolCall={mockToolCall} isLLM tokens={Number(tokens)} />)
+    expect(screen.getByText(`${formatted} tokens`)).toBeInTheDocument()
   })
 
-  it('should display THOUGHT instead of FINAL ANSWER when isFinal is false', () => {
-    render(
-      <ToolCallItem
-        toolCall={mockToolCall}
-        isLLM={true}
-        observation="test observation"
-        finalAnswer="test thought"
-        isFinal={false}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('LLM'))
-    expect(screen.getByText('THOUGHT')).toBeInTheDocument()
-    expect(screen.queryByText('FINAL ANSWER')).not.toBeInTheDocument()
-  })
+  it.each([true, false])(
+    'reveals observation and the correct LLM result for isFinal=%s',
+    async (isFinal) => {
+      const user = userEvent.setup()
+      render(
+        <ToolCallItem
+          toolCall={mockToolCall}
+          isLLM
+          observation="Tool returned a result"
+          finalAnswer="Use the result"
+          isFinal={isFinal}
+        />,
+      )
+      await user.click(screen.getByText('LLM'))
+      expect(screen.getByRole('heading', { name: 'OBSERVATION' })).toBeInTheDocument()
+      expect(screen.getByText('"Tool returned a result"')).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: isFinal ? 'FINAL ANSWER' : 'THOUGHT' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: isFinal ? 'THOUGHT' : 'FINAL ANSWER' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText('"Use the result"')).toBeInTheDocument()
+    },
+  )
 })

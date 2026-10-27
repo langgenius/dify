@@ -37,7 +37,7 @@ const InputItem: FC<Props> = ({
   isSupportFile,
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowIntegrations'])
 
   const hasValue = !!value
 
@@ -45,7 +45,7 @@ const InputItem: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      const supportVarTypes = [VarType.string, VarType.number, VarType.secret]
+      const supportVarTypes: VarType[] = [VarType.string, VarType.number, VarType.secret]
       if (isSupportFile) supportVarTypes.push(VarType.file, VarType.arrayFile)
 
       return supportVarTypes.includes(varPayload.type)
@@ -75,7 +75,9 @@ const InputItem: FC<Props> = ({
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
           onFocusChange={setIsFocus}
-          placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], { ns: 'workflow' })!}
+          placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], {
+            ns: 'workflowIntegrations',
+          })!}
           placeholderClassName="leading-[21px]!"
           insertVarTipToLeft={insertVarTipToLeft}
         />
@@ -99,7 +101,9 @@ const InputItem: FC<Props> = ({
               nodesOutputVars={availableVars}
               availableNodes={availableNodesWithParent}
               onFocusChange={setIsFocus}
-              placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], { ns: 'workflow' })!}
+              placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], {
+                ns: 'workflowIntegrations',
+              })!}
               placeholderClassName="leading-[21px]!"
               promptMinHeightClassName="h-full"
               insertVarTipToLeft={insertVarTipToLeft}

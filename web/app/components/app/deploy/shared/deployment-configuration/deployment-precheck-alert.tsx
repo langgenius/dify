@@ -114,7 +114,7 @@ function groupUnsupportedNodes(nodes: UnsupportedNode[]): UnsupportedNodeGroup[]
 }
 
 export function DeploymentPrecheckAlert({ nodes }: { nodes: UnsupportedNode[] }) {
-  const { t } = useTranslation('deployments')
+  const { t } = useTranslation(['deployments'])
   const getProviderIcon = useGetProviderIcon(nodes)
   const nodeGroups = useMemo(() => groupUnsupportedNodes(nodes), [nodes])
 

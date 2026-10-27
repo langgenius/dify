@@ -1,926 +1,600 @@
-import type { PropsWithChildren } from 'react'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { RefObject } from 'react'
+import type { ReactFlowInstance } from 'reactflow'
+import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
+import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
+import type { Shape } from '@/app/components/workflow/store'
+import type { Node } from '@/app/components/workflow/types'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createRef, useImperativeHandle } from 'react'
+import { useNodes, useReactFlow } from 'reactflow'
+import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
+import WorkflowWithDefaultContext, { Workflow } from '@/app/components/workflow'
+import { createNode, createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store/store'
+import codeNodeDefault from '@/app/components/workflow/nodes/code/default'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { convertToTriggerWithProvider } from '@/service/use-triggers'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { createDeferred } from '@/test/deferred'
 import BasePanel from '../index'
 
-const mockHandleNodeSelect = vi.fn()
-const mockHandleNodeDataUpdate = vi.fn()
-const mockHandleNodeDataUpdateWithSyncDraft = vi.fn()
-const mockSaveStateToHistory = vi.fn()
-const mockSetDetail = vi.fn()
-const mockSetSettingsDestination = vi.fn()
-const mockHandleSingleRun = vi.fn()
-const mockHandleStop = vi.fn()
-const mockHandleRunWithParams = vi.fn()
-let mockShowMessageLogModal = false
-let mockNodesReadOnly = false
-let mockCanRun = true
-let mockBuiltInTools = [
-  {
-    id: 'provider/tool',
-    name: 'Tool',
-    type: 'builtin',
-    allow_delete: true,
-  },
-]
-let mockTriggerPlugins: Array<Record<string, unknown>> = []
-
-const mockLogsState = {
-  showSpecialResultPanel: false,
-}
-
-const createMockSingleRunParams = () => ({
-  forms: [],
-  onStop: vi.fn(),
-  runningStatus: NodeRunningStatus.Succeeded,
-  existVarValuesInForms: [],
-  filteredExistVarForms: [],
-})
-
-const mockLastRunState = {
-  isShowSingleRun: false,
-  hideSingleRun: vi.fn(),
-  runningStatus: NodeRunningStatus.Succeeded,
-  runInputData: {},
-  runInputDataRef: { current: {} },
-  runResult: {},
-  setRunResult: vi.fn(),
-  getInputVars: vi.fn(),
-  toVarInputs: vi.fn(),
-  tabType: 'settings',
-  isRunAfterSingleRun: false,
-  setIsRunAfterSingleRun: vi.fn(),
-  setTabType: vi.fn(),
-  handleAfterCustomSingleRun: vi.fn(),
-  singleRunParams: createMockSingleRunParams(),
-  nodeInfo: { id: 'node-1' },
-  setRunInputData: vi.fn(),
-  handleStop: () => mockHandleStop(),
-  handleSingleRun: () => mockHandleSingleRun(),
-  handleRunWithParams: (...args: unknown[]) => mockHandleRunWithParams(...args),
-  getExistVarValuesInForms: vi.fn(() => []),
-  getFilteredExistVarForms: vi.fn(() => []),
-}
-
-const createDataSourceCollection = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider =>
-  ({
-    id: 'source-1',
-    name: 'Source',
-    author: 'Author',
-    description: { en_US: 'Source description', zh_Hans: 'Source description' },
-    icon: 'source-icon',
-    label: { en_US: 'Source', zh_Hans: 'Source' },
-    type: 'datasource',
-    team_credentials: {},
-    is_team_authorization: false,
-    allow_delete: false,
-    labels: [],
-    plugin_id: 'source-1',
-    tools: [],
-    meta: {} as ToolWithProvider['meta'],
-    ...overrides,
-  }) as ToolWithProvider
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (
-    selector: (state: { showMessageLogModal: boolean; appDetail: { id: string } }) => unknown,
-  ) =>
-    selector({
-      showMessageLogModal: mockShowMessageLogModal,
-      appDetail: { id: 'app-1' },
-    }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useLanguage: () => 'en_US',
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/store', () => ({
-  usePluginStore: () => ({
-    setDetail: mockSetDetail,
-  }),
-}))
-
-vi.mock('../../../../../hooks/use-available-blocks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../../hooks/use-available-blocks')>()
-
+const api = vi.hoisted(() => ({ run: vi.fn(), lastRun: vi.fn() }))
+vi.mock('@/service/base', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/base')>()
   return {
     ...actual,
-    useAvailableBlocks: () => ({ availableNextBlocks: [] }),
-  }
-})
-
-vi.mock('../../../../../hooks/use-edges-interactions', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../../../../../hooks/use-edges-interactions')>()
-
-  return {
-    ...actual,
-    useEdgesInteractions: () => ({
-      handleEdgeDeleteByDeleteBranch: vi.fn(),
-    }),
-  }
-})
-
-vi.mock('../../../../../hooks/use-node-data-update', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../../hooks/use-node-data-update')>()
-
-  return {
-    ...actual,
-    useNodeDataUpdate: () => ({
-      handleNodeDataUpdate: mockHandleNodeDataUpdate,
-      handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-    }),
-  }
-})
-
-vi.mock('../../../../../hooks/use-nodes-interactions', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../../../../../hooks/use-nodes-interactions')>()
-
-  return {
-    ...actual,
-    useNodesInteractions: () => ({
-      handleNodeSelect: mockHandleNodeSelect,
-    }),
-  }
-})
-
-vi.mock('../../../../../hooks/use-nodes-meta-data', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../../hooks/use-nodes-meta-data')>()
-
-  return {
-    ...actual,
-    useNodesMetaData: () => ({
-      nodesMap: {
-        [BlockEnum.Tool]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
-        [BlockEnum.DataSource]: { defaultRunInputData: {}, metaData: { helpLinkUri: '' } },
-      },
-    }),
-  }
-})
-
-vi.mock('../../../../../hooks/use-tool-icon', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../../hooks/use-tool-icon')>()
-
-  return {
-    ...actual,
-    useToolIcon: () => undefined,
-  }
-})
-
-vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({
-      nodesReadOnly: mockNodesReadOnly,
-    }),
-  }
-})
-
-vi.mock('../../../../../hooks/use-workflow-history', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../../hooks/use-workflow-history')>()
-
-  return {
-    ...actual,
-    useWorkflowHistory: () => ({
-      saveStateToHistory: mockSaveStateToHistory,
-    }),
-    WorkflowHistoryEvent: {
-      NodeTitleChange: 'NodeTitleChange',
-      NodeDescriptionChange: 'NodeDescriptionChange',
+    get: <T,>(...args: Parameters<typeof actual.get>): Promise<T> => {
+      if (args[0].startsWith('/workspaces/current/tool-provider/builtin/Tool/credential/info')) {
+        return Promise.resolve({
+          supported_credential_types: ['api-key'],
+          allow_custom_token: true,
+          is_oauth_custom_client_enabled: false,
+          credentials: [
+            {
+              id: 'credential-1',
+              name: 'Production key',
+              provider: 'Tool',
+              credential_type: 'api-key',
+              is_default: true,
+              credentials: {},
+            },
+          ],
+        } as T)
+      }
+      return actual.get<T>(...args)
     },
   }
 })
-
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (
-    selector: (state: {
-      configsMap: { flowId: string; flowType: string }
-      accessControl: { canRun: boolean }
-    }) => unknown,
-  ) =>
-    selector({
-      configsMap: {
-        flowId: 'flow-1',
-        flowType: 'app',
-      },
-      accessControl: {
-        canRun: mockCanRun,
-      },
-    }),
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/app/app-1/workflow',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
-
-vi.mock('../../../../../hooks/use-inspect-vars-crud', () => ({
-  default: () => ({
-    appendNodeInspectVars: vi.fn(),
-  }),
-}))
-
-vi.mock('@/app/components/workflow/run/hooks', () => ({
-  useLogs: () => mockLogsState,
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({
-    data: mockBuiltInTools,
-  }),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: () => ({
-    data: mockTriggerPlugins,
-  }),
-}))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
-
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    canRunBySingle: () => true,
-    hasErrorHandleNode: () => false,
-    hasRetryNode: () => false,
-    isSupportCustomRunForm: (type: string) => type === BlockEnum.DataSource,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get': api.lastRun,
+      'apps.byAppId.workflows.draft.systemVariables.get': async () => ({ items: [] }),
+      'apps.byAppId.workflows.draft.conversationVariables.get': async () => ({ items: [] }),
+      'files.upload.get': async () => ({
+        file_size_limit: 15,
+        batch_count_limit: 5,
+        file_upload_limit: 5,
+      }),
+      'files.supportType.get': async () => ({ allowed_extensions: ['txt'] }),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.nodes.byNodeId.run.post': api.run,
+      'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': async () => [
+        {
+          id: 'subscription-1',
+          name: 'Subscription One',
+          provider: 'trigger-provider',
+          credential_type: 'api-key',
+          credentials: {},
+          endpoint: 'https://example.com/trigger',
+          parameters: {},
+          properties: {},
+          workflows_in_use: 0,
+        },
+      ],
+      'apps.byAppId.workflows.draft.nodes.byNodeId.variables.get': async () => ({ items: [] }),
+      'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
+      'rag.pipelines.byPipelineId.workflows.draft.variables.get': async () => ({
+        items: [],
+        total: 0,
+      }),
+    }),
   }
 })
 
-vi.mock('../hooks/use-resize-panel', () => ({
-  useResizePanel: () => ({
-    triggerRef: { current: null },
-    containerRef: { current: null },
-  }),
-}))
-
-vi.mock('../last-run/use-last-run', () => ({
-  default: () => mockLastRunState,
-}))
-
-vi.mock('@/app/components/plugins/plugin-auth', () => ({
-  PluginAuth: ({ children }: PropsWithChildren) => <div>{children}</div>,
-  AuthorizedInNode: ({
-    onAuthorizationItemClick,
-  }: {
-    onAuthorizationItemClick?: (credentialId: string) => void
-  }) => (
-    <button onClick={() => onAuthorizationItemClick?.('credential-1')}>authorized-in-node</button>
-  ),
-  PluginAuthInDataSourceNode: ({
-    children,
-    onJumpToDataSourcePage,
-  }: PropsWithChildren<{ onJumpToDataSourcePage?: () => void }>) => (
-    <div>
-      <button onClick={onJumpToDataSourcePage}>jump-to-datasource</button>
-      {children}
-    </div>
-  ),
-  AuthorizedInDataSourceNode: ({
-    onJumpToDataSourcePage,
-  }: {
-    onJumpToDataSourcePage?: () => void
-  }) => <button onClick={onJumpToDataSourcePage}>authorized-in-datasource-node</button>,
-  AuthCategory: { tool: 'tool' },
-}))
-
-vi.mock('@/app/components/plugins/readme-panel/entrance', () => ({
-  ReadmeEntrance: () => <div>readme-entrance</div>,
-}))
-
-vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: () => <div>block-icon</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
-  default: () => <div>split</div>,
-}))
-
-vi.mock('@/app/components/workflow/nodes/data-source/before-run-form', () => ({
-  default: () => <div>data-source-before-run-form</div>,
-}))
-
-vi.mock('@/app/components/workflow/run/special-result-panel', () => ({
-  default: () => <div>special-result-panel</div>,
-}))
-
-vi.mock('../before-run-form', () => ({
-  default: () => <div>before-run-form</div>,
-}))
-
-vi.mock('../before-run-form/panel-wrap', () => ({
-  default: ({ children }: PropsWithChildren<{ nodeName: string; onHide: () => void }>) => (
-    <div>{children}</div>
-  ),
-}))
-
-vi.mock('../error-handle/error-handle-on-panel', () => ({
-  default: () => <div>error-handle-panel</div>,
-}))
-
-vi.mock('../help-link', () => ({
-  default: () => <div>help-link</div>,
-}))
-
-vi.mock('../next-step', () => ({
-  default: () => <div>next-step</div>,
-}))
-
-vi.mock('@/app/components/workflow/node-actions-menu', () => ({
-  NodeActionsDropdown: () => <div>node-actions-menu</div>,
-}))
-
-vi.mock('../retry/retry-on-panel', () => ({
-  default: () => <div>retry-panel</div>,
-}))
-
-vi.mock('../title-description-input', () => ({
-  TitleInput: ({ value, onBlur }: { value: string; onBlur: (value: string) => void }) => (
-    <input
-      aria-label="title-input"
-      defaultValue={value}
-      onBlur={(event) => onBlur(event.target.value)}
-    />
-  ),
-  DescriptionInput: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
-    <textarea
-      aria-label="description-input"
-      defaultValue={value}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  ),
-}))
-
-vi.mock('../last-run', () => ({
-  default: ({
-    isPaused,
-    updateNodeRunningStatus,
-  }: {
-    isPaused?: boolean
-    updateNodeRunningStatus?: (status: NodeRunningStatus) => void
-  }) => (
-    <div>
-      <div>{isPaused ? 'paused' : 'active'}</div>
-      <button onClick={() => updateNodeRunningStatus?.(NodeRunningStatus.Running)}>
-        last-run-update-status
-      </button>
-      <div>last-run-panel</div>
-    </div>
-  ),
-}))
-
-vi.mock('../trigger-subscription', () => ({
-  TriggerSubscription: ({
-    children,
-    onSubscriptionChange,
-  }: PropsWithChildren<{
-    onSubscriptionChange?: (value: { id: string }, callback?: () => void) => void
-  }>) => (
-    <div>
-      <button onClick={() => onSubscriptionChange?.({ id: 'subscription-1' }, vi.fn())}>
-        change-subscription
-      </button>
-      {children}
-    </div>
-  ),
-}))
-
-const createData = (overrides: Record<string, unknown> = {}) => ({
-  title: 'Tool Node',
-  desc: 'Node description',
-  type: BlockEnum.Tool,
-  provider_id: 'provider/tool',
-  _singleRunningStatus: undefined,
-  ...overrides,
+const result = () =>
+  createNodeTracing({
+    status: NodeRunningStatus.Succeeded,
+    outputs: { result: 'Finished transformation' },
+  })
+beforeEach(() => {
+  usePluginStore.setState({ detail: undefined })
+  api.run.mockReset().mockResolvedValue(result())
+  api.lastRun.mockReset().mockResolvedValue(result())
 })
 
-describe('workflow-panel index', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockShowMessageLogModal = false
-    mockNodesReadOnly = false
-    mockCanRun = true
-    mockBuiltInTools = [
-      {
-        id: 'provider/tool',
-        name: 'Tool',
-        type: 'builtin',
-        allow_delete: true,
-      },
-    ]
-    mockTriggerPlugins = []
-    mockLogsState.showSpecialResultPanel = false
-    mockLastRunState.isShowSingleRun = false
-    mockLastRunState.tabType = 'settings'
-    mockLastRunState.singleRunParams = createMockSingleRunParams()
+function PanelContent() {
+  return <p>Node settings</p>
+}
+function SelectedPanel({ graphRef }: { graphRef: RefObject<ReactFlowInstance | null> }) {
+  const nodes = useNodes<Node['data']>()
+  const graph = useReactFlow()
+  useImperativeHandle(graphRef, () => graph, [graph])
+  const selected = nodes.find((node) => node.data.selected)
+  return selected ? (
+    <BasePanel id={selected.id} data={selected.data}>
+      <PanelContent />
+    </BasePanel>
+  ) : null
+}
+
+function renderPanel({
+  data,
+  initialStoreState,
+  accessControl,
+  selected = true,
+  tools = [],
+  triggers = [],
+  resource,
+  otherNodes = [],
+}: {
+  otherNodes?: Node[]
+  resource?: EditorResource
+  data?: Partial<Node['data']> & Record<string, unknown>
+  tools?: ReturnType<typeof createToolProviderFixture>[]
+  triggers?: TriggerProviderApiEntity[]
+  initialStoreState?: Partial<Shape>
+  accessControl?: HooksStoreShape['accessControl']
+  selected?: boolean
+} = {}) {
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { enable_collaboration_mode: false },
+    workspacePermissionKeys: ['credential.use'],
   })
-
-  it('should render the settings panel and wire title, description, run, and close actions', async () => {
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          showSingleRunPanel: false,
-          workflowCanvasWidth: 1200,
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-          buildInTools: [],
-          dataSourceList: [],
-        },
-      },
+  seedAppDslVersion(queryClient)
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: tools,
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
+  queryClient.setQueryData(
+    [...consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} })],
+    triggers.map(convertToTriggerWithProvider),
+  )
+  for (const trigger of triggers) {
+    queryClient.setQueryData(
+      [
+        ...consoleQuery.workspaces.current.triggerProvider.byProvider.info.get.queryKey({
+          input: { params: { provider: trigger.name } },
+        }),
+      ],
+      trigger,
     )
+  }
+  const node = createNode({
+    id: 'node-1',
+    width: 240,
+    height: 120,
+    data: {
+      ...codeNodeDefault.defaultValue,
+      code: 'def main():\n    return {"result": "ok"}',
+      title: 'Code Node',
+      desc: 'Node description',
+      selected,
+      ...data,
+    },
+  })
+  const graph = createRef<ReactFlowInstance>()
+  const onUrlUpdate = vi.fn()
+  const syncDraft = vi.fn<HooksStoreShape['doSyncWorkflowDraft']>(
+    async (_skipRefresh, callback) => {
+      callback?.onSuccess?.()
+      callback?.onSettled?.()
+    },
+  )
+  const view = renderWorkflowComponent(
+    <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
+      <button>Before panel</button>
+      <WorkflowWithDefaultContext nodes={[node, ...otherNodes]} edges={[]}>
+        <Workflow nodes={[node, ...otherNodes]} edges={[]}>
+          <SelectedPanel graphRef={graph} />
+        </Workflow>
+      </WorkflowWithDefaultContext>
+    </NuqsTestingAdapter>,
+    {
+      queryClient,
+      resource,
+      initialStoreState: {
+        workflowCanvasWidth: 1200,
+        nodePanelWidth: 480,
+        otherPanelWidth: 200,
+        ...initialStoreState,
+      },
+      hooksStoreProps: {
+        accessControl: accessControl ?? fullWorkflowAccessControl,
+        doSyncWorkflowDraft: syncDraft,
+      },
+    },
+  )
+  return { ...view, graph, onUrlUpdate, syncDraft }
+}
 
-    expect(screen.getByText('panel-child')).toBeInTheDocument()
-    expect(screen.getByText('authorized-in-node')).toBeInTheDocument()
+const panel = () => within(screen.getByRole('region', { name: /workflow.panel.nodePanel/ }))
 
-    fireEvent.blur(screen.getByDisplayValue('Tool Node'), { target: { value: 'Updated title' } })
-    fireEvent.change(screen.getByDisplayValue('Node description'), {
-      target: { value: 'Updated description' },
+it('persists title and description edits on the selected graph node and closes the panel', async () => {
+  const user = userEvent.setup()
+  const { graph } = renderPanel()
+  const title = screen.getByRole('textbox', { name: 'workflow.common.nodeTitle' })
+  await user.click(title)
+  await user.keyboard('{Control>}a{/Control}Updated title{Enter}')
+  const description = screen.getByRole('textbox', { name: 'workflow.common.nodeDescription' })
+  await user.clear(description)
+  await user.type(description, 'Updated description')
+  await waitFor(() =>
+    expect(graph.current!.getNode('node-1')!.data).toMatchObject({
+      title: 'Updated title',
+      desc: 'Updated description',
+    }),
+  )
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  expect(screen.queryByRole('region', { name: /workflow.panel.nodePanel/ })).not.toBeInTheDocument()
+})
+
+it.each([
+  { canEdit: true, canRun: true, canvasReadOnly: false, visible: true },
+  { canEdit: true, canRun: true, canvasReadOnly: true, visible: false },
+  { canEdit: true, canRun: false, canvasReadOnly: false, visible: false },
+  { canEdit: false, canRun: true, canvasReadOnly: false, visible: false },
+])('respects run access and canvas state: %j', ({ canEdit, canRun, canvasReadOnly, visible }) => {
+  renderPanel({
+    initialStoreState: { canvasReadOnly },
+    accessControl: { ...fullWorkflowAccessControl, canEdit, canRun },
+  })
+  const run = panel().queryByRole('button', { name: 'workflow.panel.runThisStep' })
+  if (visible) expect(run).toBeEnabled()
+  else expect(run).not.toBeInTheDocument()
+})
+
+it('runs a configured node and displays its actual service result', async () => {
+  const user = userEvent.setup()
+  renderPanel()
+  await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+  await waitFor(() =>
+    expect(api.run).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', node_id: 'node-1' },
+      body: { inputs: {} },
+    }),
+  )
+  expect(await screen.findByText(/Finished transformation/)).toBeInTheDocument()
+})
+
+it('consumes a queued run once and leaves other nodes’ queued actions untouched', async () => {
+  const { store } = renderPanel({
+    initialStoreState: { pendingSingleRun: { nodeId: 'node-1', action: 'run' } },
+  })
+  await waitFor(() => expect(api.run).toHaveBeenCalledTimes(1))
+  expect(store.getState().pendingSingleRun).toBeUndefined()
+  act(() => store.getState().setPendingSingleRun({ nodeId: 'other-node', action: 'run' }))
+  expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'other-node', action: 'run' })
+  expect(api.run).toHaveBeenCalledTimes(1)
+})
+
+it.each(['button', 'queued action'])(
+  'stops an outstanding single run through %s',
+  async (source) => {
+    const user = userEvent.setup()
+    const pending = createDeferred<ReturnType<typeof result>>()
+    api.run.mockReturnValue(pending.promise)
+    const { store } = renderPanel()
+    await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+    const stop = await panel().findByRole('button', {
+      name: 'workflowDebug.debug.variableInspect.trigger.stop',
     })
+    if (source === 'button') await user.click(stop)
+    else act(() => store.getState().setPendingSingleRun({ nodeId: 'node-1', action: 'stop' }))
+    expect(store.getState().pendingSingleRun).toBeUndefined()
+    expect((await panel().findAllByText('appLog.status.stopped')).length).toBeGreaterThan(0)
+    await act(async () => pending.resolve(result()))
+  },
+)
 
-    await waitFor(() => {
-      expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalled()
+it('resizes through the keyboard and persists the chosen width', async () => {
+  const user = userEvent.setup()
+  renderPanel()
+  const handle = screen.getByRole('separator', { name: 'workflow.panel.nodePanel' })
+  act(() => handle.focus())
+  await user.keyboard('{ArrowLeft}')
+  expect(handle).toHaveAttribute('aria-valuenow', '488')
+  await user.keyboard('{Shift>}{ArrowLeft}{/Shift}')
+  expect(handle).toHaveAttribute('aria-valuenow', '520')
+  await user.keyboard('{Shift>}{ArrowRight}{/Shift}{ArrowRight}')
+  expect(handle).toHaveAttribute('aria-valuenow', '480')
+  await waitFor(() => expect(localStorage.getItem('workflow-node-panel-width')).toBe('480'))
+  await user.tab()
+  expect(handle).not.toHaveFocus()
+})
+
+it('clamps keyboard resizing to the available width and preserves unrelated keys', async () => {
+  const user = userEvent.setup()
+  const { store } = renderPanel()
+  const handle = screen.getByRole('separator', { name: 'workflow.panel.nodePanel' })
+  act(() => handle.focus())
+  const onKeyDown = vi.fn()
+  document.addEventListener('keydown', onKeyDown)
+  try {
+    await user.keyboard('{Home}{ArrowRight}')
+    expect(handle).toHaveAttribute('aria-valuenow', '400')
+    await user.keyboard('{End}{ArrowLeft}')
+    expect(handle).toHaveAttribute('aria-valuenow', '600')
+    expect(onKeyDown).not.toHaveBeenCalled()
+    act(() => store.getState().setOtherPanelWidth(300))
+    await waitFor(() => expect(handle).toHaveAttribute('aria-valuemax', '500'))
+    expect(handle).toHaveAttribute('aria-valuenow', '500')
+    await user.keyboard('{ArrowDown}')
+    expect(onKeyDown).toHaveBeenCalledOnce()
+    expect(handle).toHaveAttribute('aria-valuenow', '500')
+  } finally {
+    document.removeEventListener('keydown', onKeyDown)
+  }
+})
+
+it('compresses the panel when preview space grows without overwriting the preferred width', async () => {
+  localStorage.setItem('workflow-node-panel-width', '600')
+  const { store } = renderPanel({
+    initialStoreState: { workflowCanvasWidth: 1400, nodePanelWidth: 600, otherPanelWidth: 400 },
+  })
+  const handle = screen.getByRole('separator', { name: 'workflow.panel.nodePanel' })
+  expect(handle).toHaveAttribute('aria-valuenow', '600')
+  act(() => store.getState().setOtherPanelWidth(600))
+  await waitFor(() => expect(handle).toHaveAttribute('aria-valuenow', '400'))
+  expect(localStorage.getItem('workflow-node-panel-width')).toBe('600')
+})
+
+it.each([true, false])(
+  'opens data-source settings through the actual authorization control: %s',
+  async (isAuthorized) => {
+    const user = userEvent.setup()
+    const provider = createDatasourceProvider({
+      plugin_id: 'source-1',
+      is_authorized: isAuthorized,
     })
-    expect(mockSaveStateToHistory).toHaveBeenCalled()
-    fireEvent.click(screen.getByText('authorized-in-node'))
-
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.panel.runThisStep' }))
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-    expect(mockHandleSingleRun).toHaveBeenCalledTimes(1)
-    expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1', true)
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ credential_id: 'credential-1' }),
+    const { onUrlUpdate } = renderPanel({
+      data: {
+        type: BlockEnum.DataSource,
+        title: 'Data source',
+        plugin_id: 'source-1',
+        provider_type: 'online_document',
+        provider_name: 'file',
+        datasource_name: 'local-file',
+        datasource_parameters: {},
+        datasource_configurations: {},
+      },
+      initialStoreState: { dataSourceList: [provider] },
+    })
+    await user.click(
+      panel().getByRole('button', {
+        name: isAuthorized ? 'plugin.auth.authorizations' : 'common.integrations.connect',
       }),
     )
-  })
-
-  it('should hide the single-run action when nodes are readonly even with run permission', () => {
-    mockNodesReadOnly = true
-
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
     )
+  },
+)
 
+it.each([BlockEnum.Code, BlockEnum.Start, BlockEnum.End])(
+  'opens a %s panel from the keyboard and returns focus to its canvas node on Escape',
+  async (type) => {
+    const user = userEvent.setup()
+    renderPanel({ selected: false, data: { type, variables: [], outputs: [] } })
+    const node = screen.getByRole('button', { name: /Code Node/ })
+    act(() => node.focus())
+    await user.keyboard('{Enter}')
     expect(
-      screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('should hide the single-run action when run permission is missing', () => {
-    mockCanRun = false
-
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
+      await screen.findByRole('textbox', { name: 'workflow.common.nodeDescription' }),
+    ).toHaveFocus()
+    await user.keyboard('{Escape}')
     expect(
-      screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
+      screen.queryByRole('region', { name: /workflow.panel.nodePanel/ }),
     ).not.toBeInTheDocument()
+    expect(node).toHaveFocus()
+  },
+)
+
+it('selects a real tool credential and stores it on the graph node', async () => {
+  const user = userEvent.setup()
+  const provider = createToolProviderFixture({
+    id: 'provider/tool',
+    name: 'Tool',
+    allow_delete: true,
   })
-
-  it('should render the special result panel when logs request it', () => {
-    mockLogsState.showSpecialResultPanel = true
-
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
-    expect(screen.getByText('special-result-panel')).toBeInTheDocument()
+  const { graph } = renderPanel({
+    tools: [provider],
+    data: {
+      type: BlockEnum.Tool,
+      title: 'Search tool',
+      provider_id: 'provider/tool',
+      provider_type: 'builtin',
+      provider_name: 'Tool',
+      tool_name: 'search',
+      tool_label: 'Search',
+      tool_parameters: {},
+      tool_configurations: {},
+    },
   })
+  await user.click(await panel().findByRole('button', { name: /plugin.auth.workspaceDefault/ }))
+  await user.click(await screen.findByText('Production key'))
+  await waitFor(() =>
+    expect(graph.current!.getNode('node-1')!.data.credential_id).toBe('credential-1'),
+  )
+  expect(panel().getByRole('button', { name: 'Production key' })).toBeInTheDocument()
+})
 
-  it('should render last-run content when the tab switches', () => {
-    mockLastRunState.tabType = 'lastRun'
-
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
+it('loads the selected trigger provider and persists a subscription picked from its real list', async () => {
+  const user = userEvent.setup()
+  const { graph } = renderPanel({
+    triggers: [
       {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
-    expect(screen.getByText('last-run-panel')).toBeInTheDocument()
-    expect(screen.getByRole('tabpanel')).toHaveClass('flex', 'flex-1', 'flex-col')
-  })
-
-  it('should render the plain tab layout and allow last-run status updates', async () => {
-    mockLastRunState.tabType = 'lastRun'
-
-    renderWorkflowComponent(
-      <BasePanel id="node-plain" data={createData({ type: 'custom' }) as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
-    expect(screen.queryByText('authorized-in-node')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('last-run-update-status'))
-
-    await waitFor(() => {
-      expect(mockHandleNodeDataUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 'node-plain',
-          data: expect.objectContaining({
-            _singleRunningStatus: NodeRunningStatus.Running,
-          }),
-        }),
-      )
-    })
-  })
-
-  it('should mark the last run as paused after a running single-run completes', async () => {
-    mockLastRunState.tabType = 'lastRun'
-
-    const { rerender } = renderWorkflowComponent(
-      <BasePanel
-        id="node-pause"
-        data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}
-      >
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
-    expect(screen.getByText('active')).toBeInTheDocument()
-
-    rerender(
-      <BasePanel
-        id="node-pause"
-        data={createData({ _isSingleRun: true, _singleRunningStatus: undefined }) as never}
-      >
-        <div>panel-child</div>
-      </BasePanel>,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByText('paused')).toBeInTheDocument()
-    })
-  })
-
-  it('should render custom data source single run form for supported nodes', () => {
-    mockLastRunState.isShowSingleRun = true
-
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData({ type: BlockEnum.DataSource }) as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
-    expect(screen.getByText('data-source-before-run-form')).toBeInTheDocument()
-  })
-
-  it('should keep the settings panel visible when single-run params have no forms', () => {
-    mockLastRunState.isShowSingleRun = true
-    mockLastRunState.singleRunParams = {} as ReturnType<typeof createMockSingleRunParams>
-
-    renderWorkflowComponent(
-      <BasePanel id="node-agent" data={createData({ type: BlockEnum.Agent }) as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
-    expect(screen.queryByText('before-run-form')).not.toBeInTheDocument()
-    expect(screen.getByText('panel-child')).toBeInTheDocument()
-  })
-
-  it('should render data source authorization controls and jump to the settings modal', () => {
-    renderWorkflowComponent(
-      <BasePanel
-        id="node-1"
-        data={
-          createData({
-            type: BlockEnum.DataSource,
-            plugin_id: 'source-1',
-            provider_type: 'online_document',
-          }) as never
-        }
-      >
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-          dataSourceList: [createDataSourceCollection({ is_authorized: false })],
-        },
-      },
-    )
-
-    fireEvent.click(screen.getByText('authorized-in-datasource-node'))
-
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
-  })
-
-  it('should react to pending single run actions', () => {
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-          pendingSingleRun: {
-            nodeId: 'node-1',
-            action: 'run',
-          },
-        },
-      },
-    )
-
-    expect(mockHandleSingleRun).toHaveBeenCalledTimes(1)
-
-    renderWorkflowComponent(
-      <BasePanel id="node-1" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-          pendingSingleRun: {
-            nodeId: 'node-1',
-            action: 'stop',
-          },
-        },
-      },
-    )
-
-    expect(mockHandleStop).toHaveBeenCalledTimes(1)
-  })
-
-  it('should load trigger plugin details when the selected node is a trigger plugin', async () => {
-    mockTriggerPlugins = [
-      {
-        id: 'trigger-1',
-        name: 'trigger-name',
+        author: 'Dify',
+        name: 'trigger-provider',
+        label: { en_US: 'Trigger provider', zh_Hans: '触发器' },
+        description: { en_US: 'Trigger events', zh_Hans: '触发事件' },
+        tags: [],
         plugin_id: 'plugin-id',
-        plugin_unique_identifier: 'plugin-uid',
-        label: {
-          en_US: 'Trigger Name',
-        },
-        declaration: {},
+        plugin_unique_identifier: 'plugin-id:1',
+        supported_creation_methods: [],
         subscription_schema: [],
-        subscription_constructor: {},
+        events: [],
       },
-    ]
-
-    renderWorkflowComponent(
-      <BasePanel
-        id="node-1"
-        data={createData({ type: BlockEnum.TriggerPlugin, plugin_id: 'plugin-id' }) as never}
-      >
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
-    await waitFor(() => {
-      expect(mockSetDetail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 'trigger-1',
-          name: 'Trigger Name',
-        }),
-      )
-    })
-
-    fireEvent.click(screen.getByText('change-subscription'))
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
-      { id: 'node-1', data: { subscription_id: 'subscription-1' } },
-      expect.objectContaining({ sync: true }),
-    )
+    ],
+    data: {
+      type: BlockEnum.TriggerPlugin,
+      title: 'Trigger',
+      plugin_id: 'plugin-id',
+      provider_id: 'plugin-id',
+      provider_name: 'trigger-provider',
+      provider_type: 'trigger',
+      event_name: 'new-event',
+      event_label: 'New event',
+      event_parameters: {},
+      event_configurations: {},
+      output_schema: {},
+    },
   })
+  await user.click(
+    await panel().findByRole('button', {
+      name: 'pluginTrigger.subscription.noSubscriptionSelected',
+    }),
+  )
+  await user.click(await screen.findByRole('button', { name: 'Subscription One' }))
+  await waitFor(() =>
+    expect(graph.current!.getNode('node-1')!.data.subscription_id).toBe('subscription-1'),
+  )
+  expect(panel().getByRole('button', { name: 'Subscription One' })).toBeInTheDocument()
+})
 
-  it('should stop a running node and offset when the log modal is visible', () => {
-    mockShowMessageLogModal = true
-
-    const { container } = renderWorkflowComponent(
-      <BasePanel
-        id="node-1"
-        data={createData({ _singleRunningStatus: NodeRunningStatus.Running }) as never}
-      >
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          nodePanelWidth: 480,
-          otherPanelWidth: 240,
-        },
-      },
-    )
-
-    const root = container.firstElementChild as HTMLElement
-    expect(root.style.right).toBe('240px')
-    expect(root.className).toContain('absolute')
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
-    )
-
-    expect(mockHandleStop).toHaveBeenCalledTimes(1)
+it('does not carry a stopped run into another selected node', async () => {
+  const user = userEvent.setup()
+  const pending = createDeferred<ReturnType<typeof result>>()
+  api.run.mockReturnValue(pending.promise)
+  renderPanel({
+    otherNodes: [
+      createNode({
+        id: 'node-2',
+        width: 240,
+        height: 120,
+        position: { x: 300, y: 0 },
+        data: { ...codeNodeDefault.defaultValue, title: 'Other node' },
+      }),
+    ],
   })
+  await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+  await user.click(
+    await panel().findByRole('button', {
+      name: 'workflowDebug.debug.variableInspect.trigger.stop',
+    }),
+  )
+  expect((await panel().findAllByText('appLog.status.stopped')).length).toBeGreaterThan(0)
+  act(() => screen.getByRole('button', { name: /Other node/ }).focus())
+  await user.keyboard('{Enter}')
+  await user.click(panel().getByRole('tab', { name: 'WORKFLOWDEBUG.DEBUG.LASTRUNTAB' }))
+  await waitFor(() => expect(panel().queryAllByText('appLog.status.stopped')).toHaveLength(0))
+  expect(await panel().findByText(/Finished transformation/)).toBeInTheDocument()
+  await act(async () => pending.resolve(result()))
+})
 
-  it('should resize the node panel with the keyboard, persist its width, and allow focus to leave', async () => {
+it.each(['cancel', 'Escape'])(
+  'saves the draft, opens datasource preparation without running, and closes through %s',
+  async (action) => {
     const user = userEvent.setup()
-    renderWorkflowComponent(
-      <>
-        <button>Before panel</button>
-        <BasePanel id="node-resize" data={createData() as never}>
-          <div>panel-child</div>
-        </BasePanel>
-      </>,
-      {
-        initialStoreState: {
-          workflowCanvasWidth: 1200,
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
+    const { syncDraft } = renderPanel({
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      data: {
+        type: BlockEnum.DataSource,
+        title: 'Local files',
+        plugin_id: 'langgenius/file',
+        provider_type: 'local_file',
+        provider_name: 'file',
+        datasource_name: 'local-file',
+        datasource_parameters: {},
+        datasource_configurations: {},
+        fileExtensions: ['txt'],
       },
-    )
-
-    await user.tab()
-    expect(screen.getByRole('button', { name: 'Before panel' })).toHaveFocus()
-    await user.tab()
-    const separator = screen.getByRole('separator', { name: 'workflow.panel.nodePanel' })
-    expect(separator).toHaveFocus()
-    expect(separator).toHaveAttribute('aria-orientation', 'vertical')
-    const panel = document.getElementById(separator.getAttribute('aria-controls')!)!
-
-    await user.keyboard('{ArrowLeft}')
-    expect(panel).toHaveStyle({ width: '488px' })
-    expect(separator).toHaveAttribute('aria-valuenow', '488')
-    await user.keyboard('{Shift>}{ArrowLeft}{/Shift}')
-    expect(panel).toHaveStyle({ width: '520px' })
-    await user.keyboard('{Shift>}{ArrowRight}{/Shift}{ArrowRight}')
-    expect(panel).toHaveStyle({ width: '480px' })
-    expect(separator).toHaveAttribute('aria-valuenow', '480')
-    await waitFor(() => {
-      expect(localStorage.getItem('workflow-node-panel-width')).toBe('480')
+      initialStoreState: { dataSourceList: [createDatasourceProvider()] },
     })
-
-    await user.tab()
-    expect(separator).not.toHaveFocus()
-    await user.tab({ shift: true })
-    expect(separator).toHaveFocus()
-    await user.tab({ shift: true })
-    expect(screen.getByRole('button', { name: 'Before panel' })).toHaveFocus()
-  })
-
-  it('should constrain keyboard resizing to the available space and keep unrelated keys untouched', async () => {
-    const user = userEvent.setup()
-    const onKeyDown = vi.fn()
-    const { store } = renderWorkflowComponent(
-      <BasePanel id="node-resize" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          workflowCanvasWidth: 1200,
-          nodePanelWidth: 480,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-    await user.tab()
-    const separator = screen.getByRole('separator', { name: 'workflow.panel.nodePanel' })
-    expect(separator).toHaveFocus()
-    expect(separator).toHaveAttribute('aria-valuemin', '400')
-    expect(separator).toHaveAttribute('aria-valuemax', '600')
-    document.addEventListener('keydown', onKeyDown)
-    try {
-      await user.keyboard('{Home}{ArrowRight}')
-      expect(separator).toHaveAttribute('aria-valuenow', '400')
-      await user.keyboard('{End}{ArrowLeft}')
-      expect(separator).toHaveAttribute('aria-valuenow', '600')
-      expect(onKeyDown).not.toHaveBeenCalled()
-
-      act(() => store.setState({ otherPanelWidth: 300 }))
-      await waitFor(() => expect(separator).toHaveAttribute('aria-valuenow', '500'))
-      expect(separator).toHaveAttribute('aria-valuemax', '500')
-      await user.keyboard('{Home}{End}')
-      expect(separator).toHaveAttribute('aria-valuenow', '500')
-
-      onKeyDown.mockClear()
-      await user.keyboard('{ArrowDown}')
-      expect(separator).toHaveAttribute('aria-valuenow', '500')
-      expect(onKeyDown).toHaveBeenCalledOnce()
-      await user.keyboard('{Control>}{ArrowRight}{/Control}')
-      expect(separator).toHaveAttribute('aria-valuenow', '500')
-    } finally {
-      document.removeEventListener('keydown', onKeyDown)
+    await user.click(panel().getByRole('button', { name: 'workflow.panel.runThisStep' }))
+    expect(
+      await panel().findByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }),
+    ).toBeEnabled()
+    expect(panel().getByRole('button', { name: 'workflow.singleRun.startRun' })).toBeDisabled()
+    expect(syncDraft).toHaveBeenCalledOnce()
+    if (action === 'Escape') {
+      act(() => panel().getByRole('button', { name: 'common.operation.cancel' }).focus())
+      await user.keyboard('{Escape}')
+      expect(
+        screen.queryByRole('region', { name: /workflow.panel.nodePanel/ }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Local files/ })).toHaveFocus()
+    } else {
+      await user.click(panel().getByRole('button', { name: 'common.operation.cancel' }))
+      expect(
+        panel().getByRole('textbox', { name: 'workflow.common.nodeDescription' }),
+      ).toBeInTheDocument()
+      expect(
+        panel().queryByRole('button', { name: 'datasetCreation.stepOne.uploader.browse' }),
+      ).not.toBeInTheDocument()
     }
-  })
+    expect(api.run).not.toHaveBeenCalled()
+  },
+)
 
-  it('compresses the node panel when the preview grows without replacing the saved node width', async () => {
-    localStorage.setItem('workflow-node-panel-width', '600')
-    const { store } = renderWorkflowComponent(
-      <BasePanel id="node-resize" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          workflowCanvasWidth: 1400,
-          nodePanelWidth: 600,
-          otherPanelWidth: 400,
+it('closes nested tool execution details with Escape and restores canvas focus', async () => {
+  const user = userEvent.setup()
+  api.lastRun.mockResolvedValue(
+    createNodeTracing({
+      node_type: BlockEnum.Tool,
+      status: NodeRunningStatus.Succeeded,
+      agentLog: [
+        {
+          node_execution_id: 'execution-1',
+          message_id: 'log-1',
+          node_id: 'node-1',
+          label: 'Tool result',
+          status: 'success',
+          data: {},
+          children: [],
         },
-      },
-    )
-    const handle = screen.getByRole('separator', { name: 'workflow.panel.nodePanel' })
-    expect(handle).toHaveAttribute('aria-valuenow', '600')
-
-    act(() => store.getState().setOtherPanelWidth(600))
-
-    await waitFor(() => expect(handle).toHaveAttribute('aria-valuenow', '400'))
-    expect(handle).toHaveAttribute('aria-valuemax', '400')
-    expect(localStorage.getItem('workflow-node-panel-width')).toBe('600')
+      ],
+    }),
+  )
+  renderPanel({
+    data: {
+      type: BlockEnum.Tool,
+      title: 'Search tool',
+      provider_id: 'provider/tool',
+      provider_type: 'builtin',
+      provider_name: 'Tool',
+      tool_name: 'search',
+      tool_label: 'Search',
+      tool_parameters: {},
+      tool_configurations: {},
+    },
+    initialStoreState: { initShowLastRunTab: true },
   })
-
-  it('should compress oversized panel widths', async () => {
-    const { container } = renderWorkflowComponent(
-      <BasePanel id="node-resize" data={createData() as never}>
-        <div>panel-child</div>
-      </BasePanel>,
-      {
-        initialStoreState: {
-          workflowCanvasWidth: 800,
-          nodePanelWidth: 600,
-          otherPanelWidth: 200,
-        },
-      },
-    )
-
-    await waitFor(() => {
-      const panel = container.querySelector('[style*="width"]') as HTMLElement
-      expect(panel.style.width).toBe('400px')
-    })
-  })
+  await user.click(
+    await panel().findByRole('button', { name: /workflowAgent.nodes.agent.strategy.label/ }),
+  )
+  expect(
+    panel().getByRole('navigation', { name: 'workflowAgent.nodes.agent.strategy.label' }),
+  ).toBeInTheDocument()
+  expect(panel().getByText('Tool result')).toBeInTheDocument()
+  act(() => panel().getByRole('button', { name: 'AGENT' }).focus())
+  await user.keyboard('{Escape}')
+  expect(screen.queryByRole('region', { name: /workflow.panel.nodePanel/ })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Search tool/ })).toHaveFocus()
 })

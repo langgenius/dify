@@ -13,7 +13,6 @@ vi.mock('../dialog-content', async (importOriginal) => {
   return importOriginal()
 })
 
-vi.mock('@/context/i18n', () => ({ useLocale: () => 'en-US' }))
 vi.mock('../content', () => ({
   PricingContent: () => (
     <>

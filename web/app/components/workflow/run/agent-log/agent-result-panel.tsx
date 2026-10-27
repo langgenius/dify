@@ -13,7 +13,7 @@ const AgentResultPanel = ({
   agentOrToolLogListMap,
   onShowAgentOrToolLog,
 }: AgentResultPanelProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['runLog'])
   const top = agentOrToolLogItemStack[agentOrToolLogItemStack.length - 1]
   const list = agentOrToolLogListMap[top!.message_id]
 

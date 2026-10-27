@@ -1,6 +1,7 @@
 'use client'
 
 import type { Plugin } from '@/app/components/plugins/types'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useTheme } from 'next-themes'
 import { useCallback, useEffect, useRef } from 'react'
 import { useLocale, useTranslation } from '#i18n'
@@ -45,14 +46,14 @@ function OpenMarketplaceDetailDialog({
   title: string
 }) {
   const { install } = useSilentMarketplaceInstall()
-  const timeoutIdsRef = useRef(new Set<number>())
+  const timeoutIdsRef = useRefWithInit(() => new Set<number>())
 
   useEffect(
     () => () => {
       timeoutIdsRef.current.forEach((id) => window.clearTimeout(id))
       timeoutIdsRef.current.clear()
     },
-    [],
+    [timeoutIdsRef],
   )
 
   const handleMessage = useCallback(
@@ -96,7 +97,7 @@ function OpenMarketplaceDetailDialog({
         })
       })
     },
-    [canInstallPlugin, install, plugin],
+    [canInstallPlugin, install, plugin, timeoutIdsRef],
   )
 
   return (
@@ -116,7 +117,7 @@ function MarketplaceDetailDialog({
   plugin,
   onOpenChange,
 }: MarketplaceDetailDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const locale = useLocale()
   const { canInstallPlugin } = useOptionalPluginInstallPermission()
   // resolvedTheme maps the "system" preference to the concrete light/dark

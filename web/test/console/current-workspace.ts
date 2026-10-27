@@ -1,10 +1,8 @@
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient, QueryKey } from '@tanstack/react-query'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
 
-export const currentWorkspaceQueryKey = [
-  ['console', 'workspaces', 'current', 'summary', 'get'],
-  { type: 'query' },
-] as const
+export const currentWorkspaceQueryKey = consoleQueryKey('workspaces.current.summary.get')
 
 const createCurrentWorkspaceFixture = (
   overrides: Partial<GetWorkspacesCurrentSummaryResponse> = {},

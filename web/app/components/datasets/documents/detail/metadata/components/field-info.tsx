@@ -39,7 +39,7 @@ const FieldInfo: FC<FieldInfoProps> = ({
   selectOptions = [],
   onUpdate,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
   const textNeedWrap = getTextWidthWithCanvas(displayedValue) > 190
   const editAlignTop = showEdit && inputType === 'textarea'
   const readAlignTop = !showEdit && textNeedWrap

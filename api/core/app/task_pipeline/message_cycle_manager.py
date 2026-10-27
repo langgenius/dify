@@ -1,7 +1,6 @@
 import hashlib
 import logging
 from threading import Thread, Timer
-from typing import Union
 
 from flask import Flask, current_app
 from sqlalchemy import select
@@ -36,7 +35,6 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.enums import MessageFileBelongsTo
 from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
-from services.account_service import AccountService
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)
@@ -46,13 +44,11 @@ class MessageCycleManager:
     def __init__(
         self,
         *,
-        application_generate_entity: Union[
-            ChatAppGenerateEntity,
-            CompletionAppGenerateEntity,
-            AgentChatAppGenerateEntity,
-            AdvancedChatAppGenerateEntity,
-        ],
-        task_state: Union[EasyUITaskState, WorkflowTaskState],
+        application_generate_entity: ChatAppGenerateEntity
+        | CompletionAppGenerateEntity
+        | AgentChatAppGenerateEntity
+        | AdvancedChatAppGenerateEntity,
+        task_state: EasyUITaskState | WorkflowTaskState,
     ):
         self._application_generate_entity = application_generate_entity
         self._task_state = task_state
@@ -166,14 +162,14 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
-        annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id, session)
-        if annotation:
-            account = AccountService.get_account_by_id(annotation.account_id, session=session)
+        reply = AppAnnotationService.get_annotation_reply_by_id(event.message_annotation_id, session)
+        if reply:
+            annotation, account_name = reply
             self._task_state.metadata.annotation_reply = AnnotationReply(
                 id=annotation.id,
                 account=AnnotationReplyAccount(
                     id=annotation.account_id,
-                    name=account.name if account else "Dify user",
+                    name=account_name if account_name is not None else "Dify user",
                 ),
             )
 
@@ -192,6 +188,7 @@ class MessageCycleManager:
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
             merged_resources = [r for r in self._task_state.metadata.retriever_resources or [] if r]
             existing_ids = {(r.dataset_id, r.document_id) for r in merged_resources if r.dataset_id and r.document_id}
+            receipt_ids = {r.knowledge_fs_citation.id for r in merged_resources if r.knowledge_fs_citation}
 
             # Add new unique resources from the event
             for resource in event.retriever_resources or []:
@@ -199,13 +196,20 @@ class MessageCycleManager:
                     continue
 
                 is_duplicate = (
-                    resource.dataset_id
-                    and resource.document_id
-                    and (resource.dataset_id, resource.document_id) in existing_ids
+                    resource.knowledge_fs_citation.id in receipt_ids
+                    if resource.knowledge_fs_citation
+                    else (
+                        resource.knowledge_fs_citation is None
+                        and resource.dataset_id
+                        and resource.document_id
+                        and (resource.dataset_id, resource.document_id) in existing_ids
+                    )
                 )
 
                 if not is_duplicate:
                     merged_resources.append(resource)
+                    if resource.knowledge_fs_citation:
+                        receipt_ids.add(resource.knowledge_fs_citation.id)
 
             for i, resource in enumerate(merged_resources, 1):
                 resource.position = i

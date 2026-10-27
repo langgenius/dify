@@ -1,21 +1,21 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
+import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
-import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { sendResetPasswordCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
 
 export default function CheckCode() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -37,17 +37,13 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const res = await sendResetPasswordCode(email, locale)
+      const res = await consoleClient.forgotPassword.post({ body: { email, language: locale } })
       if (res.result === 'success') {
         setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
-        params.set('token', encodeURIComponent(res.data))
+        params.set('token', encodeURIComponent(res.data ?? ''))
         params.set('email', encodeURIComponent(email))
         router.push(`/webapp-reset-password/check-code?${params.toString()}`)
-      } else if (res.code === 'account_not_found') {
-        toast.error(t(($) => $['error.registrationNotAllowed'], { ns: 'login' }))
-      } else {
-        toast.error(res.data)
       }
     } catch (error) {
       console.error(error)

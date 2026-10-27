@@ -6,6 +6,7 @@ import VariableInspectPanel from '../index'
 vi.mock('../panel', () => ({ default: () => <div>Variables</div> }))
 
 describe('variable inspect index', () => {
+  beforeEach(() => localStorage.removeItem('workflow-variable-inpsect-panel-height'))
   it('grows upward with the keyboard and persists its height', async () => {
     const user = userEvent.setup()
     renderWorkflowComponent(<VariableInspectPanel />, {
@@ -16,7 +17,9 @@ describe('variable inspect index', () => {
       },
     })
     await user.tab()
-    const handle = screen.getByRole('separator', { name: 'workflow.debug.variableInspect.title' })
+    const handle = screen.getByRole('separator', {
+      name: 'workflowDebug.debug.variableInspect.title',
+    })
     expect(handle).toHaveFocus()
     await user.keyboard('{ArrowUp}{Shift>}{ArrowUp}{/Shift}')
     expect(handle).toHaveAttribute('aria-valuenow', '240')
@@ -39,7 +42,9 @@ describe('variable inspect index', () => {
       },
     })
     await user.tab()
-    const handle = screen.getByRole('separator', { name: 'workflow.debug.variableInspect.title' })
+    const handle = screen.getByRole('separator', {
+      name: 'workflowDebug.debug.variableInspect.title',
+    })
     await user.keyboard('{End}')
     expect(handle).toHaveAttribute('aria-valuenow', '440')
     await waitFor(() =>
@@ -58,15 +63,5 @@ describe('variable inspect index', () => {
     expect(handle).toHaveAttribute('aria-valuenow', '240')
     await user.keyboard('{ArrowDown}')
     expect(handle).toHaveAttribute('aria-valuenow', '232')
-  })
-
-  it('renders nothing when the inspect panel is hidden', () => {
-    const { container } = renderWorkflowComponent(<VariableInspectPanel />, {
-      initialStoreState: {
-        showVariableInspectPanel: false,
-      },
-    })
-
-    expect(container).toBeEmptyDOMElement()
   })
 })

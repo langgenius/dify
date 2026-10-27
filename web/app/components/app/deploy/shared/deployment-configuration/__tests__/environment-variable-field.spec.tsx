@@ -1,105 +1,60 @@
 import type { EnvironmentVariableSlot } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { EnvVarValueSource, EnvVarValueType } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { render, screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { EnvironmentVariableField } from '../environment-variable-field'
 
-const activeModelList = vi.hoisted(() => [
-  {
-    label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-    models: [
-      {
-        deprecated: false,
-        has_invalid_load_balancing_configs: false,
-        label: { en_US: 'Chat model', zh_Hans: 'Chat model' },
-        load_balancing_enabled: false,
-        model: 'chat-model',
-        model_properties: { mode: 'chat' },
-        model_type: 'llm',
-        status: 'active',
+const render = createNuqsTestRenderer((ui) => {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      provider: 'langgenius/openai/openai',
+      models: [
+        createCatalogModelFixture({
+          model: 'chat-model',
+          label: { en_US: 'Chat model' },
+          model_properties: { mode: 'chat' },
+        }),
+        createCatalogModelFixture({
+          model: 'chat-model-v2',
+          label: { en_US: 'Chat model v2' },
+          model_properties: { mode: 'chat' },
+        }),
+        createCatalogModelFixture({
+          model: 'completion-model',
+          label: { en_US: 'Completion model' },
+          model_properties: { mode: 'completion' },
+        }),
+      ],
+    }),
+  ])
+  queryClient.setQueryDefaults(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
+    {
+      initialData: {
+        data: [
+          {
+            name: 'temperature',
+            label: { en_US: 'Temperature' },
+            type: 'float',
+            default: 0.7,
+            min: 0,
+            max: 2,
+          },
+        ],
       },
-      {
-        deprecated: false,
-        has_invalid_load_balancing_configs: false,
-        label: { en_US: 'Chat model v2', zh_Hans: 'Chat model v2' },
-        load_balancing_enabled: false,
-        model: 'chat-model-v2',
-        model_properties: { mode: 'chat' },
-        model_type: 'llm',
-        status: 'active',
-      },
-      {
-        deprecated: false,
-        has_invalid_load_balancing_configs: false,
-        label: { en_US: 'Completion model', zh_Hans: 'Completion model' },
-        load_balancing_enabled: false,
-        model: 'completion-model',
-        model_properties: { mode: 'completion' },
-        model_type: 'llm',
-        status: 'active',
-      },
-    ],
-    provider: 'langgenius/openai/openai',
-  },
-])
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useTextGenerationCurrentProviderAndModelAndModelList: () => ({
-    activeTextGenerationModelList: activeModelList,
-  }),
-}))
-
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
-  () => ({
-    default: ({
-      completionParams,
-      modelId,
-      modelList = [],
-      modelSelectorReadonly,
-      provider,
-      readonly,
-      onCompletionParamsChange,
-      setModel,
-    }: ModelParameterModalProps) => {
-      const selectableModels = modelList.flatMap((providerItem) =>
-        providerItem.models.map((model) => ({ model, provider: providerItem.provider })),
-      )
-      const nextModel = selectableModels.find(({ model }) => model.model === 'chat-model-v2')
-
-      return (
-        <div>
-          <button
-            type="button"
-            aria-label="Select deployment model"
-            disabled={readonly || modelSelectorReadonly}
-            onClick={() => {
-              if (!nextModel) return
-
-              setModel({
-                modelId: nextModel.model.model,
-                mode: nextModel.model.model_properties.mode as string,
-                provider: nextModel.provider,
-              })
-            }}
-          >
-            {provider && modelId ? `${provider}/${modelId}` : 'No model selected'}
-          </button>
-          <button
-            type="button"
-            onClick={() => onCompletionParamsChange({ ...completionParams, temperature: 0.4 })}
-          >
-            Set temperature
-          </button>
-          {selectableModels.map(({ model }) => (
-            <span key={model.model}>{model.model}</span>
-          ))}
-        </div>
-      )
     },
-  }),
-)
+  )
+  return renderWithConsoleQuery(ui, { queryClient })
+})
 
 const llmSlot: EnvironmentVariableSlot = {
   configured_value: {
@@ -116,6 +71,10 @@ const llmSlot: EnvironmentVariableSlot = {
 }
 
 describe('EnvironmentVariableField', () => {
+  beforeAll(async () => {
+    // Load the production chunk before testing the lazy field's interactions.
+    await import('@/app/components/workflow/llm-environment-variable-value-field')
+  })
   it('selects a compatible custom LLM and keeps its parameters structured', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
@@ -128,12 +87,9 @@ describe('EnvironmentVariableField', () => {
       />,
     )
 
-    const modelSelector = await screen.findByRole('button', { name: 'Select deployment model' })
+    const modelSelector = await screen.findByRole('button', { name: /^Chat model/ })
     expect(modelSelector).toBeDisabled()
-    expect(modelSelector).toHaveTextContent('langgenius/openai/openai/chat-model')
     expect(screen.getByText('workflow.blocks.llm')).toBeInTheDocument()
-    expect(screen.getByText('chat-model-v2')).toBeInTheDocument()
-    expect(screen.queryByText('completion-model')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('combobox', { name: /MODEL/ }))
     await user.click(
@@ -142,9 +98,18 @@ describe('EnvironmentVariableField', () => {
       }),
     )
 
-    expect(modelSelector).toBeEnabled()
-    await user.click(modelSelector)
-    await user.click(screen.getByRole('button', { name: 'Set temperature' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+    const picker = within(
+      await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' }),
+    )
+    expect(picker.queryByRole('button', { name: /^Completion model/ })).not.toBeInTheDocument()
+    await user.click(picker.getByRole('button', { name: /^Chat model v2/ }))
+    await user.click(screen.getByRole('button', { name: /modelProvider.modelSettings/ }))
+    await user.click(screen.getByRole('switch', { name: 'Temperature' }))
+    const temperature = screen.getByRole('spinbutton', { name: 'Temperature' })
+    await user.clear(temperature)
+    await user.type(temperature, '0.4')
+    await user.tab()
 
     expect(onChange).toHaveBeenLastCalledWith('workflow-1', 'MODEL', {
       customValue: {
@@ -178,9 +143,9 @@ describe('EnvironmentVariableField', () => {
       />,
     )
 
-    const modelSelector = await screen.findByRole('button', { name: 'Select deployment model' })
+    const modelSelector = await screen.findByRole('button', { name: /^Chat model/ })
     expect(modelSelector).toBeDisabled()
-    expect(modelSelector).toHaveTextContent('langgenius/openai/openai/chat-model-v2')
+    expect(modelSelector).toHaveTextContent('Chat model v2')
     expect(screen.getByRole('combobox', { name: /MODEL/ })).toHaveTextContent(
       'deployments.deployDrawer.envVarSource.lastDeployment',
     )

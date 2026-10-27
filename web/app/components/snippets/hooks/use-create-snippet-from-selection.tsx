@@ -5,14 +5,15 @@ import type {
   Node,
   ValueSelector,
 } from '@/app/components/workflow/types'
-import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetCanvasData } from '@/models/snippet'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getNodesBounds } from 'reactflow'
 import { CreateSnippetDialog } from '@/app/components/snippets/create-snippet-dialog'
 import { resolveLLMNodeModel } from '@/app/components/workflow/nodes/llm/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useCreateSnippet } from './use-create-snippet'
 
@@ -152,7 +153,7 @@ const getExternalVariableInputFields = (nodes: Node[], selectedNodeIds: Set<stri
   nodes.forEach((node) => collectVariableSelectors(node.data, selectors))
 
   const usedVariables = new Set<string>()
-  const fieldBySelector = new Map<string, SnippetInputField>()
+  const fieldBySelector = new Map<string, InputVar>()
 
   selectors.forEach((selector) => {
     if (!isExternalVariableSelector(selector, selectedNodeIds)) return
@@ -282,11 +283,9 @@ export const useCreateSnippetFromSelection = ({
   selectedNodes,
   onClose,
 }: UseCreateSnippetFromSelectionParams) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const [selectedSnippetGraph, setSelectedSnippetGraph] = useState<SnippetCanvasData>()
-  const [selectedSnippetInputFields, setSelectedSnippetInputFields] = useState<SnippetInputField[]>(
-    [],
-  )
+  const [selectedSnippetInputFields, setSelectedSnippetInputFields] = useState<InputVar[]>([])
   const {
     createSnippetMutation,
     handleCloseCreateSnippetDialog,
@@ -298,7 +297,7 @@ export const useCreateSnippetFromSelection = ({
 
   const handleOpenCreateSnippet = useCallback(() => {
     let graph: SnippetCanvasData
-    let inputFields: SnippetInputField[]
+    let inputFields: InputVar[]
     try {
       const result = getSelectedSnippetGraph(selectedNodes, edges, environmentVariables)
       graph = result.graph

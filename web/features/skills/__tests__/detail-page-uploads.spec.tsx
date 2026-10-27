@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { httpErrorFromResponse } from '@/service/http-error'
 import {
   confirmUploadReview,
   createDataTransfer,
@@ -29,7 +30,7 @@ describe('SkillDetailPage uploads', () => {
 
     fireEvent.dragOver(contextRegion, { dataTransfer })
 
-    expect(screen.getByText(/^Upload to/)).toHaveTextContent(/^Upload to root folder$/)
+    expect(screen.getByText(/^Upload to/).textContent).toMatch(/^Upload to root folder$/)
 
     fireEvent.drop(contextRegion, { dataTransfer })
     await confirmUploadReview()
@@ -158,7 +159,7 @@ describe('SkillDetailPage uploads', () => {
     const { dataTransfer } = createDataTransfer([upload])
     fireEvent.dragOver(folder.closest('li')!, { dataTransfer })
 
-    expect(screen.getByText(/^Upload to/)).toHaveTextContent(/^Upload to references$/)
+    expect(screen.getByText(/^Upload to/).textContent).toMatch(/^Upload to references$/)
 
     fireEvent.drop(folder.closest('li')!, { dataTransfer })
     await confirmUploadReview()
@@ -185,6 +186,7 @@ describe('SkillDetailPage uploads', () => {
   })
 
   it('cancels an active file upload from the upload status panel', async () => {
+    const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({
       files: [
         ...createSkillDetail().files!,
@@ -215,9 +217,11 @@ describe('SkillDetailPage uploads', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(abortSpy).toHaveBeenCalledOnce()
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+    abortSpy.mockRestore()
   })
 
   it('retries failed file uploads from the upload status panel', async () => {
@@ -239,7 +243,7 @@ describe('SkillDetailPage uploads', () => {
       ],
     })
     mocks.uploadSkillFile
-      .mockRejectedValueOnce(new Error('network timeout'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
       .mockResolvedValueOnce({
         id: 'tool-file-retry',
         name: 'guide.md',
@@ -262,6 +266,10 @@ describe('SkillDetailPage uploads', () => {
     })
 
     await user.click(screen.getByRole('button', { name: /viewUploadErrors/ }))
+    expect(
+      screen.getByText('skill.skillManagement.detail.uploadNetworkFailure'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument()
     await user.click(screen.getAllByRole('button', { name: 'common.operation.retry' })[0]!)
 
     await waitFor(() => {
@@ -317,12 +325,14 @@ describe('SkillDetailPage uploads', () => {
             },
           ],
         })
-        throw new Response(
-          JSON.stringify({
-            code: 'skill_conflict',
-            message: 'skill has been modified by another user',
-          }),
-          { status: 409 },
+        throw await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({
+              code: 'skill_conflict',
+              message: 'skill has been modified by another user',
+            }),
+            { status: 409 },
+          ),
         )
       })
       .mockImplementationOnce(async () => {

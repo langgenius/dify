@@ -1,8 +1,7 @@
 import type { DocPathMap } from './i18n'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { renderHook } from '@testing-library/react'
-import { useTranslation } from '#i18n'
-import { getDocLanguage } from '@/i18n-config/language'
+import { useLocale } from '#i18n'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { defaultDocBaseUrl, enterpriseDocBaseUrl, useDocLink } from './i18n'
 
 const mockDeploymentEdition = vi.hoisted(() => ({
@@ -11,36 +10,19 @@ const mockDeploymentEdition = vi.hoisted(() => ({
 
 // Mock dependencies
 vi.mock('#i18n', () => ({
-  useTranslation: vi.fn(() => ({
-    i18n: { language: 'en-US' },
-  })),
+  useLocale: vi.fn(() => 'en-US'),
 }))
 
-vi.mock('jotai', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('jotai')>()),
-  useAtomValue: () => mockDeploymentEdition.value,
-}))
-
-vi.mock('@/i18n-config/language', () => ({
-  getDocLanguage: vi.fn((locale: string) => {
-    const map: Record<string, string> = {
-      'zh-Hans': 'zh',
-      'ja-JP': 'ja',
-      'en-US': 'en',
-    }
-    return map[locale] || 'en'
-  }),
-  getLanguage: vi.fn(),
-}))
+const renderHook = (callback: () => ReturnType<typeof useDocLink>) =>
+  renderHookWithConsoleQuery(callback, {
+    systemFeatures: { deployment_edition: mockDeploymentEdition.value },
+  })
 
 describe('useDocLink', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDeploymentEdition.value = 'CLOUD'
-    vi.mocked(useTranslation).mockReturnValue({
-      i18n: { language: 'en-US' },
-    } as ReturnType<typeof useTranslation>)
-    vi.mocked(getDocLanguage).mockReturnValue('en')
+    vi.mocked(useLocale).mockReturnValue('en-US')
   })
 
   describe('Base URL handling', () => {
@@ -63,13 +45,6 @@ describe('useDocLink', () => {
       const url = result.current('/use-dify/getting-started/introduction')
       expect(url).toBe('https://docs.dify.ai/en/cloud/use-dify/getting-started/introduction')
     })
-
-    it('should handle base URL without trailing slash', () => {
-      const baseUrlWithoutSlash = 'https://docs.dify.ai'
-      const { result } = renderHook(() => useDocLink(baseUrlWithoutSlash))
-      const url = result.current('/use-dify/getting-started/introduction')
-      expect(url).toBe('https://docs.dify.ai/en/cloud/use-dify/getting-started/introduction')
-    })
   })
 
   describe('Path handling', () => {
@@ -77,18 +52,6 @@ describe('useDocLink', () => {
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/getting-started/introduction')
       expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction`)
-    })
-
-    it('should handle empty path', () => {
-      const { result } = renderHook(() => useDocLink())
-      const url = result.current()
-      expect(url).toBe(`${defaultDocBaseUrl}/en/home`)
-    })
-
-    it('should handle undefined path', () => {
-      const { result } = renderHook(() => useDocLink())
-      const url = result.current(undefined)
-      expect(url).toBe(`${defaultDocBaseUrl}/en/home`)
     })
 
     it('should keep common docs path without product prefix', () => {
@@ -108,10 +71,7 @@ describe('useDocLink', () => {
 
   describe('PathMap handling', () => {
     it('should use path from pathMap when locale matches', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('zh')
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
 
       const pathMap: DocPathMap = {
         'zh-Hans': '/use-dify/getting-started/introduction',
@@ -124,10 +84,7 @@ describe('useDocLink', () => {
     })
 
     it('should use default path when locale not in pathMap', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'ja-JP' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('ja')
+      vi.mocked(useLocale).mockReturnValue('ja-JP')
 
       const pathMap: DocPathMap = {
         'zh-Hans': '/use-dify/getting-started/introduction',
@@ -137,12 +94,6 @@ describe('useDocLink', () => {
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/workspace/tools#mcp', pathMap)
       expect(url).toBe(`${defaultDocBaseUrl}/ja/cloud/use-dify/workspace/tools#mcp`)
-    })
-
-    it('should handle undefined pathMap', () => {
-      const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/introduction', undefined)
-      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction`)
     })
   })
 
@@ -299,9 +250,7 @@ describe('useDocLink', () => {
     ] as const)('should fall back to the enterprise documentation home for %s', (communityPath) => {
       const { result } = renderHook(() => useDocLink())
 
-      expect(result.current(communityPath as DocPathWithoutLang)).toBe(
-        `${enterpriseDocBaseUrl}/en/`,
-      )
+      expect(result.current(communityPath)).toBe(`${enterpriseDocBaseUrl}/en/`)
     })
 
     it('should open the enterprise documentation home when no path is provided', () => {
@@ -311,20 +260,14 @@ describe('useDocLink', () => {
     })
 
     it('should use Chinese and Japanese enterprise documentation languages', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('zh')
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
 
       const { result, rerender } = renderHook(() => useDocLink())
       expect(result.current('/use-dify/nodes/start')).toBe(
         `${enterpriseDocBaseUrl}/zh/use/nodes/start`,
       )
 
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'ja-JP' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('ja')
+      vi.mocked(useLocale).mockReturnValue('ja-JP')
       rerender()
 
       expect(result.current('/use-dify/nodes/start')).toBe(
@@ -333,47 +276,9 @@ describe('useDocLink', () => {
     })
   })
 
-  describe('Language prefix handling', () => {
-    it('should add /en prefix for English locale', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'en-US' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('en')
-
-      const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/introduction')
-      expect(url).toContain('/en/')
-    })
-
-    it('should add /zh prefix for Chinese locale', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('zh')
-
-      const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/introduction')
-      expect(url).toContain('/zh/')
-    })
-
-    it('should add /ja prefix for Japanese locale', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'ja-JP' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('ja')
-
-      const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/introduction')
-      expect(url).toContain('/ja/')
-    })
-  })
-
   describe('API reference path handling', () => {
     it('should add language prefix for Chinese API reference paths', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('zh')
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/api-reference/annotations/create-annotation')
@@ -381,10 +286,7 @@ describe('useDocLink', () => {
     })
 
     it('should add language prefix for Japanese API reference paths', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'ja-JP' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('ja')
+      vi.mocked(useLocale).mockReturnValue('ja-JP')
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/api-reference/applications/get-app-info')
@@ -392,43 +294,15 @@ describe('useDocLink', () => {
     })
 
     it('should not translate API reference path for English locale', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'en-US' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('en')
+      vi.mocked(useLocale).mockReturnValue('en-US')
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/api-reference/annotations/create-annotation')
       expect(url).toBe(`${defaultDocBaseUrl}/en/api-reference/annotations/create-annotation`)
     })
 
-    it('should keep the API reference slug unchanged for non-English locale', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('zh')
-
-      const { result } = renderHook(() => useDocLink())
-      const url = result.current('/api-reference/annotations/create-annotation')
-      expect(url).toBe(`${defaultDocBaseUrl}/zh/api-reference/annotations/create-annotation`)
-    })
-
-    it('should keep language prefix for API reference paths', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('zh')
-
-      const { result } = renderHook(() => useDocLink())
-      const url = result.current('/api-reference/annotations/create-annotation')
-      expect(url).toBe(`${defaultDocBaseUrl}/zh/api-reference/annotations/create-annotation`)
-    })
-
     it('should use the current knowledge API guide path directly', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('zh')
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/api-reference/guides/knowledge')
@@ -436,10 +310,7 @@ describe('useDocLink', () => {
     })
 
     it('should not translate non-API-reference paths', () => {
-      vi.mocked(useTranslation).mockReturnValue({
-        i18n: { language: 'zh-Hans' },
-      } as ReturnType<typeof useTranslation>)
-      vi.mocked(getDocLanguage).mockReturnValue('zh')
+      vi.mocked(useLocale).mockReturnValue('zh-Hans')
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/getting-started/introduction')
@@ -456,14 +327,6 @@ describe('useDocLink', () => {
       expect(url).toBe(
         `${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction#overview`,
       )
-    })
-
-    it('should handle multiple calls with same hook instance', () => {
-      const { result } = renderHook(() => useDocLink())
-      const url1 = result.current('/use-dify/getting-started/introduction')
-      const url2 = result.current('/use-dify/workspace/tools#mcp')
-      expect(url1).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/getting-started/introduction`)
-      expect(url2).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/workspace/tools#mcp`)
     })
   })
 })

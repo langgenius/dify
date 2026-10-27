@@ -1,0 +1,704 @@
+{
+  "console GET /account/delete/verify": ["no-input-schema", "compatible"],
+  "console GET /account/education": ["no-input-schema", "compatible"],
+  "console GET /account/education/verify": ["no-input-schema", "compatible"],
+  "console GET /account/integrates": ["no-input-schema", "compatible"],
+  "console GET /account/profile": ["no-input-schema", "compatible"],
+  "console GET /agent": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/api-access": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/build-draft": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/chat-messages": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/composer": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/composer/candidates": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/config/files": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/config/manifest": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/config/skills": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/config/skills/{name}/files/content": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console GET /agent/{agent_id}/config/skills/{name}/inspect": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /agent/{agent_id}/logs/{conversation_id}/messages": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /agent/{agent_id}/messages/{message_id}": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/sandbox/files": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/trace": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/{agent_id}/versions/{version_id}": ["compatible", "parsed-vs-wire-output"],
+  "console GET /agent/invite-options": ["compatible", "parsed-vs-wire-output"],
+  "console GET /api-based-extension": ["no-input-schema", "compatible"],
+  "console GET /api-key-auth/data-source": ["no-input-schema", "compatible"],
+  "console GET /app-dsl-version": ["no-input-schema", "compatible"],
+  "console GET /apps": ["compatible", "parsed-vs-wire-output"],
+  "console GET /apps/{app_id}/agent/config/files": ["compatible", "parsed-vs-wire-output"],
+  "console GET /apps/{app_id}/agent/config/manifest": ["compatible", "parsed-vs-wire-output"],
+  "console GET /apps/{app_id}/agent/config/skills": ["compatible", "parsed-vs-wire-output"],
+  "console GET /apps/{app_id}/agent/config/skills/{name}/files/content": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console GET /apps/{app_id}/agent/config/skills/{name}/inspect": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /apps/{app_id}/annotation-reply/{action}/status/{job_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /apps/{app_id}/annotations/batch-import-status/{job_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /apps/{app_id}/chat-messages": ["compatible", "parsed-vs-wire-output"],
+  "console GET /apps/{app_id}/messages/{message_id}": ["compatible", "parsed-vs-wire-output"],
+  "console GET /apps/{app_id}/trace": ["compatible", "parsed-vs-wire-output"],
+  "console GET /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /apps/{resource_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
+  "console GET /apps/starred": ["compatible", "parsed-vs-wire-output"],
+  "console GET /auth/plugin/datasource/default-list": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /auth/plugin/datasource/list": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /billing/invoices": ["no-input-schema", "compatible"],
+  "console GET /data-source/integrates": ["no-input-schema", "compatible"],
+  "console GET /datasets/{dataset_id}/documents": ["compatible", "parsed-vs-wire-output"],
+  "console GET /datasets/{dataset_id}/documents/{document_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /datasets/{dataset_id}/documents/{document_id}/summary-status": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /datasets/{dataset_id}/metadata": ["compatible", "parsed-vs-wire-output"],
+  "console GET /datasets/{resource_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
+  "console GET /datasets/api-base-info": ["no-input-schema", "compatible"],
+  "console GET /datasets/api-keys": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /datasets/knowledge-fs-upgrade-jobs": ["no-input-schema", "compatible"],
+  "console GET /datasets/metadata/built-in": ["no-input-schema", "compatible"],
+  "console GET /datasets/process-rule": ["compatible", "parsed-vs-wire-output"],
+  "console GET /datasets/retrieval-setting": ["no-input-schema", "compatible"],
+  "console GET /enterprise/sso/oauth2/login": ["no-input-schema", "compatible"],
+  "console GET /enterprise/sso/oidc/login": ["no-input-schema", "compatible"],
+  "console GET /enterprise/sso/saml/login": ["no-input-schema", "compatible"],
+  "console GET /features": ["no-input-schema", "compatible"],
+  "console GET /features/vector-space": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /files/support-type": ["no-input-schema", "compatible"],
+  "console GET /files/upload": ["no-input-schema", "compatible"],
+  "console GET /init": ["no-input-schema", "compatible"],
+  "console GET /installed-apps/{installed_app_id}/messages": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /installed-apps/{installed_app_id}/messages/{message_id}/more-like-this": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console GET /knowledge-fs/.well-known/jwks.json": ["no-input-schema", "compatible"],
+  "console GET /knowledge-fs/features": ["no-input-schema", "compatible"],
+  "console GET /knowledge-fs/research-tasks/{task_id}/events": [
+    "compatible",
+    "raw-stream-vs-string"
+  ],
+  "console GET /knowledge-fs/spaces": ["compatible", "parsed-vs-wire-output"],
+  "console GET /knowledge-fs/spaces/{control_space_id}": ["compatible", "parsed-vs-wire-output"],
+  "console GET /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /knowledge-fs/spaces/{control_space_id}/documents/{document_id}/revisions/{revision}/chunks/{chunk_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /knowledge-fs/spaces/{control_space_id}/golden-questions": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /knowledge-fs/spaces/{control_space_id}/logical-documents": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /knowledge-fs/spaces/{control_space_id}/quality/bad-cases": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /knowledge-fs/spaces/{control_space_id}/settings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /knowledge-fs/spaces/{control_space_id}/tags": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /knowledge-fs/spaces/{control_space_id}/traces": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /knowledge-fs/spaces/{control_space_id}/traces/{trace_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /onboarding/step-by-step-tour/state": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /ping": ["no-input-schema", "compatible"],
+  "console GET /rag/pipelines/datasource-plugins": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /rag/pipelines/recommended-plugins": ["compatible", "parsed-vs-wire-output"],
+  "console GET /setup": ["no-input-schema", "compatible"],
+  "console GET /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /spec/schema-definitions": ["no-input-schema", "compatible"],
+  "console GET /system-features": ["no-input-schema", "compatible"],
+  "console GET /system-features/license": ["no-input-schema", "compatible"],
+  "console GET /trial-apps/{app_id}/agent-composer": ["compatible", "parsed-vs-wire-output"],
+  "console GET /trial-apps/{app_id}/agent/config/files": ["compatible", "parsed-vs-wire-output"],
+  "console GET /trial-apps/{app_id}/agent/config/skills": ["compatible", "parsed-vs-wire-output"],
+  "console GET /trial-apps/{app_id}/agent/config/skills/{name}/inspect": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /trial-models": ["no-input-schema", "compatible"],
+  "console GET /workflow-run-archives": ["no-input-schema", "compatible"],
+  "console GET /workspaces": ["no-input-schema", "compatible"],
+  "console GET /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console GET /workspaces/current/agent-provider/{provider_name}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/agent-providers": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/dataset-operators": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/default-model": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/endpoints/list": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/endpoints/list/plugin": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/model-providers": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/model-providers/{provider}/models": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/model-providers/{provider}/models/parameter-rules": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/model-providers/credits": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/model-providers/summary": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/models/model-types/{model_type}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/network-access-groups": [
+    "no-input-schema",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/network-access-groups/{group_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/network-access-groups/current-ip": [
+    "no-input-schema",
+    "compatible"
+  ],
+  "console GET /workspaces/current/permission": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/plugin/{category}/list": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/plugin/debugging-key": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/plugin/fetch-manifest": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/plugin/list": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/plugin/marketplace/pkg": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/plugin/permission/fetch": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/rbac/access-policies": [
+    "no-input-schema",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/access-policies/{policy_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/role-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/agents/{agent_id}/access-policy": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/agents/{agent_id}/user-access-policies": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/role-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/apps/{app_id}/access-policy": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/apps/{app_id}/user-access-policies": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/role-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/datasets/{dataset_id}/access-policy": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/datasets/{dataset_id}/user-access-policies": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/members/{member_id}/rbac-roles": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/my-permissions": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/rbac/role-permissions/catalog": [
+    "no-input-schema",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/role-permissions/catalog/agent": [
+    "no-input-schema",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/role-permissions/catalog/app": [
+    "no-input-schema",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/role-permissions/catalog/dataset": [
+    "no-input-schema",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/roles": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/rbac/roles/{role_id}": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/rbac/roles/{role_id}/members": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/member-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/role-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/workspace/agents/access-policy": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/member-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/role-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/workspace/apps/access-policy": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/member-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/role-bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/rbac/workspace/datasets/access-policy": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/skills": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/skills/{skill_id}": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/skills/{skill_id}/export": ["compatible", "undocumented-output"],
+  "console GET /workspaces/current/skills/{skill_id}/versions": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/skills/{skill_id}/versions/{version_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/skills/tags": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/summary": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/tool-labels": ["no-input-schema", "compatible"],
+  "console GET /workspaces/current/tool-provider/api/get": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/tool-provider/api/tools": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/tool-provider/builtin/{provider}/credential/info": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/tool-provider/builtin/{provider}/credential/schema/{credential_type}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/tool-provider/builtin/{provider}/credentials": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/tool-provider/builtin/{provider}/icon": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console GET /workspaces/current/tool-provider/builtin/{provider}/info": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/tool-provider/builtin/{provider}/oauth/client-schema": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console GET /workspaces/current/tool-provider/builtin/{provider}/tools": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/tool-provider/mcp/tools/{provider_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/tool-provider/mcp/update/{provider_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/tool-provider/workflow/get": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/tool-provider/workflow/tools": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/tool-providers": ["compatible", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/tools/api": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/tools/builtin": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/tools/mcp": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/tools/workflow": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /workspaces/current/trigger-provider/{provider}/icon": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console GET /workspaces/current/trigger-provider/{provider}/info": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/trigger-provider/{provider}/oauth/client": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /workspaces/current/triggers": ["no-input-schema", "parsed-vs-wire-output"],
+  "console GET /workspaces/custom-config": ["no-input-schema", "compatible"],
+  "console PATCH /knowledge-fs/spaces/{control_space_id}": ["compatible", "parsed-vs-wire-output"],
+  "console PATCH /knowledge-fs/spaces/{control_space_id}/documents/{document_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PATCH /knowledge-fs/spaces/{control_space_id}/golden-questions/{question_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PATCH /knowledge-fs/spaces/{control_space_id}/logical-documents": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PATCH /knowledge-fs/spaces/{control_space_id}/logical-documents/{document_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PATCH /knowledge-fs/spaces/{control_space_id}/quality/bad-cases/{bad_case_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PATCH /knowledge-fs/spaces/{control_space_id}/settings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PATCH /onboarding/step-by-step-tour/state": ["compatible", "parsed-vs-wire-output"],
+  "console PATCH /workspaces/current/skills/{skill_id}": ["compatible", "parsed-vs-wire-output"],
+  "console PATCH /workspaces/current/skills/{skill_id}/files": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PATCH /workspaces/current/skills/{skill_id}/versions/{version_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /agent": ["compatible", "parsed-vs-wire-output"],
+  "console POST /agent/{agent_id}/api-enable": ["compatible", "parsed-vs-wire-output"],
+  "console POST /agent/{agent_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
+  "console POST /agent/{agent_id}/build-draft/checkout": ["compatible", "parsed-vs-wire-output"],
+  "console POST /agent/{agent_id}/config/files": ["compatible", "parsed-vs-wire-output"],
+  "console POST /agent/{agent_id}/config/skills/upload": ["compatible", "parsed-vs-wire-output"],
+  "console POST /agent/{agent_id}/copy": ["compatible", "parsed-vs-wire-output"],
+  "console POST /agent/{agent_id}/debug-conversation/refresh": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /agent/{agent_id}/trace": ["compatible", "parsed-vs-wire-output"],
+  "console POST /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /apps/{app_id}/agent/config/files": ["compatible", "parsed-vs-wire-output"],
+  "console POST /apps/{app_id}/agent/config/skills/upload": ["compatible", "parsed-vs-wire-output"],
+  "console POST /apps/{app_id}/completion-messages": ["compatible", "undocumented-output"],
+  "console POST /apps/{app_id}/copy": ["compatible", "parsed-vs-wire-output"],
+  "console POST /apps/{app_id}/text-to-audio": ["compatible", "undocumented-output"],
+  "console POST /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/preview": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /apps/{resource_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
+  "console POST /apps/imports": ["multipart-selection", "parsed-vs-wire-output"],
+  "console POST /apps/imports/{import_id}/confirm": ["compatible", "parsed-vs-wire-output"],
+  "console POST /datasets/{dataset_id}/documents/download-zip": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console POST /datasets/{dataset_id}/knowledge-fs-upgrades/{job_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /datasets/{resource_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
+  "console POST /datasets/api-keys": ["compatible", "parsed-vs-wire-output"],
+  "console POST /installed-apps/{installed_app_id}/chat-messages": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console POST /installed-apps/{installed_app_id}/completion-messages": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console POST /installed-apps/{installed_app_id}/workflows/run": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console POST /knowledge-fs/query-stream": ["compatible", "raw-stream-vs-string"],
+  "console POST /knowledge-fs/source-provider-preview/jobs": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /knowledge-fs/spaces/{control_space_id}/documents": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /knowledge-fs/spaces/{control_space_id}/golden-questions": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /knowledge-fs/spaces/{control_space_id}/quality/bad-cases": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /logout": ["no-input-schema", "compatible"],
+  "console POST /rag/pipeline/dataset": ["compatible", "parsed-vs-wire-output"],
+  "console POST /rag/pipeline/empty-dataset": ["no-input-schema", "compatible"],
+  "console POST /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console POST /rag/pipelines/{pipeline_id}/workflows/published/run": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /rag/pipelines/imports": ["compatible", "parsed-vs-wire-output"],
+  "console POST /rag/pipelines/imports/{import_id}/confirm": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /refresh-token": ["no-input-schema", "compatible"],
+  "console POST /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /trial-apps/{app_id}/chat-messages": ["compatible", "undocumented-output"],
+  "console POST /trial-apps/{app_id}/completion-messages": ["compatible", "undocumented-output"],
+  "console POST /trial-apps/{app_id}/workflows/run": ["compatible", "undocumented-output"],
+  "console POST /workflow-generate": ["compatible", "parsed-vs-wire-output"],
+  "console POST /workflow-generate/stream": ["compatible", "parsed-vs-wire-output"],
+  "console POST /workspaces/current/network-access-groups": ["compatible", "parsed-vs-wire-output"],
+  "console POST /workspaces/current/plugin/list/installations/ids": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /workspaces/current/plugin/tasks/delete_all": ["no-input-schema", "compatible"],
+  "console POST /workspaces/current/plugin/upload/bundle": [
+    "no-input-schema",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /workspaces/current/plugin/upload/github": ["compatible", "parsed-vs-wire-output"],
+  "console POST /workspaces/current/plugin/upload/pkg": ["compatible", "parsed-vs-wire-output"],
+  "console POST /workspaces/current/rbac/access-policies": ["compatible", "parsed-vs-wire-output"],
+  "console POST /workspaces/current/rbac/access-policies/{policy_id}/copy": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /workspaces/current/rbac/roles": ["compatible", "parsed-vs-wire-output"],
+  "console POST /workspaces/current/rbac/roles/{role_id}/copy": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /workspaces/current/skills": ["compatible", "parsed-vs-wire-output"],
+  "console POST /workspaces/current/skills/{skill_id}/assist/messages": [
+    "compatible",
+    "undocumented-output"
+  ],
+  "console POST /workspaces/current/skills/{skill_id}/duplicate": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /workspaces/current/skills/{skill_id}/publish": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /workspaces/current/skills/{skill_id}/restore": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /workspaces/current/skills/import": ["compatible", "parsed-vs-wire-output"],
+  "console POST /workspaces/current/tool-provider/api/schema": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console POST /workspaces/current/tool-provider/mcp": ["compatible", "parsed-vs-wire-output"],
+  "console PUT /agent/{agent_id}": ["compatible", "parsed-vs-wire-output"],
+  "console PUT /agent/{agent_id}/build-draft": ["compatible", "parsed-vs-wire-output"],
+  "console PUT /agent/{agent_id}/composer": ["compatible", "parsed-vs-wire-output"],
+  "console PUT /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /knowledge-fs/spaces/{control_space_id}/tags": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/network-access-groups/{group_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/rbac/access-policies/{policy_id}": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/rbac/access-policy-bindings/{binding_id}/lock": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/rbac/agents/{agent_id}/users/{target_account_id}/access-policies": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/rbac/apps/{app_id}/users/{target_account_id}/access-policies": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/rbac/datasets/{dataset_id}/users/{target_account_id}/access-policies": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/rbac/members/{member_id}/rbac-roles": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/rbac/roles/{role_id}": ["compatible", "parsed-vs-wire-output"],
+  "console PUT /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/bindings": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console PUT /workspaces/current/skills/{skill_id}/files": ["compatible", "parsed-vs-wire-output"]
+}

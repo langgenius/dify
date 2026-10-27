@@ -3,20 +3,19 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Countdown from '@/app/components/signin/countdown'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { TURNSTILE_SITE_KEY } from '@/config'
-import { useLocale } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { encryptVerificationCode } from '@/utils/encryption'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
@@ -29,7 +28,7 @@ type CheckCodeFormValues = {
 }
 
 export default function CheckCode() {
-  const { t, i18n } = useTranslation()
+  const { t, i18n } = useTranslation(['login'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -62,13 +61,15 @@ export default function CheckCode() {
 
       setLoading(true)
       shouldResetTurnstile = isTurnstileRequired
-      const ret = await emailLoginWithCode({
-        email,
-        code: encryptVerificationCode(code),
-        token,
-        language,
-        timezone: getBrowserTimezone(),
-        ...(isTurnstileRequired ? { turnstile_token: verifyTurnstileToken } : {}),
+      const ret = await consoleClient.emailCodeLogin.validity.post({
+        body: {
+          email,
+          code: encryptVerificationCode(code),
+          token,
+          language,
+          timezone: getBrowserTimezone(),
+          ...(isTurnstileRequired ? { turnstile_token: verifyTurnstileToken } : {}),
+        },
       })
       if (ret.result === 'success') {
         // Track login success event
@@ -85,8 +86,6 @@ export default function CheckCode() {
           await queryClient.query(profileQueryOptions)
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
-      } else {
-        toast.error(ret.data)
       }
     } catch (error) {
       console.error(error)
@@ -106,11 +105,13 @@ export default function CheckCode() {
   const resendCode = async (turnstileToken?: string) => {
     setIsResending(true)
     try {
-      const ret = await sendEMailLoginCode(
-        email,
-        locale,
-        isTurnstileRequired ? turnstileToken : undefined,
-      )
+      const ret = await consoleClient.emailCodeLogin.post({
+        body: {
+          email,
+          language: locale,
+          ...(isTurnstileRequired ? { turnstile_token: turnstileToken } : {}),
+        },
+      })
       if (ret.result === 'success') {
         setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         setCountdownGeneration((value) => value + 1)

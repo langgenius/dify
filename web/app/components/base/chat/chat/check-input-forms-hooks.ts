@@ -1,12 +1,12 @@
 import type { InputForm } from './type'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InputVarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { TransferMethod } from '@/types/app'
 
 export const useCheckInputsForms = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug'])
   const checkInputsForm = useCallback(
     (inputs: Record<string, any>, inputsForm: InputForm[]) => {
       let hasEmptyInput = ''
@@ -18,7 +18,14 @@ export const useCheckInputsForms = () => {
         requiredVars.forEach(({ variable, label, type }) => {
           if (hasEmptyInput) return
           if (fileIsUploading) return
-          if (!inputs[variable]) hasEmptyInput = label as string
+          const value = inputs[variable]
+          if (
+            value === undefined ||
+            value === null ||
+            value === '' ||
+            (Array.isArray(value) && value.length === 0)
+          )
+            hasEmptyInput = label
           if (
             (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
             inputs[variable]

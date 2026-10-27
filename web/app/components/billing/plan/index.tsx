@@ -2,19 +2,17 @@
 import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { FC } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
-import { RiApps2Line, RiBook2Line, RiFileEditLine, RiGroupLine } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
-import Loading from '../../base/icons/src/public/thought/Loading'
 import { NUM_INFINITE } from '../config'
 import { useEducationDiscount } from '../hooks/use-education-discount'
 import UpgradeBtn from '../upgrade-btn'
@@ -32,7 +30,7 @@ const selectEducationPlanStatus = ({ allow_refresh, is_student }: EducationStatu
 })
 
 const PlanComp: FC<Props> = ({ loc }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing', 'education'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -65,26 +63,32 @@ const PlanComp: FC<Props> = ({ loc }) => {
 
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   return (
-    <div className="relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">
+    <div className="@container/plan relative min-w-0 rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">
       <div className="p-6 pb-2">
         {type === 'sandbox' && <Sandbox />}
         {type === 'professional' && <Professional />}
         {type === 'team' && <Team />}
-        <div className="mt-1 flex items-center">
-          <div className="grow">
+        <div className="mt-1 flex flex-col items-start gap-y-3 @min-[28rem]/plan:flex-row @min-[28rem]/plan:flex-wrap @min-[28rem]/plan:items-center">
+          <div className="max-w-full min-w-0 grow @min-[28rem]/plan:basis-52">
             <div className="mb-1 flex items-center gap-1">
-              <div className="system-md-semibold-uppercase text-text-primary">
+              <h4 className="system-md-semibold-uppercase wrap-anywhere text-text-primary">
                 {t(($) => $[`plans.${type}.name`], { ns: 'billing' })}
-              </div>
+              </h4>
             </div>
             <div className="system-xs-regular text-util-colors-gray-gray-600">
               {t(($) => $[`plans.${type}.for`], { ns: 'billing' })}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1">
             {isCloudEdition && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
-              <Link className={buttonVariants({ variant: 'ghost' })} href="/education/verify">
-                <span className="i-ri-graduation-cap-line size-4" aria-hidden="true" />
+              <Link
+                className={cn(
+                  buttonVariants({ variant: 'ghost' }),
+                  'h-auto min-h-8 max-w-full wrap-anywhere whitespace-normal',
+                )}
+                href="/education/verify"
+              >
+                <span className="i-ri-graduation-cap-line size-4 shrink-0" aria-hidden="true" />
                 {t(($) => $.toVerified, { ns: 'education' })}
               </Link>
             )}
@@ -95,49 +99,60 @@ const PlanComp: FC<Props> = ({ loc }) => {
               isCurrentWorkspaceManager && (
                 <Button
                   variant="ghost"
+                  className="h-auto min-h-8 max-w-full wrap-anywhere whitespace-normal"
                   onClick={handleEducationDiscount}
                   disabled={isEducationDiscountLoading}
                 >
-                  <span className="i-ri-graduation-cap-line size-4" aria-hidden="true" />
+                  <span className="i-ri-graduation-cap-line size-4 shrink-0" aria-hidden="true" />
                   {t(($) => $.useEducationDiscount, { ns: 'education' })}
-                  {isEducationDiscountLoading && <Loading className="animate-spin-slow" />}
+                  {isEducationDiscountLoading && (
+                    <span
+                      aria-hidden
+                      className="i-custom-public-thought-loading h-3 w-3 animate-spin-slow"
+                    />
+                  )}
                 </Button>
               )}
             {isCloudEdition && (
-              <UpgradeBtn className="shrink-0" isPlain={type === 'team'} isShort loc={loc} />
+              <UpgradeBtn
+                className="max-w-full shrink-0"
+                isPlain={type === 'team'}
+                isShort
+                loc={loc}
+              />
             )}
           </div>
         </div>
       </div>
       {/* Plan detail */}
-      <div className="grid grid-cols-3 content-start gap-1 p-2">
+      <div className="grid grid-cols-1 content-start gap-1 p-2 @min-[28rem]/plan:grid-cols-2 @min-[42rem]/plan:grid-cols-3">
         <UsageInfo
-          Icon={RiApps2Line}
+          iconClassName="i-ri-apps-2-line"
           name={t(($) => $['usagePage.buildApps'], { ns: 'billing' })}
           usage={features.apps.size}
           total={parseLimit(features.apps.limit)}
         />
         <UsageInfo
-          Icon={RiGroupLine}
+          iconClassName="i-ri-group-line"
           name={t(($) => $['usagePage.teamMembers'], { ns: 'billing' })}
           usage={features.members.size}
           total={parseLimit(features.members.limit)}
         />
         <UsageInfo
-          Icon={RiBook2Line}
+          iconClassName="i-ri-book-2-line"
           name={t(($) => $['usagePage.documentsUploadQuota'], { ns: 'billing' })}
           usage={features.documents_upload_quota.size}
           total={parseLimit(features.documents_upload_quota.limit)}
         />
         <VectorSpaceInfo />
         <UsageInfo
-          Icon={RiFileEditLine}
+          iconClassName="i-ri-file-edit-line"
           name={t(($) => $['usagePage.annotationQuota'], { ns: 'billing' })}
           usage={features.annotation_quota_limit.size}
           total={parseLimit(features.annotation_quota_limit.limit)}
         />
         <UsageInfo
-          Icon={TriggerAll}
+          iconClassName={'i-custom-vender-workflow-trigger-all'}
           name={t(($) => $['usagePage.triggerEvents'], { ns: 'billing' })}
           usage={features.trigger_event.usage}
           total={triggerEventsLimit}
@@ -145,7 +160,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
           resetInDays={triggerEventsResetInDays}
         />
         <UsageInfo
-          Icon={ApiAggregate}
+          iconClassName={'i-custom-vender-workflow-api-aggregate'}
           name={t(($) => $['plansCommon.apiRateLimit'], { ns: 'billing' })}
           usage={features.api_rate_limit.usage}
           total={apiRateLimit}

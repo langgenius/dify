@@ -114,7 +114,7 @@ export type LoadedCreatorProfile = {
 }
 
 export type CreatorCreationAction =
-  | { type: 'link'; href: string }
+  | { type: 'link'; href: string; target?: '_blank' }
   | { type: 'select'; onSelect: () => void }
 
 export type CreatorProfileAdapterInput = {

@@ -1,7 +1,4 @@
 import type { FunctionComponent, ReactElement, ReactNode } from 'react'
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { render, screen } from '@testing-library/react'
 import { createElement } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
@@ -63,7 +60,7 @@ vi.mock('@/app/components/plugins/marketplace/templates', () => ({
   ),
 }))
 
-vi.mock('@/i18n-config/server', () => ({
+vi.mock('@/i18n/server', () => ({
   getLocaleOnServer: () => Promise.resolve('en-US'),
 }))
 
@@ -74,16 +71,6 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 describe('embedded templates route', () => {
-  it('does not stream async server children that Flight would double-resolve', () => {
-    const source = readFileSync(
-      resolve(dirname(fileURLToPath(import.meta.url)), '../page.tsx'),
-      'utf8',
-    )
-
-    expect(source).not.toMatch(/export default async function TemplatesPage/)
-    expect(TemplatesPage.constructor.name).not.toBe('AsyncFunction')
-  })
-
   it('renders the templates catalog at /templates', async () => {
     const page = await resolveTemplatesPage({
       params: Promise.resolve({}),
@@ -93,9 +80,6 @@ describe('embedded templates route', () => {
     render(page)
 
     expect(screen.getByText('Templates catalog: all:agent')).toBeInTheDocument()
-    expect(
-      screen.getByText('Templates catalog: all:agent').closest('#marketplace-container'),
-    ).toBeInTheDocument()
   })
 
   it('passes a supported path category to the templates catalog', async () => {

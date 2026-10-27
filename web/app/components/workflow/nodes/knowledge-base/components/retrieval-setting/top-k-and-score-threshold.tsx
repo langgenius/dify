@@ -1,5 +1,6 @@
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import {
   NumberField,
   NumberFieldControls,
@@ -9,8 +10,8 @@ import {
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { env } from '@/env'
 
 export type TopKFieldProps = {
@@ -54,7 +55,10 @@ export function TopKAndScoreThreshold({
   scoreThreshold,
   readonly,
 }: TopKAndScoreThresholdProps) {
-  const { t } = useTranslation()
+  const scoreThresholdLabelId = useId()
+  const topKLabelId = useId()
+
+  const { t } = useTranslation(['appDebug'])
   const topKLabel = t(($) => $['datasetConfig.top_k'], { ns: 'appDebug' })
   const scoreThresholdLabel = t(($) => $['datasetConfig.score_threshold'], { ns: 'appDebug' })
   const topKTip = t(($) => $['datasetConfig.top_kTip'], { ns: 'appDebug' })
@@ -66,9 +70,12 @@ export function TopKAndScoreThreshold({
     <div className="grid grid-cols-2 gap-4">
       <Field name="top_k" className="gap-0">
         <div className="mb-0.5 flex h-6 items-center">
-          <FieldLabel className="py-0 system-xs-medium text-text-secondary">{topKLabel}</FieldLabel>
-          <Infotip aria-label={topKTip} className="ml-0.5 size-3.5">
-            {topKTip}
+          <FieldLabel id={topKLabelId} className="py-0 system-xs-medium text-text-secondary">
+            {topKLabel}
+          </FieldLabel>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={topKLabelId} className="ml-0.5 size-3.5" />
+            <InfotipContent aria-labelledby={topKLabelId}>{topKTip}</InfotipContent>
           </Infotip>
         </div>
         <NumberField
@@ -93,17 +100,25 @@ export function TopKAndScoreThreshold({
           <FieldsetLegend className="sr-only">{scoreThresholdLabel}</FieldsetLegend>
           <Field name="score_threshold_enabled" className="mb-0.5 gap-0">
             <div className="flex h-6 items-center">
-              <FieldLabel className="flex w-full min-w-0 grow items-center py-0 system-sm-medium text-text-secondary">
+              <FieldLabel className="flex w-full min-w-0 grow cursor-pointer items-center py-0 system-sm-medium text-text-secondary has-data-disabled:cursor-not-allowed">
                 <Switch
                   className="mr-2"
                   checked={scoreThresholdEnabled}
                   onCheckedChange={scoreThreshold.onEnabledChange}
                   disabled={readonly}
                 />
-                <span className="grow truncate">{scoreThresholdLabel}</span>
+                <span id={scoreThresholdLabelId} className="grow truncate">
+                  {scoreThresholdLabel}
+                </span>
               </FieldLabel>
-              <Infotip aria-label={scoreThresholdTip} className="ml-0.5 size-3.5">
-                {scoreThresholdTip}
+              <Infotip>
+                <InfotipTrigger
+                  aria-labelledby={scoreThresholdLabelId}
+                  className="ml-0.5 size-3.5"
+                />
+                <InfotipContent aria-labelledby={scoreThresholdLabelId}>
+                  {scoreThresholdTip}
+                </InfotipContent>
               </Infotip>
             </div>
           </Field>

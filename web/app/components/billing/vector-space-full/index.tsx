@@ -9,7 +9,7 @@ import VectorSpaceInfo from '../usage-info/vector-space-info'
 import s from './style.module.css'
 
 const VectorSpaceFull: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
 
   return (
     <GridMask

@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "“{{name}}” kini menjadi basis pengetahuan Agent",
+  "upgrade.completeTitle": "Peningkatan selesai",
+  "upgrade.contactSupport": "Hubungi Dukungan",
+  "upgrade.dialogAvailability": "Setelah peningkatan, <strong>basis pengetahuan klasik dan basis pengetahuan Agent tetap dapat digunakan</strong>",
+  "upgrade.dialogDescription": "Tindakan ini meningkatkan <legacy>basis pengetahuan klasik</legacy> menjadi <new>basis pengetahuan Agent</new> beserta semua dokumen, pengaturan, dan koneksi aplikasi. Anda akan diarahkan ke basis pengetahuan Agent secara otomatis.",
+  "upgrade.dialogDuration": "Memerlukan beberapa menit hingga beberapa jam, tergantung ukurannya. Progres ditampilkan pada kartu basis pengetahuan",
+  "upgrade.dialogLinkedApps": "Aplikasi tertaut tetap mengambil informasi selama peningkatan",
+  "upgrade.dialogTitle": "Tingkatkan basis pengetahuan ini menjadi basis pengetahuan Agent?",
+  "upgrade.failedDescription": "Peningkatan gagal — tidak ada yang berubah. Basis pengetahuan klasik Anda masih tersedia.",
+  "upgrade.failedTitle": "Peningkatan gagal",
+  "upgrade.failedToastDescription": "“{{name}}” tetap menjadi basis pengetahuan klasik; tidak ada data yang berubah",
+  "upgrade.justNow": "Baru saja",
+  "upgrade.menuLabel": "Tingkatkan ke basis pengetahuan Agent",
+  "upgrade.migratingDocuments": "Memigrasikan dokumen…",
+  "upgrade.modelCostDescription": "Peningkatan menggunakan model untuk memproses dokumen dalam basis pengetahuan ini dan menggunakan token. Semakin banyak isi dokumen, biasanya semakin besar penggunaannya dan dapat menimbulkan biaya tinggi. Biaya sebenarnya bergantung pada cara penagihan model yang digunakan.",
+  "upgrade.start": "Mulai peningkatan",
+  "upgrade.startFailed": "Peningkatan tidak dapat dimulai. Coba lagi.",
+  "upgrade.statusFailed": "Peningkatan gagal",
+  "upgrade.statusUpgrading": "Sedang meningkatkan",
+  "upgrade.summary": "Basis pengetahuan: {{name}}",
+  "upgrade.upgradedJustNow": "Baru saja ditingkatkan"
+}

@@ -7,7 +7,7 @@ import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
@@ -48,7 +48,7 @@ export function EducationVerifyFlow({
 }: {
   requestVerification?: EducationVerificationRequest
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['education'])
   const router = useRouter()
   const { data: userEmail } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -187,7 +187,7 @@ function EducationVerifyContent({ children }: { children: ReactNode }) {
 function EducationVerifyLoading() {
   return (
     <EducationStatusCard
-      icon={<Loading />}
+      icon={<LoadingPlaceholder />}
       title={<span className="block h-5 w-40 animate-pulse rounded bg-background-section-burn" />}
     >
       <span className="block h-4 w-full max-w-100 animate-pulse rounded bg-background-section-burn" />
@@ -196,7 +196,7 @@ function EducationVerifyLoading() {
 }
 
 function EducationVerifiedContent() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['education', 'navigation'])
 
   return (
     <EducationVerifyContent>
@@ -208,7 +208,7 @@ function EducationVerifiedContent() {
         actions={
           <>
             <Link className={buttonVariants({ variant: 'primary' })} href="/?settings=billing">
-              {t(($) => $['settings.billing'], { ns: 'common' })}
+              {t(($) => $['settings.billing'], { ns: 'navigation' })}
             </Link>
             <Link className={buttonVariants({ variant: 'ghost-accent' })} href="/">
               <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
@@ -222,7 +222,7 @@ function EducationVerifiedContent() {
 }
 
 function EducationVerifyError({ onRetry }: { onRetry: () => void }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'education'])
 
   return (
     <EducationVerifyContent>

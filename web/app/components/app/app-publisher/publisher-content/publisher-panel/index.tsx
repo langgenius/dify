@@ -1,16 +1,16 @@
-import type { PopoverProps } from '@langgenius/dify-ui/popover'
+import type { PopoverChangeEventDetails } from '@langgenius/dify-ui/popover'
 import type { ComponentProps } from 'react'
 import type { AppPublisherProps } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
 import { BuiltInPublisher } from '../../built-in-publisher'
 import { PublisherEnvironmentFlow } from '../../environment-deployment-flow'
 
-type PublisherPanelProps = Pick<AppPublisherProps, 'crossAxisOffset' | 'disabled'> & {
-  builtInPublisher: ComponentProps<typeof BuiltInPublisher>
+type PublisherPanelProps = Pick<AppPublisherProps, 'alignOffset' | 'disabled'> & {
+  builtInPublisher: Omit<ComponentProps<typeof BuiltInPublisher>, 'keyboardTarget'>
   environmentPublisher: Omit<
     ComponentProps<typeof PublisherEnvironmentFlow>,
     'onConfigurationOpenChange'
@@ -24,7 +24,7 @@ type PublisherPanelProps = Pick<AppPublisherProps, 'crossAxisOffset' | 'disabled
 
 export function PublisherPanel({
   builtInPublisher,
-  crossAxisOffset = 0,
+  alignOffset,
   disabled = false,
   environmentPublisher,
   environmentPublisherKey,
@@ -33,9 +33,10 @@ export function PublisherPanel({
   showBuiltInPublisher,
   workflowLaunch,
 }: PublisherPanelProps) {
-  const { t } = useTranslation()
+  const popupRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['workflow'])
   const [deploymentConfigurationOpen, setDeploymentConfigurationOpen] = useState(false)
-  const handleOpenChange: NonNullable<PopoverProps['onOpenChange']> = (nextOpen, eventDetails) => {
+  const handleOpenChange = (nextOpen: boolean, eventDetails: PopoverChangeEventDetails) => {
     const isOutsideDismiss =
       eventDetails.reason === 'outside-press' || eventDetails.reason === 'focus-out'
     if (!nextOpen && deploymentConfigurationOpen && isOutsideDismiss) {
@@ -58,14 +59,15 @@ export function PublisherPanel({
         }
       />
       <PopoverContent
-        placement="bottom-end"
+        ref={popupRef}
+        align="end"
         sideOffset={4}
-        alignOffset={crossAxisOffset}
+        alignOffset={alignOffset}
         className="border-none bg-transparent shadow-none"
       >
         <div className="flex max-h-[calc(100dvh-32px)] w-88 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
           {showBuiltInPublisher ? (
-            <BuiltInPublisher {...builtInPublisher} />
+            <BuiltInPublisher {...builtInPublisher} keyboardTarget={popupRef} />
           ) : (
             <PublisherEnvironmentFlow
               key={environmentPublisherKey}

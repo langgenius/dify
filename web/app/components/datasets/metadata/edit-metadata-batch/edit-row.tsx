@@ -2,8 +2,10 @@
 import type { FC } from 'react'
 import type { MetadataItemWithEdit } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiDeleteBinLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
+import { useId } from 'react'
+import { useTranslation } from 'react-i18next'
 import { UpdateType } from '../types'
 import EditedBeacon from './edited-beacon'
 import InputCombined from './input-combined'
@@ -18,18 +20,22 @@ type Props = Readonly<{
 }>
 
 const EditMetadatabatchItem: FC<Props> = ({ payload, onChange, onRemove, onReset }) => {
+  const { t } = useTranslation(['common'])
+  const fieldId = useId()
+  const actionId = useId()
   const isUpdated = payload.isUpdated
   const isDeleted = payload.updateType === UpdateType.delete
   return (
     <div className="flex h-6 items-center space-x-0.5">
       {isUpdated ? (
-        <EditedBeacon onReset={() => onReset(payload.id)} />
+        <EditedBeacon fieldId={fieldId} onReset={() => onReset(payload.id)} />
       ) : (
-        <div className="size-4 shrink-0" />
+        <div className="size-6 shrink-0" />
       )}
-      <Label text={payload.name} isDeleted={isDeleted} />
+      <Label id={fieldId} text={payload.name} isDeleted={isDeleted} />
       {payload.isMultipleValue ? (
         <InputHasSetMultipleValue
+          fieldId={fieldId}
           onClear={() => onChange({ ...payload, value: null, isMultipleValue: false })}
           readOnly={isDeleted}
         />
@@ -43,15 +49,17 @@ const EditMetadatabatchItem: FC<Props> = ({ payload, onChange, onRemove, onReset
         />
       )}
 
-      <div
-        className={cn(
-          'cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive',
-          isDeleted && 'cursor-default bg-state-destructive-hover text-text-destructive',
-        )}
+      <span id={actionId} className="sr-only">
+        {t(($) => $['operation.delete'], { ns: 'common' })}
+      </span>
+      <IconButton
+        aria-labelledby={`${actionId} ${fieldId}`}
+        tone="destructive"
+        className={cn(isDeleted && 'bg-state-destructive-hover text-text-destructive')}
         onClick={() => onRemove(payload.id)}
       >
-        <RiDeleteBinLine className="size-4" />
-      </div>
+        <span className="i-ri-delete-bin-line size-4" aria-hidden="true" />
+      </IconButton>
     </div>
   )
 }

@@ -16,9 +16,24 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.trigger.provider import PluginTriggerProviderController
+from core.trigger.trigger_manager import TriggerManager
 from models.engine import db
+from models.provider_ids import TriggerProviderID
 from models.tools import BuiltinToolProvider
 from services.plugin.plugin_parameter_service import PluginParameterService
+from tests.unit_tests.core.trigger.conftest import make_controller
+
+
+@pytest.fixture(autouse=True)
+def trigger_declaration(monkeypatch: pytest.MonkeyPatch) -> None:
+    def resolve(tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController:
+        controller = make_controller(tenant_id=tenant_id, provider_id=str(provider_id))
+        controller.plugin_id = provider_id.plugin_id
+        controller.plugin_unique_identifier = f"{provider_id.plugin_id}:1.0.0@{'a' * 32}"
+        return controller
+
+    monkeypatch.setattr(TriggerManager, "get_trigger_provider", resolve)
 
 
 @pytest.fixture
@@ -39,14 +54,16 @@ class TestGetDynamicSelectOptionsTool:
     @patch("services.plugin.plugin_parameter_service.ToolManager")
     def test_no_credentials_needed(self, mock_tool_mgr, mock_client_cls):
         provider_ctrl = MagicMock()
+        provider_ctrl.entity.identity.name = "google"
+        provider_ctrl.plugin_unique_identifier = "org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         provider_ctrl.need_credentials = False
-        mock_tool_mgr.get_builtin_provider.return_value = provider_ctrl
+        mock_tool_mgr.get_plugin_provider.return_value = provider_ctrl
         mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
 
         result = PluginParameterService.get_dynamic_select_options(
             tenant_id="t1",
             user_id="u1",
-            plugin_id="p1",
+            plugin_id="org/plugin",
             provider="google",
             action="search",
             parameter="engine",
@@ -70,8 +87,10 @@ class TestGetDynamicSelectOptionsTool:
     ) -> None:
         tenant_id = str(uuid4())
         provider_ctrl = MagicMock()
+        provider_ctrl.entity.identity.name = "google"
+        provider_ctrl.plugin_unique_identifier = "org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         provider_ctrl.need_credentials = True
-        mock_tool_mgr.get_builtin_provider.return_value = provider_ctrl
+        mock_tool_mgr.get_plugin_provider.return_value = provider_ctrl
         encrypter = MagicMock()
         encrypter.decrypt.return_value = {"api_key": "decrypted"}
         mock_encrypter_fn.return_value = (encrypter, None)
@@ -91,7 +110,7 @@ class TestGetDynamicSelectOptionsTool:
         result = PluginParameterService.get_dynamic_select_options(
             tenant_id=tenant_id,
             user_id="u1",
-            plugin_id="p1",
+            plugin_id="org/plugin",
             provider="google",
             action="search",
             parameter="engine",
@@ -110,15 +129,17 @@ class TestGetDynamicSelectOptionsTool:
         plugin_parameter_db: Session,
     ) -> None:
         provider_ctrl = MagicMock()
+        provider_ctrl.entity.identity.name = "google"
+        provider_ctrl.plugin_unique_identifier = "org/plugin:1.0.0@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         provider_ctrl.need_credentials = True
-        mock_tool_mgr.get_builtin_provider.return_value = provider_ctrl
+        mock_tool_mgr.get_plugin_provider.return_value = provider_ctrl
         mock_encrypter_fn.return_value = (MagicMock(), None)
 
         with pytest.raises(ValueError, match="not found"):
             PluginParameterService.get_dynamic_select_options(
                 tenant_id=str(uuid4()),
                 user_id="u1",
-                plugin_id="p1",
+                plugin_id="org/plugin",
                 provider="google",
                 action="search",
                 parameter="engine",
@@ -215,7 +236,7 @@ class TestGetDynamicSelectOptionsWithCredentials:
         result = PluginParameterService.get_dynamic_select_options_with_credentials(
             tenant_id="t1",
             user_id="u1",
-            plugin_id="p1",
+            plugin_id="org/plugin",
             provider="github",
             action="on_push",
             parameter="branch",
@@ -237,7 +258,7 @@ class TestGetDynamicSelectOptionsWithCredentials:
             PluginParameterService.get_dynamic_select_options_with_credentials(
                 tenant_id="t1",
                 user_id="u1",
-                plugin_id="p1",
+                plugin_id="org/plugin",
                 provider="github",
                 action="on_push",
                 parameter="branch",

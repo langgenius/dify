@@ -1,11 +1,16 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import type { ComponentProps } from 'react'
+import type ImageUploader from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ChunkingMode } from '@/models/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { SegmentDetail } from '../segment-detail'
 
 // Mock dataset detail context
-let mockIndexingTechnique = IndexingType.QUALIFIED
+let mockIndexingTechnique: IndexingType = IndexingType.QUALIFIED
 let mockRuntimeMode = 'general'
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
@@ -22,9 +27,13 @@ vi.mock('@/context/dataset-detail', () => ({
 
 // Mock document context
 let mockParentMode = 'paragraph'
+let mockDocForm: ChunkingMode = ChunkingMode.text
+let mockCanEdit = true
 vi.mock('../../context', () => ({
-  useDocumentContext: (selector: (state: { parentMode: string }) => unknown) => {
-    return selector({ parentMode: mockParentMode })
+  useDocumentContext: (
+    selector: (state: { parentMode: string; canEdit: boolean; docForm: ChunkingMode }) => unknown,
+  ) => {
+    return selector({ parentMode: mockParentMode, canEdit: mockCanEdit, docForm: mockDocForm })
   },
 }))
 
@@ -43,557 +52,204 @@ vi.mock('../index', () => ({
   },
 }))
 
-// Mock event emitter context
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: vi.fn(),
-    },
-  }),
-}))
-
-vi.mock('../common/action-buttons', () => ({
-  ActionButtons: ({
-    handleCancel,
-    handleSave,
-    handleRegeneration,
-    loading,
-    showRegenerationButton,
-  }: {
-    handleCancel: () => void
-    handleSave: () => void
-    handleRegeneration?: () => void
-    loading: boolean
-    showRegenerationButton?: boolean
-  }) => (
-    <div data-testid="action-buttons">
-      <button onClick={handleCancel} data-testid="cancel-btn">
-        Cancel
-      </button>
-      <button onClick={handleSave} disabled={loading} data-testid="save-btn">
-        Save
-      </button>
-      {showRegenerationButton && (
-        <button onClick={handleRegeneration} data-testid="regenerate-btn">
-          Regenerate
-        </button>
-      )}
-    </div>
-  ),
-}))
-
-vi.mock('../common/chunk-content', () => ({
-  default: ({
-    docForm,
-    question,
-    answer,
-    onQuestionChange,
-    onAnswerChange,
-    isEditMode,
-  }: {
-    docForm: string
-    question: string
-    answer: string
-    onQuestionChange: (v: string) => void
-    onAnswerChange: (v: string) => void
-    isEditMode: boolean
-  }) => (
-    <div data-testid="chunk-content">
-      <input
-        data-testid="question-input"
-        value={question}
-        onChange={(e) => onQuestionChange(e.target.value)}
-      />
-      {docForm === ChunkingMode.qa && (
-        <input
-          data-testid="answer-input"
-          value={answer}
-          onChange={(e) => onAnswerChange(e.target.value)}
-        />
-      )}
-      <span data-testid="edit-mode">{isEditMode ? 'editing' : 'viewing'}</span>
-    </div>
-  ),
-}))
-
-vi.mock('../common/dot', () => ({
-  default: () => <span data-testid="dot">•</span>,
-}))
-
-vi.mock('../common/keywords', () => ({
-  default: ({
-    keywords,
-    onKeywordsChange,
-    _isEditMode,
-    actionType,
-  }: {
-    keywords: string[]
-    onKeywordsChange: (v: string[]) => void
-    _isEditMode?: boolean
-    actionType: string
-  }) => (
-    <div data-testid="keywords">
-      <span data-testid="keywords-action">{actionType}</span>
-      <input
-        data-testid="keywords-input"
-        value={keywords.join(',')}
-        onChange={(e) => onKeywordsChange(e.target.value.split(',').filter(Boolean))}
-      />
-    </div>
-  ),
-}))
-
-vi.mock('../common/segment-index-tag', () => ({
-  SegmentIndexTag: ({
-    positionId,
-    label,
-    labelPrefix,
-  }: {
-    positionId?: string
-    label?: string
-    labelPrefix?: string
-  }) => (
-    <span data-testid="segment-index-tag">
-      {labelPrefix} {positionId} {label}
-    </span>
-  ),
-}))
-
-vi.mock('../common/regeneration-modal', () => ({
-  default: ({
-    isShow,
-    onConfirm,
-    onCancel,
-    onClose,
-  }: {
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-    onClose: () => void
-  }) =>
-    isShow ? (
-      <div data-testid="regeneration-modal">
-        <button onClick={onConfirm} data-testid="confirm-regeneration">
-          Confirm
-        </button>
-        <button onClick={onCancel} data-testid="cancel-regeneration">
-          Cancel
-        </button>
-        <button onClick={onClose} data-testid="close-regeneration">
-          Close
-        </button>
-      </div>
-    ) : null,
-}))
-
+// Upload transport is covered by the uploader suite. Keep its public value contract here.
+let uploaderProps: ComponentProps<typeof ImageUploader>
 vi.mock('@/app/components/datasets/common/image-uploader/image-uploader-in-chunk', () => ({
-  default: ({
-    disabled,
-    value,
-    onChange,
-  }: {
-    value?: unknown[]
-    onChange?: (v: unknown[]) => void
-    disabled?: boolean
-  }) => {
-    return (
-      <div data-testid="image-uploader">
-        <span data-testid="uploader-disabled">{disabled ? 'disabled' : 'enabled'}</span>
-        <span data-testid="attachments-count">{value?.length || 0}</span>
-        <button
-          data-testid="add-attachment-btn"
-          onClick={() => onChange?.([...(value || []), { id: 'new-attachment' }])}
-        >
-          Add
-        </button>
-      </div>
-    )
+  default: (props: ComponentProps<typeof ImageUploader>) => {
+    uploaderProps = props
+    return null
   },
 }))
-
-describe('SegmentDetail', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockFullScreen = false
-    mockIndexingTechnique = IndexingType.QUALIFIED
-    mockRuntimeMode = 'general'
-    mockParentMode = 'paragraph'
-  })
-
-  const defaultSegInfo = {
-    id: 'segment-1',
-    content: 'Test content',
-    sign_content: 'Signed content',
-    answer: 'Test answer',
-    position: 1,
-    word_count: 100,
-    keywords: ['keyword1', 'keyword2'],
-    attachments: [],
+const segment = {
+  id: 'segment-1',
+  content: 'Original content',
+  answer: 'Original answer',
+  position: 1,
+  word_count: 16,
+  keywords: ['keyword1', 'keyword2'],
+  attachments: [],
+}
+const props = {
+  segInfo: segment,
+  onUpdate: vi.fn(),
+  onCancel: vi.fn(),
+  isEditMode: true,
+  docForm: ChunkingMode.text,
+}
+function setup(overrides: Partial<ComponentProps<typeof SegmentDetail>> = {}) {
+  let emit!: (event: string) => void
+  function CaptureEmitter() {
+    const { eventEmitter } = useEventEmitterContextContext()
+    emit = (event) => eventEmitter!.emit(event)
+    return null
   }
+  render(
+    <EventEmitterContextProvider>
+      <CaptureEmitter />
+      <SegmentDetail {...props} {...overrides} />
+    </EventEmitterContextProvider>,
+  )
+  return { emit: (event: string) => act(() => emit(event)) }
+}
+beforeEach(() => {
+  mockFullScreen = false
+  mockIndexingTechnique = IndexingType.QUALIFIED
+  mockRuntimeMode = 'general'
+  mockParentMode = 'paragraph'
+  mockDocForm = ChunkingMode.text
+  mockCanEdit = true
+})
 
-  const defaultProps = {
-    segInfo: defaultSegInfo,
-    onUpdate: vi.fn(),
-    onCancel: vi.fn(),
-    isEditMode: false,
-    docForm: ChunkingMode.text,
+it('saves edited content with its segment identity and blocks duplicate saves during updates', async () => {
+  const user = userEvent.setup()
+  const { emit } = setup()
+  const content = screen.getByRole('textbox', {
+    name: 'datasetDocuments.segment.contentPlaceholder',
+  })
+  await user.clear(content)
+  await user.type(content, 'Edited content')
+  await user.click(screen.getByRole('button', { name: /common.operation.save/ }))
+  expect(props.onUpdate).toHaveBeenCalledExactlyOnceWith(
+    'segment-1',
+    'Edited content',
+    'Original answer',
+    ['keyword1', 'keyword2'],
+    [],
+    '',
+    false,
+  )
+  emit('update-segment')
+  const save = screen.getByRole('button', { name: /common.operation.save/ })
+  expect(save).toBeDisabled()
+  await user.click(save)
+  expect(props.onUpdate).toHaveBeenCalledTimes(1)
+  emit('update-segment-done')
+  expect(save).toBeEnabled()
+})
+
+it('saves QA edits and updated economy keywords together', async () => {
+  const user = userEvent.setup()
+  mockIndexingTechnique = IndexingType.ECONOMICAL
+  mockDocForm = ChunkingMode.qa
+  setup({ docForm: ChunkingMode.qa })
+  await user.clear(screen.getByRole('textbox', { name: 'ANSWER' }))
+  await user.type(screen.getByRole('textbox', { name: 'ANSWER' }), 'Edited answer')
+  await user.click(screen.getByRole('button', { name: 'common.operation.remove keyword1' }))
+  await user.type(screen.getByPlaceholderText('datasetDocuments.segment.addKeyWord'), 'new{Enter}')
+  await user.click(screen.getByRole('button', { name: /common.operation.save/ }))
+  expect(props.onUpdate).toHaveBeenCalledWith(
+    'segment-1',
+    'Original content',
+    'Edited answer',
+    ['keyword2', 'new'],
+    [],
+    '',
+    false,
+  )
+})
+
+it('preserves loaded attachments and forwards uploaded attachment changes on save', async () => {
+  const user = userEvent.setup()
+  setup({
+    segInfo: {
+      ...segment,
+      attachments: [
+        {
+          id: 'att-1',
+          name: 'photo.jpg',
+          size: 10,
+          mime_type: 'image/jpeg',
+          extension: 'jpg',
+          source_url: '/photo.jpg',
+        },
+      ],
+    },
+  })
+  expect(uploaderProps.value).toEqual([
+    expect.objectContaining({ uploadedId: 'att-1', sourceUrl: '/photo.jpg', progress: 100 }),
+  ])
+  const added = {
+    id: 'local-2',
+    uploadedId: 'att-2',
+    name: 'new.jpg',
+    size: 20,
+    mimeType: 'image/jpeg',
+    extension: 'jpg',
+    progress: 100,
   }
-
-  describe('Rendering', () => {
-    it('should render title for view mode', () => {
-      render(<SegmentDetail {...defaultProps} isEditMode={false} />)
-
-      expect(screen.getByText(/segment\.chunkDetail/i))!.toBeInTheDocument()
-    })
-
-    it('should render title for edit mode', () => {
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      expect(screen.getByText(/segment\.editChunk/i))!.toBeInTheDocument()
-    })
-
-    it('should render chunk content component', () => {
-      render(<SegmentDetail {...defaultProps} />)
-
-      expect(screen.getByTestId('chunk-content'))!.toBeInTheDocument()
-    })
-
-    it('should render image uploader', () => {
-      render(<SegmentDetail {...defaultProps} />)
-
-      expect(screen.getByTestId('image-uploader'))!.toBeInTheDocument()
-    })
-
-    it('should render segment index tag', () => {
-      render(<SegmentDetail {...defaultProps} />)
-
-      expect(screen.getByTestId('segment-index-tag'))!.toBeInTheDocument()
-    })
-  })
-
-  // Edit mode vs View mode
-  describe('Edit/View Mode', () => {
-    it('should pass isEditMode to ChunkContent', () => {
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      expect(screen.getByTestId('edit-mode'))!.toHaveTextContent('editing')
-    })
-
-    it('should disable image uploader in view mode', () => {
-      render(<SegmentDetail {...defaultProps} isEditMode={false} />)
-
-      expect(screen.getByTestId('uploader-disabled'))!.toHaveTextContent('disabled')
-    })
-
-    it('should enable image uploader in edit mode', () => {
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      expect(screen.getByTestId('uploader-disabled'))!.toHaveTextContent('enabled')
-    })
-
-    it('should show action buttons in edit mode', () => {
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
-    })
-
-    it('should not show action buttons in view mode (non-fullscreen)', () => {
-      render(<SegmentDetail {...defaultProps} isEditMode={false} />)
-
-      expect(screen.queryByTestId('action-buttons')).not.toBeInTheDocument()
-    })
-  })
-
-  // Keywords display
-  describe('Keywords', () => {
-    it('should show keywords component when indexing is ECONOMICAL', () => {
-      mockIndexingTechnique = IndexingType.ECONOMICAL
-
-      render(<SegmentDetail {...defaultProps} />)
-
-      expect(screen.getByTestId('keywords'))!.toBeInTheDocument()
-    })
-
-    it('should not show keywords when indexing is QUALIFIED', () => {
-      mockIndexingTechnique = IndexingType.QUALIFIED
-
-      render(<SegmentDetail {...defaultProps} />)
-
-      expect(screen.queryByTestId('keywords')).not.toBeInTheDocument()
-    })
-
-    it('should pass view action type when not in edit mode', () => {
-      mockIndexingTechnique = IndexingType.ECONOMICAL
-
-      render(<SegmentDetail {...defaultProps} isEditMode={false} />)
-
-      expect(screen.getByTestId('keywords-action'))!.toHaveTextContent('view')
-    })
-
-    it('should pass edit action type when in edit mode', () => {
-      mockIndexingTechnique = IndexingType.ECONOMICAL
-
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      expect(screen.getByTestId('keywords-action'))!.toHaveTextContent('edit')
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onCancel when close button is clicked', () => {
-      const mockOnCancel = vi.fn()
-      render(<SegmentDetail {...defaultProps} onCancel={mockOnCancel} />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
-
-      expect(mockOnCancel).toHaveBeenCalled()
-    })
-
-    it('should call toggleFullScreen when expand button is clicked', () => {
-      render(<SegmentDetail {...defaultProps} />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.zoomIn' }))
-
-      expect(mockToggleFullScreen).toHaveBeenCalled()
-    })
-
-    it('should call onUpdate when save is clicked', () => {
-      const mockOnUpdate = vi.fn()
-      render(<SegmentDetail {...defaultProps} isEditMode={true} onUpdate={mockOnUpdate} />)
-
-      fireEvent.click(screen.getByTestId('save-btn'))
-
-      expect(mockOnUpdate).toHaveBeenCalledWith(
-        'segment-1',
-        expect.any(String),
-        expect.any(String),
-        expect.any(Array),
-        expect.any(Array),
-        expect.any(String),
-        expect.any(Boolean),
-      )
-    })
-
-    it('should update question when input changes', () => {
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      fireEvent.change(screen.getByTestId('question-input'), {
-        target: { value: 'Updated content' },
-      })
-
-      expect(screen.getByTestId('question-input'))!.toHaveValue('Updated content')
-    })
-  })
-
-  // Regeneration Modal
-  describe('Regeneration Modal', () => {
-    it('should show regeneration button when runtimeMode is general', () => {
-      mockRuntimeMode = 'general'
-
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      expect(screen.getByTestId('regenerate-btn'))!.toBeInTheDocument()
-    })
-
-    it('should not show regeneration button when runtimeMode is not general', () => {
-      mockRuntimeMode = 'pipeline'
-
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      expect(screen.queryByTestId('regenerate-btn')).not.toBeInTheDocument()
-    })
-
-    it('should show regeneration modal when regenerate is clicked', () => {
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      fireEvent.click(screen.getByTestId('regenerate-btn'))
-
-      expect(screen.getByTestId('regeneration-modal'))!.toBeInTheDocument()
-    })
-
-    it('should close modal when cancel is clicked', () => {
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-      fireEvent.click(screen.getByTestId('regenerate-btn'))
-
-      fireEvent.click(screen.getByTestId('cancel-regeneration'))
-
-      expect(screen.queryByTestId('regeneration-modal')).not.toBeInTheDocument()
-    })
-  })
-
-  // Full screen mode
-  describe('Full Screen Mode', () => {
-    it('should show action buttons in header when fullScreen and editMode', () => {
-      mockFullScreen = true
-
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
-    })
-
-    it('should apply full screen styling when fullScreen is true', () => {
-      mockFullScreen = true
-
-      const { container } = render(<SegmentDetail {...defaultProps} />)
-
-      const header = container.querySelector('.border-divider-subtle')
-      expect(header)!.toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty keywords array', () => {
-      mockIndexingTechnique = IndexingType.ECONOMICAL
-      const segInfo = { ...defaultSegInfo, keywords: [] }
-
-      render(<SegmentDetail {...defaultProps} segInfo={segInfo} />)
-
-      expect(screen.getByTestId('keywords-input'))!.toHaveValue('')
-    })
-
-    it('should maintain structure when rerendered', () => {
-      const { rerender } = render(<SegmentDetail {...defaultProps} isEditMode={false} />)
-
-      rerender(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
-    })
-  })
-
-  // Attachments
-  describe('Attachments', () => {
-    it('should update attachments when onChange is called', () => {
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      fireEvent.click(screen.getByTestId('add-attachment-btn'))
-
-      expect(screen.getByTestId('attachments-count'))!.toHaveTextContent('1')
-    })
-
-    it('should pass attachments to onUpdate when save is clicked', () => {
-      const mockOnUpdate = vi.fn()
-      render(<SegmentDetail {...defaultProps} isEditMode={true} onUpdate={mockOnUpdate} />)
-
-      // Add an attachment
-      fireEvent.click(screen.getByTestId('add-attachment-btn'))
-
-      fireEvent.click(screen.getByTestId('save-btn'))
-
-      expect(mockOnUpdate).toHaveBeenCalledWith(
-        'segment-1',
-        expect.any(String),
-        expect.any(String),
-        expect.any(Array),
-        expect.arrayContaining([expect.objectContaining({ id: 'new-attachment' })]),
-        expect.any(String),
-        expect.any(Boolean),
-      )
-    })
-
-    it('should initialize attachments from segInfo', () => {
-      const segInfoWithAttachments = {
-        ...defaultSegInfo,
-        attachments: [
-          {
-            id: 'att-1',
-            name: 'file1.jpg',
-            size: 1000,
-            mime_type: 'image/jpeg',
-            extension: 'jpg',
-            source_url: 'http://example.com/file1.jpg',
-          },
-        ],
-      }
-
-      render(<SegmentDetail {...defaultProps} segInfo={segInfoWithAttachments} isEditMode={true} />)
-
-      expect(screen.getByTestId('attachments-count'))!.toHaveTextContent('1')
-    })
-  })
-
-  // Regeneration confirmation
-  describe('Regeneration Confirmation', () => {
-    it('should call onUpdate with needRegenerate true when confirm regeneration is clicked', () => {
-      const mockOnUpdate = vi.fn()
-      render(<SegmentDetail {...defaultProps} isEditMode={true} onUpdate={mockOnUpdate} />)
-
-      // Open regeneration modal
-      fireEvent.click(screen.getByTestId('regenerate-btn'))
-
-      fireEvent.click(screen.getByTestId('confirm-regeneration'))
-
-      expect(mockOnUpdate).toHaveBeenCalledWith(
-        'segment-1',
-        expect.any(String),
-        expect.any(String),
-        expect.any(Array),
-        expect.any(Array),
-        expect.any(String),
-        true,
-      )
-    })
-
-    it('should close modal and edit drawer when close after regeneration is clicked', () => {
-      const mockOnCancel = vi.fn()
-      render(<SegmentDetail {...defaultProps} isEditMode={true} onCancel={mockOnCancel} />)
-
-      fireEvent.click(screen.getByTestId('regenerate-btn'))
-
-      fireEvent.click(screen.getByTestId('close-regeneration'))
-
-      expect(mockOnCancel).toHaveBeenCalled()
-    })
-  })
-
-  // QA mode
-  describe('QA Mode', () => {
-    it('should render answer input in QA mode', () => {
-      render(<SegmentDetail {...defaultProps} docForm={ChunkingMode.qa} isEditMode={true} />)
-
-      expect(screen.getByTestId('answer-input'))!.toBeInTheDocument()
-    })
-
-    it('should update answer when input changes', () => {
-      render(<SegmentDetail {...defaultProps} docForm={ChunkingMode.qa} isEditMode={true} />)
-
-      fireEvent.change(screen.getByTestId('answer-input'), {
-        target: { value: 'Updated answer' },
-      })
-
-      expect(screen.getByTestId('answer-input'))!.toHaveValue('Updated answer')
-    })
-
-    it('should calculate word count correctly in QA mode', () => {
-      render(<SegmentDetail {...defaultProps} docForm={ChunkingMode.qa} isEditMode={true} />)
-
-      // Assert - should show combined length of question and answer
-      // Assert - should show combined length of question and answer
-      expect(screen.getByText(/segment\.characters/i))!.toBeInTheDocument()
-    })
-  })
-
-  // Full doc mode
-  describe('Full Doc Mode', () => {
-    it('should show label in full-doc parent-child mode', () => {
-      mockParentMode = 'full-doc'
-
-      render(<SegmentDetail {...defaultProps} docForm={ChunkingMode.parentChild} />)
-
-      expect(screen.getByTestId('segment-index-tag'))!.toBeInTheDocument()
-    })
-  })
-
-  // Keywords update
-  describe('Keywords Update', () => {
-    it('should update keywords when changed in edit mode', () => {
-      mockIndexingTechnique = IndexingType.ECONOMICAL
-      render(<SegmentDetail {...defaultProps} isEditMode={true} />)
-
-      fireEvent.change(screen.getByTestId('keywords-input'), {
-        target: { value: 'new,keywords' },
-      })
-
-      expect(screen.getByTestId('keywords-input'))!.toHaveValue('new,keywords')
-    })
-  })
+  act(() => uploaderProps.onChange([...uploaderProps.value!, added]))
+  await user.click(screen.getByRole('button', { name: /common.operation.save/ }))
+  expect(props.onUpdate).toHaveBeenCalledWith(
+    'segment-1',
+    'Original content',
+    'Original answer',
+    segment.keywords,
+    [expect.objectContaining({ uploadedId: 'att-1' }), added],
+    '',
+    false,
+  )
+})
+
+it.each([false, true])('withholds editing for view mode or readonly access (%s)', (readonly) => {
+  mockCanEdit = !readonly
+  setup({ isEditMode: readonly })
+  expect(screen.queryByRole('button', { name: /common.operation.save/ })).not.toBeInTheDocument()
+  expect(uploaderProps.disabled).toBe(true)
+})
+
+it('cancels a draft without saving', async () => {
+  const user = userEvent.setup()
+  setup()
+  await user.type(
+    screen.getByRole('textbox', { name: 'datasetDocuments.segment.contentPlaceholder' }),
+    ' draft',
+  )
+  await user.click(screen.getByRole('button', { name: /common.operation.cancel/ }))
+  expect(props.onCancel).toHaveBeenCalledOnce()
+  expect(props.onUpdate).not.toHaveBeenCalled()
+})
+
+it('requires confirmation to regenerate parent-child segments and closes after successful regeneration', async () => {
+  const user = userEvent.setup()
+  mockDocForm = ChunkingMode.parentChild
+  const { emit } = setup({ docForm: ChunkingMode.parentChild })
+  await user.click(screen.getByRole('button', { name: 'common.operation.saveAndRegenerate' }))
+  await user.click(
+    within(await screen.findByRole('alertdialog')).getByRole('button', {
+      name: 'common.operation.cancel',
+    }),
+  )
+  expect(props.onUpdate).not.toHaveBeenCalled()
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  await user.click(screen.getByRole('button', { name: 'common.operation.saveAndRegenerate' }))
+  await user.click(
+    within(await screen.findByRole('alertdialog')).getByRole('button', {
+      name: 'common.operation.regenerate',
+    }),
+  )
+  expect(props.onUpdate).toHaveBeenCalledWith(
+    'segment-1',
+    'Original content',
+    'Original answer',
+    segment.keywords,
+    [],
+    '',
+    true,
+  )
+  emit('update-segment')
+  emit('update-segment-success')
+  emit('update-segment-done')
+  await user.click(
+    within(screen.getByRole('alertdialog')).getByRole('button', { name: /common.operation.close/ }),
+  )
+  expect(props.onCancel).toHaveBeenCalledOnce()
+})
+
+it('withholds manual regeneration for pipeline documents', () => {
+  mockDocForm = ChunkingMode.parentChild
+  mockRuntimeMode = 'rag_pipeline'
+  setup({ docForm: ChunkingMode.parentChild })
+  expect(
+    screen.queryByRole('button', { name: 'common.operation.saveAndRegenerate' }),
+  ).not.toBeInTheDocument()
 })

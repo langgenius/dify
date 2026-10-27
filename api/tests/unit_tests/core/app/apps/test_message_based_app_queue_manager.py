@@ -17,7 +17,7 @@ from core.app.entities.queue_entities import (
 
 
 class TestMessageBasedAppQueueManager:
-    def test_publish_stops_on_terminal_events(self):
+    def test_publish_stops_on_terminal_events(self) -> None:
         with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
             mock_redis.setex.return_value = True
             manager = MessageBasedAppQueueManager(
@@ -35,7 +35,7 @@ class TestMessageBasedAppQueueManager:
         manager._publish(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL), Mock())
         manager.stop_listen.assert_called_once()
 
-    def test_publish_raises_when_stopped(self):
+    def test_publish_raises_when_stopped(self) -> None:
         with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
             mock_redis.setex.return_value = True
             manager = MessageBasedAppQueueManager(
@@ -52,7 +52,7 @@ class TestMessageBasedAppQueueManager:
         with pytest.raises(GenerateTaskStoppedError):
             manager._publish(QueueErrorEvent(error=ValueError("boom")), PublishFrom.APPLICATION_MANAGER)
 
-    def test_publish_enqueues_message_end(self):
+    def test_publish_enqueues_message_end(self) -> None:
         with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
             mock_redis.setex.return_value = True
             manager = MessageBasedAppQueueManager(
@@ -71,7 +71,7 @@ class TestMessageBasedAppQueueManager:
 
         assert manager._q.qsize() == 1
 
-    def test_publish_pause_event_marks_listener_as_paused(self):
+    def test_publish_pause_event_marks_listener_as_paused(self) -> None:
         with patch("core.app.apps.base_app_queue_manager.redis_client") as mock_redis:
             mock_redis.setex.return_value = True
             manager = MessageBasedAppQueueManager(
@@ -89,11 +89,11 @@ class TestMessageBasedAppQueueManager:
 
         manager.stop_listen.assert_called_once_with(execution_state=AppExecutionState.PAUSED)
 
-    def test_pause_state_is_preserved_when_advanced_chat_message_ends(self):
+    def test_pause_state_is_preserved_when_advanced_chat_message_ends(self) -> None:
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as queue_redis,
             patch("core.app.apps.execution_coordinator.redis_client") as execution_redis,
-            patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
         ):
             queue_redis.get.return_value = None
             manager = MessageBasedAppQueueManager(
@@ -115,4 +115,4 @@ class TestMessageBasedAppQueueManager:
             assert isinstance(messages[0].event, QueueWorkflowPausedEvent)
             assert manager.execution_state is AppExecutionState.PAUSED
             execution_redis.setex.assert_not_called()
-            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            send_abort_command.assert_not_called()

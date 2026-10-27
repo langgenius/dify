@@ -26,17 +26,17 @@ def _make_conversation(*, conversation_id: str = "conv1") -> Conversation:
         app_id="app",
         mode=AppMode.AGENT_CHAT,
         name="Agent Conversation",
-        inputs={},
+        _inputs={},
         from_source=ConversationFromSource.API,
     )
 
 
 def _make_message(*, message_id: str = "msg-id", conversation_id: str = "conv1") -> Message:
-    return Message(
+    message = Message(
         id=message_id,
         app_id="app",
         conversation_id=conversation_id,
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         answer="",
@@ -45,8 +45,9 @@ def _make_message(*, message_id: str = "msg-id", conversation_id: str = "conv1")
         answer_unit_price=Decimal(0),
         currency="USD",
         from_source=ConversationFromSource.API,
-        created_at=naive_utc_now(),
     )
+    message.created_at = naive_utc_now()
+    return message
 
 
 class DummyRunner(CotAgentRunner):

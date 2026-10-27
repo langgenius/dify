@@ -1,5 +1,4 @@
 'use client'
-import type { InitValidateStatusResponse } from '@/models/common'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
@@ -8,15 +7,11 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
-import {
-  fetchInitValidateStatus,
-  fetchSetupStatus,
-  sendForgotPasswordEmail,
-} from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { basePath } from '@/utils/var'
-import Loading from '../components/base/loading'
 
 type ForgotPasswordFormValues = {
   email: string
@@ -27,7 +22,7 @@ const emailSchema = z.email('error.emailInValid').min(1, {
 })
 
 const ForgotPasswordForm = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'login'])
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isEmailSent, setIsEmailSent] = useState(false)
@@ -43,10 +38,7 @@ const ForgotPasswordForm = () => {
 
     setIsSubmitting(true)
     try {
-      const res = await sendForgotPasswordEmail({
-        url: '/forgot-password',
-        body: { email },
-      })
+      const res = await consoleClient.forgotPassword.post({ body: { email } })
       if (res.result === 'success') setIsEmailSent(true)
       else console.error('Email verification failed')
     } catch (error) {
@@ -57,8 +49,8 @@ const ForgotPasswordForm = () => {
   }
 
   useEffect(() => {
-    fetchSetupStatus().then(() => {
-      fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
+    consoleClient.setup.get().then(() => {
+      consoleClient.init.get().then((res) => {
         if (res.status === 'not_started') window.location.href = `${basePath}/init`
       })
 
@@ -67,7 +59,7 @@ const ForgotPasswordForm = () => {
   }, [])
 
   return loading ? (
-    <Loading />
+    <LoadingPlaceholder />
   ) : (
     <>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -93,7 +85,7 @@ const ForgotPasswordForm = () => {
               <Field
                 name="email"
                 validate={(value) =>
-                  emailSchema.safeParse(value).success
+                  emailSchema.validate(value)
                     ? null
                     : t(($) => $['error.emailInValid'], { ns: 'login' })
                 }

@@ -25,6 +25,12 @@ class InvalidActionError(BaseHTTPException):
     code = 400
 
 
+class DatasetAccessDeniedRequestError(BaseHTTPException):
+    error_code = "dataset_access_denied"
+    description = "Dataset access denied."
+    code = 403
+
+
 class DocumentAlreadyFinishedError(BaseHTTPException):
     error_code = "document_already_finished"
     description = "The document has been processed. Please refresh the page or go to the document details."
@@ -47,12 +53,6 @@ class WebsiteCrawlError(BaseHTTPException):
     error_code = "crawl_failed"
     description = "{message}"
     code = 500
-
-
-class DatasetInUseError(BaseHTTPException):
-    error_code = "dataset_in_use"
-    description = "The dataset is being used by some apps. Please remove the dataset from the apps before deleting it."
-    code = 409
 
 
 class IndexingEstimateError(BaseHTTPException):

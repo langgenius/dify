@@ -1,11 +1,11 @@
 'use client'
 
-import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
+import { EnvironmentApiKeyButton } from './environment-api-key-button'
 
 type EnvironmentServiceApiCardProps = {
   appId: string
@@ -20,8 +20,13 @@ export function EnvironmentServiceApiCard({
   canManageAccessPoint,
   highlighted,
 }: EnvironmentServiceApiCardProps) {
-  const { t } = useTranslation()
-  const appMode = useAppStore((state) => state.appDetail?.mode)
+  const { t } = useTranslation(['common'])
+  const { data: appMode } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+      select: (appDetail) => appDetail.mode,
+    }),
+  )
   const params = {
     app_id: appId,
     environment_id: environmentId,
@@ -65,13 +70,15 @@ export function EnvironmentServiceApiCard({
 
   return (
     <ServiceApiCardView
-      apiKeyButtonProps={{
-        appId,
-        environmentId,
-        apiKeyCount: api?.api_key_count,
-        canManage: canManageAccessPoint,
-        disabled: !apiQuery.isSuccess,
-      }}
+      apiKeyAction={
+        <EnvironmentApiKeyButton
+          appId={appId}
+          environmentId={environmentId}
+          apiKeyCount={api?.api_key_count}
+          canManage={canManageAccessPoint}
+          disabled={!apiQuery.isSuccess}
+        />
+      }
       apiUrl={api?.base_url ?? ''}
       appMode={appMode}
       available={apiQuery.isSuccess}

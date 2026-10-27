@@ -1,69 +1,59 @@
 import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor } from '@testing-library/react'
+import type { marketplaceClient } from '@/service/marketplace'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { MARKETPLACE_API_PREFIX } from '@/config'
+import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
+import { createTestQueryClient } from '@/test/query-client'
+import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins } from '../query'
 
-vi.mock('@/config', () => ({
-  API_PREFIX: '/api',
-  APP_VERSION: '1.0.0',
-  IS_MARKETPLACE: false,
-  MARKETPLACE_API_PREFIX: 'https://marketplace.dify.ai/api/v1',
+const { mockCollections, mockCollectionPlugins, mockSearchAdvanced } = vi.hoisted(() => ({
+  mockCollections: vi.fn<typeof marketplaceClient.collections>(),
+  mockCollectionPlugins: vi.fn<typeof marketplaceClient.collectionPlugins>(),
+  mockSearchAdvanced: vi.fn<typeof marketplaceClient.searchAdvanced>(),
 }))
 
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: (path: string) => `https://marketplace.dify.ai${path}`,
-}))
-
-const mockCollections = vi.fn()
-const mockCollectionPlugins = vi.fn()
-const mockSearchAdvanced = vi.fn()
-
-vi.mock('@/service/marketplace', () => ({
+vi.mock('@/service/marketplace', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/marketplace')>()),
   marketplaceClient: {
-    collections: (...args: unknown[]) => mockCollections(...args),
-    collectionPlugins: (...args: unknown[]) => mockCollectionPlugins(...args),
-    searchAdvanced: (...args: unknown[]) => mockSearchAdvanced(...args),
-  },
-  marketplaceQuery: {
-    collections: {
-      queryKey: (params: unknown) => ['marketplace', 'collections', params],
-    },
-    searchAdvanced: {
-      queryKey: (params: unknown) => ['marketplace', 'searchAdvanced', params],
-    },
+    collections: mockCollections,
+    collectionPlugins: mockCollectionPlugins,
+    searchAdvanced: mockSearchAdvanced,
   },
 }))
-
-const createConsoleQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
-    },
-  })
 
 const createWrapper = () => {
-  const queryClient = createConsoleQueryClient()
+  const queryClient = createTestQueryClient()
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
   return { Wrapper, queryClient }
 }
 
-describe('useMarketplaceCollectionsAndPlugins', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+beforeEach(() => {
+  mockCollections.mockReset()
+  mockCollectionPlugins.mockReset()
+  mockSearchAdvanced.mockReset()
+})
 
+describe('useMarketplaceCollectionsAndPlugins', () => {
   it('should fetch collections and plugins data', async () => {
     const mockCollectionData = [
-      { name: 'col-1', label: {}, description: {}, rule: '', created_at: '', updated_at: '' },
+      {
+        name: 'col-1',
+        label: { en_US: 'Featured' },
+        description: {},
+        rule: '',
+        created_at: '2026-06-01T00:00:00Z',
+        updated_at: '2026-06-01T00:00:00Z',
+      },
     ]
-    const mockPluginData = [{ type: 'plugin', org: 'test', name: 'plugin1', tags: [] }]
+    const mockPluginData = [createMarketplacePluginFixture({ org: 'test', name: 'plugin1' })]
 
     mockCollections.mockResolvedValue({ data: { collections: mockCollectionData } })
     mockCollectionPlugins.mockResolvedValue({ data: { plugins: mockPluginData } })
 
-    const { useMarketplaceCollectionsAndPlugins } = await import('../query')
     const { Wrapper } = createWrapper()
     const { result } = renderHook(
       () => useMarketplaceCollectionsAndPlugins({ condition: 'category=tool', type: 'plugin' }),
@@ -74,32 +64,18 @@ describe('useMarketplaceCollectionsAndPlugins', () => {
       expect(result.current.data).toBeDefined()
     })
 
-    expect(result.current.data?.marketplaceCollections).toBeDefined()
-    expect(result.current.data?.marketplaceCollectionPluginsMap).toBeDefined()
-  })
-
-  it('should handle empty collections params', async () => {
-    mockCollections.mockResolvedValue({ data: { collections: [] } })
-
-    const { useMarketplaceCollectionsAndPlugins } = await import('../query')
-    const { Wrapper } = createWrapper()
-    const { result } = renderHook(() => useMarketplaceCollectionsAndPlugins({}), {
-      wrapper: Wrapper,
-    })
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true)
-    })
+    expect(result.current.data?.marketplaceCollections).toEqual(mockCollectionData)
+    expect(result.current.data?.marketplaceCollectionPluginsMap['col-1']).toEqual([
+      expect.objectContaining({
+        name: 'plugin1',
+        icon: `${MARKETPLACE_API_PREFIX}/plugins/test/plugin1/icon`,
+      }),
+    ])
   })
 })
 
 describe('useMarketplacePlugins', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should not fetch when queryParams is undefined', async () => {
-    const { useMarketplacePlugins } = await import('../query')
     const { Wrapper } = createWrapper()
     const { result } = renderHook(() => useMarketplacePlugins(undefined), { wrapper: Wrapper })
 
@@ -111,12 +87,11 @@ describe('useMarketplacePlugins', () => {
   it('should fetch plugins when queryParams is provided', async () => {
     mockSearchAdvanced.mockResolvedValue({
       data: {
-        plugins: [{ type: 'plugin', org: 'test', name: 'p1', tags: [] }],
+        plugins: [createMarketplacePluginFixture({ org: 'test', name: 'p1' })],
         total: 1,
       },
     })
 
-    const { useMarketplacePlugins } = await import('../query')
     const { Wrapper } = createWrapper()
     const { result } = renderHook(
       () =>
@@ -136,18 +111,38 @@ describe('useMarketplacePlugins', () => {
     })
 
     expect(result.current.data?.pages).toHaveLength(1)
-    expect(result.current.data?.pages[0]!.plugins).toHaveLength(1)
+    expect(result.current.data?.pages[0]?.plugins).toEqual([
+      expect.objectContaining({
+        name: 'p1',
+        icon: `${MARKETPLACE_API_PREFIX}/plugins/test/p1/icon`,
+      }),
+    ])
+    expect(mockSearchAdvanced).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { kind: 'plugins' },
+        body: {
+          page: 1,
+          page_size: 40,
+          query: 'test',
+          sort_by: 'install_count',
+          sort_order: 'DESC',
+          category: 'tool',
+          tags: [],
+        },
+      },
+      { signal: expect.any(AbortSignal) },
+    )
   })
 
   it('should handle bundle type in query params', async () => {
     mockSearchAdvanced.mockResolvedValue({
       data: {
-        bundles: [{ type: 'bundle', org: 'test', name: 'b1', tags: [] }],
+        plugins: [],
+        bundles: [createMarketplacePluginFixture({ type: 'bundle', org: 'test', name: 'b1' })],
         total: 1,
       },
     })
 
-    const { useMarketplacePlugins } = await import('../query')
     const { Wrapper } = createWrapper()
     const { result } = renderHook(
       () =>
@@ -158,15 +153,19 @@ describe('useMarketplacePlugins', () => {
       { wrapper: Wrapper },
     )
 
-    await waitFor(() => {
-      expect(result.current.data).toBeDefined()
-    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data?.pages[0]?.plugins).toEqual([
+      expect.objectContaining({ name: 'b1', type: 'bundle' }),
+    ])
+    expect(mockSearchAdvanced).toHaveBeenCalledWith(
+      expect.objectContaining({ params: { kind: 'bundles' } }),
+      expect.any(Object),
+    )
   })
 
   it('should surface API errors instead of an empty success', async () => {
     mockSearchAdvanced.mockRejectedValue(new Error('Network error'))
 
-    const { useMarketplacePlugins } = await import('../query')
     const { Wrapper } = createWrapper()
     const { result } = renderHook(
       () =>
@@ -187,33 +186,29 @@ describe('useMarketplacePlugins', () => {
     expect(result.current.error).toEqual(new Error('Network error'))
   })
 
-  it('should determine next page correctly via getNextPageParam', async () => {
-    // Return enough data that there would be a next page
-    mockSearchAdvanced.mockResolvedValue({
-      data: {
-        plugins: Array.from({ length: 40 }, (_, i) => ({
-          type: 'plugin',
-          org: 'test',
-          name: `p${i}`,
-          tags: [],
-        })),
-        total: 100,
-      },
-    })
-
-    const { useMarketplacePlugins } = await import('../query')
+  it('requests the next page and stops when the reported total is reached', async () => {
+    const plugin = (name: string) => createMarketplacePluginFixture({ org: 'test', name })
+    mockSearchAdvanced
+      .mockResolvedValueOnce({ data: { plugins: [plugin('p1'), plugin('p2')], total: 3 } })
+      .mockResolvedValueOnce({ data: { plugins: [plugin('p3')], total: 3 } })
     const { Wrapper } = createWrapper()
     const { result } = renderHook(
-      () =>
-        useMarketplacePlugins({
-          query: 'paginated',
-          page_size: 40,
-        }),
+      () => useMarketplacePlugins({ query: 'paginated', page_size: 2 }),
       { wrapper: Wrapper },
     )
-
-    await waitFor(() => {
-      expect(result.current.hasNextPage).toBe(true)
+    await waitFor(() => expect(result.current.hasNextPage).toBe(true))
+    await act(async () => {
+      await result.current.fetchNextPage()
     })
+    await waitFor(() => expect(result.current.hasNextPage).toBe(false))
+    expect(
+      result.current.data?.pages.flatMap((page) => page.plugins.map((item) => item.name)),
+    ).toEqual(['p1', 'p2', 'p3'])
+    expect(mockSearchAdvanced).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ page: 2, page_size: 2, query: 'paginated' }),
+      }),
+      expect.any(Object),
+    )
   })
 })

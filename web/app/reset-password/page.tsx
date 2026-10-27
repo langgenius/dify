@@ -3,19 +3,19 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel, FieldValidity } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
+import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
-import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { sendResetPasswordCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '../components/signin/storage'
 
 export default function CheckCode() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -28,11 +28,11 @@ export default function CheckCode() {
     if (loading) return
     try {
       setLoading(true)
-      const res = await sendResetPasswordCode(email, locale)
+      const res = await consoleClient.forgotPassword.post({ body: { email, language: locale } })
       if (res.result === 'success') {
         setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
-        params.set('token', encodeURIComponent(res.data))
+        params.set('token', encodeURIComponent(res.data ?? ''))
         params.set('email', encodeURIComponent(email))
         router.push(`/reset-password/check-code?${params.toString()}`)
       } else {

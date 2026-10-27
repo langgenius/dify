@@ -12,7 +12,7 @@ from uuid import UUID
 import jwt
 import pytest
 from flask import Flask
-from sqlalchemy import update
+from sqlalchemy import null, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -42,7 +42,7 @@ from services.entities.file_grant_entities import FileGrantContext, FileGrantSco
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.file_grant_gateways import FILE_CONTENT_AUDIENCE, FileGrantFileGateway
 from services.file_grant_service import MAX_FILE_GRANT_REFS, FileGrantService
-from tests.unit_tests.file_grant_test_utils import issue_file_grant
+from tests.helpers.unit.file_grant_test_utils import issue_file_grant
 
 CONTROLLER_MODULE = "controllers.files.appdeploy_files"
 
@@ -126,7 +126,7 @@ def end_user(sqlite_session: Session) -> EndUser:
         tenant_id=TENANT_ID,
         app_id=APP_ID,
         type=EndUserType.APP_DEPLOY,
-        is_anonymous=True,
+        _is_anonymous=True,
         session_id="seeded",
         external_user_id="adp1.seeded",
     )
@@ -775,7 +775,7 @@ def test_content_disposition_follows_the_inline_whitelist(
 @pytest.mark.usefixtures("sqlite_db", "stored_bytes")
 def test_content_downloads_a_file_with_no_recorded_mime_type(app: Flask, sqlite_session: Session) -> None:
     upload_file = _persist_upload_file(sqlite_session, owner_id="anyone")
-    sqlite_session.execute(update(UploadFile).where(UploadFile.id == upload_file.id).values(mime_type=None))
+    sqlite_session.execute(update(UploadFile).where(UploadFile.id == upload_file.id).values(mime_type=null()))
     sqlite_session.commit()
     token = _content_token(file_id=upload_file.id, kind=FileKind.UPLOAD)
 

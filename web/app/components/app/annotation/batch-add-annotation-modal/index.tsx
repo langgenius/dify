@@ -1,27 +1,36 @@
 'use client'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine } from '@remixicon/react'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
+import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
-import { consoleQuery } from '@/service/console'
+import { annotationBatchImport } from '@/service/annotation'
+import { consoleClient, consoleQuery } from '@/service/console'
 import CSVDownloader from './csv-downloader'
 import CSVUploader from './csv-uploader'
 
-export enum ProcessStatus {
-  WAITING = 'waiting',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  ERROR = 'error',
-}
+export const ProcessStatus = {
+  WAITING: 'waiting',
+  PROCESSING: 'processing',
+  COMPLETED: 'completed',
+  ERROR: 'error',
+} as const
+
+export type ProcessStatus = (typeof ProcessStatus)[keyof typeof ProcessStatus]
 
 export type IBatchModalProps = {
   appId: string
@@ -31,7 +40,7 @@ export type IBatchModalProps = {
 }
 
 const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -57,7 +66,9 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
   const checkProcess = async (jobID: string) => {
     try {
-      const res = await checkAnnotationBatchImportProgress({ jobID, appId })
+      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get({
+        params: { app_id: appId, job_id: jobID },
+      })
       setImportStatus(res.job_status)
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
@@ -79,10 +90,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
     const formData = new FormData()
     formData.append('file', csv)
     try {
-      const res = await annotationBatchImport({
-        url: `/apps/${appId}/annotations/batch-import`,
-        body: formData,
-      })
+      const res = await annotationBatchImport(appId, formData)
       setImportStatus(res.job_status)
       checkProcess(res.job_id)
     } catch (e: any) {
@@ -98,30 +106,30 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   }
 
   return (
-    <Dialog open={isShow}>
-      <DialogContent className="w-full max-w-130! overflow-hidden! rounded-xl! border-none px-8 py-6 text-left align-middle">
-        <div className="relative pb-1 system-xl-medium text-text-primary">
-          {t(($) => $['batchModal.title'], { ns: 'appAnnotation' })}
-        </div>
-        <button
-          type="button"
-          className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          onClick={onCancel}
-        >
-          <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
-        </button>
-        <CSVUploader file={currentCSV} updateFile={handleFile} />
-        <CSVDownloader />
+    <Dialog
+      open={isShow}
+      disablePointerDismissal
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <DialogContent className="w-130">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['batchModal.title'], { ns: 'appAnnotation' })}</DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          <CSVUploader file={currentCSV} updateFile={handleFile} />
+          <CSVDownloader />
 
-        {isAnnotationFull && (
-          <div className="mt-4">
-            <AnnotationFull />
-          </div>
-        )}
-
-        <div className="mt-7 flex justify-end pt-6">
-          <Button className="mr-2 system-sm-medium text-text-tertiary" onClick={onCancel}>
+          {isAnnotationFull && (
+            <div className="mt-4">
+              <AnnotationFull />
+            </div>
+          )}
+        </DialogBody>
+        <DialogFooter>
+          <Button className="system-sm-medium text-text-tertiary" onClick={onCancel}>
             {t(($) => $['batchModal.cancel'], { ns: 'appAnnotation' })}
           </Button>
           <Button
@@ -134,7 +142,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
           >
             {t(($) => $['batchModal.run'], { ns: 'appAnnotation' })}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

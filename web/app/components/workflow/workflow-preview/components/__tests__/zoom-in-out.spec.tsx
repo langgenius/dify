@@ -1,112 +1,75 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createNode } from '../../../__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '../../../__tests__/workflow-test-env'
 import ZoomInOut from '../zoom-in-out'
 
-const { mockZoomIn, mockZoomOut, mockZoomTo, mockFitView, mockViewport } = vi.hoisted(() => ({
-  mockZoomIn: vi.fn(),
-  mockZoomOut: vi.fn(),
-  mockZoomTo: vi.fn(),
-  mockFitView: vi.fn(),
-  mockViewport: { zoom: 1 },
-}))
-
-vi.mock('reactflow', () => ({
-  useReactFlow: () => ({
-    zoomIn: mockZoomIn,
-    zoomOut: mockZoomOut,
-    zoomTo: mockZoomTo,
-    fitView: mockFitView,
-  }),
-  useViewport: () => mockViewport,
-}))
-
-const getZoomControls = () => {
-  const label = Array.from(document.querySelectorAll('button')).find((element) => {
-    return /^\d+%$/.test(element.textContent ?? '') && element.className.includes('w-8.5')
+const renderZoom = (zoom = 1) =>
+  renderWorkflowFlowComponent(<ZoomInOut />, {
+    nodes: [
+      createNode({ id: 'left', position: { x: 0, y: 0 }, width: 240, height: 80 }),
+      createNode({ id: 'right', position: { x: 1600, y: 400 }, width: 240, height: 80 }),
+    ],
+    reactFlowProps: {
+      fitView: false,
+      minZoom: 0.25,
+      maxZoom: 2,
+      defaultViewport: { x: 0, y: 0, zoom },
+    },
   })
-  const zoomOutIcon = document.querySelector('.i-ri-zoom-out-line')
-  const zoomInIcon = document.querySelector('.i-ri-zoom-in-line')
 
-  if (!label || !zoomOutIcon || !zoomInIcon) throw new Error('Missing zoom controls')
-
-  return {
-    zoomOutTrigger: zoomOutIcon.parentElement as HTMLElement,
-    label,
-    zoomInTrigger: zoomInIcon.parentElement as HTMLElement,
-  }
-}
-
-const openZoomMenu = () => {
-  fireEvent.click(getZoomControls().label)
-  return within(screen.getByRole('menu'))
+const zoomLabel = () => screen.getByRole('button', { name: /^\d+%$/ })
+const openZoomMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(zoomLabel())
+  return within(await screen.findByRole('menu'))
 }
 
 describe('workflow preview zoom controls', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockViewport.zoom = 1
+  it('zooms out and in and displays the resulting viewport scale', async () => {
+    const user = userEvent.setup()
+    renderZoom()
+
+    await user.click(screen.getByRole('button', { name: 'workflow.operator.zoomOut' }))
+    await waitFor(() => expect(zoomLabel()).toHaveAccessibleName('83%'))
+    await user.click(screen.getByRole('button', { name: 'workflow.operator.zoomIn' }))
+    await waitFor(() => expect(zoomLabel()).toHaveAccessibleName('100%'))
   })
 
-  // The inline controls should call the reactflow zoom handlers when the viewport is within range.
-  describe('Inline Controls', () => {
-    it('should zoom out and zoom in when the viewport is within the supported range', () => {
-      render(<ZoomInOut />)
+  it.each([
+    { zoom: 0.25, control: 'workflow.operator.zoomOut', label: '25%' },
+    { zoom: 2, control: 'workflow.operator.zoomIn', label: '200%' },
+  ])('disables $control at $label', async ({ zoom, control, label }) => {
+    const user = userEvent.setup()
+    renderZoom(zoom)
+    const button = screen.getByRole('button', { name: control })
 
-      const { zoomOutTrigger, zoomInTrigger } = getZoomControls()
-
-      fireEvent.click(zoomOutTrigger)
-      fireEvent.click(zoomInTrigger)
-
-      expect(mockZoomOut).toHaveBeenCalledTimes(1)
-      expect(mockZoomIn).toHaveBeenCalledTimes(1)
-    })
-
-    it('should block zooming out when the viewport is already at the minimum scale', () => {
-      mockViewport.zoom = 0.25
-      render(<ZoomInOut />)
-
-      fireEvent.click(getZoomControls().zoomOutTrigger)
-
-      expect(mockZoomOut).not.toHaveBeenCalled()
-    })
-
-    it('should block zooming in when the viewport is already at the maximum scale', () => {
-      mockViewport.zoom = 2
-      render(<ZoomInOut />)
-
-      fireEvent.click(getZoomControls().zoomInTrigger)
-
-      expect(mockZoomIn).not.toHaveBeenCalled()
-    })
+    expect(button).toBeDisabled()
+    await user.click(button)
+    expect(zoomLabel()).toHaveAccessibleName(label)
   })
 
-  // Preset menu actions should route to the correct reactflow commands.
-  describe('Preset Menu', () => {
-    it.each([
-      ['25%', 0.25],
-      ['50%', 0.5],
-      ['75%', 0.75],
-      ['100%', 1],
-      ['200%', 2],
-    ])('should zoom to %s when selecting that preset', (label, zoom) => {
-      render(<ZoomInOut />)
+  it.each(['25%', '50%', '75%', '100%', '200%'])(
+    'applies the %s preset from a click',
+    async (label) => {
+      const user = userEvent.setup()
+      renderZoom(label === '100%' ? 0.75 : 1)
+      const menu = await openZoomMenu(user)
 
-      const portal = openZoomMenu()
+      await user.click(menu.getByRole('menuitem', { name: new RegExp(`^${label}`) }))
 
-      fireEvent.click(portal.getByText(label))
+      await waitFor(() => expect(zoomLabel()).toHaveAccessibleName(label))
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    },
+  )
 
-      expect(mockZoomTo).toHaveBeenCalledWith(zoom)
-      expect(mockFitView).not.toHaveBeenCalled()
-    })
+  it('fits the graph from the menu', async () => {
+    const user = userEvent.setup()
+    renderZoom()
+    const menu = await openZoomMenu(user)
 
-    it('should fit the viewport when selecting the fit option', () => {
-      render(<ZoomInOut />)
+    await user.click(menu.getByRole('menuitem', { name: /^workflow\.operator\.zoomToFit/ }))
 
-      const portal = openZoomMenu()
-
-      fireEvent.click(portal.getByText('workflow.operator.zoomToFit'))
-
-      expect(mockFitView).toHaveBeenCalledTimes(1)
-      expect(mockZoomTo).not.toHaveBeenCalled()
-    })
+    await waitFor(() => expect(zoomLabel()).toHaveAccessibleName('25%'))
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 })

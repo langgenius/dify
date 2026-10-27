@@ -8,9 +8,9 @@ import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
+import dynamic from 'next/dynamic'
 import { useCallback, useState } from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import dynamic from '@/next/dynamic'
 import { useTriggerEventsLimitModal } from './hooks/use-trigger-events-limit-modal'
 import { ModalContext } from './modal-context'
 
@@ -51,9 +51,12 @@ const OpeningSettingModal = dynamic(
     ssr: false,
   },
 )
-const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugin'), {
-  ssr: false,
-})
+const InstallFromGitHub = dynamic(
+  () => import('@/app/components/plugins/install-plugin/install-from-github'),
+  {
+    ssr: false,
+  },
+)
 
 const TriggerEventsLimitModal = dynamic(
   () => import('@/app/components/billing/trigger-events-limit-modal'),
@@ -125,9 +128,10 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   }, [showExternalKnowledgeAPIModal])
 
   const handleSaveExternalApiModal = useCallback(
-    async (updatedFormValue: CreateExternalAPIReq) => {
+    // Callers refresh their API list; the created API is not passed back.
+    async () => {
       if (showExternalKnowledgeAPIModal?.onSaveCallback)
-        showExternalKnowledgeAPIModal.onSaveCallback(updatedFormValue)
+        showExternalKnowledgeAPIModal.onSaveCallback()
       setShowExternalKnowledgeAPIModal(null)
     },
     [showExternalKnowledgeAPIModal],
@@ -256,13 +260,13 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
         )}
 
         {!!showUpdatePluginModal && (
-          <UpdatePlugin
-            {...showUpdatePluginModal.payload}
-            onCancel={() => {
+          <InstallFromGitHub
+            updatePayload={showUpdatePluginModal.payload.github}
+            onClose={() => {
               setShowUpdatePluginModal(null)
               showUpdatePluginModal.onCancelCallback?.()
             }}
-            onSave={() => {
+            onSuccess={() => {
               if (showUpdatePluginModal.payload.category !== PluginCategoryEnum.model) {
                 setShowUpdatePluginModal(null)
                 showUpdatePluginModal.onSaveCallback?.()

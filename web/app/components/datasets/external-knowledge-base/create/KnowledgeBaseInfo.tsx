@@ -9,7 +9,7 @@ type KnowledgeBaseInfoProps = {
 }
 
 const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const nameInputId = React.useId()
   const descriptionInputId = React.useId()
 

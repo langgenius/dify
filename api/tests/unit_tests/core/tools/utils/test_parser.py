@@ -1,7 +1,8 @@
 from json.decoder import JSONDecodeError
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
+import httpx
 import pytest
 from flask import Flask
 from yaml import YAMLError
@@ -326,16 +327,20 @@ def test_parse_openai_plugin_json_branches(app):
 
 def test_parse_openai_plugin_json_http_branches(app):
     with app.test_request_context():
-        response = type("Resp", (), {"status_code": 500, "text": "", "close": Mock()})()
+        response = httpx.Response(500, stream=httpx.ByteStream(b""))
+        assert not response.is_closed
         with patch("core.tools.utils.parser.ssrf_proxy.get", return_value=response):
             with pytest.raises(ToolProviderNotFoundError, match="cannot get openapi yaml"):
                 ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
                     '{"api": {"url": "https://x", "type": "openapi"}}'
                 )
-        response.close.assert_called_once()
+        assert response.is_closed
 
-        success_response = type("Resp", (), {"status_code": 200, "text": "openapi: 3.0.0", "close": Mock()})()
-        with patch("core.tools.utils.parser.ssrf_proxy.get", return_value=success_response):
+        success_response = httpx.Response(200, text="openapi: 3.0.0")
+        with (
+            patch("core.tools.utils.parser.ssrf_proxy.get", return_value=success_response),
+            patch.object(success_response, "close", wraps=success_response.close) as close,
+        ):
             with patch(
                 "core.tools.utils.parser.ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle",
                 return_value=["bundle"],
@@ -345,7 +350,8 @@ def test_parse_openai_plugin_json_http_branches(app):
                 )
         assert bundles == ["bundle"]
         mock_parse.assert_called_once()
-        success_response.close.assert_called_once()
+        close.assert_called_once_with()
+        assert success_response.is_closed
 
 
 def test_auto_parse_json_yaml_failure():

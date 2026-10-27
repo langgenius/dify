@@ -18,7 +18,7 @@ export function EmptyState({
   error,
   actions = {},
 }: EmptyStateProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   if (variant === 'loading') {
     return (

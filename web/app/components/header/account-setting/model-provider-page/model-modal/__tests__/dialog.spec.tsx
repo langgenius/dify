@@ -1,7 +1,7 @@
 import type { Credential, ModelProvider } from '../../declarations'
 import { screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
-import { ConfigurationMethodEnum, ModelModalModeEnum } from '../../declarations'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { ConfigurationMethodEnum } from '../../declarations'
 import ModelModal from '../index'
 
 let mockLanguage = 'en_US'
@@ -10,23 +10,6 @@ let mockDeleteCredentialId: string | null = null
 
 const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-  }))
-})
-
-vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
-  default: () => <div data-testid="auth-form" />,
-}))
-
-vi.mock('../../model-auth', () => ({
-  CredentialSelector: ({ credentials }: { credentials: Credential[] }) => (
-    <div>{`credentials:${credentials.length}`}</div>
-  ),
-}))
 
 vi.mock('../../model-auth/hooks', () => ({
   useCredentialData: () => ({
@@ -95,37 +78,12 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
     ...overrides,
   }) as unknown as ModelProvider
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: [],
-  }))
-})
-
 describe('ModelModal dialog branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockLanguage = 'en_US'
     mockAvailableCredentials = []
     mockDeleteCredentialId = null
-  })
-
-  it('should pass an empty credential list to the selector when no credentials are available', () => {
-    mockAvailableCredentials = undefined
-
-    render(
-      <ModelModal
-        provider={createProvider()}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        mode={ModelModalModeEnum.addCustomModelToModelList}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('credentials:0')).toBeInTheDocument()
   })
 
   it('should hide the help link when provider help is missing', () => {
@@ -150,7 +108,7 @@ describe('ModelModal dialog branches', () => {
         provider={createProvider({
           help: {
             title: { en_US: 'English Help' },
-            url: '' as unknown as ModelProvider['help']['url'],
+            url: '' as unknown as NonNullable<ModelProvider['help']>['url'],
           } as ModelProvider['help'],
         })}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}

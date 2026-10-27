@@ -15,7 +15,7 @@ type Props = Readonly<{
 }>
 
 const SubscriptionCard = ({ data, pluginDetail }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'pluginTrigger'])
   const [isShowDeleteModal, { setTrue: showDeleteModal, setFalse: hideDeleteModal }] =
     useBoolean(false)
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
@@ -65,7 +65,7 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
                 {data.endpoint}
               </PopoverTrigger>
               <PopoverContent
-                placement="left"
+                side="left"
                 className="max-w-[320px] px-3 py-2 system-xs-regular break-all text-text-tertiary"
               >
                 {data.endpoint}

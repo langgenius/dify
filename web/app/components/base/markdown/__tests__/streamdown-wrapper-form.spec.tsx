@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const { mockOnSend } = vi.hoisted(() => ({
@@ -36,6 +36,7 @@ describe('StreamdownWrapper Markdown form field names', () => {
 `
 
     render(<StreamdownWrapper latexContent={content} mode="static" />)
+    await act(() => vi.dynamicImportSettled())
 
     expect(screen.getByPlaceholderText('mixed-width')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('full-width')).toBeInTheDocument()
@@ -71,6 +72,7 @@ describe('StreamdownWrapper Markdown form field names', () => {
 </form>`
 
     render(<StreamdownWrapper latexContent={content} />)
+    await act(() => vi.dynamicImportSettled())
 
     expect(await screen.findByRole('button', { name: '提交' })).toBeInTheDocument()
     expect(screen.queryByText('*')).not.toBeInTheDocument()

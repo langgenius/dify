@@ -1,4 +1,4 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Given, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 

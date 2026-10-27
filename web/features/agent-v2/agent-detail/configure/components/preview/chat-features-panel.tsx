@@ -136,7 +136,7 @@ function AgentChatFeaturesPanelContent({
   show,
   onClose,
 }: AgentChatFeaturesPanelProps) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const featuresStore = useFeaturesStore()
   const setAppFeatures = useSetAppFeatures()
   const handleChange = useCallback(() => {

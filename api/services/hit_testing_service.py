@@ -183,7 +183,10 @@ class HitTestingService:
                 created_by=account.id,
             )
             session.add(dataset_query)
-        session.commit()
+            # Stage the query log without committing: the caller owns the session
+            # (e.g. `with_session`), and committing here would close a caller-managed
+            # transaction before the document lookup below runs. See #38998.
+            session.flush()
 
         return cls.compact_retrieve_response(query, all_documents, session=session)
 

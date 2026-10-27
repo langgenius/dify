@@ -46,6 +46,7 @@ from core.helper.trace_id_helper import get_external_trace_id, get_trace_session
 from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import UUIDStrOrEmpty
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
@@ -174,6 +175,13 @@ register_response_schema_models(
 
 @service_api_ns.route("/completion-messages")
 class CompletionApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @service_api_ns.doc(
         summary="Send Completion Message",
         description="Send a request to the text generation application.",
@@ -254,32 +262,33 @@ class CompletionApi(Resource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except AgentAppNotPublishedError:
-            raise AgentNotPublishedError()
+            raise AppUnavailableError() from caught_error
+        except AgentAppNotPublishedError as caught_error:
+            raise AgentNotPublishedError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @service_api_ns.route("/completion-messages/<string:task_id>/stop")
 class CompletionStopApi(Resource):
+    @error_responses(AppUnavailableError)
     @service_api_ns.doc(
         summary="Stop Completion Message Generation",
         description="Stops a completion message generation task. Only supported in `streaming` mode.",
@@ -312,6 +321,8 @@ class CompletionStopApi(Resource):
             raise AppUnavailableError()
 
         AppTaskService.stop_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
             task_id=task_id,
             invoke_from=InvokeFrom.SERVICE_API,
             user_id=end_user.id,
@@ -323,6 +334,17 @@ class CompletionStopApi(Resource):
 
 @service_api_ns.route("/chat-messages")
 class ChatApi(Resource):
+    @error_responses(
+        AgentNotPublishedError,
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        WorkflowVersionExecutionNotAllowedError,
+    )
     @service_api_ns.doc(
         summary="Send Chat Message",
         description="Send a request to the chat application.",
@@ -433,39 +455,40 @@ class ChatApi(Resource):
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except WorkflowNotFoundError as ex:
-            raise NotFound(str(ex))
+            raise NotFound(str(ex)) from ex
         except IsDraftWorkflowError as ex:
-            raise BadRequest(str(ex))
+            raise BadRequest(str(ex)) from ex
         except WorkflowIdFormatError as ex:
-            raise BadRequest(str(ex))
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+            raise BadRequest(str(ex)) from ex
+        except services.errors.conversation.ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
+        except services.errors.conversation.ConversationCompletedError as caught_error:
+            raise ConversationCompletedError() from caught_error
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except AgentAppNotPublishedError:
-            raise AgentNotPublishedError()
+            raise AppUnavailableError() from caught_error
+        except AgentAppNotPublishedError as caught_error:
+            raise AgentNotPublishedError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
+            raise InvokeRateLimitHttpError(ex.description) from ex
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
-        except Exception:
+        except Exception as caught_error:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from caught_error
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")
 class ChatStopApi(Resource):
+    @error_responses(NotChatAppError)
     @service_api_ns.doc(
         summary="Stop Chat Message Generation",
         description="Stops a chat message generation task. Only supported in `streaming` mode.",
@@ -499,6 +522,8 @@ class ChatStopApi(Resource):
             raise NotChatAppError()
 
         AppTaskService.stop_task(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
             task_id=task_id,
             invoke_from=InvokeFrom.SERVICE_API,
             user_id=end_user.id,

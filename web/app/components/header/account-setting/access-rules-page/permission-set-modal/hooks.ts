@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 
 export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission', 'permissionKeys'])
   const permissionCatalogQueryOptions =
     consoleQuery.workspaces.current.rbac.rolePermissions.catalog[resourceType].get.queryOptions({
       input: {},

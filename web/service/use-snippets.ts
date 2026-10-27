@@ -1,8 +1,8 @@
+import type { InputVar as SnippetInputFieldUIModel } from '@/models/pipeline'
 import type {
   SnippetCanvasData,
   SnippetDetailPayload,
   SnippetDetail as SnippetDetailUIModel,
-  SnippetInputField as SnippetInputFieldUIModel,
   SnippetListItem as SnippetListItemUIModel,
 } from '@/models/snippet'
 import type {
@@ -98,7 +98,7 @@ const toSnippetCanvasData = (workflow?: SnippetWorkflow | null): SnippetCanvasDa
 
   if (!graph || typeof graph !== 'object') return DEFAULT_GRAPH
 
-  const graphRecord = graph as Record<string, unknown>
+  const graphRecord = graph
 
   return {
     nodes: Array.isArray(graphRecord.nodes)

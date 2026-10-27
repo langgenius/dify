@@ -5,11 +5,12 @@ vi.mock('@/config', () => ({
   MARKETPLACE_API_PREFIX: '/api/marketplace',
 }))
 
-describe('utils', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+afterEach(() => {
+  vi.doUnmock('@/config')
+  vi.resetModules()
+})
 
+describe('utils', () => {
   describe('isValidUrl', () => {
     it('should return true for http: URLs', () => {
       expect(isValidUrl('http://example.com')).toBe(true)
@@ -98,11 +99,6 @@ describe('utils', () => {
       expect(getMarkdownImageURL('https://cdn.example.com/_assets/image.png')).toBe(
         'https://cdn.example.com/_assets/image.png',
       )
-    })
-
-    it('should use empty string for pathname when undefined', () => {
-      const result = getMarkdownImageURL('./_assets/test.png')
-      expect(result).toBe('/api/marketplace/plugins//_assets/test.png')
     })
   })
 

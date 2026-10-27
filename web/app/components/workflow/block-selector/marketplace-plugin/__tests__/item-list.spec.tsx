@@ -1,7 +1,8 @@
-import { render, renderHook, screen } from '@testing-library/react'
+import { renderHook, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createPlugin } from '../../__tests__/factories'
 import useStickyScroll, { ScrollPosition } from '../../use-sticky-scroll'
 import Item from '../item'
@@ -39,26 +40,9 @@ vi.mock(
   }),
 )
 
-vi.mock('../action', () => ({
-  default: ({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) => (
-    <button type="button" onClick={() => onOpenChange(!open)}>
-      marketplace-action
-    </button>
-  ),
-}))
-
 vi.mock('../../use-sticky-scroll', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../use-sticky-scroll')>()),
   default: vi.fn(),
-}))
-
-vi.mock('@/utils/var', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/utils/var')>()),
-  getMarketplaceUrl: (path = '', params?: Record<string, unknown>) => {
-    const searchParams = new URLSearchParams(params as Record<string, string>)
-    const query = searchParams.toString()
-    return `https://marketplace.test${path}${query ? `?${query}` : ''}`
-  },
 }))
 
 describe('Marketplace plugin selector components', () => {
@@ -66,7 +50,7 @@ describe('Marketplace plugin selector components', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    i18n = renderHook(() => useTranslation()).result.current.i18n
+    i18n = renderHook(() => useTranslation(['plugin'])).result.current.i18n
     i18n.language = 'en-US'
     vi.mocked(useStickyScroll).mockReturnValue({
       handleScroll: vi.fn(),
@@ -137,7 +121,7 @@ describe('Marketplace plugin selector components', () => {
     expect(screen.getByText('LangGenius')).toBeInTheDocument()
 
     const installButton = screen.getByRole('button', { name: 'plugin.installAction' })
-    const actionButton = screen.getByRole('button', { name: 'marketplace-action' })
+    const actionButton = screen.getByRole('button', { name: 'common.operation.more' })
 
     await user.tab()
     expect(installButton).toHaveFocus()
@@ -223,8 +207,9 @@ describe('Marketplace plugin selector components', () => {
     )
 
     const findMoreLink = screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/i })
-    expect(findMoreLink.closest('footer')).toBeInTheDocument()
-    expect(findMoreLink).toHaveAttribute('href', 'https://marketplace.test/plugins/tool')
+    expect(new URL(findMoreLink.getAttribute('href')!, window.location.href).pathname).toBe(
+      '/plugins/tool',
+    )
 
     rerender(
       <List

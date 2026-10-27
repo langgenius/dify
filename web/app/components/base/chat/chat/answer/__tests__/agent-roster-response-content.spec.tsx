@@ -1,4 +1,5 @@
 import type { ChatItem } from '../../../types'
+import type { CitationItem } from '../../type'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
@@ -41,6 +42,56 @@ const thinkingOnlyItem = {
 } satisfies ChatItem
 
 describe('AgentRosterResponseContent', () => {
+  it('renders a verified receipt as a working in-answer link, but not a forged receipt', async () => {
+    const user = userEvent.setup()
+    const receiptId = `kfs_${'a'.repeat(32)}`
+    const forgedId = `kfs_${'b'.repeat(32)}`
+    const source: CitationItem = {
+      content: 'Evidence',
+      data_source_type: 'knowledge_fs',
+      dataset_id: 'space',
+      dataset_name: 'Docs',
+      document_id: 'doc',
+      document_name: 'Manual',
+      segment_id: 'node',
+      index_node_hash: 'hash',
+      hit_count: 0,
+      score: 0,
+      word_count: 1,
+      segment_position: 1,
+      knowledge_fs_citation: {
+        id: receiptId,
+        control_space_id: '00000000-0000-4000-8000-000000000001',
+        space_name: 'Docs',
+        node_id: 'node',
+        document_asset_id: 'doc',
+        artifact_hash: 'hash',
+      },
+    }
+    const item: ChatItem = {
+      id: 'answer-citation',
+      isAnswer: true,
+      citation: [source],
+      content: `[Manual](kfs://${receiptId}) [Unverified](kfs://${forgedId})`,
+    }
+    render(
+      <div className="chat-answer-container">
+        <AgentRosterResponseContent item={item} content={item.content} />
+        <span id={receiptId} data-testid="receipt-target" />
+      </div>,
+    )
+    const target = screen.getByTestId('receipt-target')
+    const scroll = vi.fn()
+    target.scrollIntoView = scroll
+    const link = await screen.findByRole('link', { name: 'Manual' })
+    expect(link).toHaveAttribute('href', `#${receiptId}`)
+    expect(link).not.toHaveAttribute('target', '_blank')
+    await user.click(link)
+    expect(scroll).toHaveBeenCalledWith({ behavior: 'smooth' })
+    expect(screen.getByText('Unverified')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Unverified' })).not.toBeInTheDocument()
+  })
+
   it('should keep the live thinking status before visible activity arrives', () => {
     render(<AgentRosterResponseContent item={thinkingOnlyItem} responding />)
 
@@ -91,12 +142,7 @@ describe('AgentRosterResponseContent', () => {
     await user.click(processToggle)
 
     expect(processToggle).toHaveAttribute('aria-expanded', 'true')
-    await waitFor(
-      () => {
-        expect(screen.getByText('history answer')).toBeInTheDocument()
-      },
-      { timeout: 5000 },
-    )
+    expect(await screen.findByText('history answer')).toBeInTheDocument()
 
     expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
   })
@@ -206,6 +252,9 @@ describe('AgentRosterResponseContent', () => {
       expect(screen.getByTestId('agent-roster-response-content')).toHaveTextContent('second answer')
     })
 
+    expect(screen.getByText('Loaded tools')).toBeInTheDocument()
+    expect(screen.getByText('first answer')).toBeInTheDocument()
+    expect(screen.getByText('Ran commands')).toBeInTheDocument()
     const content = screen.getByTestId('agent-roster-response-content').textContent ?? ''
     expect(content.indexOf('Loaded tools')).toBeLessThan(content.indexOf('first answer'))
     expect(content.indexOf('first answer')).toBeLessThan(content.indexOf('Ran commands'))
@@ -299,7 +348,7 @@ describe('AgentRosterResponseContent', () => {
 
     await user.click(screen.getByRole('button', { name: 'Thinking' }))
 
-    expect(screen.getByRole('button', { name: 'Ran commands' })).toBeInTheDocument()
+    expect(screen.getByText('Ran commands')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Scaffold skill directory' })).toBeInTheDocument()
   })
 
@@ -488,7 +537,7 @@ describe('AgentRosterResponseContent', () => {
     await user.click(screen.getByRole('button', { name: 'Thinking' }))
 
     expect(screen.getByText('public progress update')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ran commands' })).toBeInTheDocument()
+    expect(screen.getByText('Ran commands')).toBeInTheDocument()
     expect(screen.getByText('final answer')).toBeInTheDocument()
     expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
   })
@@ -564,7 +613,7 @@ describe('AgentRosterResponseContent', () => {
     await user.click(processToggle)
 
     expect(processToggle).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('button', { name: 'Ran commands' })).toBeInTheDocument()
+    expect(screen.getByText('Ran commands')).toBeInTheDocument()
     expect(screen.getByText('final answer')).toBeInTheDocument()
   })
 })

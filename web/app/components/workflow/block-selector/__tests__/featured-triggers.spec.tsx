@@ -4,14 +4,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum, SupportedCreationMethods } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
 import { BlockEnum } from '../../types'
 import FeaturedTriggers from '../featured-triggers'
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
 
 vi.mock('@/app/components/workflow/block-selector/marketplace-plugin/action', () => ({
   default: () => <button type="button" aria-label="common.operation.more" />,
@@ -35,8 +29,6 @@ vi.mock('@/utils/var', async (importOriginal) => {
     getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
   }
 })
-
-const mockUseTheme = vi.mocked(useTheme)
 
 const createPlugin = (overrides: Partial<Plugin> = {}): Plugin => ({
   type: 'trigger',
@@ -103,15 +95,19 @@ const createTriggerProvider = (
 describe('FeaturedTriggers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
+    localStorage.removeItem('workflow_triggers_featured_collapsed')
   })
+
+  afterEach(() => localStorage.removeItem('workflow_triggers_featured_collapsed'))
 
   // The section should persist collapse state and allow expanding recommended rows.
   describe('Visibility Controls', () => {
     it('should persist collapse state in localStorage', async () => {
       const user = userEvent.setup()
 
-      render(<FeaturedTriggers plugins={[]} providerMap={new Map()} onSelect={vi.fn()} />)
+      const { unmount } = render(
+        <FeaturedTriggers plugins={[]} providerMap={new Map()} onSelect={vi.fn()} />,
+      )
 
       const trigger = screen.getByRole('button', { name: /workflow\.tabs\.featuredTools/ })
       expect(trigger).toHaveAttribute('aria-expanded', 'true')
@@ -125,6 +121,12 @@ describe('FeaturedTriggers', () => {
         screen.queryByRole('link', { name: 'workflow.tabs.noFeaturedTriggers' }),
       ).not.toBeInTheDocument()
       expect(globalThis.localStorage.getItem('workflow_triggers_featured_collapsed')).toBe('true')
+      unmount()
+      render(<FeaturedTriggers plugins={[]} providerMap={new Map()} onSelect={vi.fn()} />)
+      expect(screen.getByRole('button', { name: /workflow\.tabs\.featuredTools/ })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      )
     })
 
     it('should reveal installed providers in batches and then return to the initial list', async () => {

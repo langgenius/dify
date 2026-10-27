@@ -9,8 +9,7 @@ from typing import cast, override
 import httpx
 import pytest
 
-from agenton.compositor import CompositorSessionSnapshot
-from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.client import _client as client_module
 from dify_agent.client import (
@@ -48,8 +47,8 @@ from dify_agent.protocol import (
 def _create_run_payload() -> dict[str, object]:
     return {
         "composition": {
-            "schema_version": 1,
-            "layers": [{"name": "prompt", "type": PLAIN_PROMPT_LAYER_TYPE_ID, "config": {"user": "hello"}}],
+            "schema_version": 2,
+            "layers": [{"name": "prompt", "config": {"user": "hello"}}],
         }
     }
 
@@ -67,7 +66,7 @@ def _run_succeeded_event(*, event_id: str = "2-0", run_id: str = "run-1") -> Run
     return RunSucceededEvent(
         id=event_id,
         run_id=run_id,
-        data=RunSucceededEventData(output="done", session_snapshot=CompositorSessionSnapshot(layers=[])),
+        data=RunSucceededEventData(output="done", session_snapshot=SessionSnapshot(layers={})),
     )
 
 
@@ -247,7 +246,7 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
 
 
 def test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot() -> None:
-    snapshot = CompositorSessionSnapshot(layers=[])
+    snapshot = SessionSnapshot(layers={})
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":

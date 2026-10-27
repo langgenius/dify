@@ -16,8 +16,8 @@ import type {
   AgentTool,
 } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Kbd } from '@langgenius/dify-ui/kbd'
-import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
@@ -33,22 +33,20 @@ import {
   COMMAND_PRIORITY_LOW,
   SELECTION_CHANGE_COMMAND,
 } from 'lexical'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import {
   addProviderToolsAtom,
   agentComposerToolsAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import {
-  ENABLE_AGENT_CLI_TOOLS,
-  ENABLE_AGENT_KNOWLEDGE_RETRIEVAL,
-} from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { agentKnowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { consoleQuery } from '@/service/console'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
@@ -421,7 +419,7 @@ function AgentPromptSelectionBridge({
 }
 
 export function AgentPromptEditor() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const { data: enableSkill } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -449,8 +447,9 @@ export function AgentPromptEditor() {
   const addProviderTools = useSetAtom(addProviderToolsAtom)
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
+  const knowledgeEnabled = useAtomValue(agentKnowledgeFsEnabledAtom)
   const addActions = useAgentOrchestrateAddActions()
-  const promptTip = t(($) => $['agentDetail.configure.prompt.tip'])
+
   const promptPlaceholder = (
     <AgentPromptPlaceholder
       text={t(($) => $['agentDetail.configure.prompt.placeholder'])}
@@ -650,7 +649,7 @@ export function AgentPromptEditor() {
   const handleEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     handledEditorMenuKeyRef.current = false
 
-    if (readOnly) return
+    if (readOnly || event.nativeEvent.isComposing) return
 
     if (event.key === 'Escape' && isSlashMenuOpen) {
       event.preventDefault()
@@ -849,7 +848,7 @@ export function AgentPromptEditor() {
     [configuredReferenceIds, t, tools],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isSlashMenuOpen) return
 
     const rootElement = positioningRootRef.current
@@ -887,6 +886,8 @@ export function AgentPromptEditor() {
     if (!menuElement) return
 
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.isComposing) return
+
       const activeElement = menuElement.ownerDocument.activeElement
       if (!menuElement.contains(activeElement)) return
 
@@ -1016,7 +1017,7 @@ export function AgentPromptEditor() {
       label: t(($) => $['agentDetail.configure.tools.label']),
       icon: 'i-ri-box-3-line',
     },
-    ...(ENABLE_AGENT_KNOWLEDGE_RETRIEVAL
+    ...(knowledgeEnabled || retrievals.some((item) => !item.controlSpaceId)
       ? [
           {
             key: 'knowledge' as const,
@@ -1063,7 +1064,7 @@ export function AgentPromptEditor() {
           onAddProviderTools={addProviderTools}
           onAddCliTool={addActions.cli}
           onAddFile={addActions.files}
-          onAddKnowledge={addActions.knowledge}
+          onAddKnowledge={knowledgeEnabled ? addActions.knowledge : undefined}
           onAddSkill={addActions.skills}
           canAddWorkspaceSkill={enableSkill === true}
           knowledgeRetrievals={retrievals}
@@ -1075,10 +1076,7 @@ export function AgentPromptEditor() {
     ) : null
 
   return (
-    <section
-      className="flex flex-col gap-1 px-0 py-0"
-      aria-labelledby="agent-configure-prompt-label"
-    >
+    <section className="flex flex-col gap-1 py-3" aria-labelledby="agent-configure-prompt-label">
       <div className="flex items-center gap-2">
         <div className="flex min-h-6 min-w-0 flex-1 items-center gap-0.5">
           <h3
@@ -1087,12 +1085,16 @@ export function AgentPromptEditor() {
           >
             {t(($) => $['agentDetail.configure.prompt.label'])}
           </h3>
-          <Infotip aria-label={promptTip} popupClassName="max-w-64">
-            <AgentConfigureTipContent type="prompt" />
+          <Infotip>
+            <InfotipTrigger aria-labelledby="agent-configure-prompt-label" />
+            <InfotipContent aria-labelledby="agent-configure-prompt-label" className="max-w-64">
+              <AgentConfigureTipContent type="prompt" />
+            </InfotipContent>
           </Infotip>
         </div>
         <Tooltip>
           <TooltipTrigger
+            closeOnClick={false}
             render={
               <button
                 type="button"
@@ -1189,6 +1191,59 @@ export function AgentPromptEditor() {
 
         {slashMenu}
       </div>
+    </section>
+  )
+}
+
+export function AgentTemplatePromptEditor() {
+  const { t } = useTranslation(['agentV2'])
+  const labelId = useId()
+  const value = useAtomValue(agentComposerPromptAtom)
+  const tools = useAtomValue(agentComposerToolsAtom)
+  const providerTypes = new Set(
+    tools.filter((tool) => tool.kind === 'provider').map((tool) => tool.providerType),
+  )
+  const { getConfiguredToolIcon } = useAgentPromptToolIconResolver(providerTypes)
+
+  return (
+    <section className="flex flex-col gap-1 py-3" aria-labelledby={labelId}>
+      <div className="flex items-center gap-0.5">
+        <h3 id={labelId} className="system-sm-semibold-uppercase text-text-secondary">
+          {t(($) => $['agentDetail.configure.prompt.label'])}
+        </h3>
+        <Infotip>
+          <InfotipTrigger aria-labelledby={labelId} />
+          <InfotipContent aria-labelledby={labelId} className="max-w-64">
+            <AgentConfigureTipContent type="prompt" />
+          </InfotipContent>
+        </Infotip>
+      </div>
+      <PromptEditor
+        instanceId="agent-template-prompt"
+        aria-labelledby={labelId}
+        compact
+        editable={false}
+        value={value}
+        variableBlock={{ show: true }}
+        rosterReferenceBlock={{
+          show: true,
+          renderIcon: (token) => {
+            if (!getProviderToolFromToken(token, tools)) return null
+
+            return (
+              <AgentPromptRosterReferenceIcon
+                token={token}
+                tools={tools}
+                getConfiguredToolIcon={getConfiguredToolIcon}
+              />
+            )
+          },
+        }}
+        disableSlashPicker
+        disableBracePicker
+        wrapperClassName="rounded-[10px] bg-components-input-bg-normal px-3 pt-2 pb-9"
+        className="min-h-26 text-text-primary"
+      />
     </section>
   )
 }

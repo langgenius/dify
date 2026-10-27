@@ -20,16 +20,14 @@ import io
 import posixpath
 import zipfile
 import zlib
+from dataclasses import dataclass
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from configs import dify_config
+from libs.zip_filename_recovery import open_zip_with_replacement_names
 
-# Bounds — generous but finite so a hostile upload can't exhaust memory/disk.
-_MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024
-_MAX_SKILL_MD_BYTES = 1 * 1024 * 1024
-_MAX_ENTRIES = 5000
 _ALLOWED_EXTENSIONS = (".zip", ".skill")
 _SKILL_MD_NAME = "SKILL.md"
 _SKILL_NAME_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -50,15 +48,9 @@ class SkillPackageError(Exception):
         self.status_code = status_code
 
 
-class SkillManifest(BaseModel):
-    """Validated metadata extracted from a Skill package."""
-
+class _SkillMetadata(BaseModel):
     name: str = Field(min_length=1, max_length=64, pattern=_SKILL_NAME_PATTERN)
     description: str = Field(min_length=1, max_length=_MAX_SKILL_DESCRIPTION_LENGTH)
-    entry_path: str  # path of SKILL.md inside the archive
-    files: list[str]  # all (safe) file paths inside the archive
-    size: int  # total uncompressed bytes
-    hash: str  # sha256 of the archive bytes
 
     @field_validator("name", "description", mode="before")
     @classmethod
@@ -66,17 +58,43 @@ class SkillManifest(BaseModel):
         return value.strip() if isinstance(value, str) else value
 
 
+class SkillPackageInspection(_SkillMetadata):
+    """Metadata read without rebuilding or fully extracting a Skill archive."""
+
+    uncompressed_size: int = Field(ge=0)
+
+
+class SkillManifest(_SkillMetadata):
+    """Validated metadata extracted from a Skill package."""
+
+    entry_path: str  # path of SKILL.md inside the archive
+    files: list[str]  # all (safe) file paths inside the archive
+    size: int  # total uncompressed bytes
+    hash: str  # sha256 of the archive bytes
+
+
 class NormalizedSkillPackage(BaseModel):
     """Canonical skill package bytes and metadata ready to store as Agent config."""
 
     manifest: SkillManifest
     archive_bytes: bytes
+
+
+@dataclass(frozen=True)
+class _InspectedSkillArchive:
+    metadata: SkillPackageInspection
+    normalized_members: dict[str, zipfile.ZipInfo]
     skill_md_bytes: bytes
-    strip_prefix: str | None
 
 
 class SkillPackageService:
     """Validate Skill archives and produce a normalized package."""
+
+    def inspect(self, *, content: bytes, filename: str) -> SkillPackageInspection:
+        """Validate archive metadata and SKILL.md without rebuilding the archive."""
+        archive = self._open_archive(content=content, filename=filename)
+        with archive:
+            return self._inspect_archive(archive).metadata
 
     def validate_and_normalize(self, *, content: bytes, filename: str) -> NormalizedSkillPackage:
         """Return the canonical package for an uploaded skill archive.
@@ -89,43 +107,30 @@ class SkillPackageService:
         The returned manifest is normalized to archive-root ``SKILL.md`` and its
         hash describes the rebuilt archive bytes. Member read/decompression
         failures while consuming the archive are mapped to ``invalid_archive``.
+        Malformed UTF-8 member names are decoded with replacement characters;
+        recovered path collisions still fail the normal duplicate-path check.
         """
         archive = self._open_archive(content=content, filename=filename)
         with archive:
-            members = self._collect_file_members(archive)
-            member_paths = [safe_path for _, safe_path in members]
-            entry_path = self._find_skill_md(member_paths)
-            strip_prefix = self._skill_root_prefix(entry_path)
-            normalized_members = self._normalize_members(
-                members=members,
-                skill_root_prefix=strip_prefix,
-                ignore_outside_selected_root=self._can_strip_single_top_level_folder(
-                    paths=member_paths, entry_path=entry_path
-                ),
-            )
-            skill_md_member = normalized_members[_SKILL_MD_NAME]
-            self._validate_skill_md_size(skill_md_member)
-            raw_skill_md_bytes = self._read_member_bytes_from_archive(archive, member_info=skill_md_member)
-            skill_md = self._decode_skill_md(raw_skill_md_bytes)
-            skill_md_bytes = skill_md.encode("utf-8")
+            inspection = self._inspect_archive(archive)
             normalized_archive_bytes = self._build_normalized_archive(
                 archive=archive,
-                normalized_members=normalized_members,
-                skill_md_bytes=skill_md_bytes,
-            )
-            normalized_size = sum(
-                len(skill_md_bytes) if path == _SKILL_MD_NAME else max(info.file_size, 0)
-                for path, info in normalized_members.items()
+                normalized_members=inspection.normalized_members,
+                skill_md_bytes=inspection.skill_md_bytes,
             )
 
-        name, description = self._parse_skill_md(skill_md)
+        if len(normalized_archive_bytes) > dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024:
+            raise SkillPackageError("archive_too_large", "normalized skill archive exceeds size limit", status_code=400)
         try:
             manifest = SkillManifest(
-                name=name,
-                description=description,
+                name=inspection.metadata.name,
+                description=inspection.metadata.description,
                 entry_path=_SKILL_MD_NAME,
-                files=sorted(normalized_members),
-                size=normalized_size,
+                files=sorted(inspection.normalized_members),
+                size=sum(
+                    len(inspection.skill_md_bytes) if path == _SKILL_MD_NAME else info.file_size
+                    for path, info in inspection.normalized_members.items()
+                ),
                 hash=hashlib.sha256(normalized_archive_bytes).hexdigest(),
             )
         except ValidationError as exc:
@@ -133,8 +138,38 @@ class SkillPackageService:
         return NormalizedSkillPackage(
             manifest=manifest,
             archive_bytes=normalized_archive_bytes,
+        )
+
+    def _inspect_archive(self, archive: zipfile.ZipFile) -> _InspectedSkillArchive:
+        members = self._collect_file_members(archive)
+        member_paths = [safe_path for _, safe_path in members]
+        entry_path = self._find_skill_md(member_paths)
+        strip_prefix = self._skill_root_prefix(entry_path)
+        normalized_members = self._normalize_members(
+            members=members,
+            skill_root_prefix=strip_prefix,
+            ignore_outside_selected_root=self._can_strip_single_top_level_folder(
+                paths=member_paths, entry_path=entry_path
+            ),
+        )
+        skill_md_member = normalized_members[_SKILL_MD_NAME]
+        self._validate_skill_md_size(skill_md_member)
+        raw_skill_md_bytes = self._read_member_bytes_from_archive(archive, member_info=skill_md_member)
+        skill_md = self._decode_skill_md(raw_skill_md_bytes)
+        skill_md_bytes = skill_md.encode("utf-8")
+        name, description = self._parse_skill_md(skill_md)
+        try:
+            metadata = SkillPackageInspection(
+                name=name,
+                description=description,
+                uncompressed_size=sum(info.file_size for info, _ in members),
+            )
+        except ValidationError as exc:
+            raise self._manifest_validation_error(exc) from exc
+        return _InspectedSkillArchive(
+            metadata=metadata,
+            normalized_members=normalized_members,
             skill_md_bytes=skill_md_bytes,
-            strip_prefix=strip_prefix,
         )
 
     @staticmethod
@@ -171,21 +206,24 @@ class SkillPackageService:
             raise SkillPackageError("archive_too_large", "skill archive exceeds size limit", status_code=400)
 
         try:
-            return zipfile.ZipFile(io.BytesIO(content))
+            return open_zip_with_replacement_names(content)
         except zipfile.BadZipFile as exc:
             raise SkillPackageError("invalid_archive", "skill archive is not a valid zip", status_code=400) from exc
 
     def _collect_file_members(self, archive: zipfile.ZipFile) -> list[tuple[zipfile.ZipInfo, str]]:
-        infos = [info for info in archive.infolist() if not info.is_dir()]
-        if len(infos) > _MAX_ENTRIES:
+        archive_infos = archive.infolist()
+        if len(archive_infos) > dify_config.SKILL_PACKAGE_MAX_ENTRIES:
             raise SkillPackageError("too_many_entries", "skill archive has too many files", status_code=400)
+        infos = [info for info in archive_infos if not info.is_dir()]
 
         members: list[tuple[zipfile.ZipInfo, str]] = []
         total_uncompressed = 0
         for info in infos:
             members.append((info, self._safe_member_path(info.filename)))
-            total_uncompressed += max(info.file_size, 0)
-        if total_uncompressed > _MAX_UNCOMPRESSED_BYTES:
+            total_uncompressed += info.file_size
+            if info.file_size and info.compress_size == 0:
+                raise SkillPackageError("invalid_archive", "skill package has invalid ZIP metadata", status_code=400)
+        if total_uncompressed > dify_config.SKILL_PACKAGE_MAX_UNCOMPRESSED_BYTES:
             raise SkillPackageError(
                 "archive_too_large",
                 "skill archive uncompressed size exceeds limit",
@@ -225,12 +263,8 @@ class SkillPackageService:
             else:
                 normalized_path = safe_path
 
-            if (
-                not normalized_path
-                or normalized_path in {".", ".."}
-                or normalized_path.startswith("/")
-                or "\\" in normalized_path
-            ):
+            # Paths are already normalized and safe; "." is not a file.
+            if normalized_path == ".":
                 raise SkillPackageError("unsafe_path", "skill archive contains an unsafe path", status_code=400)
             if normalized_path in normalized_members:
                 raise SkillPackageError(
@@ -306,7 +340,7 @@ class SkillPackageService:
 
     @staticmethod
     def _validate_skill_md_size(member_info: zipfile.ZipInfo) -> None:
-        if member_info.file_size > _MAX_SKILL_MD_BYTES:
+        if member_info.file_size > dify_config.SKILL_PACKAGE_MAX_SKILL_MD_BYTES:
             raise SkillPackageError("skill_md_too_large", "SKILL.md exceeds size limit", status_code=400)
 
     @staticmethod
@@ -343,4 +377,10 @@ class SkillPackageService:
         return loaded if isinstance(loaded, dict) else {}
 
 
-__all__ = ["NormalizedSkillPackage", "SkillManifest", "SkillPackageError", "SkillPackageService"]
+__all__ = [
+    "NormalizedSkillPackage",
+    "SkillManifest",
+    "SkillPackageError",
+    "SkillPackageInspection",
+    "SkillPackageService",
+]

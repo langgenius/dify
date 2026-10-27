@@ -10,7 +10,7 @@ type Props = Readonly<{
 }>
 
 const ObjectValueList: FC<Props> = ({ list, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   return (
     <div className="w-full overflow-hidden rounded-lg border border-gray-200">

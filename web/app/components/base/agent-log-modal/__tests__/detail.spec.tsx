@@ -1,9 +1,10 @@
+import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps, ReactNode } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { AgentLogDetailResponse } from '@/models/log'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { fetchAgentLogDetail } from '@/service/log'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AgentLogDetail from '../detail'
 
 const { mockToast } = vi.hoisted(() => {
@@ -19,39 +20,17 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/service/log', () => ({
+const { fetchAgentLogDetail } = vi.hoisted(() => ({
   fetchAgentLogDetail: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: { apps: { byAppId: { agent: { logs: { get: fetchAgentLogDetail } } } } },
+}))
+
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn((selector) => selector({ appDetail: { id: 'app-id' } })),
-}))
-
-vi.mock('@/app/components/workflow/run/status', () => ({
-  default: ({
-    status,
-    time,
-    tokens,
-    error,
-  }: {
-    status: string
-    time?: number
-    tokens?: number
-    error?: string
-  }) => (
-    <div
-      data-testid="status-panel"
-      data-status={String(status)}
-      data-time={String(time)}
-      data-tokens={String(tokens)}
-    >
-      {error ? <span>{String(error)}</span> : null}
-    </div>
-  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
@@ -67,16 +46,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({ formatTime: (ts: number, fmt: string) => `${ts}-${fmt}` }),
 }))
 
-vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: () => <div data-testid="block-icon" />,
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
-  ChevronRight: (props: { className?: string }) => (
-    <div data-testid="chevron-right" className={props.className} />
-  ),
-}))
-
 const createMockLog = (overrides: Partial<IChatItem> = {}): IChatItem => ({
   id: 'msg-id',
   content: 'output content',
@@ -86,9 +55,7 @@ const createMockLog = (overrides: Partial<IChatItem> = {}): IChatItem => ({
   ...overrides,
 })
 
-const createMockResponse = (
-  overrides: Partial<AgentLogDetailResponse> = {},
-): AgentLogDetailResponse => ({
+const createMockResponse = (overrides: Partial<AgentLogResponse> = {}): AgentLogResponse => ({
   meta: {
     status: 'succeeded',
     executor: 'User',
@@ -110,6 +77,10 @@ const createMockResponse = (
           tool_name: 'tool1',
           status: 'success',
           tool_icon: null,
+          time_cost: 0,
+          tool_input: {},
+          tool_output: {},
+          tool_parameters: {},
           tool_label: { 'en-US': 'Tool 1' },
         },
       ],
@@ -122,6 +93,7 @@ const createMockResponse = (
 describe('AgentLogDetail', () => {
   const renderComponent = (props: Partial<ComponentProps<typeof AgentLogDetail>> = {}) => {
     const defaultProps: ComponentProps<typeof AgentLogDetail> = {
+      appId: 'app-id',
       conversationID: 'conv-id',
       messageID: 'msg-id',
       log: createMockLog(),
@@ -134,144 +106,100 @@ describe('AgentLogDetail', () => {
   ) => {
     const result = renderComponent(props)
     await waitFor(() => {
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
     return result
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
+    fetchAgentLogDetail.mockReset()
   })
 
   describe('Rendering', () => {
     it('should show loading indicator while fetching data', async () => {
-      vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+      fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
 
       renderComponent()
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
-    })
-
-    it('should display result panel after data loads', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      await renderAndWaitForData()
-
-      expect(screen.getByText(/runLog.detail/i)).toBeInTheDocument()
-      expect(screen.getByText(/runLog.tracing/i)).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should call fetchAgentLogDetail with correct params', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
+      fetchAgentLogDetail.mockResolvedValue(createMockResponse())
 
       await renderAndWaitForData()
 
       expect(fetchAgentLogDetail).toHaveBeenCalledWith({
-        appID: 'app-id',
-        params: {
-          conversation_id: 'conv-id',
-          message_id: 'msg-id',
-        },
+        params: { app_id: 'app-id' },
+        query: { conversation_id: 'conv-id', message_id: 'msg-id' },
       })
     })
   })
 
   describe('Props', () => {
-    it('should default to DETAIL tab when activeTab is not provided', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      await renderAndWaitForData()
-
-      const detailTab = screen.getByText(/runLog.detail/i)
-      expect(detailTab.getAttribute('data-active')).toBe('true')
-    })
-
     it('should show TRACING tab when activeTab is TRACING', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
+      fetchAgentLogDetail.mockResolvedValue(createMockResponse())
 
       await renderAndWaitForData({ activeTab: 'TRACING' })
 
-      const tracingTab = screen.getByText(/runLog.tracing/i)
-      expect(tracingTab.getAttribute('data-active')).toBe('true')
+      expect(screen.getByText('appLog.agentLogDetail.finalProcessing')).toBeInTheDocument()
+      expect(screen.queryByText('user input')).not.toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
-    it('should switch to TRACING tab when clicked', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
+    it('switches between the request/result and tool trace', async () => {
+      const user = userEvent.setup()
+      fetchAgentLogDetail.mockResolvedValue(createMockResponse())
       await renderAndWaitForData()
+      expect(screen.getByText('user input')).toBeInTheDocument()
+      expect(screen.getByText('output content')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: /runLog.tracing/i }))
+      await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
+      expect(screen.getByText('appLog.agentLogDetail.finalProcessing')).toBeInTheDocument()
+      expect(screen.queryByText('user input')).not.toBeInTheDocument()
 
-      await waitFor(() => {
-        const tracingTab = screen.getByText(/runLog.tracing/i)
-        expect(tracingTab.getAttribute('data-active')).toBe('true')
-      })
-
-      const detailTab = screen.getByText(/runLog.detail/i)
-      expect(detailTab.getAttribute('data-active')).toBe('false')
-    })
-
-    it('should switch back to DETAIL tab after switching to TRACING', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      await renderAndWaitForData()
-
-      fireEvent.click(screen.getByRole('button', { name: /runLog.tracing/i }))
-
-      await waitFor(() => {
-        expect(screen.getByText(/runLog.tracing/i).getAttribute('data-active')).toBe('true')
-      })
-
-      fireEvent.click(screen.getByRole('button', { name: /runLog.detail/i }))
-
-      await waitFor(() => {
-        const detailTab = screen.getByText(/runLog.detail/i)
-        expect(detailTab.getAttribute('data-active')).toBe('true')
-      })
+      await user.click(screen.getByRole('button', { name: 'runLog.detail' }))
+      expect(screen.getByText('user input')).toBeInTheDocument()
+      expect(screen.queryByText('appLog.agentLogDetail.finalProcessing')).not.toBeInTheDocument()
+      expect(fetchAgentLogDetail).toHaveBeenCalledTimes(1)
     })
   })
 
+  it('shows failed execution as failed in both summary and metadata', async () => {
+    const response = createMockResponse()
+    response.meta.status = 'failed'
+    fetchAgentLogDetail.mockResolvedValue(response)
+
+    await renderAndWaitForData()
+
+    expect(screen.getByText('appLog.status.failed')).toBeInTheDocument()
+    expect(screen.getByText('FAILED')).toBeInTheDocument()
+    expect(screen.queryByText('appLog.status.succeeded')).not.toBeInTheDocument()
+    expect(screen.queryByText('SUCCESS')).not.toBeInTheDocument()
+  })
+
   describe('Edge Cases', () => {
-    it('should not fetch data when app detail is unavailable', async () => {
-      vi.mocked(useAppStore).mockImplementationOnce((selector) =>
-        selector({ appDetail: undefined } as never),
-      )
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      renderComponent()
-
-      await waitFor(() => {
-        expect(fetchAgentLogDetail).not.toHaveBeenCalled()
-      })
-      expect(screen.getByRole('status')).toBeInTheDocument()
-    })
-
     it('should notify on API error', async () => {
-      vi.mocked(fetchAgentLogDetail).mockRejectedValue(new Error('API Error'))
+      fetchAgentLogDetail.mockRejectedValue(
+        createHttpError(new Response(null, { status: 500 }), { message: 'API Error' }),
+      )
 
       renderComponent()
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Error: API Error')
-      })
-    })
-
-    it('should stop loading after API error', async () => {
-      vi.mocked(fetchAgentLogDetail).mockRejectedValue(new Error('Network failure'))
-
-      renderComponent()
-
-      await waitFor(() => {
-        expect(screen.queryByRole('status')).not.toBeInTheDocument()
+        expect(mockToast.error).toHaveBeenCalledWith('API Error')
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
       })
     })
 
     it('should handle response with empty iterations', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse({ iterations: [] }))
+      fetchAgentLogDetail.mockResolvedValue(createMockResponse({ iterations: [] }))
 
       await renderAndWaitForData()
+      expect(screen.getByText('Null')).toBeInTheDocument()
+      expect(screen.getByText('0')).toBeInTheDocument()
     })
 
     it('should handle response with multiple iterations and duplicate tools', async () => {
@@ -288,12 +216,20 @@ describe('AgentLogDetail', () => {
                 tool_name: 'tool1',
                 status: 'success',
                 tool_icon: null,
+                time_cost: 0,
+                tool_input: {},
+                tool_output: {},
+                tool_parameters: {},
                 tool_label: { 'en-US': 'Tool 1' },
               },
               {
                 tool_name: 'tool2',
                 status: 'success',
                 tool_icon: null,
+                time_cost: 0,
+                tool_input: {},
+                tool_output: {},
+                tool_parameters: {},
                 tool_label: { 'en-US': 'Tool 2' },
               },
             ],
@@ -309,17 +245,22 @@ describe('AgentLogDetail', () => {
                 tool_name: 'tool1',
                 status: 'success',
                 tool_icon: null,
+                time_cost: 0,
+                tool_input: {},
+                tool_output: {},
+                tool_parameters: {},
                 tool_label: { 'en-US': 'Tool 1' },
               },
             ],
           },
         ],
       })
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(response)
+      fetchAgentLogDetail.mockResolvedValue(response)
 
       await renderAndWaitForData()
 
-      expect(screen.getByText(/runLog.detail/i)).toBeInTheDocument()
+      expect(screen.getByText('tool1, tool2')).toBeInTheDocument()
+      expect(screen.getByText('2')).toBeInTheDocument()
     })
   })
 })

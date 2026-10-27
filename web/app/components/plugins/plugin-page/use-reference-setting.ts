@@ -1,9 +1,9 @@
 import type { PluginCategoryEnum } from '../types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
@@ -43,7 +43,6 @@ const useCanSetPluginSettings = () => {
 }
 
 export const usePluginSettingsAccess = () => {
-  const { t } = useTranslation()
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
@@ -61,11 +60,7 @@ export const usePluginSettingsAccess = () => {
   const permissionQuery = usePluginPermissionSettings()
   const { data: permissions } = permissionQuery
   const { mutate: setPluginPermissionSettings, isPending: isPermissionUpdatePending } =
-    useMutationPluginPermissionSettings({
-      onSuccess: () => {
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-      },
-    })
+    useMutationPluginPermissionSettings()
   const isAdminOrOwner = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
   const legacyCanInstallPlugin = hasLegacyPluginPermissionAccess({
     isAdminOrOwner,
@@ -110,7 +105,7 @@ export const usePluginSettingsAccess = () => {
 }
 
 const useReferenceSetting = (category: PluginCategoryEnum) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const permissionAccess = usePluginSettingsAccess()
   const autoUpgradeQuery = usePluginAutoUpgradeSettings(category)
   const data =

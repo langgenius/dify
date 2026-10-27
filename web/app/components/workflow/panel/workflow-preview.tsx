@@ -1,15 +1,17 @@
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
 import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-panel'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResizeHandle from '@/app/components/base/resize-handle'
+import { toast } from '@/app/notifications'
 import { submitHumanInputForm } from '@/service/workflow'
+import { editorAppIdAtom } from '../editor-resource/state'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
 import ResultPanel from '../run/result-panel'
 import ResultText from '../run/result-text'
@@ -23,8 +25,9 @@ import InputsPanel from './inputs-panel'
 import { getPreviewPanelMaxWidth } from './panel-width'
 
 const WorkflowPreview = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
+  const appId = useAtomValue(editorAppIdAtom)
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const isListening = useStore((s) => s.isListening)
@@ -268,23 +271,43 @@ const WorkflowPreview = () => {
               created_by={(workflowRunningData?.result?.created_by as any)?.name}
               steps={workflowRunningData?.result?.total_steps}
               exceptionCounts={workflowRunningData?.result?.exceptions_count}
+              externalTrace={
+                appId && workflowRunningData?.result?.id
+                  ? { appId, kind: 'workflow', workflowRunId: workflowRunningData.result.id }
+                  : undefined
+              }
               onOpenTracingTab={handleOpenTracingTab}
             />
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (
             <div className="flex h-full items-center justify-center bg-components-panel-bg">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
           {currentTab === 'TRACING' && (
             <TracingPanel
+              key={workflowRunningData?.result.id}
+              externalTraceRun={
+                appId && workflowRunningData?.result?.id
+                  ? { appId, workflowRunId: workflowRunningData.result.id }
+                  : undefined
+              }
               className="bg-background-section-burn"
               list={workflowRunningData?.tracing || []}
+              workflowRun={
+                appId && workflowRunningData?.result.id
+                  ? {
+                      appId,
+                      runId: workflowRunningData.result.id,
+                      status: workflowRunningData.result.status,
+                    }
+                  : undefined
+              }
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
             <div className="flex h-full items-center justify-center bg-background-section-burn!">
-              <Loading />
+              <LoadingPlaceholder />
             </div>
           )}
         </div>

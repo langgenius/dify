@@ -10,11 +10,13 @@ export { WeightedScoreEnum } from '@/models/datasets'
 export { RerankingModeEnum as HybridSearchModeEnum } from '@/models/datasets'
 export { RETRIEVE_METHOD as RetrievalSearchMethodEnum } from '@/types/app'
 
-export enum ChunkStructureEnum {
-  general = 'text_model',
-  parent_child = 'hierarchical_model',
-  question_answer = 'qa_model',
-}
+export const ChunkStructureEnum = {
+  general: 'text_model',
+  parent_child: 'hierarchical_model',
+  question_answer: 'qa_model',
+} as const
+
+export type ChunkStructureEnum = (typeof ChunkStructureEnum)[keyof typeof ChunkStructureEnum]
 
 export type RerankingModel = {
   reranking_provider_name: string

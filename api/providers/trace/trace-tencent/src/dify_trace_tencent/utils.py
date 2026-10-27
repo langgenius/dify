@@ -21,7 +21,7 @@ class TencentTraceUtils:
         try:
             uuid_obj = uuid.UUID(uuid_v4) if uuid_v4 else uuid.uuid4()
         except Exception as e:
-            raise ValueError(f"Invalid UUID input: {e}")
+            raise ValueError(f"Invalid UUID input: {e}") from e
         return uuid_obj.int
 
     @staticmethod
@@ -29,7 +29,7 @@ class TencentTraceUtils:
         try:
             uuid_obj = uuid.UUID(uuid_v4) if uuid_v4 else uuid.uuid4()
         except Exception as e:
-            raise ValueError(f"Invalid UUID input: {e}")
+            raise ValueError(f"Invalid UUID input: {e}") from e
         combined_key = f"{uuid_obj.hex}-{span_type}"
         hash_bytes = hashlib.sha256(combined_key.encode("utf-8")).digest()
         return int.from_bytes(hash_bytes[:8], byteorder="big", signed=False)

@@ -1,4 +1,4 @@
-import { toast } from '@langgenius/dify-ui/toast'
+import { toast } from '@/app/notifications'
 
 const DEDUPE_WINDOW_MS = 10000
 

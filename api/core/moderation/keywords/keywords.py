@@ -25,8 +25,8 @@ class KeywordsModeration(Moderation):
         if len(config.get("keywords", [])) > 10000:
             raise ValueError("keywords length must be less than 10000")
 
-        keywords_row_len = config["keywords"].split("\n")
-        if len(keywords_row_len) > 100:
+        keywords_rows = cls._keyword_rows(config["keywords"])
+        if len(keywords_rows) > 100:
             raise ValueError("the number of rows for the keywords must be less than 100")
 
     @override

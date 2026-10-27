@@ -1,26 +1,88 @@
 import type { ReactElement } from 'react'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
+import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Shape } from '@/app/components/workflow/store/workflow'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import type { EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import type { consoleClient } from '@/service/console'
+import { zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useLayoutEffect } from 'react'
+import { useStoreApi } from 'reactflow'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { WorkflowContext } from '@/app/components/workflow/context'
-import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import EnvPanel from '../index'
 
-type MockWorkflowNode = {
-  id: string
-  data?: Record<string, unknown>
+let initialNodes: Node[] = []
+let graph: ReturnType<typeof useStoreApi> | undefined
+
+function GraphProbe() {
+  const store = useStoreApi()
+  useLayoutEffect(() => {
+    graph = store
+  }, [store])
+  return null
 }
+
+const getNodes = () => graph!.getState().getNodes()
+const setNodes = (nodes: Node[]) => {
+  if (graph) act(() => graph!.getState().setNodes(nodes))
+  else initialNodes = nodes
+}
+
+const createLLMNode = ({
+  id = 'llm-node',
+  data,
+}: {
+  id?: string
+  data: Partial<LLMNodeType>
+}): Node<LLMNodeType> => ({
+  id,
+  type: 'custom',
+  position: { x: 0, y: 0 },
+  data: {
+    type: BlockEnum.LLM,
+    title: 'LLM',
+    desc: '',
+    model: { provider: 'old-provider', name: 'old-model', mode: 'chat', completion_params: {} },
+    context: { enabled: false, variable_selector: [] },
+    prompt_template: [],
+    vision: { enabled: false },
+    ...data,
+  },
+})
+const createCodeNode = (
+  id: string,
+  variables: CodeNodeType['variables'] = [],
+): Node<CodeNodeType> => ({
+  id,
+  type: 'custom',
+  position: { x: 0, y: 0 },
+  data: {
+    type: BlockEnum.Code,
+    title: id,
+    desc: '',
+    code: '',
+    code_language: CodeLanguage.python3,
+    outputs: {},
+    variables,
+  },
+})
 
 const {
   mockDoSyncWorkflowDraft,
-  mockGetNodes,
-  mockSetNodes,
-  mockFindUsedVarNodes,
-  mockUpdateNodeVars,
   mockVariableTriggerState,
   mockUpdateEnvironmentVariables,
   mockFetchWorkflowDraft,
@@ -41,20 +103,6 @@ const {
   >(async (_notRefresh, callback) => {
     callback?.onSuccess?.()
   }),
-  mockGetNodes: vi.fn<() => MockWorkflowNode[]>(() => []),
-  mockSetNodes: vi.fn<(nodes: MockWorkflowNode[]) => void>(),
-  mockFindUsedVarNodes: vi.fn<
-    (selector: string[], nodes: MockWorkflowNode[]) => MockWorkflowNode[]
-  >(() => []),
-  mockUpdateNodeVars: vi.fn<
-    (node: MockWorkflowNode, currentSelector: string[], nextSelector: string[]) => MockWorkflowNode
-  >((node, _currentSelector, nextSelector) => ({
-    ...node,
-    data: {
-      ...node.data,
-      nextSelector,
-    },
-  })),
   mockVariableTriggerState: {
     savePayload: undefined as EnvironmentVariable | undefined,
   },
@@ -76,49 +124,27 @@ const {
   >(() => Promise.resolve([])),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useTextGenerationCurrentProviderAndModelAndModelList: () => ({
-    activeTextGenerationModelList: [
-      {
-        provider: 'new-provider',
-        models: [
-          {
-            model: 'new-model',
-            features: [],
-          },
-        ],
-      },
-    ],
-  }),
-}))
-
-vi.mock('@/utils/completion-params', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/utils/completion-params')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const readDraft = async () => createWorkflowResponseFixture(await mockFetchWorkflowDraft())
   return {
     ...actual,
-    fetchModelParameterRulesForModel: mockFetchModelParameterRulesForModel,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.get': readDraft,
+      'rag.pipelines.byPipelineId.workflows.draft.get': readDraft,
+      'workspaces.current.modelProviders.byProvider.models.parameterRules.get': async ({
+        params,
+        query,
+      }: Parameters<
+        typeof consoleClient.workspaces.current.modelProviders.byProvider.models.parameterRules.get
+      >[0]) =>
+        zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse.parse({
+          data: await mockFetchModelParameterRulesForModel(params.provider, query.model),
+        }),
+    }),
   }
 })
-
-vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
-  useNodesSyncDraft: () => ({
-    doSyncWorkflowDraft: mockDoSyncWorkflowDraft,
-  }),
-}))
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({
-    getState: () => ({
-      getNodes: mockGetNodes,
-      setNodes: mockSetNodes,
-    }),
-  }),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
-  findUsedVarNodes: mockFindUsedVarNodes,
-  updateNodeVars: mockUpdateNodeVars,
-}))
 
 vi.mock('@/service/workflow', () => ({
   updateEnvironmentVariables: (payload: {
@@ -126,7 +152,6 @@ vi.mock('@/service/workflow', () => ({
     environmentVariables: EnvironmentVariable[]
     deletedEnvironmentVariableIds: string[]
   }) => mockUpdateEnvironmentVariables(payload),
-  fetchWorkflowDraft: () => mockFetchWorkflowDraft(),
 }))
 
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
@@ -135,67 +160,26 @@ vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => 
   },
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm', () => ({
+// The form is independently tested; keep its submission boundary small while the
+// container owns the real popover, variable rows, confirmation, queue and persistence.
+vi.mock('@/app/components/workflow/panel/env-panel/variable-modal', () => ({
   default: ({
-    isShow,
-    onCancel,
-    onConfirm,
-  }: {
-    isShow: boolean
-    onCancel: () => void
-    onConfirm: () => void
-  }) =>
-    isShow ? (
-      <div>
-        <button onClick={onCancel}>Cancel remove</button>
-        <button onClick={onConfirm}>Confirm remove</button>
-      </div>
-    ) : null,
-}))
-
-vi.mock('@/app/components/workflow/panel/env-panel/env-item', () => ({
-  default: ({
-    env,
-    onEdit,
-    onDelete,
-  }: {
-    env: EnvironmentVariable
-    onEdit: (env: EnvironmentVariable) => void
-    onDelete: (env: EnvironmentVariable) => void
-  }) => (
-    <div>
-      <span>{env.name}</span>
-      <button onClick={() => onEdit(env)}>Edit {env.name}</button>
-      <button onClick={() => onDelete(env)}>Delete {env.name}</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/panel/env-panel/variable-trigger', () => ({
-  default: ({
-    open,
     env,
     onClose,
     onSave,
-    setOpen,
   }: {
-    open: boolean
     env?: EnvironmentVariable
     onClose: () => void
     onSave: (env: EnvironmentVariable) => Promise<void>
-    setOpen: (open: boolean) => void
   }) => (
     <div>
-      <span>
-        Variable trigger:
-        {open ? 'open' : 'closed'}:{env?.name || 'new'}
-      </span>
-      <button onClick={() => setOpen(true)}>Open variable modal</button>
+      <input aria-label="Variable being edited" readOnly value={env?.name ?? ''} />
       <button
+        type="button"
         onClick={() =>
           onSave(
-            mockVariableTriggerState.savePayload ||
-              env || {
+            mockVariableTriggerState.savePayload ??
+              env ?? {
                 id: 'env-created',
                 name: 'created_name',
                 value: 'created-value',
@@ -207,10 +191,18 @@ vi.mock('@/app/components/workflow/panel/env-panel/variable-trigger', () => ({
       >
         Save variable
       </button>
-      <button onClick={onClose}>Close variable modal</button>
+      <button type="button" onClick={onClose}>
+        Close variable modal
+      </button>
     </div>
   ),
 }))
+
+async function saveVariable(user: ReturnType<typeof userEvent.setup>) {
+  if (!screen.queryByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.env.envPanelButton' }))
+  await user.click(await screen.findByRole('button', { name: 'Save variable' }))
+}
 
 const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
   id: 'env-1',
@@ -221,27 +213,49 @@ const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVar
   ...overrides,
 })
 
-const renderWithProviders = (ui: ReactElement, storeState: Partial<Shape> = {}) => {
-  const store = createWorkflowStore({})
-  store.setState(storeState)
-
-  return {
-    store,
-    ...render(<WorkflowContext value={store}>{ui}</WorkflowContext>),
-  }
+const renderWithProviders = (
+  ui: ReactElement,
+  storeState: Partial<Shape> = {},
+  resource: EditorResource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
+) => {
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { enable_collaboration_mode: false },
+  })
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      provider: 'new-provider',
+      models: [createCatalogModelFixture({ model: 'new-model', features: [] })],
+    }),
+  ])
+  return renderWorkflowFlowComponent(
+    <>
+      <GraphProbe />
+      {ui}
+    </>,
+    {
+      resource,
+      queryClient,
+      nodes: initialNodes,
+      initialStoreState: storeState,
+      hooksStoreProps: { doSyncWorkflowDraft: mockDoSyncWorkflowDraft },
+      // Node rendering is outside this panel's contract; the React Flow graph stays real.
+      reactFlowProps: { nodeTypes: { custom: () => null } },
+    },
+  )
 }
 
 describe('EnvPanel container', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDoSyncWorkflowDraft.mockReset()
+    mockUpdateEnvironmentVariables.mockReset()
+    mockFetchWorkflowDraft.mockReset()
+    mockFetchModelParameterRulesForModel.mockReset()
     mockDoSyncWorkflowDraft.mockImplementation(async (_notRefresh, callback) => {
       callback?.onSuccess?.()
     })
-    mockGetNodes.mockReturnValue([])
-    mockSetNodes.mockImplementation((nodes) => {
-      mockGetNodes.mockReturnValue(nodes)
-    })
-    mockFindUsedVarNodes.mockReturnValue([])
+    initialNodes = []
+    graph = undefined
     mockVariableTriggerState.savePayload = undefined
     mockUpdateEnvironmentVariables.mockResolvedValue({})
     mockFetchWorkflowDraft.mockRejectedValue(new Error('draft refresh unavailable'))
@@ -253,26 +267,14 @@ describe('EnvPanel container', () => {
     vi.restoreAllMocks()
   })
 
-  it('should close the panel from the header action', async () => {
-    const user = userEvent.setup()
-    const { container, store } = renderWithProviders(<EnvPanel />, {
-      environmentVariables: [],
-    })
-
-    await user.click(container.querySelector('.cursor-pointer') as HTMLElement)
-
-    expect(store.getState().showEnvPanel).toBe(false)
-  })
-
-  it('should add variables and normalize secret values after syncing', async () => {
+  it('adds a plain variable through the environment API', async () => {
     const user = userEvent.setup()
     const { store } = renderWithProviders(<EnvPanel />, {
-      appId: 'app-1',
       environmentVariables: [],
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([
@@ -291,16 +293,120 @@ describe('EnvPanel container', () => {
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
+  it('persists new pipeline variables through draft sync without app requests or socket events', async () => {
+    const user = userEvent.setup()
+    const existingEnv = createEnv({
+      name: 'existing_variable',
+      value_type: 'string',
+      value: 'existing',
+    })
+    const emit = vi.fn()
+    mockGetSocket.mockReturnValue({ emit })
+    const { store } = renderWithProviders(
+      <EnvPanel />,
+      {
+        environmentVariables: [existingEnv],
+        envSecrets: {},
+      },
+      { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    )
+    let completeSync!: () => void
+    let variablesSentToDraft: EnvironmentVariable[] = []
+    mockDoSyncWorkflowDraft.mockImplementationOnce((_notRefresh, callback) => {
+      variablesSentToDraft = store.getState().environmentVariables
+      return new Promise((resolve) => {
+        completeSync = () => {
+          callback?.onSuccess?.()
+          resolve()
+        }
+      })
+    })
+
+    await saveVariable(user)
+    expect(await screen.findByText('created_name')).toBeInTheDocument()
+    expect(variablesSentToDraft).toEqual([
+      expect.objectContaining({ id: 'env-created', name: 'created_name', value: 'created-value' }),
+      existingEnv,
+    ])
+    await act(async () => completeSync())
+
+    expect(screen.getByText('created_name')).toBeInTheDocument()
+    expect(screen.getByText('existing_variable')).toBeInTheDocument()
+    expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
+    expect(mockGetSocket).not.toHaveBeenCalled()
+    expect(emit).not.toHaveBeenCalled()
+  })
+
+  it('restores the persisted pipeline variable after draft sync fails and preserves other variables', async () => {
+    const user = userEvent.setup()
+    const existingEnv = createEnv({
+      name: 'existing_variable',
+      value_type: 'string',
+      value: 'existing',
+    })
+    const untouchedEnv = createEnv({
+      id: 'env-untouched',
+      name: 'untouched_variable',
+      value_type: 'string',
+      value: 'untouched',
+    })
+    const emit = vi.fn()
+    mockGetSocket.mockReturnValue({ emit })
+    mockVariableTriggerState.savePayload = { ...existingEnv, name: 'rejected_name' }
+    mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: [existingEnv, untouchedEnv] })
+    let failSync!: () => void
+    mockDoSyncWorkflowDraft.mockImplementation(async (_notRefresh, callback) => {
+      callback?.onError?.()
+    })
+    mockDoSyncWorkflowDraft.mockImplementationOnce(
+      (_notRefresh, callback) =>
+        new Promise((resolve) => {
+          failSync = () => {
+            callback?.onError?.()
+            resolve()
+          }
+        }),
+    )
+    renderWithProviders(
+      <EnvPanel />,
+      {
+        environmentVariables: [existingEnv, untouchedEnv],
+        envSecrets: {},
+      },
+      { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: 'common.operation.edit existing_variable' }),
+    )
+    await saveVariable(user)
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.edit rejected_name' }),
+    ).toBeInTheDocument()
+    await act(async () => failSync())
+
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.edit existing_variable' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.edit rejected_name' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('untouched_variable')).toBeInTheDocument()
+    expect(mockFetchWorkflowDraft).toHaveBeenCalled()
+    expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
+    expect(mockGetSocket).not.toHaveBeenCalled()
+    expect(emit).not.toHaveBeenCalled()
+  })
+
   it('should delete unused variables and sync draft changes', async () => {
     const user = userEvent.setup()
     const env = createEnv({ value_type: 'string', value: 'plain-text' })
     const { store } = renderWithProviders(<EnvPanel />, {
-      appId: 'app-1',
       environmentVariables: [env],
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: `Delete ${env.name}` }))
+    await user.click(screen.getByRole('button', { name: `common.operation.delete ${env.name}` }))
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([])
@@ -332,7 +438,7 @@ describe('EnvPanel container', () => {
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([
@@ -369,7 +475,7 @@ describe('EnvPanel container', () => {
       callback?.onSuccess?.()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables[0]?.value).toBe('[__HIDDEN__]')
@@ -408,11 +514,11 @@ describe('EnvPanel container', () => {
     })
 
     mockVariableTriggerState.savePayload = firstSecret
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
     await waitFor(() => expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1))
 
     mockVariableTriggerState.savePayload = secondSecret
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
     expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1)
     resolveFirstPersistence({})
 
@@ -434,12 +540,19 @@ describe('EnvPanel container', () => {
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    expect(screen.getByText('Variable trigger:open:api_key')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    expect(await screen.findByRole('textbox', { name: 'Variable being edited' })).toHaveValue(
+      'api_key',
+    )
 
     await user.click(screen.getByRole('button', { name: 'Close variable modal' }))
 
-    expect(screen.getByText('Variable trigger:open:new')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Save variable' })).not.toBeInTheDocument(),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.env.envPanelButton' }))
+    expect(await screen.findByRole('textbox', { name: 'Variable being edited' })).toHaveValue('')
+    expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
   })
 
   it('should rename existing secret variables and update affected nodes without re-saving unchanged secrets', async () => {
@@ -451,10 +564,9 @@ describe('EnvPanel container', () => {
       value: '[__HIDDEN__]',
       value_type: 'secret',
     })
-    mockFindUsedVarNodes.mockReturnValue([{ id: 'node-1' }])
-    mockGetNodes.mockReturnValue([
-      { id: 'node-1', data: { nextSelector: ['env', env.name] } },
-      { id: 'node-2', data: { untouched: true } },
+    setNodes([
+      createCodeNode('node-1', [{ variable: 'key', value_selector: ['env', env.name] }]),
+      createCodeNode('node-2'),
     ])
 
     const { store } = renderWithProviders(<EnvPanel />, {
@@ -464,8 +576,8 @@ describe('EnvPanel container', () => {
       },
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([
@@ -480,21 +592,15 @@ describe('EnvPanel container', () => {
     expect(store.getState().envSecrets).toEqual({
       [env.id]: '[__HIDDEN__]',
     })
-    expect(mockUpdateNodeVars).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'node-1' }),
-      ['env', env.name],
-      ['env', 'renamed_key'],
-    )
-    expect(mockSetNodes).toHaveBeenCalledWith([
+    expect(getNodes()).toEqual([
       expect.objectContaining({
         id: 'node-1',
         data: expect.objectContaining({
-          nextSelector: ['env', 'renamed_key'],
+          variables: [{ variable: 'key', value_selector: ['env', 'renamed_key'] }],
         }),
       }),
       expect.objectContaining({ id: 'node-2' }),
     ])
-    expect(store.getState().controlPromptEditorRerenderKey).toBeGreaterThan(0)
   })
 
   it('should convert edited plain variables into secrets and store the masked secret value', async () => {
@@ -508,13 +614,12 @@ describe('EnvPanel container', () => {
     })
 
     const { store } = renderWithProviders(<EnvPanel />, {
-      appId: 'app-1',
       environmentVariables: [env],
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([
@@ -545,10 +650,8 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
         model: {
           provider: 'old-provider',
           name: 'old-model',
@@ -561,9 +664,8 @@ describe('EnvPanel container', () => {
           configs: { detail: 'low', variable_selector: ['sys', 'files'] },
         },
       },
-    }
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
-    mockGetNodes.mockReturnValue([llmNode])
+    })
+    setNodes([llmNode])
     mockFetchModelParameterRulesForModel.mockResolvedValue([
       {
         name: 'temperature',
@@ -580,11 +682,11 @@ describe('EnvPanel container', () => {
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
-      expect(mockSetNodes).toHaveBeenCalledWith([
+      expect(getNodes()).toEqual([
         expect.objectContaining({
           id: 'llm-node',
           data: expect.objectContaining({
@@ -641,12 +743,11 @@ describe('EnvPanel container', () => {
     mockVariableTriggerState.savePayload = nextEnv
 
     const { store } = renderWithProviders(<EnvPanel />, {
-      appId: 'app-1',
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([nextEnv])
@@ -656,7 +757,7 @@ describe('EnvPanel container', () => {
       environmentVariables: [nextEnv],
       deletedEnvironmentVariableIds: [],
     })
-    expect(mockSetNodes).not.toHaveBeenCalled()
+    expect(getNodes()).toMatchObject(initialNodes)
   })
 
   it('should persist follower graph edits before asking the leader to sync', async () => {
@@ -676,31 +777,20 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
-        model: {
-          provider: 'old-provider',
-          name: 'old-model',
-          mode: 'chat',
-          completion_params: {},
-        },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     mockVariableTriggerState.savePayload = nextEnv
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
 
     const { store } = renderWithProviders(<EnvPanel />, {
-      appId: 'app-1',
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([nextEnv])
@@ -730,10 +820,8 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    const staleNode = {
-      id: 'llm-node',
+    const staleNode = createLLMNode({
       data: {
-        type: 'llm',
         model: {
           provider: 'old-provider',
           name: 'old-model',
@@ -741,10 +829,9 @@ describe('EnvPanel container', () => {
           completion_params: { temperature: 0.2 },
         },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
-    const latestNode = {
+    })
+    const latestNode = createLLMNode({
       ...staleNode,
       data: {
         ...staleNode.data,
@@ -753,29 +840,28 @@ describe('EnvPanel container', () => {
           completion_params: { temperature: 0.9, obsolete: true },
         },
       },
-    }
+    })
     let resolveRules!: (rules: ModelParameterRule[]) => void
     mockFetchModelParameterRulesForModel.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveRules = resolve
       }),
     )
-    mockFindUsedVarNodes.mockReturnValue([staleNode])
-    mockGetNodes.mockReturnValue([staleNode])
+    setNodes([staleNode])
 
     const { store } = renderWithProviders(<EnvPanel />, {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
     await waitFor(() => {
       expect(mockFetchModelParameterRulesForModel).toHaveBeenCalledTimes(1)
     })
     expect(store.getState().environmentVariables).toEqual([env])
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
 
-    mockGetNodes.mockReturnValue([latestNode])
+    setNodes([latestNode])
     resolveRules([
       {
         name: 'temperature',
@@ -788,7 +874,7 @@ describe('EnvPanel container', () => {
     ])
 
     await waitFor(() => {
-      expect(mockSetNodes).toHaveBeenCalledWith([
+      expect(getNodes()).toEqual([
         expect.objectContaining({
           data: expect.objectContaining({
             model: expect.objectContaining({ completion_params: { temperature: 0.9 } }),
@@ -805,10 +891,8 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'old-provider', name: 'old-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
         model: {
           provider: 'old-provider',
           name: 'old-model',
@@ -816,25 +900,23 @@ describe('EnvPanel container', () => {
           completion_params: { temperature: 0.7 },
         },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
     mockFetchModelParameterRulesForModel.mockRejectedValueOnce(new Error('network error'))
 
     const { store } = renderWithProviders(<EnvPanel />, {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(mockFetchModelParameterRulesForModel).toHaveBeenCalledTimes(1)
@@ -842,7 +924,7 @@ describe('EnvPanel container', () => {
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([env])
     })
-    expect(mockSetNodes).not.toHaveBeenCalled()
+    expect(getNodes()).toMatchObject(initialNodes)
     expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
   })
@@ -860,7 +942,6 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    mockFindUsedVarNodes.mockReturnValue([])
     mockUpdateEnvironmentVariables.mockRejectedValueOnce(new Error('environment API failed'))
     mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
       callback?.onError?.()
@@ -870,14 +951,14 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().environmentVariables).toEqual([env])
     })
-    expect(mockSetNodes).not.toHaveBeenCalled()
+    expect(getNodes()).toMatchObject(initialNodes)
   })
 
   it('should preserve a newer remote value when a local alias save fails', async () => {
@@ -905,13 +986,13 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().environmentVariables).toEqual([remoteEnv])
     })
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should preserve an observed remote value when failure recovery cannot refetch', async () => {
@@ -943,8 +1024,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
     await waitFor(() => expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1))
 
     act(() => {
@@ -953,9 +1034,9 @@ describe('EnvPanel container', () => {
     rejectPersistence(new Error('environment API failed'))
 
     await waitFor(() => {
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().environmentVariables).toEqual([remoteEnv])
     })
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should accept an alias save that committed before its response failed', async () => {
@@ -980,8 +1061,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([savedEnv])
@@ -991,47 +1072,39 @@ describe('EnvPanel container', () => {
 
   it('should roll back model reconciliation when the atomic draft sync fails', async () => {
     const user = userEvent.setup()
+    let modelAtSync: unknown
     const env = createEnv({
       name: 'shared_model',
       value_type: 'llm',
       value: { provider: 'old-provider', name: 'old-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
-        model: {
-          provider: 'old-provider',
-          name: 'old-model',
-          mode: 'chat',
-          completion_params: {},
-        },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
     mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
-      mockGetNodes.mockReturnValue([
-        {
-          ...llmNode,
+      modelAtSync = getNodes()[0]?.data.model
+      setNodes([
+        createLLMNode({
+          id: llmNode.id,
           data: {
             ...llmNode.data,
-            label: 'concurrent edit',
+            title: 'Concurrent edit',
             model: {
               ...llmNode.data.model,
               provider: 'new-provider',
               name: 'new-model',
             },
           },
-        },
+        }),
       ])
       callback?.onError?.()
     })
@@ -1040,17 +1113,21 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
-      expect(mockSetNodes).toHaveBeenCalledTimes(2)
+      expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+      expect(getNodes()[0]?.data.model).toMatchObject({
+        provider: 'old-provider',
+        name: 'old-model',
+      })
       expect(store.getState().environmentVariables).toEqual([env])
     })
-    expect(mockSetNodes).toHaveBeenLastCalledWith([
+    expect(getNodes()).toEqual([
       expect.objectContaining({
         data: expect.objectContaining({
-          label: 'concurrent edit',
+          title: 'Concurrent edit',
           model: expect.objectContaining({
             provider: 'old-provider',
             name: 'old-model',
@@ -1058,39 +1135,32 @@ describe('EnvPanel container', () => {
         }),
       }),
     ])
+    expect(modelAtSync).toMatchObject({ provider: 'new-provider', name: 'new-model' })
     expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
   })
 
   it('should roll back a graph edit when draft sync settles without succeeding', async () => {
     const user = userEvent.setup()
+    let modelAtSync: unknown
     const env = createEnv({
       name: 'shared_model',
       value_type: 'llm',
       value: { provider: 'old-provider', name: 'old-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
-        model: {
-          provider: 'old-provider',
-          name: 'old-model',
-          mode: 'chat',
-          completion_params: {},
-        },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
     mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback) => {
+      modelAtSync = getNodes()[0]?.data.model
       callback?.onSettled?.()
     })
 
@@ -1098,13 +1168,18 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
-      expect(mockSetNodes).toHaveBeenCalledTimes(2)
+      expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+      expect(getNodes()[0]?.data.model).toMatchObject({
+        provider: 'old-provider',
+        name: 'old-model',
+      })
       expect(store.getState().environmentVariables).toEqual([env])
     })
+    expect(modelAtSync).toMatchObject({ provider: 'new-provider', name: 'new-model' })
     expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
   })
 
@@ -1115,28 +1190,18 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'old-provider', name: 'old-model', mode: 'chat' },
     })
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
-        model: {
-          provider: 'old-provider',
-          name: 'old-model',
-          mode: 'chat',
-          completion_params: {},
-        },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     let resolveFirstRules!: (rules: ModelParameterRule[]) => void
     mockFetchModelParameterRulesForModel.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveFirstRules = resolve
       }),
     )
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
@@ -1148,8 +1213,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
@@ -1157,7 +1222,7 @@ describe('EnvPanel container', () => {
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
       description: 'updated description',
     })
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
     expect(mockFetchModelParameterRulesForModel).toHaveBeenCalledTimes(1)
 
     resolveFirstRules([])
@@ -1175,7 +1240,7 @@ describe('EnvPanel container', () => {
         ],
       }),
     )
-    expect(mockSetNodes).toHaveBeenCalledTimes(1)
+    expect(getNodes()[0]?.data.model).toMatchObject({ provider: 'new-provider', name: 'new-model' })
     expect(store.getState().environmentVariables).toEqual([
       expect.objectContaining({
         description: 'updated description',
@@ -1199,7 +1264,6 @@ describe('EnvPanel container', () => {
         }),
       )
       .mockResolvedValueOnce({})
-    mockFindUsedVarNodes.mockReturnValue([])
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
@@ -1211,8 +1275,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
     await waitFor(() => {
       expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1)
     })
@@ -1223,7 +1287,7 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'newest-model', mode: 'chat' },
     })
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
     expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1)
 
     resolveFirstPersistence({})
@@ -1274,8 +1338,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [localEnv, remoteEnv],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${localEnv.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${localEnv.name}` }))
+    await saveVariable(user)
     await waitFor(() => {
       expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1)
     })
@@ -1287,7 +1351,7 @@ describe('EnvPanel container', () => {
       ...localEnv,
       value: { provider: 'new-provider', name: 'second-local-update', mode: 'chat' },
     })
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
     resolveFirstPersistence({})
 
     await waitFor(() => {
@@ -1335,8 +1399,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
     await waitFor(() => expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1))
 
     act(() => {
@@ -1345,9 +1409,9 @@ describe('EnvPanel container', () => {
     resolvePersistence({})
 
     await waitFor(() => {
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().environmentVariables).toEqual([remoteEnv])
     })
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should keep model reconciliation when only remote alias metadata differs', async () => {
@@ -1365,37 +1429,27 @@ describe('EnvPanel container', () => {
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
     })
     const serverEnv = { ...localEnv, description: 'remote description' }
-    const llmNode = {
-      id: 'llm-node',
+    const llmNode = createLLMNode({
       data: {
-        type: 'llm',
-        model: {
-          provider: 'old-provider',
-          name: 'old-model',
-          mode: 'chat',
-          completion_params: {},
-        },
         model_selector: ['env', env.name],
-        vision: { enabled: false },
       },
-    }
+    })
     mockVariableTriggerState.savePayload = localEnv
-    mockFindUsedVarNodes.mockReturnValue([llmNode])
-    mockGetNodes.mockReturnValue([llmNode])
+    setNodes([llmNode])
     mockFetchWorkflowDraft.mockResolvedValueOnce({ environment_variables: [serverEnv] })
 
     const { store } = renderWithProviders(<EnvPanel />, {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([serverEnv])
     })
-    expect(mockSetNodes).toHaveBeenCalledTimes(1)
-    expect(mockGetNodes()[0]?.data?.model).toEqual(
+    expect(getNodes()[0]?.data.model).toMatchObject({ provider: 'new-provider', name: 'new-model' })
+    expect(getNodes()[0]?.data?.model).toEqual(
       expect.objectContaining({ provider: 'new-provider', name: 'new-model' }),
     )
   })
@@ -1426,8 +1480,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [firstEnv, secondEnv],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${firstEnv.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${firstEnv.name}` }))
+    await saveVariable(user)
     await waitFor(() => {
       expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
     })
@@ -1438,8 +1492,10 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-b', mode: 'chat' },
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${secondEnv.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(
+      screen.getByRole('button', { name: `common.operation.edit ${secondEnv.name}` }),
+    )
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(2)
@@ -1474,8 +1530,8 @@ describe('EnvPanel container', () => {
       },
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([
@@ -1514,8 +1570,8 @@ describe('EnvPanel container', () => {
       callback?.onSuccess?.()
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables[0]?.value).toBe('[__HIDDEN__]')
@@ -1529,10 +1585,9 @@ describe('EnvPanel container', () => {
   it('should require confirmation before deleting affected secret variables', async () => {
     const user = userEvent.setup()
     const env = createEnv()
-    mockFindUsedVarNodes.mockReturnValue([{ id: 'node-1' }])
-    mockGetNodes.mockReturnValue([
-      { id: 'node-1', data: { nextSelector: ['env', env.name] } },
-      { id: 'node-2', data: { untouched: true } },
+    setNodes([
+      createCodeNode('node-1', [{ variable: 'key', value_selector: ['env', env.name] }]),
+      createCodeNode('node-2'),
     ])
 
     const { store } = renderWithProviders(<EnvPanel />, {
@@ -1542,24 +1597,28 @@ describe('EnvPanel container', () => {
       },
     })
 
-    await user.click(screen.getByRole('button', { name: `Delete ${env.name}` }))
-    expect(screen.getByRole('button', { name: 'Cancel remove' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: `common.operation.delete ${env.name}` }))
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
     expect(store.getState().environmentVariables).toHaveLength(1)
 
-    await user.click(screen.getByRole('button', { name: 'Cancel remove' }))
-    expect(screen.queryByRole('button', { name: 'Confirm remove' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.confirm' }),
+    ).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: `Delete ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Confirm remove' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.delete ${env.name}` }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([])
     })
     expect(store.getState().envSecrets).toEqual({})
-    expect(mockUpdateNodeVars).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'node-1' }),
-      ['env', env.name],
-      [],
-    )
+    expect(getNodes()).toEqual([
+      expect.objectContaining({
+        id: 'node-1',
+        data: expect.objectContaining({ variables: [{ variable: 'key', value_selector: [] }] }),
+      }),
+      expect.objectContaining({ id: 'node-2' }),
+    ])
   })
 })

@@ -8,7 +8,7 @@ from opentelemetry import context
 class TestBuildCelerySqlcommenterTags:
     """Tests for _build_celery_sqlcommenter_tags."""
 
-    def test_includes_framework_and_task_name(self):
+    def test_includes_framework_and_task_name(self) -> None:
         """Tags include celery framework version and task name."""
         from extensions.otel.celery_sqlcommenter import _build_celery_sqlcommenter_tags
 
@@ -16,7 +16,7 @@ class TestBuildCelerySqlcommenterTags:
         task.name = "tasks.async_workflow_tasks.execute_workflow_team"
         task.request = MagicMock()
         task.request.retries = 0
-        task.request.delivery_info = {}
+        task.request.delivery_info = dict[str, object]()
 
         with patch("extensions.otel.celery_sqlcommenter._get_traceparent", return_value=None):
             tags = _build_celery_sqlcommenter_tags(task)
@@ -25,7 +25,7 @@ class TestBuildCelerySqlcommenterTags:
         assert tags["framework"].startswith("celery:")
         assert tags["task_name"] == "tasks.async_workflow_tasks.execute_workflow_team"
 
-    def test_includes_celery_retries_when_nonzero(self):
+    def test_includes_celery_retries_when_nonzero(self) -> None:
         """celery_retries is included when retries > 0."""
         from extensions.otel.celery_sqlcommenter import _build_celery_sqlcommenter_tags
 
@@ -33,14 +33,14 @@ class TestBuildCelerySqlcommenterTags:
         task.name = "tasks.my_task"
         task.request = MagicMock()
         task.request.retries = 3
-        task.request.delivery_info = {}
+        task.request.delivery_info = dict[str, object]()
 
         with patch("extensions.otel.celery_sqlcommenter._get_traceparent", return_value=None):
             tags = _build_celery_sqlcommenter_tags(task)
 
         assert tags["celery_retries"] == 3
 
-    def test_omits_celery_retries_when_zero(self):
+    def test_omits_celery_retries_when_zero(self) -> None:
         """celery_retries is omitted when retries is 0."""
         from extensions.otel.celery_sqlcommenter import _build_celery_sqlcommenter_tags
 
@@ -48,14 +48,14 @@ class TestBuildCelerySqlcommenterTags:
         task.name = "tasks.my_task"
         task.request = MagicMock()
         task.request.retries = 0
-        task.request.delivery_info = {}
+        task.request.delivery_info = dict[str, object]()
 
         with patch("extensions.otel.celery_sqlcommenter._get_traceparent", return_value=None):
             tags = _build_celery_sqlcommenter_tags(task)
 
         assert "celery_retries" not in tags
 
-    def test_includes_routing_key_from_delivery_info(self):
+    def test_includes_routing_key_from_delivery_info(self) -> None:
         """routing_key is included when present in delivery_info."""
         from extensions.otel.celery_sqlcommenter import _build_celery_sqlcommenter_tags
 
@@ -70,7 +70,7 @@ class TestBuildCelerySqlcommenterTags:
 
         assert tags["routing_key"] == "workflow_based_app_execution"
 
-    def test_includes_traceparent_when_available(self):
+    def test_includes_traceparent_when_available(self) -> None:
         """traceparent is included when injectable from current context."""
         from extensions.otel.celery_sqlcommenter import _build_celery_sqlcommenter_tags
 
@@ -78,7 +78,7 @@ class TestBuildCelerySqlcommenterTags:
         task.name = "tasks.my_task"
         task.request = MagicMock()
         task.request.retries = 0
-        task.request.delivery_info = {}
+        task.request.delivery_info = dict[str, object]()
 
         traceparent = "00-5db86c23fa8d05b67db315694b518684-737bbf30cdcda066-00"
         with patch(
@@ -89,7 +89,7 @@ class TestBuildCelerySqlcommenterTags:
 
         assert tags["traceparent"] == traceparent
 
-    def test_handles_task_without_request(self):
+    def test_handles_task_without_request(self) -> None:
         """Gracefully handles task without request attribute."""
         from extensions.otel.celery_sqlcommenter import _build_celery_sqlcommenter_tags
 
@@ -107,7 +107,7 @@ class TestBuildCelerySqlcommenterTags:
 class TestTaskPrerunPostrunHandlers:
     """Tests for task_prerun and task_postrun signal handlers."""
 
-    def test_prerun_sets_context_postrun_detaches(self):
+    def test_prerun_sets_context_postrun_detaches(self) -> None:
         """task_prerun attaches SQLCOMMENTER context; task_postrun detaches it."""
         from extensions.otel.celery_sqlcommenter import (
             _SQLCOMMENTER_CONTEXT_KEY,
@@ -132,7 +132,7 @@ class TestTaskPrerunPostrunHandlers:
                 _on_task_prerun(task=task)
 
             tags = context.get_value(_SQLCOMMENTER_CONTEXT_KEY)
-            assert tags is not None
+            assert isinstance(tags, dict)
             assert tags["framework"].startswith("celery:")
             assert tags["task_name"] == "tasks.async_workflow_tasks.execute_workflow_team"
             assert tags["celery_retries"] == 1
@@ -148,7 +148,7 @@ class TestTaskPrerunPostrunHandlers:
         finally:
             context.detach(token)
 
-    def test_prerun_skips_when_no_task(self):
+    def test_prerun_skips_when_no_task(self) -> None:
         """prerun does nothing when task is missing from kwargs."""
         from extensions.otel.celery_sqlcommenter import (
             _SQLCOMMENTER_CONTEXT_KEY,
@@ -164,7 +164,7 @@ class TestTaskPrerunPostrunHandlers:
         finally:
             context.detach(token)
 
-    def test_postrun_skips_when_no_token(self):
+    def test_postrun_skips_when_no_token(self) -> None:
         """postrun does nothing when task has no token (e.g. prerun was skipped)."""
         from extensions.otel.celery_sqlcommenter import _on_task_postrun
 

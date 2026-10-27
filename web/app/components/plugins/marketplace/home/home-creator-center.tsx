@@ -9,7 +9,7 @@ import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import { useCreatorCenterUrl } from '../creator-center-url'
 
 export default function HomeCreatorCenter() {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation(['plugin'])
   const creatorCenterUrl = useCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
   const label = t(($) => $['marketplace.home.creatorCenter'])
 

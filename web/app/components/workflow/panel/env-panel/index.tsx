@@ -1,19 +1,22 @@
 import type { ModelSelectorProvider } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
   EnvironmentVariable,
   LLMEnvironmentVariableValue,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { RiCloseLine } from '@remixicon/react'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import {
@@ -24,6 +27,7 @@ import EnvItem from '@/app/components/workflow/panel/env-panel/env-item'
 import VariableTrigger from '@/app/components/workflow/panel/env-panel/variable-trigger'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { Resolution } from '@/types/app'
 import {
   fetchModelParameterRulesForModel,
@@ -31,6 +35,7 @@ import {
 } from '@/utils/completion-params'
 import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
+import { fetchEnvironmentVariables } from './requests'
 
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
 
@@ -153,7 +158,8 @@ const getLLMEnvironmentValue = (
 const useEnvPanelActions = ({
   collaborativeWorkflow,
   workflowStore,
-  appId,
+  resource,
+  doSyncWorkflowDraft,
   updateEnvList,
   setEnvSecrets,
   setControlPromptEditorRerenderKey,
@@ -161,7 +167,8 @@ const useEnvPanelActions = ({
 }: {
   collaborativeWorkflow: ReturnType<typeof useCollaborativeWorkflow>
   workflowStore: ReturnType<typeof useWorkflowStore>
-  appId: string
+  resource: EditorResource
+  doSyncWorkflowDraft: ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
   updateEnvList: (envList: EnvironmentVariable[]) => void
   setEnvSecrets: (envSecrets: Record<string, string>) => void
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
@@ -169,6 +176,8 @@ const useEnvPanelActions = ({
 }) => {
   const emitVarsAndFeaturesUpdate = useCallback(
     async (syncWorkflowDraft = false) => {
+      if (resource.kind !== 'app') return
+      const { appId } = resource
       try {
         const { webSocketClient } =
           await import('@/app/components/workflow/collaboration/core/websocket-manager')
@@ -183,17 +192,23 @@ const useEnvPanelActions = ({
         console.error('Failed to emit vars_and_features_update event:', error)
       }
     },
-    [appId],
+    [resource],
   )
 
   const persistEnvironmentVariables = useCallback(
     async (patch: EnvironmentVariablePatch, syncWorkflowDraft = false) => {
+      if (resource.kind !== 'app') {
+        let succeeded = false
+        await doSyncWorkflowDraft(false, {
+          onSuccess: () => {
+            succeeded = true
+          },
+        })
+        return succeeded
+      }
       try {
         const { updateEnvironmentVariables } = await import('@/service/workflow')
-        await updateEnvironmentVariables({
-          appId,
-          ...patch,
-        })
+        await updateEnvironmentVariables({ appId: resource.appId, ...patch })
         await emitVarsAndFeaturesUpdate(syncWorkflowDraft)
         return true
       } catch (error) {
@@ -201,19 +216,17 @@ const useEnvPanelActions = ({
         return false
       }
     },
-    [appId, emitVarsAndFeaturesUpdate],
+    [resource, doSyncWorkflowDraft, emitVarsAndFeaturesUpdate],
   )
 
   const fetchPersistedEnvironmentVariables = useCallback(async () => {
     try {
-      const { fetchWorkflowDraft } = await import('@/service/workflow')
-      const workflow = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
-      return workflow.environment_variables
+      return await fetchEnvironmentVariables(resource)
     } catch (error) {
       console.error('Failed to refresh environment variables:', error)
       return undefined
     }
-  }, [appId])
+  }, [resource])
 
   const getAffectedNodes = useCallback(
     (env: EnvironmentVariable) => {
@@ -412,7 +425,7 @@ const useEnvPanelActions = ({
 }
 
 const EnvPanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const setShowEnvPanel = useStore((s) => s.setShowEnvPanel)
@@ -420,7 +433,7 @@ const EnvPanel = () => {
   const updateEnvList = useStore((s) => s.setEnvironmentVariables)
   const setEnvSecrets = useStore((s) => s.setEnvSecrets)
   const setControlPromptEditorRerenderKey = useStore((s) => s.setControlPromptEditorRerenderKey)
-  const appId = useStore((s) => s.appId) as string
+  const resource = useAtomValue(editorResourceAtom)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { activeTextGenerationModelList } = useTextGenerationCurrentProviderAndModelAndModelList()
   const {
@@ -435,7 +448,8 @@ const EnvPanel = () => {
   } = useEnvPanelActions({
     collaborativeWorkflow,
     workflowStore,
-    appId,
+    resource,
+    doSyncWorkflowDraft,
     updateEnvList,
     setEnvSecrets,
     setControlPromptEditorRerenderKey,
@@ -447,25 +461,28 @@ const EnvPanel = () => {
 
   const [showRemoveVarConfirm, setShowRemoveVarConfirm] = useState(false)
   const [cacheForDelete, setCacheForDelete] = useState<EnvironmentVariable>()
-  const saveOperationQueueRef = useRef(Promise.resolve())
+  const saveOperationQueueRef = useRefWithInit(() => Promise.resolve())
   const committedEnvListRef = useRef(envList)
   const latestEnvListRef = useRef(envList)
-  const pendingSaveEnvIdsRef = useRef(new Map<string, number>())
+  const pendingSaveEnvIdsRef = useRefWithInit(() => new Map<string, number>())
   useLayoutEffect(() => {
     latestEnvListRef.current = envList
   }, [envList])
 
   useEffect(() => {
     if (pendingSaveEnvIdsRef.current.size === 0) committedEnvListRef.current = envList
-  }, [envList])
+  }, [envList, pendingSaveEnvIdsRef])
 
-  const mergeLatestUntouchedEnvList = useCallback((envListToMerge: EnvironmentVariable[]) => {
-    return mergeUntouchedEnvironmentVariables(
-      envListToMerge,
-      latestEnvListRef.current,
-      new Set(pendingSaveEnvIdsRef.current.keys()),
-    )
-  }, [])
+  const mergeLatestUntouchedEnvList = useCallback(
+    (envListToMerge: EnvironmentVariable[]) => {
+      return mergeUntouchedEnvironmentVariables(
+        envListToMerge,
+        latestEnvListRef.current,
+        new Set(pendingSaveEnvIdsRef.current.keys()),
+      )
+    },
+    [pendingSaveEnvIdsRef],
+  )
 
   const restoreCommittedEnvList = useCallback(() => {
     committedEnvListRef.current = mergeLatestUntouchedEnvList(committedEnvListRef.current)
@@ -523,7 +540,7 @@ const EnvPanel = () => {
       saveOperationQueueRef.current = queuedOperation.catch(() => undefined)
       return queuedOperation
     },
-    [mergeLatestUntouchedEnvList],
+    [mergeLatestUntouchedEnvList, pendingSaveEnvIdsRef, saveOperationQueueRef],
   )
 
   const syncDraftWithResult = useCallback(

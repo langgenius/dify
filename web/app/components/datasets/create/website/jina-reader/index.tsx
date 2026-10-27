@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -10,6 +9,7 @@ import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
+import { toast } from '@/app/notifications'
 import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
@@ -44,7 +44,7 @@ const JinaReader: FC<Props> = ({
   crawlOptions,
   onCrawlOptionsChange,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -125,10 +125,9 @@ const JinaReader: FC<Props> = ({
         await sleep(2500)
         return await waitForCrawlFinished(jobId)
       } catch (e: any) {
-        const errorBody = await e.json()
         return {
           isError: true,
-          errorMessage: errorBody.message,
+          errorMessage: e instanceof Error ? e.message : undefined,
           data: {
             data: [],
           },

@@ -18,7 +18,7 @@ class DifyWorkflowCallbackHandler(DifyAgentCallbackHandler):
         message_id: str | None = None,
         timer: Any | None = None,
         trace_manager: TraceQueueManager | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         for tool_output in tool_outputs:
             if dify_config.DEBUG:
                 print_text("\n[on_tool_execution]\n", color=self.color)

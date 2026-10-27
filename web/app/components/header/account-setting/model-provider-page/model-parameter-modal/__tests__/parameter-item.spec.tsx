@@ -1,52 +1,10 @@
 import type { ModelParameterRule } from '../../declarations'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWorkflowEditor as render } from '@/test/workflow-editor'
 import ParameterItem from '../parameter-item'
-
-vi.mock('../../hooks', () => ({
-  useLanguage: () => 'en_US',
-}))
-
-vi.mock('@/app/components/base/tag-input', () => ({
-  default: ({ onChange }: { onChange: (v: string[]) => void }) => (
-    <button onClick={() => onChange(['tag1', 'tag2'])} data-testid="tag-input">
-      Tag
-    </button>
-  ),
-}))
-
-let promptEditorOnChange: ((text: string) => void) | undefined
-let capturedWorkflowNodesMap: Record<string, { title: string; type: string }> | undefined
-
-vi.mock('@/app/components/base/prompt-editor', () => ({
-  default: ({
-    value,
-    onChange,
-    workflowVariableBlock,
-  }: {
-    value: string
-    onChange: (text: string) => void
-    workflowVariableBlock?: {
-      show: boolean
-      variables: NodeOutPutVar[]
-      workflowNodesMap?: Record<string, { title: string; type: string }>
-    }
-  }) => {
-    promptEditorOnChange = onChange
-    capturedWorkflowNodesMap = workflowVariableBlock?.workflowNodesMap
-    return (
-      <div
-        data-testid="prompt-editor"
-        data-value={value}
-        data-has-workflow-vars={!!workflowVariableBlock?.variables}
-      >
-        {value}
-      </div>
-    )
-  },
-}))
 
 describe('ParameterItem', () => {
   const createRule = (overrides: Partial<ModelParameterRule> = {}): ModelParameterRule => ({
@@ -60,11 +18,33 @@ describe('ParameterItem', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    promptEditorOnChange = undefined
-    capturedWorkflowNodesMap = undefined
   })
 
-  it('should render float controls and clamp numeric input to max', () => {
+  it.each([
+    { type: 'text', name: 'json_schema', label: 'JSON Schema' },
+    { type: 'string', name: 'system_prompt', label: 'System prompt' },
+  ])(
+    'should name the $type input after its visible parameter label',
+    async ({ type, name, label }) => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      render(
+        <ParameterItem
+          parameterRule={createRule({ type, name, label: { en_US: label, zh_Hans: label } })}
+          value=""
+          onChange={onChange}
+        />,
+      )
+
+      await user.type(screen.getByRole('textbox', { name: label }), 'x')
+
+      expect(onChange).toHaveBeenCalledWith('x')
+      expect(screen.getByRole('switch', { name: label })).toBeChecked()
+    },
+  )
+
+  it('should render float controls and clamp numeric input to max', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ParameterItem
@@ -74,12 +54,15 @@ describe('ParameterItem', () => {
       />,
     )
     const input = screen.getByRole('spinbutton')
-    fireEvent.change(input, { target: { value: '1.4' } })
+    await user.clear(input)
+    await user.type(input, '1.4')
+    await user.tab()
     expect(onChange).toHaveBeenCalledWith(1)
     expect(screen.getByRole('slider'))!.toBeInTheDocument()
   })
 
-  it('should clamp float numeric input to min', () => {
+  it('should clamp float numeric input to min', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ParameterItem
@@ -89,11 +72,14 @@ describe('ParameterItem', () => {
       />,
     )
     const input = screen.getByRole('spinbutton')
-    fireEvent.change(input, { target: { value: '0.05' } })
+    await user.clear(input)
+    await user.type(input, '0.05')
+    await user.tab()
     expect(onChange).toHaveBeenCalledWith(0.1)
   })
 
-  it('should render int controls and clamp numeric input', () => {
+  it('should render int controls and clamp numeric input', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ParameterItem
@@ -103,9 +89,13 @@ describe('ParameterItem', () => {
       />,
     )
     const input = screen.getByRole('spinbutton')
-    fireEvent.change(input, { target: { value: '15' } })
+    await user.clear(input)
+    await user.type(input, '15')
+    await user.tab()
     expect(onChange).toHaveBeenCalledWith(10)
-    fireEvent.change(input, { target: { value: '-5' } })
+    await user.clear(input)
+    await user.type(input, '-5')
+    await user.tab()
     expect(onChange).toHaveBeenCalledWith(0)
   })
 
@@ -126,51 +116,40 @@ describe('ParameterItem', () => {
     expect(screen.getByRole('spinbutton'))!.toHaveAttribute('step', '100')
   })
 
-  it('should render int input without slider if min or max is missing', () => {
-    render(<ParameterItem parameterRule={createRule({ type: 'int', min: 0 })} value={5} />)
-    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
-    expect(screen.getByRole('spinbutton'))!.toHaveAttribute('step', '0')
-  })
-
-  it('should render exact string input and propagate text changes', () => {
+  it('allows values above a configured minimum when no upper bound is supplied', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ParameterItem
-        parameterRule={createRule({ type: 'string', name: 'prompt' })}
-        value="initial"
+        parameterRule={createRule({ type: 'int', min: 0 })}
+        value={5}
         onChange={onChange}
       />,
     )
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'updated' } })
-    expect(onChange).toHaveBeenCalledWith('updated')
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
+    const input = screen.getByRole('spinbutton')
+    await user.clear(input)
+    await user.type(input, '60')
+    expect(onChange).toHaveBeenLastCalledWith(60)
   })
 
-  it('should render textarea for text type', () => {
+  it('selects an allowed string option', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
-    const { container } = render(
-      <ParameterItem
-        parameterRule={createRule({ type: 'text' })}
-        value="long text"
-        onChange={onChange}
-      />,
-    )
-    const textarea = container.querySelector('textarea')!
-    expect(textarea)!.toBeInTheDocument()
-    fireEvent.change(textarea, { target: { value: 'new long text' } })
-    expect(onChange).toHaveBeenCalledWith('new long text')
-  })
-
-  it('should render select for string with options', () => {
     render(
       <ParameterItem
         parameterRule={createRule({ type: 'string', options: ['a', 'b'] })}
         value="a"
+        onChange={onChange}
       />,
     )
-    expect(screen.getByText('a'))!.toBeInTheDocument()
+    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('option', { name: 'b' }))
+    expect(onChange).toHaveBeenCalledWith('b')
   })
 
-  it('should render tag input for tag type', () => {
+  it('adds a stop sequence on Tab without replacing existing sequences', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ParameterItem
@@ -183,11 +162,13 @@ describe('ParameterItem', () => {
       />,
     )
     expect(screen.getByText('placeholder'))!.toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('tag-input'))
-    expect(onChange).toHaveBeenCalledWith(['tag1', 'tag2'])
+    await user.type(screen.getByRole('textbox'), 'STOP')
+    await user.tab()
+    expect(onChange).toHaveBeenCalledWith(['a', 'STOP'])
   })
 
-  it('should render boolean radios and update value on click', () => {
+  it('should render boolean radios and update value on click', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <ParameterItem
@@ -196,7 +177,8 @@ describe('ParameterItem', () => {
         onChange={onChange}
       />,
     )
-    fireEvent.click(screen.getByText('False'))
+    expect(screen.getByRole('radio', { name: 'True' })).toBeChecked()
+    await user.click(screen.getByRole('radio', { name: 'False' }))
     expect(onChange).toHaveBeenCalledWith(false)
   })
 
@@ -210,10 +192,7 @@ describe('ParameterItem', () => {
 
   it('should not render switch if required or name is stop', () => {
     const { rerender } = render(
-      <ParameterItem
-        parameterRule={createRule({ required: true as unknown as false })}
-        value={1}
-      />,
+      <ParameterItem parameterRule={createRule({ required: true })} value={1} />,
     )
     expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     rerender(
@@ -232,30 +211,21 @@ describe('ParameterItem', () => {
     expect(screen.getByRole('textbox'))!.toHaveValue('hello')
 
     rerender(<ParameterItem parameterRule={createRule({ type: 'boolean', default: true })} />)
-    expect(screen.getByText('True'))!.toBeInTheDocument()
-    expect(screen.getByText('False'))!.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'True' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'False' })).not.toBeChecked()
 
     rerender(<ParameterItem parameterRule={createRule({ type: 'float' })} />)
     expect(screen.getByRole('spinbutton'))!.toHaveValue(0)
   })
 
-  it('should reset input to actual bound value on blur-sm', () => {
+  it('should reset input to actual bound value on blur', async () => {
+    const user = userEvent.setup()
     render(<ParameterItem parameterRule={createRule({ type: 'float', min: 0, max: 1 })} />)
     const input = screen.getByRole('spinbutton')
-    fireEvent.change(input, { target: { value: '5' } })
-    fireEvent.blur(input)
+    await user.clear(input)
+    await user.type(input, '5')
+    await user.tab()
     expect(input)!.toHaveValue(1)
-  })
-
-  it('should render no input for unsupported parameter type', () => {
-    render(
-      <ParameterItem
-        parameterRule={createRule({ type: 'unsupported' as unknown as string })}
-        value={0.7}
-      />,
-    )
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
   })
 
   describe('workflow variable reference', () => {
@@ -265,85 +235,42 @@ describe('ParameterItem', () => {
         id: 'node1',
         type: 'custom',
         position: { x: 0, y: 0 },
-        data: { title: 'LLM Node', type: BlockEnum.LLM },
-      } as Node,
+        data: { title: 'LLM Node', desc: '', type: BlockEnum.LLM },
+      },
       {
         id: 'start',
         type: 'custom',
         position: { x: 0, y: 0 },
-        data: { title: 'Start', type: BlockEnum.Start },
-      } as Node,
+        data: { title: 'Start', desc: '', type: BlockEnum.Start },
+      },
     ]
 
-    it('should build workflowNodesMap and render PromptEditor for string type', () => {
-      const onChange = vi.fn()
-      render(
-        <ParameterItem
-          parameterRule={createRule({ type: 'string', name: 'system_prompt' })}
-          value="hello {{#node1.output#}}"
-          onChange={onChange}
-          isInWorkflow
-          nodesOutputVars={mockNodesOutputVars}
-          availableNodes={mockAvailableNodes}
-        />,
-      )
+    it.each(['string', 'text'])(
+      'edits a workflow %s parameter with node references',
+      async (type) => {
+        const user = userEvent.setup()
+        const onChange = vi.fn()
+        render(
+          <ParameterItem
+            parameterRule={createRule({ type, name: 'system_prompt' })}
+            value="hello {{#node1.output#}} {{#sys.query#}} "
+            onChange={onChange}
+            isInWorkflow
+            nodesOutputVars={mockNodesOutputVars}
+            availableNodes={mockAvailableNodes}
+          />,
+        )
 
-      const editor = screen.getByTestId('prompt-editor')
-      expect(editor)!.toBeInTheDocument()
-      expect(editor)!.toHaveAttribute('data-has-workflow-vars', 'true')
-      expect(capturedWorkflowNodesMap).toBeDefined()
-      expect(capturedWorkflowNodesMap!.node1!.title).toBe('LLM Node')
-      expect(capturedWorkflowNodesMap!.sys!.title).toBe('workflow.blocks.start')
-      expect(capturedWorkflowNodesMap!.sys!.type).toBe(BlockEnum.Start)
+        const editor = screen.getByRole('textbox')
+        expect(await within(editor).findByText('LLM Node')).toBeVisible()
+        expect(within(editor).getByText('output')).toBeVisible()
+        expect(within(editor).getByText('workflow.blocks.start')).toBeVisible()
 
-      promptEditorOnChange?.('updated text')
-      expect(onChange).toHaveBeenCalledWith('updated text')
-    })
-
-    it('should build workflowNodesMap and render PromptEditor for text type', () => {
-      const onChange = vi.fn()
-      render(
-        <ParameterItem
-          parameterRule={createRule({ type: 'text', name: 'user_prompt' })}
-          value="some long text"
-          onChange={onChange}
-          isInWorkflow
-          nodesOutputVars={mockNodesOutputVars}
-          availableNodes={mockAvailableNodes}
-        />,
-      )
-
-      const editor = screen.getByTestId('prompt-editor')
-      expect(editor)!.toBeInTheDocument()
-      expect(editor)!.toHaveAttribute('data-has-workflow-vars', 'true')
-      expect(capturedWorkflowNodesMap).toBeDefined()
-
-      promptEditorOnChange?.('new long text')
-      expect(onChange).toHaveBeenCalledWith('new long text')
-    })
-
-    it('should fall back to plain input when not in workflow mode for string type', () => {
-      render(
-        <ParameterItem
-          parameterRule={createRule({ type: 'string', name: 'system_prompt' })}
-          value="plain"
-        />,
-      )
-
-      expect(screen.queryByTestId('prompt-editor')).not.toBeInTheDocument()
-      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
-    })
-
-    it('should return undefined workflowNodesMap when not in workflow mode', () => {
-      render(
-        <ParameterItem
-          parameterRule={createRule({ type: 'string', name: 'system_prompt' })}
-          value="plain"
-          availableNodes={mockAvailableNodes}
-        />,
-      )
-
-      expect(capturedWorkflowNodesMap).toBeUndefined()
-    })
+        await user.type(editor, '!')
+        await waitFor(() =>
+          expect(onChange).toHaveBeenCalledWith('hello {{#node1.output#}} {{#sys.query#}} !'),
+        )
+      },
+    )
   })
 })

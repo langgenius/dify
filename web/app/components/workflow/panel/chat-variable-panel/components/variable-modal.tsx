@@ -1,13 +1,13 @@
-import type { ChatVariableTranslator, ToastPayload } from './variable-modal.helpers'
+import type { ToastPayload } from './variable-modal.helpers'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import { useVariableModalState } from './use-variable-modal-state'
 import {
@@ -30,8 +30,7 @@ type ModalPropsType = {
 }
 
 const ChatVariableModal = ({ chatVar, onClose, onSave }: ModalPropsType) => {
-  const { t } = useTranslation()
-  const translateChatVariable: ChatVariableTranslator = (selector, options) => t(selector, options)
+  const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const workflowStore = useWorkflowStore()
   const notify = React.useCallback(({ children, message, type = 'info' }: ToastPayload) => {
     toast[type](message, children ? { description: children } : undefined)
@@ -61,16 +60,12 @@ const ChatVariableModal = ({ chatVar, onClose, onSave }: ModalPropsType) => {
     notify,
     onClose,
     onSave,
-    t: translateChatVariable,
+    t,
   })
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     replaceSpaceWithUnderscoreInVarNameInput(e.target)
-    if (
-      e.target.value &&
-      !validateVariableName({ name: e.target.value, notify, t: translateChatVariable })
-    )
-      return
+    if (e.target.value && !validateVariableName({ name: e.target.value, notify, t })) return
     handleVarNameChange(e)
   }
 
@@ -94,9 +89,7 @@ const ChatVariableModal = ({ chatVar, onClose, onSave }: ModalPropsType) => {
       <div className="max-h-120 overflow-y-auto px-4 py-2">
         <NameSection
           name={name}
-          onBlur={(nextName) =>
-            validateVariableName({ name: nextName, notify, t: translateChatVariable })
-          }
+          onBlur={(nextName) => validateVariableName({ name: nextName, notify, t })}
           onChange={handleNameChange}
           placeholder={t(($) => $['chatVariable.modal.namePlaceholder'], { ns: 'workflow' }) || ''}
           title={t(($) => $['chatVariable.modal.name'], { ns: 'workflow' })}
@@ -125,7 +118,7 @@ const ChatVariableModal = ({ chatVar, onClose, onSave }: ModalPropsType) => {
           onObjectChange={setObjectValue}
           onValueChange={setValue}
           placeholder={placeholder}
-          t={translateChatVariable}
+          t={t}
           toggleLabelKey={
             type === ChatVarType.Object ||
             type === ChatVarType.ArrayString ||

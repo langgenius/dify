@@ -1,9 +1,9 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { zPostAppsResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
-import { openBlankAppCreation } from '../../../support/apps'
-import { createE2EResourceName } from '../../../support/naming'
+import { openBlankAppCreation } from '../../../support/apps.ts'
+import { createE2EResourceName } from '../../../support/naming.ts'
 
 const appModeByType: Record<string, string> = {
   Agent: 'agent-chat',

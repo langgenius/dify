@@ -3,19 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useInvalidateDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
-import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import {
   useInvalidateCheckInstalled,
   useInvalidateInstalledPluginList,
 } from '@/service/use-plugins'
-import { useInvalidateStrategyProviders } from '@/service/use-strategy'
-import {
-  useInvalidateAllBuiltInTools,
-  useInvalidateAllToolProviders,
-  useInvalidateRAGRecommendedPlugins,
-} from '@/service/use-tools'
 import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../types'
 
@@ -62,17 +53,7 @@ const useRefreshPluginList = () => {
   const invalidateDefaultModel = useInvalidateDefaultModel()
   const queryClient = useQueryClient()
 
-  const invalidateAllToolProviders = useInvalidateAllToolProviders()
-  const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  const invalidateAllDataSources = useInvalidDataSourceList()
-
-  const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
-
-  const invalidateStrategyProviders = useInvalidateStrategyProviders()
-
   const invalidateAllTriggerPlugins = useInvalidateAllTriggerPlugins()
-
-  const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
   return {
     refreshPluginList: (
       manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null,
@@ -82,12 +63,26 @@ const useRefreshPluginList = () => {
       if (refreshAllType || !manifest) invalidateInstalledPluginList()
       else invalidateInstalledPluginList(manifest.category)
       invalidateCheckInstalled()
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
+      })
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.plugin.list.latestVersions.post.key(),
+      })
 
       // tool page, tool select
       if ((manifest && PluginCategoryEnum.tool.includes(manifest.category)) || refreshAllType) {
-        invalidateAllToolProviders()
-        invalidateAllBuiltInTools()
-        invalidateRAGRecommendedPlugins('tool')
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.toolProviders.get.key(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rag.pipelines.recommendedPlugins.get.queryKey({
+            input: { query: { type: 'tool' } },
+          }),
+        })
         // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
       }
 
@@ -98,8 +93,12 @@ const useRefreshPluginList = () => {
         (manifest && PluginCategoryEnum.datasource.includes(manifest.category)) ||
         refreshAllType
       ) {
-        invalidateAllDataSources()
-        invalidateDataSourceListAuth()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.auth.plugin.datasource.list.get.queryKey(),
+        })
       }
 
       // model select
@@ -107,7 +106,9 @@ const useRefreshPluginList = () => {
         queryClient.invalidateQueries({
           queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
         })
-        queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
+        })
         refetchLLMModelList()
         refetchEmbeddingModelList()
         refetchRerankModelList()
@@ -117,8 +118,14 @@ const useRefreshPluginList = () => {
       }
 
       // agent select
-      if ((manifest && PluginCategoryEnum.agent.includes(manifest.category)) || refreshAllType)
-        invalidateStrategyProviders()
+      if ((manifest && PluginCategoryEnum.agent.includes(manifest.category)) || refreshAllType) {
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.agentProviders.get.key(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.agentProvider.byProviderName.get.key(),
+        })
+      }
     },
   }
 }

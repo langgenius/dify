@@ -1,14 +1,7 @@
 import type { PluginInfoFromMarketPlace } from '@dify/contracts/marketplace'
-import type {
-  Dependency,
-  InstallPackageResponse,
-  PluginManifestInMarket,
-  TaskStatusResponse,
-  updatePackageResponse,
-  uploadGitHubResponse,
-} from '@/app/components/plugins/types'
+import type { Dependency, PluginManifestInMarket } from '@/app/components/plugins/types'
 import { consoleClient } from '@/service/console'
-import { get, getMarketplace, post, upload } from './base'
+import { getMarketplace, upload } from './base'
 
 export const uploadFile = async (file: File, isBundle: boolean) => {
   const formData = new FormData()
@@ -23,12 +16,6 @@ export const uploadFile = async (file: File, isBundle: boolean) => {
   )
 }
 
-export const updateFromMarketPlace = async (body: Record<string, string>) => {
-  return post<InstallPackageResponse>('/workspaces/current/plugin/upgrade/marketplace', {
-    body,
-  })
-}
-
 export const updateFromGitHub = async (
   repoUrl: string,
   selectedVersion: string,
@@ -36,7 +23,7 @@ export const updateFromGitHub = async (
   originalPlugin: string,
   newPlugin: string,
 ) => {
-  return post<updatePackageResponse>('/workspaces/current/plugin/upgrade/github', {
+  return consoleClient.workspaces.current.plugin.upgrade.github.post({
     body: {
       repo: repoUrl,
       version: selectedVersion,
@@ -52,7 +39,7 @@ export const uploadGitHub = async (
   selectedVersion: string,
   selectedPackage: string,
 ) => {
-  return post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
+  return consoleClient.workspaces.current.plugin.upload.github.post({
     body: {
       repo: repoUrl,
       version: selectedVersion,
@@ -84,7 +71,7 @@ export const fetchPluginInfoFromMarketPlace = async ({ org, name }: Record<strin
 }
 
 export const checkTaskStatus = async (taskId: string) => {
-  return get<TaskStatusResponse>(`/workspaces/current/plugin/tasks/${taskId}`)
+  return consoleClient.workspaces.current.plugin.tasks.byTaskId.get({ params: { task_id: taskId } })
 }
 
 export const uninstallPlugin = async (

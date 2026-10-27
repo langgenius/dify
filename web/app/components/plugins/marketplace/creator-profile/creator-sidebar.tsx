@@ -27,7 +27,7 @@ function SocialIcon({ platform }: { platform: CreatorSocialPlatform }) {
 }
 
 export default function CreatorSidebar({ profile }: CreatorSidebarProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const isOrganization = profile.kind === 'organization'
   const isPartner = profile.badges.includes('partner')
   const isVerified = profile.badges.includes('verified')

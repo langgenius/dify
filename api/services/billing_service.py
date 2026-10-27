@@ -3,11 +3,11 @@ import logging
 import os
 from collections.abc import Sequence
 from typing import Any, Literal, NotRequired, TypedDict
+from warnings import deprecated
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
-from typing_extensions import deprecated
 from werkzeug.exceptions import InternalServerError
 
 from core.helper.http_client_pooling import get_pooled_http_client
@@ -224,14 +224,6 @@ class BillingService:
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
     # Cache TTL: 10 minutes
     _PLAN_CACHE_TTL = 600
-
-    @classmethod
-    def ensure_new_agent_beta_revision(cls, revision_id: str) -> None:
-        cls._send_request("POST", f"/new-agent-beta/revisions/{revision_id}/ensure")
-
-    @classmethod
-    def ensure_new_agent_beta_workflow(cls, workflow_id: str) -> None:
-        cls._send_request("POST", f"/new-agent-beta/workflows/{workflow_id}/ensure")
 
     @classmethod
     def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
@@ -609,11 +601,6 @@ class BillingService:
         redis_client.delete(f"tenant:{tenant_id}:billing_info")
 
     @classmethod
-    def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str) -> dict[str, Any]:
-        payload = {"account_id": account_id, "click_id": click_id}
-        return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=payload)
-
-    @classmethod
     def get_plan_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
         """
         Bulk fetch billing subscription plan via billing API.
@@ -680,7 +667,7 @@ class BillingService:
             # Map cached values back to tenant_ids
             cache_misses: list[str] = []
 
-            for tenant_id, cached_value in zip(tenant_ids, cached_values):
+            for tenant_id, cached_value in zip(tenant_ids, cached_values, strict=False):
                 if cached_value:
                     try:
                         # Redis returns bytes, decode to string and parse JSON

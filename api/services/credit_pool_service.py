@@ -193,19 +193,6 @@ class CreditPoolService:
         )
 
     @classmethod
-    def create_default_pool(cls, tenant_id: str, session: Session) -> TenantCreditPool:
-        """create default credit pool for new tenant"""
-        credit_pool = TenantCreditPool(
-            tenant_id=tenant_id,
-            quota_limit=dify_config.HOSTED_POOL_CREDITS,
-            quota_used=0,
-            pool_type=ProviderQuotaType.TRIAL,
-        )
-        session.add(credit_pool)
-        session.commit()
-        return credit_pool
-
-    @classmethod
     def get_pool(
         cls,
         tenant_id: str,
@@ -319,10 +306,10 @@ class CreditPoolService:
         except QuotaExceededError:
             session.rollback()
             raise
-        except Exception:
+        except Exception as caught_error:
             session.rollback()
             logger.exception("Failed to reserve credits for tenant %s", tenant_id)
-            raise QuotaExceededError("Failed to reserve credits")
+            raise QuotaExceededError("Failed to reserve credits") from caught_error
 
         return CreditPoolReservation(
             tenant_id=tenant_id,
@@ -441,9 +428,9 @@ class CreditPoolService:
             return cls._deduct_with_tenant_lock(tenant_id, deduct)
         except QuotaExceededError:
             raise
-        except Exception:
+        except Exception as caught_error:
             logger.exception("Failed to deduct credits for tenant %s", tenant_id)
-            raise QuotaExceededError("Failed to deduct credits")
+            raise QuotaExceededError("Failed to deduct credits") from caught_error
 
     @classmethod
     def deduct_credits_capped(
@@ -495,6 +482,6 @@ class CreditPoolService:
             return cls._deduct_with_tenant_lock(tenant_id, deduct)
         except QuotaExceededError:
             raise
-        except Exception:
+        except Exception as caught_error:
             logger.exception("Failed to deduct capped credits for tenant %s", tenant_id)
-            raise QuotaExceededError("Failed to deduct credits")
+            raise QuotaExceededError("Failed to deduct credits") from caught_error

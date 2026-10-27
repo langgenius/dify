@@ -3,22 +3,20 @@ import AutoHeightTextarea from '../index'
 
 describe('AutoHeightTextarea', () => {
   it('moves focus and the cursor to the end when controlFocus changes', () => {
-    const focus = vi.spyOn(HTMLTextAreaElement.prototype, 'focus')
-    const setSelectionRange = vi.spyOn(HTMLTextAreaElement.prototype, 'setSelectionRange')
     const { rerender } = render(
       <AutoHeightTextarea value="hello" onChange={vi.fn()} controlFocus={1} />,
     )
 
-    expect(screen.getByRole('textbox')).toHaveValue('hello')
-    expect(focus).toHaveBeenCalledOnce()
-    expect(setSelectionRange).toHaveBeenLastCalledWith(5, 5)
+    const input = screen.getByRole('textbox') as HTMLTextAreaElement
+    expect(input).toHaveFocus()
+    expect(input.selectionStart).toBe(5)
+    expect(input.selectionEnd).toBe(5)
+    input.blur()
 
     rerender(<AutoHeightTextarea value="hello world" onChange={vi.fn()} controlFocus={2} />)
 
-    expect(focus).toHaveBeenCalledTimes(2)
-    expect(setSelectionRange).toHaveBeenLastCalledWith(11, 11)
-
-    focus.mockRestore()
-    setSelectionRange.mockRestore()
+    expect(input).toHaveFocus()
+    expect(input.selectionStart).toBe(11)
+    expect(input.selectionEnd).toBe(11)
   })
 })

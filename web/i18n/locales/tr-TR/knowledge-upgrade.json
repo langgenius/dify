@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "“{{name}}” artık bir Agent bilgi tabanı",
+  "upgrade.completeTitle": "Yükseltme tamamlandı",
+  "upgrade.contactSupport": "Destekle İletişime Geç",
+  "upgrade.dialogAvailability": "Yükseltmeden sonra <strong>hem klasik bilgi tabanı hem de Agent bilgi tabanı kullanılabilir olmaya devam eder</strong>",
+  "upgrade.dialogDescription": "Bu işlem, tüm belgeleri, ayarları ve uygulama bağlantılarını koruyarak <legacy>klasik bilgi tabanını</legacy> <new>Agent bilgi tabanına</new> yükseltir. Ardından otomatik olarak Agent bilgi tabanına yönlendirilirsiniz.",
+  "upgrade.dialogDuration": "Boyuta bağlı olarak birkaç dakika ile birkaç saat sürer. İlerleme bilgi tabanı kartında gösterilir",
+  "upgrade.dialogLinkedApps": "Bağlı uygulamalar yükseltme sırasında bilgi almaya devam eder",
+  "upgrade.dialogTitle": "Bu bilgi tabanı Agent bilgi tabanına yükseltilsin mi?",
+  "upgrade.failedDescription": "Yükseltme başarısız oldu — hiçbir şey değişmedi. Klasik bilgi tabanınız kullanılabilir durumda.",
+  "upgrade.failedTitle": "Yükseltme başarısız",
+  "upgrade.failedToastDescription": "“{{name}}” klasik bilgi tabanı olarak kalır; hiçbir veri değiştirilmedi",
+  "upgrade.justNow": "Az önce",
+  "upgrade.menuLabel": "Agent bilgi tabanına yükselt",
+  "upgrade.migratingDocuments": "Belgeler taşınıyor…",
+  "upgrade.modelCostDescription": "Yükseltme, bu bilgi tabanındaki belgeleri işlemek için modelleri kullanır ve token tüketir. Belge içeriği arttıkça tüketim genellikle artar ve yüksek maliyetler oluşabilir. Gerçek maliyet, kullanılan modelin faturalandırma yöntemine bağlıdır.",
+  "upgrade.start": "Yükseltmeyi başlat",
+  "upgrade.startFailed": "Yükseltme başlatılamadı. Tekrar deneyin.",
+  "upgrade.statusFailed": "Yükseltme başarısız",
+  "upgrade.statusUpgrading": "Yükseltiliyor",
+  "upgrade.summary": "Bilgi tabanı: {{name}}",
+  "upgrade.upgradedJustNow": "Az önce yükseltildi"
+}

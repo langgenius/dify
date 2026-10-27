@@ -1,71 +1,32 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type { Features } from '@/app/components/base/features/types'
+import type { Shape } from '@/app/components/workflow/store/workflow'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import type { EnvironmentVariablePatch } from '@/service/workflow'
 import { act } from '@testing-library/react'
+import { createElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { FeaturesContext } from '@/app/components/base/features/context'
+import { createFeaturesStore } from '@/app/components/base/features/store'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
-import { renderHookWithConsoleQuery } from '@/test/console/query-data'
+import { createHttpError } from '@/service/http-error'
+import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
-const mockGetNodes = vi.fn()
 const mockPostWithKeepalive = vi.fn()
-const mockSetSyncWorkflowDraftHash = vi.fn()
-const mockSetDraftUpdatedAt = vi.fn()
-const mockGetNodesReadOnly = vi.fn()
 const mockCollaborationIsConnected = vi.fn()
 const mockCollaborationGetIsLeader = vi.fn()
 const mockCollaborationRequestWorkflowSync = vi.fn()
 const mockCollaborationCanPersistLocalGraph = vi.fn()
 const mockCollaborationCanFlushGraphOnPageClose = vi.fn()
 const mockCollaborationCanUseLocalDraftFallback = vi.fn()
-let isCollaborationEnabled = false
 
-let reactFlowState: {
-  getNodes: typeof mockGetNodes
-  edges: Array<Record<string, unknown>>
-  transform: [number, number, number]
-}
-
-let workflowStoreState: {
-  appId: string
-  isWorkflowDataLoaded: boolean
-  syncWorkflowDraftHash: string | null
-  conversationVariables: Array<Record<string, unknown>>
-  setSyncWorkflowDraftHash: typeof mockSetSyncWorkflowDraftHash
-  setDraftUpdatedAt: typeof mockSetDraftUpdatedAt
-}
-
-let featuresState: {
-  features: {
-    opening: { enabled: boolean; opening_statement: string; suggested_questions: string[] }
-    suggested: Record<string, unknown>
-    text2speech: Record<string, unknown>
-    speech2text: Record<string, unknown>
-    citation: Record<string, unknown>
-    moderation: Record<string, unknown>
-    file: Record<string, unknown>
-  }
-}
-
-vi.mock('reactflow', () => ({
-  useStoreApi: () => ({ getState: () => reactFlowState }),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => workflowStoreState,
-  }),
-}))
-
-vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeaturesStore: () => ({
-    getState: () => featuresState,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ getNodesReadOnly: mockGetNodesReadOnly }),
-}))
-
+// The realtime collaboration session is an external connection boundary.
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     isConnected: (...args: unknown[]) => mockCollaborationIsConnected(...args),
@@ -80,9 +41,27 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 
 const mockSyncWorkflowDraft = vi.fn()
-vi.mock('@/service/workflow', () => ({
-  syncWorkflowDraft: (p: unknown) => mockSyncWorkflowDraft(p),
-}))
+// Stand in for the draft sync request at the client boundary. Calls are recorded as the
+// request they send (endpoint and body), and rejections pass through the console link's
+// contract error validation, as they do in production.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { apps } = await import('@dify/contracts/api/console/apps/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ apps })
+  const post = (input: { params: { app_id: string }; body: unknown }) =>
+    validate({
+      context: {},
+      input,
+      path: ['apps', 'byAppId', 'workflows', 'draft', 'post'],
+      next: () =>
+        mockSyncWorkflowDraft({
+          url: `/apps/${input.params.app_id}/workflows/draft`,
+          params: input.body,
+        }),
+    })
+  return { ...actual, consoleClient: { apps: { byAppId: { workflows: { draft: { post } } } } } }
+})
 
 vi.mock('@/service/fetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/fetch')>()
@@ -101,722 +80,922 @@ vi.mock('../use-workflow-refresh-draft', () => ({
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft }),
 }))
 
-const renderUseNodesSyncDraft = () =>
-  renderHookWithConsoleQuery(() => useNodesSyncDraft(), {
+type SyncDraftCanvas = {
+  nodes?: Node[]
+  edges?: Edge[]
+  transform?: [number, number, number]
+  appMode?: AppMode
+  isCollaborationEnabled?: boolean
+  features?: Features
+  initialStoreState?: Partial<Shape>
+}
+
+const startNode = createNode({
+  id: 'n1',
+  data: { type: BlockEnum.Start, title: 'Start' },
+})
+const savedStartNode = expect.objectContaining({
+  id: 'n1',
+  position: { x: 0, y: 0 },
+  data: { type: BlockEnum.Start, title: 'Start', desc: '' },
+})
+const draftRequest = (params: unknown) => ({ url: '/apps/app-1/workflows/draft', params })
+
+const renderSyncDraft = <R>(
+  hook: () => R,
+  {
+    nodes = [startNode],
+    edges = [],
+    transform,
+    appMode = 'workflow',
+    isCollaborationEnabled = false,
+    features,
+    initialStoreState,
+  }: SyncDraftCanvas = {},
+) => {
+  const featuresStore = createFeaturesStore(features ? { features } : undefined)
+  const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
   })
+  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: appMode }))
 
-describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    reactFlowState = {
-      getNodes: mockGetNodes,
-      edges: [],
-      transform: [0, 0, 1],
-    }
-    workflowStoreState = {
+  return renderWorkflowCanvasHook(hook, {
+    queryClient,
+    resource: {
+      kind: 'app',
       appId: 'app-1',
+      mode: appMode === 'advanced-chat' ? 'advanced-chat' : 'workflow',
+    },
+    nodes,
+    edges,
+    transform,
+    initialStoreState: {
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: 'hash-123',
-      conversationVariables: [],
-      setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
-      setDraftUpdatedAt: mockSetDraftUpdatedAt,
-    }
-    featuresState = {
-      features: {
-        opening: { enabled: false, opening_statement: '', suggested_questions: [] },
-        suggested: {},
-        text2speech: {},
-        speech2text: {},
-        citation: {},
-        moderation: {},
-        file: {},
-      },
-    }
-    mockGetNodesReadOnly.mockReturnValue(false)
-    mockGetNodes.mockReturnValue([
-      { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } },
-    ])
+      ...initialStoreState,
+    },
+    wrapper: ({ children }) =>
+      createElement(FeaturesContext.Provider, { value: featuresStore }, children),
+  })
+}
+
+const renderUseNodesSyncDraft = (canvas?: SyncDraftCanvas) =>
+  renderSyncDraft(() => useNodesSyncDraft(), canvas)
+
+const startEmptySave = (
+  result: { current: ReturnType<typeof useNodesSyncDraft> },
+  ...args: Parameters<ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']>
+) => {
+  let syncPromise!: ReturnType<ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']>
+  act(() => {
+    syncPromise = result.current.doSyncWorkflowDraft(...args)
+  })
+  return syncPromise
+}
+
+const draftNotSyncError = () =>
+  createHttpError(new Response(null, { status: 409 }), {
+    code: 'draft_workflow_not_sync',
+    message: 'Workflow not synced.',
+    status: 409,
+  })
+
+const useCollaborationSession = ({
+  connected,
+  leader,
+  canPersistLocalGraph = true,
+  canFlushGraphOnPageClose = true,
+  canUseLocalDraftFallback = false,
+}: {
+  connected: boolean
+  leader: boolean
+  canPersistLocalGraph?: boolean
+  canFlushGraphOnPageClose?: boolean
+  canUseLocalDraftFallback?: boolean
+}) => {
+  mockCollaborationIsConnected.mockReturnValue(connected)
+  mockCollaborationGetIsLeader.mockReturnValue(leader)
+  mockCollaborationCanPersistLocalGraph.mockReturnValue(canPersistLocalGraph)
+  mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(canFlushGraphOnPageClose)
+  mockCollaborationCanUseLocalDraftFallback.mockReturnValue(canUseLocalDraftFallback)
+}
+
+describe('useNodesSyncDraft', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
     mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new', updated_at: 1 })
-    mockCollaborationIsConnected.mockReturnValue(false)
-    mockCollaborationGetIsLeader.mockReturnValue(true)
-    mockCollaborationCanPersistLocalGraph.mockReturnValue(true)
-    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(true)
-    mockCollaborationCanUseLocalDraftFallback.mockReturnValue(false)
-    mockCollaborationRequestWorkflowSync.mockResolvedValue({
-      hash: 'remote-hash',
-      updatedAt: 2,
-    })
-    isCollaborationEnabled = false
+    useCollaborationSession({ connected: false, leader: true })
+    mockCollaborationRequestWorkflowSync.mockResolvedValue({ hash: 'remote-hash', updatedAt: 2 })
   })
 
-  it('should call handleRefreshWorkflowDraft(true) — not updating canvas — on draft_workflow_not_sync', async () => {
-    const error = {
-      json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
-      bodyUsed: false,
-    }
-    mockSyncWorkflowDraft.mockRejectedValue(error)
-
-    const { result } = renderUseNodesSyncDraft()
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false)
-    })
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledWith(true)
-  })
-
-  it('should NOT refresh when notRefreshWhenSyncError=true', async () => {
-    const error = {
-      json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
-      bodyUsed: false,
-    }
-    mockSyncWorkflowDraft.mockRejectedValue(error)
-
-    const { result } = renderUseNodesSyncDraft()
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(true)
-    })
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
-  })
-
-  it('should NOT refresh for a different error code', async () => {
-    const error = { json: vi.fn().mockResolvedValue({ code: 'other_error' }), bodyUsed: false }
-    mockSyncWorkflowDraft.mockRejectedValue(error)
-
-    const { result } = renderUseNodesSyncDraft()
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false)
-    })
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
-  })
-
-  it('should ignore non-JSON sync errors without throwing an unhandled rejection', async () => {
-    const error = {
-      json: vi.fn().mockRejectedValue(new SyntaxError('Unexpected token U')),
-      bodyUsed: false,
-    }
-    const callbacks = {
-      onError: vi.fn(),
-      onSettled: vi.fn(),
-    }
-    mockSyncWorkflowDraft.mockRejectedValue(error)
-
-    const { result } = renderUseNodesSyncDraft()
-    await act(async () => {
-      await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
-    })
-
-    expect(error.json).toHaveBeenCalled()
-    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
-    expect(callbacks.onError).toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
-  })
-
-  it('should treat unavailable workflow data as a skipped sync instead of an error', async () => {
-    workflowStoreState = {
-      ...workflowStoreState,
-      isWorkflowDataLoaded: false,
-    }
-    const callbacks = {
-      onError: vi.fn(),
-      onSettled: vi.fn(),
-    }
-
-    const { result } = renderUseNodesSyncDraft()
-    await act(async () => {
-      await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
-    })
-
-    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
-    expect(callbacks.onError).not.toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
-  })
-
-  it('should capture the graph before a queued sync runs after the canvas is torn down', async () => {
-    const draftNode = {
-      id: 'n1',
-      position: { x: 0, y: 0 },
-      data: { type: BlockEnum.Start, label: 'Start' },
-    }
-    const draftEdge = {
-      id: 'edge-1',
-      source: 'n1',
-      target: 'n2',
-      data: { stable: 'keep' },
-    }
-    mockGetNodes.mockReturnValue([draftNode])
-    reactFlowState = {
-      ...reactFlowState,
-      edges: [draftEdge],
-      transform: [10, 20, 1.5],
-    }
-
-    const { result } = renderUseNodesSyncDraft()
-    let syncPromise!: ReturnType<typeof result.current.doSyncWorkflowDraft>
-
-    act(() => {
-      syncPromise = result.current.doSyncWorkflowDraft(false)
-
-      // Simulate ReactFlow clearing its store immediately after the page starts unmounting.
-      mockGetNodes.mockReturnValue([])
-      reactFlowState = {
-        ...reactFlowState,
-        edges: [],
-        transform: [0, 0, 1],
-      }
-    })
-
-    await act(async () => {
-      await syncPromise
-    })
-
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
-      expect.objectContaining({
-        params: expect.objectContaining({
-          graph: {
-            nodes: [draftNode],
-            edges: [draftEdge],
-            viewport: { x: 10, y: 20, zoom: 1.5 },
-          },
-        }),
-      }),
-    )
-  })
-
-  it('should not include source_workflow_id in draft sync payloads', async () => {
-    const { result } = renderUseNodesSyncDraft()
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false)
-    })
-
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
-      expect.objectContaining({
-        params: expect.not.objectContaining({
-          source_workflow_id: expect.anything(),
-        }),
-      }),
-    )
-  })
-
-  it('should strip temp entities and private data, use the latest hash, and invoke success callbacks', async () => {
-    reactFlowState = {
-      ...reactFlowState,
-      edges: [
-        {
-          id: 'edge-1',
-          source: 'n1',
-          target: 'n2',
-          data: { _isTemp: false, _private: 'drop', stable: 'keep' },
-        },
-        {
-          id: 'placeholder-edge',
-          source: 'start-placeholder',
-          target: 'n1',
-          data: { stable: 'drop' },
-        },
-        { id: 'temp-edge', source: 'n2', target: 'n3', data: { _isTemp: true } },
-      ],
-      transform: [10, 20, 1.5],
-    }
-    mockGetNodes.mockReturnValue([
-      {
-        id: 'n1',
-        position: { x: 0, y: 0 },
-        data: { type: BlockEnum.Start, _tempField: 'drop', label: 'Start' },
-      },
-      {
-        id: 'start-placeholder',
-        position: { x: 1, y: 1 },
-        data: { type: BlockEnum.StartPlaceholder },
-      },
-      {
-        id: 'temp-node',
-        position: { x: 2, y: 2 },
-        data: { type: BlockEnum.Answer, _isTempNode: true },
-      },
-    ])
-    workflowStoreState = {
-      ...workflowStoreState,
-      syncWorkflowDraftHash: 'latest-hash',
-      conversationVariables: [{ id: 'conversation-1', value: 'conversation' }],
-    }
-    featuresState = {
-      features: {
-        opening: { enabled: true, opening_statement: 'Hello', suggested_questions: ['Q1'] },
-        suggested: { enabled: true },
-        text2speech: { enabled: true },
-        speech2text: { enabled: true },
-        citation: { enabled: true },
-        moderation: { enabled: false },
-        file: { enabled: true },
-      },
-    }
-
-    const callbacks = {
-      onSuccess: vi.fn(),
-      onError: vi.fn(),
-      onSettled: vi.fn(),
-    }
-
-    const { result } = renderUseNodesSyncDraft()
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false, callbacks)
-    })
-
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
-      url: '/apps/app-1/workflows/draft',
-      params: {
-        graph: {
-          nodes: [
-            { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start, label: 'Start' } },
-          ],
-          edges: [{ id: 'edge-1', source: 'n1', target: 'n2', data: { stable: 'keep' } }],
-          viewport: { x: 10, y: 20, zoom: 1.5 },
-        },
-        features: {
-          opening_statement: 'Hello',
-          suggested_questions: ['Q1'],
-          suggested_questions_after_answer: { enabled: true },
-          text_to_speech: { enabled: true },
-          speech_to_text: { enabled: true },
-          retriever_resource: { enabled: true },
-          sensitive_word_avoidance: { enabled: false },
-          file_upload: { enabled: true },
-        },
-        conversation_variables: [{ id: 'conversation-1', value: 'conversation' }],
-        hash: 'latest-hash',
-      },
-    })
-    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new')
-    expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(1)
-    expect(callbacks.onSuccess).toHaveBeenCalled()
-    expect(callbacks.onError).not.toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
-  })
-
-  it('should include an environment variable patch in a full draft sync', async () => {
-    const environmentVariablePatch: EnvironmentVariablePatch = {
-      environmentVariables: [
-        {
-          id: 'env-1',
-          name: 'for_summarize',
-          description: '',
-          value_type: 'llm',
-          value: {
-            provider: 'langgenius/openai/openai',
-            name: 'gpt-4.1',
-            mode: 'chat',
-          },
-        },
-      ],
-      deletedEnvironmentVariableIds: ['env-2'],
-    }
-    const { result } = renderUseNodesSyncDraft()
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false, undefined, { environmentVariablePatch })
-    })
-
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
-      expect.objectContaining({
-        params: expect.objectContaining({
-          environment_variable_patch: {
-            environment_variables: environmentVariablePatch.environmentVariables,
-            deleted_environment_variable_ids:
-              environmentVariablePatch.deletedEnvironmentVariableIds,
-          },
-        }),
-      }),
-    )
-  })
-
-  it('should keep pending inline Agent v2 nodes in draft without incomplete bindings', async () => {
-    reactFlowState = {
-      ...reactFlowState,
-      edges: [
-        {
-          id: 'edge-1',
-          source: 'n1',
-          target: 'pending-agent',
-          data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent },
-        },
-        { id: 'temp-edge', source: 'temp-node', target: 'pending-agent', data: {} },
-      ],
-    }
-    mockGetNodes.mockReturnValue([
-      { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } },
-      {
-        id: 'pending-agent',
-        position: { x: 1, y: 1 },
-        data: {
-          type: BlockEnum.Agent,
-          title: 'Agent',
-          desc: '',
-          agent_node_kind: 'dify_agent',
-          version: '2',
-          agent_binding: {
-            binding_type: 'inline_agent',
-          },
-          _isTempNode: true,
-          _openInlineAgentPanel: true,
-          selected: true,
-        },
-      },
-      {
-        id: 'temp-node',
-        position: { x: 2, y: 2 },
-        data: { type: BlockEnum.Answer, _isTempNode: true },
-      },
-    ])
-
-    const { result } = renderUseNodesSyncDraft()
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false)
-    })
-
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
-      expect.objectContaining({
-        params: expect.objectContaining({
-          graph: expect.objectContaining({
-            nodes: [
-              { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } },
-              {
-                id: 'pending-agent',
-                position: { x: 1, y: 1 },
-                data: {
-                  type: BlockEnum.Agent,
-                  title: 'Agent',
-                  desc: '',
-                  agent_node_kind: 'dify_agent',
-                  version: '2',
-                  agent_binding: {
-                    binding_type: 'inline_agent',
-                  },
-                  selected: true,
-                },
-              },
-            ],
-            edges: [
-              {
-                id: 'edge-1',
-                source: 'n1',
-                target: 'pending-agent',
-                data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent },
-              },
-            ],
+  describe('payload', () => {
+    it.each(['draft sync', 'page close'] as const)(
+      'removes Workflow LLM memory from %s without changing the canvas nodes',
+      async (savePath) => {
+        const memory = {
+          enabled: false,
+          role_prefix: { user: '', assistant: '' },
+          window: { enabled: false, size: 10 },
+        }
+        const containers = [
+          createNode({ id: 'iteration', data: { type: BlockEnum.Iteration, title: 'Iteration' } }),
+          createNode({ id: 'loop', data: { type: BlockEnum.Loop, title: 'Loop' } }),
+        ]
+        const canvasNodes = [
+          createNode({ id: 'llm', data: { type: BlockEnum.LLM, title: 'LLM', memory } }),
+          createNode({
+            id: 'iteration-llm',
+            parentId: 'iteration',
+            data: { type: BlockEnum.LLM, title: 'Iteration LLM', memory },
           }),
-        }),
-      }),
+          createNode({
+            id: 'loop-llm',
+            parentId: 'loop',
+            data: { type: BlockEnum.LLM, title: 'Loop LLM', memory },
+          }),
+        ]
+        const { result } = renderUseNodesSyncDraft({ nodes: [...containers, ...canvasNodes] })
+
+        await act(async () => {
+          if (savePath === 'draft sync') await result.current.doSyncWorkflowDraft()
+          else result.current.syncWorkflowDraftWhenPageClose()
+        })
+
+        const expectedPayload = expect.objectContaining({
+          graph: expect.objectContaining({
+            nodes: expect.arrayContaining(
+              canvasNodes.map((node) =>
+                expect.objectContaining({
+                  id: node.id,
+                  data: { type: BlockEnum.LLM, title: node.data.title, desc: '' },
+                }),
+              ),
+            ),
+          }),
+        })
+        if (savePath === 'draft sync')
+          expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(draftRequest(expectedPayload))
+        else
+          expect(mockPostWithKeepalive).toHaveBeenCalledWith(
+            '/api/apps/app-1/workflows/draft',
+            expectedPayload,
+          )
+        canvasNodes.forEach((node) => expect(node.data).toHaveProperty('memory', memory))
+      },
     )
-  })
 
-  it('should post workflow draft with keepalive when the page closes', () => {
-    reactFlowState = {
-      ...reactFlowState,
-      transform: [1, 2, 3],
-    }
-    workflowStoreState = {
-      ...workflowStoreState,
-      conversationVariables: [{ id: 'conversation-1' }],
-    }
+    it('preserves LLM memory in chatflow apps', async () => {
+      const memory = {
+        role_prefix: { user: 'Human', assistant: 'Assistant' },
+        window: { enabled: true, size: 10 },
+      }
+      const { result } = renderUseNodesSyncDraft({
+        appMode: 'advanced-chat',
+        nodes: [createNode({ id: 'llm', data: { type: BlockEnum.LLM, title: 'LLM', memory } })],
+      })
 
-    const { result } = renderUseNodesSyncDraft()
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+        result.current.syncWorkflowDraftWhenPageClose()
+      })
 
-    act(() => {
-      result.current.syncWorkflowDraftWhenPageClose()
+      const expectedPayload = expect.objectContaining({
+        graph: expect.objectContaining({
+          nodes: [
+            expect.objectContaining({
+              data: { type: BlockEnum.LLM, title: 'LLM', desc: '', memory },
+            }),
+          ],
+        }),
+      })
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(draftRequest(expectedPayload))
+      expect(mockPostWithKeepalive).toHaveBeenCalledWith(
+        '/api/apps/app-1/workflows/draft',
+        expectedPayload,
+      )
     })
 
-    expect(mockPostWithKeepalive).toHaveBeenCalledWith(
-      '/api/apps/app-1/workflows/draft',
-      expect.objectContaining({
-        graph: expect.objectContaining({
-          viewport: { x: 1, y: 2, zoom: 3 },
-        }),
-        hash: 'hash-123',
-      }),
-    )
-  })
-
-  it('should skip draft persistence without reporting an error while the app is being deleted', async () => {
-    const callbacks = {
-      onError: vi.fn(),
-      onSettled: vi.fn(),
-    }
-    markAppDeletionStarted('app-1')
-
-    try {
-      const { result } = renderUseNodesSyncDraft()
+    it('strips temporary entities and private data, uses the latest hash, and stores the result', async () => {
+      const conversationVariables = [
+        {
+          id: 'conversation-1',
+          name: 'topic',
+          value_type: ChatVarType.String,
+          value: 'conversation',
+          description: '',
+        },
+      ]
+      const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [
+          createNode({
+            id: 'n1',
+            data: { type: BlockEnum.Start, title: 'Start', _tempField: 'drop' },
+          }),
+          createNode({
+            id: 'start-placeholder',
+            position: { x: 1, y: 1 },
+            data: { type: BlockEnum.StartPlaceholder },
+          }),
+          createNode({
+            id: 'temp-node',
+            position: { x: 2, y: 2 },
+            data: { type: BlockEnum.Answer, _isTempNode: true },
+          }),
+        ],
+        edges: [
+          createEdge({
+            id: 'edge-1',
+            source: 'n1',
+            target: 'n2',
+            data: { _isTemp: false, _hovering: true, isInIteration: false },
+          }),
+          createEdge({ id: 'placeholder-edge', source: 'start-placeholder', target: 'n1' }),
+          createEdge({ id: 'temp-edge', source: 'n2', target: 'n3', data: { _isTemp: true } }),
+        ],
+        transform: [10, 20, 1.5],
+        features: {
+          opening: { enabled: true, opening_statement: 'Hello', suggested_questions: ['Q1'] },
+          suggested: { enabled: true },
+          text2speech: { enabled: true },
+          speech2text: { enabled: true },
+          citation: { enabled: true },
+          moderation: { enabled: false },
+          file: { enabled: true },
+        },
+        initialStoreState: { syncWorkflowDraftHash: 'latest-hash', conversationVariables },
+      })
 
       await act(async () => {
         await result.current.doSyncWorkflowDraft(false, callbacks)
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest({
+          graph: {
+            nodes: [savedStartNode],
+            edges: [
+              createEdge({
+                id: 'edge-1',
+                source: 'n1',
+                target: 'n2',
+                data: { isInIteration: false },
+              }),
+            ],
+            viewport: { x: 10, y: 20, zoom: 1.5 },
+          },
+          features: {
+            opening_statement: 'Hello',
+            suggested_questions: ['Q1'],
+            suggested_questions_after_answer: { enabled: true },
+            text_to_speech: { enabled: true },
+            speech_to_text: { enabled: true },
+            retriever_resource: { enabled: true },
+            sensitive_word_avoidance: { enabled: false },
+            file_upload: { enabled: true },
+          },
+          conversation_variables: conversationVariables,
+          hash: 'latest-hash',
+        }),
+      )
+      expect(store.getState()).toMatchObject({
+        showConfirm: undefined,
+        syncWorkflowDraftHash: 'new',
+        draftUpdatedAt: 1000,
+      })
+      expect(callbacks.onSuccess).toHaveBeenCalledOnce()
+      expect(callbacks.onError).not.toHaveBeenCalled()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    })
+
+    it('includes an environment variable patch in a full draft sync', async () => {
+      const environmentVariablePatch: EnvironmentVariablePatch = {
+        environmentVariables: [
+          {
+            id: 'env-1',
+            name: 'for_summarize',
+            description: '',
+            value_type: 'llm',
+            value: { provider: 'langgenius/openai/openai', name: 'gpt-4.1', mode: 'chat' },
+          },
+        ],
+        deletedEnvironmentVariableIds: ['env-2'],
+      }
+      const { result } = renderUseNodesSyncDraft()
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft(false, undefined, { environmentVariablePatch })
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            environment_variable_patch: {
+              environment_variables: environmentVariablePatch.environmentVariables,
+              deleted_environment_variable_ids:
+                environmentVariablePatch.deletedEnvironmentVariableIds,
+            },
+          }),
+        }),
+      )
+    })
+
+    it('keeps pending inline Agent v2 nodes in draft without incomplete bindings', async () => {
+      const agentData = {
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        version: '2',
+        agent_binding: { binding_type: 'inline_agent' },
+        selected: true,
+      }
+      const { result } = renderUseNodesSyncDraft({
+        nodes: [
+          startNode,
+          createNode({
+            id: 'pending-agent',
+            position: { x: 1, y: 1 },
+            data: { ...agentData, _isTempNode: true, _openInlineAgentPanel: true },
+          }),
+          createNode({
+            id: 'temp-node',
+            position: { x: 2, y: 2 },
+            data: { type: BlockEnum.Answer, _isTempNode: true },
+          }),
+        ],
+        edges: [
+          createEdge({
+            id: 'edge-1',
+            source: 'n1',
+            target: 'pending-agent',
+            data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent },
+          }),
+          createEdge({ id: 'temp-edge', source: 'temp-node', target: 'pending-agent' }),
+        ],
+      })
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft(false)
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            graph: expect.objectContaining({
+              nodes: [
+                savedStartNode,
+                expect.objectContaining({ id: 'pending-agent', data: agentData }),
+              ],
+              edges: [
+                createEdge({
+                  id: 'edge-1',
+                  source: 'n1',
+                  target: 'pending-agent',
+                  data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent },
+                }),
+              ],
+            }),
+          }),
+        }),
+      )
+    })
+
+    it('captures the graph before a queued sync runs after the canvas is torn down', async () => {
+      const draftEdge = createEdge({ id: 'edge-1', source: 'n1', target: 'n2' })
+      const { result, setCanvas } = renderUseNodesSyncDraft({
+        edges: [draftEdge],
+        transform: [10, 20, 1.5],
+      })
+      let syncPromise!: ReturnType<typeof result.current.doSyncWorkflowDraft>
+
+      act(() => {
+        syncPromise = result.current.doSyncWorkflowDraft(false)
+        // ReactFlow clears its store immediately after the page starts unmounting.
+        setCanvas({ nodes: [], edges: [], transform: [0, 0, 1] })
+      })
+
+      await act(async () => {
+        await syncPromise
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            graph: {
+              nodes: [savedStartNode],
+              edges: [draftEdge],
+              viewport: { x: 10, y: 20, zoom: 1.5 },
+            },
+          }),
+        }),
+      )
+    })
+  })
+
+  describe('empty graph confirmation', () => {
+    it('waits for confirmation before force-saving an empty graph', async () => {
+      const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
+      const { result, store } = renderUseNodesSyncDraft({ nodes: [] })
+      const syncPromise = startEmptySave(result, false, callbacks)
+
+      expect(store.getState().showConfirm).toEqual(
+        expect.objectContaining({
+          title: 'workflow.common.clearCanvasConfirmTitle',
+          desc: 'workflow.common.clearCanvasConfirmDescription',
+        }),
+      )
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(callbacks.onSettled).not.toHaveBeenCalled()
+
+      await act(async () => {
+        store.getState().showConfirm?.onConfirm()
+        await expect(syncPromise).resolves.toEqual({ hash: 'new', updatedAt: 1 })
+      })
+
+      expect(store.getState().showConfirm).toBeUndefined()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            graph: expect.objectContaining({ nodes: [], edges: [] }),
+            force: true,
+          }),
+        }),
+      )
+      expect(callbacks.onSuccess).toHaveBeenCalledOnce()
+      expect(callbacks.onError).not.toHaveBeenCalled()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    })
+
+    it('settles a canceled empty save without posting or reporting an error', async () => {
+      const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
+      const { result, store } = renderUseNodesSyncDraft({ nodes: [] })
+      const syncPromise = startEmptySave(result, false, callbacks)
+
+      await act(async () => {
+        store.getState().showConfirm?.onCancel?.()
+        await expect(syncPromise).resolves.toBeNull()
+      })
+
+      expect(store.getState().showConfirm).toBeUndefined()
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(callbacks.onSuccess).not.toHaveBeenCalled()
+      expect(callbacks.onError).not.toHaveBeenCalled()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    })
+
+    it('treats a graph with only placeholders and temporary entities as empty', async () => {
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [
+          createNode({ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }),
+          createNode({
+            id: 'temp-node',
+            position: { x: 1, y: 1 },
+            data: { type: BlockEnum.Answer, _isTempNode: true },
+          }),
+        ],
+        edges: [
+          createEdge({
+            id: 'temp-edge',
+            source: 'start-placeholder',
+            target: 'temp-node',
+            data: { _isTemp: true },
+          }),
+        ],
+      })
+      const syncPromise = startEmptySave(result)
+
+      expect(store.getState().showConfirm).toBeDefined()
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+
+      await act(async () => {
+        store.getState().showConfirm?.onConfirm()
+        await syncPromise
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            graph: expect.objectContaining({ nodes: [], edges: [] }),
+            force: true,
+          }),
+        }),
+      )
+    })
+
+    it('skips an empty page-close save without opening confirmation', () => {
+      const { result, store } = renderUseNodesSyncDraft({ nodes: [] })
+
+      act(() => {
+        result.current.syncWorkflowDraftWhenPageClose()
+      })
+
+      expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+      expect(store.getState().showConfirm).toBeUndefined()
+    })
+
+    it('keeps one confirmation when another hook instance tries to save the empty graph', async () => {
+      const { result, store } = renderSyncDraft(
+        () => [useNodesSyncDraft(), useNodesSyncDraft()] as const,
+        { nodes: [] },
+      )
+      const [first, second] = result.current
+      const secondCallbacks = { onError: vi.fn(), onSettled: vi.fn() }
+      let firstSave!: ReturnType<typeof first.doSyncWorkflowDraft>
+
+      act(() => {
+        firstSave = first.doSyncWorkflowDraft()
+      })
+      const confirmation = store.getState().showConfirm
+
+      await act(async () => {
+        await expect(second.doSyncWorkflowDraft(false, secondCallbacks)).resolves.toBeNull()
+      })
+
+      expect(store.getState().showConfirm).toBe(confirmation)
+      expect(secondCallbacks.onError).not.toHaveBeenCalled()
+      expect(secondCallbacks.onSettled).toHaveBeenCalledOnce()
+
+      await act(async () => {
+        confirmation?.onConfirm()
+        await firstSave
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+    })
+
+    it('does not save the old empty graph when a node is added before confirmation', async () => {
+      const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
+      const { result, setCanvas, store } = renderUseNodesSyncDraft({ nodes: [] })
+      const syncPromise = startEmptySave(result, false, callbacks)
+
+      setCanvas({ nodes: [createNode({ id: 'new-node', data: { type: BlockEnum.Start } })] })
+
+      await act(async () => {
+        store.getState().showConfirm?.onConfirm()
+        await expect(syncPromise).resolves.toBeNull()
+      })
+
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(callbacks.onError).not.toHaveBeenCalled()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    })
+
+    it('rechecks a confirmed empty graph after an earlier save finishes', async () => {
+      let finishEarlierSave!: (response: { hash: string; updated_at: number }) => void
+      let notifySaveStarted!: () => void
+      const saveStarted = new Promise<void>((resolve) => {
+        notifySaveStarted = resolve
+      })
+      mockSyncWorkflowDraft.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishEarlierSave = resolve
+            notifySaveStarted()
+          }),
+      )
+      const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
+      const { result, setCanvas, store } = renderUseNodesSyncDraft()
+      const earlierSave = startEmptySave(result)
+      await saveStarted
+      setCanvas({ nodes: [] })
+      const emptySave = startEmptySave(result, false, callbacks)
+
+      await act(async () => {
+        store.getState().showConfirm?.onConfirm()
+      })
+
+      setCanvas({ nodes: [createNode({ id: 'restored-node', data: { type: BlockEnum.Start } })] })
+
+      await act(async () => {
+        finishEarlierSave({ hash: 'earlier-save', updated_at: 1 })
+        await earlierSave
+        await expect(emptySave).resolves.toBeNull()
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+      expect(callbacks.onError).not.toHaveBeenCalled()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    })
+
+    it('cancels a pending empty save when its owning hook unmounts', async () => {
+      const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
+      const { result, store, unmount } = renderUseNodesSyncDraft({ nodes: [] })
+      const syncPromise = startEmptySave(result, false, callbacks)
+      expect(store.getState().showConfirm).toBeDefined()
+
+      unmount()
+      await expect(syncPromise).resolves.toBeNull()
+
+      expect(store.getState().showConfirm).toBeUndefined()
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(callbacks.onError).not.toHaveBeenCalled()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    })
+
+    it('confirms and saves an empty collaborative follower graph in the initiating tab', async () => {
+      useCollaborationSession({ connected: true, leader: false })
+      const { result, store } = renderUseNodesSyncDraft({
+        nodes: [],
+        isCollaborationEnabled: true,
+      })
+      const syncPromise = startEmptySave(result)
+
+      expect(store.getState().showConfirm).toBeDefined()
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+
+      await act(async () => {
+        store.getState().showConfirm?.onConfirm()
+        await syncPromise
+      })
+
+      expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({ force: true, _is_collaborative: true }),
+        }),
+      )
+    })
+  })
+
+  describe('failures and skipped saves', () => {
+    it.each([
+      {
+        scenario: 'an out-of-date draft',
+        error: draftNotSyncError,
+        notRefresh: false,
+        refreshes: 1,
+      },
+      {
+        scenario: 'an out-of-date draft with refresh disabled',
+        error: draftNotSyncError,
+        notRefresh: true,
+        refreshes: 0,
+      },
+      {
+        scenario: 'another API error',
+        error: () => createHttpError(new Response(null, { status: 400 }), { code: 'other_error' }),
+        notRefresh: false,
+        refreshes: 0,
+      },
+      {
+        scenario: 'a non-JSON error',
+        error: () => createHttpError(new Response(null, { status: 502 })),
+        notRefresh: false,
+        refreshes: 0,
+      },
+    ])(
+      'reports $scenario and refreshes $refreshes time(s)',
+      async ({ error, notRefresh, refreshes }) => {
+        mockSyncWorkflowDraft.mockRejectedValue(error())
+        const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
+        const { result, store } = renderUseNodesSyncDraft()
+
+        await act(async () => {
+          await expect(
+            result.current.doSyncWorkflowDraft(notRefresh, callbacks),
+          ).resolves.toBeNull()
+        })
+
+        expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(refreshes)
+        if (refreshes) expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledWith(true)
+        expect(callbacks.onError).toHaveBeenCalledOnce()
+        expect(callbacks.onSettled).toHaveBeenCalledOnce()
+        expect(store.getState().syncWorkflowDraftHash).toBe('hash-123')
+      },
+    )
+
+    it.each([
+      {
+        scenario: 'workflow data is not loaded',
+        initialStoreState: { isWorkflowDataLoaded: false },
+      },
+      { scenario: 'the canvas is read-only', initialStoreState: { canvasReadOnly: true } },
+    ])('skips persistence without an error when $scenario', async ({ initialStoreState }) => {
+      const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
+      const { result } = renderUseNodesSyncDraft({ initialStoreState })
+
+      await act(async () => {
+        await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
         result.current.syncWorkflowDraftWhenPageClose()
       })
 
       expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
       expect(mockPostWithKeepalive).not.toHaveBeenCalled()
       expect(callbacks.onError).not.toHaveBeenCalled()
-      expect(callbacks.onSettled).toHaveBeenCalledOnce()
-    } finally {
-      markAppDeletionFailed('app-1')
-    }
+    })
+
+    it('skips draft persistence without reporting an error while the app is being deleted', async () => {
+      const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
+      markAppDeletionStarted('app-1')
+
+      try {
+        const { result } = renderUseNodesSyncDraft()
+
+        await act(async () => {
+          await result.current.doSyncWorkflowDraft(false, callbacks)
+          result.current.syncWorkflowDraftWhenPageClose()
+        })
+
+        expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+        expect(mockPostWithKeepalive).not.toHaveBeenCalled()
+        expect(callbacks.onError).not.toHaveBeenCalled()
+        expect(callbacks.onSettled).toHaveBeenCalledOnce()
+      } finally {
+        markAppDeletionFailed('app-1')
+      }
+    })
+
+    it('does not report an in-flight draft failure after app deletion starts', async () => {
+      let rejectSync!: (reason?: unknown) => void
+      let resolveStarted!: () => void
+      const started = new Promise<void>((resolve) => {
+        resolveStarted = resolve
+      })
+      mockSyncWorkflowDraft.mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectSync = reject
+            resolveStarted()
+          }),
+      )
+      const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
+      const { result } = renderUseNodesSyncDraft()
+      const syncPromise = startEmptySave(result, false, callbacks)
+      await started
+      markAppDeletionStarted('app-1')
+
+      try {
+        await act(async () => {
+          rejectSync(new Error('App not found'))
+          await syncPromise
+        })
+
+        expect(callbacks.onError).not.toHaveBeenCalled()
+        expect(callbacks.onSettled).toHaveBeenCalledOnce()
+      } finally {
+        markAppDeletionFailed('app-1')
+      }
+    })
   })
 
-  it('should not report an in-flight draft failure after app deletion starts', async () => {
-    let rejectSync!: (reason?: unknown) => void
-    let resolveStarted!: () => void
-    const started = new Promise<void>((resolve) => {
-      resolveStarted = resolve
-    })
-    mockSyncWorkflowDraft.mockImplementationOnce(
-      () =>
-        new Promise((_, reject) => {
-          rejectSync = reject
-          resolveStarted()
-        }),
-    )
-    const callbacks = {
-      onError: vi.fn(),
-      onSettled: vi.fn(),
-    }
-    const { result } = renderUseNodesSyncDraft()
-    let syncPromise!: ReturnType<typeof result.current.doSyncWorkflowDraft>
-
-    act(() => {
-      syncPromise = result.current.doSyncWorkflowDraft(false, callbacks)
-    })
-    await started
-    markAppDeletionStarted('app-1')
-
-    try {
-      await act(async () => {
-        rejectSync(new Error('App not found'))
-        await syncPromise
+  describe('page close', () => {
+    it('posts the draft with keepalive and leaves out the local start placeholder', () => {
+      const { result } = renderUseNodesSyncDraft({
+        nodes: [
+          createNode({ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }),
+          startNode,
+        ],
+        edges: [createEdge({ id: 'placeholder-edge', source: 'start-placeholder', target: 'n1' })],
+        transform: [1, 2, 3],
       })
 
+      act(() => {
+        result.current.syncWorkflowDraftWhenPageClose()
+      })
+
+      expect(mockPostWithKeepalive).toHaveBeenCalledWith(
+        '/api/apps/app-1/workflows/draft',
+        expect.objectContaining({
+          graph: { nodes: [savedStartNode], edges: [], viewport: { x: 1, y: 2, zoom: 3 } },
+          hash: 'hash-123',
+        }),
+      )
+    })
+
+    it.each([
+      {
+        scenario: 'a follower cannot flush the shared graph',
+        session: { connected: true, leader: false, canFlushGraphOnPageClose: false },
+        posts: 0,
+      },
+      {
+        scenario: 'the trusted sole leader flushes while hidden',
+        session: { connected: true, leader: true, canFlushGraphOnPageClose: true },
+        posts: 1,
+      },
+      {
+        // Without a connection there is no leader election; skipping would drop the edits.
+        scenario: 'collaboration never connected',
+        session: {
+          connected: false,
+          leader: false,
+          canFlushGraphOnPageClose: false,
+          canUseLocalDraftFallback: true,
+        },
+        posts: 1,
+      },
+      {
+        scenario: 'an established collaboration disconnected',
+        session: {
+          connected: false,
+          leader: true,
+          canFlushGraphOnPageClose: false,
+          canUseLocalDraftFallback: false,
+        },
+        posts: 0,
+      },
+    ])('posts $posts keepalive save(s) when $scenario', ({ session, posts }) => {
+      useCollaborationSession(session)
+      const { result } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
+
+      act(() => {
+        result.current.syncWorkflowDraftWhenPageClose()
+      })
+
+      expect(mockPostWithKeepalive).toHaveBeenCalledTimes(posts)
+    })
+  })
+
+  describe('collaboration', () => {
+    it('waits for the leader save result when the current user is a follower', async () => {
+      useCollaborationSession({ connected: true, leader: false })
+      const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
+      const { result, store } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft(false, callbacks)
+      })
+
+      expect(mockCollaborationRequestWorkflowSync).toHaveBeenCalled()
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(store.getState()).toMatchObject({
+        syncWorkflowDraftHash: 'remote-hash',
+        draftUpdatedAt: 2000,
+      })
+      expect(callbacks.onSuccess).toHaveBeenCalledOnce()
       expect(callbacks.onError).not.toHaveBeenCalled()
       expect(callbacks.onSettled).toHaveBeenCalledOnce()
-    } finally {
-      markAppDeletionFailed('app-1')
-    }
-  })
-
-  it('should not post the local start placeholder when the page closes', () => {
-    reactFlowState = {
-      ...reactFlowState,
-      edges: [{ id: 'placeholder-edge', source: 'start-placeholder', target: 'n1', data: {} }],
-    }
-    mockGetNodes.mockReturnValue([
-      {
-        id: 'start-placeholder',
-        position: { x: 0, y: 0 },
-        data: { type: BlockEnum.StartPlaceholder },
-      },
-      { id: 'n1', position: { x: 1, y: 1 }, data: { type: BlockEnum.Start } },
-    ])
-
-    const { result } = renderUseNodesSyncDraft()
-
-    act(() => {
-      result.current.syncWorkflowDraftWhenPageClose()
     })
 
-    expect(mockPostWithKeepalive).toHaveBeenCalledWith(
-      '/api/apps/app-1/workflows/draft',
-      expect.objectContaining({
-        graph: expect.objectContaining({
-          nodes: [{ id: 'n1', position: { x: 1, y: 1 }, data: { type: BlockEnum.Start } }],
-          edges: [],
+    it('reports a failed leader save to the follower caller', async () => {
+      useCollaborationSession({ connected: true, leader: false })
+      mockCollaborationRequestWorkflowSync.mockRejectedValue(new Error('sync timeout'))
+      const callbacks = { onSuccess: vi.fn(), onError: vi.fn(), onSettled: vi.fn() }
+      const { result } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
+
+      await act(async () => {
+        await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
+      })
+
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(callbacks.onSuccess).not.toHaveBeenCalled()
+      expect(callbacks.onError).toHaveBeenCalledOnce()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
+    })
+
+    it('saves a directed sync request locally even before leader status arrives', async () => {
+      useCollaborationSession({ connected: true, leader: false })
+      const { result } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft(false, undefined, { forceLocal: true })
+      })
+
+      expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalled()
+    })
+
+    it('does not queue a directed local save behind the requester waiting for its ack', async () => {
+      useCollaborationSession({ connected: true, leader: false })
+      let resolveRemoteSync: ((result: { hash: string; updatedAt: number }) => void) | undefined
+      mockCollaborationRequestWorkflowSync.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRemoteSync = resolve
         }),
-      }),
-    )
-  })
+      )
+      const { result } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
 
-  it('should wait for the leader save result when current user is collaboration follower', async () => {
-    isCollaborationEnabled = true
-    mockCollaborationIsConnected.mockReturnValue(true)
-    mockCollaborationGetIsLeader.mockReturnValue(false)
-    const callbacks = {
-      onSuccess: vi.fn(),
-      onError: vi.fn(),
-      onSettled: vi.fn(),
-    }
+      let requesterSync: Promise<unknown> | undefined
+      await act(async () => {
+        requesterSync = result.current.doSyncWorkflowDraft()
+        await Promise.resolve()
+      })
 
-    const { result } = renderUseNodesSyncDraft()
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft(false, undefined, { forceLocal: true })
+      })
 
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false, callbacks)
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+
+      resolveRemoteSync?.({ hash: 'remote-hash', updatedAt: 2 })
+      await act(async () => {
+        await requesterSync
+      })
     })
 
-    expect(mockCollaborationRequestWorkflowSync).toHaveBeenCalled()
-    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
-    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('remote-hash')
-    expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(2)
-    expect(callbacks.onSuccess).toHaveBeenCalled()
-    expect(callbacks.onError).not.toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
-  })
+    it('does not persist an untrusted collaborative graph', async () => {
+      useCollaborationSession({ connected: true, leader: true, canPersistLocalGraph: false })
+      const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
+      const { result } = renderUseNodesSyncDraft({ isCollaborationEnabled: true })
 
-  it('should report a failed leader save to the follower caller', async () => {
-    isCollaborationEnabled = true
-    mockCollaborationIsConnected.mockReturnValue(true)
-    mockCollaborationGetIsLeader.mockReturnValue(false)
-    mockCollaborationRequestWorkflowSync.mockRejectedValue(new Error('sync timeout'))
-    const callbacks = {
-      onSuccess: vi.fn(),
-      onError: vi.fn(),
-      onSettled: vi.fn(),
-    }
+      await act(async () => {
+        await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
+      })
 
-    const { result } = renderUseNodesSyncDraft()
-
-    let syncResult: unknown
-    await act(async () => {
-      syncResult = await result.current.doSyncWorkflowDraft(false, callbacks)
+      expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(callbacks.onError).not.toHaveBeenCalled()
+      expect(callbacks.onSettled).toHaveBeenCalledOnce()
     })
-
-    expect(syncResult).toBeNull()
-    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
-    expect(callbacks.onSuccess).not.toHaveBeenCalled()
-    expect(callbacks.onError).toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
-  })
-
-  it('should force a directed sync request to save locally even before leader status arrives', async () => {
-    isCollaborationEnabled = true
-    mockCollaborationIsConnected.mockReturnValue(true)
-    mockCollaborationGetIsLeader.mockReturnValue(false)
-
-    const { result } = renderUseNodesSyncDraft()
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false, undefined, { forceLocal: true })
-    })
-
-    expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
-    expect(mockSyncWorkflowDraft).toHaveBeenCalled()
-  })
-
-  it('should not queue a directed local save behind the requester waiting for its ack', async () => {
-    isCollaborationEnabled = true
-    mockCollaborationIsConnected.mockReturnValue(true)
-    mockCollaborationGetIsLeader.mockReturnValue(false)
-    let resolveRemoteSync: ((result: { hash: string; updatedAt: number }) => void) | undefined
-    mockCollaborationRequestWorkflowSync.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveRemoteSync = resolve
-      }),
-    )
-    const { result } = renderUseNodesSyncDraft()
-
-    let requesterSync: Promise<unknown> | undefined
-    await act(async () => {
-      requesterSync = result.current.doSyncWorkflowDraft()
-      await Promise.resolve()
-    })
-
-    await act(async () => {
-      await result.current.doSyncWorkflowDraft(false, undefined, { forceLocal: true })
-    })
-
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
-
-    resolveRemoteSync?.({ hash: 'remote-hash', updatedAt: 2 })
-    await act(async () => {
-      await requesterSync
-    })
-  })
-
-  it('should not persist an untrusted collaborative graph', async () => {
-    isCollaborationEnabled = true
-    mockCollaborationIsConnected.mockReturnValue(true)
-    mockCollaborationGetIsLeader.mockReturnValue(true)
-    mockCollaborationCanPersistLocalGraph.mockReturnValue(false)
-    const callbacks = {
-      onError: vi.fn(),
-      onSettled: vi.fn(),
-    }
-
-    const { result } = renderUseNodesSyncDraft()
-
-    let syncResult: unknown
-    await act(async () => {
-      syncResult = await result.current.doSyncWorkflowDraft(false, callbacks)
-    })
-
-    expect(syncResult).toBeNull()
-    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
-    expect(callbacks.onError).not.toHaveBeenCalled()
-    expect(callbacks.onSettled).toHaveBeenCalled()
-  })
-
-  it('should skip keepalive sync on page close when current user is collaboration follower', () => {
-    isCollaborationEnabled = true
-    mockCollaborationIsConnected.mockReturnValue(true)
-    mockCollaborationGetIsLeader.mockReturnValue(false)
-    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
-
-    const { result } = renderUseNodesSyncDraft()
-
-    act(() => {
-      result.current.syncWorkflowDraftWhenPageClose()
-    })
-
-    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
-  })
-
-  it('should allow the trusted sole leader to flush with keepalive while hidden', () => {
-    isCollaborationEnabled = true
-    mockCollaborationIsConnected.mockReturnValue(true)
-    mockCollaborationGetIsLeader.mockReturnValue(true)
-    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(true)
-
-    const { result } = renderUseNodesSyncDraft()
-
-    act(() => {
-      result.current.syncWorkflowDraftWhenPageClose()
-    })
-
-    expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
-  })
-
-  it('should still flush with keepalive on page close when collaboration is enabled but never connected', () => {
-    // Without a connection there is no leader election, so the collaborative flush guard can never
-    // be satisfied. Skipping the save here would silently drop the edits made before leaving.
-    isCollaborationEnabled = true
-    mockCollaborationIsConnected.mockReturnValue(false)
-    mockCollaborationGetIsLeader.mockReturnValue(false)
-    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
-    mockCollaborationCanUseLocalDraftFallback.mockReturnValue(true)
-
-    const { result } = renderUseNodesSyncDraft()
-
-    act(() => {
-      result.current.syncWorkflowDraftWhenPageClose()
-    })
-
-    expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
-  })
-
-  it('should not flush an untrusted graph after an established collaboration disconnects', () => {
-    isCollaborationEnabled = true
-    mockCollaborationIsConnected.mockReturnValue(false)
-    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(false)
-    mockCollaborationCanUseLocalDraftFallback.mockReturnValue(false)
-
-    const { result } = renderUseNodesSyncDraft()
-
-    act(() => {
-      result.current.syncWorkflowDraftWhenPageClose()
-    })
-
-    expect(mockPostWithKeepalive).not.toHaveBeenCalled()
   })
 })

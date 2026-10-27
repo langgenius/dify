@@ -1,3 +1,8 @@
+import type {
+  SelectContentProps,
+  SelectProps,
+  SelectTriggerProps,
+} from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -43,9 +48,9 @@ const renderOpenSelect = ({
   contentProps = {},
   onValueChange,
 }: {
-  rootProps?: Record<string, unknown>
-  triggerProps?: Record<string, unknown>
-  contentProps?: Record<string, unknown>
+  rootProps?: SelectProps<string>
+  triggerProps?: SelectTriggerProps
+  contentProps?: Omit<SelectContentProps, 'children'>
   onValueChange?: (value: string | null) => void
 } = {}) => {
   return renderWithSafeViewport(
@@ -218,6 +223,49 @@ describe('Select wrappers', () => {
       }
     })
 
+    it('should keep a long list inside a short viewport and let it scroll', async () => {
+      const popupRef = React.createRef<HTMLDivElement>()
+      const longOptions = Array.from({ length: 30 }, (_, index) => `option-${index + 1}`)
+      const originalViewport = {
+        height: window.innerHeight,
+        width: window.innerWidth,
+      }
+
+      await page.viewport(800, 360)
+
+      try {
+        const screen = await render(
+          <div style={{ padding: 16 }}>
+            <Select open defaultValue="option-1">
+              <SelectTrigger aria-label="deployment target">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent ref={popupRef}>
+                {longOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    <SelectItemText>{option}</SelectItemText>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>,
+        )
+
+        const list = screen.getByRole('listbox')
+        await expect.element(list).toBeVisible()
+        await vi.waitFor(() => {
+          const popupBounds = popupRef.current!.getBoundingClientRect()
+
+          expect(window.innerHeight).toBe(360)
+          expect(popupBounds.top).toBeGreaterThanOrEqual(0)
+          expect(popupBounds.bottom).toBeLessThanOrEqual(window.innerHeight)
+          expect(list.element().scrollHeight).toBeGreaterThan(list.element().clientHeight)
+        })
+      } finally {
+        await page.viewport(originalViewport.width, originalViewport.height)
+      }
+    })
+
     it('should preserve an explicit popup width when the viewport has enough space', async () => {
       const popupRef = React.createRef<HTMLDivElement>()
       const originalViewport = {
@@ -276,7 +324,7 @@ describe('Select wrappers', () => {
       await expect.element(screen.getByText('Popular cities')).toBeInTheDocument()
     })
 
-    it('should use positioning attributes when placement is not provided', async () => {
+    it('should use positioning attributes when side and align are not provided', async () => {
       const screen = await renderOpenSelect()
 
       await vi.waitFor(() => {
@@ -286,10 +334,11 @@ describe('Select wrappers', () => {
       })
     })
 
-    it('should preserve positioning attributes when placement props are provided', async () => {
+    it('should preserve positioning attributes when positioning props are provided', async () => {
       const screen = await renderOpenSelect({
         contentProps: {
-          placement: 'top-end',
+          side: 'top',
+          align: 'end',
           sideOffset: 12,
           alignOffset: 6,
         },

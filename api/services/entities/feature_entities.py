@@ -179,6 +179,10 @@ class SystemFeatureModel(FeatureResponseModel):
     """Non-sensitive bootstrap snapshot exposed before Console or Web authentication."""
 
     deployment_edition: DeploymentEdition
+    agent_tracing_api_collection_enabled: bool = Field(
+        description="Deployment-level API gate for Agent trace collection, independent of workspace and provider "
+        "configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery.",
+    )
     enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: SSOProtocol | None = None
@@ -199,4 +203,3 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_learn_app: bool = True
     enable_step_by_step_tour: bool = False
     rbac_enabled: bool = False
-    knowledge_fs_enabled: bool = False

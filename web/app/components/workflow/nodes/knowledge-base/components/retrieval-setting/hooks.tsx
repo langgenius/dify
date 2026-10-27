@@ -1,19 +1,14 @@
 import type { HybridSearchModeOption, Option } from './type'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  FullTextSearch,
-  HybridSearch,
-  VectorSearch,
-} from '@/app/components/base/icons/src/vender/knowledge'
 import { HybridSearchModeEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../../types'
 
 export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'modelProvider'])
   const VectorSearchOption: Option = useMemo(() => {
     return {
       id: RetrievalSearchMethodEnum.semantic,
-      icon: VectorSearch as any,
+      iconClassName: 'i-custom-vender-knowledge-vector-search',
       title: t(($) => $['retrieval.semantic_search.title'], { ns: 'dataset' }),
       description: t(($) => $['retrieval.semantic_search.description'], { ns: 'dataset' }),
       effectColor: 'purple',
@@ -22,7 +17,7 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   const FullTextSearchOption: Option = useMemo(() => {
     return {
       id: RetrievalSearchMethodEnum.fullText,
-      icon: FullTextSearch as any,
+      iconClassName: 'i-custom-vender-knowledge-full-text-search',
       title: t(($) => $['retrieval.full_text_search.title'], { ns: 'dataset' }),
       description: t(($) => $['retrieval.full_text_search.description'], { ns: 'dataset' }),
       effectColor: 'purple',
@@ -31,7 +26,7 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   const HybridSearchOption: Option = useMemo(() => {
     return {
       id: RetrievalSearchMethodEnum.hybrid,
-      icon: HybridSearch as any,
+      iconClassName: 'i-custom-vender-knowledge-hybrid-search',
       title: t(($) => $['retrieval.hybrid_search.title'], { ns: 'dataset' }),
       description: t(($) => $['retrieval.hybrid_search.description'], { ns: 'dataset' }),
       effectColor: 'purple',
@@ -40,7 +35,7 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   const InvertedIndexOption: Option = useMemo(() => {
     return {
       id: RetrievalSearchMethodEnum.keywordSearch,
-      icon: HybridSearch as any,
+      iconClassName: 'i-custom-vender-knowledge-hybrid-search',
       title: t(($) => $['retrieval.keyword_search.title'], { ns: 'dataset' }),
       description: t(($) => $['retrieval.keyword_search.description'], { ns: 'dataset' }),
       effectColor: 'purple',
@@ -57,8 +52,8 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   const RerankModelModeOption: HybridSearchModeOption = useMemo(() => {
     return {
       id: HybridSearchModeEnum.RerankingModel,
-      title: t(($) => $['modelProvider.rerankModel.key'], { ns: 'common' }),
-      description: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'common' }),
+      title: t(($) => $['modelProvider.rerankModel.key'], { ns: 'modelProvider' }),
+      description: t(($) => $['modelProvider.rerankModel.tip'], { ns: 'modelProvider' }),
     }
   }, [t])
 

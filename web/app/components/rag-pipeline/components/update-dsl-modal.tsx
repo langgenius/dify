@@ -1,8 +1,16 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { RiAlertFill, RiCloseLine, RiFileDownloadLine } from '@remixicon/react'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { RiAlertFill, RiFileDownloadLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
@@ -16,7 +24,7 @@ type UpdateDSLModalProps = {
 }
 
 const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'workflow'])
   const {
     currentFile,
     handleFile,
@@ -37,54 +45,48 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           if (!open) onCancel()
         }}
       >
-        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['common.importDSL'], { ns: 'workflow' })}
-            </div>
-            <button
-              type="button"
-              className="flex h-5.5 w-5.5 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        <DialogContent className="w-120">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $['common.importDSL'], { ns: 'workflow' })}</DialogTitle>
+            <DialogHeaderCloseButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              onClick={onCancel}
-            >
-              <RiCloseLine className="h-4.5 w-4.5 text-text-tertiary" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
-            <div className="pointer-events-none absolute top-0 left-0 size-full bg-toast-warning-bg opacity-40" />
-            <div className="flex items-start justify-center p-1">
-              <RiAlertFill className="size-4 shrink-0 text-text-warning-secondary" />
-            </div>
-            <div className="flex grow flex-col items-start gap-0.5 py-1">
-              <div className="system-xs-medium whitespace-pre-line text-text-primary">
-                {t(($) => $['common.importDSLTip'], { ns: 'workflow' })}
+            />
+          </DialogHeader>
+          <DialogBody>
+            <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
+              <div className="pointer-events-none absolute top-0 left-0 size-full bg-toast-warning-bg opacity-40" />
+              <div className="flex items-start justify-center p-1">
+                <RiAlertFill className="size-4 shrink-0 text-text-warning-secondary" />
               </div>
-              <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
-                <Button size="small" variant="secondary" className="relative" onClick={onBackup}>
-                  <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
-                  <div className="flex items-center justify-center gap-1">
-                    {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
-                  </div>
-                </Button>
+              <div className="flex grow flex-col items-start gap-0.5 py-1">
+                <div className="system-xs-medium whitespace-pre-line text-text-primary">
+                  {t(($) => $['common.importDSLTip'], { ns: 'workflow' })}
+                </div>
+                <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
+                  <Button size="small" variant="secondary" className="relative" onClick={onBackup}>
+                    <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
+                    <div className="flex items-center justify-center gap-1">
+                      {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
+                    </div>
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-          <div>
-            <div className="pt-2 system-md-semibold text-text-primary">
-              {t(($) => $['common.chooseDSL'], { ns: 'workflow' })}
+            <div>
+              <div className="pt-2 system-md-semibold text-text-primary">
+                {t(($) => $['common.chooseDSL'], { ns: 'workflow' })}
+              </div>
+              <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
+                <Uploader
+                  file={currentFile}
+                  updateFile={handleFile}
+                  className="mt-0! w-full"
+                  importType="pipeline"
+                />
+              </div>
             </div>
-            <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
-              <Uploader
-                file={currentFile}
-                updateFile={handleFile}
-                className="mt-0! w-full"
-                accept=".pipeline"
-                displayName="PIPELINE"
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-end gap-2 self-stretch pt-5">
+          </DialogBody>
+          <DialogFooter>
             <Button onClick={onCancel}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
             <Button
               disabled={!currentFile}
@@ -95,7 +97,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
             >
               {t(($) => $['common.overwriteAndImport'], { ns: 'workflow' })}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <VersionMismatchModal

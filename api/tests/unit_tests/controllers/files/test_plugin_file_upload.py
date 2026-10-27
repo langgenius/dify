@@ -211,7 +211,7 @@ class TestPluginUploadFileApi:
         monkeypatch.setattr(module, "request", _fake_request(_valid_args(), file=DummyFile()))
         application_services.return_value.plugin_file_uploads.upload.side_effect = storage_error
 
-        with pytest.raises(OSError) as error_info:
+        with pytest.raises(OSError, match="storage unavailable") as error_info:
             unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
 
         assert error_info.value is storage_error

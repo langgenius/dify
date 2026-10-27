@@ -1,7 +1,7 @@
 import type { AnyFormApi } from '@tanstack/react-form'
 import type { FormSchema } from '@/app/components/base/form/types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
+import { toast } from '@/app/notifications'
 
 export const useCheckValidated = (
   form: AnyFormApi,
@@ -25,7 +25,7 @@ export const useCheckValidated = (
             acc[condition.variable] = values[condition.variable]
             return acc
           },
-          {} as Record<string, any>,
+          {} as Record<string, unknown>,
         )
         const show = show_on?.every((condition) => {
           const conditionValue = showOnValues[condition.variable]

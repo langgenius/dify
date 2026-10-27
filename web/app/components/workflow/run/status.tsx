@@ -2,11 +2,12 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { useDocLink } from '@/context/i18n'
-import { useWorkflowPausedDetails } from '@/service/use-log'
+import { consoleQuery } from '@/service/console'
 
 type ResultProps = {
   status: string
@@ -29,12 +30,16 @@ const StatusPanel: FC<ResultProps> = ({
   workflowRunId,
   onOpenTracingTab,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['runLog', 'workflow', 'appLog', 'workflowHumanInput'])
   const docLink = useDocLink()
-  const { data: pausedDetails } = useWorkflowPausedDetails({
-    workflowRunId: workflowRunId || '',
-    enabled: status === 'paused',
-  })
+  const { data: pausedDetails } = useQuery(
+    consoleQuery.workflow.byWorkflowRunId.pauseDetails.get.queryOptions({
+      input:
+        status === 'paused' && workflowRunId
+          ? { params: { workflow_run_id: workflowRunId } }
+          : skipToken,
+    }),
+  )
 
   const pausedReasons = useMemo(() => {
     const reasons: string[] = []
@@ -43,7 +48,7 @@ const StatusPanel: FC<ResultProps> = ({
       (node) => node.pause_type.type === 'human_input',
     )
     if (hasHumanInputNode) {
-      reasons.push(t(($) => $['nodes.humanInput.log.reasonContent'], { ns: 'workflow' }))
+      reasons.push(t(($) => $['nodes.humanInput.log.reasonContent'], { ns: 'workflowHumanInput' }))
     }
     return reasons
   }, [pausedDetails, t])
@@ -55,7 +60,7 @@ const StatusPanel: FC<ResultProps> = ({
     const hasHumanInputNode = paused_nodes.some((node) => node.pause_type.type === 'human_input')
     if (hasHumanInputNode) {
       paused_nodes.forEach((node) => {
-        if (node.pause_type.type === 'human_input') {
+        if (node.pause_type.type === 'human_input' && node.pause_type.backstage_input_url) {
           inputURLs.push(node.pause_type.backstage_input_url)
         }
       })
@@ -95,6 +100,7 @@ const StatusPanel: FC<ResultProps> = ({
           <div
             className={cn(
               'flex items-center gap-1 system-xs-semibold-uppercase',
+              status === 'scheduled' && 'text-text-secondary',
               status === 'succeeded' && 'text-util-colors-green-green-600',
               status === 'partial-succeeded' && 'text-util-colors-green-green-600',
               status === 'failed' && 'text-util-colors-red-red-600',
@@ -103,46 +109,56 @@ const StatusPanel: FC<ResultProps> = ({
               status === 'running' && 'text-util-colors-blue-light-blue-light-600',
             )}
           >
+            {status === 'scheduled' && (
+              <>
+                <StatusDot status="disabled" />
+                <span>{t(($) => $['status.scheduled'], { ns: 'appLog' })}</span>
+              </>
+            )}
             {status === 'running' && (
               <>
                 <StatusDot status="normal" />
-                <span>{isListening ? 'Listening' : 'Running'}</span>
+                <span>
+                  {isListening
+                    ? t(($) => $['common.listening'], { ns: 'workflow' })
+                    : t(($) => $['status.running'], { ns: 'appLog' })}
+                </span>
               </>
             )}
             {status === 'succeeded' && (
               <>
                 <StatusDot status="success" />
-                <span>SUCCESS</span>
+                <span>{t(($) => $['status.succeeded'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'partial-succeeded' && (
               <>
                 <StatusDot status="success" />
-                <span>PARTIAL SUCCESS</span>
+                <span>{t(($) => $['status.partial-succeeded'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'exception' && (
               <>
                 <StatusDot status="warning" />
-                <span>EXCEPTION</span>
+                <span>{t(($) => $['tracing.status.exception'], { ns: 'workflow' })}</span>
               </>
             )}
             {status === 'failed' && (
               <>
                 <StatusDot status="error" />
-                <span>FAIL</span>
+                <span>{t(($) => $['status.failed'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'stopped' && (
               <>
                 <StatusDot status="warning" />
-                <span>STOP</span>
+                <span>{t(($) => $['status.stopped'], { ns: 'appLog' })}</span>
               </>
             )}
             {status === 'paused' && (
               <>
                 <StatusDot status="warning" />
-                <span>PENDING</span>
+                <span>{t(($) => $['status.paused'], { ns: 'appLog' })}</span>
               </>
             )}
           </div>
@@ -212,7 +228,7 @@ const StatusPanel: FC<ResultProps> = ({
           <div className="flex flex-col gap-y-2 system-xs-medium">
             <div className="flex flex-col gap-y-0.5">
               <div className="system-2xs-medium-uppercase text-text-tertiary">
-                {t(($) => $['nodes.humanInput.log.reason'], { ns: 'workflow' })}
+                {t(($) => $['nodes.humanInput.log.reason'], { ns: 'workflowHumanInput' })}
               </div>
               {pausedReasons.length > 0 ? (
                 pausedReasons.map((reason) => (
@@ -227,7 +243,9 @@ const StatusPanel: FC<ResultProps> = ({
             {pausedInputURLs.length > 0 && (
               <div className="flex flex-col gap-y-0.5">
                 <div className="system-2xs-medium-uppercase text-text-tertiary">
-                  {t(($) => $['nodes.humanInput.log.backstageInputURL'], { ns: 'workflow' })}
+                  {t(($) => $['nodes.humanInput.log.backstageInputURL'], {
+                    ns: 'workflowHumanInput',
+                  })}
                 </div>
                 {pausedInputURLs.map((url) => (
                   <a

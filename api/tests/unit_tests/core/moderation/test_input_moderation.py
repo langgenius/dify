@@ -1,6 +1,8 @@
+import queue
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from core.app.app_config.entities import AppConfig, SensitiveWordAvoidanceEntity
 from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult
@@ -13,10 +15,20 @@ from models.model import AppMode
 class TestInputModeration:
     @pytest.fixture
     def app_config(self):
-        config = MagicMock(spec=AppConfig)
-        config.app_mode = AppMode.CHAT
-        config.sensitive_word_avoidance = None
-        return config
+        return AppConfig(tenant_id="test_tenant_id", app_id="test_app_id", app_mode=AppMode.CHAT)
+
+    @pytest.fixture
+    def trace_manager(self):
+        with (
+            Flask(__name__).app_context(),
+            patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
+            patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
+            patch("core.ops.ops_trace_manager.trace_manager_queue", queue.Queue()),
+            patch.object(TraceQueueManager, "start_timer"),
+        ):
+            manager = TraceQueueManager(app_id="test_app_id")
+            with patch.object(manager, "add_trace_task", wraps=manager.add_trace_task):
+                yield manager
 
     @pytest.fixture
     def input_moderation(self):
@@ -46,9 +58,7 @@ class TestInputModeration:
         message_id = "test_message_id"
 
         # Setup config
-        sensitive_word_config = MagicMock(spec=SensitiveWordAvoidanceEntity)
-        sensitive_word_config.type = "keywords"
-        sensitive_word_config.config = {"keywords": ["bad"]}
+        sensitive_word_config = SensitiveWordAvoidanceEntity(type="keywords", config={"keywords": ["bad"]})
         app_config.sensitive_word_avoidance = sensitive_word_config
 
         # Setup factory mock
@@ -70,18 +80,17 @@ class TestInputModeration:
 
     @patch("core.moderation.input_moderation.ModerationFactory")
     @patch("core.moderation.input_moderation.TraceTask")
-    def test_check_with_trace_manager(self, mock_trace_task, mock_factory_cls, app_config, input_moderation):
+    def test_check_with_trace_manager(
+        self, mock_trace_task, mock_factory_cls, app_config, input_moderation, trace_manager
+    ):
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}
         query = "test query"
         message_id = "test_message_id"
-        trace_manager = MagicMock(spec=TraceQueueManager)
 
         # Setup config
-        sensitive_word_config = MagicMock(spec=SensitiveWordAvoidanceEntity)
-        sensitive_word_config.type = "keywords"
-        sensitive_word_config.config = {}
+        sensitive_word_config = SensitiveWordAvoidanceEntity(type="keywords", config={})
         app_config.sensitive_word_avoidance = sensitive_word_config
 
         # Setup factory mock
@@ -100,6 +109,7 @@ class TestInputModeration:
         )
 
         trace_manager.add_trace_task.assert_called_once_with(mock_trace_task.return_value)
+        assert trace_manager.collect_tasks() == [mock_trace_task.return_value]
         mock_trace_task.assert_called_once()
         call_kwargs = mock_trace_task.call_args.kwargs
         call_args = mock_trace_task.call_args.args
@@ -118,9 +128,7 @@ class TestInputModeration:
         message_id = "test_message_id"
 
         # Setup config
-        sensitive_word_config = MagicMock(spec=SensitiveWordAvoidanceEntity)
-        sensitive_word_config.type = "keywords"
-        sensitive_word_config.config = {}
+        sensitive_word_config = SensitiveWordAvoidanceEntity(type="keywords", config={})
         app_config.sensitive_word_avoidance = sensitive_word_config
 
         # Setup factory mock
@@ -151,9 +159,7 @@ class TestInputModeration:
         message_id = "test_message_id"
 
         # Setup config
-        sensitive_word_config = MagicMock(spec=SensitiveWordAvoidanceEntity)
-        sensitive_word_config.type = "keywords"
-        sensitive_word_config.config = {}
+        sensitive_word_config = SensitiveWordAvoidanceEntity(type="keywords", config={})
         app_config.sensitive_word_avoidance = sensitive_word_config
 
         # Setup factory mock
@@ -183,9 +189,7 @@ class TestInputModeration:
         message_id = "test_message_id"
 
         # Setup config
-        sensitive_word_config = MagicMock(spec=SensitiveWordAvoidanceEntity)
-        sensitive_word_config.type = "keywords"
-        sensitive_word_config.config = {}
+        sensitive_word_config = SensitiveWordAvoidanceEntity(type="keywords", config={})
         app_config.sensitive_word_avoidance = sensitive_word_config
 
         # Setup factory mock

@@ -1,101 +1,46 @@
+import type { ComponentProps } from 'react'
+import type { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { createDeferred } from '@/test/deferred'
 import { TransferMethod } from '@/types/app'
 import HumanInputForm from '../human-input-form'
 
-vi.mock('../content-item', () => ({
-  default: ({
-    content,
-    onInputChange,
-  }: {
-    content: string
-    onInputChange: (name: string, value: unknown) => void
-  }) => (
-    <div data-testid="mock-content-item">
-      {content}
-      <button data-testid="update-input" onClick={() => onInputChange('field1', 'new value')}>
-        Update
-      </button>
-      <button data-testid="update-select" onClick={() => onInputChange('field2', 'approved')}>
-        Update Select
-      </button>
-      <button
-        data-testid="update-single-file"
-        onClick={() =>
-          onInputChange('field4', {
-            id: 'file-2',
-            name: 'main.png',
-            size: 256,
-            type: 'image/png',
-            progress: 100,
-            transferMethod: TransferMethod.local_file,
-            supportFileType: 'image',
-            uploadedId: 'upload-file-2',
-          })
-        }
-      >
-        Update Single File
-      </button>
-      <button
-        data-testid="update-pending-single-file"
-        onClick={() =>
-          onInputChange('field4', {
-            id: 'file-2',
-            name: 'main.png',
-            size: 256,
-            type: 'image/png',
-            progress: 50,
-            transferMethod: TransferMethod.local_file,
-            supportFileType: 'image',
-          })
-        }
-      >
-        Update Pending Single File
-      </button>
-      <button
-        data-testid="update-input-file"
-        onClick={() =>
-          onInputChange('field3', [
-            {
-              id: 'file-1',
-              name: 'avatar.png',
-              size: 128,
-              type: 'image/png',
-              progress: 100,
-              transferMethod: TransferMethod.local_file,
-              supportFileType: 'image',
-              uploadedId: 'upload-file-1',
-            },
-          ])
-        }
-      >
-        Update File
-      </button>
-      <button
-        data-testid="update-pending-input-file"
-        onClick={() =>
-          onInputChange('field3', [
-            {
-              id: 'file-1',
-              name: 'avatar.png',
-              size: 128,
-              type: 'image/png',
-              progress: 50,
-              transferMethod: TransferMethod.local_file,
-              supportFileType: 'image',
-            },
-          ])
-        }
-      >
-        Update Pending File
-      </button>
-    </div>
-  ),
+vi.mock('@/app/components/base/file-uploader', () => ({
+  FileUploaderInAttachmentWrapper: ({
+    onChange,
+    fileConfig,
+  }: ComponentProps<typeof FileUploaderInAttachmentWrapper>) => {
+    const single = fileConfig.number_limits === 1
+    const update = (progress: number) =>
+      onChange([
+        {
+          id: single ? 'file-2' : 'file-1',
+          name: single ? 'main.png' : 'avatar.png',
+          size: 128,
+          type: 'image/png',
+          progress,
+          transferMethod: TransferMethod.local_file,
+          supportFileType: SupportUploadFileTypes.image,
+          uploadedId: progress === 100 ? (single ? 'upload-file-2' : 'upload-file-1') : undefined,
+        },
+      ])
+    return (
+      <>
+        <button onClick={() => update(50)}>
+          {single ? 'Upload single file' : 'Upload file list'}
+        </button>
+        <button onClick={() => update(100)}>
+          {single ? 'Finish single file' : 'Finish file list'}
+        </button>
+      </>
+    )
+  },
 }))
 
 describe('HumanInputForm', () => {
@@ -123,29 +68,14 @@ describe('HumanInputForm', () => {
     resolved_default_values: {},
   }
 
-  it('should render content parts and action buttons', () => {
-    render(<HumanInputForm formData={mockFormData} />)
-
-    // splitByOutputVar should yield 3 parts: "Part 1 ", "{{#$output.field1#}}", " Part 2"
-    const contentItems = screen.getAllByTestId('mock-content-item')
-    expect(contentItems).toHaveLength(3)
-    expect(contentItems[0])!.toHaveTextContent('Part 1')
-    expect(contentItems[1])!.toHaveTextContent('{{#$output.field1#}}')
-    expect(contentItems[2])!.toHaveTextContent('Part 2')
-
-    expect(screen.getByRole('button', { name: 'Submit' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Accent' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ghost' })).toBeInTheDocument()
-  })
-
   it('should handle input changes and submit correctly', async () => {
     const user = userEvent.setup()
     const mockOnSubmit = vi.fn().mockResolvedValue(undefined)
     render(<HumanInputForm formData={mockFormData} onSubmit={mockOnSubmit} />)
 
-    // Update input via mock ContentItem
-    await user.click(screen.getAllByTestId('update-input')[0]!)
+    const input = screen.getByRole('textbox', { name: 'field1' })
+    await user.clear(input)
+    await user.type(input, 'new value')
 
     // Submit
     const submitButton = screen.getByRole('button', { name: 'Submit' })
@@ -182,8 +112,10 @@ describe('HumanInputForm', () => {
 
     render(<HumanInputForm formData={formDataWithFileList} onSubmit={mockOnSubmit} />)
 
-    await user.click(screen.getAllByTestId('update-input')[0]!)
-    await user.click(screen.getAllByTestId('update-input-file')[0]!)
+    const input = screen.getByRole('textbox', { name: 'field1' })
+    await user.clear(input)
+    await user.type(input, 'new value')
+    await user.click(screen.getByRole('button', { name: 'Finish file list' }))
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
     expect(mockOnSubmit).toHaveBeenCalledWith('token_123', {
@@ -243,16 +175,17 @@ describe('HumanInputForm', () => {
     const submitButton = screen.getByRole('button', { name: 'Submit' })
     expect(submitButton).toBeDisabled()
 
-    await user.click(screen.getAllByTestId('update-select')[0]!)
-    await user.click(screen.getAllByTestId('update-pending-single-file')[0]!)
-    await user.click(screen.getAllByTestId('update-input-file')[0]!)
+    await user.click(screen.getByRole('combobox', { name: 'field2' }))
+    await user.click(screen.getByRole('option', { name: 'approved' }))
+    await user.click(screen.getByRole('button', { name: 'Upload single file' }))
+    await user.click(screen.getByRole('button', { name: 'Finish file list' }))
     expect(submitButton).toBeDisabled()
 
-    await user.click(screen.getAllByTestId('update-single-file')[0]!)
-    await user.click(screen.getAllByTestId('update-pending-input-file')[0]!)
+    await user.click(screen.getByRole('button', { name: 'Finish single file' }))
+    await user.click(screen.getByRole('button', { name: 'Upload file list' }))
     expect(submitButton).toBeDisabled()
 
-    await user.click(screen.getAllByTestId('update-input-file')[0]!)
+    await user.click(screen.getByRole('button', { name: 'Finish file list' }))
     expect(submitButton).toBeEnabled()
 
     await user.click(submitButton)
@@ -319,7 +252,9 @@ describe('HumanInputForm', () => {
     const submitButton = screen.getByRole('button', { name: 'Submit' })
     expect(submitButton).toBeDisabled()
 
-    await user.click(screen.getByTestId('update-select'))
+    expect(screen.queryByRole('combobox', { name: 'stale_select' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('combobox', { name: 'field2' }))
+    await user.click(screen.getByRole('option', { name: 'approved' }))
     expect(submitButton).toBeEnabled()
 
     await user.click(submitButton)
@@ -334,11 +269,8 @@ describe('HumanInputForm', () => {
 
   it('should disable buttons during submission', async () => {
     const user = userEvent.setup()
-    let resolveSubmit: (value: void | PromiseLike<void>) => void
-    const submitPromise = new Promise<void>((resolve) => {
-      resolveSubmit = resolve
-    })
-    const mockOnSubmit = vi.fn().mockReturnValue(submitPromise)
+    const pending = createDeferred()
+    const mockOnSubmit = vi.fn().mockReturnValue(pending.promise)
 
     render(<HumanInputForm formData={mockFormData} onSubmit={mockOnSubmit} />)
 
@@ -347,44 +279,37 @@ describe('HumanInputForm', () => {
 
     await user.click(submitButton)
 
-    expect(submitButton)!.toBeDisabled()
-    expect(cancelButton)!.toBeDisabled()
+    expect(submitButton).toBeDisabled()
+    expect(cancelButton).toBeDisabled()
 
     // Finish submission
     await act(async () => {
-      resolveSubmit!(undefined)
+      pending.resolve()
     })
 
     expect(submitButton).not.toBeDisabled()
     expect(cancelButton).not.toBeDisabled()
   })
 
-  it('should handle missing resolved_default_values', () => {
-    const formDataWithoutDefaults = { ...mockFormData, resolved_default_values: undefined }
-    render(<HumanInputForm formData={formDataWithoutDefaults as unknown as HumanInputFormData} />)
-    expect(screen.getAllByTestId('mock-content-item')).toHaveLength(3)
-  })
-
-  it('should handle mixed supported input types in initializeInputs', () => {
-    const formDataWithUnsupported = {
-      ...mockFormData,
-      inputs: [
-        {
-          type: InputVarType.select,
-          output_variable_name: 'field2',
-          option_source: { type: 'variable', value: [], selector: [] },
-        } as FormInputItem,
-        {
-          type: InputVarType.singleFile,
-          output_variable_name: 'field3',
-          allowed_file_extensions: [],
-          allowed_file_types: [],
-          allowed_file_upload_methods: [],
-        } as FormInputItem,
-      ],
-      resolved_default_values: { field2: 'default value' },
-    }
-    render(<HumanInputForm formData={formDataWithUnsupported} />)
-    expect(screen.getAllByTestId('mock-content-item')).toHaveLength(3)
+  it('keeps entered values and allows retrying after a failed submission', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred()
+    const onSubmit = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(undefined)
+    render(<HumanInputForm formData={mockFormData} onSubmit={onSubmit} />)
+    const input = screen.getByRole('textbox', { name: 'field1' })
+    await user.clear(input)
+    await user.type(input, 'Keep this response')
+    const submit = screen.getByRole('button', { name: 'Submit' })
+    await user.click(submit)
+    expect(submit).toBeDisabled()
+    await act(async () => pending.reject(new Error('Request failed')))
+    await waitFor(() => expect(submit).toBeEnabled())
+    expect(input).toHaveValue('Keep this response')
+    await user.click(submit)
+    expect(onSubmit).toHaveBeenCalledTimes(2)
+    expect(onSubmit).toHaveBeenLastCalledWith('token_123', {
+      action: 'action_1',
+      inputs: { field1: 'Keep this response' },
+    })
   })
 })

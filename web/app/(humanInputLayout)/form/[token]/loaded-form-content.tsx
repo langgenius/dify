@@ -73,13 +73,7 @@ const LoadedFormContent = ({
   return (
     <div className={cn('mx-auto flex size-full max-w-180 flex-col items-center')}>
       <div className="mt-4 flex w-full shrink-0 items-center gap-3 py-3">
-        <AppIcon
-          size="large"
-          iconType={site.icon_type}
-          icon={site.icon}
-          background={site.icon_background}
-          imageUrl={site.icon_url}
-        />
+        <AppIcon size="large" icon={site} />
         <div className="grow system-xl-semibold text-text-primary">{site.title}</div>
       </div>
       <div className="h-0 w-full grow overflow-y-auto">

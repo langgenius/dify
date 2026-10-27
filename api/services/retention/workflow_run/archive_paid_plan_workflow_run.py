@@ -68,7 +68,6 @@ from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService
 from services.retention.workflow_run.archive_bundle_index import (
-    ArchiveBundleManifest,
     ArchiveBundleTableManifestEntry,
     decode_archive_bundle_manifest,
     upsert_archive_bundle_index_from_manifest,
@@ -110,6 +109,7 @@ class ArchiveManifestDict(TypedDict):
     max_run_id: str
     archived_at: str
     campaign_id: str
+    # None means the archive scan has no inclusive lower time bound.
     archive_window_start: str | None
     archive_window_end: str
     run_shard: str
@@ -325,10 +325,7 @@ class WorkflowRunArchiver:
 
         # Initialize archive storage (will raise if not configured)
         try:
-            if not self.dry_run:
-                storage = get_archive_storage()
-            else:
-                storage = None
+            storage = get_archive_storage() if not self.dry_run else None
         except ArchiveStorageNotConfiguredError as e:
             click.echo(click.style(f"Archive storage not configured: {e}", fg="red"))
             return summary
@@ -873,7 +870,7 @@ class WorkflowRunArchiver:
         identity: ArchiveBundleIdentity,
         runs: Sequence[WorkflowRun],
         table_stats: list[TableStats],
-    ) -> ArchiveBundleManifest:
+    ) -> ArchiveManifestDict:
         """Generate a manifest for the archived workflow run bundle."""
         tables: dict[str, ArchiveBundleTableManifestEntry] = {
             stat.table_name: {

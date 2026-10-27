@@ -12,57 +12,6 @@ import type { IOnCompleted, IOnData, IOnError } from '@/service/base'
 // oxlint-disable-next-line no-restricted-imports
 import { get, post, ssePost, upload } from '@/service/base'
 
-function parseSkillUploadErrorMessage(message: string) {
-  const trimmedMessage = message.trim()
-  if (!trimmedMessage.startsWith('{')) return trimmedMessage
-
-  try {
-    const parsed: unknown = JSON.parse(trimmedMessage)
-    if (parsed && typeof parsed === 'object') {
-      const parsedMessage = (parsed as Record<string, unknown>).message
-      if (typeof parsedMessage === 'string' && parsedMessage.trim()) return parsedMessage.trim()
-    }
-  } catch {
-    return trimmedMessage
-  }
-
-  return trimmedMessage
-}
-
-function readSkillUploadErrorMessage(
-  error: unknown,
-  visited = new Set<unknown>(),
-): string | undefined {
-  if (!error || visited.has(error)) return undefined
-  if (typeof error === 'string') return parseSkillUploadErrorMessage(error)
-  if (typeof error !== 'object') return undefined
-
-  visited.add(error)
-  const record = error as Record<string, unknown>
-
-  for (const key of ['data', 'body', 'error', 'cause', 'response']) {
-    const nestedMessage = readSkillUploadErrorMessage(record[key], visited)
-    if (nestedMessage) return nestedMessage
-  }
-
-  const message = record.message
-  if (typeof message === 'string' && message.trim()) return parseSkillUploadErrorMessage(message)
-
-  return undefined
-}
-
-async function getSkillUploadResponseErrorMessage(response: Response) {
-  try {
-    const data: unknown = await response.clone().json()
-    return readSkillUploadErrorMessage(data)
-  } catch {
-    try {
-      const text = await response.clone().text()
-      if (text.trim()) return parseSkillUploadErrorMessage(text)
-    } catch {}
-  }
-}
-
 export async function uploadSkillFile(
   file: File,
   options?: {
@@ -73,50 +22,35 @@ export async function uploadSkillFile(
   const body = new FormData()
   body.append('file', file)
 
-  try {
-    if (options?.onProgress) {
-      const onProgress = (event: ProgressEvent) => {
-        if (!event.lengthComputable) return
+  if (options?.onProgress) {
+    const onProgress = (event: ProgressEvent) => {
+      if (!event.lengthComputable) return
 
-        options.onProgress?.(Math.floor((event.loaded / event.total) * 100))
-      }
-
-      const response = await upload(
-        {
-          xhr: options.xhr ?? new XMLHttpRequest(),
-          data: body,
-          onprogress: onProgress,
-        },
-        false,
-        '/workspaces/current/skills/files/upload',
-      )
-
-      return response as SkillFileUploadResponse
+      options.onProgress?.(Math.floor((event.loaded / event.total) * 100))
     }
 
-    return await post<SkillFileUploadResponse>(
-      '/workspaces/current/skills/files/upload',
-      { body },
+    const response = await upload(
       {
-        bodyStringify: false,
-        deleteContentType: true,
-        silent: true,
+        xhr: options.xhr ?? new XMLHttpRequest(),
+        data: body,
+        onprogress: onProgress,
       },
+      false,
+      '/workspaces/current/skills/files/upload',
     )
-  } catch (error) {
-    const message =
-      error instanceof Response
-        ? await getSkillUploadResponseErrorMessage(error)
-        : readSkillUploadErrorMessage(error)
 
-    if (message) {
-      const normalizedError = new Error(message)
-      normalizedError.cause = error
-      throw normalizedError
-    }
-
-    throw error
+    return response as SkillFileUploadResponse
   }
+
+  return await post<SkillFileUploadResponse>(
+    '/workspaces/current/skills/files/upload',
+    { body },
+    {
+      bodyStringify: false,
+      deleteContentType: true,
+      silent: true,
+    },
+  )
 }
 
 export async function fetchSkillFileBlob({

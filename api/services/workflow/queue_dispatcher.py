@@ -1,5 +1,3 @@
-from typing import Protocol, override
-
 """
 Queue dispatcher system for async workflow execution.
 
@@ -8,6 +6,7 @@ with appropriate queue routing and priority assignment.
 """
 
 from enum import StrEnum
+from typing import Protocol, override
 
 from configs import dify_config
 from enums import DeploymentEdition

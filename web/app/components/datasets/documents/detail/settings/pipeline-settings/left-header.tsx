@@ -10,7 +10,7 @@ type LeftHeaderProps = {
 }
 
 const LeftHeader = ({ title }: LeftHeaderProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
   const { back } = useRouter()
 
   const navigateBack = useCallback(() => {

@@ -1,5 +1,5 @@
 import { render } from 'vitest-browser-react'
-import { Checkbox, CheckboxIndicator, CheckboxRoot, CheckboxSkeleton } from '../index'
+import { Checkbox, CheckboxSkeleton } from '../index'
 
 describe('Checkbox', () => {
   it('should render an unchecked checkbox with Base UI semantics', async () => {
@@ -91,19 +91,6 @@ describe('Checkbox', () => {
 
     expect(data.get('terms')).toBe('accepted')
     expect(data.get('newsletter')).toBe('no')
-  })
-
-  it('should support custom compound composition with CheckboxRoot and CheckboxIndicator', async () => {
-    const screen = await render(
-      <CheckboxRoot checked aria-label="Custom checkbox" className="custom-root">
-        <CheckboxIndicator className="custom-indicator" />
-      </CheckboxRoot>,
-    )
-
-    await expect
-      .element(screen.getByRole('checkbox', { name: 'Custom checkbox' }))
-      .toHaveClass('custom-root')
-    expect(screen.container.querySelector('.custom-indicator')).toBeInTheDocument()
   })
 })
 

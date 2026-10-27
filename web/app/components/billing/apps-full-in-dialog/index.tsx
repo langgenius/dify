@@ -14,7 +14,7 @@ import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
 
 const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
   const { data: billing } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (data) => ({ plan: data.billing.subscription.plan, apps: data.apps }),

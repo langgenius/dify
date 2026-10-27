@@ -1,17 +1,14 @@
+import type { ExtraProps } from 'streamdown'
 import { ALLOW_UNSAFE_DATA_SCHEME, MARKETPLACE_API_PREFIX } from '@/config'
 
-type MdastNode = {
-  tagName?: string
-  children?: MdastNode[]
-  [key: string]: unknown
-}
-
-export const hasImageChild = (children: MdastNode[] | undefined): boolean => {
+export const hasImageChild = (
+  children: NonNullable<ExtraProps['node']>['children'] | undefined,
+): boolean => {
   return (
-    children?.some((child) => {
-      if (child.tagName === 'img') return true
-      return child.children ? hasImageChild(child.children) : false
-    }) ?? false
+    children?.some(
+      (child) =>
+        child.type === 'element' && (child.tagName === 'img' || hasImageChild(child.children)),
+    ) ?? false
   )
 }
 
@@ -22,7 +19,7 @@ export const isValidUrl = (url: string): boolean => {
 }
 
 export const getMarkdownImageURL = (url: string, pathname?: string) => {
-  const regex = /(^\.\/_assets|^_assets)/
+  const regex = /^(?:\.\/|\/)?_assets(?=\/)/
   if (regex.test(url))
     return `${MARKETPLACE_API_PREFIX}${MARKETPLACE_API_PREFIX.endsWith('/') ? '' : '/'}plugins/${pathname ?? ''}${url.replace(regex, '/_assets')}`
   return url

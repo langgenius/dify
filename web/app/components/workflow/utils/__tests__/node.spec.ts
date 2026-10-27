@@ -18,13 +18,6 @@ import {
   hasRetryNode,
 } from '../node'
 
-describe('nested workflow node layering', () => {
-  it('should keep nested elements above React Flow selected nodes', () => {
-    expect(NESTED_ELEMENT_Z_INDEX).toBe(1001)
-    expect(NESTED_ELEMENT_Z_INDEX).toBeGreaterThan(1000)
-  })
-})
-
 describe('getNodeCatalogType', () => {
   it('should use Agent V2 catalog type for graph agent nodes with the Agent V2 discriminator', () => {
     expect(
@@ -80,24 +73,6 @@ describe('generateNewNode', () => {
     expect(newNode.id).toBe('custom-id')
   })
 
-  it('should use the default layer for iteration nodes', () => {
-    const { newNode } = generateNewNode({
-      data: { title: 'Iter', desc: '', type: BlockEnum.Iteration } as CommonNodeType,
-      position: { x: 0, y: 0 },
-    })
-
-    expect(newNode.zIndex).toBe(0)
-  })
-
-  it('should use the default layer for loop nodes', () => {
-    const { newNode } = generateNewNode({
-      data: { title: 'Loop', desc: '', type: BlockEnum.Loop } as CommonNodeType,
-      position: { x: 0, y: 0 },
-    })
-
-    expect(newNode.zIndex).toBe(0)
-  })
-
   it('should create an iteration start node for iteration type', () => {
     const { newNode, newIterationStartNode } = generateNewNode({
       id: 'iter-1',
@@ -105,7 +80,8 @@ describe('generateNewNode', () => {
       position: { x: 0, y: 0 },
     })
 
-    expect(newIterationStartNode).toBeDefined()
+    expect(newNode.zIndex).toBe(0)
+    expect(newIterationStartNode!.zIndex).toBeGreaterThan(1000)
     expect(newIterationStartNode!.id).toBe('iter-1start')
     expect(newIterationStartNode!.data.type).toBe(BlockEnum.IterationStart)
     expect((newNode.data as IterationNodeType).start_node_id).toBe('iter-1start')
@@ -121,7 +97,8 @@ describe('generateNewNode', () => {
       position: { x: 0, y: 0 },
     })
 
-    expect(newLoopStartNode).toBeDefined()
+    expect(newNode.zIndex).toBe(0)
+    expect(newLoopStartNode!.zIndex).toBeGreaterThan(1000)
     expect(newLoopStartNode!.id).toBe('loop-1start')
     expect(newLoopStartNode!.data.type).toBe(BlockEnum.LoopStart)
     expect((newNode.data as LoopNodeType).start_node_id).toBe('loop-1start')

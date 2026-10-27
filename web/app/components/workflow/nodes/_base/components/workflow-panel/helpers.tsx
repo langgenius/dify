@@ -1,3 +1,4 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { ReactNode } from 'react'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
@@ -5,7 +6,7 @@ import type { Node, ToolWithProvider } from '@/app/components/workflow/types'
 import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
 import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 
 const MIN_NODE_PANEL_WIDTH = 400
 const DEFAULT_MAX_NODE_PANEL_WIDTH = 720
@@ -58,12 +59,12 @@ export const getCurrentToolCollection = (
   providerId?: string,
 ) => {
   const candidates = buildInTools ?? storeBuildInTools
-  return candidates?.find((item) => canFindTool(item.id, providerId))
+  return candidates?.find((item) => matchesProviderReference(item, providerId))
 }
 
 export const getCurrentDataSource = (
   data: Node['data'],
-  dataSourceList: Array<{ plugin_id?: string; is_authorized?: boolean }> | undefined,
+  dataSourceList: RagPipelineDatasourceProviderResponse[] | undefined,
 ) => {
   if (
     data.type !== BlockEnum.DataSource ||

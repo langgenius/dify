@@ -26,7 +26,7 @@ type Props = {
  * generalises post-signin redirect to all methods.
  */
 const Chooser: FC<Props> = ({ userCode, ssoAvailable }) => {
-  const { t } = useTranslation('deviceFlow')
+  const { t } = useTranslation(['deviceFlow'])
   const deviceReturnPath = `/device?user_code=${encodeURIComponent(userCode)}`
 
   return (

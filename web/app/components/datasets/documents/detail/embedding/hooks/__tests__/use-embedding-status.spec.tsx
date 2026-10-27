@@ -1,5 +1,5 @@
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
-import type { IndexingStatusResponse } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -35,8 +35,8 @@ const createWrapper = () => {
 }
 
 const mockIndexingStatus = (
-  overrides: Partial<IndexingStatusResponse> = {},
-): IndexingStatusResponse => ({
+  overrides: Partial<DocumentStatusResponse> = {},
+): DocumentStatusResponse => ({
   id: 'doc1',
   indexing_status: 'indexing',
   completed_segments: 50,
@@ -57,64 +57,18 @@ describe('use-embedding-status', () => {
     vi.clearAllMocks()
   })
 
-  describe('isEmbeddingStatus', () => {
-    it('should return true for indexing status', () => {
-      expect(isEmbeddingStatus('indexing')).toBe(true)
-    })
-
-    it('should return true for splitting status', () => {
-      expect(isEmbeddingStatus('splitting')).toBe(true)
-    })
-
-    it('should return true for parsing status', () => {
-      expect(isEmbeddingStatus('parsing')).toBe(true)
-    })
-
-    it('should return true for cleaning status', () => {
-      expect(isEmbeddingStatus('cleaning')).toBe(true)
-    })
-
-    it('should return false for completed status', () => {
-      expect(isEmbeddingStatus('completed')).toBe(false)
-    })
-
-    it('should return false for paused status', () => {
-      expect(isEmbeddingStatus('paused')).toBe(false)
-    })
-
-    it('should return false for error status', () => {
-      expect(isEmbeddingStatus('error')).toBe(false)
-    })
-
-    it('should return false for undefined', () => {
-      expect(isEmbeddingStatus(undefined)).toBe(false)
-    })
-
-    it('should return false for empty string', () => {
-      expect(isEmbeddingStatus('')).toBe(false)
-    })
-  })
-
-  describe('isTerminalStatus', () => {
-    it('should return true for completed status', () => {
-      expect(isTerminalStatus('completed')).toBe(true)
-    })
-
-    it('should return true for error status', () => {
-      expect(isTerminalStatus('error')).toBe(true)
-    })
-
-    it('should return true for paused status', () => {
-      expect(isTerminalStatus('paused')).toBe(true)
-    })
-
-    it('should return false for indexing status', () => {
-      expect(isTerminalStatus('indexing')).toBe(false)
-    })
-
-    it('should return false for undefined', () => {
-      expect(isTerminalStatus(undefined)).toBe(false)
-    })
+  it.each([
+    ['indexing', true, false],
+    ['splitting', true, false],
+    ['parsing', true, false],
+    ['cleaning', true, false],
+    ['completed', false, true],
+    ['paused', false, true],
+    ['error', false, true],
+    [undefined, false, false],
+  ] as const)('classifies indexing status %s', (status, embedding, terminal) => {
+    expect(isEmbeddingStatus(status)).toBe(embedding)
+    expect(isTerminalStatus(status)).toBe(terminal)
   })
 
   describe('calculatePercent', () => {
@@ -151,6 +105,7 @@ describe('use-embedding-status', () => {
         { wrapper: createWrapper() },
       )
 
+      expect(mockFetchIndexingStatus).not.toHaveBeenCalled()
       expect(result.current.isEmbedding).toBe(false)
       expect(result.current.isCompleted).toBe(false)
       expect(result.current.isPaused).toBe(false)
@@ -244,7 +199,7 @@ describe('use-embedding-status', () => {
       })
     })
 
-    it('should provide invalidate function', async () => {
+    it('refreshes status after invalidation', async () => {
       mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus())
 
       const { result } = renderHook(
@@ -256,12 +211,11 @@ describe('use-embedding-status', () => {
         expect(result.current.isEmbedding).toBe(true)
       })
 
-      expect(typeof result.current.invalidate).toBe('function')
-
-      // Call invalidate should not throw
+      mockFetchIndexingStatus.mockResolvedValue(mockIndexingStatus({ indexing_status: 'paused' }))
       await act(async () => {
         result.current.invalidate()
       })
+      await waitFor(() => expect(result.current.isPaused).toBe(true))
     })
 
     it('should provide resetStatus function that clears data', async () => {
@@ -288,26 +242,6 @@ describe('use-embedding-status', () => {
   })
 
   describe('usePauseIndexing', () => {
-    it('should call pauseDocIndexing when mutate is called', async () => {
-      mockPauseDocIndexing.mockResolvedValue({ result: 'success' })
-
-      const { result } = renderHook(
-        () => usePauseIndexing({ datasetId: 'ds1', documentId: 'doc1' }),
-        { wrapper: createWrapper() },
-      )
-
-      await act(async () => {
-        result.current.mutate()
-      })
-
-      await waitFor(() => {
-        expect(mockPauseDocIndexing).toHaveBeenCalledWith({
-          datasetId: 'ds1',
-          documentId: 'doc1',
-        })
-      })
-    })
-
     it('should call onSuccess callback on successful pause', async () => {
       mockPauseDocIndexing.mockResolvedValue({ result: 'success' })
       const onSuccess = vi.fn()
@@ -322,7 +256,8 @@ describe('use-embedding-status', () => {
       })
 
       await waitFor(() => {
-        expect(onSuccess).toHaveBeenCalled()
+        expect(onSuccess).toHaveBeenCalledOnce()
+        expect(mockPauseDocIndexing).toHaveBeenCalledWith({ datasetId: 'ds1', documentId: 'doc1' })
       })
     })
 
@@ -348,26 +283,6 @@ describe('use-embedding-status', () => {
   })
 
   describe('useResumeIndexing', () => {
-    it('should call resumeDocIndexing when mutate is called', async () => {
-      mockResumeDocIndexing.mockResolvedValue({ result: 'success' })
-
-      const { result } = renderHook(
-        () => useResumeIndexing({ datasetId: 'ds1', documentId: 'doc1' }),
-        { wrapper: createWrapper() },
-      )
-
-      await act(async () => {
-        result.current.mutate()
-      })
-
-      await waitFor(() => {
-        expect(mockResumeDocIndexing).toHaveBeenCalledWith({
-          datasetId: 'ds1',
-          documentId: 'doc1',
-        })
-      })
-    })
-
     it('should call onSuccess callback on successful resume', async () => {
       mockResumeDocIndexing.mockResolvedValue({ result: 'success' })
       const onSuccess = vi.fn()
@@ -382,7 +297,8 @@ describe('use-embedding-status', () => {
       })
 
       await waitFor(() => {
-        expect(onSuccess).toHaveBeenCalled()
+        expect(onSuccess).toHaveBeenCalledOnce()
+        expect(mockResumeDocIndexing).toHaveBeenCalledWith({ datasetId: 'ds1', documentId: 'doc1' })
       })
     })
   })

@@ -1,14 +1,13 @@
 'use client'
-import type { InitValidateStatusResponse } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
-import { fetchInitValidateStatus, initValidate } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { basePath } from '@/utils/var'
-import Loading from '../components/base/loading'
 
 const InitPasswordPopup = () => {
   const [password, setPassword] = useState('')
@@ -16,14 +15,14 @@ const InitPasswordPopup = () => {
   const [validated, setValidated] = useState(false)
   const router = useRouter()
 
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const pageTitle = t(($) => $.adminInitPassword, { ns: 'login' })
   useDocumentTitle(pageTitle)
 
   const handleValidation = async () => {
     setLoading(true)
     try {
-      const response = await initValidate({ body: { password } })
+      const response = await consoleClient.init.post({ body: { password } })
       if (response.result === 'success') {
         setValidated(true)
         router.push('/install') // or render setup form
@@ -37,14 +36,14 @@ const InitPasswordPopup = () => {
   }
 
   useEffect(() => {
-    fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
+    consoleClient.init.get().then((res) => {
       if (res.status === 'finished') window.location.href = `${basePath}/install`
       else setLoading(false)
     })
   }, [])
 
   return loading ? (
-    <Loading />
+    <LoadingPlaceholder />
   ) : (
     <div>
       {!validated && (
