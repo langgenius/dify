@@ -1,4 +1,4 @@
-"""Create the Human Input v2 schema and backfill Account Contact identities.
+"""Create the Human Input v2 schema.
 
 Revision ID: e8b4a1c6d920
 Revises: b9d3f7a5c102
@@ -25,28 +25,6 @@ def _default_fields(table_name: str) -> tuple[sa.Column, sa.Column, sa.Column, s
         sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.PrimaryKeyConstraint("id", name=f"{table_name}_pkey"),
     )
-
-
-def _backfill_account_contact_identities() -> None:
-    match op.get_context().dialect.name:
-        case "postgresql":
-            op.execute(
-                """
-                INSERT INTO human_input_contact_identities (id, subject_type, account_id)
-                SELECT uuidv7(), 'account', id FROM accounts ORDER BY id
-                ON CONFLICT (account_id) DO NOTHING
-                """
-            )
-        case "mysql" | "mariadb":
-            op.execute(
-                """
-                INSERT INTO human_input_contact_identities (id, subject_type, account_id)
-                SELECT UUID(), 'account', id FROM accounts ORDER BY id
-                ON DUPLICATE KEY UPDATE account_id = human_input_contact_identities.account_id
-                """
-            )
-        case dialect_name:
-            raise NotImplementedError(f"Unsupported database dialect for Account Contact backfill: {dialect_name}")
 
 
 def upgrade() -> None:
@@ -792,8 +770,6 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.current_timestamp()),
         sa.Column("updated_at", sa.DateTime(), nullable=False, server_default=sa.func.current_timestamp()),
     )
-
-    _backfill_account_contact_identities()
 
 
 def downgrade() -> None:
