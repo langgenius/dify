@@ -48,7 +48,7 @@ export const useWorkflowTemplate = () => {
           window: { enabled: false, size: 10 },
           query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
         },
-        selected: true,
+        selected: pendingCreation?.appId !== appId,
         type: llmDefault.metaData.type,
         title: t(($) => $[`blocks.${llmDefault.metaData.type}`], { ns: 'workflow' }),
       },
