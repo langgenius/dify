@@ -5,12 +5,450 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { parse, parseDocument } from 'yaml'
-import { mediaSpec, multipartSpec } from './media.mjs'
+import { mediaSpec, multipartSpec, variantSpec } from './media.mjs'
 /* oxlint-enable vitest/no-import-node-test */
 
 const root = resolve(import.meta.dirname, '..')
 const compiler = join(root, 'node_modules/typescript/bin/tsc')
 const yaml = readFileSync(join(root, 'examples/petstore/pets.openapi.yaml'), 'utf8')
+
+test('oneOf rejects overlapping required branches and enum values without narrowing anyOf', () => {
+  const ref = (name) => ({ $ref: `#/components/schemas/${name}` })
+  const operation = (schema) => ({
+    post: {
+      requestBody: { required: true, content: { 'application/json': { schema } } },
+      responses: { 200: { content: { 'application/json': { schema } } } },
+    },
+  })
+  const properties = {
+    email: { type: 'string', nullable: true },
+    phone: { type: 'string' },
+    id: { type: 'number' },
+    next: ref('Exclusive'),
+  }
+  const choices = [{ required: ['email'] }, { required: ['phone'] }]
+  const exclusive = { type: 'object', properties, oneOf: choices }
+  project(
+    {
+      'spec.openapi': JSON.stringify({
+        openapi: '3.1.0',
+        components: { schemas: { Exclusive: exclusive } },
+        paths: {
+          '/inline': operation(exclusive),
+          '/open': operation({ ...exclusive, additionalProperties: true }),
+          '/aliased': operation(ref('Exclusive')),
+          '/inclusive': operation({ type: 'object', properties, anyOf: choices }),
+          '/triple': operation({
+            type: 'object',
+            properties,
+            oneOf: [...choices, { required: ['id'] }],
+          }),
+          '/grouped': operation({
+            type: 'object',
+            properties,
+            oneOf: [{ anyOf: choices }, { required: ['id'] }],
+          }),
+          '/duplicate': operation({ type: 'object', properties, oneOf: [choices[0], choices[0]] }),
+          '/enum': operation({ oneOf: [{ enum: ['A', 'B'] }, { enum: ['B', 'C'] }] }),
+          '/tagged': operation({
+            type: 'object',
+            properties: { ...properties, kind: { type: 'string' } },
+            oneOf: [
+              { properties: { kind: { const: 'email' } }, required: ['kind', 'email'] },
+              { properties: { kind: { const: 'phone' } }, required: ['kind', 'phone'] },
+            ],
+          }),
+        },
+      }),
+      'index.ts': `
+import {api,query} from './spec.openapi';
+import type {InferSchema} from '@dify/openapi-content-mapper';
+api.inline.post({body:{email:'a@example.test'}});
+api.open.post({body:{email:'a@example.test',extra:42}});
+// @ts-expect-error an index signature does not erase known required keys
+api.open.post({body:{email:'ok',phone:'123'}});
+api.aliased.post({body:{phone:'123'}});
+api.inline.post({body:{email:null,phone:undefined,next:{phone:'nested'}}});
+api.inclusive.post({body:{email:null,phone:'123'}});
+api.triple.post({body:{id:42}});
+api.grouped.post({body:{email:'ok',phone:'123'}});
+api.grouped.post({body:{id:42}});
+api.tagged.post({body:{kind:'email',email:'ok',phone:'allowed by distinct discriminator'}});
+api.enum.post({body:'A'});
+api.enum.post({body:'C'});
+const result = await api.aliased.post({body:{email:null}});
+const deep:string|null|undefined = result.next!.next!.email;
+// @ts-expect-error matching both required branches violates oneOf
+api.inline.post({body:{email:'ok',phone:'123'}});
+// @ts-expect-error generated aliases enforce the same exclusivity
+api.aliased.post({body:{email:null,phone:'123'}});
+// @ts-expect-error recursive oneOf retains exclusivity
+api.inline.post({body:{email:'ok',next:{email:'nested',phone:'123'}}});
+// @ts-expect-error matching no branches also violates oneOf
+api.inline.post({body:{}});
+// @ts-expect-error missing a required value remains invalid
+api.inline.post({body:{email:undefined}});
+// @ts-expect-error every pair is excluded for three alternatives
+api.triple.post({body:{phone:'123',id:42}});
+// @ts-expect-error exclude every member of the other branch's union
+api.grouped.post({body:{email:'ok',id:42}});
+// @ts-expect-error the other union member is excluded too
+api.grouped.post({body:{phone:'123',id:42}});
+// @ts-expect-error duplicate matching branches cannot match exactly once
+api.duplicate.post({body:{email:'ok'}});
+// @ts-expect-error an overlapping enum value matches both branches
+api.enum.post({body:'B'});
+// @ts-expect-error query helpers retain exclusivity
+query.inline.post.mutationOptions().mutationFn!({body:{email:'ok',phone:'123'}},null!);
+type Direct=InferSchema<{type:'object',properties:{a:{type:'string'},b:{type:'string'}},oneOf:[{required:['a']},{required:['b']}]} >;
+const valid:Direct={a:'ok'};
+// @ts-expect-error public inference shares exclusive branch handling
+const invalid:Direct={a:'ok',b:'wrong'};
+`,
+    },
+    (_dir, check) => {
+      const result = check()
+      assert.equal(result.status, 0, result.output)
+    },
+  )
+})
+
+test('ambiguous JSON defaults and multipart variants retain distinct inputs', () => {
+  project(
+    {
+      'spec.openapi': JSON.stringify(variantSpec),
+      'index.ts': `
+import {api,query} from './spec.openapi';
+api.json.post({body:'A',contentType:'application/json; profile="A"'});
+api.json.post({body:'B',contentType:'application/json; profile="B"'});
+// @ts-expect-error neither JSON variant is an unambiguous default
+api.json.post({body:'A'});
+// @ts-expect-error profile B cannot silently use profile A
+api.json.post({body:'B'});
+// @ts-expect-error profile and payload must match
+api.json.post({body:'B',contentType:'application/json; profile="A"'});
+// @ts-expect-error query helpers must also select a variant
+query.json.post.mutationOptions().mutationFn!({body:'B'},null!);
+api.form.post({body:{metadata:'wire text'},contentType:'multipart/form-data; profile="json"'});
+api.form.post({body:{metadata:new File(['bytes'],'metadata.bin')},contentType:'multipart/form-data; profile="file"'});
+// @ts-expect-error only the JSON variant accepts wire strings
+api.form.post({body:{metadata:'wire text'},contentType:'multipart/form-data; profile="file"'});
+// @ts-expect-error only the file variant accepts Blob
+api.form.post({body:{metadata:new Blob()},contentType:'multipart/form-data; profile="json"'});
+`,
+    },
+    (_dir, check) => {
+      const result = check()
+      assert.equal(result.status, 0, result.output)
+    },
+  )
+})
+
+test('required-only alternatives retain branch semantics in inline, aliased and nested schemas', () => {
+  const ref = (name) => ({ $ref: `#/components/schemas/${name}` })
+  const operation = (schema) => ({
+    post: {
+      requestBody: { required: true, content: { 'application/json': { schema } } },
+      responses: { 200: { content: { 'application/json': { schema } } } },
+    },
+  })
+  for (const openapi of ['3.0.3', '3.1.0']) {
+    const properties = {
+      email: { type: 'string', nullable: true },
+      phone: { type: 'string' },
+      next: ref('Contact'),
+    }
+    const either = { anyOf: [{ required: ['email'] }, ref('Phone')] }
+    const contact = { type: 'object', properties, ...either }
+    const spec = {
+      openapi,
+      components: {
+        schemas: {
+          Phone: { required: ['phone'] },
+          Either: either,
+          Contact: contact,
+          Fields: { type: 'object', properties },
+          Nested: { allOf: [ref('Either'), ref('Fields')] },
+          Exclusive: { type: 'object', properties, oneOf: either.anyOf },
+        },
+      },
+      paths: {
+        '/inline': operation(contact),
+        '/aliased': operation(ref('Contact')),
+        '/nested': operation(ref('Nested')),
+        '/exclusive': operation(ref('Exclusive')),
+        '/mixed': operation({ type: ['object', 'string', 'null'], properties, ...either }),
+        '/typed': operation({
+          type: 'object',
+          properties: { email: { type: 'string' } },
+          anyOf: [{ type: 'string' }, { required: ['email'] }],
+        }),
+        '/unconstrained': operation({ type: 'object', properties, anyOf: [{}, ref('Phone')] }),
+      },
+    }
+    project(
+      {
+        'spec.openapi': JSON.stringify(spec),
+        'index.ts': `
+import {api,query} from './spec.openapi';
+import type {InferSchema} from '@dify/openapi-content-mapper';
+api.inline.post({body:{email:'a@example.test'}});
+api.aliased.post({body:{phone:'123'}});
+api.inline.post({body:{email:null,phone:'123',next:{email:'nested'}}});
+api.nested.post({body:{email:null}});
+api.exclusive.post({body:{phone:'123'}});
+api.mixed.post({body:'required only constrains objects'});
+api.mixed.post({body:null});
+api.unconstrained.post({body:{}});
+const result = await api.aliased.post({body:{email:null}});
+const email:string|null|undefined = result.email;
+const deep:string|null|undefined = result.next!.next!.email;
+// @ts-expect-error at least one contact field is required
+api.inline.post({body:{}});
+// @ts-expect-error aliases preserve required-only alternatives
+api.aliased.post({body:{}});
+// @ts-expect-error nested allOf combines fields before applying alternatives
+api.nested.post({body:{}});
+// @ts-expect-error oneOf must match at least one branch
+api.exclusive.post({body:{}});
+// @ts-expect-error undefined does not satisfy required
+api.inline.post({body:{email:undefined}});
+// @ts-expect-error preserve inherited property types
+api.inline.post({body:{email:42}});
+// @ts-expect-error recursive alternatives remain enforced
+api.aliased.post({body:{phone:'123',next:{}}});
+// @ts-expect-error the scalar branch cannot satisfy an object schema
+api.typed.post({body:{}});
+// @ts-expect-error query helpers share the same branch constraints
+query.inline.post.mutationOptions().mutationFn!({body:{}},null!);
+type Contact = InferSchema<{type:'object',properties:{email:{type:'string'},phone:{type:'string'}},anyOf:[{required:['email']},{required:['phone']}]} >;
+const direct:Contact = {phone:'ok'};
+// @ts-expect-error direct schema inference rejects missing required branches
+const invalid:Contact = {};
+`,
+      },
+      (_dir, check) => {
+        const result = check()
+        assert.equal(result.status, 0, result.output)
+      },
+    )
+  }
+})
+
+test('allOf applies required-only constraints after combining property types', () => {
+  const ref = (name) => ({ $ref: `#/components/schemas/${name}` })
+  const composed = { allOf: [ref('Constraint'), ref('User')] }
+  const operation = (schema) => ({
+    requestBody: { required: true, content: { 'application/json': { schema } } },
+    responses: { 200: { content: { 'application/json': { schema } } } },
+  })
+  for (const openapi of ['3.0.3', '3.1.0']) {
+    project(
+      {
+        'spec.openapi': JSON.stringify({
+          openapi,
+          components: {
+            schemas: {
+              Constraint: { allOf: [{ required: ['name'] }] },
+              User: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', nullable: true },
+                  next: ref('Composed'),
+                },
+              },
+              Composed: composed,
+            },
+          },
+          paths: {
+            '/inline': { post: operation(composed) },
+            '/aliased': { post: operation(ref('Composed')) },
+            '/direct': { post: operation({ allOf: [ref('User'), { required: ['name'] }] }) },
+            '/scalar': { post: operation({ allOf: [{ type: 'string' }, ref('Constraint')] }) },
+            '/array': {
+              post: operation({
+                allOf: [{ type: 'array', items: { type: 'number' } }, ref('Constraint')],
+              }),
+            },
+          },
+        }),
+        'index.ts': `
+import { api, query } from './spec.openapi';
+import type { InferSchema } from '@dify/openapi-content-mapper';
+const inline = await api.inline.post({body:{name:null,next:{name:'nested'}}});
+const name: string | null = inline.name;
+const nestedName: string | null = inline.next!.next!.name;
+const aliased = await api.aliased.post({body:{name:'ok'}});
+const aliasName: string | null = aliased.name;
+api.scalar.post({body:'required does not constrain scalars'});
+api.array.post({body:[1,2]});
+// @ts-expect-error constraints inside referenced allOf must reject empty objects
+api.inline.post({body:{}});
+// @ts-expect-error generated aliases enforce the same constraints
+api.aliased.post({body:{}});
+// @ts-expect-error direct required-only allOf branch
+api.direct.post({body:{}});
+// @ts-expect-error undefined disappears during serialization
+api.inline.post({body:{name:undefined}});
+// @ts-expect-error preserve property types
+api.inline.post({body:{name:123}});
+// @ts-expect-error recursive constraints remain required
+api.inline.post({body:{name:'ok',next:{}}});
+// @ts-expect-error query helpers share the same input types
+query.inline.post.mutationOptions().mutationFn!({body:{}},null!);
+type Direct = InferSchema<{allOf:[{required:['name']},{type:'object',properties:{name:{type:'string'}}}]} >;
+// @ts-expect-error public schema inference also applies composition constraints
+const direct: Direct = {};
+const valid: Direct = {name:'ok'};
+`,
+      },
+      (_dir, check) => {
+        const result = check()
+        assert.equal(result.status, 0, result.output)
+      },
+    )
+  }
+})
+
+test('URI-encoded schema and structural references preserve inferred types', () => {
+  const schema = {
+    type: 'object',
+    required: ['name', 'number', 'literal'],
+    properties: {
+      name: { $ref: '#/components/schemas/Model/properties/display%20name' },
+      number: { $ref: '#%2Fcomponents/schemas/Model/properties/%E9%9B%AA~1~0%2520' },
+      literal: { const: { $ref: '#/literal/%ZZ' } },
+    },
+  }
+  const spec = {
+    openapi: '3.1.0',
+    paths: {
+      '/payload': {
+        post: {
+          parameters: [{ $ref: '#/components/parameters/%51uery' }],
+          requestBody: { $ref: '#/components/requestBodies/%49nput' },
+          responses: { 200: { $ref: '#/components/responses/%4Futput' } },
+        },
+      },
+      '/copy': { $ref: '#/paths/%7E1payload' },
+    },
+    components: {
+      schemas: {
+        Model: {
+          type: 'object',
+          properties: {
+            'display name': { type: 'string' },
+            '雪/~%20': { type: 'number' },
+          },
+        },
+      },
+      parameters: {
+        Query: { name: 'limit', in: 'query', required: true, schema: { type: 'number' } },
+      },
+      requestBodies: { Input: { required: true, content: { 'application/json': { schema } } } },
+      responses: { Output: { description: 'OK', content: { 'application/json': { schema } } } },
+    },
+  }
+  project(
+    {
+      'spec.openapi': JSON.stringify(spec),
+      'index.ts': `
+import { api } from './spec.openapi';
+const body = {name:'ok',number:42,literal:{$ref:'#/literal/%ZZ' as const}};
+const result = await api.payload.post({body,query:{limit:1}});
+const name:string = result.name;
+const number:number = result.number;
+const literal:'#/literal/%ZZ' = result.literal.$ref;
+api.copy.post({body,query:{limit:1}});
+// @ts-expect-error referenced structural parameters remain required
+api.copy.post({body});
+// @ts-expect-error encoded schema references keep their property types
+api.payload.post({body:{...body,number:'wrong'},query:{limit:1}});
+`,
+    },
+    (_dir, check) => {
+      const result = check()
+      assert.equal(result.status, 0, result.output)
+    },
+  )
+})
+
+test('parameterized media types keep codecs and declared request keys aligned', () => {
+  const spec = { openapi: '3.1.0', paths: {} }
+  for (const [name, media] of [
+    ['json', 'Application/JSON ; charset=utf-8'],
+    ['vendor', 'application/vnd.test+json; profile="CaseSensitive"'],
+    ['stream', 'text/event-stream; charset=utf-8'],
+    ['binary', 'application/octet-stream; version=1'],
+  ]) {
+    spec.paths[`/${name}`] = {
+      get: {
+        responses: {
+          200: {
+            content: {
+              [media]: { schema: { type: 'string', format: 'binary' } },
+            },
+          },
+        },
+      },
+    }
+  }
+  spec.paths['/json'].post = {
+    requestBody: {
+      required: true,
+      content: {
+        'Application/JSON ; charset=utf-8': { schema: { type: 'string', format: 'binary' } },
+        'application/vnd.test+json; profile="CaseSensitive"': { schema: { type: 'number' } },
+      },
+    },
+    responses: { 204: { description: 'Done' } },
+  }
+  spec.paths['/form'] = {
+    post: {
+      requestBody: {
+        required: true,
+        content: {
+          'multipart/form-data': {
+            schema: {
+              type: 'object',
+              required: ['metadata'],
+              properties: {
+                metadata: { type: 'string', format: 'binary' },
+              },
+            },
+            encoding: { metadata: { contentType: 'application/json; charset=utf-8' } },
+          },
+        },
+      },
+      responses: { 204: { description: 'Done' } },
+    },
+  }
+  project(
+    {
+      'spec.openapi': JSON.stringify(spec),
+      'index.ts': `
+import { api } from './spec.openapi';
+const json:string = await api.json.get();
+const vendor:string = await api.vendor.get();
+const stream:ReadableStream<Uint8Array> = await api.stream.get();
+const binary:Blob = await api.binary.get();
+api.json.post({body:'wire string'});
+api.json.post({body:42,contentType:'application/vnd.test+json; profile="CaseSensitive"'});
+api.form.post({body:{metadata:'wire string'}});
+// @ts-expect-error declared parameters remain part of the selectable request key
+api.json.post({body:42,contentType:'application/vnd.test+json'});
+// @ts-expect-error JSON binary formats remain wire strings
+api.json.post({body:new Blob()});
+// @ts-expect-error parameterized JSON parts also use wire strings
+api.form.post({body:{metadata:new Blob()}});
+`,
+    },
+    (_dir, check) => {
+      const result = check()
+      assert.equal(result.status, 0, result.output)
+    },
+  )
+})
 
 test('JSON multipart parts use wire strings while file parts retain Blob types', () => {
   project(

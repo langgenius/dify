@@ -1,6 +1,8 @@
 import type { OperationDescriptor } from './operation.js'
 import type { CallOptions } from './types.js'
 import { getFilenameFromContentDisposition } from '@orpc/standard-server'
+import { mediaType, mediaTypeKey } from './media-type.js'
+import { encodeMultipart } from './multipart.js'
 
 export type ClientOptions = {
   baseUrl?: string
@@ -164,36 +166,38 @@ export function createClient(initial: ClientOptions = {}): HttpClient {
       throw new Error('Missing required request body')
     let body: BodyInit | undefined
     if (options.body !== undefined) {
-      const mediaType = (options.contentType ?? operation.contentType)?.toLowerCase()
-      if (
-        !mediaType ||
-        !(operation.contentTypes ?? [operation.contentType]).some(
-          (type) => type?.toLowerCase() === mediaType,
+      const requestedType = options.contentType ?? operation.contentType
+      const declaredType =
+        requestedType &&
+        (operation.contentTypes ?? [operation.contentType]).find(
+          (type) => type && mediaTypeKey(type) === mediaTypeKey(requestedType),
         )
-      )
-        throw new Error('Request content type must be declared by the operation')
-      if (mediaType === 'multipart/form-data') {
+      if (!declaredType) throw new Error('Request content type must be declared by the operation')
+      const type = mediaType(declaredType)
+      if (type === 'multipart/form-data') {
         const form = new FormData()
+        const jsonParts = operation.multipartJson?.find(([media]) => media === declaredType)?.[1]
         if (!options.body || typeof options.body !== 'object' || Array.isArray(options.body))
           throw new Error('Multipart body must be an object')
         for (const [key, value] of Object.entries(options.body)) {
           if (value === undefined) continue
-          if (operation.multipartJson?.includes(key)) {
-            form.append(key, new Blob([JSON.stringify(value)], { type: 'application/json' }))
+          const partType = jsonParts?.find(([name]) => name === key)?.[1]
+          if (partType) {
+            form.append(key, new Blob([JSON.stringify(value)], { type: partType }))
           } else {
             for (const item of Array.isArray(value) ? value : [value])
               form.append(key, item instanceof Blob ? item : scalar(item))
           }
         }
-        // Fetch supplies the boundary, including when a shared client has JSON headers.
-        headers.delete('Content-Type')
-        body = form
-      } else if (mediaType === 'application/octet-stream') {
+        const encoded = encodeMultipart(form, declaredType, jsonParts)
+        headers.set('Content-Type', encoded.contentType)
+        body = encoded.body
+      } else if (type === 'application/octet-stream') {
         if (!(options.body instanceof Blob)) throw new Error('Binary body must be a Blob or File')
-        headers.set('Content-Type', mediaType)
+        headers.set('Content-Type', declaredType)
         body = options.body
       } else {
-        headers.set('Content-Type', mediaType)
+        headers.set('Content-Type', declaredType)
         body = JSON.stringify(options.body)
       }
     }
@@ -204,12 +208,11 @@ export function createClient(initial: ClientOptions = {}): HttpClient {
       signal: options.signal,
       credentials: options.credentials,
     })
-    let contentType =
-      response.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() ?? ''
+    let contentType = mediaType(response.headers.get('content-type') ?? '')
     if (response.ok) {
       const media = (
         operation.responseContentTypes?.[response.status] ?? operation.responseContentTypes?.['2XX']
-      )?.map((type) => type.toLowerCase())
+      )?.map(mediaType)
       // Match the most specific declaration. A binary wildcard remains a Blob
       // even when the server chooses JSON, text, or SSE as its concrete media type.
       if (media && !media.includes(contentType)) {

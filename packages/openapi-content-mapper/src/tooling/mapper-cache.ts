@@ -104,6 +104,7 @@ export function mapperTransform() {
     'router.js',
     '../document.js',
     '../operation.js',
+    '../media-type.js',
   ]
   const parser = readFileSync(createRequire(import.meta.url).resolve('yaml/package.json'), 'utf8')
   const revision = digest(

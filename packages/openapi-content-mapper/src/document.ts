@@ -19,9 +19,12 @@ export function resolveRef(value: unknown, root: unknown): Record<string, unknow
 }
 
 export function pointerPath(ref: string): string[] {
-  if (!ref.startsWith('#/'))
+  if (!ref.startsWith('#'))
     throw new Error(`Only local JSON Pointer references are supported: ${ref}`)
-  return ref
+  const decoded = `#${decodeURIComponent(ref.slice(1))}`
+  if (!decoded.startsWith('#/'))
+    throw new Error(`Only local JSON Pointer references are supported: ${ref}`)
+  return decoded
     .slice(2)
     .split('/')
     .map((part) => part.replace(/~1/g, '/').replace(/~0/g, '~'))

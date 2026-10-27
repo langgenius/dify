@@ -125,7 +125,7 @@ export function transformSpec(content: string, fileName: string): Transform {
         })
         text += ']'
       } else if (isScalar(node)) {
-        token(JSON.stringify(node.value), node)
+        token(JSON.stringify(selected.reference ?? node.value), node)
       } else {
         text += 'null'
       }
@@ -152,7 +152,7 @@ export function transformSpec(content: string, fileName: string): Transform {
         }
         text += '}'
       } else {
-        text += JSON.stringify(node)
+        text += JSON.stringify(selected.reference ?? node)
       }
     }
     const selected = typeDocument(value)

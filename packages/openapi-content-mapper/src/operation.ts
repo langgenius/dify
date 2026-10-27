@@ -1,5 +1,6 @@
 import type { OpenApiDocument } from './types.js'
 import { assertDocument, record, resolveRef } from './document.js'
+import { mediaType } from './media-type.js'
 
 export type Parameter = {
   name: string
@@ -17,7 +18,7 @@ export type OperationDescriptor = {
   baseUrl?: string
   contentType?: string
   contentTypes?: string[]
-  multipartJson?: string[]
+  multipartJson?: [media: string, parts: [name: string, contentType: string][]][]
   bodyRequired?: boolean
   /** Only retained when wildcard response media need declaration-aware decoding. */
   responseContentTypes?: Record<string, string[]>
@@ -72,11 +73,15 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
       const body = resolveRef(operation.requestBody, spec)
       const content = record(body.content)
       const contentTypes = Object.keys(content)
+      const jsonTypes = contentTypes.filter((type) => mediaType(type) === 'application/json')
       const contentType =
-        contentTypes.find((type) => type.toLowerCase() === 'application/json') ??
-        (contentTypes.length === 1 ? contentTypes[0] : undefined)
+        contentTypes.length === 1
+          ? contentTypes[0]
+          : jsonTypes.length === 1
+            ? jsonTypes[0]
+            : undefined
       for (const declaredType of contentTypes) {
-        const type = declaredType.toLowerCase()
+        const type = mediaType(declaredType)
         if (
           !['application/json', 'multipart/form-data', 'application/octet-stream'].includes(type) &&
           !type.endsWith('+json')
@@ -85,23 +90,24 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
       }
       if (operation.requestBody && !contentTypes.length)
         throw new Error(`${method.toUpperCase()} ${path}: empty request content`)
-      const multipartJson: string[] = []
-      const multipartType = contentTypes.find(
-        (type) => type.toLowerCase() === 'multipart/form-data',
-      )
-      for (const [name, raw] of Object.entries(
-        record(record(multipartType ? content[multipartType] : undefined).encoding),
+      const multipartJson: NonNullable<OperationDescriptor['multipartJson']> = []
+      for (const multipartType of contentTypes.filter(
+        (type) => mediaType(type) === 'multipart/form-data',
       )) {
-        const encoding = record(raw)
-        if (
-          Object.keys(encoding).some((key) => key !== 'contentType') ||
-          typeof encoding.contentType !== 'string' ||
-          encoding.contentType.toLowerCase() !== 'application/json'
-        )
-          throw new Error(
-            `${method.toUpperCase()} ${path}: unsupported multipart encoding for ${name}`,
+        const parts: [string, string][] = []
+        for (const [name, raw] of Object.entries(record(record(content[multipartType]).encoding))) {
+          const encoding = record(raw)
+          if (
+            Object.keys(encoding).some((key) => key !== 'contentType') ||
+            typeof encoding.contentType !== 'string' ||
+            mediaType(encoding.contentType) !== 'application/json'
           )
-        multipartJson.push(name)
+            throw new Error(
+              `${method.toUpperCase()} ${path}: unsupported multipart encoding for ${name}`,
+            )
+          parts.push([name, encoding.contentType])
+        }
+        if (parts.length) multipartJson.push([multipartType, parts])
       }
       const clientPath = operation['x-client-path']
       const responseContentTypes = Object.fromEntries(
@@ -113,7 +119,7 @@ export function describeOperations(spec: OpenApiDocument): Map<string, Operation
           ]),
       )
       const wildcardResponse = Object.values(responseContentTypes).some((types) =>
-        types.some((type) => type.endsWith('/*')),
+        types.some((type) => mediaType(type).endsWith('/*')),
       )
       if (
         clientPath !== undefined &&

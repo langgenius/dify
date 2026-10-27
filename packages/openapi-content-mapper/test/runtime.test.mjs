@@ -1,6 +1,9 @@
 /* oxlint-disable vitest/no-import-node-test, antfu/no-import-dist -- Integration tests exercise the built package in native Node, including its module hooks. */
 import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
+import { once } from 'node:events'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { pathToFileURL } from 'node:url'
@@ -11,12 +14,287 @@ import { ApiError, createClient, client as defaultClient } from '../dist/index.j
 import { describeOperations } from '../dist/operation.js'
 import { createQueryKey, createQueryOperation } from '../dist/query-runtime.js'
 import { compileRuntime, transformSpec } from '../dist/tooling/transform.js'
-import { mediaSpec, multipartSpec } from './media.mjs'
+import { mediaSpec, multipartSpec, variantMedia, variantSpec } from './media.mjs'
 import '../dist/tooling/register.js'
 /* oxlint-enable vitest/no-import-node-test, antfu/no-import-dist */
 
 const { api, query: generatedQuery } = await import('../examples/petstore/pets.openapi.yaml')
 const pet = { id: 1, name: 'Mochi', status: 'available' }
+
+async function readForm(request) {
+  return new Response(request.body, { headers: request.headers }).formData()
+}
+
+test('multipart preserves media parameters and part header case on the HTTP wire', async () => {
+  const received = []
+  const server = createServer(async (request, response) => {
+    const chunks = []
+    for await (const chunk of request) chunks.push(chunk)
+    received.push({ headers: request.headers, body: Buffer.concat(chunks) })
+    response.writeHead(204)
+    response.end()
+  })
+  server.listen(0, '127.0.0.1')
+  await once(server, 'listening')
+  try {
+    const media =
+      'multipart/form-data; profile="https://example.test/Case;boundary=Keep"; BOUNDARY="stale"'
+    const partType = 'application/json; profile="https://example.test/CaseSensitive"'
+    const operation = [
+      ...describeOperations({
+        openapi: '3.1.0',
+        paths: {
+          '/upload': {
+            post: {
+              requestBody: {
+                required: true,
+                content: {
+                  [media]: {
+                    schema: { type: 'object' },
+                    encoding: { metadata: { contentType: partType } },
+                  },
+                },
+              },
+              responses: { 204: { description: 'Done' } },
+            },
+          },
+        },
+      }).values(),
+    ][0]
+    const client = createClient({
+      baseUrl: `http://127.0.0.1:${server.address().port}`,
+      headers: { 'Content-Type': 'application/json' },
+    })
+    const bytes = new Uint8Array([0, 255, 13, 10, 42])
+    const metadata = { name: 'CaseSensitive', nested: [1, null, true] }
+    await client.request(operation, {
+      body: {
+        metadata,
+        file: new File([bytes], 'résumé.bin'),
+        tags: ['one', 'two'],
+        lines: 'a\nb\rc',
+        'quoted"\r\nname': 'safe',
+      },
+    })
+    const sent = received[0]
+    assert.match(
+      sent.headers['content-type'],
+      /profile="https:\/\/example.test\/Case;boundary=Keep"/,
+    )
+    assert.doesNotMatch(sent.headers['content-type'], /stale/)
+    const boundary = /; boundary=([^;]+)$/.exec(sent.headers['content-type'])[1]
+    const wire = sent.body.toString('utf8')
+    assert(wire.startsWith(`--${boundary}\r\n`))
+    assert(wire.endsWith(`--${boundary}--\r\n`))
+    assert(wire.includes(`Content-Type: ${partType}\r\n`))
+    assert(wire.includes('name="quoted%22%0D%0Aname"'))
+    const form = await new Response(sent.body, {
+      headers: { 'content-type': sent.headers['content-type'] },
+    }).formData()
+    assert.deepEqual(JSON.parse(await form.get('metadata').text()), metadata)
+    assert.equal(form.get('file').name, 'résumé.bin')
+    assert.deepEqual(new Uint8Array(await form.get('file').arrayBuffer()), bytes)
+    assert.deepEqual(form.getAll('tags'), ['one', 'two'])
+    assert.equal(form.get('lines'), 'a\r\nb\r\nc')
+    const controller = new AbortController()
+    controller.abort()
+    await assert.rejects(
+      client.request(operation, { body: { metadata }, signal: controller.signal }),
+      { name: 'AbortError' },
+    )
+    assert.equal(received.length, 1)
+    await assert.rejects(
+      client.request(
+        {
+          ...operation,
+          multipartJson: [[media, [['metadata', 'application/json;\r\nInjected: yes']]]],
+        },
+        { body: { metadata } },
+      ),
+      /Invalid multipart content type/,
+    )
+  } finally {
+    server.closeAllConnections()
+    await new Promise((resolve) => server.close(resolve))
+  }
+})
+
+test('media variants select matching payload codecs in native generated clients', async () => {
+  const directory = await mkdtemp(join(import.meta.dirname, '.media-variants-'))
+  try {
+    for (const reverse of [false, true]) {
+      const spec = structuredClone(variantSpec)
+      if (reverse)
+        for (const path of Object.values(spec.paths))
+          path.post.requestBody.content = Object.fromEntries(
+            Object.entries(path.post.requestBody.content).reverse(),
+          )
+      const filename = join(directory, `${reverse}.openapi`)
+      await writeFile(filename, JSON.stringify(spec))
+      const { api } = await import(pathToFileURL(filename).href)
+      const requests = []
+      const client = createClient({
+        baseUrl: 'https://example.test',
+        fetch: async (_url, init) => {
+          requests.push(init)
+          return new Response(null, { status: 204 })
+        },
+      })
+      await assert.rejects(
+        api.json.post({ body: 'B' }, { client }),
+        /content type must be declared/,
+      )
+      assert.equal(requests.length, 0)
+      for (const body of ['A', 'B']) {
+        await api.json.post({ body, contentType: variantMedia[`json${body}`] }, { client })
+        const sent = requests.at(-1)
+        assert.equal(sent.headers.get('content-type'), variantMedia[`json${body}`])
+        assert.equal(sent.body, JSON.stringify(body))
+      }
+      await assert.rejects(
+        api.json.post({ body: 'A', contentType: 'application/json; profile="a"' }, { client }),
+        /content type must be declared/,
+      )
+      await api.form.post(
+        { body: { metadata: 'wire text' }, contentType: variantMedia.formJson },
+        { client },
+      )
+      const json = (await readForm(requests.at(-1))).get('metadata')
+      assert.equal(json.type, 'application/json; charset=utf-8')
+      assert.equal(await json.text(), '"wire text"')
+      await api.form.post(
+        {
+          body: { metadata: new File(['file bytes'], 'metadata.bin') },
+          contentType: variantMedia.formFile,
+        },
+        { client },
+      )
+      const file = (await readForm(requests.at(-1))).get('metadata')
+      assert.equal(file.name, 'metadata.bin')
+      assert.equal(await file.text(), 'file bytes')
+      await api.form.post(
+        { body: { metadata: 'wire text' }, contentType: 'Multipart/Form-Data; profile="json"' },
+        { client },
+      )
+      assert.equal(await (await readForm(requests.at(-1))).get('metadata').text(), '"wire text"')
+    }
+    const invalid = structuredClone(variantSpec)
+    invalid.paths['/form'].post.requestBody.content[variantMedia.formFile].encoding = {
+      metadata: { contentType: 'text/plain' },
+    }
+    assert.throws(() => describeOperations(invalid), /unsupported multipart encoding/)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test('parameterized request media preserve headers and serialize with the right codec', async () => {
+  const json = 'application/vnd.test+json; profile="CaseSensitive"'
+  const binary = 'application/octet-stream; version=1'
+  const operation = (content) => ({
+    post: {
+      requestBody: { required: true, content },
+      responses: { 204: { description: 'Done' } },
+    },
+  })
+  const spec = {
+    openapi: '3.1.0',
+    paths: {
+      '/json': operation({ [json]: { schema: { type: 'object' } } }),
+      '/default': operation({
+        [json]: { schema: { type: 'number' } },
+        'Application/JSON; charset=utf-8': { schema: { type: 'object' } },
+      }),
+      '/binary': operation({ [binary]: {} }),
+      '/form': operation({
+        'multipart/form-data': {
+          schema: { type: 'object' },
+          encoding: { metadata: { contentType: 'application/json; charset=utf-8' } },
+        },
+      }),
+    },
+  }
+  const operations = [...describeOperations(spec).values()]
+  const requests = []
+  const client = createClient({
+    baseUrl: 'https://example.test',
+    fetch: async (_url, init) => {
+      requests.push(init)
+      return new Response(null, { status: 204 })
+    },
+  })
+  const blob = new Blob(['bytes'])
+  await client.request(operations[0], { body: { name: 'ok' } })
+  assert.equal(requests[0].headers.get('content-type'), json)
+  assert.equal(requests[0].body, '{"name":"ok"}')
+  await client.request(operations[1], { body: { name: 'default' } })
+  assert.equal(requests[1].headers.get('content-type'), 'Application/JSON; charset=utf-8')
+  assert.equal(requests[1].body, '{"name":"default"}')
+  await client.request(operations[2], { body: blob })
+  assert.equal(requests[2].headers.get('content-type'), binary)
+  assert.equal(requests[2].body, blob)
+  await client.request(operations[3], { body: { metadata: { name: 'ok' } } })
+  const part = (await readForm(requests[3])).get('metadata')
+  assert.match(requests[3].headers.get('content-type'), /^multipart\/form-data; boundary=/i)
+  assert.equal(part.type, 'application/json; charset=utf-8')
+  assert.deepEqual(JSON.parse(await part.text()), { name: 'ok' })
+})
+
+test('URI fragments resolve once in native imports and both compiler projections', async () => {
+  const directory = await mkdtemp(join(import.meta.dirname, '.encoded-refs-'))
+  try {
+    const schema = {
+      type: 'object',
+      properties: {
+        value: { $ref: '#%2Fcomponents/schemas/Model/properties/%E9%9B%AA~1~0%2520' },
+        literal: { const: { $ref: '#/literal/%ZZ' } },
+      },
+    }
+    const spec = {
+      openapi: '3.1.0',
+      paths: {
+        '/source': {
+          post: {
+            requestBody: { $ref: '#/components/requestBodies/%49nput' },
+            responses: { 200: { description: 'OK', content: { 'application/json': { schema } } } },
+          },
+        },
+        '/copy': { $ref: '#/paths/%7E1source' },
+      },
+      components: {
+        schemas: { Model: { type: 'object', properties: { '雪/~%20': { type: 'number' } } } },
+        requestBodies: { Input: { required: true, content: { 'application/json': { schema } } } },
+      },
+    }
+    const content = JSON.stringify(spec)
+    const filename = join(directory, 'spec.openapi')
+    const projected = transformSpec(content, filename)
+    assert.equal(projected.diagnostics, undefined)
+    const command = transformSpec(content, join(directory, 'spec.openapi-source'))
+    assert.equal(command.text, projected.text)
+    await writeFile(filename, content)
+    const { api } = await import(pathToFileURL(filename).href)
+    const body = { value: 42, literal: { $ref: '#/literal/%ZZ' } }
+    const client = createClient({
+      baseUrl: 'https://example.test',
+      fetch: async (url, init) => {
+        assert.equal(url.pathname, '/copy')
+        assert.deepEqual(JSON.parse(init.body), body)
+        return Response.json(body)
+      },
+    })
+    assert.deepEqual(await api.copy.post({ body }, { client }), body)
+    spec.paths['/copy'].$ref = '#/paths/%ZZ'
+    assert.match(transformSpec(JSON.stringify(spec), filename).diagnostics[0].messageText, /URI/)
+    spec.paths['/copy'].$ref = 'https://example.test/spec#/paths/~1source'
+    assert.match(
+      transformSpec(JSON.stringify(spec), filename).diagnostics[0].messageText,
+      /Only local/,
+    )
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
 
 test('JSON multipart parts retain nested payloads alongside binary files', async () => {
   const body = {
@@ -27,13 +305,14 @@ test('JSON multipart parts retain nested payloads alongside binary files', async
   const client = createClient({
     baseUrl: 'https://example.test',
     fetch: async (_url, init) => {
-      assert.equal(init.headers.has('content-type'), false)
-      assert.equal(await init.body.get('file').text(), 'file bytes')
-      assert.equal(init.body.get('file').name, 'upload.bin')
-      assert.equal(init.body.get('metadata').type, 'application/json')
-      assert.deepEqual(JSON.parse(await init.body.get('metadata').text()), body.metadata)
-      assert.deepEqual(JSON.parse(await init.body.get('parts').text()), body.parts)
-      assert.equal(init.body.has('optional'), false)
+      assert.match(init.headers.get('content-type'), /^multipart\/form-data; boundary=/i)
+      const form = await readForm(init)
+      assert.equal(await form.get('file').text(), 'file bytes')
+      assert.equal(form.get('file').name, 'upload.bin')
+      assert.equal(form.get('metadata').type, 'application/json')
+      assert.deepEqual(JSON.parse(await form.get('metadata').text()), body.metadata)
+      assert.deepEqual(JSON.parse(await form.get('parts').text()), body.parts)
+      assert.equal(form.has('optional'), false)
       return new Response(null, { status: 204 })
     },
   })
@@ -55,7 +334,7 @@ test(
       assert.deepEqual(
         await client.request({
           ...operation,
-          responseContentTypes: { 200: [type.split(';')[0], '*/*'] },
+          responseContentTypes: { 200: [type, '*/*'] },
         }),
         { name: 'Mochi' },
       )
@@ -75,12 +354,13 @@ test(
       },
     })
     client.setConfig({
-      fetch: async () => new Response(stream, { headers: { 'content-type': 'Text/Event-Stream' } }),
+      fetch: async () =>
+        new Response(stream, { headers: { 'content-type': 'Text/Event-Stream; charset=utf-8' } }),
     })
     // A still-open SSE stream must be returned immediately, not buffered into a Blob.
     const result = await client.request({
       ...operation,
-      responseContentTypes: { 200: ['Text/Event-Stream', '*/*'] },
+      responseContentTypes: { 200: ['Text/Event-Stream; charset=utf-8', '*/*'] },
     })
     assert.equal(result, stream)
     await result.cancel()

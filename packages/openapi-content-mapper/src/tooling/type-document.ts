@@ -1,6 +1,6 @@
 import { pointer, pointerPath, record } from '../document.js'
 
-export type Selection = { all?: boolean; children: Map<string, Selection> }
+export type Selection = { all?: boolean; reference?: string; children: Map<string, Selection> }
 type Kind =
   | 'paths'
   | 'path'
@@ -61,7 +61,7 @@ export function typeDocument(root: unknown): Selection {
     content: 'media',
     schemas: 'schema',
   }
-  function select(path: string[], value: unknown, kind: Kind | true) {
+  function select(path: string[], value: unknown, kind: Kind | true, reference?: string) {
     let node = selection
     for (const key of path) {
       let child = node.children.get(key)
@@ -73,6 +73,7 @@ export function typeDocument(root: unknown): Selection {
     }
     if (kind === true) {
       node.all = true
+      node.reference = reference
       return
     }
     const identity = JSON.stringify([path, kind])
@@ -82,7 +83,9 @@ export function typeDocument(root: unknown): Selection {
     // Resolve only the structural objects that types.ts resolves. Schema refs
     // use SchemaDocument's alias map instead of needing a second raw copy.
     if (fields[kind] && kind !== 'media' && kind !== 'schema' && typeof object.$ref === 'string') {
-      select([...path, '$ref'], object.$ref, true)
+      // Type-level structural pointers consume decoded URI fragments. Schema
+      // references instead use the alias map keyed by their original spelling.
+      select([...path, '$ref'], object.$ref, true, `#${decodeURIComponent(object.$ref.slice(1))}`)
       select(pointerPath(object.$ref), pointer(root, object.$ref), kind)
       return
     }

@@ -118,3 +118,31 @@ export const multipartSpec = {
     },
   },
 }
+
+export const variantMedia = {
+  jsonA: 'application/json; profile="A"',
+  jsonB: 'application/json; profile="B"',
+  formJson: 'multipart/form-data; profile="json"',
+  formFile: 'multipart/form-data; profile="file"',
+}
+const variantFormSchema = {
+  type: 'object',
+  required: ['metadata'],
+  properties: { metadata: binary },
+}
+export const variantSpec = {
+  openapi: '3.1.0',
+  paths: {
+    '/json': post({
+      [variantMedia.jsonA]: { schema: { const: 'A' } },
+      [variantMedia.jsonB]: { schema: { const: 'B' } },
+    }),
+    '/form': post({
+      [variantMedia.formJson]: {
+        schema: variantFormSchema,
+        encoding: { metadata: { contentType: 'application/json; charset=utf-8' } },
+      },
+      [variantMedia.formFile]: { schema: variantFormSchema },
+    }),
+  },
+}

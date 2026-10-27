@@ -2,15 +2,10 @@ import type { ClientPromiseResult } from '@orpc/client'
 import type { ErrorFromErrorMap, ErrorMap } from '@orpc/contract'
 import type { GeneralUtils, ProcedureUtils } from '@orpc/tanstack-query'
 import type { HttpClient } from './client.js'
+import type { MediaType } from './media-type.js'
 
 declare const schemaTypeMap: unique symbol
 export type SchemaDocument<Document, Types> = Document & { readonly [schemaTypeMap]: Types }
-type ReferencedSchema<Root, P extends string, Json extends boolean> = Root extends {
-  readonly [schemaTypeMap]: infer Types
-}
-  ? Value<Value<Types, Json extends true ? 'json' : 'default'>, P>
-  : never
-
 /** Type inference is deliberately bounded for recursive / adversarial schemas. */
 type Next<D extends unknown[]> = [...D, unknown]
 type Value<T, K extends PropertyKey, F = never> = K extends keyof T ? T[K] : F
@@ -87,12 +82,6 @@ type ObjectSchema<S, Root, D extends unknown[], Json extends boolean> = Properti
       : unknown
     : unknown)
 type ItemValues<T> = T[keyof T]
-type AllOf<S, Root, D extends unknown[], Json extends boolean> = S extends readonly [
-  infer H,
-  ...infer T,
-]
-  ? InferSchema<H, Root, Next<D>, Json> & AllOf<T, Root, Next<D>, Json>
-  : unknown
 type Primitive<S, T, Root, D extends unknown[], Json extends boolean> = T extends 'string'
   ? S extends { readonly format: 'binary' }
     ? Json extends true
@@ -121,6 +110,152 @@ type BaseSchema<S, Root, D extends unknown[], Json extends boolean> = S extends 
       : S extends { readonly properties: unknown }
         ? ObjectSchema<S, Root, D, Json>
         : unknown
+type ApplyAllOf<T, Schemas, D extends unknown[]> = D['length'] extends 24
+  ? T
+  : [Schemas] extends [never]
+    ? T
+    : Schemas extends readonly [infer H, ...infer Rest]
+      ? ApplyAllOf<ApplySchemaComposition<T, H, Next<D>>, Rest, Next<D>>
+      : T
+type AllOfBase<Schemas, D extends unknown[]> = D['length'] extends 24
+  ? unknown
+  : [Schemas] extends [never]
+    ? unknown
+    : Schemas extends readonly [infer H, ...infer Rest]
+      ? ApplySchemaComposition<unknown, H, Next<D>> & AllOfBase<Rest, Next<D>>
+      : unknown
+type NamedProperties<T> = {
+  [
+    K in keyof T as string extends K
+      ? never
+      : number extends K
+        ? never
+        : symbol extends K
+          ? never
+          : K
+  ]: T[K]
+}
+type RequiredObjectKeys<T, Named = NamedProperties<T>> = {
+  [K in keyof Named]-?: Record<never, never> extends Pick<Named, K> ? never : K
+}[keyof Named] &
+  keyof T
+type ExcludeObjectMatch<T, Other> = {
+  [K in RequiredObjectKeys<Other>]: T & {
+    [P in K]?: P extends keyof T ? Exclude<T[P], Other[P]> : never
+  }
+}[RequiredObjectKeys<Other>]
+type ExcludeSingleBranch<T, Other> = T extends Other
+  ? never
+  : T extends readonly unknown[]
+    ? T
+    : T extends object
+      ? Other extends readonly unknown[]
+        ? T
+        : Other extends object
+          ? [RequiredObjectKeys<Other>] extends [never]
+            ? T
+            : ExcludeObjectMatch<T, Other>
+          : T
+      : T
+type ExcludeBranch<T, Other> = [Other] extends [never]
+  ? T
+  : (Other extends unknown ? (value: ExcludeSingleBranch<T, Other>) => void : never) extends (
+        value: infer Remaining,
+      ) => void
+    ? Remaining
+    : never
+type ExcludeOtherBranches<
+  T,
+  Branches,
+  Index extends number,
+  D extends unknown[] = [],
+> = D['length'] extends 24
+  ? T
+  : Branches extends readonly [infer H, ...infer Rest]
+    ? ExcludeOtherBranches<
+        D['length'] extends Index ? T : ExcludeBranch<T, H>,
+        Rest,
+        Index,
+        Next<D>
+      >
+    : T
+/** Subtract overlapping scalar values and required object shapes from each branch. */
+export type ExclusiveUnion<
+  Branches,
+  All = Branches,
+  D extends unknown[] = [],
+> = D['length'] extends 24
+  ? Item<Branches>
+  : Branches extends readonly [infer H, ...infer Rest]
+    ? ExcludeOtherBranches<H, All, D['length']> | ExclusiveUnion<Rest, All, Next<D>>
+    : never
+type ApplyAlternatives<T, Schemas, D extends unknown[]> = [Schemas] extends [never]
+  ? T
+  : Schemas extends readonly unknown[]
+    ? ApplySchemaComposition<T, Schemas[number], Next<D>>
+    : T
+type ApplyOneOf<T, Schemas, D extends unknown[]> = [Schemas] extends [never]
+  ? T
+  : Schemas extends readonly unknown[]
+    ? ExclusiveUnion<{ [I in keyof Schemas]: ApplySchemaComposition<T, Schemas[I], Next<D>> }>
+    : T
+type ApplyReference<T, C, D extends unknown[]> = C extends { ref: infer R }
+  ? ApplySchemaComposition<T, R, Next<D>>
+  : T
+/** Compose each alternative with the surrounding type before enforcing required. */
+export type ApplySchemaComposition<T, C, D extends unknown[] = []> = D['length'] extends 24
+  ? T
+  : C extends object
+    ? ApplyReference<unknown, C, D> &
+        T &
+        Value<C, 'base', unknown> &
+        AllOfBase<Value<C, 'allOf'>, D> extends infer Base
+      ?
+          | RequireSchemaKeys<
+              ApplyOneOf<
+                ApplyAlternatives<
+                  ApplyAllOf<ApplyReference<Base, C, D>, Value<C, 'allOf'>, D>,
+                  Value<C, 'anyOf'>,
+                  D
+                >,
+                Value<C, 'oneOf'>,
+                D
+              >,
+              Item<Value<C, 'required'>> & PropertyKey
+            >
+          | (C extends { nullable: true } ? T & null : never)
+      : never
+    : T
+
+type CompositionList<S, K extends PropertyKey, Root, D extends unknown[], Json extends boolean> =
+  Value<S, K> extends infer List extends readonly unknown[]
+    ? { [I in keyof List]: SchemaComposition<List[I], Root, Next<D>, Json> }
+    : never
+type ReferenceComposition<
+  Ref extends string,
+  Root,
+  D extends unknown[],
+  Json extends boolean,
+> = Root extends { readonly [schemaTypeMap]: infer Types }
+  ? Value<Value<Types, Json extends true ? 'jsonCompositions' : 'compositions'>, Ref>
+  : SchemaComposition<Ref extends `#/${infer P}` ? Pointer<Root, P> : unknown, Root, Next<D>, Json>
+type SchemaComposition<S, Root, D extends unknown[], Json extends boolean> = D['length'] extends 24
+  ? { base: unknown }
+  : S extends false
+    ? { base: never }
+    : S extends { readonly $ref: infer Ref extends string }
+      ? Root extends { readonly openapi: `3.0.${string}` }
+        ? { ref: ReferenceComposition<Ref, Root, D, Json> }
+        : OwnComposition<S, Root, D, Json> & { ref: ReferenceComposition<Ref, Root, D, Json> }
+      : OwnComposition<S, Root, D, Json>
+type OwnComposition<S, Root, D extends unknown[], Json extends boolean> = {
+  base: BaseSchema<S, Root, D, Json>
+  required: Value<S, 'required', []>
+  allOf: CompositionList<S, 'allOf', Root, D, Json>
+  anyOf: CompositionList<S, 'anyOf', Root, D, Json>
+  oneOf: CompositionList<S, 'oneOf', Root, D, Json>
+  nullable: Value<S, 'nullable', false>
+}
 export type InferSchema<
   S,
   Root = S,
@@ -128,35 +263,7 @@ export type InferSchema<
   Json extends boolean = false,
 > = D['length'] extends 24
   ? unknown
-  : S extends false
-    ? never
-    : S extends true
-      ? unknown
-      : S extends { readonly $ref: `#/${infer P}` }
-        ? Root extends { readonly openapi: `3.0.${string}` }
-          ? Root extends { readonly [schemaTypeMap]: unknown }
-            ? ReferencedSchema<Root, `#/${P}`, Json>
-            : InferSchema<Pointer<Root, P>, Root, Next<D>, Json>
-          : RequireSchemaKeys<
-              (Root extends { readonly [schemaTypeMap]: unknown }
-                ? ReferencedSchema<Root, `#/${P}`, Json>
-                : InferSchema<Pointer<Root, P>, Root, Next<D>, Json>) &
-                InferSchema<Omit<S, '$ref' | 'required'>, Root, Next<D>, Json>,
-              RequiredKeys<S>
-            >
-        :
-            | RequireSchemaKeys<
-                BaseSchema<S, Root, D, Json> &
-                  (S extends { readonly oneOf: readonly (infer O)[] }
-                    ? InferSchema<O, Root, Next<D>, Json>
-                    : unknown) &
-                  (S extends { readonly anyOf: readonly (infer O)[] }
-                    ? InferSchema<O, Root, Next<D>, Json>
-                    : unknown) &
-                  (S extends { readonly allOf: infer A } ? AllOf<A, Root, D, Json> : unknown),
-                RequiredKeys<S>
-              >
-            | (S extends { readonly nullable: true } ? null : never)
+  : ApplySchemaComposition<unknown, SchemaComposition<S, Root, D, Json>>
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options' | 'trace'
 export type OpenApiDocument = { readonly openapi: string; readonly paths: object }
@@ -199,34 +306,40 @@ type JsonPart<T> = T extends Blob
     ? { [K in keyof T]: JsonPart<T[K]> }
     : T
 type MultipartBody<Body, Encodings> = {
-  [K in keyof Body]: Lowercase<
+  [K in keyof Body]: MediaType<
     Value<Value<Encodings, K, object>, 'contentType', ''> & string
   > extends 'application/json'
     ? JsonPart<Body[K]>
     : Body[K]
 }
 type MediaSchema<C, K, S> =
-  Lowercase<K & string> extends 'application/octet-stream'
+  MediaType<K & string> extends 'application/octet-stream'
     ? Blob
-    : Lowercase<K & string> extends 'multipart/form-data'
+    : MediaType<K & string> extends 'multipart/form-data'
       ? MultipartBody<InferSchema<Value<C, 'schema', true>, S>, Value<C, 'encoding', object>>
       : InferSchema<
           Value<C, 'schema', true>,
           S,
           [],
-          Lowercase<K & string> extends 'application/json' | `${string}+json` ? true : false
+          MediaType<K & string> extends 'application/json' | `${string}+json` ? true : false
         >
+type JsonMediaKeys<C> = {
+  [K in keyof C]: MediaType<K & string> extends 'application/json' ? K : never
+}[keyof C]
+type DefaultMedia<C, K> = [Exclude<keyof C, K>] extends [never]
+  ? true
+  : K extends JsonMediaKeys<C>
+    ? [Exclude<JsonMediaKeys<C>, K>] extends [never]
+      ? true
+      : false
+    : false
 type RequestMedia<C, S, B> =
   | {
       [K in keyof C]: (B extends { required: true }
         ? { body: MediaSchema<C[K], K, S> }
         : { body?: MediaSchema<C[K], K, S> }) &
-        // application/json is the default; a single declared media type is unambiguous.
-        (Lowercase<K & string> extends 'application/json'
-          ? { contentType?: K }
-          : [Exclude<keyof C, K>] extends [never]
-            ? { contentType?: K }
-            : { contentType: K })
+        // A default is safe only when the media type or JSON candidate is unique.
+        (DefaultMedia<C, K> extends true ? { contentType?: K } : { contentType: K })
     }[keyof C]
   | (B extends { required: true } ? never : { body?: never; contentType?: keyof C })
 type RequestBody<S, O> =
@@ -250,11 +363,11 @@ export type RequestOptions<S, P extends keyof Paths<S>, M extends Method> = Grou
     credentials?: RequestCredentials
   }
 type ResponseContent<C, S> = {
-  [K in keyof C]: Lowercase<K & string> extends 'application/json' | `${string}+json`
+  [K in keyof C]: MediaType<K & string> extends 'application/json' | `${string}+json`
     ? MediaSchema<C[K], K, S>
-    : Lowercase<K & string> extends 'text/event-stream'
+    : MediaType<K & string> extends 'text/event-stream'
       ? ReadableStream<Uint8Array>
-      : Lowercase<K & string> extends `text/${string}`
+      : MediaType<K & string> extends `text/${string}`
         ? string
         : Blob
 }[keyof C]
