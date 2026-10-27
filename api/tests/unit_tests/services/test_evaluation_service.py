@@ -2083,7 +2083,7 @@ def test_run_single_app_target_loads_pinned_workflow_version(monkeypatch: pytest
         target_id="app-1",
         target_workflow_version_id="workflow-version-7",
         item=EvaluationDatasetInput(index=1, inputs={"query": "hello"}),
-        task_id="evaluation:run-1:target:0",
+        task_id=EvaluationService.workflow_task_id("run-1", "target", 0),
     )
 
     assert result["workflow_run_id"] == "workflow-run-1"
@@ -2093,7 +2093,7 @@ def test_run_single_app_target_loads_pinned_workflow_version(monkeypatch: pytest
         session=session,
     )
     assert generator.generate.call_args.kwargs["workflow"] is workflow
-    assert generator.generate.call_args.kwargs["task_id"] == "evaluation:run-1:target:0"
+    assert generator.generate.call_args.kwargs["task_id"] == EvaluationService.workflow_task_id("run-1", "target", 0)
     assert generator.generate.call_args.kwargs["capture_agent_evaluation_trace"] is True
 
 
@@ -2121,7 +2121,7 @@ def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(
             target_id="app-1",
             target_workflow_version_id="workflow-version-7",
             item=EvaluationDatasetInput(index=1, inputs={"query": "hello"}),
-            task_id="evaluation:run-1:target:0",
+            task_id=EvaluationService.workflow_task_id("run-1", "target", 0),
         )
 
     generator.generate.assert_not_called()

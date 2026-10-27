@@ -1445,7 +1445,9 @@ class EvaluationService:
 
     @staticmethod
     def workflow_task_id(evaluation_run_id: str, phase: str, position: int) -> str:
-        return f"evaluation:{evaluation_run_id}:{phase}:{position}"
+        # WorkflowRun.task_id is a UUID. Keep the ID stable across retries so
+        # cancellation and checkpoint recovery address the same workflow task.
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, f"dify:evaluation:{evaluation_run_id}:{phase}:{position}"))
 
     @classmethod
     def _stop_workflow_tasks(cls, evaluation_run_id: str, total_items: int) -> None:
