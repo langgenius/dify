@@ -58,11 +58,10 @@ def test_creation_rolls_back_account_when_contact_creation_fails(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(
-        SQLAlchemyContactRepository,
-        "provision_account_backed_contact",
-        Mock(side_effect=ContactError(ContactErrorCode.CONFLICT, "Contact creation failed")),
-    )
+    def fail_contact(*_args: object, **_kwargs: object) -> None:
+        raise ContactError(ContactErrorCode.CONFLICT, "Contact creation failed")
+
+    monkeypatch.setattr(SQLAlchemyContactRepository, "provision_account_backed_contact", fail_contact)
     with pytest.raises(ContactError, match="Contact creation failed"):
         account_domain.accounts.create_account("new@example.com", "New", "en-US")
     assert sqlite_session.scalar(select(Account.id)) is None

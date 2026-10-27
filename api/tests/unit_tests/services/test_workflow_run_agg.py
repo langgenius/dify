@@ -24,6 +24,7 @@ from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_storage import storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from graphon.engine_events import (
@@ -34,6 +35,7 @@ from graphon.engine_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import RuntimeState
@@ -54,6 +56,7 @@ from models.workflow import (
     WorkflowRun,
 )
 from models.workflow import WorkflowType as ModelWorkflowType
+from repositories.human_input_v2.form_repository import Form
 from services.agent.workspace_service import AgentWorkspaceService
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow_run_agg import WorkflowRunAgg
@@ -1056,7 +1059,7 @@ v2_form = _v2_form_fixture
 
 @pytest.mark.parametrize("token", ["initiator-token", None])
 def test_v2_pause_persists_only_checkpoint_references_and_publishes_frozen_form(
-    sqlite_engine: Engine, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, token: str | None, v2_form
+    sqlite_engine: Engine, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, token: str | None, v2_form: Form
 ) -> None:
     from dataclasses import replace
 
@@ -1087,7 +1090,7 @@ def test_v2_pause_persists_only_checkpoint_references_and_publishes_frozen_form(
     source_form = v2_form
     prepared_forms: list[PreparedForm] = []
 
-    def prepare(_runtime, *, node_execution_id, **_kwargs):
+    def prepare(_runtime: object, *, node_execution_id: str, **_kwargs: object) -> PreparedForm:
         prepared = PreparedForm(
             replace(
                 source_form,
@@ -1104,7 +1107,7 @@ def test_v2_pause_persists_only_checkpoint_references_and_publishes_frozen_form(
 
     monkeypatch.setattr("services.human_input_v2.composition.WorkflowHumanInputRuntime.prepare_form", prepare)
 
-    def reject_legacy_lookup(*_args, **_kwargs):
+    def reject_legacy_lookup(*_args: object, **_kwargs: object) -> None:
         pytest.fail("V2 forms must not be loaded from the legacy repository")
 
     monkeypatch.setattr(
@@ -1117,6 +1120,7 @@ def test_v2_pause_persists_only_checkpoint_references_and_publishes_frozen_form(
     events = [message.event for message in runner._queue_manager.listen()]
     paused = events[-1]
     assert isinstance(paused, QueueWorkflowPausedEvent), events
+    assert isinstance(paused.reasons[0], HumanInputRequired)
     assert paused.reasons[0].form_version == "2"
     assert paused.reasons[0].form_content == source_form.resolved_form.legacy_form_content
     assert paused.human_input_v2_forms[prepared_forms[0].form.id] is prepared_forms[0]
@@ -1129,6 +1133,7 @@ def test_v2_pause_persists_only_checkpoint_references_and_publishes_frozen_form(
         saved_state = storage.load(pause.state_object_key).decode()
     context = WorkflowResumptionContext.loads(saved_state)
     restored = RuntimeState.from_snapshot(context.serialized_graph_runtime_state)
+    assert isinstance(restored.graph_execution.pause_reasons[0], HitlRequired)
     assert restored.graph_execution.pause_reasons[0].session_id == f"hitlv2:{prepared_forms[0].form.id}"
     if token is not None:
         assert token not in saved_state

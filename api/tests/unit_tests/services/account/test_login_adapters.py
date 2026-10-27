@@ -464,11 +464,11 @@ def test_provisioning_rolls_back_when_contact_creation_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     gateway = account_domain.provisioning
-    monkeypatch.setattr(
-        SQLAlchemyContactRepository,
-        "provision_account_backed_contact",
-        MagicMock(side_effect=ContactError(ContactErrorCode.CONFLICT, "Contact creation failed")),
-    )
+
+    def fail_contact(*_args: object, **_kwargs: object) -> None:
+        raise ContactError(ContactErrorCode.CONFLICT, "Contact creation failed")
+
+    monkeypatch.setattr(SQLAlchemyContactRepository, "provision_account_backed_contact", fail_contact)
 
     with pytest.raises(ContactError, match="Contact creation failed"):
         gateway.create_with_owner_workspace(
@@ -492,7 +492,11 @@ def test_provisioning_rolls_back_account_and_contact_when_workspace_creation_fai
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     gateway = account_domain.provisioning
-    monkeypatch.setattr(gateways, "generate_key_pair", MagicMock(side_effect=ValueError("Key generation failed")))
+
+    def fail_key_pair(*_args: object, **_kwargs: object) -> None:
+        raise ValueError("Key generation failed")
+
+    monkeypatch.setattr(gateways, "generate_key_pair", fail_key_pair)
 
     with pytest.raises(ValueError, match="Key generation failed"):
         gateway.create_with_owner_workspace(
