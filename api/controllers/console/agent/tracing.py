@@ -1,6 +1,7 @@
 """Agent tracing settings address Agent resources, never hidden inline Apps."""
 
 from collections.abc import Callable
+from dataclasses import asdict
 from typing import Literal
 from uuid import UUID
 
@@ -9,7 +10,6 @@ from flask_restx import Resource
 from pydantic import Field
 from werkzeug.exceptions import NotFound
 
-from configs import dify_config
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models
 from controllers.console import console_ns
@@ -49,7 +49,6 @@ from services.app_tracing_config_service import (
     AppTracingConfigProviderUnavailableError,
     AppTracingConfigVerificationFailedError,
 )
-from services.tracing.provider_configs import capabilities_payload
 
 _EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
 
@@ -209,14 +208,14 @@ class AgentTraceConfigApi(Resource):
 def _provider_capabilities():
     query = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))
     try:
-        capabilities = capabilities_payload(query.tracing_provider)
+        capabilities = application_services().tracing.provider_capabilities.get(query.tracing_provider)
     except AppTracingConfigInvalidProviderError as error:
         raise UnsupportedTracingProviderError() from error
     except AppTracingConfigProviderUnavailableError as error:
         raise TracingProviderUnavailableError() from error
     return dump_response(
         TraceProviderCapabilitiesResponse,
-        {**capabilities, "api_collection_enabled": dify_config.OPS_AGENT_TRACE_ENABLED},
+        {**asdict(capabilities.support), "api_collection_enabled": capabilities.api_collection_enabled},
     )
 
 

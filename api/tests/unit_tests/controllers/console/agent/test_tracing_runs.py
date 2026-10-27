@@ -2,17 +2,15 @@
 
 import inspect
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta, timezone
 from functools import wraps
 from uuid import UUID
 
 import pytest
-from dify_trace_sdk.testing import RecordingEgress
 from flask import Flask
 from flask_restx import Resource
 from pydantic import ValidationError
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck
@@ -23,11 +21,9 @@ from libs.external_api import ExternalApi
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, TenantAccountRole
-from repositories.application_trace_repository import ApplicationTraceRepository, TraceCollectionError
 from services.app.agent_app_contracts import AgentAppNotFoundError
-from services.tracing.assembly import TraceAssembler
-from services.tracing.canonical import CanonicalTraceBuilder
-from services.tracing.service import ApplicationTracingService
+from services.tracing.collection import TraceRunState, TraceRunStatus, TraceSourceKind
+from services.tracing.errors import TraceCollectionConflictError, TraceCollectionError, TraceCollectionNotFoundError
 from tests.helpers.unit.config_override import apply_config_overrides
 
 CONTEXT = RequestContext("request", None, "account", "tenant")
@@ -35,35 +31,45 @@ AGENT_ID = UUID("01a11111-1111-7111-8111-111111111111")
 APP_ID = UUID("01a22222-2222-7222-8222-222222222222")
 SOURCE_ID = UUID("01a33333-3333-7333-8333-333333333333")
 NODE_ID = UUID("01a44444-4444-7444-8444-444444444444")
+NOT_COLLECTED = TraceRunStatus(
+    status=TraceRunState.NOT_COLLECTED,
+    source_kind="message",
+    source_id=str(SOURCE_ID),
+    provider=None,
+    trace_id=None,
+    trace_url=None,
+    span_url=None,
+    project_url=None,
+    config_revision=None,
+    capture_content=None,
+    capture_agent=None,
+    span_count=None,
+    attempts=None,
+    error_code=None,
+    accepted_at=None,
+    capabilities=None,
+)
 
 
 @dataclass
 class RunCase:
-    owners: ApplicationServices
-    runs: ApplicationTracingService
+    services: ApplicationServices
+    """The composition root the handlers resolve; its Agent trace runs answer with ``response``."""
     owner_calls: list[tuple[RequestContext, str]] = field(default_factory=list)
     status_calls: list[dict[str, object]] = field(default_factory=list)
     retry_calls: list[dict[str, object]] = field(default_factory=list)
-    response: dict[str, object] = field(
-        default_factory=lambda: {"status": "not_collected", "source_kind": "message", "source_id": str(SOURCE_ID)}
-    )
+    response: TraceRunStatus = NOT_COLLECTED
     owner_error: Exception | None = None
     retry_error: Exception | None = None
 
 
 @pytest.fixture
 def services(
+    app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     account_application_services: ApplicationServices,
-    sqlite_session_factory: sessionmaker[Session],
 ) -> RunCase:
-    runs = ApplicationTracingService(
-        ApplicationTraceRepository(sqlite_session_factory),
-        assembler=TraceAssembler(sqlite_session_factory, files_url="https://files.test", enterprise_details=False),
-        builder=CanonicalTraceBuilder(),
-        egress=RecordingEgress([], grpc_target=None),
-    )
-    case = RunCase(account_application_services, runs)
+    case = RunCase(account_application_services)
 
     def resolve(context: RequestContext, agent_id: str) -> str:
         case.owner_calls.append((context, agent_id))
@@ -71,21 +77,21 @@ def services(
             raise case.owner_error
         return str(APP_ID)
 
-    def status(**kwargs: object) -> dict[str, object]:
+    def status(**kwargs: object) -> TraceRunStatus:
         case.status_calls.append(kwargs)
         return case.response
 
-    def retry(**kwargs: object) -> dict[str, object]:
+    def retry(**kwargs: object) -> TraceRunStatus:
         case.retry_calls.append(kwargs)
         if case.retry_error is not None:
             raise case.retry_error
-        return {**case.response, "status": "retrying"}
+        return replace(case.response, status=TraceRunState.RETRYING)
 
+    runs = account_application_services.tracing.agent_traces
     monkeypatch.setattr(account_application_services.agent_tracing_configs, "resolve_app_id", resolve)
     monkeypatch.setattr(runs, "status", status)
     monkeypatch.setattr(runs, "retry", retry)
-    monkeypatch.setattr(tracing_runs, "application_services", lambda: account_application_services)
-    monkeypatch.setattr(tracing_runs, "application_tracing_service", lambda: runs)
+    monkeypatch.setitem(app.extensions, "application_services", account_application_services)
     return case
 
 
@@ -100,18 +106,15 @@ def services(
 def test_agent_status_resolves_owner_and_never_exposes_destination_secrets(
     app: Flask, services: RunCase, accepted_at: datetime
 ) -> None:
-    services.response.update(
-        {
-            "status": "accepted",
-            "provider": "langfuse",
-            "trace_id": "trace-id",
-            "trace_url": "https://example.com/trace",
-            "project_url": "https://example.com/project/frozen",
-            "accepted_at": accepted_at,
-            "queryable": None,
-            "provider_config": {"secret_key": "do-not-return"},
-            "config_revision": "frozen-revision",
-        }
+    services.response = replace(
+        services.response,
+        status=TraceRunState.ACCEPTED,
+        provider="langfuse",
+        trace_id="trace-id",
+        trace_url="https://example.com/trace",
+        project_url="https://example.com/project/frozen",
+        accepted_at=accepted_at,
+        config_revision="frozen-revision",
     )
     with app.test_request_context(f"/?node_execution_id={NODE_ID}"):
         result = inspect.unwrap(tracing_runs.AgentTraceRunApi.get)(
@@ -132,12 +135,11 @@ def test_agent_status_resolves_owner_and_never_exposes_destination_secrets(
     assert result["config_revision"] == "frozen-revision"
     assert result["project_url"] == "https://example.com/project/frozen"
     assert "provider_config" not in result
-    assert "do-not-return" not in str(result)
 
 
 @pytest.mark.parametrize("kind", ["message", "workflow", "node"])
-def test_app_status_source_scope_and_not_collected(app: Flask, services: RunCase, kind: str) -> None:
-    services.response["source_kind"] = kind
+def test_app_status_source_scope_and_not_collected(app: Flask, services: RunCase, kind: TraceSourceKind) -> None:
+    services.response = replace(services.response, source_kind=kind)
     with app.test_request_context():
         result = inspect.unwrap(tracing_runs.AppTraceRunApi.get)(
             tracing_runs.AppTraceRunApi(), CONTEXT, APP_ID, kind, SOURCE_ID
@@ -212,18 +214,20 @@ def test_agent_owner_rejection_prevents_run_lookup(app: Flask, services: RunCase
 
 
 @pytest.mark.parametrize(
-    ("code", "status"),
+    ("error", "code", "status"),
     [
-        ("tracing_source_not_found", 404),
-        ("tracing_node_not_found", 404),
-        ("tracing_run_not_found", 404),
-        ("tracing_already_accepted", 409),
-        ("tracing_retry_not_allowed", 409),
-        ("tracing_duplicate_acknowledgement_required", 409),
+        (TraceCollectionNotFoundError, "tracing_source_not_found", 404),
+        (TraceCollectionNotFoundError, "tracing_node_not_found", 404),
+        (TraceCollectionNotFoundError, "tracing_run_not_found", 404),
+        (TraceCollectionConflictError, "tracing_already_accepted", 409),
+        (TraceCollectionConflictError, "tracing_retry_not_allowed", 409),
+        (TraceCollectionConflictError, "tracing_duplicate_acknowledgement_required", 409),
     ],
 )
-def test_retry_business_errors_match_served_error_contract(services: RunCase, code: str, status: int) -> None:
-    services.retry_error = TraceCollectionError(code, status)
+def test_retry_business_errors_match_served_error_contract(
+    services: RunCase, error: type[TraceCollectionError], code: str, status: int
+) -> None:
+    services.retry_error = error(code)
     target = tracing_runs.AppTraceRunRetryApi.post
 
     @wraps(target)
@@ -232,6 +236,7 @@ def test_retry_business_errors_match_served_error_contract(services: RunCase, co
 
     resource = type("RetryContractResource", (Resource,), {"post": post})
     app = Flask("trace-error-contract")
+    app.extensions["application_services"] = services.services
     api = ExternalApi(app)
     api.add_resource(resource, "/retry")
     with app.test_client() as client:

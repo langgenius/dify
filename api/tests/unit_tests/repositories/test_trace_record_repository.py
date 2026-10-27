@@ -10,12 +10,14 @@ from dify_trace_sdk.events import (
     TraceEvent,
     TracePayload,
 )
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
-from services.tracing.assembly import SourceNotFoundError, SourceNotReadyError, TraceAssembler
-from services.tracing.records import MessageTraceInfo, ModerationTraceInfo, ToolTraceInfo
+from repositories.trace_record_repository import TraceRecordRepository
+from services.tracing.errors import SourceNotFoundError, SourceNotReadyError, TracingStoreUnavailableError
+from services.tracing.records import MessageTraceInfo, ModerationTraceInfo, ToolTraceInfo, TraceMessage
 
 TENANT_ID = "tenant-1"
 APP_ID = "app-1"
@@ -89,8 +91,8 @@ def records(sqlite_session: Session) -> None:
     sqlite_session.commit()
 
 
-def _assembler(sessions: sessionmaker[Session]) -> TraceAssembler:
-    return TraceAssembler(sessions, files_url="https://files.example.com", enterprise_details=False)
+def _assembler(sessions: sessionmaker[Session]) -> TraceRecordRepository:
+    return TraceRecordRepository(sessions, files_url="https://files.example.com", enterprise_details=False)
 
 
 def _event(payload: TracePayload, *, tenant_id: str = TENANT_ID) -> TraceEvent:
@@ -203,3 +205,33 @@ def test_events_without_a_message_id_are_not_found(sqlite_session_factory: sessi
 
     with pytest.raises(SourceNotFoundError):
         _assembler(sqlite_session_factory).assemble(_event(payload))
+
+
+@pytest.mark.usefixtures("records")
+def test_records_copy_the_message_before_the_session_closes(sqlite_session_factory: sessionmaker[Session]) -> None:
+    record = _assembler(sqlite_session_factory).assemble(
+        _event(MessageCompleted(message_id=MESSAGE_ID, conversation_id="conversation-1"))
+    )
+
+    assert isinstance(record, MessageTraceInfo)
+    assert record.message_data == TraceMessage(
+        id=MESSAGE_ID,
+        app_id=APP_ID,
+        conversation_id="conversation-1",
+        workflow_run_id=None,
+        query="What is Dify?",
+        answer="An LLM app platform.",
+        error=None,
+        created_at=CREATED_AT,
+        model_provider=None,
+        model_id=None,
+        total_price=Decimal(0),
+        currency="USD",
+    )
+
+
+def test_an_unreachable_database_is_reported_as_unavailable() -> None:
+    sessions = sessionmaker(bind=create_engine("sqlite:///file:missing?mode=ro&uri=true"))
+
+    with pytest.raises(TracingStoreUnavailableError):
+        _assembler(sessions).assemble(_event(MessageCompleted(message_id=MESSAGE_ID, conversation_id="conversation-1")))

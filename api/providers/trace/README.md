@@ -71,7 +71,7 @@ Stored configurations keep the provider's fields at the top level, with `secret(
    <id> = "dify_trace_<name>.provider:<Name>Provider"
    ```
 
-3. Add the ID to `SUPPORTED_PROVIDERS` in `api/services/tracing/registry.py` and the provider's form fields to the web console's tracing field registry.
+3. Add the ID to `SUPPORTED_PROVIDERS` in `api/services/tracing/providers.py` and the provider's form fields to the web console's tracing field registry.
 4. In `api/pyproject.toml`, add `dify-trace-<name> = { workspace = true }` under `[tool.uv.sources]` and add the package to the `trace-<name>` and `trace-all` dependency groups. Then run `uv lock` and `uv sync` from `api/`.
 5. Test with `dify_trace_sdk.testing.RecordingEgress` and the sample traces there. Tests must not reach the network.
 
@@ -84,9 +84,11 @@ Stored configurations keep the provider's fields at the top level, with `secret(
    - moderation, tools, retrieval, conversation naming and suggested questions.
 
    A scope exists only when the app has tracing enabled or enterprise telemetry is on.
-2. `tasks.trace_delivery_task` delivers each event on the `ops_trace` queue:
-   - `services.tracing.assembly` reloads the records through the event's workspace.
+2. `tasks.trace_delivery_task` hands each event on the `ops_trace` queue to `services.tracing.delivery.TraceDeliveryService`:
+   - `repositories.trace_record_repository` reloads the records through the event's workspace.
    - Enterprise telemetry receives every record.
-   - The Agent trace collector takes the executions it manages.
+   - The Agent trace collector (`services.tracing.service`) takes the executions it manages.
    - `services.tracing.canonical` builds the trace for the app's current provider configuration, and the provider's `send` runs.
 3. A retryable failure stores only the built trace and schedules that send again. Payloads that an interrupted delivery leaves in storage are removed daily by `sweep_trace_payloads`.
+
+The tracing services depend only on the ports they declare: records, destinations, the provider catalog, secret encryption, the retry queue and the Agent trace ledger. `extensions/application_services/tracing.py` is the one place that chooses their adapters (`services/tracing/adapters.py`, `services/tracing/egress.py`, `services/tracing/registry.py` and the tracing repositories) and reads tracing configuration.

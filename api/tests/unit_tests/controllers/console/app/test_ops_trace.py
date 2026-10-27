@@ -50,9 +50,9 @@ from services.app_tracing_config_service import (
     AppTracingConfigService,
     AppTracingConfigVerificationFailedError,
 )
-from services.tracing.provider_configs import ProviderConfigGateway
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.services.tracing_ports import deployment_provider_configs
 
 APP_ID = "11111111-1111-1111-1111-111111111111"
 WORKSPACE_ID = "22222222-2222-2222-2222-222222222222"
@@ -156,7 +156,7 @@ def stored_configs(monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sess
     egress = RecordingEgress([], grpc_target=None)
     service = AppTracingConfigService(
         configs=SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory),
-        provider=ProviderConfigGateway(egress),
+        provider=deployment_provider_configs(egress),
     )
     monkeypatch.setattr(
         ops_trace_module, "application_services", lambda: _ApplicationServices(app_tracing_configs=service)

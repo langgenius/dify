@@ -2,13 +2,14 @@
 
 Every record is read through the event's tenant and app: a reference that does
 not belong to them is missing, never trusted. Events carry only identifiers
-and facts persisted nowhere else, so records reflect committed state.
+and facts persisted nowhere else, so records reflect committed state. Rows
+become plain records before their session closes.
 """
 
 import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, override
 
 from dify_trace_sdk.events import (
     ConversationNamed,
@@ -35,6 +36,9 @@ from models.provider import Provider, ProviderCredential, ProviderModel, Provide
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from models.workflow import WorkflowAppLog, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.tracing_store_errors import tracing_store_errors
+from services.tracing.delivery import TraceRecordSource
+from services.tracing.errors import SourceNotFoundError, SourceNotReadyError
 from services.tracing.records import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -45,6 +49,7 @@ from services.tracing.records import (
     PromptGenerationTraceInfo,
     SuggestedQuestionTraceInfo,
     ToolTraceInfo,
+    TraceMessage,
     WorkflowTraceInfo,
 )
 
@@ -67,14 +72,6 @@ _TOOL_PROVIDER_MODELS: dict[
 }
 
 
-class SourceNotFoundError(Exception):
-    """The referenced record does not exist for the event's tenant and app."""
-
-
-class SourceNotReadyError(Exception):
-    """The referenced record is not persisted or not finished yet."""
-
-
 def _user_of(metadata: Mapping[str, Any]) -> str:
     """Who invoked the operation: end user before account, as the enterprise data dictionary defines."""
     if user_id := metadata.get("from_end_user_id"):
@@ -89,6 +86,23 @@ def _user_of(metadata: Mapping[str, Any]) -> str:
 def _text_input(inputs: Mapping[str, Any], *names: str) -> str:
     """The first text value among ``names``; apps may define inputs of these names with any type."""
     return next((value for name in names if isinstance(value := inputs.get(name), str) and value), "")
+
+
+def _trace_message(message: Message) -> TraceMessage:
+    return TraceMessage(
+        id=message.id,
+        app_id=message.app_id,
+        conversation_id=message.conversation_id,
+        workflow_run_id=message.workflow_run_id,
+        query=message.query,
+        answer=message.answer,
+        error=message.error,
+        created_at=message.created_at,
+        model_provider=message.model_provider,
+        model_id=message.model_id,
+        total_price=message.total_price,
+        currency=message.currency,
+    )
 
 
 def _streaming_metrics(message: Message) -> dict[str, Any]:
@@ -109,15 +123,15 @@ def _streaming_metrics(message: Message) -> dict[str, Any]:
     }
 
 
-class TraceAssembler:
+class TraceRecordRepository(TraceRecordSource):
     def __init__(self, session_factory: sessionmaker[Session], *, files_url: str, enterprise_details: bool) -> None:
         self._sessions = session_factory
         self._files_url = files_url
         # App, workspace, and credential names are enterprise telemetry dimensions only.
         self._enterprise_details = enterprise_details
 
+    @override
     def assemble(self, event: TraceEvent) -> BaseTraceInfo:
-        """Raises SourceNotFoundError or SourceNotReadyError."""
         match event.payload:
             case MessageCompleted() as payload:
                 return self._message(event, payload)
@@ -211,7 +225,7 @@ class TraceAssembler:
     # Records
 
     def _message(self, event: TraceEvent, payload: MessageCompleted) -> MessageTraceInfo:
-        with self._sessions() as session:
+        with tracing_store_errors(), self._sessions() as session:
             message = self._message_in_app(session, event, payload.message_id)
             conversation_mode = session.scalar(
                 select(Conversation.mode).where(
@@ -241,7 +255,7 @@ class TraceAssembler:
         return MessageTraceInfo(
             trace_id=event.correlation.external_trace_id,
             message_id=message.id,
-            message_data=message,
+            message_data=_trace_message(message),
             conversation_model=conversation_mode,
             message_tokens=message.message_tokens,
             answer_tokens=message.answer_tokens,
@@ -265,13 +279,14 @@ class TraceAssembler:
         if event.app_id is None:
             raise SourceNotFoundError
         runs = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._sessions)
-        run = runs.get_workflow_run_by_id(
-            tenant_id=event.tenant_id, app_id=event.app_id, run_id=payload.workflow_run_id
-        )
+        with tracing_store_errors():
+            run = runs.get_workflow_run_by_id(
+                tenant_id=event.tenant_id, app_id=event.app_id, run_id=payload.workflow_run_id
+            )
         # Workflow runs may be persisted asynchronously (including LogStore indexing).
         if run is None or run.status not in _TERMINAL_WORKFLOW_STATUSES or run.finished_at is None:
             raise SourceNotReadyError
-        with self._sessions() as session:
+        with tracing_store_errors(), self._sessions() as session:
             self._app(session, event)
             workflow_app_log_id = session.scalar(
                 select(WorkflowAppLog.id).where(
@@ -322,7 +337,6 @@ class TraceAssembler:
             }
         return WorkflowTraceInfo(
             trace_id=correlation.external_trace_id,
-            workflow_data=run,
             node_executions=executions,
             conversation_id=payload.conversation_id,
             message_started_at=message_row[1] if message_row else None,
@@ -360,7 +374,8 @@ class TraceAssembler:
             app_id=run.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
-        return repository.get_by_workflow_execution(workflow_execution_id=run.id)
+        with tracing_store_errors():
+            return repository.get_by_workflow_execution(workflow_execution_id=run.id)
 
     @staticmethod
     def _token_split(executions: Sequence[WorkflowNodeExecution]) -> tuple[int, int]:
@@ -378,7 +393,7 @@ class TraceAssembler:
         return prompt_total, completion_total
 
     def _moderation(self, event: TraceEvent, payload: ModerationChecked) -> ModerationTraceInfo:
-        with self._sessions() as session:
+        with tracing_store_errors(), self._sessions() as session:
             message = self._message_in_app(session, event, payload.message_id)
             workflow_app_log_id = self._workflow_app_log_id(session, message)
             end_user_session_id = self._end_user_session_id(session, message, event.tenant_id)
@@ -396,7 +411,7 @@ class TraceAssembler:
             # Enterprise telemetry keys chatflow moderation by its workflow log.
             message_id=workflow_app_log_id or message.id,
             inputs=payload.inputs,
-            message_data=message,
+            message_data=_trace_message(message),
             flagged=payload.flagged,
             action=payload.action,
             preset_response=payload.preset_response,
@@ -409,7 +424,7 @@ class TraceAssembler:
     def _suggested_questions(
         self, event: TraceEvent, payload: SuggestedQuestionsGenerated
     ) -> SuggestedQuestionTraceInfo:
-        with self._sessions() as session:
+        with tracing_store_errors(), self._sessions() as session:
             message = self._message_in_app(session, event, payload.message_id)
             workflow_app_log_id = self._workflow_app_log_id(session, message)
             end_user_session_id = self._end_user_session_id(session, message, event.tenant_id)
@@ -422,7 +437,7 @@ class TraceAssembler:
         return SuggestedQuestionTraceInfo(
             trace_id=event.correlation.external_trace_id,
             message_id=workflow_app_log_id or message.id,
-            message_data=message,
+            message_data=_trace_message(message),
             inputs=message.message,
             outputs=message.answer,
             start_time=payload.started_at,
@@ -448,7 +463,7 @@ class TraceAssembler:
             document_metadata = document.get("metadata")
             if isinstance(document_metadata, dict) and isinstance(document_metadata.get("dataset_id"), str):
                 dataset_ids.add(str(document_metadata["dataset_id"]))
-        with self._sessions() as session:
+        with tracing_store_errors(), self._sessions() as session:
             message = self._message_in_app(session, event, payload.message_id)
             end_user_session_id = self._end_user_session_id(session, message, event.tenant_id)
             app_name, workspace_name = self._names(session, message.app_id, event.tenant_id)
@@ -485,12 +500,12 @@ class TraceAssembler:
             start_time=payload.started_at,
             end_time=payload.ended_at,
             metadata=metadata,
-            message_data=message,
+            message_data=_trace_message(message),
             error=None,
         )
 
     def _tool(self, event: TraceEvent, payload: ToolInvoked) -> ToolTraceInfo:
-        with self._sessions() as session:
+        with tracing_store_errors(), self._sessions() as session:
             message = self._message_in_app(session, event, payload.message_id)
             message_file = session.scalar(select(MessageFile).where(MessageFile.message_id == message.id).limit(1))
             end_user_session_id = self._end_user_session_id(session, message, event.tenant_id)
@@ -524,7 +539,7 @@ class TraceAssembler:
         return ToolTraceInfo(
             trace_id=event.correlation.external_trace_id,
             message_id=message.id,
-            message_data=message,
+            message_data=_trace_message(message),
             tool_name=payload.tool_name,
             start_time=payload.started_at,
             end_time=payload.ended_at,
@@ -541,7 +556,7 @@ class TraceAssembler:
         )
 
     def _conversation_name(self, event: TraceEvent, payload: ConversationNamed) -> GenerateNameTraceInfo:
-        with self._sessions() as session:
+        with tracing_store_errors(), self._sessions() as session:
             if event.app_id is not None:
                 self._app(session, event)
             message = (
@@ -557,7 +572,7 @@ class TraceAssembler:
         return GenerateNameTraceInfo(
             trace_id=event.correlation.external_trace_id,
             message_id=payload.message_id,
-            message_data=message,
+            message_data=_trace_message(message) if message is not None else None,
             conversation_id=payload.conversation_id,
             inputs=payload.inputs,
             outputs=payload.name,
@@ -568,7 +583,7 @@ class TraceAssembler:
         )
 
     def _prompt_generation(self, event: TraceEvent, payload: PromptGenerated) -> PromptGenerationTraceInfo:
-        with self._sessions() as session:
+        with tracing_store_errors(), self._sessions() as session:
             if event.app_id is not None:
                 self._app(session, event)
             app_name, workspace_name = self._names(session, event.app_id, event.tenant_id)
@@ -611,7 +626,7 @@ class TraceAssembler:
         node = payload.node_execution
         if node.get("tenant_id") != event.tenant_id or node.get("app_id") != event.app_id:
             raise SourceNotFoundError
-        with self._sessions() as session:
+        with tracing_store_errors(), self._sessions() as session:
             app_name, workspace_name = self._names(session, event.app_id, event.tenant_id)
             credential_id, credential_name = self._credential(session, node, event.tenant_id)
         metadata: dict[str, Any] = {

@@ -1,41 +1,19 @@
 """Discover installed trace providers through ``dify.trace_providers`` entry points.
 
-Dify supports a fixed set of provider IDs; a distribution may install any
-subset of their packages. An unknown ID is a client error, a known but
-uninstalled one is a deployment fact. Neither ever raises into a business
-request: callers translate both.
+Neither an unknown nor an uninstalled provider ever raises into a business
+request: callers translate both errors.
 """
 
 import functools
 from importlib.metadata import EntryPoint, entry_points
-from typing import Any
+from typing import Any, override
 
 from dify_trace_sdk.provider import TraceProvider
 
+from services.tracing.errors import TraceProviderUnavailableError, UnknownTraceProviderError
+from services.tracing.providers import SUPPORTED_PROVIDERS, TraceProviderCatalog
+
 ENTRY_POINT_GROUP = "dify.trace_providers"
-
-SUPPORTED_PROVIDERS = (
-    "langfuse",
-    "langsmith",
-    "opik",
-    "weave",
-    "arize",
-    "phoenix",
-    "aliyun",
-    "mlflow",
-    "databricks",
-    "tencent",
-)
-
-
-class UnknownTraceProviderError(Exception):
-    def __init__(self, provider_id: str) -> None:
-        super().__init__(f"Unknown tracing provider: {provider_id}")
-
-
-class TraceProviderUnavailableError(Exception):
-    def __init__(self, provider_id: str) -> None:
-        super().__init__(f"Tracing provider {provider_id} is not installed in this deployment")
 
 
 @functools.cache
@@ -44,9 +22,7 @@ def _entry_points() -> dict[str, EntryPoint]:
 
 
 @functools.cache
-def provider_class(provider_id: str) -> type[TraceProvider[Any]]:
-    if provider_id not in SUPPORTED_PROVIDERS:
-        raise UnknownTraceProviderError(provider_id)
+def _load(provider_id: str) -> type[TraceProvider[Any]]:
     entry_point = _entry_points().get(provider_id)
     if entry_point is None:
         raise TraceProviderUnavailableError(provider_id)
@@ -59,13 +35,11 @@ def provider_class(provider_id: str) -> type[TraceProvider[Any]]:
     return loaded
 
 
-def installed_providers() -> tuple[str, ...]:
-    """Supported providers whose packages load in this deployment, in display order."""
-    installed: list[str] = []
-    for provider_id in SUPPORTED_PROVIDERS:
-        try:
-            provider_class(provider_id)
-        except TraceProviderUnavailableError:
-            continue
-        installed.append(provider_id)
-    return tuple(installed)
+class EntryPointTraceProviderCatalog(TraceProviderCatalog):
+    """Installed packages are fixed for the process, so each provider is loaded once."""
+
+    @override
+    def resolve(self, provider_id: str) -> type[TraceProvider[Any]]:
+        if provider_id not in SUPPORTED_PROVIDERS:
+            raise UnknownTraceProviderError(provider_id)
+        return _load(provider_id)

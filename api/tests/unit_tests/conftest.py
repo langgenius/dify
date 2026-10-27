@@ -25,9 +25,9 @@ import core.db.session_factory as session_factory_module
 from extensions import ext_redis
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
-from services.tracing.provider_configs import ProviderConfigGateway
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.rbac_fakes import RBACDomain, build_rbac_domain
+from tests.helpers.unit.services.tracing_ports import deployment_provider_configs
 
 if TYPE_CHECKING:
     from extensions.ext_application_services import ApplicationServices
@@ -371,7 +371,7 @@ def app_services(sqlite_session_factory: sessionmaker[Session], rbac_domain: RBA
         tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory),
             # Unit tests never reach a tracing vendor; an unexpected request fails the test.
-            provider=ProviderConfigGateway(RecordingEgress([], grpc_target=None)),
+            provider=deployment_provider_configs(RecordingEgress([], grpc_target=None)),
         ),
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis_client),
         recommended_packages=RecommendedAppPackageService(sources=Mock(), exporter=Mock()),

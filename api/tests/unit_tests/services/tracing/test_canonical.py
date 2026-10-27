@@ -6,13 +6,12 @@ from dify_trace_sdk.model import SpanKind, SpanStatus
 
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from models.model import Message
-from models.workflow import WorkflowRun
 from services.tracing.canonical import CanonicalTraceBuilder, message_trace_id
 from services.tracing.records import (
     MessageTraceInfo,
     PromptGenerationTraceInfo,
     ToolTraceInfo,
+    TraceMessage,
     WorkflowTraceInfo,
 )
 
@@ -22,21 +21,21 @@ CONVERSATION_ID = "0b7f86a3-5f8e-4d51-a4c5-6a8b2f1b6e22"
 WORKFLOW_RUN_ID = "4b4b8c2e-1a0f-4bd0-93c1-0f2f0e9d6a33"
 
 
-def _message() -> Message:
-    message = Message(
+def _message() -> TraceMessage:
+    return TraceMessage(
         id=MESSAGE_ID,
         app_id="app-1",
         conversation_id=CONVERSATION_ID,
+        workflow_run_id=None,
         query="What is Dify?",
         answer="An LLM app platform.",
+        error=None,
+        created_at=STARTED_AT,
         model_provider="openai",
         model_id="gpt-4o",
         total_price=Decimal("0.0042"),
         currency="USD",
-        error=None,
     )
-    message.created_at = STARTED_AT
-    return message
 
 
 def _message_record(**metadata: object) -> MessageTraceInfo:
@@ -80,12 +79,6 @@ def _node(execution_id: str, node_type: str, *, index: int, offset: int, **field
     )
 
 
-def _workflow_run() -> WorkflowRun:
-    run = WorkflowRun(id=WORKFLOW_RUN_ID, finished_at=STARTED_AT + timedelta(seconds=3))
-    run.created_at = STARTED_AT
-    return run
-
-
 def _workflow_record(*, message_id: str | None, metadata: dict[str, object]) -> WorkflowTraceInfo:
     llm = _node(
         "exec-llm",
@@ -104,7 +97,6 @@ def _workflow_record(*, message_id: str | None, metadata: dict[str, object]) -> 
     start = _node("exec-start", BuiltinNodeTypes.START, index=1, offset=0, inputs={"query": "hi"})
     return WorkflowTraceInfo(
         message_id=message_id,
-        workflow_data=_workflow_run(),
         node_executions=[llm, start],
         conversation_id=CONVERSATION_ID if message_id else None,
         message_started_at=STARTED_AT - timedelta(seconds=1) if message_id else None,

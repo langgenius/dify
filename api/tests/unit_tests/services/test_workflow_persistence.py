@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -73,10 +73,8 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from services import workflow_persistence as persistence_mod
-from services.tracing.emitter import TraceScopes
-from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """Verify the workflow persistence layer fans Inspector deltas to redis pub/sub.
@@ -400,11 +398,6 @@ def _tool_source():
 
 
 class TestPersistenceLayerCases:
-    @staticmethod
-    @pytest.fixture(autouse=True)
-    def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-        apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
-
     @staticmethod
     def test_tool_trace_identity_survives_start_pause_and_resume():
         layer, _, node_repo, _ = _make_layer(node_run_indices={"tool-exec": 1})
@@ -901,44 +894,43 @@ class TestPersistenceLayerCases:
         assert len(commits) == 3
 
     class TestWorkflowPersistenceLayer:
-        def test_start_freezes_tracing_only_after_workflow_save(self, monkeypatch: pytest.MonkeyPatch) -> None:
-            apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+        def test_start_freezes_tracing_only_after_workflow_save(self) -> None:
             layer, workflow_repo, _, _ = _make_layer(extras={"trace_session_id": "external-session"})
             calls: list[tuple[str, str, str, str, object]] = []
 
-            def freeze(
-                entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
-                *,
-                workflow_id: str,
-                workflow_run_id: str,
-                conversation_id: object,
-                graph_data: object,
-            ) -> None:
-                assert workflow_repo.synchronously_saved
-                assert graph_data == {"nodes": [], "edges": []}
-                saved_execution = workflow_repo.synchronously_saved[-1]
-                assert isinstance(saved_execution, WorkflowExecution)
-                assert saved_execution.id_ == workflow_run_id
-                calls.append(
-                    (
-                        entity.app_config.app_id,
-                        entity.app_config.tenant_id,
-                        workflow_id,
-                        workflow_run_id,
-                        conversation_id,
+            class _FreezeAfterSave(RecordingTracingHooks):
+                @override
+                def freeze_workflow_run(
+                    self,
+                    entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
+                    *,
+                    workflow_id: str,
+                    workflow_run_id: str,
+                    conversation_id: object,
+                    graph_data: object,
+                ) -> None:
+                    assert workflow_repo.synchronously_saved
+                    assert graph_data == {"nodes": [], "edges": []}
+                    saved_execution = workflow_repo.synchronously_saved[-1]
+                    assert isinstance(saved_execution, WorkflowExecution)
+                    assert saved_execution.id_ == workflow_run_id
+                    calls.append(
+                        (
+                            entity.app_config.app_id,
+                            entity.app_config.tenant_id,
+                            workflow_id,
+                            workflow_run_id,
+                            conversation_id,
+                        )
                     )
-                )
 
-            monkeypatch.setattr(RuntimeApplicationTracingHooks, "freeze_workflow_run", staticmethod(freeze))
             app = Flask(__name__)
             bind_tracing(
                 app,
-                scopes=TraceScopes(
-                    emitter=_TraceRecorder(workflow_repo),
-                    session_factory=sessionmaker(),
-                    enterprise_enabled=lambda: False,
+                scopes=kernel_trace_scopes(
+                    _TraceRecorder(workflow_repo), policies=NoTracingPolicies(), enterprise_enabled=False
                 ),
-                hooks=RuntimeApplicationTracingHooks(),
+                hooks=_FreezeAfterSave(None),
             )
 
             with app.app_context():

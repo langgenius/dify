@@ -23,9 +23,8 @@ from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from repositories.application_trace_repository import TraceCollectionError
 from services.app.agent_app_contracts import AgentAppNotFoundError
-from services.tracing.service import application_tracing_service
+from services.tracing.errors import TraceCollectionError
 
 type TraceSourceKind = Literal["message", "workflow", "node"]
 _source_kind_adapter = TypeAdapter(TraceSourceKind)
@@ -155,7 +154,7 @@ def _agent_app_id(context: RequestContext, agent_id: UUID) -> str:
 def _status(context: RequestContext, app_id: str, kind: TraceSourceKind, source_id: str):
     node_id = _query_node_id()
     result = _run_call(
-        lambda: application_tracing_service().status(
+        lambda: application_services().tracing.agent_traces.status(
             tenant_id=context.active_workspace_id,
             app_id=app_id,
             source_kind=kind,
@@ -170,7 +169,7 @@ def _retry(context: RequestContext, app_id: str, kind: TraceSourceKind, source_i
     node_id = _query_node_id()
     payload = TraceRunRetryPayload.model_validate(console_ns.payload or {})
     result = _run_call(
-        lambda: application_tracing_service().retry(
+        lambda: application_services().tracing.agent_traces.retry(
             tenant_id=context.active_workspace_id,
             app_id=app_id,
             source_kind=kind,

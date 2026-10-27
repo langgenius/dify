@@ -20,7 +20,6 @@ from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
-from enterprise.telemetry.exporter import is_enterprise_telemetry_enabled
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
@@ -39,6 +38,7 @@ from extensions.application_services.knowledge import (
 )
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
+from extensions.application_services.tracing import TracingServices, build_tracing_services
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.application_services.workspace import (
     WorkspaceServices,
@@ -137,7 +137,7 @@ from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.conversation_command_service import ConversationCommandService
-from services.conversation_name_generator import generate_conversation_name
+from services.conversation_name_generator import DefaultModelConversationNameGenerator
 from services.conversation_name_service import ConversationNameService
 from services.conversation_service import ConversationService
 from services.conversation_variable_query import ConversationVariableQuery
@@ -214,10 +214,7 @@ from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
-from services.tracing.egress import SSRFEgress
-from services.tracing.emitter import CeleryTraceEmitter, TraceScopes
-from services.tracing.provider_configs import ProviderConfigGateway
-from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from services.tracing.adapters import StoredPolicyTraceScopes
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_authentication_adapters import (
@@ -364,6 +361,7 @@ class ApplicationServices:
     web_passport: WebPassportService
     tags: TagApplicationService
     workflow_statistics: WorkflowStatisticQueryService
+    tracing: TracingServices
 
 
 def _build_oauth_server_service(
@@ -514,9 +512,10 @@ def build_application_services(
         apps=console_apps,
         datasets=dataset_dependencies.datasets,
     )
+    tracing = build_tracing_services(database_client=database_client)
     tracing_configs = AppTracingConfigService(
         configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
-        provider=ProviderConfigGateway(SSRFEgress()),
+        provider=tracing.provider_configs,
     )
     apps = build_app_services(
         database_client=database_client,
@@ -582,7 +581,10 @@ def build_application_services(
         invitation_tokens=invitation_tokens,
     )
     conversations = ConversationRepository(session_factory=database_client)
-    conversation_names = ConversationNameService(conversations=conversations, generate_name=generate_conversation_name)
+    conversation_names = ConversationNameService(
+        conversations=conversations,
+        generate_name=DefaultModelConversationNameGenerator(trace_scopes=tracing.scopes),
+    )
     conversation_commands = ConversationCommandService(
         conversations=conversations, enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup
     )
@@ -759,7 +761,7 @@ def build_application_services(
         ),
         message_suggested_questions=MessageSuggestedQuestionsService(
             queries=suggested_questions,
-            generator=SuggestedQuestionsGenerator(),
+            generator=SuggestedQuestionsGenerator(trace_scopes=tracing.scopes),
         ),
         plugin_file_uploads=PluginFileUploadService(
             owners=SQLAlchemyPluginFileUploadOwnerRepository(session_factory=database_client),
@@ -855,6 +857,7 @@ def build_application_services(
                 session_maker=database_client,
             ),
         ),
+        tracing=tracing,
     )
 
 
@@ -863,23 +866,14 @@ def init_app(app: Flask) -> None:
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
-    session_maker = get_session_maker()
     services = build_application_services(
-        database_client=session_maker,
+        database_client=get_session_maker(),
         deployment_edition=dify_config.DEPLOYMENT_EDITION,
         initialization_password=dify_config.INIT_PASSWORD,
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
-    bind_tracing(
-        app,
-        scopes=TraceScopes(
-            emitter=CeleryTraceEmitter(),
-            session_factory=session_maker,
-            enterprise_enabled=is_enterprise_telemetry_enabled,
-        ),
-        hooks=RuntimeApplicationTracingHooks(),
-    )
+    bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
     bind_account_loader(app, services.accounts.identity.load_user)
 
 
