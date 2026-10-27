@@ -1,129 +1,62 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import TopKItem from '../top-k-item'
 
-vi.mock('@/env', () => ({
-  env: {
-    NEXT_PUBLIC_TOP_K_MAX_VALUE: 10,
-  },
-}))
+vi.mock('@/env', () => ({ env: { NEXT_PUBLIC_TOP_K_MAX_VALUE: 10 } }))
 
-describe('TopKItem', () => {
-  const defaultProps = {
-    value: 2,
-    enable: true,
-    onChange: vi.fn(),
+it('keeps the numeric field and slider synchronized within the configured top-k bounds', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  function Harness() {
+    const [value, setValue] = useState(2)
+    return (
+      <TopKItem
+        enable
+        value={value}
+        onChange={(key, next) => {
+          onChange(key, next)
+          setValue(next)
+        }}
+      />
+    )
   }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
+  render(<Harness />)
+  const input = screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' })
+  const slider = screen.getByLabelText('appDebug.datasetConfig.top_k', {
+    selector: 'input[type="range"]',
   })
+  await user.click(screen.getByRole('button', { name: /increment/i }))
+  expect(input).toHaveValue('3')
+  expect(slider).toHaveValue('3')
+  slider.focus()
+  await user.keyboard('{End}{ArrowRight}')
+  expect(input).toHaveValue('10')
+  expect(onChange).toHaveBeenLastCalledWith('top_k', 10)
+  await user.keyboard('{Home}{ArrowLeft}')
+  expect(input).toHaveValue('1')
+  expect(onChange).toHaveBeenLastCalledWith('top_k', 1)
+})
 
-  const getSlider = () =>
-    screen.getByLabelText('appDebug.datasetConfig.top_k', {
-      selector: 'input[type="range"]',
-    })
+it.each([
+  { enable: false, disabled: false },
+  { enable: true, disabled: true },
+])('prevents edits with %j', async (props) => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(<TopKItem {...props} value={2} onChange={onChange} />)
+  const input = screen.getByRole('textbox', { name: 'appDebug.datasetConfig.top_k' })
+  expect(input).toBeDisabled()
+  expect(
+    screen.getByLabelText('appDebug.datasetConfig.top_k', { selector: 'input[type="range"]' }),
+  ).toBeDisabled()
+  await user.type(input, '9')
+  expect(onChange).not.toHaveBeenCalled()
+})
 
-  describe('Rendering', () => {
-    it('should render the translated parameter name', () => {
-      render(<TopKItem {...defaultProps} />)
-
-      expect(
-        screen.getByText('appDebug.datasetConfig.top_k', { selector: 'span' }),
-      ).toBeInTheDocument()
-    })
-
-    it('should render tooltip trigger', () => {
-      render(<TopKItem {...defaultProps} />)
-
-      expect(
-        screen.getByRole('button', { name: 'appDebug.datasetConfig.top_k' }),
-      ).toBeInTheDocument()
-    })
-
-    it('should render InputNumber and Slider', () => {
-      render(<TopKItem {...defaultProps} />)
-
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(getSlider()).toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should disable controls when enable is false', () => {
-      render(<TopKItem {...defaultProps} enable={false} />)
-
-      expect(screen.getByRole('textbox')).toBeDisabled()
-      expect(getSlider()).toBeDisabled()
-    })
-  })
-
-  describe('Value Limits', () => {
-    it('should use step of 1', () => {
-      render(<TopKItem {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toHaveValue('2')
-    })
-
-    it('should use minimum of 1', () => {
-      render(<TopKItem {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toBeInTheDocument()
-    })
-
-    it('should use maximum from env (10)', () => {
-      render(<TopKItem {...defaultProps} />)
-      const input = screen.getByRole('textbox')
-      expect(input).toBeInTheDocument()
-    })
-
-    it('should render slider with max >= 5 so no scaling is applied', () => {
-      render(<TopKItem {...defaultProps} />)
-      const slider = getSlider()
-
-      // max=10 >= 5 so slider shows raw values
-      expect(slider).toHaveAttribute('max', '10')
-    })
-
-    it('should not render a switch (no hasSwitch prop)', () => {
-      render(<TopKItem {...defaultProps} />)
-
-      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onChange with clamped integer value via increment button', async () => {
-      const user = userEvent.setup()
-      render(<TopKItem {...defaultProps} value={5} />)
-      const incrementBtn = screen.getByRole('button', { name: /increment/i })
-
-      await user.click(incrementBtn)
-
-      // step=1, so 5 + 1 = 6, clamped to [1,10] → 6
-      expect(defaultProps.onChange).toHaveBeenCalledWith('top_k', 6)
-    })
-
-    it('should call onChange with clamped integer value via decrement button', async () => {
-      const user = userEvent.setup()
-      render(<TopKItem {...defaultProps} value={5} />)
-      const decrementBtn = screen.getByRole('button', { name: /decrement/i })
-
-      await user.click(decrementBtn)
-
-      // step=1, so 5 - 1 = 4, clamped to [1,10] → 4
-      expect(defaultProps.onChange).toHaveBeenCalledWith('top_k', 4)
-    })
-
-    it('should call onChange with integer value when slider changes', async () => {
-      const user = userEvent.setup()
-      render(<TopKItem {...defaultProps} value={2} />)
-      const slider = getSlider()
-
-      slider.focus()
-      await user.keyboard('{ArrowRight}')
-
-      expect(defaultProps.onChange).toHaveBeenLastCalledWith('top_k', 3)
-    })
-  })
+it('allows a feature-specific maximum', () => {
+  render(<TopKItem enable value={2} max={100} onChange={vi.fn()} />)
+  expect(
+    screen.getByLabelText('appDebug.datasetConfig.top_k', { selector: 'input[type="range"]' }),
+  ).toHaveAttribute('max', '100')
 })

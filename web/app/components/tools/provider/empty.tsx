@@ -47,7 +47,7 @@ const Empty = ({ type, isAgent }: Props) => {
   const tipContent = renderType && (
     <>
       {t(($) => $[`addToolModal.${renderType}.tip`], { ns: 'tools' })}{' '}
-      {hasLink && <RiArrowRightUpLine className="ml-0.5 size-3" />}
+      {hasLink && <RiArrowRightUpLine className="ms-0.5 size-3 rtl:-scale-x-100" />}
     </>
   )
 
@@ -78,7 +78,7 @@ const Empty = ({ type, isAgent }: Props) => {
                   </div>
                   <div className="h-px flex-1 bg-divider-subtle" />
                 </div>
-                <div className="text-left system-md-semibold text-text-secondary">
+                <div className="text-start system-md-semibold text-text-secondary">
                   {t(($) => $[stepKey], { ns: 'tools' })}
                 </div>
               </li>
@@ -90,7 +90,7 @@ const Empty = ({ type, isAgent }: Props) => {
           >
             {t(($) => $['workflowToolEmpty.goToStudio'], { ns: 'tools' })}
             <span className="flex size-5 items-center justify-center rounded-full bg-text-accent text-text-primary-on-surface">
-              <RiArrowRightLine className="size-4" />
+              <RiArrowRightLine className="size-4 rtl:rotate-180" />
             </span>
           </Link>
         </div>

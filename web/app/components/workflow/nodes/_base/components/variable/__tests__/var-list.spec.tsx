@@ -1,5 +1,5 @@
 import type { Variable } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { VarType } from '@/app/components/workflow/types'
@@ -10,28 +10,35 @@ vi.mock('../var-reference-picker', () => ({
 }))
 
 describe('VarList', () => {
-  it('normalizes a variable name through its labeled input', () => {
+  it('normalizes a variable name through its labeled input', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
-    render(
-      <VarList
-        nodeId="node-id"
-        readonly={false}
-        list={[
-          {
-            variable: 'input',
-            value_selector: ['node-id', 'value'],
-            value_type: VarType.string,
-          },
-        ]}
-        onChange={onChange}
-      />,
-    )
+    function EditableVariable() {
+      const [list, setList] = useState<Variable[]>([
+        {
+          variable: 'input',
+          value_selector: ['node-id', 'value'],
+          value_type: VarType.string,
+        },
+      ])
+      return (
+        <VarList
+          nodeId="node-id"
+          readonly={false}
+          list={list}
+          onChange={(next) => {
+            setList(next)
+            onChange(next)
+          }}
+        />
+      )
+    }
+    render(<EditableVariable />)
 
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'workflow.common.variableNamePlaceholder' }),
-      { target: { value: 'renamed input' } },
-    )
+    const input = screen.getByRole('textbox', { name: 'workflow.common.variableNamePlaceholder' })
+    await user.clear(input)
+    await user.paste('renamed input')
 
     expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ variable: 'renamed_input' })])
   })

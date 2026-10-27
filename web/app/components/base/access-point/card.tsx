@@ -77,7 +77,7 @@ export function AccessPointCard({
         className,
       )}
     >
-      <header className="flex min-h-14 shrink-0 items-center gap-2.5 py-2 pr-5 pl-2">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-2.5 py-2 pr-5 pl-2">
         {typeof icon === 'string' ? (
           <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular bg-components-panel-on-panel-item-bg text-text-secondary">
             <span aria-hidden className={cn(icon, 'size-5')} />
@@ -85,10 +85,10 @@ export function AccessPointCard({
         ) : (
           icon
         )}
-        <span className="min-w-0 flex-1">
+        <div className="min-w-28 flex-1">
           <Heading
             id={titleId}
-            className="truncate system-md-semibold text-text-primary"
+            className="system-md-semibold wrap-break-word text-text-primary"
             title={title}
           >
             {title}
@@ -96,14 +96,14 @@ export function AccessPointCard({
           <span className="block truncate system-xs-regular text-text-tertiary" title={description}>
             {description}
           </span>
-        </span>
+        </div>
         {showStatus && (
-          <>
+          <div className="ml-auto flex shrink-0 items-center gap-2.5">
             <span
               aria-live="polite"
               className={cn(
                 'flex shrink-0 items-center gap-1 system-xs-semibold-uppercase',
-                status === 'inService' ? 'text-text-success' : 'text-text-tertiary',
+                status === 'inService' ? 'text-text-secondary' : 'text-text-tertiary',
               )}
             >
               {isLoading ? (
@@ -122,7 +122,7 @@ export function AccessPointCard({
               ) : (
                 switchControl
               ))}
-          </>
+          </div>
         )}
       </header>
 
@@ -160,20 +160,20 @@ export function AccessPointEndpoint({
   return (
     <div aria-busy={loading || undefined} className="flex flex-col gap-1 px-4 py-3">
       <div className="flex h-6 items-center system-xs-medium text-text-secondary">{label}</div>
-      <div className="flex h-9 min-w-0 items-center gap-0.5 rounded-lg border-[0.5px] border-divider-subtle bg-components-input-bg-normal py-1 pr-1 pl-2">
+      <div className="flex min-h-9 min-w-0 flex-wrap items-center gap-0.5 rounded-lg border-[0.5px] border-divider-subtle bg-components-input-bg-normal py-1 pr-1 pl-2">
         {unavailable && !loading && (
           <span className="shrink-0 rounded-[5px] border border-divider-deep px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
             {unavailableLabel}
           </span>
         )}
-        <div className="flex min-w-0 flex-1 items-center px-1">
+        <div className="flex min-w-20 flex-1 items-center px-1">
           {loading ? (
             <span className="h-2 w-[42%] animate-pulse rounded-full bg-text-quaternary opacity-20 motion-reduce:animate-none" />
           ) : (
             <span
               className={cn(
                 'truncate system-sm-regular text-text-secondary',
-                (dimmed || unavailable) && 'text-text-quaternary',
+                (dimmed || unavailable) && 'text-text-tertiary',
               )}
               translate="no"
             >
@@ -181,7 +181,7 @@ export function AccessPointEndpoint({
             </span>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-0.5">{actions}</div>
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">{actions}</div>
       </div>
     </div>
   )

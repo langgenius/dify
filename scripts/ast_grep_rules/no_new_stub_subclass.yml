@@ -1,0 +1,98 @@
+id: no-new-stub-subclass
+language: python
+severity: error
+message: Instantiate the production runtime class; do not bypass its constructor in a test subclass.
+utils:
+  runtime-base:
+    any:
+      - regex: '(^|\.)(ModelInstance|ModelManager|DatasetRetrieval|TraceQueueManager|MessageBasedAppQueueManager|Thread)$'
+      - all:
+          - pattern: $BASE
+          - inside:
+              kind: module
+              stopBy: end
+              has:
+                stopBy: end
+                all:
+                  - pattern:
+                      context: from package import $ORIGINAL as $BASE
+                      selector: aliased_import
+                  - has:
+                      field: name
+                      stopBy: end
+                      regex: '^(ModelInstance|ModelManager|DatasetRetrieval|TraceQueueManager|MessageBasedAppQueueManager|Thread)$'
+  initializer:
+    kind: function_definition
+    has:
+      field: name
+      stopBy: end
+      regex: ^__init__$
+  delegates:
+    has:
+      # Nested definitions do not initialize the containing object.
+      stopBy:
+        any:
+          - kind: function_definition
+          - kind: class_definition
+          - kind: lambda
+      any:
+        - pattern: super($$$ARGS).__init__($$$PARAMS)
+        - pattern: $BASE.__init__(self, $$$PARAMS)
+  dataclass-decorator:
+    kind: decorator
+    regex: '^@(dataclasses\.)?dataclass(\(|$)'
+    not:
+      has:
+        stopBy: end
+        pattern:
+          context: dataclass(init=False)
+          selector: keyword_argument
+rule:
+  all:
+    - kind: class_definition
+    - has:
+        field: name
+        stopBy: neighbor
+        pattern: $NAME
+    - has:
+        field: superclasses
+        stopBy: neighbor
+        has:
+          stopBy: neighbor
+          all:
+            - pattern: $BASE
+            - matches: runtime-base
+    - any:
+        - has:
+            field: body
+            stopBy: neighbor
+            has:
+              # Only methods of this class, not constructors of nested classes.
+              stopBy: neighbor
+              all:
+                - matches: initializer
+                - not:
+                    matches: delegates
+        - all:
+            - inside:
+                # A nested class must not inherit its outer class's decorator.
+                stopBy: neighbor
+                kind: decorated_definition
+                has:
+                  stopBy: neighbor
+                  matches: dataclass-decorator
+            - not:
+                has:
+                  field: body
+                  stopBy: neighbor
+                  has:
+                    stopBy: neighbor
+                    any:
+                      - matches: initializer
+                      - all:
+                          - kind: function_definition
+                          - has:
+                              field: name
+                              stopBy: end
+                              regex: ^__post_init__$
+                          - matches: delegates

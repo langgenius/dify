@@ -21,7 +21,7 @@ type IMainProps = {
   isWorkflow?: boolean
 }
 const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = false }) => {
-  const { t } = useTranslation(['share', 'appDebug', 'common'])
+  const { t } = useTranslation(['share', 'appDebug', 'common', 'workflow'])
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
   const searchParams = useSearchParams()

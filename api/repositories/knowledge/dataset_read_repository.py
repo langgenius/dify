@@ -322,8 +322,8 @@ def get_dataset_available_document_count(dataset: Dataset, *, session: Session) 
                 Document.dataset_id == dataset.id,
                 Document.tenant_id == dataset.tenant_id,
                 Document.indexing_status == "completed",
-                Document.enabled == True,
-                Document.archived == False,
+                Document.enabled.is_(True),
+                Document.archived.is_(False),
             )
         )
         or 0
@@ -337,7 +337,7 @@ def get_dataset_available_segment_count(dataset: Dataset, *, session: Session) -
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.tenant_id == dataset.tenant_id,
                 DocumentSegment.status == "completed",
-                DocumentSegment.enabled == True,
+                DocumentSegment.enabled.is_(True),
             )
         )
         or 0
@@ -605,7 +605,6 @@ def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Sessi
     if not dataset_ids:
         return DatasetDetailPrefetch()
 
-    tenant_ids = {dataset.tenant_id for dataset in datasets}
     dataset_owners = [(dataset.tenant_id, dataset.id) for dataset in datasets]
 
     app_counts = dict(
@@ -629,8 +628,8 @@ def build_dataset_detail_prefetch(datasets: Sequence[Dataset], *, session: Sessi
         (
             sa.and_(
                 Document.indexing_status == "completed",
-                Document.enabled == True,
-                Document.archived == False,
+                Document.enabled.is_(True),
+                Document.archived.is_(False),
             ),
             1,
         ),

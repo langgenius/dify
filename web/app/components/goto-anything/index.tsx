@@ -10,14 +10,7 @@ import {
   AutocompleteInputGroup,
   AutocompleteStatus,
 } from '@langgenius/dify-ui/autocomplete'
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogClose,
-  DialogPopup,
-  DialogPortal,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import {
   ScrollArea,
@@ -26,7 +19,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { formatForDisplay, HotkeysProvider, useHotkey } from '@tanstack/react-hotkeys'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
@@ -141,6 +134,12 @@ function groupSearchResults(results: SearchResult[]) {
   }, {})
 }
 
+function SearchDialogHotkeys() {
+  // Keep the browser from claiming Mod+K while the global opener is suspended.
+  useHotkey(GOTO_ANYTHING_HOTKEY, () => {})
+  return null
+}
+
 export function GotoAnything() {
   const { t } = useTranslation(['app', 'common', 'skill', 'modelProvider', 'agentRoster'])
   const pathname = usePathname()
@@ -162,6 +161,7 @@ export function GotoAnything() {
   const [activePlugin, setActivePlugin] = useState<Plugin>()
   const inputRef = useRef<HTMLInputElement>(null)
   const searchHintId = useId()
+  const hotkeyScopeId = useId()
   const commandContext = useCommandContext(agentsAvailable, skillsAvailable, isWorkflowPage)
   const actions = useMemo(
     () =>
@@ -437,12 +437,13 @@ export function GotoAnything() {
         handle={gotoAnythingDialogHandle}
         onOpenChangeComplete={handleDialogOpenChangeComplete}
       >
-        <DialogPortal>
-          <DialogBackdrop />
-          <DialogPopup
-            initialFocus={inputRef}
-            className="fixed top-1/2 left-1/2 isolate flex max-h-[calc(100dvh-2rem)] w-160 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden p-0"
-          >
+        <DialogContent
+          initialFocus={inputRef}
+          className="w-160 data-open:transition-none"
+          backdropProps={{ className: 'bg-background-overlay-alt data-open:transition-none' }}
+        >
+          <HotkeysProvider scope={hotkeyScopeId} exclusive>
+            <SearchDialogHotkeys />
             <div
               aria-hidden
               className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"
@@ -469,6 +470,7 @@ export function GotoAnything() {
             >
               <AutocompleteInputGroup
                 size="medium"
+                // oxlint-disable-next-line shadcn/no-restyle -- The inline command palette keeps focus in search and indicates navigation on the active descendant.
                 className="h-auto shrink-0 gap-3 rounded-none border-0 bg-components-panel-bg-blur px-4 py-3 has-[input:focus]:ring-0"
               >
                 <span aria-hidden className="i-ri-search-line size-4 text-text-quaternary" />
@@ -574,8 +576,8 @@ export function GotoAnything() {
             <DialogClose tabIndex={-1} className="sr-only">
               {t(($) => $['operation.close'], { ns: 'common' })}
             </DialogClose>
-          </DialogPopup>
-        </DialogPortal>
+          </HotkeysProvider>
+        </DialogContent>
       </Dialog>
 
       {activePlugin && canInstallPlugin && (

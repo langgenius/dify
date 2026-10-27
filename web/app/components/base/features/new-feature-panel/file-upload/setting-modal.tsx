@@ -1,4 +1,5 @@
 'use client'
+import type { ComponentPropsWithRef, ReactElement } from 'react'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo } from 'react'
@@ -9,7 +10,7 @@ type FileUploadSettingsProps = {
   onOpen: (state: boolean) => void
   onChange?: OnFeaturesChange
   disabled?: boolean
-  children?: React.ReactNode
+  children: ReactElement<ComponentPropsWithRef<'button'>>
   imageUpload?: boolean
 }
 const FileUploadSettings = ({
@@ -28,9 +29,9 @@ const FileUploadSettings = ({
         onOpen(nextOpen)
       }}
     >
-      <PopoverTrigger nativeButton={false} render={<div className="flex">{children}</div>} />
+      <PopoverTrigger disabled={disabled} render={children} />
       <PopoverContent
-        placement="left"
+        side="left"
         sideOffset={32}
         className="border-none bg-transparent shadow-none"
       >

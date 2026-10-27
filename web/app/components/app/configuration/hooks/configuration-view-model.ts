@@ -1,3 +1,4 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ComponentProps } from 'react'
 import type AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
@@ -8,7 +9,6 @@ import type {
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type ConfigContext from '@/context/debug-configuration'
-import type { DataSet } from '@/models/datasets'
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 
 export type DebugConfigurationValue = ComponentProps<typeof ConfigContext.Provider>['value']
@@ -42,7 +42,7 @@ export type ConfigurationViewModel = {
   onSaveHistory: (
     data: DebugConfigurationValue['completionPromptConfig']['conversation_histories_role'],
   ) => void
-  onSelectDataSets: (data: DataSet[]) => void
+  onSelectDataSets: (data: DatasetDetailWithPartialMembersResponse[]) => void
   promptVariables: PromptVariable[]
   selectedIds: string[]
   showAppConfigureFeaturesModal: boolean

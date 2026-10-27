@@ -24,6 +24,12 @@ describe('MarkdownForm default field name characters', () => {
         {
           type: 'element',
           tagName: 'input',
+          properties: { type: 'text', name: 'valid_name', placeholder: 'valid-name' },
+          children: [],
+        },
+        {
+          type: 'element',
+          tagName: 'input',
           properties: {
             type: 'text',
             name: '营业&售后（SD）',
@@ -56,6 +62,7 @@ describe('MarkdownForm default field name characters', () => {
 
     render(<MarkdownForm node={node} />)
 
+    expect(screen.getByPlaceholderText('valid-name')).toBeInTheDocument()
     expect(screen.queryByPlaceholderText('mixed-width-punctuation')).not.toBeInTheDocument()
     expect(screen.queryByPlaceholderText('full-width-punctuation')).not.toBeInTheDocument()
     expect(screen.queryByPlaceholderText('half-width-punctuation')).not.toBeInTheDocument()

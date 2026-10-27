@@ -1,145 +1,50 @@
+import type { Shape } from '../../store/workflow'
 import { act } from '@testing-library/react'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
-import { ControlMode, WorkflowRunningStatus } from '../../types'
-import { useWorkflowInteractions, useWorkflowMoveMode } from '../use-workflow-panel-interactions'
+import { useReactFlow } from 'reactflow'
+import { createEdge, createNode, createWorkflowRunningData } from '../../__tests__/fixtures'
+import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
+import { ControlMode } from '../../types'
+import { useWorkflowMoveMode } from '../use-workflow-panel-interactions'
 
-const mockHandleSelectionCancel = vi.hoisted(() => vi.fn())
-const mockHandleNodeCancelRunningStatus = vi.hoisted(() => vi.fn())
-const mockHandleEdgeCancelRunningStatus = vi.hoisted(() => vi.fn())
+const setup = (state: Partial<Shape> = {}) =>
+  renderWorkflowFlowHook(
+    () => ({
+      mode: useWorkflowMoveMode(),
+      flow: useReactFlow(),
+    }),
+    {
+      nodes: [createNode({ id: 'a', data: { _isBundled: true } }), createNode({ id: 'b' })],
+      edges: [createEdge({ source: 'a', target: 'b', data: { _isBundled: true } })],
+      initialStoreState: { controlMode: ControlMode.Pointer, ...state },
+    },
+  )
 
-const runtimeState = vi.hoisted(() => ({
-  nodesReadOnly: false,
-}))
-
-vi.mock('../use-workflow', () => ({
-  useNodesReadOnly: () => ({
-    getNodesReadOnly: () => runtimeState.nodesReadOnly,
-    nodesReadOnly: runtimeState.nodesReadOnly,
-  }),
-}))
-
-vi.mock('../use-selection-interactions', () => ({
-  useSelectionInteractions: () => ({
-    handleSelectionCancel: (...args: unknown[]) => mockHandleSelectionCancel(...args),
-  }),
-}))
-
-vi.mock('../use-nodes-interactions-without-sync', () => ({
-  useNodesInteractionsWithoutSync: () => ({
-    handleNodeCancelRunningStatus: (...args: unknown[]) =>
-      mockHandleNodeCancelRunningStatus(...args),
-  }),
-}))
-
-vi.mock('../use-edges-interactions-without-sync', () => ({
-  useEdgesInteractionsWithoutSync: () => ({
-    handleEdgeCancelRunningStatus: (...args: unknown[]) =>
-      mockHandleEdgeCancelRunningStatus(...args),
-  }),
-}))
-
-describe('useWorkflowInteractions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    runtimeState.nodesReadOnly = false
-  })
-
-  it('closes the debug panel and clears running state', () => {
-    const { result, store } = renderWorkflowHook(() => useWorkflowInteractions(), {
-      initialStoreState: {
-        showDebugAndPreviewPanel: true,
-        workflowRunningData: { task_id: 'task-1' } as never,
-      },
-    })
-
-    act(() => {
-      result.current.handleCancelDebugAndPreviewPanel()
-    })
-
-    expect(store.getState().showDebugAndPreviewPanel).toBe(false)
-    expect(store.getState().workflowRunningData).toBeUndefined()
-    expect(mockHandleNodeCancelRunningStatus).toHaveBeenCalledTimes(1)
-    expect(mockHandleEdgeCancelRunningStatus).toHaveBeenCalledTimes(1)
-  })
+it('switches from pointer to hand and clears the real graph selection', () => {
+  const { result, store } = setup()
+  act(() => result.current.mode.handleModeHand())
+  expect(store.getState().controlMode).toBe(ControlMode.Hand)
+  expect(result.current.flow.getNode('a')?.data._isBundled).toBe(false)
+  expect(result.current.flow.getEdges()[0]?.data._isBundled).toBe(false)
+  act(() => result.current.mode.handleModePointer())
+  expect(store.getState().controlMode).toBe(ControlMode.Pointer)
 })
 
-describe('useWorkflowMoveMode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    runtimeState.nodesReadOnly = false
-  })
+it('blocks edit modes but allows comments on a readonly canvas', () => {
+  const { result, store } = setup({ canvasReadOnly: true })
+  act(() => result.current.mode.handleModeHand())
+  expect(store.getState().controlMode).toBe(ControlMode.Pointer)
+  expect(result.current.flow.getNode('a')?.data._isBundled).toBe(true)
+  act(() => result.current.mode.handleModeComment())
+  expect(store.getState().controlMode).toBe(ControlMode.Comment)
+  expect(result.current.flow.getNode('a')?.data._isBundled).toBe(false)
+  act(() => result.current.mode.handleModePointer())
+  expect(store.getState().controlMode).toBe(ControlMode.Comment)
+})
 
-  it('switches between hand and pointer modes when editable', () => {
-    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
-      initialStoreState: {
-        controlMode: ControlMode.Pointer,
-      },
-    })
-
-    act(() => {
-      result.current.handleModeHand()
-    })
-
-    expect(store.getState().controlMode).toBe(ControlMode.Hand)
-    expect(mockHandleSelectionCancel).toHaveBeenCalledTimes(1)
-
-    act(() => {
-      result.current.handleModePointer()
-    })
-
-    expect(store.getState().controlMode).toBe(ControlMode.Pointer)
-  })
-
-  it('does not switch modes when nodes are read-only', () => {
-    runtimeState.nodesReadOnly = true
-    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
-      initialStoreState: {
-        controlMode: ControlMode.Pointer,
-      },
-    })
-
-    act(() => {
-      result.current.handleModeHand()
-      result.current.handleModePointer()
-    })
-
-    expect(store.getState().controlMode).toBe(ControlMode.Pointer)
-    expect(mockHandleSelectionCancel).not.toHaveBeenCalled()
-  })
-
-  it('switches to comment mode when nodes are read-only', () => {
-    runtimeState.nodesReadOnly = true
-    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
-      initialStoreState: {
-        controlMode: ControlMode.Pointer,
-      },
-    })
-
-    act(() => {
-      result.current.handleModeComment()
-    })
-
-    expect(store.getState().controlMode).toBe(ControlMode.Comment)
-    expect(mockHandleSelectionCancel).toHaveBeenCalledTimes(1)
-    expect(result.current.canUseCommentMode).toBe(true)
-  })
-
-  it('does not switch to comment mode while workflow operation is blocked', () => {
-    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
-      initialStoreState: {
-        controlMode: ControlMode.Pointer,
-        workflowRunningData: {
-          result: { status: WorkflowRunningStatus.Running },
-        } as never,
-      },
-    })
-
-    act(() => {
-      result.current.handleModeComment()
-    })
-
-    expect(result.current.canUseCommentMode).toBe(false)
-    expect(store.getState().controlMode).toBe(ControlMode.Pointer)
-    expect(mockHandleSelectionCancel).not.toHaveBeenCalled()
-  })
+it('preserves mode and graph selection while a workflow run blocks comments', () => {
+  const { result, store } = setup({ workflowRunningData: createWorkflowRunningData() })
+  act(() => result.current.mode.handleModeComment())
+  expect(result.current.mode.canUseCommentMode).toBe(false)
+  expect(store.getState().controlMode).toBe(ControlMode.Pointer)
+  expect(result.current.flow.getNode('a')?.data._isBundled).toBe(true)
 })

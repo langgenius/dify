@@ -15,6 +15,8 @@ from services.webapp_access_query_service import WebAppAccessPolicyGateway, WebA
 class EnterpriseWebAppAuthService(Protocol):
     def get_app_access_mode_by_id(self, app_id: str) -> WebAppSettings: ...
 
+    def update_app_access_mode(self, app_id: str, access_mode: str) -> object: ...
+
     def is_user_allowed_to_access_webapp(self, user_id: str, app_id: str) -> bool: ...
 
 
@@ -38,6 +40,18 @@ class EnterpriseWebAppAccessPolicyGateway(WebAppAccessPolicyGateway):
         try:
             return WebAppAccessMode(settings.access_mode)
         except ValueError as error:
+            raise WebAppAccessUnavailableError from error
+
+    def update_access_mode(self, app_id: str, access_mode: WebAppAccessMode) -> None:
+        try:
+            self._webapp_auth.update_app_access_mode(app_id, access_mode)
+        except (
+            EnterpriseServiceError,
+            httpx.RequestError,
+            json.JSONDecodeError,
+            UnicodeDecodeError,
+            ValidationError,
+        ) as error:
             raise WebAppAccessUnavailableError from error
 
     @override

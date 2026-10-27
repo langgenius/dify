@@ -1,76 +1,57 @@
 import type { TextChunkResponse } from '@/types/workflow'
+import { act } from '@testing-library/react'
 import { baseRunningData, renderWorkflowHook } from '../../../__tests__/workflow-test-env'
 import { useWorkflowTextChunk } from '../use-workflow-text-chunk'
 
-describe('useWorkflowTextChunk', () => {
-  it('appends text and activates the result tab', () => {
-    const { result, store } = renderWorkflowHook(() => useWorkflowTextChunk(), {
-      initialStoreState: {
-        workflowRunningData: baseRunningData({ resultText: 'Hello' }),
-      },
-    })
-
-    result.current.handleWorkflowTextChunk({ data: { text: ' World' } } as TextChunkResponse)
-
-    const state = store.getState().workflowRunningData!
-    expect(state.resultText).toBe('Hello World')
-    expect(state.resultTabActive).toBe(true)
+it.each([
+  {
+    label: 'unselected output',
+    text: ' World',
+    selector: undefined,
+    expected: 'Hello World',
+    key: 'end.answer',
+  },
+  {
+    label: 'different output',
+    text: '42',
+    selector: ['end', 'count'],
+    expected: 'Hello\n42',
+    key: 'end.count',
+  },
+  {
+    label: 'different output already separated',
+    text: '\n42',
+    selector: ['end', 'count'],
+    expected: 'Hello\n42',
+    key: 'end.count',
+  },
+  {
+    label: 'same output',
+    text: ' world',
+    selector: ['end', 'answer'],
+    expected: 'Hello world',
+    key: 'end.answer',
+  },
+])('appends $label and activates the result tab', ({ text, selector, expected, key }) => {
+  const { result, store } = renderWorkflowHook(() => useWorkflowTextChunk(), {
+    initialStoreState: {
+      workflowRunningData: baseRunningData({
+        resultText: 'Hello',
+        resultTextSelectorKey: 'end.answer',
+      }),
+    },
   })
+  const chunk: TextChunkResponse = {
+    event: 'text_chunk',
+    task_id: 'task-1',
+    workflow_run_id: 'run-1',
+    data: { text, from_variable_selector: selector },
+  }
+  act(() => result.current.handleWorkflowTextChunk(chunk))
 
-  it('inserts a line break when text chunks switch to a different output selector', () => {
-    const { result, store } = renderWorkflowHook(() => useWorkflowTextChunk(), {
-      initialStoreState: {
-        workflowRunningData: baseRunningData({
-          resultText: 'Hello',
-          resultTextSelectorKey: 'end.answer',
-        }),
-      },
-    })
-
-    result.current.handleWorkflowTextChunk({
-      data: { text: '42', from_variable_selector: ['end', 'count'] },
-    } as TextChunkResponse)
-
-    const state = store.getState().workflowRunningData!
-    expect(state.resultText).toBe('Hello\n42')
-    expect(state.resultTextSelectorKey).toBe('end.count')
-  })
-
-  it('does not add an extra line break when the incoming chunk already starts with one', () => {
-    const { result, store } = renderWorkflowHook(() => useWorkflowTextChunk(), {
-      initialStoreState: {
-        workflowRunningData: baseRunningData({
-          resultText: 'Hello',
-          resultTextSelectorKey: 'end.answer',
-        }),
-      },
-    })
-
-    result.current.handleWorkflowTextChunk({
-      data: { text: '\n42', from_variable_selector: ['end', 'count'] },
-    } as TextChunkResponse)
-
-    const state = store.getState().workflowRunningData!
-    expect(state.resultText).toBe('Hello\n42')
-    expect(state.resultTextSelectorKey).toBe('end.count')
-  })
-
-  it('does not insert a line break when text chunks stay on the same output selector', () => {
-    const { result, store } = renderWorkflowHook(() => useWorkflowTextChunk(), {
-      initialStoreState: {
-        workflowRunningData: baseRunningData({
-          resultText: 'Hello',
-          resultTextSelectorKey: 'end.answer',
-        }),
-      },
-    })
-
-    result.current.handleWorkflowTextChunk({
-      data: { text: ' world', from_variable_selector: ['end', 'answer'] },
-    } as TextChunkResponse)
-
-    const state = store.getState().workflowRunningData!
-    expect(state.resultText).toBe('Hello world')
-    expect(state.resultTextSelectorKey).toBe('end.answer')
+  expect(store.getState().workflowRunningData).toMatchObject({
+    resultText: expected,
+    resultTextSelectorKey: key,
+    resultTabActive: true,
   })
 })

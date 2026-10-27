@@ -62,7 +62,10 @@ def persist_app(session: Session, *, tenant_id: str, **values: object) -> str:
         "enable_site": False,
     }
     attributes.update(values)
-    session.add(App(**attributes))
+    app = App()
+    for key, value in attributes.items():
+        setattr(app, key, value)
+    session.add(app)
     session.commit()
     return app_id
 
@@ -189,7 +192,7 @@ def test_description_materializes_only_owned_config_and_closes_session(
             type=WorkflowType.WORKFLOW,
             version=Workflow.VERSION_DRAFT,
             created_by="account-id",
-            features="{}",
+            _features="{}",
             graph=json.dumps(
                 {
                     "nodes": [

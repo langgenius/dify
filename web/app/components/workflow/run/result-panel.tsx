@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalTraceSource } from './external-trace-row'
 import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -12,6 +13,7 @@ import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
+import { ExternalTraceRow } from './external-trace-row'
 import MetaData from './meta'
 import StatusPanel from './status'
 
@@ -39,6 +41,7 @@ export type ResultPanelProps = {
   execution_metadata?: any
   isListening?: boolean
   workflowRunId?: string
+  externalTrace?: ExternalTraceSource
   onOpenTracingTab?: () => void
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
@@ -67,6 +70,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   execution_metadata,
   isListening = false,
   workflowRunId,
+  externalTrace,
   onOpenTracingTab,
   handleShowIterationResultList,
   handleShowLoopResultList,
@@ -174,7 +178,9 @@ const ResultPanel: FC<ResultPanelProps> = ({
           tokens={total_tokens}
           steps={steps}
           showSteps={showSteps}
-        />
+        >
+          {externalTrace && <ExternalTraceRow source={externalTrace} />}
+        </MetaData>
       </div>
     </div>
   )

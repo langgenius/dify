@@ -38,15 +38,15 @@ def conversation_ref(sqlite_session_factory: sessionmaker[Session]) -> EndUserCo
             app_id=app.id,
             mode=AppMode.CHAT,
             name="Original name",
-            inputs=_INPUTS,
+            _inputs=dict(_INPUTS),
             introduction=None,
             from_source=ConversationFromSource.API,
             from_end_user_id=end_user.id,
             from_account_id=None,
-            created_at=_TIME - timedelta(days=1),
-            updated_at=_TIME,
             is_deleted=False,
         )
+        conversation.created_at = _TIME - timedelta(days=1)
+        conversation.updated_at = _TIME
         session.add(conversation)
         session.flush()
         return EndUserConversationRef(
@@ -60,22 +60,21 @@ def repository(sqlite_session_factory: sessionmaker[Session]) -> ConversationRep
 
 
 def _message(session: Session, ref: EndUserConversationRef, *, query: str, created_at: datetime) -> None:
-    session.add(
-        Message(
-            app_id=ref.app_id,
-            conversation_id=ref.conversation_id,
-            inputs={},
-            query=query,
-            message={},
-            message_unit_price=Decimal(0),
-            answer="",
-            answer_unit_price=Decimal(0),
-            currency="USD",
-            from_source=ConversationFromSource.API,
-            from_end_user_id=ref.end_user_id,
-            created_at=created_at,
-        )
+    message = Message(
+        app_id=ref.app_id,
+        conversation_id=ref.conversation_id,
+        _inputs={},
+        query=query,
+        message={},
+        message_unit_price=Decimal(0),
+        answer="",
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+        from_end_user_id=ref.end_user_id,
     )
+    message.created_at = created_at
+    session.add(message)
 
 
 def _rename(

@@ -1,5 +1,4 @@
 import contextvars
-import datetime
 import json
 import logging
 import secrets
@@ -7,7 +6,7 @@ import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -38,7 +37,7 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
-from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.repositories.factory import (
     DifyCoreRepositoryFactory,
     WorkflowExecutionRepository,
@@ -47,20 +46,31 @@ from core.repositories.factory import (
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
-from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
-from models.enums import WorkflowRunTriggeredFrom
+from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline, build_built_in_field_values
+from models.enums import DataSourceType, DocumentCreatedFrom, WorkflowRunTriggeredFrom
 from models.model import AppMode
 from services.data_source.provider_service import DatasourceProviderService
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
 logger = logging.getLogger(__name__)
 
 
 class PipelineGenerator(BaseAppGenerator):
-    def __init__(self, *, documents: PipelineDocumentStore, datasource_providers: DatasourceProviderService) -> None:
+    def __init__(
+        self,
+        *,
+        execution_driver: "WorkflowRunDriver",
+        documents: PipelineDocumentStore,
+        datasource_providers: DatasourceProviderService,
+    ) -> None:
+        self._execution_driver = execution_driver
         self._documents = documents
         self._datasource_providers = datasource_providers
 
@@ -152,13 +162,14 @@ class PipelineGenerator(BaseAppGenerator):
 
             for datasource_info in datasource_info_list:
                 position = DocumentService.get_documents_position(dataset.id, session)
+                document_created_from: DocumentCreatedFrom = DocumentCreatedFrom("rag-pipeline")
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
                     dataset_id=dataset.id,
                     built_in_field_enabled=dataset.built_in_field_enabled,
                     datasource_type=datasource_type,
                     datasource_info=datasource_info,
-                    created_from="rag-pipeline",
+                    created_from=document_created_from,
                     position=position,
                     account=user,
                     batch=batch,
@@ -200,7 +211,7 @@ class PipelineGenerator(BaseAppGenerator):
                     user_inputs=inputs,
                     variables=pipeline_config.rag_pipeline_variables,
                     tenant_id=pipeline.tenant_id,
-                    strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+                    strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
                 ),
                 files=[],
                 user_id=user.id,
@@ -631,18 +642,19 @@ class PipelineGenerator(BaseAppGenerator):
                         system_user_id = application_generate_entity.user_id
                     # workflow app
                     runner = PipelineRunner(
+                        execution_driver=self._execution_driver,
                         application_generate_entity=application_generate_entity,
                         queue_manager=queue_manager,
                         workflow_thread_pool_id=workflow_thread_pool_id,
                         variable_loader=variable_loader,
                         workflow=workflow,
                         system_user_id=system_user_id,
-                        workflow_execution_repository=workflow_execution_repository,
-                        workflow_node_execution_repository=workflow_node_execution_repository,
                         documents=self._documents,
                     )
 
-                    runner.run()
+                    self._execution_driver(
+                        runner, None, workflow_execution_repository, workflow_node_execution_repository
+                    )
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
@@ -692,7 +704,7 @@ class PipelineGenerator(BaseAppGenerator):
             return generate_task_pipeline.process()
         except ValueError as e:
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise GenerateTaskStoppedError()
+                raise GenerateTaskStoppedError() from e
             else:
                 logger.exception(
                     "Fails to process generate task pipeline, task_id: %r",
@@ -707,11 +719,11 @@ class PipelineGenerator(BaseAppGenerator):
         built_in_field_enabled: bool,
         datasource_type: DatasourceProviderType,
         datasource_info: Mapping[str, Any],
-        created_from: str,
+        created_from: DocumentCreatedFrom,
         position: int,
         account: Account | EndUser,
         batch: str,
-        document_form: str,
+        document_form: IndexStructureType,
     ):
         match datasource_type:
             case DatasourceProviderType.LOCAL_FILE:
@@ -724,11 +736,12 @@ class PipelineGenerator(BaseAppGenerator):
                 name = datasource_info.get("name", "untitled")
             case _:
                 raise ValueError(f"Unsupported datasource type: {datasource_type}")
+        document_data_source_type: DataSourceType = DataSourceType(datasource_type)
         document = Document(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             position=position,
-            data_source_type=datasource_type,
+            data_source_type=document_data_source_type,
             data_source_info=json.dumps(datasource_info),
             batch=batch,
             name=name,
@@ -736,17 +749,15 @@ class PipelineGenerator(BaseAppGenerator):
             created_by=account.id,
             doc_form=document_form,
         )
-        doc_metadata = {}
         if built_in_field_enabled:
-            doc_metadata = {
-                BuiltInField.document_name: name,
-                BuiltInField.uploader: account.name,
-                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.source: datasource_type,
-            }
-        if doc_metadata:
-            document.doc_metadata = doc_metadata
+            now = naive_utc_now()
+            document.doc_metadata = build_built_in_field_values(
+                document_name=name,
+                uploader=account.name,
+                upload_date=now,
+                last_update_date=now,
+                data_source_type=datasource_type,
+            )
         return document
 
     def _format_datasource_info_list(

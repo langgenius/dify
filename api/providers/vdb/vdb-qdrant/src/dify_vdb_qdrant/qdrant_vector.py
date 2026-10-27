@@ -227,6 +227,7 @@ class QdrantVector(BaseVector):
                         group_id or "",  # Ensure group_id is never None
                         Field.GROUP_KEY,
                     ),
+                    strict=False,
                 )
             ]
 
@@ -442,8 +443,12 @@ class QdrantVector(BaseVector):
             return []
 
         top_k = kwargs.get("top_k", 2)
+        if top_k <= 0:
+            return []
+
         seen_ids: set[str | int] = set()
         documents: list[Document] = []
+        keyword_results: list[list[rest.Record]] = []
 
         # Search each keyword separately and merge results.
         # This ensures each keyword gets its own search, preventing one keyword's
@@ -467,14 +472,29 @@ class QdrantVector(BaseVector):
                 with_vectors=True,
             )
             results = response[0]
+            keyword_results.append(results)
 
-            for result in results:
-                if result and result.id not in seen_ids:
-                    seen_ids.add(result.id)
-                    document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
-                    documents.append(document)
-                    if len(documents) >= top_k:
-                        return documents
+        # Select round-robin so a common first keyword cannot fill top_k before
+        # later keywords contribute their matches.
+        result_indexes = [0] * len(keyword_results)
+        while True:
+            found_result = False
+            for index, results in enumerate(keyword_results):
+                while result_indexes[index] < len(results):
+                    result = results[result_indexes[index]]
+                    result_indexes[index] += 1
+                    if result.id not in seen_ids:
+                        seen_ids.add(result.id)
+                        document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
+                        documents.append(document)
+                        found_result = True
+                        break
+                if len(documents) >= top_k:
+                    break
+            if len(documents) >= top_k:
+                break
+            if not found_result:
+                break
 
         return documents
 

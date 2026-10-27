@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, scoped_session
 from controllers.common.session import with_session
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
+from libs.external_api import document_errors
 from libs.login import current_account_with_tenant
 from models import App, AppMode
 from models.agent import AgentScope
@@ -116,10 +117,7 @@ def get_app_model[**P, R](
             app_mode = AppMode.value_of(app_model.mode)
 
             if mode is not None:
-                if isinstance(mode, list):
-                    modes = mode
-                else:
-                    modes = [mode]
+                modes = mode if isinstance(mode, list) else [mode]
 
                 if app_mode not in modes:
                     mode_values = {m.value for m in modes}
@@ -129,7 +127,7 @@ def get_app_model[**P, R](
 
             return view_func(*args, **kwargs)
 
-        return decorated_view
+        return document_errors(decorated_view, AppNotFoundError)
 
     if view is None:
         return decorator

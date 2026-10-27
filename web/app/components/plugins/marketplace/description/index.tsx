@@ -6,7 +6,7 @@ import { motion, useMotionValue, useSpring, useTransform } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useLocale, useTranslation } from '#i18n'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
-import { SubmitRequestDropdown } from '@/app/components/plugins/plugin-page/nav-operations'
+import { SubmitRequestMenu } from '@/app/components/plugins/plugin-page/nav-operations'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
 import PluginTypeSwitch from '../plugin-type-switch'
 import { MarketplaceSearchInput } from '../search-input'
@@ -241,7 +241,7 @@ const Description = ({
         <MarketplaceSearchInput className="w-64 shrink-0" />
         <div className="flex h-full shrink-0 items-center justify-end gap-4 pr-3.5 pl-4">
           <Separator decorative orientation="vertical" className="mx-0 h-4" />
-          <SubmitRequestDropdown dividerAfterFirst />
+          <SubmitRequestMenu dividerAfterFirst />
         </div>
       </div>
     </div>

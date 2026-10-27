@@ -28,7 +28,7 @@ const TabSliderNew: FC<TabSliderProps> = ({ ariaLabel, className, value, onChang
           key={option.value}
           value={option.value}
           data-testid={`tab-item-${option.value}`}
-          className="mr-1 h-8 justify-start gap-0 overflow-visible px-3 py-1.75 text-start text-[13px] leading-4.5 font-medium whitespace-normal text-text-tertiary transition-none hover:bg-state-base-hover hover:text-text-tertiary data-checked:border-components-main-nav-nav-button-border data-checked:bg-state-base-hover data-checked:text-components-main-nav-nav-button-text-active data-checked:shadow-xs"
+          className="mr-1 h-8 justify-start gap-0 overflow-visible px-3 py-1.75 text-start text-[13px] leading-4.5 font-medium whitespace-normal text-text-tertiary hover:bg-state-base-hover hover:text-text-tertiary data-checked:border-components-main-nav-nav-button-border data-checked:bg-state-base-hover data-checked:text-components-main-nav-nav-button-text-active data-checked:shadow-xs"
         >
           {option.icon}
           {option.text}

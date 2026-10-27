@@ -9,6 +9,7 @@ from sqlalchemy import Connection, event, select
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.errors.error import ProviderTokenNotInitError
 from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
 from core.plugin.impl import base as plugin_http
@@ -18,9 +19,9 @@ from graphon.model_runtime.errors.invoke import InvokeServerUnavailableError
 from models import App, AppMode, Tenant
 from models.provider import Provider, TenantDefaultModel
 from services.conversation_name_generator import generate_conversation_name
-from tests.unit_tests.services.conversation_name_fixtures import _MODEL, _PROVIDER, NamingPlugin
+from tests.helpers.unit.services.conversation_name_fixtures import _MODEL, _PROVIDER, NamingPlugin
 
-pytest_plugins = ("tests.unit_tests.services.conversation_name_fixtures",)
+pytest_plugins = ("tests.helpers.unit.services.conversation_name_fixtures",)
 
 
 @pytest.mark.parametrize("fail_invoke", [False, True], ids=["success", "provider-error"])
@@ -170,9 +171,7 @@ def test_provider_resolution_failure_closes_inner_session_and_preserves_caller_c
         enable_api=True,
     )
     with sqlite_session_factory.begin() as session:
-        session.add_all(
-            [tenant, target, Provider(tenant_id=tenant.id, provider_name="invalid/provider", is_valid=True)]
-        )
+        session.add_all([tenant, target])
 
     provider_sessions: list[Session] = []
     metadata: list[dict[str, object]] = []
@@ -181,7 +180,7 @@ def test_provider_resolution_failure_closes_inner_session_and_preserves_caller_c
         session: Session, _transaction: SessionTransaction, connection: Connection
     ) -> None:
         # Observe real default-model/provider SQL within the nested app context.
-        # With no default model, invalid provider config fails before plugin I/O.
+        # A missing default model fails before plugin I/O.
         assert session is db.session()
         assert connection.scalar(select(App.name).where(App.id == target.id)) == "Original app"
         provider_sessions.append(session)
@@ -198,7 +197,7 @@ def test_provider_resolution_failure_closes_inner_session_and_preserves_caller_c
         try:
             with use_credit_usage_metadata({"request_id": "name-request"}):
                 inherited_metadata = dict(get_credit_usage_metadata() or {})
-                with pytest.raises(ValueError, match="^Invalid plugin id invalid/provider$"):
+                with pytest.raises(ProviderTokenNotInitError, match="^Default model not found for llm$"):
                     generate_conversation_name(
                         tenant_id=target.tenant_id,
                         app_id=target.id,

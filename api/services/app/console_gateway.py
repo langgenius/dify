@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass, replace
-from typing import BinaryIO, Literal, override
+from typing import Any, BinaryIO, Final, Literal, override
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -15,6 +16,9 @@ from configs import dify_config
 from core.rbac import RBACPermission
 from enums import DeploymentEdition
 from events.app_event import app_was_updated
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
 from machinery.context import RequestContext
 from models.account import Account
 from models.agent import AgentIconType
@@ -38,7 +42,7 @@ from services.app.console_service import (
 )
 from services.app.import_service import AppDefinitionImports
 from services.app.response_gateway import AppResponseGateway
-from services.app_dsl_service import IMPORT_INFO_REDIS_KEY_PREFIX, AppDslService, PendingData
+from services.app_dsl_service import AppDslService, initialize_imported_app_creator_access
 from services.app_import_source import download_app_import_source, try_read_yaml
 from services.app_package_service import AppPackageService
 from services.app_service import AppService
@@ -58,6 +62,7 @@ from services.entities.dsl_entities import (
     AppImportPackage,
     AppImportParams,
     CheckDependenciesResult,
+    DraftGuardedImportParams,
     Import,
     ImportStatus,
 )
@@ -67,7 +72,76 @@ from services.rbac import contracts as rbac_contracts
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
+from services.workflow_service import WorkflowService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
+
+# Positions as the console editor lays out its templates (START_INITIAL_POSITION and
+# NODE_WIDTH_X_OFFSET in web/app/components/workflow/constants.ts).
+_START_POSITION: Final = (80, 282)
+_NODE_X_STEP: Final = 300
+_DISCARDED_IMPORT_STATUSES: Final = frozenset({ImportStatus.FAILED})
+# A copy that waits for version confirmation keeps nothing.
+_DISCARDED_COPY_STATUSES: Final = frozenset({ImportStatus.FAILED, ImportStatus.PENDING})
+
+
+def _editor_node(node_id: str, column: int, data: dict[str, Any]) -> dict[str, Any]:
+    """A node as the editor's generateNewNode shapes it."""
+    x, y = _START_POSITION
+    return {
+        "id": node_id,
+        "type": "custom",
+        "data": data,
+        "position": {"x": x + _NODE_X_STEP * column, "y": y},
+        "targetPosition": "left",
+        "sourcePosition": "right",
+    }
+
+
+def _editor_edge(source: str, target: str) -> dict[str, Any]:
+    return {
+        "id": f"{source}-{target}",
+        "source": source,
+        "sourceHandle": "source",
+        "target": target,
+        "targetHandle": "target",
+    }
+
+
+# The Chatflow template the console editor saves on first open (use-workflow-template.ts).
+_CHATFLOW_STARTER_GRAPH: Final[dict[str, Any]] = {
+    "nodes": [
+        _editor_node("start", 0, {"type": BuiltinNodeTypes.START, "title": "Start", "variables": []}),
+        _editor_node(
+            "llm",
+            1,
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "", "name": "", "mode": LLMMode.CHAT, "completion_params": {"temperature": 0.7}},
+                "prompt_template": [{"role": PromptMessageRole.SYSTEM, "text": ""}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+                "memory": {
+                    "window": {"enabled": False, "size": 10},
+                    "query_prompt_template": "{{#sys.query#}}\n\n{{#sys.files#}}",
+                },
+            },
+        ),
+        _editor_node(
+            "answer",
+            2,
+            {"type": BuiltinNodeTypes.ANSWER, "title": "Answer", "variables": [], "answer": "{{#llm.text#}}"},
+        ),
+    ],
+    "edges": [_editor_edge("start", "llm"), _editor_edge("llm", "answer")],
+}
+
+# The draft a new app starts with. A workflow starts empty: its entry (Start or a trigger) is chosen while building.
+_STARTER_DRAFT_GRAPHS: Final[dict[AppMode, dict[str, Any]]] = {
+    AppMode.WORKFLOW: {"nodes": [], "edges": []},
+    AppMode.ADVANCED_CHAT: _CHATFLOW_STARTER_GRAPH,
+}
+_STARTER_DRAFT_FEATURES: Final[dict[str, Any]] = {"retriever_resource": {"enabled": True}}
 
 
 @dataclass(frozen=True)
@@ -89,10 +163,6 @@ class ConsoleAppPermissions(AppPermissions):
 class EnterpriseConsoleAppAccess(ConsoleAppAccess):
     @override
     def require_import(self, context: RequestContext, kind: Literal["url", "dsl", "agent"]) -> None:
-        if kind == "dsl" and dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            apps = FeatureService.get_features(context.active_workspace_id, exclude_vector_space=True).apps
-            if 0 < apps.limit <= apps.size:
-                raise NoPermissionError("The number of apps has reached the limit of your subscription.")
         if not dify_config.RBAC_ENABLED:
             return
         permissions = (
@@ -228,8 +298,31 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         context: RequestContext,
         params: AppImportParams,
         *,
-        as_copy: bool = False,
         package: AppImportPackage | None = None,
+        preserve_agent_bindings: bool = False,
+    ) -> Import:
+        return self._import(
+            context,
+            params,
+            package=package,
+            preserve_agent_bindings=preserve_agent_bindings,
+            discarded=_DISCARDED_IMPORT_STATUSES,
+        )
+
+    @override
+    def import_copy(self, context: RequestContext, params: AppImportParams) -> Import:
+        return self._import(
+            context, params, package=None, preserve_agent_bindings=True, discarded=_DISCARDED_COPY_STATUSES
+        )
+
+    def _import(
+        self,
+        context: RequestContext,
+        params: AppImportParams,
+        *,
+        package: AppImportPackage | None,
+        preserve_agent_bindings: bool,
+        discarded: frozenset[ImportStatus],
     ) -> Import:
         account = self._import_actor(context)
         with self._session_factory() as session:
@@ -245,22 +338,22 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 icon_background=params.icon_background,
                 app_id=params.app_id,
                 package=package,
-                preserve_agent_bindings=as_copy,
+                preserve_agent_bindings=preserve_agent_bindings,
+                draft_hash=params.draft_hash if isinstance(params, DraftGuardedImportParams) else None,
             )
-            if result.status == ImportStatus.FAILED or (as_copy and result.status == ImportStatus.PENDING):
+            if result.status in discarded:
                 session.rollback()
             else:
                 session.commit()
+        initialize_imported_app_creator_access(
+            result, tenant_id=context.active_workspace_id, account_id=context.account_id
+        )
         return result
 
     @override
     def confirm_import(self, context: RequestContext, import_id: str) -> tuple[Import, bool]:
-        from extensions.ext_redis import redis_client
-
-        raw = redis_client.get(f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}")
-        pending = PendingData.model_validate_json(raw) if raw else None
         result = self.confirm_definition(context, import_id)
-        return result, pending is not None and pending.app_id is None
+        return result, result.app_created
 
     @override
     def confirm_definition(self, context: RequestContext, import_id: str) -> Import:
@@ -271,6 +364,9 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 session.rollback()
             else:
                 session.commit()
+        initialize_imported_app_creator_access(
+            result, tenant_id=context.active_workspace_id, account_id=context.account_id
+        )
         return result
 
     @override
@@ -341,7 +437,10 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         with self._session_factory() as session:
             app = require_console_app(session, context, app_id)
         return self._packages.export_app(
-            app_model=app, include_secret=options.include_secret, workflow_id=options.workflow_id
+            app_model=app,
+            include_secret=options.include_secret,
+            workflow_id=options.workflow_id,
+            preserve_agent_bindings=options.preserve_agent_bindings,
         )
 
     @override
@@ -386,6 +485,21 @@ class AppLifecycleGateway(AppLifecycle):
                 except IntegrityError as exc:
                     raise AgentNameConflictError() from exc
             return app_record(app, session=session, projection="detail-with-site")
+
+    @override
+    def create_draft(self, context: RequestContext, app_id: str) -> None:
+        with self._session_factory() as session:
+            app = require_console_app(session, context, app_id)
+            WorkflowService(self._session_factory).sync_draft_workflow(
+                app_model=app,
+                graph=copy.deepcopy(_STARTER_DRAFT_GRAPHS[AppMode(app.mode)]),
+                features=copy.deepcopy(_STARTER_DRAFT_FEATURES),
+                unique_hash=None,
+                account=console_app_actor(session, context),
+                environment_variables=[],
+                conversation_variables=[],
+                session=session,
+            )
 
     @override
     def delete(self, context: RequestContext, app_id: str) -> AppDeletion:

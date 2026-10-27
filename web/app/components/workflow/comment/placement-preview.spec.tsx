@@ -4,8 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '../__tests__/workflow-test-env'
 import { CommentPlacementPreview } from './placement-preview'
 
-vi.mock('next/navigation', () => ({ useParams: () => ({ appId: 'app-1' }) }))
-
 function renderPlacement(placing = true) {
   const onCancel = vi.fn()
   const result = renderWorkflowComponent(

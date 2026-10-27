@@ -23,6 +23,7 @@ from fields.conversation_fields import (
     ResultResponse,
     SimpleConversation,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
@@ -52,6 +53,7 @@ register_response_schema_models(web_ns, ConversationInfiniteScrollPagination, Re
 
 @web_ns.route("/conversations")
 class ConversationListApi(WebApiResource):
+    @error_responses(NotChatAppError)
     @web_ns.doc("Get Conversation List")
     @web_ns.doc(description="Retrieve paginated list of conversations for a chat application.")
     @web_ns.doc(params=query_params_from_model(ConversationListQuery))
@@ -60,7 +62,6 @@ class ConversationListApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "App Not Found or Not a Chat App",
             500: "Internal Server Error",
         }
@@ -99,12 +100,13 @@ class ConversationListApi(WebApiResource):
                     has_more=pagination.has_more,
                     data=conversations,
                 ).model_dump(mode="json")
-        except LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+        except LastConversationNotExistsError as caught_error:
+            raise NotFound("Last Conversation Not Exists.") from caught_error
 
 
 @web_ns.route("/conversations/<uuid:c_id>")
 class ConversationApi(WebApiResource):
+    @error_responses(NotChatAppError)
     @web_ns.doc("Delete Conversation")
     @web_ns.doc(description="Delete a specific conversation.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -113,7 +115,6 @@ class ConversationApi(WebApiResource):
             204: "Conversation deleted successfully",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Conversation Not Found or Not a Chat App",
             500: "Internal Server Error",
         }
@@ -126,13 +127,14 @@ class ConversationApi(WebApiResource):
         conversation_id = str(c_id)
         try:
             ConversationService.delete(app_model, conversation_id, end_user, session=db.session())
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
         return "", 204
 
 
 @web_ns.route("/conversations/<uuid:c_id>/name")
 class ConversationRenameApi(WebApiResource):
+    @error_responses(NotChatAppError, ConversationNotFoundHTTPError, ConversationFirstMessageNotFoundHTTPError)
     @web_ns.doc("Rename Conversation")
     @web_ns.doc(description="Rename a specific conversation with a custom name or auto-generate one.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -152,7 +154,6 @@ class ConversationRenameApi(WebApiResource):
             HTTPStatus.OK: "Conversation renamed successfully; model failure preserves the existing name.",
             HTTPStatus.BAD_REQUEST: "Bad Request",
             HTTPStatus.UNAUTHORIZED: "Unauthorized",
-            HTTPStatus.FORBIDDEN: "Forbidden",
             HTTPStatus.NOT_FOUND: (
                 "`conversation_not_found`: Conversation does not exist. "
                 "`conversation_first_message_not_found`: No first message is available for automatic naming."
@@ -194,6 +195,7 @@ class ConversationRenameApi(WebApiResource):
 
 @web_ns.route("/conversations/<uuid:c_id>/pin")
 class ConversationPinApi(WebApiResource):
+    @error_responses(NotChatAppError)
     @web_ns.doc("Pin Conversation")
     @web_ns.doc(description="Pin a specific conversation to keep it at the top of the list.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -202,7 +204,6 @@ class ConversationPinApi(WebApiResource):
             200: "Conversation pinned successfully",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Conversation Not Found or Not a Chat App",
             500: "Internal Server Error",
         }
@@ -217,14 +218,15 @@ class ConversationPinApi(WebApiResource):
 
         try:
             WebConversationService.pin(app_model, conversation_id, end_user, db.session())
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+        except ConversationNotExistsError as caught_error:
+            raise NotFound("Conversation Not Exists.") from caught_error
 
         return ResultResponse(result="success").model_dump(mode="json")
 
 
 @web_ns.route("/conversations/<uuid:c_id>/unpin")
 class ConversationUnPinApi(WebApiResource):
+    @error_responses(NotChatAppError)
     @web_ns.doc("Unpin Conversation")
     @web_ns.doc(description="Unpin a specific conversation to remove it from the top of the list.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -233,7 +235,6 @@ class ConversationUnPinApi(WebApiResource):
             200: "Conversation unpinned successfully",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Conversation Not Found or Not a Chat App",
             500: "Internal Server Error",
         }

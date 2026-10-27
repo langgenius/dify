@@ -16,7 +16,7 @@ const Header = () => {
     const { isPreparingDataSource, setIsPreparingDataSource } = workflowStore.getState()
     if (isPreparingDataSource) setIsPreparingDataSource?.(false)
     handleCancelDebugAndPreviewPanel()
-  }, [workflowStore])
+  }, [workflowStore, handleCancelDebugAndPreviewPanel])
 
   return (
     <div className="flex items-center gap-x-2 pt-4 pr-3 pl-4">

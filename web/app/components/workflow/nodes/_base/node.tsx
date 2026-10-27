@@ -2,12 +2,14 @@ import type { FC, ReactElement } from 'react'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { cloneElement, memo, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
@@ -60,9 +62,9 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const appId = useStore((s) => s.appId)
+  const appId = useAtomValue(editorAppIdAtom)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
-  const { nodePanelPresence } = useCollaboration(appId as string, canEdit)
+  const { nodePanelPresence } = useCollaboration(appId, canEdit)
   const controlMode = useStore((s) => s.controlMode)
   const isContextMenuTarget = useStore(
     (s) => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id,

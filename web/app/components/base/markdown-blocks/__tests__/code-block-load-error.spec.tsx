@@ -1,8 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { Theme } from '@/types/app'
 import { CodeBlock } from '../code-block'
 
-vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: Theme.light }) }))
 vi.mock('echarts-for-react', () => {
   throw new Error('Chart chunk unavailable')
 })

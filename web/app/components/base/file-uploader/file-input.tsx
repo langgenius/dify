@@ -13,7 +13,7 @@ const FileInput = ({ fileConfig }: FileInputProps) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const targetFiles = e.target.files
 
-    if (targetFiles) {
+    if (targetFiles?.length) {
       if (fileConfig.number_limits) {
         for (let i = 0; i < targetFiles.length; i++) {
           if (i + 1 + files.length <= fileConfig.number_limits)
