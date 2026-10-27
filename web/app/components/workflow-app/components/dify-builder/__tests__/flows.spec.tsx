@@ -18,6 +18,7 @@ import { DifyBuilderProvider } from '../provider'
 import { difyBuilderCanStartFixAtom, difyBuilderStartRunFixAtom } from '../store'
 
 const mocks = vi.hoisted(() => ({
+  editTargetNodeIds: [] as string[],
   action: vi.fn(),
   create: vi.fn(),
   conversation: vi.fn(),
@@ -26,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   stream: vi.fn(),
   refreshCanvas: vi.fn(async (): Promise<WorkflowDraftRefreshResult> => 'refreshed'),
   setCanvasReadOnly: vi.fn(),
+  setBuilderEditTargetNodeIds: vi.fn(),
   setBuilderViewportManuallyChanged: vi.fn(),
   invalidateWorkflowDraftSync: vi.fn(),
   setShowPanel: vi.fn(),
@@ -82,18 +84,23 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
       builderViewportManuallyChanged: false,
+      builderEditTargetNodeIds: mocks.editTargetNodeIds,
+      setCanvasReadOnly: mocks.setCanvasReadOnly,
+      setBuilderEditTargetNodeIds: mocks.setBuilderEditTargetNodeIds,
       setBuilderViewportManuallyChanged: mocks.setBuilderViewportManuallyChanged,
     }),
   }),
   useStore: <T,>(
     selector: (state: {
       setCanvasReadOnly: typeof mocks.setCanvasReadOnly
+      setBuilderEditTargetNodeIds: typeof mocks.setBuilderEditTargetNodeIds
       invalidateWorkflowDraftSync: typeof mocks.invalidateWorkflowDraftSync
       setShowDifyBuilderPanel: typeof mocks.setShowPanel
     }) => T,
   ) =>
     selector({
       setCanvasReadOnly: mocks.setCanvasReadOnly,
+      setBuilderEditTargetNodeIds: mocks.setBuilderEditTargetNodeIds,
       invalidateWorkflowDraftSync: mocks.invalidateWorkflowDraftSync,
       setShowDifyBuilderPanel: mocks.setShowPanel,
     }),
@@ -366,6 +373,10 @@ const getSubmitButton = (name: string) => screen.getByRole('button', { name })
 describe('Dify Builder Build, Edit, and Fix flows', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    mocks.editTargetNodeIds = []
+    mocks.setBuilderEditTargetNodeIds.mockImplementation((nodeIds: string[]) => {
+      mocks.editTargetNodeIds = nodeIds
+    })
     mocks.conversation.mockResolvedValue(conversationPage())
     window.sessionStorage.clear()
   })
@@ -781,6 +792,65 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
     },
   )
+
+  it('releases the canvas lock when leaving a restored session during refresh', async () => {
+    const waiting = createSessionView({
+      canvas_read_only: true,
+      phase: 'modify',
+      run_status: 'waiting_confirmation',
+      version: 6,
+    })
+    mocks.get.mockResolvedValue(waiting)
+    let finishRefresh!: (result: WorkflowDraftRefreshResult) => void
+    mocks.refreshCanvas.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishRefresh = resolve
+      }),
+    )
+    window.sessionStorage.setItem(
+      'dify-builder:v1:workspace-1:user-1:app-1:active-session-id',
+      waiting.session_id,
+    )
+    const { unmount } = renderFlow(1)
+    await waitFor(() => expect(mocks.refreshCanvas).toHaveBeenCalledOnce())
+    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(true)
+
+    unmount()
+    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
+    await act(async () => finishRefresh('refreshed'))
+    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
+  })
+
+  it('resets a failed canvas refresh and allows a new Builder request', async () => {
+    const waiting = createSessionView({
+      canvas_read_only: false,
+      phase: 'modify',
+      run_status: 'waiting_input',
+      version: 6,
+    })
+    mocks.get.mockResolvedValue(waiting)
+    mocks.refreshCanvas.mockResolvedValueOnce('failed')
+    window.sessionStorage.setItem(
+      'dify-builder:v1:workspace-1:user-1:app-1:active-session-id',
+      waiting.session_id,
+    )
+    const user = userEvent.setup()
+    renderFlow(1)
+    await screen.findByRole('button', { name: 'workflow.common.retryCanvasSync' })
+    expect(getComposer()).toBeDisabled()
+    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(true)
+
+    await user.click(screen.getByRole('button', { name: 'difyBuilder.reset' }))
+
+    expect(
+      screen.queryByRole('button', { name: 'workflow.common.retryCanvasSync' }),
+    ).not.toBeInTheDocument()
+    expect(getComposer()).toBeEnabled()
+    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
+    expect(
+      window.sessionStorage.getItem('dify-builder:v1:workspace-1:user-1:app-1:active-session-id'),
+    ).toBeNull()
+  })
 
   it('restores completed and active progress on refresh, then continues without regressing queued updates', async () => {
     const processing = createSessionView({ version: 2, run_status: 'processing' })

@@ -321,7 +321,16 @@ export type DifyBuilderWorkflowEventResponse = {
 }
 
 export type DifyBuilderCanvasEventResponse = {
-  data: DifyBuilderCanvasEventData
+  data:
+    | ({
+        event: 'graph_changed'
+      } & DifyBuilderGraphChangedEventData)
+    | ({
+        event: 'edit_targets_changed'
+      } & DifyBuilderEditTargetsChangedEventData)
+    | ({
+        event: 'publish_workflow'
+      } & DifyBuilderPublishedEventData)
   event: 'canvas'
 }
 
@@ -687,10 +696,27 @@ export type DifyBuilderWorkflowEventData = {
   session_id: string
 }
 
-export type DifyBuilderCanvasEventData = {
+export type DifyBuilderGraphChangedEventData = {
   at_version: number
-  event: CanvasEvent
-  node_id?: string | null
+  cause: 'apply' | 'restore'
+  event: 'graph_changed'
+  operation_id: string
+  revision: number
+  session_id: string
+}
+
+export type DifyBuilderEditTargetsChangedEventData = {
+  at_version: number
+  event: 'edit_targets_changed'
+  node_ids: Array<string>
+  operation_id: string
+  revision: number
+  session_id: string
+}
+
+export type DifyBuilderPublishedEventData = {
+  at_version: number
+  event: 'publish_workflow'
   operation_id: string
   revision: number
   session_id: string
@@ -1177,18 +1203,6 @@ export type WorkflowStreamError = {
   status: number
   workflow_run_id?: string | null
 }
-
-export type CanvasEvent =
-  | 'add_knowledge_node'
-  | 'add_llm_node'
-  | 'add_output_node'
-  | 'add_start_node'
-  | 'apply_edit_plan'
-  | 'apply_error_fix'
-  | 'highlight_edit_target'
-  | 'publish_workflow'
-  | 'reset_build_canvas'
-  | 'revert_checkpoint'
 
 export type DifyBuilderExecutionProgressResponse = {
   activities?: Array<DifyBuilderExecutionActivityResponse>

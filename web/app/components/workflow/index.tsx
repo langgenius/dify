@@ -640,7 +640,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         <CandidateNode />
         <CommentManager />
         <div
-          className="pointer-events-none absolute top-0 left-0 z-10 flex w-12 items-center justify-center p-1 pl-2"
+          className="pointer-events-none absolute inset-s-0 top-0 z-10 flex w-12 items-center justify-center p-1 ps-2"
           style={{ height: controlHeight }}
         >
           <Control />

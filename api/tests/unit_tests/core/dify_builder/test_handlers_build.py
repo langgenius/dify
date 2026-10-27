@@ -211,7 +211,7 @@ def test_capability_check_automatically_advances_to_goal_analysis() -> None:
     assert "form" in kinds
     assert "challenge" not in kinds
     assert "assistant_turn" in kinds
-    assert {"event": "reset_build_canvas"} in events
+    assert events == []
 
 
 def test_build_registry_maps_capability_check() -> None:
@@ -435,7 +435,7 @@ def test_resource_recommendation_confirm_creates_internal_checkpoint_and_plan() 
     assert {i.kind for i in res.items} == {"decision", "plan", "assistant_turn"}
 
 
-def test_plan_approval_approve_builds_graph_and_reveals_nodes() -> None:
+def test_plan_approval_approve_builds_graph_and_notifies_once() -> None:
     from services.dify_builder.application.handlers_build import handle_plan_approval
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -455,14 +455,7 @@ def test_plan_approval_approve_builds_graph_and_reveals_nodes() -> None:
     assert res.context.last_structure_fingerprint != ""
     assert len(dify.graph["nodes"]) == 4
     assert len(dify.graph["edges"]) == 3
-    names = [str(e["event"]) for e in events]
-    assert names[0] == "add_start_node"
-    assert [n for n in names if n.startswith("add_")] == [
-        "add_start_node",
-        "add_knowledge_node",
-        "add_llm_node",
-        "add_output_node",
-    ]
+    assert events == [{"event": "graph_changed", "cause": "apply"}]
     assert not any(i.kind in {"change_set", "plan"} for i in res.items)
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
     assert "Workflow built on the canvas" in english_text(assistant.payload["reply_text"])
@@ -757,7 +750,7 @@ def test_execution_revert_records_intent_only() -> None:
     res = handle_execution(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_REVERTED
     assert any(i.kind == "decision" for i in res.items)
-    assert {"event": "revert_checkpoint"} in events
+    assert events == [{"event": "edit_targets_changed", "node_ids": []}]
 
 
 def test_test_and_repair_pass_goes_to_review_with_real_run() -> None:
@@ -1181,7 +1174,7 @@ def test_await_repair_undo_reverts() -> None:
     res = handle_await_repair(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_REVERTED
     assert any(i.kind == "decision" for i in res.items)
-    assert {"event": "revert_checkpoint"} in events
+    assert events == [{"event": "edit_targets_changed", "node_ids": []}]
 
 
 def test_await_repair_ignores_unknown_action() -> None:
@@ -1290,7 +1283,7 @@ def test_review_revert_records_intent_only() -> None:
     s = _seed_build_session(repo, PcState.BUILD_REVIEW, built_node_ids=["start", "llm", "end"])
     res = handle_review(env, Turn(action=Action(kind="undo", base_version=1), actor=_actor()), *repo.get_session(s.id))
     assert res.next == PcState.BUILD_REVERTED
-    assert {"event": "revert_checkpoint"} in events
+    assert events == [{"event": "edit_targets_changed", "node_ids": []}]
 
 
 def test_publish_calls_dify_and_completes_with_text_receipt() -> None:
@@ -2874,24 +2867,15 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
     the handler uncaught and the advance died mid-step; now it is a reply and
     the plan stays approvable, so re-approving regenerates the graph.
 
-    ``apply_repair`` also streams a canvas marker per applied intent BEFORE
-    its preflight raises (on_canvas=env.emit_canvas), so by the time this
-    exception is caught the client has already seen markers for mutations
-    that were never written. The fake mirrors that ordering (calls on_canvas
-    once, then raises) so the assertion below covers the real sequence: the
-    handler must revert the client's canvas back to the plan-approval
-    checkpoint."""
+    The rejected graph never commits, so there is no canvas change or
+    checkpoint restore notification."""
     from core.dify_builder.errors import DraftWouldNotStartError
     from services.dify_builder.application.handlers_build import handle_plan_approval
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     dify = FakeBuildDifyPort()
 
-    def would_not_start(
-        *_a: object, on_canvas: Callable[[dict[str, object]], None] | None = None, **_k: object
-    ) -> NoReturn:
-        if on_canvas is not None:
-            on_canvas({"event": "add_node", "node_id": "llm"})
+    def would_not_start(*_a: object, **_k: object) -> NoReturn:
         raise DraftWouldNotStartError(
             "the draft would not start: node 'llm' (llm): 2 validation errors for LLMNodeData"
         )
@@ -2913,10 +2897,8 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
     assert assistant.payload["execution"]["status"] == "error"
     assert "The workflow can't start" in english_text(assistant.payload["reply_text"])
     assert "node 'llm' (llm)" in english_text(assistant.payload["reply_text"])
-    # The already-streamed add_node marker precedes the revert: the handler
-    # tells the client to fall back to the checkpoint AFTER apply_repair's
-    # own per-intent markers, same as production ordering.
-    assert [e["event"] for e in events] == ["add_node", "revert_checkpoint"]
+    # Rejected mutations emit no graph notification.
+    assert events == []
 
 
 def test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_cannot_start() -> None:
@@ -2924,18 +2906,14 @@ def test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_canno
     draft was never checked for startability -- the generated intents just
     did not apply. Calling that "The workflow can't start" sends the user
     looking for a broken node that does not exist. Same recovery (nothing
-    written, revert the streamed markers, plan still approvable), honest
+    written, no canvas notification, plan still approvable), honest
     reason."""
     from services.dify_builder.application.handlers_build import handle_plan_approval
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
     dify = FakeBuildDifyPort()
 
-    def does_not_apply(
-        *_a: object, on_canvas: Callable[[dict[str, object]], None] | None = None, **_k: object
-    ) -> NoReturn:
-        if on_canvas is not None:
-            on_canvas({"event": "add_node", "node_id": "llm"})
+    def does_not_apply(*_a: object, **_k: object) -> NoReturn:
         raise ValueError("node not found: x")
 
     dify.apply_repair = does_not_apply
@@ -2955,7 +2933,7 @@ def test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_canno
     assert assistant.payload["execution"]["status"] == "error"
     assert "Couldn't apply the workflow" in english_text(assistant.payload["reply_text"])
     assert "node not found: x" in english_text(assistant.payload["reply_text"])
-    assert [e["event"] for e in events] == ["add_node", "revert_checkpoint"]
+    assert events == []
 
 
 # The ESQ1-303 shape: start -> if-else -> (two arms) -> end. With both if-else

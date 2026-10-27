@@ -17,7 +17,6 @@ import {
   difyBuilderCanComposeAtom,
   difyBuilderCanStartFixAtom,
   difyBuilderCanvasAppliedViewAtom,
-  difyBuilderCanvasLockedAtom,
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderCanvasRefreshGenerationAtom,
   difyBuilderCanvasRefreshingAtom,
@@ -79,6 +78,7 @@ const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
     canEdit: true,
     enabled: true,
     getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
+    retryCanvasRefresh: vi.fn(),
     session: {
       onCanvasRefreshed: vi.fn(),
       refresh: vi.fn(async () => true),
@@ -103,7 +103,10 @@ describe('Dify Builder store', () => {
     const runtime = createRuntime(vi.fn(async () => true))
     store.set(difyBuilderRuntimeAtom, runtime)
     store.set(difyBuilderSessionViewAtom, createSessionView({ canvas_read_only: false }))
-    store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 1 })
+    store.set(difyBuilderCanvasAppliedViewAtom, {
+      sessionId: 'session-1',
+      version: 1,
+    })
     const history: ConversationItem[] = [
       {
         seq: 0,
@@ -133,7 +136,10 @@ describe('Dify Builder store', () => {
       difyBuilderSessionViewAtom,
       createSessionView({ run_status: 'failed', canvas_read_only: false }),
     )
-    store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 1 })
+    store.set(difyBuilderCanvasAppliedViewAtom, {
+      sessionId: 'session-1',
+      version: 1,
+    })
     expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
     expect(
       await store.set(difyBuilderStartPromptAtom, { text: 'Try again', model: builderModel }),
@@ -241,7 +247,10 @@ describe('Dify Builder store', () => {
         actions: [],
       }),
     )
-    store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 1 })
+    store.set(difyBuilderCanvasAppliedViewAtom, {
+      sessionId: 'session-1',
+      version: 1,
+    })
     expect(store.get(difyBuilderNativeCancelAtom)).toBeUndefined()
     expect(
       await store.set(difyBuilderSubmitActionAtom, 'cancel_test', {}, englishResponseCopy),
@@ -274,7 +283,10 @@ describe('Dify Builder store', () => {
           actions: [{ id: 'cancel_test', label: 'Cancel test', kind: 'destructive' }],
         }),
       )
-      store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 1 })
+      store.set(difyBuilderCanvasAppliedViewAtom, {
+        sessionId: 'session-1',
+        version: 1,
+      })
       expect(store.get(difyBuilderNativeCancelAtom)).toBeUndefined()
       expect(
         await store.set(difyBuilderSubmitActionAtom, 'cancel_test', {}, englishResponseCopy),
@@ -303,7 +315,10 @@ describe('Dify Builder store', () => {
         test_execution: createNativeReceipt({ status: 'waiting', wait_reason: 'configuration' }),
       }),
     )
-    store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 1 })
+    store.set(difyBuilderCanvasAppliedViewAtom, {
+      sessionId: 'session-1',
+      version: 1,
+    })
     expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
     expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
     expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
@@ -323,25 +338,28 @@ describe('Dify Builder store', () => {
         difyBuilderSessionViewAtom,
         createSessionView({ phase: 'test', run_status: 'waiting_input', version: 2 }),
       )
-      expect(store.get(difyBuilderCanvasLockedAtom)).toBe(true)
       expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
       expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
         false,
       )
 
-      store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 1 })
+      store.set(difyBuilderCanvasAppliedViewAtom, {
+        sessionId: 'session-1',
+        version: 1,
+      })
       expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
         false,
       )
-      store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: 'session-1', version: 2 })
+      store.set(difyBuilderCanvasAppliedViewAtom, {
+        sessionId: 'session-1',
+        version: 2,
+      })
       store.set(difyBuilderCanvasRefreshFailedAtom, true)
       expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
         false,
       )
-      expect(store.get(difyBuilderCanvasLockedAtom)).toBe(true)
 
       store.set(difyBuilderCanvasRefreshFailedAtom, false)
-      expect(store.get(difyBuilderCanvasLockedAtom)).toBe(false)
       expect(await store.set(difyBuilderSubmitActionAtom, actionId, {}, englishResponseCopy)).toBe(
         true,
       )
@@ -507,7 +525,7 @@ describe('Dify Builder store', () => {
     expect(runtime.session.startFix).toHaveBeenCalledTimes(2)
   })
 
-  it('makes an interrupted execution resettable without releasing its canvas lock', () => {
+  it('allows interrupted command recovery without treating it as an active interaction', () => {
     const store = createStore()
 
     store.set(difyBuilderSessionViewAtom, createSessionView({ run_status: 'processing' }))
@@ -523,7 +541,6 @@ describe('Dify Builder store', () => {
     )
 
     expect(store.get(difyBuilderInteractionBusyAtom)).toBe(false)
-    expect(store.get(difyBuilderCanvasLockedAtom)).toBe(true)
   })
 
   it('treats thinking as active and only enables chat at conversational gates', () => {

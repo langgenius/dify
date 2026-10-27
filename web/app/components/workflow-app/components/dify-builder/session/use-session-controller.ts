@@ -1,11 +1,11 @@
 'use client'
 
 import type {
-  DifyBuilderCanvasEventData,
   DifyBuilderReceiptSnapshot,
   DifyBuilderStreamEventResponse,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type {
+  CanvasEventData,
   ChecklistErrorPayload,
   ConversationItem,
   DifyBuilderSessionController,
@@ -18,7 +18,7 @@ import { queryClientAtom } from 'jotai-tanstack-query'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
-import { difyBuilderCanvasReadyAtom } from '../store'
+import { difyBuilderCanvasAppliedViewAtom, difyBuilderCanvasReadyAtom } from '../store'
 import {
   createBuildSession,
   createChecklistFixSession,
@@ -117,6 +117,7 @@ export function useDifyBuilderSessionController(
   runEvents?: SessionRunEvents,
 ): DifyBuilderSessionController {
   const store = useStore()
+  const onSessionStateChanged = runEvents?.onSessionStateChanged
   const observedView = useAtomValue(difyBuilderSessionViewAtom)
   // Keep native observation alive through terminal history hydration. Command
   // requests have a separate controller and never own this subscription.
@@ -137,8 +138,7 @@ export function useDifyBuilderSessionController(
   const streamingTurnBuffer = useDifyBuilderStreamingTurnBuffer()
   const abortRef = useRef<AbortController | null>(null)
   const canvasCursorRef = useRef<
-    | Pick<DifyBuilderCanvasEventData, 'at_version' | 'operation_id' | 'revision' | 'session_id'>
-    | undefined
+    Pick<CanvasEventData, 'at_version' | 'operation_id' | 'revision' | 'session_id'> | undefined
   >(undefined)
   const nativeObservationRef = useRef(0)
   const pendingActionRef = useRef<{ signature: string; id: string } | null>(null)
@@ -193,6 +193,7 @@ export function useDifyBuilderSessionController(
       // durable conversation rows have their own paginated owner.
       if (observedAtStart === 'native' && !preserveReceipt) nativeObservationRef.current += 1
       setView(projected)
+      onSessionStateChanged?.(projected)
       const canvasCursor = canvasCursorRef.current
       if (
         canvasCursor &&
@@ -204,7 +205,7 @@ export function useDifyBuilderSessionController(
       setActiveSessionId(projected.session_id)
       return true
     },
-    [setActiveSessionId, setView, store],
+    [onSessionStateChanged, setActiveSessionId, setView, store],
   )
 
   const confirmLocalUserMessage = useCallback(
@@ -388,6 +389,7 @@ export function useDifyBuilderSessionController(
           outcome.conversationStartSeq = currentItems.at(-1)?.seq ?? -1
           setActiveSessionId(event.data.session_id)
           setActiveCommand(event.data)
+          runEvents?.onSessionStateChanged?.(event.data)
           setLocalUserMessage((current) =>
             current?.sessionId === null
               ? { ...current, sessionId: event.data.session_id }
@@ -842,6 +844,7 @@ export function useDifyBuilderSessionController(
       // projection makes the canvas read-only. It also drains in-flight saves.
       const preparation = prepareDraft ? prepareCommand?.(true, controller.signal) : undefined
       setIsBusy(true)
+      runEvents?.onCommandStarted?.()
       setLastError('')
       store.set(difyBuilderSessionErrorCodeAtom, null)
       let commandStarted = false
@@ -1000,8 +1003,8 @@ export function useDifyBuilderSessionController(
       } finally {
         if (abortRef.current === controller) {
           abortRef.current = null
-          runEvents?.finishCommand()
           setIsBusy(false)
+          runEvents?.finishCommand()
         }
       }
     },
@@ -1117,6 +1120,7 @@ export function useDifyBuilderSessionController(
       abortRef.current = controller
       const preparation = prepareCommand?.(false, controller.signal)
       setIsBusy(true)
+      runEvents?.onCommandStarted?.()
       setLastError('')
       store.set(difyBuilderSessionErrorCodeAtom, null)
       try {
@@ -1132,6 +1136,8 @@ export function useDifyBuilderSessionController(
           setConversation([])
           runEvents?.reset()
         }
+        // Explicit recovery always revalidates the canvas.
+        store.set(difyBuilderCanvasAppliedViewAtom, null)
         const outcome = await reconcileSession(normalizedSessionId, controller, true)
         if (controller.signal.aborted) return false
         if (outcome?.terminalEvent === 'command_finished') return outcome.stateApplied === true
@@ -1154,8 +1160,8 @@ export function useDifyBuilderSessionController(
       } finally {
         if (abortRef.current === controller) {
           abortRef.current = null
-          runEvents?.finishCommand()
           setIsBusy(false)
+          runEvents?.finishCommand()
         }
       }
     },
@@ -1434,10 +1440,10 @@ export function useDifyBuilderSessionController(
     setView(null)
     setLastError('')
     store.set(difyBuilderSessionErrorCodeAtom, null)
+    setIsBusy(false)
     runEvents?.reset()
     canvasCursorRef.current = undefined
     traceRef.current.clear()
-    setIsBusy(false)
   }, [
     executionProgress,
     reasoningBuffer,

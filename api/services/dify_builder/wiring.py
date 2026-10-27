@@ -519,8 +519,9 @@ def _progress_event(raw: bytes) -> tuple[str, object] | None:
             "revision": data.get("revision", 0),
             "event": data.get("event"),
         }
-        if data.get("node_id") is not None:
-            event["node_id"] = data["node_id"]
+        for field in ("cause", "node_ids"):
+            if data.get(field) is not None:
+                event[field] = data[field]
         return kind, event
     if kind == "agent_message":
         event = {

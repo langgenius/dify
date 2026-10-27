@@ -158,41 +158,6 @@ if TYPE_CHECKING:
 __all__ = ["ConfirmedLaunchRecorder", "WorkflowServiceDifyPort"]
 
 
-_CREATE_NODE_CANVAS_EVENTS: dict[str, CanvasEvent] = {
-    BuiltinNodeTypes.START: CanvasEvent.ADD_START_NODE,
-    BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: CanvasEvent.ADD_KNOWLEDGE_NODE,
-    BuiltinNodeTypes.LLM: CanvasEvent.ADD_LLM_NODE,
-    BuiltinNodeTypes.END: CanvasEvent.ADD_OUTPUT_NODE,
-}
-
-
-def _canvas_event_for_intent(intent: MutationIntent) -> CanvasEvent:
-    """Map an applied ``MutationIntent`` to the canvas event that narrates it
-    (spec Sec 6). ``create_node`` dispatches by ``node_type`` to the matching
-    ``add_*_node`` event; ``set_node_config`` (Fix's only verb today) maps to
-    ``apply_error_fix``; every other verb (``delete_node``/``connect``/
-    ``insert_between``) and any unmapped ``node_type`` default to the
-    generic ``apply_edit_plan`` batch-mutation event.
-    """
-    if intent.op == "create_node":
-        return _CREATE_NODE_CANVAS_EVENTS.get(intent.args.get("node_type", ""), CanvasEvent.APPLY_EDIT_PLAN)
-    if intent.op == "set_node_config":
-        return CanvasEvent.APPLY_ERROR_FIX
-    return CanvasEvent.APPLY_EDIT_PLAN
-
-
-def _canvas_payload(intent: MutationIntent, changed: list[str]) -> dict[str, Any]:
-    """Build the ``{"event": ..., "node_id"?/"edge"?}`` dict passed to ``on_canvas``."""
-    payload: dict[str, Any] = {"event": str(_canvas_event_for_intent(intent))}
-    if intent.op == "connect":
-        payload["edge"] = {"source": intent.args.get("from_node"), "target": intent.args.get("to_node")}
-    elif intent.op == "delete_node":
-        payload["node_id"] = intent.args.get("node_id")
-    else:  # create_node | insert_between | set_node_config
-        payload["node_id"] = changed[0] if changed else None
-    return payload
-
-
 def _session_factory() -> sessionmaker[Session]:
     """One session per adapter call -- never shared/held across calls."""
     return sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -1108,7 +1073,6 @@ class WorkflowServiceDifyPort:
         intents = [intent for intent in intents if not _already_present(intent)]
 
         changed_nodes: list[str] = []
-        canvas_events: list[dict[str, Any]] = []
         # The nodes whose DATA this batch wrote, which is a narrower set
         # than the change set and is kept separately for that reason: the
         # preflight below gives a node in it no exemption at all, so an id
@@ -1130,8 +1094,6 @@ class WorkflowServiceDifyPort:
                 intent.op == "insert_between" and intent.args.get("reuse_existing") is True
             ):
                 written_nodes.extend(changed)
-            if on_canvas is not None:
-                canvas_events.append(_canvas_payload(intent, changed))
 
         from services.dify_builder.resource_grounding import validate_workspace_resources
 
@@ -1334,9 +1296,8 @@ class WorkflowServiceDifyPort:
             WorkflowDraftCoordinationService.kick(coordination_id)
         notify_workflow_draft_changed(updated, previous_graph=committed_previous_graph)
 
-        if on_canvas is not None:
-            for event in canvas_events:
-                on_canvas(event)
+        if on_canvas is not None and graph != committed_previous_graph:
+            on_canvas({"event": str(CanvasEvent.GRAPH_CHANGED), "cause": "apply"})
 
         return ApplyResult(
             changed_nodes=changed_nodes,

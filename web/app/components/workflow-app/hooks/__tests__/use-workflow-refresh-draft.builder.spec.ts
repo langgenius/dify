@@ -2,7 +2,8 @@ import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode } from 'react'
 import type { WorkflowDraftRefreshResult } from '../use-workflow-refresh-draft'
 import type { ConversationVariable } from '@/app/components/workflow/types'
-import { act, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { createElement, useCallback } from 'react'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
@@ -18,7 +19,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { DifyBuilderCanvasRefreshSync } from '../../components/dify-builder/provider/canvas-sync'
+import { useDifyBuilderCanvasRefresh } from '../../components/dify-builder/provider/use-canvas-refresh'
 import { createSessionView } from '../../components/dify-builder/session/__tests__/fixtures'
 import { difyBuilderSessionViewAtom } from '../../components/dify-builder/session/state'
 import {
@@ -89,10 +90,12 @@ const BuilderRefreshHarness = ({ onRefreshed }: { onRefreshed: () => void }) => 
       }),
     [handleRefreshWorkflowDraft],
   )
-  return createElement(DifyBuilderCanvasRefreshSync, {
-    onRefreshCanvas: refresh,
-    onCanvasRefreshed: onRefreshed,
-  })
+  const canvasRefresh = useDifyBuilderCanvasRefresh(refresh, onRefreshed)
+  return createElement(
+    'button',
+    { type: 'button', onClick: () => void canvasRefresh.refresh() },
+    'Refresh Builder canvas',
+  )
 }
 
 describe('useWorkflowRefreshDraft', () => {
@@ -422,6 +425,7 @@ describe('useWorkflowRefreshDraft', () => {
         initialStoreState: { workflowDraftSyncPhase: 'builder', isWorkflowDataLoaded: true },
       },
     )
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Refresh Builder canvas' }))
     await waitFor(() => expect(refreshed).toHaveBeenCalledOnce())
     expect(fetchDraft).toHaveBeenCalledTimes(2)
     expect(updateCanvas).toHaveBeenCalledOnce()

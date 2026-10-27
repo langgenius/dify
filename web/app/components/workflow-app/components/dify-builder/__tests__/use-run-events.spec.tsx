@@ -71,12 +71,13 @@ const resultCard = {
   },
 } satisfies ConversationItem
 
-const canvasEvent = (event: CanvasEventData['event'], revision = 1): CanvasEventData => ({
+const canvasEvent = (event: 'graph_changed', revision = 1): CanvasEventData => ({
   session_id: 'session-1',
   operation_id: 'op',
   at_version: 2,
   revision,
   event,
+  cause: 'apply',
 })
 
 const setup = () => {
@@ -166,7 +167,7 @@ describe('Builder run event handlers', () => {
       result.current.events.onWorkflowEvent(workflowEvent(nodeFinished()))
       result.current.events.onWorkflowEvent(workflowEvent(runFinished()))
       result.current.events.restoreRun('session-1', [resultCard])
-      result.current.events.onCanvasEvent(canvasEvent('apply_edit_plan', 2))
+      result.current.events.onCanvasEvent(canvasEvent('graph_changed', 2))
       result.current.events.finishCommand()
     })
     expect(workflow.getState().workflowRunningData?.result.status).toBe('succeeded')
@@ -468,7 +469,7 @@ describe('Builder run event handlers', () => {
       act(() => {
         result.current.events.onWorkflowEvent(workflowEvent(runStarted()))
         result.current.events.onWorkflowEvent(workflowEvent(runFinished(status)))
-        result.current.events.onCanvasEvent(canvasEvent('apply_edit_plan'))
+        result.current.events.onCanvasEvent(canvasEvent('graph_changed'))
         result.current.events.restoreRun('session-1', [
           { ...resultCard, payload: { ...resultCard.payload, status: 'failed' } },
         ])

@@ -162,7 +162,6 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
         ],
     )
     progress.activate("build-understand-goal")
-    emit_canvas(env, "reset_build_canvas")
     analysis = env.agent.analyze_goal(fc.goal_text, reply_language=fc.reply_language or None)
     fc.form_fields = list(analysis.get("fields") or [])
     fc.requirements = dict(analysis.get("values") or {})
@@ -459,9 +458,7 @@ def _graph_not_applied(
     """apply_repair refused the generated graph and wrote nothing: say why and
     keep the plan approvable (re-approving regenerates the graph).
 
-    Refresh the client's canvas from the unchanged draft using the same
-    signal as perform_revert."""
-    emit_canvas(env, "revert_checkpoint")
+    The unchanged draft needs no graph notification."""
     progress.fail_step("build-apply-graph")
     execution = progress.finish(status="error")
     turn_items = append_assistant(
@@ -473,7 +470,7 @@ def _graph_not_applied(
 def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) THE BUILD. Only ``approve_repair`` (resolved from approve_plan)
     builds: drive apply_repair once with all create_node/connect intents
-    (node-by-node canvas reveal via env.emit_canvas), summarize the applied
+    (one committed graph notification via env.emit_canvas), summarize the applied
     changes in assistant text, and transition to build.execution.
 
     Idempotent by construction (final-review fix, Important #1): a loop-back

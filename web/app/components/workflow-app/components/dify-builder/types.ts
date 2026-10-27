@@ -2,7 +2,7 @@
 // from the backend OpenAPI document. This file only derives short feature-local
 // aliases and owns client-only values.
 import type {
-  DifyBuilderCanvasEventData,
+  DifyBuilderCanvasEventResponse,
   DifyBuilderChecklistErrorPayload,
   DifyBuilderCommandStartedEventData,
   DifyBuilderConversationPageResponse,
@@ -14,7 +14,7 @@ import type {
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { TraceSnapshot } from './session/trace-buffer'
 
-export type CanvasEventData = DifyBuilderCanvasEventData
+export type CanvasEventData = DifyBuilderCanvasEventResponse['data']
 export type ChecklistErrorPayload = DifyBuilderChecklistErrorPayload
 type GeneratedConversationItem = DifyBuilderConversationPageResponse['data'][number]
 type GeneratedAssistantTurn = Extract<GeneratedConversationItem, { kind: 'assistant_turn' }>

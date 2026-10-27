@@ -494,6 +494,53 @@ export const zDifyBuilderCommandStartedEventResponse = z.object({
 })
 
 /**
+ * DifyBuilderGraphChangedEventData
+ */
+export const zDifyBuilderGraphChangedEventData = z.object({
+  at_version: z.int(),
+  cause: z.enum(['apply', 'restore']),
+  event: z.literal('graph_changed'),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderEditTargetsChangedEventData
+ */
+export const zDifyBuilderEditTargetsChangedEventData = z.object({
+  at_version: z.int(),
+  event: z.literal('edit_targets_changed'),
+  node_ids: z.array(z.string()),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderPublishedEventData
+ */
+export const zDifyBuilderPublishedEventData = z.object({
+  at_version: z.int(),
+  event: z.literal('publish_workflow'),
+  operation_id: z.string(),
+  revision: z.int(),
+  session_id: z.string(),
+})
+
+/**
+ * DifyBuilderCanvasEventResponse
+ */
+export const zDifyBuilderCanvasEventResponse = z.object({
+  data: z.discriminatedUnion('event', [
+    zDifyBuilderGraphChangedEventData,
+    zDifyBuilderEditTargetsChangedEventData,
+    zDifyBuilderPublishedEventData,
+  ]),
+  event: z.literal('canvas'),
+})
+
+/**
  * DifyBuilderReasoningEventData
  */
 export const zDifyBuilderReasoningEventData = z.object({
@@ -659,48 +706,6 @@ export const zWorkflowStreamError = z.object({
   message: z.string(),
   status: z.int(),
   workflow_run_id: z.string().nullish(),
-})
-
-/**
- * CanvasEvent
- *
- * Granular canvas-mutation signals (spec §6).
- *
- * Signals emitted by Builder handlers and committed mutations. Presentation
- * of committed backend state: replaying these from a snapshot must
- * reconstruct the same canvas.
- */
-export const zCanvasEvent = z.enum([
-  'add_knowledge_node',
-  'add_llm_node',
-  'add_output_node',
-  'add_start_node',
-  'apply_edit_plan',
-  'apply_error_fix',
-  'highlight_edit_target',
-  'publish_workflow',
-  'reset_build_canvas',
-  'revert_checkpoint',
-])
-
-/**
- * DifyBuilderCanvasEventData
- */
-export const zDifyBuilderCanvasEventData = z.object({
-  at_version: z.int(),
-  event: zCanvasEvent,
-  node_id: z.string().nullish(),
-  operation_id: z.string(),
-  revision: z.int(),
-  session_id: z.string(),
-})
-
-/**
- * DifyBuilderCanvasEventResponse
- */
-export const zDifyBuilderCanvasEventResponse = z.object({
-  data: zDifyBuilderCanvasEventData,
-  event: z.literal('canvas'),
 })
 
 /**

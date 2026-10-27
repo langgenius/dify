@@ -611,20 +611,26 @@ def test_apply_repair_computes_configuration_scope_for_set_node_config(mock_sess
     assert result.nodes == [ChangedNode(node_id="node-1")]
 
 
-def test_apply_repair_invokes_on_canvas_once_per_applied_intent(mock_session: TrackedPortSession) -> None:
+@pytest.mark.parametrize("values", [["changed", "changed-again"], ["unchanged", "unchanged"]])
+def test_apply_repair_notifies_once_after_a_changed_committed_batch(
+    mock_session: TrackedPortSession, values: list[str]
+) -> None:
     account = _account(id="acc-1")
     app = _app(id="app-1", tenant_id="tenant-1", mode="workflow")
     _configure_session_get(mock_session, account=account, app=app)
 
     workflow = _workflow(
         session=mock_session,
-        graph_dict={"nodes": [{"id": "node-1", "data": {}}], "edges": []},
+        graph_dict={"nodes": [{"id": "node-1", "data": {"code": "unchanged"}}], "edges": []},
         features_dict={},
     )
     updated_workflow = _workflow(
         session=mock_session,
     )
-    intents = [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "x"})]
+    intents = [
+        MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": value})
+        for value in values
+    ]
     events: list[Graph] = []
 
     def on_canvas(event: Graph) -> None:
@@ -649,20 +655,20 @@ def test_apply_repair_invokes_on_canvas_once_per_applied_intent(mock_session: Tr
             "app-1", _actor(), intents, on_canvas=on_canvas, expected_revision=execution_revision(workflow)
         )
 
-    assert events == [{"event": "apply_error_fix", "node_id": "node-1"}]
+    assert events == ([{"event": "graph_changed", "cause": "apply"}] if values[-1] != "unchanged" else [])
 
 
 @pytest.mark.parametrize(
     ("node_type", "expected_event"),
     [
-        ("start", "add_start_node"),
+        ("start", "graph_changed"),
         ("knowledge-retrieval", None),
-        ("llm", "add_llm_node"),
-        ("end", "add_output_node"),
-        ("code", "apply_edit_plan"),  # unmapped node type falls back to the generic batch-mutate event
+        ("llm", "graph_changed"),
+        ("end", "graph_changed"),
+        ("code", "graph_changed"),
     ],
 )
-def test_apply_repair_maps_create_node_by_node_type_to_the_right_add_node_event(
+def test_apply_repair_emits_the_same_change_event_for_every_accepted_node_type(
     mock_session: TrackedPortSession, node_type: str, expected_event: None | str
 ) -> None:
     account = _account(id="acc-1")

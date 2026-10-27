@@ -112,7 +112,7 @@ def test_enums_match_spec() -> None:
         "complete",
     ]
     assert set(ActionKind) == {ActionKind.PRIMARY, ActionKind.SECONDARY, ActionKind.DESTRUCTIVE, ActionKind.AUTOMATIC}
-    assert len(list(CanvasEvent)) == 10
+    assert [event.value for event in CanvasEvent] == ["graph_changed", "edit_targets_changed", "publish_workflow"]
     assert {EntryMode.BUILD, EntryMode.EDIT} <= set(EntryMode)
     assert PcState.BUILD_GOAL_ANALYSIS.value == "build.goal_analysis"
     assert PcState.EDIT_IMPACT_ANALYSIS.value == "edit.impact_analysis"
@@ -475,8 +475,8 @@ def test_sse_union_accepts_current_payloads() -> None:
                 "operation_id": "operation-1",
                 "at_version": 3,
                 "revision": 3,
-                "event": "highlight_edit_target",
-                "node_id": "n1",
+                "event": "edit_targets_changed",
+                "node_ids": ["n1"],
             },
         },
         {

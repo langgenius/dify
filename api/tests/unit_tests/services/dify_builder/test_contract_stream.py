@@ -37,6 +37,33 @@ def _view(**overrides: object) -> Graph:
     }
 
 
+@pytest.mark.parametrize(
+    "notification",
+    [
+        {"event": "graph_changed", "cause": "apply"},
+        {"event": "graph_changed", "cause": "restore"},
+        {"event": "edit_targets_changed", "node_ids": ["start", "llm", "output"]},
+        {"event": "edit_targets_changed", "node_ids": []},
+        {"event": "publish_workflow"},
+    ],
+)
+def test_canvas_stream_preserves_the_notification_contract(notification: Graph) -> None:
+    metadata = {"session_id": "s1", "operation_id": "operation-1", "at_version": 2, "revision": 1}
+    projected = wiring._progress_event(
+        json.dumps(
+            {
+                "kind": "canvas",
+                "stage_id": "internal",
+                **metadata,
+                **notification,
+            }
+        ).encode()
+    )
+    assert projected == ("canvas", {**metadata, **notification})
+    parsed = DifyBuilderStreamEventResponse.model_validate({"event": "canvas", "data": projected[1]})
+    assert parsed.model_dump(mode="json")["data"] == {**metadata, **notification}
+
+
 @pytest.mark.parametrize("payload", SUPPORTED_WORKFLOW_PAYLOADS, ids=operator.itemgetter("event"))
 def test_workflow_envelope_preserves_the_supported_debugger_contract(payload: Graph) -> None:
     frame = {
@@ -95,7 +122,8 @@ def test_stream_projects_incremental_events_and_drops_internal_fields() -> None:
         "stage_id": "build.execution",
         "at_version": 2,
         "revision": 1,
-        "event": "add_llm_node",
+        "event": "graph_changed",
+        "cause": "apply",
         "edge": {"source": "start", "target": "answer"},
         "dify_run_id": "internal-run",
     }
@@ -172,7 +200,8 @@ def test_stream_projects_incremental_events_and_drops_internal_fields() -> None:
                 "operation_id": "operation-1",
                 "at_version": 2,
                 "revision": 1,
-                "event": "add_llm_node",
+                "event": "graph_changed",
+                "cause": "apply",
             },
         },
         {

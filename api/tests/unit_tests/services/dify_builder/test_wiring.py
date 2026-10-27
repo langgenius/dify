@@ -102,7 +102,7 @@ def test_public_session_projection_exposes_decision_and_strips_internal_revision
                     "label": "Submit",
                     "kind": "primary",
                     "next_state": "build.resources",
-                    "canvas_event": "apply_edit_plan",
+                    "canvas_event": "graph_changed",
                 }
             ],
             "active_interaction": {

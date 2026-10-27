@@ -109,8 +109,8 @@ def test_fix_await_decision_undo_restores_draft_and_invalidates() -> None:
     # active restore point cleared
     assert res.context is not None
     assert res.context.checkpoint_id == ""
-    # revert_checkpoint canvas emitted
-    assert {"event": "revert_checkpoint"} in events
+    # The restored graph is announced after the checkpoint is applied.
+    assert events == [{"event": "graph_changed", "cause": "restore"}]
     # approval assistant_turn (seq 2 >= boundary 1) invalidated
     by_seq = {i.seq: i for i in repo.list_conversation(s.id)}
     assert by_seq[2].payload["card_state"] == "invalidated"
@@ -147,7 +147,7 @@ def test_perform_revert_without_checkpoint_is_graceful_noop() -> None:
 
     perform_revert(env, Turn(action=None, actor=_actor()), s, fc)
 
-    assert {"event": "revert_checkpoint"} in events  # signal still fires
+    assert events == [{"event": "edit_targets_changed", "node_ids": []}]
     assert dify.read_graph("app", _actor())[0] == {"nodes": [{"id": "keep"}]}  # no restore
 
 
@@ -199,7 +199,7 @@ def test_build_review_undo_restores_pre_build_graph() -> None:
     assert dify.read_graph("app", _actor())[0] == {"nodes": [], "edges": []}  # pre-build graph restored
     assert res.context is not None
     assert res.context.checkpoint_id == ""
-    assert {"event": "revert_checkpoint"} in events
+    assert events == [{"event": "graph_changed", "cause": "restore"}]
     by_seq = {i.seq: i for i in repo.list_conversation(s.id)}
     assert by_seq[0].payload["card_state"] == "invalidated"
 
@@ -250,7 +250,7 @@ def test_edit_apply_changes_undo_restores_pre_edit_graph() -> None:
     assert dify.read_graph("app", _actor())[0] == pre_edit  # config edit undone
     assert res.context is not None
     assert res.context.checkpoint_id == ""
-    assert {"event": "revert_checkpoint"} in events
+    assert events == [{"event": "graph_changed", "cause": "restore"}]
     by_seq = {i.seq: i for i in repo.list_conversation(s.id)}
     assert by_seq[0].payload["card_state"] == "invalidated"
 

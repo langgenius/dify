@@ -9,7 +9,6 @@ from core.dify_builder.contract import (
     ActionKind,
     AssistantTurnItem,
     BuilderErrorCode,
-    CanvasEvent,
     Decision,
     DecisionItem,
     ExecutionActivityState,
@@ -360,13 +359,31 @@ class DifyBuilderWorkflowEventResponse(ResponseModel):
     data: DifyBuilderWorkflowEventData
 
 
-class DifyBuilderCanvasEventData(ResponseModel):
+class DifyBuilderCanvasEventBase(ResponseModel):
     session_id: str
     operation_id: str
     at_version: int
     revision: int
-    event: CanvasEvent
-    node_id: str | None = None
+
+
+class DifyBuilderGraphChangedEventData(DifyBuilderCanvasEventBase):
+    event: Literal["graph_changed"]
+    cause: Literal["apply", "restore"]
+
+
+class DifyBuilderEditTargetsChangedEventData(DifyBuilderCanvasEventBase):
+    event: Literal["edit_targets_changed"]
+    node_ids: list[str]
+
+
+class DifyBuilderPublishedEventData(DifyBuilderCanvasEventBase):
+    event: Literal["publish_workflow"]
+
+
+DifyBuilderCanvasEventData = Annotated[
+    DifyBuilderGraphChangedEventData | DifyBuilderEditTargetsChangedEventData | DifyBuilderPublishedEventData,
+    Field(discriminator="event"),
+]
 
 
 class DifyBuilderCanvasEventResponse(ResponseModel):
