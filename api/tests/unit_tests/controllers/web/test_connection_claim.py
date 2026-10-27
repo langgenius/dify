@@ -23,7 +23,7 @@ from context.connection_execution import ConnectionExecutionContext, ExecutionCo
 from controllers.console import bp as console_bp
 from controllers.console import wraps as console_wraps
 from controllers.console.auth import login as console_login
-from controllers.web import bp, connection_claim, connections, wraps
+from controllers.web import bp, connection_claim, connections, passport, wraps
 from extensions.ext_redis import RedisClientWrapper
 from libs.passport import PassportService
 from models.account import Account, AccountStatus
@@ -149,7 +149,7 @@ def harness(
             store=oauth.base.repository, passports=passports, tokens=tokens, identities=identity
         ),
     )
-    for module in (wraps, connection_claim, connections, console_login):
+    for module in (wraps, connection_claim, connections, passport, console_login):
         monkeypatch.setattr(module, "application_services", lambda: services)
     monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", lambda: False)
     monkeypatch.setattr(console_wraps, "_is_setup_completed", lambda: True)
@@ -245,9 +245,8 @@ def test_claim_preserves_credentials_ids_and_independent_choices(
     assert response.status_code == 200
     assert response.headers["Cache-Control"] == "no-store"
     assert response.get_json()["data"][0]["claimed_connections"] == 2
-    assert set(response.get_json()) == {"data", "webapp_access_token"}
+    assert set(response.get_json()) == {"data"}
     assert response.get_json()["data"][0]["status"] == "success"
-    assert response.get_json()["webapp_access_token"] == harness.proof
     claims = harness.signer.verify(response.get_json()["data"][0]["access_token"])
     assert claims["end_user_id"] == harness.account.end_user_id
     assert claims["end_user_id"] != base.context.end_user_id
@@ -340,7 +339,7 @@ def test_retries_and_other_accounts_cannot_reclaim_transferred_connections(harne
         "account_as_guest",
         "wrong_app",
         "authority_payload",
-        "incomplete_handoff",
+        "handoff_payload",
     ],
 )
 def test_claim_requires_both_valid_scoped_identities(harness: ClaimHarness, failure: str) -> None:
@@ -381,12 +380,12 @@ def test_claim_requires_both_valid_scoped_identities(harness: ClaimHarness, fail
         ).access_token
     elif failure == "wrong_app":
         passports[0] = harness.signer.issue({**harness.signer.verify(harness.guest_passport), "app_code": "other-app"})
-    elif failure == "incomplete_handoff":
-        payload["login_code"] = "untrusted-secret"
+    elif failure == "handoff_payload":
+        payload.update(login_code="untrusted-secret", code_verifier="v" * 43)
     else:
         payload["account_id"] = "untrusted-secret"
     response = harness.client.post("/api/connections/claim", headers=headers, json=payload)
-    if failure in {"authority_payload", "incomplete_handoff"}:
+    if failure in {"authority_payload", "handoff_payload"}:
         assert response.status_code == 422
     elif failure in {"expired_guest", "account_as_guest", "wrong_app"}:
         assert response.status_code == 200
@@ -438,7 +437,7 @@ def test_claim_rolls_back_owner_and_default_changes_together(harness: ClaimHarne
         assert session.scalar(sa.select(AppConnection.end_user_id)) == base.context.end_user_id
 
 
-def test_pkce_return_can_claim_without_separate_passport_exchange(
+def test_login_is_exchanged_before_delayed_claim_confirmation(
     harness: ClaimHarness, redis_transport: tuple[RedisClientWrapper, MagicMock]
 ) -> None:
     redis, commands = redis_transport
@@ -457,6 +456,7 @@ def test_pkce_return_can_claim_without_separate_passport_exchange(
 
     commands.side_effect = execute
     services = harness.services
+    clock = [datetime.now(UTC)]
     services.web_login_handoff = WebLoginHandoffService(
         grants=RedisWebLoginGrantStore(redis=redis),
         apps=WebPassportRepository(
@@ -467,7 +467,7 @@ def test_pkce_return_can_claim_without_separate_passport_exchange(
         enabled=True,
         app_web_url="https://apps.example.net",
         console_web_url="https://console.example.com",
-        now=lambda: datetime.now(UTC),
+        now=lambda: clock[0],
     )
     console_token = harness.signer.issue(
         {
@@ -478,6 +478,7 @@ def test_pkce_return_can_claim_without_separate_passport_exchange(
     )
     harness.client.set_cookie("__Host-access_token", console_token, domain="console.example.com", secure=True)
     base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
     with base.sessions.begin() as session:
         app = App(
             tenant_id=base.context.tenant_id, name="Login App", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True
@@ -521,21 +522,35 @@ def test_pkce_return_can_claim_without_separate_passport_exchange(
     )
     assert response.status_code == 200
     code = parse_qs(urlsplit(response.get_json()["redirect_url"]).query)["login_code"][0]
-    payload = {
-        "login_code": code,
-        "code_verifier": verifier,
-        "passports": [harness.guest_passport, harness.guest_passport],
-    }
-    response = harness.client.post("/api/connections/claim", base_url="https://apps.example.net", json=payload)
+    login_payload = {"login_code": code, "code_verifier": verifier}
+    response = harness.client.post(
+        "/api/passport", base_url="https://apps.example.net", headers={"X-App-Code": login_app_code}, json=login_payload
+    )
     assert response.status_code == 200
-    assert harness.signer.verify(response.get_json()["webapp_access_token"])["token_source"] == "webapp_account_login"
+    proof = response.get_json()["webapp_access_token"]
+    assert harness.signer.verify(proof)["token_source"] == "webapp_account_login"
+    assert harness.signer.verify(response.get_json()["access_token"])["app_code"] == login_app_code
+    assert harness.client.get_cookie("__Host-access_token", domain="apps.example.net") is None
+    assert base.service.get_connection(base.context, selected.id).id == selected.id
+    clock[0] += timedelta(minutes=5)
+    response = harness.client.post(
+        "/api/connections/claim",
+        base_url="https://apps.example.net",
+        headers={"Authorization": f"Bearer {proof}"},
+        json={"passports": [harness.guest_passport, harness.guest_passport]},
+    )
+    assert response.status_code == 200
+    assert set(response.get_json()) == {"data"}
     assert [item["status"] for item in response.get_json()["data"]] == ["success", "success"]
+    assert [item["claimed_connections"] for item in response.get_json()["data"]] == [1, 0]
     assert (
         harness.signer.verify(response.get_json()["data"][0]["access_token"])["end_user_id"]
         == harness.account.end_user_id
     )
-    assert harness.client.get_cookie("__Host-access_token", domain="apps.example.net") is None
-    replay = harness.client.post("/api/connections/claim", base_url="https://apps.example.net", json=payload)
+    assert base.service.get_connection(harness.account, selected.id).id == selected.id
+    replay = harness.client.post(
+        "/api/passport", base_url="https://apps.example.net", headers={"X-App-Code": login_app_code}, json=login_payload
+    )
     assert replay.status_code == 400
 
 
@@ -789,7 +804,7 @@ def test_batch_failure_preserves_committed_items_and_can_be_retried(harness: Cla
     assert base.service.get_connection(second_context, second.id).id == second.id
     retry = harness.client.post(
         "/api/connections/claim",
-        headers={"Authorization": f"Bearer {response.get_json()['webapp_access_token']}"},
+        headers={"Authorization": f"Bearer {harness.proof}"},
         json={"passports": [second_token]},
     )
     assert retry.get_json()["data"][0]["claimed_connections"] == 1

@@ -1,15 +1,15 @@
 """Claim browser Guest Connections in independent transactions for one Account."""
 
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
 from controllers.common.end_user_connections import ConnectionConflictHTTPError, ConnectionLoginRequiredError
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.common.web_login import WebLoginUnavailableHTTPError, web_login_errors
+from controllers.common.web_login import web_login_errors
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppNotFoundError
@@ -35,14 +35,6 @@ class ConnectionClaimPayload(BaseModel):
     passports: list[Annotated[str, Field(min_length=1, max_length=8192)]] = Field(
         min_length=1, max_length=50, repr=False
     )
-    login_code: str | None = Field(default=None, min_length=1, max_length=256, repr=False)
-    code_verifier: str | None = Field(default=None, pattern=r"^[A-Za-z0-9._~-]{43,128}$", repr=False)
-
-    @model_validator(mode="after")
-    def validate_login_handoff(self) -> Self:
-        if (self.login_code is None) != (self.code_verifier is None):
-            raise ValueError("Provide login_code and code_verifier together, or use a Web login proof.")
-        return self
 
 
 class ConnectionClaimSuccessResponse(ResponseModel):
@@ -75,7 +67,6 @@ class ConnectionClaimFailureResponse(ResponseModel):
 
 
 class ConnectionClaimResponse(ResponseModel):
-    webapp_access_token: str
     data: list[
         Annotated[ConnectionClaimSuccessResponse | ConnectionClaimFailureResponse, Field(discriminator="status")]
     ]
@@ -121,7 +112,7 @@ class ConnectionClaimApi(Resource):
     @web_ns.doc(
         description="Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. "
         "Submit Guest Passports in passports, with one Account Web login proof in Authorization. "
-        "Alternatively, redeem login_code/code_verifier once; the login App comes from the stored grant. "
+        "Complete the login handoff through /api/passport before asking the user to confirm Claim. "
         "Account authentication and capability failures reject the batch before any transfer. "
         "Items run in input order with independent transactions; every item returns its index and success or failure. "
         "Success includes the App code, Account App Passport and this item's transferred Connection count. "
@@ -131,17 +122,13 @@ class ConnectionClaimApi(Resource):
     )
     @web_ns.expect(web_ns.models[ConnectionClaimPayload.__name__])
     @web_ns.response(200, "Guest Connection claim results", web_ns.models[ConnectionClaimResponse.__name__])
-    @error_responses(ConnectionLoginRequiredError, WebLoginUnavailableHTTPError)
+    @error_responses(ConnectionLoginRequiredError)
     @model_validate(ConnectionClaimPayload)
     def post(self, payload: ConnectionClaimPayload):
         with web_login_errors():
             if not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
                 raise WebPassportAccountExchangeDisabledError()
             login_token = extract_webapp_access_token(request) or ""
-            if payload.login_code is not None and payload.code_verifier is not None:
-                login_token = application_services().web_login_handoff.redeem(
-                    app_code=None, code=payload.login_code, code_verifier=payload.code_verifier
-                )
             results = application_services().end_user_connection_claims.claim(
                 payload.passports, access_token=login_token
             )
@@ -164,7 +151,7 @@ class ConnectionClaimApi(Resource):
                     )
                 )
         return (
-            dump_response(ConnectionClaimResponse, {"webapp_access_token": login_token, "data": data}),
+            dump_response(ConnectionClaimResponse, {"data": data}),
             200,
             {"Cache-Control": "no-store"},
         )

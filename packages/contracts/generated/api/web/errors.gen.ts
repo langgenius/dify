@@ -540,7 +540,6 @@ export const post5Errors = {
 
 export const post6Errors = {
   end_user_login_required: { status: 401, data: zEndUserLoginRequiredError },
-  web_login_unavailable: { status: 503, data: zWebLoginUnavailableError },
 }
 
 export const getErrors = {

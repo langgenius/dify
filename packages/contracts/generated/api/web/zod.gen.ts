@@ -191,11 +191,6 @@ export const zConnectionClaimFailureResponse = z.object({
  * ConnectionClaimPayload
  */
 export const zConnectionClaimPayload = z.object({
-  code_verifier: z
-    .string()
-    .regex(/^[A-Za-z0-9._~-]{43,128}$/)
-    .nullish(),
-  login_code: z.string().min(1).max(256).nullish(),
   passports: z.array(z.string().min(1).max(8192)).min(1).max(50),
 })
 
@@ -215,7 +210,6 @@ export const zConnectionClaimSuccessResponse = z.object({
  */
 export const zConnectionClaimResponse = z.object({
   data: z.array(z.union([zConnectionClaimSuccessResponse, zConnectionClaimFailureResponse])),
-  webapp_access_token: z.string(),
 })
 
 /**

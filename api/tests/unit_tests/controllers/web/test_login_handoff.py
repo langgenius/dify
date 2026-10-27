@@ -145,17 +145,16 @@ def test_no_console_session_reports_logged_out(handoff: SimpleNamespace) -> None
     assert response.json == {"logged_in": False, "redirect_url": None}
 
 
-@pytest.mark.parametrize("redeem_app_code", ["app-a", None])
-def test_wrong_proof_or_app_does_not_consume_grant(handoff: SimpleNamespace, redeem_app_code: str | None) -> None:
+def test_wrong_proof_or_app_does_not_consume_grant(handoff: SimpleNamespace) -> None:
     service = handoff.services.web_login_handoff
     target = service.authorize(
         WebLoginTarget(app_code="app-a", redirect_url=RETURN_URL, code_challenge=CHALLENGE), handoff.login
     )
     code = parse_qs(urlsplit(target).query)["login_code"][0]
-    for app_code, verifier in [("app-a", "x" * 43), ("app-b", VERIFIER), (None, "x" * 43)]:
+    for app_code, verifier in [("app-a", "x" * 43), ("app-b", VERIFIER)]:
         with pytest.raises(ValueError, match="Invalid or expired"):
             service.redeem(app_code=app_code, code=code, code_verifier=verifier)
-    assert service.redeem(app_code=redeem_app_code, code=code, code_verifier=VERIFIER)
+    assert service.redeem(app_code="app-a", code=code, code_verifier=VERIFIER)
 
 
 def test_expired_code_is_rejected(handoff: SimpleNamespace) -> None:

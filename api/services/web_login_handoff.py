@@ -118,11 +118,7 @@ class WebLoginHandoffService:
             )
         )
 
-    def redeem(self, *, app_code: str | None, code: str, code_verifier: str) -> str:
-        """Use the grant's App for cross-App consumers when app_code is None.
-
-        Single-App consumers supply app_code to additionally bind the exchange to their request.
-        """
+    def redeem(self, *, app_code: str, code: str, code_verifier: str) -> str:
         if not self._enabled:
             raise WebPassportAccountExchangeDisabledError()
         key = self._key(code)
@@ -132,12 +128,12 @@ class WebLoginHandoffService:
         )
         if (
             grant is None
-            or (app_code is not None and grant.app_code != app_code)
+            or grant.app_code != app_code
             or grant.expires_at <= int(self._now().timestamp())
             or not secrets.compare_digest(grant.code_challenge, challenge)
         ):
             raise ValueError("Invalid or expired Web App login code.")
-        app = self._apps.get_active_web_app(grant.app_code)
+        app = self._apps.get_active_web_app(app_code)
         if app is None or app.app_id != grant.app_id or app.tenant_id != grant.tenant_id:
             raise WebPassportNotFoundError()
         # Failed proofs do not consume a valid grant; GETDEL admits only one successful exchange.

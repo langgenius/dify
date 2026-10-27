@@ -181,14 +181,11 @@ export type ConnectionClaimFailureResponse = {
 }
 
 export type ConnectionClaimPayload = {
-  code_verifier?: string | null
-  login_code?: string | null
   passports: Array<string>
 }
 
 export type ConnectionClaimResponse = {
   data: Array<ConnectionClaimSuccessResponse | ConnectionClaimFailureResponse>
-  webapp_access_token: string
 }
 
 export type ConnectionClaimSuccessResponse = {
@@ -1795,7 +1792,6 @@ export type PostConnectionsClaimData = {
 
 export type PostConnectionsClaimErrors = {
   401: EndUserLoginRequiredError | ErrorResponse
-  503: WebLoginUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
