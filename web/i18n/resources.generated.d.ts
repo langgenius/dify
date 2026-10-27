@@ -65,7 +65,7 @@ export default interface Resources {
     'account.workspaceName': 'Workspace Name'
     'account.workspaceNamePlaceholder': 'Enter workspace name'
     'personalAccessToken.access': 'Access'
-    'personalAccessToken.accessRemoved': 'Access removed'
+    'personalAccessToken.deleted': 'Deleted'
     'personalAccessToken.active': 'Active'
     'personalAccessToken.all': 'All'
     'personalAccessToken.allIncludingFuture': 'All, including future'
