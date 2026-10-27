@@ -1096,6 +1096,27 @@ class TestMessageModel:
 
         assert message.retriever_resources == resources
 
+    def test_retriever_resources_explicit_null_returns_empty_list(self):
+        """Explicit retriever_resources: null must yield [], not None.
+
+        WebMessageListItem.retriever_resources is list[RetrieverResource].
+        dict.get(..., []) does not replace an explicit JSON null.
+        """
+        message = Message(
+            app_id=str(uuid4()),
+            conversation_id=str(uuid4()),
+            query="Test query",
+            message={"role": "user", "content": "Test"},
+            answer="Test answer",
+            message_unit_price=Decimal("0.0001"),
+            answer_unit_price=Decimal("0.0002"),
+            currency="USD",
+            from_source=ConversationFromSource.API,
+            message_metadata=json.dumps({"retriever_resources": None}),
+        )
+
+        assert message.retriever_resources == []
+
     @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
     def test_message_to_dict_serialization(self, sqlite_session: Session):
         """Test message to_dict method."""

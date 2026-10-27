@@ -1694,7 +1694,8 @@ class Message(Base):
 
     @property
     def retriever_resources(self) -> Any:
-        return self.message_metadata_dict.get("retriever_resources", []) if self.message_metadata else []
+        resources = self.message_metadata_dict.get("retriever_resources", []) if self.message_metadata else []
+        return [] if resources is None else resources
 
     def message_files_with_session(self, *, session: Session) -> list[MessageFileInfo]:
         from factories import file_factory
