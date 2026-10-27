@@ -5,6 +5,7 @@ import { toast } from '@/app/notifications'
 import { useSearchParams } from '@/next/navigation'
 import NormalForm from './normal-form'
 import OneMoreStep from './one-more-step'
+import { isEndUserSignIn } from './utils/end-user-login'
 
 const SignInPage = () => {
   const searchParams = useSearchParams()
@@ -19,7 +20,7 @@ const SignInPage = () => {
     toast.info(t(($) => $['account.deleteSuccessTip'], { ns: 'accountSettings' }))
   }, [t])
 
-  if (searchParams.get('step') === 'next') return <OneMoreStep />
+  if (!isEndUserSignIn(searchParams) && searchParams.get('step') === 'next') return <OneMoreStep />
   return <NormalForm />
 }
 

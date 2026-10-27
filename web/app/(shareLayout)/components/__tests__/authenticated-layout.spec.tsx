@@ -113,6 +113,9 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
 
 vi.mock('@/service/webapp-auth', () => ({
   webAppLogout: vi.fn(),
+  getWebAppAccessToken: () => '',
+  getWebAppLoginMode: () => 'console',
+  expireWebAppAccountSession: vi.fn(),
 }))
 
 vi.mock('@/service/webapp-address', async (importOriginal) => ({

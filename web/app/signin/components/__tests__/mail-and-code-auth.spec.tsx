@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   render: vi.fn(),
   sendEMailLoginCode: vi.fn(),
+  searchParams: new URLSearchParams(),
   turnstileSiteKey: 'site-key-for-tests',
 }))
 
@@ -46,7 +47,7 @@ vi.mock('@/next/script', async () => {
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mocks.searchParams,
 }))
 
 vi.mock('@/config', async () => {
@@ -76,6 +77,7 @@ describe('MailAndCodeAuth', () => {
     localStorage.removeItem(COUNT_DOWN_KEY)
     turnstileOptions = undefined
     mocks.turnstileSiteKey = 'site-key-for-tests'
+    mocks.searchParams = new URLSearchParams()
     mocks.render.mockImplementation((_container: HTMLElement, options: TurnstileOptions) => {
       turnstileOptions = options
       return 'widget-id'
@@ -88,6 +90,28 @@ describe('MailAndCodeAuth', () => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
     localStorage.removeItem(COUNT_DOWN_KEY)
+  })
+
+  it('sends End User mode and preserves the handoff parameters on the verification page', async () => {
+    const user = userEvent.setup()
+    const target = {
+      is_end_user: '1',
+      redirect_url: 'https://app.example/chat/my-webapp',
+    }
+    mocks.searchParams = new URLSearchParams(target)
+    renderMailAndCodeAuth('COMMUNITY')
+
+    await user.type(screen.getByRole('textbox', { name: 'login.email' }), 'account@example.com')
+    await user.click(screen.getByRole('button', { name: 'login.signup.verifyMail' }))
+
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce())
+    expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith({
+      body: { email: 'account@example.com', language: 'en-US', mode: 'end_user' },
+    })
+    const destination = new URL(mocks.push.mock.calls[0]![0], window.location.origin)
+    expect(destination.pathname).toBe('/signin/check-code')
+    for (const [key, value] of Object.entries(target))
+      expect(destination.searchParams.get(key)).toBe(value)
   })
 
   it('enables SaaS email-code login only while Turnstile verification is valid', async () => {

@@ -6,6 +6,7 @@ import { PUBLIC_API_PREFIX } from '@/config'
 import { request } from '../base'
 import { validateDefinedErrors } from '../console/defined-errors'
 import { getWebAppPublicApiPath, getWebAppScopeKey, resolveWebAppAddress } from '../webapp-address'
+import { getWebAppAccessToken, getWebAppAuthSessionSnapshot } from '../webapp-auth'
 
 export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, {
   url: () => new URL(PUBLIC_API_PREFIX, window.location.origin),
@@ -14,9 +15,16 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
     const address = options.context.address ?? resolveWebAppAddress()
     if (!address) throw new DOMException('No active Web App.', 'AbortError')
     const scopeKey = getWebAppScopeKey(address)
+    const sessionRevision = options.context.authSession ?? getWebAppAuthSessionSnapshot()
+    const accessToken = getWebAppAccessToken()
     const assertCurrentApp = () => {
       const current = resolveWebAppAddress()
-      if (!current || getWebAppScopeKey(current) !== scopeKey)
+      if (
+        !current ||
+        getWebAppScopeKey(current) !== scopeKey ||
+        getWebAppAuthSessionSnapshot() !== sessionRevision ||
+        getWebAppAccessToken() !== accessToken
+      )
         throw new DOMException('The active Web App changed.', 'AbortError')
     }
 

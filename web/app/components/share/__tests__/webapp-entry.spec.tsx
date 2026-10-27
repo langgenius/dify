@@ -204,6 +204,43 @@ describe('Web App entry policy', () => {
 })
 
 describe('SignIn entry integration', () => {
+  it('uses the API Account sign-in origin and deployment prefix while preserving its other parameters', () => {
+    const input = makeEntryInput({
+      parameters: makeParameters({
+        account_login_url:
+          'https://accounts.example/console/signin?source=webapp&redirect_url=old&is_end_user=0',
+      }),
+    })
+    const { rerender } = render(
+      <WebAppEntryContext value={getWebAppEntryState(input)}>
+        <SignIn />
+      </WebAppEntryContext>,
+    )
+    const getDestination = () =>
+      new URL(screen.getByRole('link', { name: 'share.auth.signIn' }).getAttribute('href')!)
+    expect(getDestination().origin).toBe('https://accounts.example')
+    expect(getDestination().pathname).toBe('/console/signin')
+    expect(getDestination().searchParams.get('source')).toBe('webapp')
+    expect(getDestination().searchParams.get('is_end_user')).toBe('1')
+    expect(getDestination().searchParams.get('redirect_url')).toBe(
+      new URL('/chat/app-code', window.location.origin).href,
+    )
+    rerender(
+      <WebAppEntryContext
+        value={getWebAppEntryState({
+          ...input,
+          parameters: makeParameters({
+            account_login_url: 'https://other-accounts.example/base/signin',
+          }),
+        })}
+      >
+        <SignIn />
+      </WebAppEntryContext>,
+    )
+    expect(getDestination().origin).toBe('https://other-accounts.example')
+    expect(getDestination().pathname).toBe('/base/signin')
+  })
+
   it('shows the existing demo sign-in link outside an entry provider', () => {
     render(<SignIn />)
 
@@ -253,7 +290,7 @@ describe('SignIn entry integration', () => {
 
     expect(screen.getByRole('link', { name: 'share.auth.signIn' })).toHaveAttribute(
       'href',
-      '/signin?redirect_url=%2Fchat%2Fapp-code',
+      `${window.location.origin}/signin?${new URLSearchParams({ redirect_url: new URL('/chat/app-code', window.location.origin).href, is_end_user: '1' })}`,
     )
 
     rerender(

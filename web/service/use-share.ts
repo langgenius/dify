@@ -3,6 +3,7 @@ import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/fo
 import type { AppConversationData, ConversationItem } from '@/models/share'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useSyncExternalStore } from 'react'
 import {
   AppSourceType,
   fetchAppInfo,
@@ -17,6 +18,7 @@ import {
 import { useInvalid } from './use-base'
 import { webAppQuery } from './webapp'
 import { resolveWebAppAddress } from './webapp-address'
+import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from './webapp-auth'
 import { selectWebAppParameters } from './webapp-parameters'
 
 const NAME_SPACE = 'webapp'
@@ -91,10 +93,15 @@ export const useGetWebAppInfo = () => {
 }
 
 export const useGetWebAppParams = (address: WebAppAddress) => {
+  const authSession = useSyncExternalStore(
+    subscribeWebAppAuthSession,
+    getWebAppAuthSessionSnapshot,
+    () => 0,
+  )
   return useQuery(
     webAppQuery.parameters.get.queryOptions({
-      queryKey: [...webAppQuery.parameters.get.queryKey(), address],
-      context: { address },
+      queryKey: [...webAppQuery.parameters.get.queryKey(), address, authSession],
+      context: { address, authSession },
       select: selectWebAppParameters,
       staleTime: 0,
       gcTime: 0,
@@ -104,6 +111,11 @@ export const useGetWebAppParams = (address: WebAppAddress) => {
 
 /** Account identity is independent of the legacy public-App access check in Splash. */
 export const useGetWebAppAccountStatus = (address: WebAppAddress) => {
+  const authSession = useSyncExternalStore(
+    subscribeWebAppAuthSession,
+    getWebAppAuthSessionSnapshot,
+    () => 0,
+  )
   const input = {
     query: {
       mode: 'end_user' as const,
@@ -113,8 +125,8 @@ export const useGetWebAppAccountStatus = (address: WebAppAddress) => {
   return useQuery(
     webAppQuery.login.status.get.queryOptions({
       input,
-      queryKey: [...webAppQuery.login.status.get.queryKey({ input }), address],
-      context: { address, silent: true },
+      queryKey: [...webAppQuery.login.status.get.queryKey({ input }), address, authSession],
+      context: { address, authSession, silent: true },
       staleTime: 0,
       gcTime: 0,
       retry: false,

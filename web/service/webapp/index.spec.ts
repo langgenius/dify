@@ -12,7 +12,11 @@ import {
   captureAppAccessScope,
   isAppAccessError,
 } from '@/features/app-access-error/state'
-import { setWebAppAccessToken, setWebAppPassport } from '../webapp-auth'
+import {
+  getWebAppAuthSessionSnapshot,
+  setWebAppAccessToken,
+  setWebAppPassport,
+} from '../webapp-auth'
 import { webAppClient, webAppQuery } from './index'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
@@ -87,6 +91,25 @@ describe('generated Web App client', () => {
     expect(headers.get('X-App-Code')).toBe(address.code)
     expect(headers.get('X-App-Passport')).toBe('app-passport')
     expect(input instanceof Request ? input.credentials : options?.credentials).toBe('include')
+  })
+
+  it('sends the PKCE login exchange body through the generated public transport', async () => {
+    let sentBody: unknown
+    let sentMethod: string | undefined
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      sentMethod = request.method
+      sentBody = await request.json()
+      return Response.json({ access_token: 'app-passport', webapp_access_token: 'account-proof' })
+    })
+    const body = { login_code: 'one-use-code', code_verifier: 'a'.repeat(43) }
+
+    await expect(
+      webAppClient.passport.post({ headers: { 'X-App-Code': 'shared-code' }, body }),
+    ).resolves.toEqual({ access_token: 'app-passport', webapp_access_token: 'account-proof' })
+
+    expect(sentMethod).toBe('POST')
+    expect(sentBody).toEqual(body)
   })
 
   it('uses the environment API prefix and passport for generated parameters', async () => {
@@ -276,5 +299,41 @@ describe('generated Web App client', () => {
 
     expect(isAppAccessError(error)).toBe(true)
     expect(appAccessStore.get(appAccessErrorAtom)?.clientIp).toBe(denial.client_ip)
+  })
+
+  it('rejects a query prepared under the previous account even within the same App', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch')
+    setWebAppAccessToken('account-a', 'end_user')
+    const address = { kind: 'default', code: 'shared-code' } as const
+    const authSession = getWebAppAuthSessionSnapshot()
+    const options = webAppQuery.parameters.get.queryOptions({
+      context: { address, authSession },
+      queryKey: [...webAppQuery.parameters.get.queryKey(), address, authSession],
+    })
+    setWebAppAccessToken('account-b', 'end_user')
+
+    await expect(queryClient.query(options)).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('discards an old-account denial before it can change access state for the new account', async () => {
+    setWebAppAccessToken('account-a', 'end_user')
+    let resolve!: (response: Response) => void
+    const pending = new Promise<Response>((done) => {
+      resolve = done
+    })
+    const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(pending)
+    const result = webAppClient.parameters.get().catch((error: unknown) => error)
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+    setWebAppAccessToken('account-b', 'end_user')
+    resolve(
+      Response.json(
+        { code: 'ip_access_denied', message: 'Old-account denial', client_ip: '203.0.113.42' },
+        { status: 403 },
+      ),
+    )
+
+    expect(await result).toMatchObject({ name: 'AbortError' })
+    expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
   })
 })

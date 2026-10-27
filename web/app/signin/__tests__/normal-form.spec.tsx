@@ -85,6 +85,144 @@ describe('NormalForm', () => {
     mockUseSearchParams.mockReturnValue(new URLSearchParams())
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  describe('End User Account login', () => {
+    const target = {
+      is_end_user: '1',
+      redirect_url: 'https://app.example/chat/my-webapp?conversation=existing',
+    }
+
+    beforeEach(() => {
+      mockUseSearchParams.mockReturnValue(new URLSearchParams(target))
+      mockQueryResults(nonInviteQueryResult, nonInviteQueryResult)
+    })
+
+    it('shows the End User login form without probing workspace admission', () => {
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams({
+          is_end_user: '1',
+          redirect_url: 'https://agent-app.dify.dev/chat/my-webapp?conversation=existing',
+        }),
+      )
+      const fetch = vi.spyOn(globalThis, 'fetch')
+      render(<NormalForm />)
+
+      expect(screen.getByRole('button', { name: 'login.signBtn' })).toBeInTheDocument()
+      expect(fetch).not.toHaveBeenCalled()
+    })
+
+    it('sends the cross-origin App code and exact return URL in the actual password request', async () => {
+      const user = userEvent.setup()
+      const redirectUrl =
+        'https://agent-app.dify.dev/workflow/my-webapp?input=hello%20world#existing'
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams({
+          is_end_user: '1',
+          mode: 'console',
+          redirect_url: redirectUrl,
+        }),
+      )
+      let submitted: unknown
+      const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        const request = new Request(input, init)
+        submitted = await request.json()
+        return Response.json({ result: 'fail', data: 'Login not completed' })
+      })
+      render(<NormalForm />)
+
+      await user.type(screen.getByLabelText('login.email'), 'account@example.com')
+      await user.type(screen.getByLabelText('login.password'), 'Password123!')
+      await user.click(screen.getByRole('button', { name: 'login.signBtn' }))
+
+      await waitFor(() =>
+        expect(submitted).toMatchObject({
+          mode: 'end_user',
+          app_code: 'my-webapp',
+          redirect_url: redirectUrl,
+          email: 'account@example.com',
+        }),
+      )
+      expect(fetch).toHaveBeenCalledOnce()
+      expect(mockReplace).not.toHaveBeenCalled()
+    })
+
+    it('returns to the safe App target after End User password login', async () => {
+      const user = userEvent.setup()
+      const replace = vi.fn()
+      const redirectUrl = `${window.location.origin}/chat/my-webapp?conversation=existing`
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams({ is_end_user: '1', redirect_url: redirectUrl }),
+      )
+      vi.stubGlobal('location', {
+        href: window.location.href,
+        origin: window.location.origin,
+        pathname: window.location.pathname,
+        search: window.location.search,
+        hash: window.location.hash,
+        replace,
+      })
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValue(Response.json({ result: 'success' }))
+      render(<NormalForm />)
+
+      await user.type(screen.getByLabelText('login.email'), 'account@example.com')
+      await user.type(screen.getByLabelText('login.password'), 'Password123!')
+      await user.click(screen.getByRole('button', { name: 'login.signBtn' }))
+
+      await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith(redirectUrl))
+      expect(fetch).toHaveBeenCalledOnce()
+      expect(mockReplace).not.toHaveBeenCalled()
+    })
+
+    it('only offers supported End User login methods without probing the workspace', () => {
+      const fetch = vi.spyOn(globalThis, 'fetch')
+      render(<NormalForm />, {
+        systemFeatures: {
+          sso_enforced_for_signin: true,
+          sso_enforced_for_signin_protocol: 'oidc',
+          is_allow_register: true,
+        },
+      })
+
+      expect(screen.getByRole('button', { name: 'login.signBtn' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'login.withSSO' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'login.signup.signUp' })).not.toBeInTheDocument()
+      expect(fetch).not.toHaveBeenCalled()
+      expect(mockReplace).not.toHaveBeenCalled()
+    })
+
+    it('shows the unavailable-method state when only unsupported enterprise SSO is configured', () => {
+      render(<NormalForm />, {
+        systemFeatures: {
+          sso_enforced_for_signin: true,
+          sso_enforced_for_signin_protocol: 'saml',
+          enable_email_code_login: false,
+          enable_email_password_login: false,
+          enable_social_oauth_login: false,
+        },
+      })
+
+      expect(screen.getByText('login.noLoginMethod')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'login.withSSO' })).not.toBeInTheDocument()
+      expect(mockReplace).not.toHaveBeenCalled()
+    })
+
+    it('does not fall back to Console sign-in when the App return target is missing', () => {
+      mockUseSearchParams.mockReturnValue(new URLSearchParams({ is_end_user: '1' }))
+      const fetch = vi.spyOn(globalThis, 'fetch')
+      render(<NormalForm />)
+
+      expect(screen.queryByRole('button', { name: 'login.signBtn' })).not.toBeInTheDocument()
+      expect(fetch).not.toHaveBeenCalled()
+      expect(mockReplace).not.toHaveBeenCalled()
+    })
+  })
+
   it('exposes the page title as the main heading', () => {
     mockQueryResults(nonInviteQueryResult, nonInviteQueryResult)
 

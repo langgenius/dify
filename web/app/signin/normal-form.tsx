@@ -4,6 +4,7 @@ import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/r
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -19,6 +20,7 @@ import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import Split from './split'
+import { getEndUserLoginContext, isEndUserSignIn } from './utils/end-user-login'
 import { isInvitationForAccount } from './utils/invitation-account'
 import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 
@@ -28,6 +30,7 @@ function NormalForm() {
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
+  const isEndUser = isEndUserSignIn(searchParams)
   const queryString = searchParams.toString()
   const signupHref = queryString ? `/signup?${queryString}` : '/signup'
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
@@ -41,6 +44,7 @@ function NormalForm() {
     ...userProfileQueryOptions(),
     throwOnError: (err) => !isUnauthorizedError(err),
     refetchOnWindowFocus: false,
+    enabled: !isEndUser,
   })
   const isLoggedIn = !!userResp && !probeError
   const message = decodeURIComponent(searchParams.get('message') || '')
@@ -51,7 +55,7 @@ function NormalForm() {
     systemFeatures.deployment_edition === 'ENTERPRISE'
   const [selectedAuthType, setSelectedAuthType] = useState<AuthType | null>(null)
 
-  const isInviteLink = Boolean(inviteToken && inviteToken !== 'null')
+  const isInviteLink = !isEndUser && Boolean(inviteToken && inviteToken !== 'null')
   const {
     data: invitationCheckResp,
     isPending: isInviteCheckLoading,
@@ -71,7 +75,7 @@ function NormalForm() {
   )
   const hasSocialLogin = systemFeatures.enable_social_oauth_login
   const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
-  const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
+  const hasSsoLogin = !isEndUser && systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
   const hasEmailCodeLogin = systemFeatures.enable_email_code_login
   const hasEmailPasswordLogin = systemFeatures.enable_email_password_login
   const hasEmailLogin = hasEmailCodeLogin || hasEmailPasswordLogin
@@ -86,12 +90,15 @@ function NormalForm() {
   const noLoginMethodsConfigured =
     !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
-  const shouldRedirectLoggedInUser = isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
+  const shouldRedirectLoggedInUser =
+    !isEndUser && isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
   const isLoading =
-    isCheckLoading || shouldRedirectLoggedInUser || (isInviteLink && isInviteCheckLoading)
+    (!isEndUser && isCheckLoading) ||
+    shouldRedirectLoggedInUser ||
+    (isInviteLink && isInviteCheckLoading)
 
   useEffect(() => {
-    if (!isLoggedIn) return
+    if (isEndUser || !isLoggedIn) return
 
     if (isInviteLink) {
       if (!isInvitationForCurrentAccount) return
@@ -100,11 +107,13 @@ function NormalForm() {
     }
 
     replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
-  }, [isInvitationForCurrentAccount, isInviteLink, isLoggedIn, router, searchParams])
+  }, [isEndUser, isInvitationForCurrentAccount, isInviteLink, isLoggedIn, router, searchParams])
 
   useEffect(() => {
     if (message) toast.error(message)
   }, [message])
+
+  if (isEndUser && !getEndUserLoginContext(searchParams)) return <AppUnavailable isUnknownReason />
 
   if (isLoading) {
     return (
@@ -122,7 +131,7 @@ function NormalForm() {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -inset-e-1 -top-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">
               {t(($) => $.licenseLost, { ns: 'login' })}
@@ -142,7 +151,7 @@ function NormalForm() {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -inset-e-1 -top-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">
               {t(($) => $.licenseExpired, { ns: 'login' })}
@@ -162,7 +171,7 @@ function NormalForm() {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="relative mb-2 flex size-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="size-5" />
-              <RiErrorWarningFill className="absolute -top-1 -right-1 size-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -inset-e-1 -top-1 size-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">
               {t(($) => $.licenseInactive, { ns: 'login' })}
@@ -271,7 +280,7 @@ function NormalForm() {
             </>
           )}
 
-          {systemFeatures.is_allow_register && authType === 'password' && (
+          {!isEndUser && systemFeatures.is_allow_register && authType === 'password' && (
             <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
               <span>{t(($) => $['signup.noAccount'], { ns: 'login' })}</span>
               <Link className="text-text-accent" href={signupHref}>

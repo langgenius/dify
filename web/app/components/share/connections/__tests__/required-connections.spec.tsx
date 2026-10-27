@@ -79,7 +79,7 @@ describe('RequiredConnections', () => {
 
     const destination = new URL(link.getAttribute('href')!, 'https://app.example')
     expect(destination.searchParams.get('redirect_url')).toBe(
-      '/workflow/another-app?conversation=current',
+      new URL('/workflow/another-app?conversation=current', window.location.origin).href,
     )
   })
 

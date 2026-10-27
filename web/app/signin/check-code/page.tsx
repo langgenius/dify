@@ -21,6 +21,7 @@ import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
 import Turnstile from '../components/turnstile'
+import { isEndUserSignIn } from '../utils/end-user-login'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type CheckCodeFormValues = {
@@ -35,7 +36,9 @@ export default function CheckCode() {
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const token = decodeURIComponent(searchParams.get('token') as string)
-  const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
+  const invite_token = isEndUserSignIn(searchParams)
+    ? ''
+    : decodeURIComponent(searchParams.get('invite_token') || '')
   const language = i18n.language
   const [loading, setLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
@@ -68,6 +71,7 @@ export default function CheckCode() {
           token,
           language,
           timezone: getBrowserTimezone(),
+          ...(isEndUserSignIn(searchParams) ? { mode: 'end_user' } : {}),
           ...(isTurnstileRequired ? { turnstile_token: verifyTurnstileToken } : {}),
         },
       })
@@ -81,9 +85,11 @@ export default function CheckCode() {
         if (invite_token) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         } else {
-          const profileQueryOptions = userProfileQueryOptions()
-          await queryClient.resetQueries({ queryKey: profileQueryOptions.queryKey })
-          await queryClient.query(profileQueryOptions)
+          if (!isEndUserSignIn(searchParams)) {
+            const profileQueryOptions = userProfileQueryOptions()
+            await queryClient.resetQueries({ queryKey: profileQueryOptions.queryKey })
+            await queryClient.query(profileQueryOptions)
+          }
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       }
@@ -109,6 +115,7 @@ export default function CheckCode() {
         body: {
           email,
           language: locale,
+          ...(isEndUserSignIn(searchParams) ? { mode: 'end_user' } : {}),
           ...(isTurnstileRequired ? { turnstile_token: turnstileToken } : {}),
         },
       })
@@ -238,7 +245,7 @@ export default function CheckCode() {
         <span className="inline-block rounded-full bg-background-default-dimmed p-1">
           <span className="i-ri-arrow-left-line size-3" aria-hidden="true" />
         </span>
-        <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
+        <span className="ms-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
       </button>
     </div>
   )

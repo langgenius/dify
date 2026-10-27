@@ -30,6 +30,20 @@ describe('post-login redirect utilities', () => {
     })
   })
 
+  it('returns directly to a safe App target after End User login', () => {
+    const target = `${window.location.origin}/chat/my-webapp?conversation=existing`
+    expect(
+      resolvePostLoginRedirect(
+        new ReadonlyURLSearchParams(
+          new URLSearchParams({
+            is_end_user: '1',
+            redirect_url: target,
+          }),
+        ),
+      ),
+    ).toEqual({ kind: 'absolute', href: target })
+  })
+
   it('should allow a trusted Dify absolute query target', () => {
     const searchParams = new URLSearchParams({
       redirect_url: 'https://docs.eu.dify.ai/getting-started',

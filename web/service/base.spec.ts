@@ -4,6 +4,7 @@ import { toast } from '@/app/notifications'
 import { PUBLIC_API_PREFIX } from '@/config'
 // oxlint-disable-next-line no-restricted-imports
 import { handleStream, postPublic, sseGet, ssePost, upload } from './base'
+import { setWebAppAccessToken, setWebAppPassport } from './webapp-auth'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
@@ -505,5 +506,118 @@ describe('ssePost and sseGet', () => {
       `${PUBLIC_API_PREFIX}/environment/workflow-app/files/upload`,
       `${PUBLIC_API_PREFIX}/environment/workflow-app/remote-files/upload`,
     ])
+  })
+})
+
+describe('Webapp account transports', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.clearAllMocks()
+    localStorage.clear()
+    sessionStorage.clear()
+    window.history.replaceState({}, '', '/')
+  })
+
+  it.each(['POST', 'GET'] as const)(
+    'sends both Webapp credentials on a public SSE %s request',
+    async (method) => {
+      window.history.replaceState({}, '', '/chat/account-app')
+      setWebAppAccessToken('account-proof', 'end_user')
+      setWebAppPassport({ kind: 'default', code: 'account-app' }, 'app-passport')
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValue(new Response(null, { status: 204 }))
+
+      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the shared special transport credential contract.
+      const send = method === 'POST' ? ssePost : sseGet
+      await send('/chat-messages', { headers: { 'X-Feature': 'chat' } }, { isPublicAPI: true })
+
+      await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+      const [, options] = fetch.mock.calls[0]!
+      const headers = new Headers(options?.headers)
+      expect(headers.get('Authorization')).toBe('Bearer account-proof')
+      expect(headers.get('X-App-Code')).toBe('account-app')
+      expect(headers.get('X-App-Passport')).toBe('app-passport')
+      expect(headers.get('X-Feature')).toBe('chat')
+    },
+  )
+
+  it('does not send the Webapp Account proof to a Console stream', async () => {
+    setWebAppAccessToken('account-proof', 'end_user')
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(null, { status: 204 }))
+
+    // oxlint-disable-next-line typescript/no-deprecated -- Verify Web credentials never leak into the Console special transport.
+    await ssePost('/chat-messages', {}, {})
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+    expect(new Headers(fetch.mock.calls[0]![1]?.headers).has('Authorization')).toBe(false)
+  })
+
+  it('stops delivering a previous account stream after an account switch', async () => {
+    window.history.replaceState({}, '', '/chat/account-app')
+    setWebAppAccessToken('account-a', 'end_user')
+    let controller!: ReadableStreamDefaultController<Uint8Array>
+    const cancel = vi.fn()
+    const response = new Response(
+      new ReadableStream<Uint8Array>({
+        start(streamController) {
+          controller = streamController
+        },
+        cancel,
+      }),
+    )
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response)
+    const onData = vi.fn()
+    const onMessageEnd = vi.fn()
+    const onCompleted = vi.fn()
+    // oxlint-disable-next-line typescript/no-deprecated -- Exercise identity retirement while the real stream parser consumes chunks.
+    await ssePost('/chat-messages', {}, { isPublicAPI: true, onData, onMessageEnd, onCompleted })
+    controller.enqueue(
+      new TextEncoder().encode('data: {"event":"message","answer":"first","id":"m-1"}\n'),
+    )
+    await waitFor(() => expect(onData).toHaveBeenCalledOnce())
+
+    setWebAppAccessToken('account-b', 'end_user')
+    controller.enqueue(
+      new TextEncoder().encode(
+        'data: {"event":"message","answer":"private","id":"m-1"}\ndata: {"event":"message_end","id":"m-1"}\n',
+      ),
+    )
+
+    await waitFor(() => expect(cancel).toHaveBeenCalledOnce())
+    expect(onData).toHaveBeenCalledOnce()
+    expect(onMessageEnd).not.toHaveBeenCalled()
+    expect(onCompleted).not.toHaveBeenCalled()
+  })
+
+  it('authenticates a public upload and rejects its result after switching accounts', async () => {
+    window.history.replaceState({}, '', '/chat/account-app')
+    setWebAppAccessToken('account-a', 'end_user')
+    setWebAppPassport({ kind: 'default', code: 'account-app' }, 'app-passport')
+    const xhr = {
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(),
+      status: 201,
+      response: { id: 'old-account-file' },
+      readyState: 1,
+      upload: {},
+      onreadystatechange: undefined as (() => void) | undefined,
+    }
+    // oxlint-disable-next-line typescript/no-deprecated -- Verify the public XHR transport uses credentials and rejects previous-account results.
+    const result = upload(
+      { xhr: xhr as unknown as XMLHttpRequest, data: new FormData() },
+      true,
+    ).catch((error: unknown) => error)
+    expect(xhr.setRequestHeader).toHaveBeenCalledWith('Authorization', 'Bearer account-a')
+    expect(xhr.setRequestHeader).toHaveBeenCalledWith('X-App-Passport', 'app-passport')
+
+    setWebAppAccessToken('account-b', 'end_user')
+    xhr.readyState = 4
+    xhr.onreadystatechange?.()
+
+    expect(await result).toMatchObject({ name: 'AbortError' })
   })
 })

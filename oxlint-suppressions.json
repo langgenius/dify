@@ -6415,17 +6415,9 @@
       "count": 3
     }
   },
-  "web/app/signin/check-code/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/signin/normal-form.tsx": {
     "@tanstack/query/prefer-query-options": {
       "count": 1
-    },
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/app/signup/check-code/page.tsx": {
@@ -7381,12 +7373,6 @@
   "web/service/webapp-auth.ts": {
     "no-restricted-globals": {
       "count": 6
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 2
     }
   },
   "web/service/workflow-generator.ts": {

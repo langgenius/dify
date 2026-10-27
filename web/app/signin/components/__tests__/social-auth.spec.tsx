@@ -31,6 +31,29 @@ describe('SocialAuth', () => {
   })
 
   describe('OAuth params', () => {
+    it('preserves the direct End User return parameters while keeping OAuth in End User mode', () => {
+      const target = {
+        is_end_user: '1',
+        redirect_url: 'https://agent-app.dify.dev/workflow/my-webapp?input=hello',
+      }
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams(target) as ReturnType<typeof useSearchParams>,
+      )
+      render(<SocialAuth />)
+
+      for (const name of ['login.withGitHub', 'login.withGoogle']) {
+        const oauth = new URL(
+          screen.getByRole('link', { name }).getAttribute('href')!,
+          window.location.origin,
+        )
+        expect(oauth.searchParams.get('mode')).toBe('end_user')
+        const resume = new URL(oauth.searchParams.get('redirect_url')!, window.location.origin)
+        expect(resume.origin).toBe(window.location.origin)
+        expect(resume.pathname).toBe('/signin')
+        expect(Object.fromEntries(resume.searchParams)).toEqual(target)
+      }
+    })
+
     it('should include browser timezone and locale in oauth links', () => {
       render(<SocialAuth />)
 

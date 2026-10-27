@@ -508,6 +508,46 @@ describe('CheckCode', () => {
   })
 
   describe('Post-login profile bootstrap', () => {
+    it('returns to the App after End User verification without requiring a workspace profile', async () => {
+      const user = userEvent.setup()
+      const replace = vi.fn()
+      vi.stubGlobal('location', {
+        href: window.location.href,
+        origin: window.location.origin,
+        pathname: window.location.pathname,
+        search: window.location.search,
+        hash: window.location.hash,
+        replace,
+      })
+      const target = {
+        is_end_user: '1',
+        redirect_url: `${window.location.origin}/chat/my-webapp`,
+      }
+      navigationMocks.searchParams = new URLSearchParams({
+        ...target,
+        email: 'account@example.com',
+        token: 'email-login-token',
+        invite_token: 'unrelated-invite',
+      })
+      const queryClient = createQueryClient()
+      render(
+        <QueryClientProvider client={queryClient}>
+          <CheckCode />
+        </QueryClientProvider>,
+      )
+
+      await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+      await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+      await waitFor(() => expect(replace).toHaveBeenCalledOnce())
+      expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenCalledWith({
+        body: expect.objectContaining({ mode: 'end_user', email: 'account@example.com' }),
+      })
+      expect(serviceBaseMocks.request).not.toHaveBeenCalled()
+      expect(replace).toHaveBeenCalledWith(target.redirect_url)
+      expect(navigationMocks.replace).not.toHaveBeenCalled()
+    })
+
     it('should resolve an inactive profile query before navigating to the console home', async () => {
       const user = userEvent.setup()
       const queryClient = createQueryClient()

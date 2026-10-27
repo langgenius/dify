@@ -11,9 +11,25 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 
 describe('Web app SignIn', () => {
+  const originalUrl = window.location.href
   beforeEach(() => {
     navigation.pathname = '/workflow/demo'
     navigation.query = ''
+  })
+  afterEach(() => window.history.replaceState({}, '', originalUrl))
+
+  it('keeps the current fragment in the full Webapp return URL', () => {
+    window.history.replaceState({}, '', '/workflow/demo#earlier-conversation')
+    render(<SignIn />)
+    const destination = new URL(
+      screen.getByRole('link', { name: 'share.auth.signIn' }).getAttribute('href')!,
+      window.location.origin,
+    )
+    expect(destination.pathname).toBe('/signin')
+    expect(destination.searchParams.get('is_end_user')).toBe('1')
+    expect(destination.searchParams.get('redirect_url')).toBe(
+      new URL('/workflow/demo#earlier-conversation', window.location.origin).href,
+    )
   })
 
   it('returns to the current page after sign-in without corrupting Unicode or special query characters', () => {
@@ -27,8 +43,9 @@ describe('Web app SignIn', () => {
     const link = screen.getByRole('link', { name: 'share.auth.signIn' })
     const destination = new URL(link.getAttribute('href')!, 'https://app.example')
     expect(destination.pathname).toBe('/signin')
+    expect(destination.searchParams.get('is_end_user')).toBe('1')
     expect(destination.searchParams.get('redirect_url')).toBe(
-      `${navigation.pathname}?${navigation.query}`,
+      new URL(`${navigation.pathname}?${navigation.query}`, window.location.origin).href,
     )
     const returnUrl = new URL(destination.searchParams.get('redirect_url')!, 'https://app.example')
     expect(decodeURIComponent(returnUrl.pathname)).toBe('/workflow/应用')
@@ -40,7 +57,7 @@ describe('Web app SignIn', () => {
     const { rerender } = render(<SignIn />)
     expect(screen.getByRole('link', { name: 'share.auth.signIn' })).toHaveAttribute(
       'href',
-      '/signin?redirect_url=%2Fworkflow%2Fdemo',
+      `/signin?${new URLSearchParams({ redirect_url: new URL('/workflow/demo', window.location.origin).href, is_end_user: '1' })}`,
     )
 
     navigation.pathname = '/workflow/another-app'
@@ -52,14 +69,14 @@ describe('Web app SignIn', () => {
       'https://app.example',
     )
     expect(destination.searchParams.get('redirect_url')).toBe(
-      '/workflow/another-app?conversation=current',
+      new URL('/workflow/another-app?conversation=current', window.location.origin).href,
     )
 
     navigation.query = ''
     rerender(<SignIn />)
     expect(screen.getByRole('link', { name: 'share.auth.signIn' })).toHaveAttribute(
       'href',
-      '/signin?redirect_url=%2Fworkflow%2Fanother-app',
+      `/signin?${new URLSearchParams({ redirect_url: new URL('/workflow/another-app', window.location.origin).href, is_end_user: '1' })}`,
     )
   })
 })
