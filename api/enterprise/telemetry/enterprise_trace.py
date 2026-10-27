@@ -35,7 +35,15 @@ from typing import Any, cast
 
 from opentelemetry.util.types import AttributeValue
 
-from core.ops.entities.trace_entity import (
+from enterprise.telemetry.entities import (
+    EnterpriseTelemetryCounter,
+    EnterpriseTelemetryEvent,
+    EnterpriseTelemetryHistogram,
+    EnterpriseTelemetrySpan,
+    TokenMetricLabels,
+)
+from enterprise.telemetry.telemetry_log import emit_metric_only_event, emit_telemetry_log
+from services.tracing.records import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
     DraftNodeExecutionTrace,
@@ -49,14 +57,6 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
-from enterprise.telemetry.entities import (
-    EnterpriseTelemetryCounter,
-    EnterpriseTelemetryEvent,
-    EnterpriseTelemetryHistogram,
-    EnterpriseTelemetrySpan,
-    TokenMetricLabels,
-)
-from enterprise.telemetry.telemetry_log import emit_metric_only_event, emit_telemetry_log
 
 logger = logging.getLogger(__name__)
 

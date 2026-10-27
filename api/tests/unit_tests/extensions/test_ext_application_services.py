@@ -20,7 +20,6 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
-from core.ops.base_trace_instance import application_tracing_hooks
 from core.plugin.impl import base as plugin_http
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
@@ -28,6 +27,7 @@ from extensions import ext_application_services
 from extensions.application_services.app import AppServices
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
+from extensions.tracing import application_tracing_hooks, create_trace_scope_for_app
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -107,7 +107,6 @@ from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavaila
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.billing_portal_service import BillingPortalService
@@ -156,6 +155,9 @@ from services.retention.workflow_run.archive_log_service import WorkflowRunArchi
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.tracing import runtime_bridge
+from services.tracing.egress import SSRFEgress
+from services.tracing.emitter import CeleryTraceEmitter
+from services.tracing.provider_configs import ProviderConfigGateway
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_authentication_adapters import (
     AccountWebAuthenticationSecurityGateway,
@@ -170,6 +172,7 @@ from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.delete_conversation_task import delete_conversation_related_data
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_app
 from tests.helpers.unit.services.conversation_name_fixtures import _MODEL, _PROVIDER, NamingPlugin
 from tests.unit_tests.services.test_app_task_service import _AppTaskServiceStopredis as _StopRedis
 
@@ -309,6 +312,40 @@ def test_init_app_registers_distinct_tracing_ports_without_constructing_trace_se
             assert second_hooks is not first_hooks
         assert application_tracing_hooks() is first_hooks
     assert construction_calls == []
+
+
+def test_init_app_binds_trace_scopes_to_the_apps_tracing_policy(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    app = Flask(__name__)
+    monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, INIT_PASSWORD="")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                make_app(
+                    app_id="traced-app",
+                    tenant_id="tenant-1",
+                    tracing=json.dumps({"enabled": True, "tracing_provider": "langfuse"}),
+                ),
+                make_app(app_id="untraced-app", tenant_id="tenant-1"),
+            ]
+        )
+
+    ext_application_services.init_app(app)
+
+    with app.app_context():
+        scope = create_trace_scope_for_app(
+            tenant_id="tenant-1", app_id="traced-app", user_id="user-1", extras={"external_trace_id": "external-1"}
+        )
+        assert scope is not None
+        assert isinstance(scope.emitter, CeleryTraceEmitter)
+        assert (scope.tenant_id, scope.app_id, scope.user_id) == ("tenant-1", "traced-app", "user-1")
+        assert scope.correlation.external_trace_id == "external-1"
+        assert create_trace_scope_for_app(tenant_id="tenant-1", app_id="untraced-app", user_id=None, extras={}) is None
+    with Flask("unbound").app_context():
+        assert create_trace_scope_for_app(tenant_id="tenant-1", app_id="traced-app", user_id=None, extras={}) is None
 
 
 def test_build_application_services_preserves_composed_boundaries(
@@ -639,7 +676,9 @@ def test_build_application_services_wires_app_tracing_config_boundary(
     assert isinstance(services.app_tracing_configs, AppTracingConfigService)
     assert isinstance(services.app_tracing_configs._configs, SQLAlchemyAppTracingConfigRepository)
     assert services.app_tracing_configs._configs._session_factory is sqlite_session_factory
-    assert isinstance(services.app_tracing_configs._provider, OpsTraceManagerGateway)
+    provider = services.app_tracing_configs._provider
+    assert isinstance(provider, ProviderConfigGateway)
+    assert isinstance(provider._egress, SSRFEgress)
 
 
 def test_build_application_services_wires_workflow_app_log_boundary(

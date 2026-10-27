@@ -9,8 +9,8 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from dify_trace_sdk.events import SuggestedQuestionsGenerated, TraceEvent
 from flask import Flask, current_app
-from pydantic import ValidationError
 from sqlalchemy import Connection, Engine, event, select
 from sqlalchemy.exc import IntegrityError, PendingRollbackError
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -25,6 +25,7 @@ from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 from core.plugin.impl.base import _get_plugin_daemon_request_timeout
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
+from extensions.tracing import bind_tracing
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import Provider, TenantDefaultModel
@@ -35,6 +36,8 @@ from services.message_suggested_questions_generator import (
     _default_suggested_questions_model_parameters,
 )
 from services.message_suggested_questions_service import SuggestedQuestionsContext
+from services.tracing.emitter import TraceScopes
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from tests.helpers.unit.core.model_fixtures import make_model_instance
 from tests.helpers.unit.model_factories import make_app
 
@@ -196,11 +199,28 @@ def test_configured_parameters_keep_positive_limits() -> None:
     )
 
 
-@pytest.mark.parametrize("tracing", ["invalid trace JSON", '{"enabled":{"invalid":"type"}}'])
-def test_trace_config_failure_escapes_generation_and_closes_its_sessions(
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+@pytest.mark.parametrize(
+    ("tracing", "traced"),
+    [
+        ("invalid trace JSON", False),
+        ('{"enabled":{"invalid":"type"}}', False),
+        ('{"enabled":true,"tracing_provider":"langfuse"}', True),
+    ],
+    ids=["unparsable", "invalid-policy", "enabled"],
+)
+def test_tracing_reads_its_policy_in_its_own_session_and_never_fails_generation(
     invalid_provider_tenant: str,
     sqlite_session_factory: sessionmaker[Session],
     tracing: str,
+    traced: bool,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     app_record = make_app(app_id=str(uuid4()), tenant_id=invalid_provider_tenant)
@@ -227,13 +247,19 @@ def test_trace_config_failure_escapes_generation_and_closes_its_sessions(
         sessions.append(session)
 
     factory = db.session.session_factory
+    recorder = _TraceRecorder()
+    bind_tracing(
+        current_app,
+        scopes=TraceScopes(emitter=recorder, session_factory=sqlite_session_factory, enterprise_enabled=lambda: False),
+        hooks=RuntimeApplicationTracingHooks(),
+    )
     event.listen(factory, "after_begin", record_session)
+    event.listen(sqlite_session_factory, "after_begin", record_session)
     try:
         # Empty detached history needs no token-counting call. The real failed
-        # model lookup returns [], then trace construction reads the malformed
-        # stored config before it could create a timer or dispatch telemetry.
-        with pytest.raises(ValidationError), current_app.app_context():
-            SuggestedQuestionsGenerator().generate(
+        # model lookup returns [], then the trace scope reads the stored policy.
+        with current_app.app_context():
+            questions = SuggestedQuestionsGenerator().generate(
                 PreparedHistory(prompts=()),
                 history_model=make_model_instance(provider="invalid/provider", model="unused"),
                 context=context,
@@ -242,7 +268,17 @@ def test_trace_config_failure_escapes_generation_and_closes_its_sessions(
             )
     finally:
         event.remove(factory, "after_begin", record_session)
+        event.remove(sqlite_session_factory, "after_begin", record_session)
 
+    assert questions == []
+    if traced:
+        (trace_event,) = recorder.events
+        assert (trace_event.tenant_id, trace_event.app_id) == (invalid_provider_tenant, app_record.id)
+        assert isinstance(trace_event.payload, SuggestedQuestionsGenerated)
+        assert (trace_event.payload.message_id, trace_event.payload.questions) == (context.message_id, [])
+        assert trace_event.payload.started_at <= trace_event.payload.ended_at
+    else:
+        assert recorder.events == []
     assert "invalid/provider" in caplog.text
     assert len(sessions) == 2
     assert sessions[0] is not sessions[1]

@@ -49,8 +49,8 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
-from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
+from extensions.tracing import application_tracing_hooks, create_trace_scope
 from factories import file_factory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageAnnotation
 from models.agent import (
@@ -142,7 +142,14 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 else []
             )
 
-        trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
+        extras = {"auto_generate_conversation_name": args.get("auto_generate_name", True)}
+        trace_scope = create_trace_scope(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            app_tracing=app_model.tracing,
+            user_id=user.id if isinstance(user, Account) else user.session_id,
+            extras=extras,
+        )
         application_generate_entity = AgentAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
@@ -162,11 +169,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=streaming,
             invoke_from=invoke_from,
-            extras={
-                "auto_generate_conversation_name": args.get("auto_generate_name", True),
-            },
+            extras=extras,
             call_depth=0,
-            trace_manager=trace_manager,
+            trace_scope=trace_scope,
             agent_id=agent.id,
             agent_config_snapshot_id=agent_config_id,
             agent_config_version_kind=agent_config_version_kind,
@@ -314,8 +319,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 # A local stop or failed cancellation wait is still just intent.
                 pass
             except Exception as e:
-                from core.ops.base_trace_instance import application_tracing_hooks
-
                 tracing_hooks = application_tracing_hooks()
                 if tracing_hooks is not None:
                     tracing_hooks.capture_agent_app_terminal(
@@ -387,7 +390,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 inputs=dict(application_generate_entity.inputs),
                 query=query or "",
                 message_id=message.id,
-                trace_manager=application_generate_entity.trace_manager,
+                trace_scope=application_generate_entity.trace_scope,
             )
         except ModerationError as e:
             publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=str(e), user_query=query)

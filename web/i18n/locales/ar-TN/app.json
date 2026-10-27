@@ -268,6 +268,7 @@
   "tracing.config": "تكوين",
   "tracing.configProvider.clientId": "معرف العميل (Client ID)",
   "tracing.configProvider.clientSecret": "سر العميل (Client Secret)",
+  "tracing.configProvider.configuredSecretPlaceholder": "تم التكوين. اتركه فارغًا للاحتفاظ بالقيمة المحفوظة.",
   "tracing.configProvider.databricksHost": "عنوان URL لمساحة عمل Databricks",
   "tracing.configProvider.experimentId": "معرف التجربة",
   "tracing.configProvider.password": "كلمة المرور",

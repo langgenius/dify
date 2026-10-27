@@ -11,7 +11,6 @@ from flask import Flask
 from sqlalchemy import Engine
 from yarl import URL
 
-from core.ops import ops_trace_manager
 from core.plugin.impl import base as plugin_http
 from extensions.ext_database import db
 
@@ -98,23 +97,14 @@ def naming_plugin(config_overrides: Callable[..., None]) -> Iterator[NamingPlugi
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     thread = Thread(target=server.serve_forever, daemon=True)
     original_url = plugin_http.plugin_daemon_inner_api_baseurl
-    original_trace_interval = ops_trace_manager.trace_manager_interval
-    original_trace_timer = ops_trace_manager.trace_manager_timer
     # Change real connection settings, preserving every production client and method.
     plugin_http.plugin_daemon_inner_api_baseurl = URL(f"http://127.0.0.1:{server.server_port}")
     config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
-    ops_trace_manager.trace_manager_interval = 3600
     thread.start()
     try:
         yield plugin
     finally:
         plugin_http.plugin_daemon_inner_api_baseurl = original_url
-        ops_trace_manager.trace_manager_interval = original_trace_interval
-        timer = ops_trace_manager.trace_manager_timer
-        if timer is not None and timer is not original_trace_timer:
-            timer.cancel()
-            timer.join(timeout=1)
-            ops_trace_manager.trace_manager_timer = original_trace_timer
         server.shutdown()
         server.server_close()
         thread.join(timeout=1)

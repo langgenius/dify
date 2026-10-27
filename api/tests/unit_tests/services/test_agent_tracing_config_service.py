@@ -3,6 +3,7 @@
 from collections.abc import Callable
 
 import pytest
+from dify_trace_sdk.testing import RecordingEgress
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.application_services.app import AppServices
@@ -11,8 +12,8 @@ from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from services.agent_tracing_config_service import AgentTracingConfigService
 from services.app.agent_app_contracts import AgentAppNotFoundError
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTraceSettings, AppTracingConfigService
+from services.tracing.provider_configs import ProviderConfigGateway
 
 type TraceConfigArguments = tuple[()] | tuple[AppTraceSettings] | tuple[str] | tuple[str, dict[str, str]]
 type RecordedCall = tuple[str, tuple[object, ...]]
@@ -56,7 +57,7 @@ def test_agent_operations_resolve_tenant_owner_before_app_services(
     settings = app_services.console
     configs = AppTracingConfigService(
         configs=SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory),
-        provider=OpsTraceManagerGateway(),
+        provider=ProviderConfigGateway(RecordingEgress([], grpc_target=None)),
     )
     calls: list[RecordedCall] = []
 

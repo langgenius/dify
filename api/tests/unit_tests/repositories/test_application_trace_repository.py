@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Literal
@@ -7,18 +7,22 @@ from uuid import UUID
 
 import pytest
 from aliyun.log.logclient import LogClient
+from dify_trace_sdk.events import WorkflowRunCompleted
+from dify_trace_sdk.provider import SendResult
 from sqlalchemy import Connection, Engine, delete, event, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.ops.entities.trace_entity import ModerationTraceInfo
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories.logstore_api_workflow_run_repository import _dict_to_workflow_run
 from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
 from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvocation, ApplicationTraceRun
-from models.model import App, AppMode
+from models.model import App, AppMode, Message
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+from repositories import application_trace_repository as repository_module
 from repositories.application_trace_repository import TraceCollectionError
-from services.tracing.provider_dispatch import TraceExportResult
+from services.tracing.records import ModerationTraceInfo
 from services.tracing.recovery import _workflow_task
 from services.tracing.service import ApplicationTracingService
 from tests.helpers.unit.config_override import apply_config_overrides
@@ -28,8 +32,12 @@ from tests.unit_tests.services.tracing.test_service import _application_trace_co
 from tests.unit_tests.services.tracing.test_service import _application_trace_collection_claim as claim
 from tests.unit_tests.services.tracing.test_service import _application_trace_collection_identifier as identifier
 from tests.unit_tests.services.tracing.test_service import _application_trace_collection_ingest as ingest
+from tests.unit_tests.services.tracing.test_service import _application_trace_collection_no_egress as no_egress
 from tests.unit_tests.services.tracing.test_service import _application_trace_collection_seed as seed
 from tests.unit_tests.services.tracing.test_service import _application_trace_collection_terminal as terminal
+from tests.unit_tests.services.tracing.test_service import (
+    _application_trace_collection_tracing_service as tracing_service,
+)
 from tests.unit_tests.services.tracing.test_service import _ApplicationTraceCollectionCollection as Collection
 
 """Configured LogStore readers work without SQL mirrors and retain source ownership."""
@@ -54,7 +62,7 @@ class StoredSource:
         return run
 
     def service(self) -> ApplicationTracingService:
-        return ApplicationTracingService(self.case.repository)
+        return tracing_service(self.case, no_egress())
 
     def status(self, node_execution_id: str | None = None) -> dict[str, object]:
         return self.service().status(
@@ -280,7 +288,9 @@ class TestApplicationTraceLogstoreCases:
             run.id,
             lease[1],
             state="accepted",
-            result=TraceExportResult("provider-id", span_urls={invocation.span_id: "https://trace.test/span"}),
+            result=SendResult(
+                trace_id="provider-id", trace_url=None, span_urls={invocation.span_id: "https://trace.test/span"}
+            ),
         )
         assert stored.status(node_id)["span_url"] == "https://trace.test/span"
         with pytest.raises(TraceCollectionError, match="tracing_node_not_found"):
@@ -290,10 +300,14 @@ class TestApplicationTraceLogstoreCases:
     def test_preview_settlement_and_workflow_recovery_use_configured_source(stored: StoredSource) -> None:
         run = stored.start()
         if stored.kind == "workflow":
-            task = _workflow_task(stored.case.repository, run, naive_utc_now())
-            assert task is not None
-            assert task.workflow_run_id == run.source_id
-            assert task.kwargs["trace_session_id"] == run.session_id
+            event = _workflow_task(stored.case.repository, run, naive_utc_now())
+            assert event is not None
+            assert event.payload == WorkflowRunCompleted(
+                workflow_run_id=run.source_id, conversation_id=None, total_tokens=None
+            )
+            assert (event.tenant_id, event.app_id) == (run.tenant_id, run.app_id)
+            assert event.user_id == stored.row["created_by"]
+            assert event.correlation.session_id == run.session_id
             stored.row["status"] = "running"
             assert _workflow_task(stored.case.repository, run, naive_utc_now()) is None
         else:
@@ -305,12 +319,12 @@ class TestApplicationTraceLogstoreCases:
             assert root["status"] == "ok"
             assert root["inputs"] is None
             assert root["outputs"] is None
-            assert root["metadata"]["node_execution_id"] == run.source_id
+            assert root["attributes"]["node_execution_id"] == run.source_id
 
     @staticmethod
     @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
     def test_missing_snapshot_classifies_logstore_agent_workflow_and_persists_failure(stored: StoredSource) -> None:
-        info = workflow_info(_dict_to_workflow_run(stored.row))
+        info = workflow_info(_dict_to_workflow_run(stored.row), None)
         assert stored.service().capture_terminal(info) is True
         result = stored.status()
         assert result["status"] == "failed"
@@ -322,7 +336,7 @@ class TestApplicationTraceLogstoreCases:
     def test_unindexed_workflow_uses_owned_definition_for_safe_legacy_decision(
         stored: StoredSource, has_agent: bool
     ) -> None:
-        info = workflow_info(_dict_to_workflow_run(stored.row))
+        info = workflow_info(_dict_to_workflow_run(stored.row), None)
         with stored.case.sessions.begin() as session:
             app = session.get(App, stored.case.run.app_id)
             assert app is not None
@@ -340,15 +354,21 @@ class TestApplicationTraceLogstoreCases:
     @staticmethod
     @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
     @pytest.mark.parametrize("snapshot", [True, False])
-    def test_auxiliary_content_is_suppressed_for_logstore_workflow(stored: StoredSource, snapshot: bool) -> None:
+    def test_auxiliary_content_is_suppressed_for_logstore_chatflow(stored: StoredSource, snapshot: bool) -> None:
+        with stored.case.sessions.begin() as session:
+            app = session.get(App, stored.case.run.app_id)
+            message = session.get(Message, stored.case.run.source_id)
+            assert app is not None
+            assert message is not None
+            app.mode = AppMode.ADVANCED_CHAT
+            message.workflow_run_id = str(stored.row["id"])
+            session.execute(delete(ApplicationTraceRun).where(ApplicationTraceRun.id == stored.case.run.id))
         if snapshot:
             stored.start()
         info = ModerationTraceInfo(
             message_id=identifier("workflow-log"),
-            metadata={
-                "workflow_run_id": stored.row["id"],
-                **({} if snapshot else {"app_id": stored.case.run.app_id}),
-            },
+            message_data=message,
+            metadata={"message_id": message.id},
             flagged=False,
             action="direct_output",
             preset_response="",
@@ -374,33 +394,15 @@ class TestApplicationTraceLogstoreCases:
     ) -> None:
         parent = stored.start()
         info = workflow_info(_dict_to_workflow_run(stored.row), _dict_to_workflow_run(stored.row))
-        original = dict(info.metadata)
         if mismatch:
             stored.row[mismatch] = identifier("foreign")
-        stored.service()._link_managed_parent(info, parent.tenant_id)
+        linked = stored.service().link_managed_parent(info)
         if mismatch:
-            assert info.metadata == original
+            assert linked is info
         else:
-            assert info.resolved_parent_context == (None, None)
-            assert info.metadata["linked_parent_trace_id"] == parent.trace_id
-            assert info.metadata["linked_parent_workflow_run_id"] == parent.source_id
-
-    @staticmethod
-    @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
-    def test_auxiliary_durable_owner_rejects_app_reassigned_to_other_tenant(stored: StoredSource) -> None:
-        run = stored.start()
-        with stored.case.sessions.begin() as session:
-            app = session.get(App, run.app_id)
-            assert app is not None
-            app.tenant_id = identifier("foreign")
-        info = ModerationTraceInfo(
-            metadata={"workflow_run_id": run.source_id},
-            query="",
-            flagged=False,
-            action="direct_output",
-            preset_response="",
-        )
-        assert stored.service().capture_terminal(info) is False
+            assert linked.resolved_parent_context == (None, None)
+            assert linked.metadata["linked_parent_trace_id"] == parent.trace_id
+            assert linked.metadata["linked_parent_workflow_run_id"] == parent.source_id
 
     @staticmethod
     def test_sql_workflow_source_still_uses_scoped_configured_reader(
@@ -434,7 +436,92 @@ class TestApplicationTraceLogstoreCases:
 """Persistence boundaries that must fail closed or remain immutable across retries."""
 
 
+def race_before_insert(monkeypatch: pytest.MonkeyPatch, competitor: Callable[[], None]) -> None:
+    """Run ``competitor`` after the caller's existence check, when it allocates its new run's identifiers."""
+    raced: list[bool] = []
+
+    def allocate() -> UUID:
+        if not raced:
+            raced.append(True)
+            competitor()
+        return uuidv7()
+
+    monkeypatch.setattr(repository_module, "uuidv7", allocate)
+
+
+def drop_run(case: Collection) -> None:
+    with case.sessions.begin() as session:
+        session.execute(delete(ApplicationTraceRun).where(ApplicationTraceRun.id == case.run.id))
+
+
+def run_count(case: Collection) -> int | None:
+    with case.sessions() as session:
+        return session.scalar(
+            select(func.count())
+            .select_from(ApplicationTraceRun)
+            .where(ApplicationTraceRun.source_id == case.run.source_id)
+        )
+
+
+def start_message(case: Collection, session_id: str) -> ApplicationTraceRun | None:
+    return case.repository.start(
+        tenant_id=case.run.tenant_id,
+        app_id=case.run.app_id,
+        source_kind="message",
+        source_id=case.run.source_id,
+        session_id=session_id,
+    )
+
+
 class TestApplicationTraceRepositoryBoundariesCases:
+    @staticmethod
+    def test_concurrent_start_returns_the_first_frozen_snapshot(
+        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        case = seed(sqlite_session_factory, "concurrent-start")
+        drop_run(case)
+        winners: list[ApplicationTraceRun | None] = []
+        race_before_insert(monkeypatch, lambda: winners.append(start_message(case, "first-session")))
+        current = start_message(case, "second-session")
+        assert current is not None
+        assert winners[0] is not None
+        assert current.id == winners[0].id
+        assert current.session_id == "first-session"
+        assert current.state == "collecting"
+        assert run_count(case) == 1
+
+    @staticmethod
+    def test_initialization_failure_yields_to_a_concurrently_frozen_start(
+        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        case = seed(sqlite_session_factory, "concurrent-failure")
+        drop_run(case)
+        winners: list[ApplicationTraceRun | None] = []
+        race_before_insert(monkeypatch, lambda: winners.append(start_message(case, "started-session")))
+        current = case.repository.record_initialization_failure(
+            tenant_id=case.run.tenant_id, app_id=case.run.app_id, source_kind="message", source_id=case.run.source_id
+        )
+        assert current is not None
+        assert winners[0] is not None
+        assert current.id == winners[0].id
+        assert current.state == "collecting"
+        assert current.error_code is None
+        assert current.provider_config == case.run.provider_config
+        assert run_count(case) == 1
+
+    @staticmethod
+    def test_identifier_collision_is_not_mistaken_for_a_concurrent_start(
+        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        case = seed(sqlite_session_factory, "colliding-start")
+        other = seed(sqlite_session_factory, "colliding-owner")
+        drop_run(case)
+        monkeypatch.setattr(repository_module, "uuidv7", lambda: UUID(other.run.id))
+        with pytest.raises(IntegrityError):
+            start_message(case, "colliding-session")
+        assert run_count(case) == 0
+        assert case.repository.get(other.run.id) is not None
+
     @staticmethod
     @pytest.mark.parametrize("policy", ["invalid-json", "null", "[]"])
     def test_malformed_policy_freezes_disabled_decision(
