@@ -122,6 +122,35 @@ def test_oauth_cimd_fetch_limit_clamps_or_falls_back(configured: str, expected: 
     assert expected == config.OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE
 
 
+def test_oauth_client_ip_rate_limits_default() -> None:
+    config = _IsolatedAuthConfig()
+
+    assert config.OAUTH_DCR_RATE_LIMIT_PER_HOUR == 120
+    assert config.OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN == 300
+
+
+@pytest.mark.parametrize("setting", ["OAUTH_DCR_RATE_LIMIT_PER_HOUR", "OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN"])
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [("500", 500), ("0", 0), ("10000", 10000), ("-5", 0), ("20000", 10000)],
+)
+def test_oauth_client_ip_rate_limits_clamp(setting: str, configured: str, expected: int) -> None:
+    config = _IsolatedAuthConfig.model_validate({setting: configured})
+
+    assert config.model_dump()[setting] == expected
+
+
+@pytest.mark.parametrize(
+    ("setting", "default"),
+    [("OAUTH_DCR_RATE_LIMIT_PER_HOUR", 120), ("OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN", 300)],
+)
+@pytest.mark.parametrize("configured", ["abc", ""])
+def test_oauth_client_ip_rate_limits_fall_back_to_the_default(setting: str, default: int, configured: str) -> None:
+    config = _IsolatedAuthConfig.model_validate({setting: configured})
+
+    assert config.model_dump()[setting] == default
+
+
 class _IsolatedFileUploadConfig(InitSettingsOnly, FileUploadConfig):
     pass
 

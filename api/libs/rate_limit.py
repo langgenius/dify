@@ -39,6 +39,11 @@ class RateLimit:
     window: timedelta
     scopes: tuple[RateLimitScope, ...]
 
+    @property
+    def disabled(self) -> bool:
+        """0 (or less) turns the limit off; a limiter built with no attempts would refuse everything."""
+        return self.limit <= 0
+
 
 LIMIT_DEVICE_CODE_PER_IP = RateLimit(
     name="device_code_per_ip", limit=60, window=timedelta(hours=1), scopes=(RateLimitScope.IP,)
@@ -59,9 +64,17 @@ LIMIT_LOOKUP_PUBLIC = RateLimit(
     name="lookup_public", limit=60, window=timedelta(minutes=5), scopes=(RateLimitScope.IP,)
 )
 LIMIT_AUTHORIZE_CLIENT_PUBLIC = RateLimit(
-    name="authorize_client_public", limit=60, window=timedelta(minutes=5), scopes=(RateLimitScope.IP,)
+    name="authorize_client_public",
+    limit=dify_config.OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN,
+    window=timedelta(minutes=5),
+    scopes=(RateLimitScope.IP,),
 )
-LIMIT_DCR_PER_IP = RateLimit(name="dcr_per_ip", limit=20, window=timedelta(hours=1), scopes=(RateLimitScope.IP,))
+LIMIT_DCR_PER_IP = RateLimit(
+    name="dcr_per_ip",
+    limit=dify_config.OAUTH_DCR_RATE_LIMIT_PER_HOUR,
+    window=timedelta(hours=1),
+    scopes=(RateLimitScope.IP,),
+)
 LIMIT_AUTHORIZE_APPROVE = RateLimit(
     name="authorize_approve", limit=10, window=timedelta(hours=1), scopes=(RateLimitScope.CONSOLE_ACCOUNT,)
 )
@@ -157,6 +170,8 @@ def rate_limit(spec: RateLimit) -> Callable[[Callable[_P, _R]], Callable[_P, _R]
     def wrap(fn: Callable[_P, _R]) -> Callable[_P, _R]:
         @wraps(fn)
         def inner(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+            if spec.disabled:
+                return fn(*args, **kwargs)
             key = _composite_key(spec.scopes)
             if limiter.is_rate_limited(key):
                 raise TooManyRequests("rate_limited")
@@ -169,10 +184,14 @@ def rate_limit(spec: RateLimit) -> Callable[[Callable[_P, _R]], Callable[_P, _R]
 
 
 def is_limited(spec: RateLimit, *, key: str) -> bool:
+    if spec.disabled:
+        return False
     return _build_limiter(spec).is_rate_limited(key)
 
 
 def record_hit(spec: RateLimit, *, key: str) -> None:
+    if spec.disabled:
+        return
     _build_limiter(spec).increment_rate_limit(key)
 
 
@@ -203,9 +222,7 @@ def enforce_bearer_rate_limit(token_hash: str) -> None:
     Bucket key = ``token:<sha256_hex>`` so the same token shares one
     bucket across api replicas (Redis-backed sliding window).
     """
-    # 0 (or less) disables the per-token limit. Short-circuit here: a limiter built with
-    # max_attempts=0 would otherwise treat every request as already over the limit.
-    if LIMIT_BEARER_PER_TOKEN.limit <= 0:
+    if LIMIT_BEARER_PER_TOKEN.disabled:
         return
     limiter = _build_limiter(LIMIT_BEARER_PER_TOKEN)
     key = f"token:{token_hash}"

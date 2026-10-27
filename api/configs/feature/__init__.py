@@ -53,6 +53,17 @@ DEFAULT_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: Final = 60
 MIN_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: Final = 0
 MAX_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: Final = 10000
 
+DEFAULT_OAUTH_DCR_RATE_LIMIT_PER_HOUR: Final = 120
+DEFAULT_OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN: Final = 300
+MIN_OAUTH_CLIENT_IP_RATE_LIMIT: Final = 0
+MAX_OAUTH_CLIENT_IP_RATE_LIMIT: Final = 10000
+CLIENT_IP_RATE_LIMIT_NOTE: Final = (
+    "Counted per client IP; behind a reverse proxy the IP is only the real client's when "
+    "RESPECT_XFORWARD_HEADERS_ENABLED is on and the proxy is trusted. 0 means no limit. "
+    f"Values outside {MIN_OAUTH_CLIENT_IP_RATE_LIMIT}-{MAX_OAUTH_CLIENT_IP_RATE_LIMIT} are clamped; "
+    "a non-integer falls back to the default."
+)
+
 
 def _clamp_int_setting(name: str, value: object, *, default: int, minimum: int, maximum: int) -> int:
     # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
@@ -1330,6 +1341,44 @@ class AuthConfig(BaseSettings):
             default=DEFAULT_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
             minimum=MIN_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
             maximum=MAX_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+        )
+
+    OAUTH_DCR_RATE_LIMIT_PER_HOUR: int = Field(
+        description="Max OAuth dynamic client registrations (/openapi/v1/oauth/register) per hour. "
+        + CLIENT_IP_RATE_LIMIT_NOTE,
+        ge=MIN_OAUTH_CLIENT_IP_RATE_LIMIT,
+        le=MAX_OAUTH_CLIENT_IP_RATE_LIMIT,
+        default=DEFAULT_OAUTH_DCR_RATE_LIMIT_PER_HOUR,
+    )
+
+    @field_validator("OAUTH_DCR_RATE_LIMIT_PER_HOUR", mode="before")
+    @classmethod
+    def _clamp_oauth_dcr_rate_limit_per_hour(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_DCR_RATE_LIMIT_PER_HOUR",
+            v,
+            default=DEFAULT_OAUTH_DCR_RATE_LIMIT_PER_HOUR,
+            minimum=MIN_OAUTH_CLIENT_IP_RATE_LIMIT,
+            maximum=MAX_OAUTH_CLIENT_IP_RATE_LIMIT,
+        )
+
+    OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN: int = Field(
+        description="Max OAuth consent-page client lookups (/openapi/v1/oauth/authorize/client) per 5 minutes. "
+        + CLIENT_IP_RATE_LIMIT_NOTE,
+        ge=MIN_OAUTH_CLIENT_IP_RATE_LIMIT,
+        le=MAX_OAUTH_CLIENT_IP_RATE_LIMIT,
+        default=DEFAULT_OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN,
+    )
+
+    @field_validator("OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN", mode="before")
+    @classmethod
+    def _clamp_oauth_authorize_client_rate_limit_per_5_min(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN",
+            v,
+            default=DEFAULT_OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN,
+            minimum=MIN_OAUTH_CLIENT_IP_RATE_LIMIT,
+            maximum=MAX_OAUTH_CLIENT_IP_RATE_LIMIT,
         )
 
     OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(

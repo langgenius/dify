@@ -16,6 +16,7 @@ from flask.ctx import RequestContext
 from redis import Redis
 from werkzeug.exceptions import TooManyRequests, Unauthorized
 
+from configs import dify_config
 from libs import rate_limit as rate_limit_module
 from libs.helper import RateLimiter, _RateLimiterRedisClient
 from libs.oauth_bearer import AuthContext, TokenType, _auth_ctx_var
@@ -24,6 +25,7 @@ from libs.rate_limit import (
     LIMIT_AUTHORIZE_CLIENT_PUBLIC,
     LIMIT_BEARER_PER_TOKEN,
     LIMIT_CLIENT_AUTH_FAILURE,
+    LIMIT_DCR_PER_IP,
     LIMIT_DEVICE_CODE_PER_IP,
     LIMIT_DEVICE_FLOW_APPROVE,
     LIMIT_LOOKUP_PUBLIC,
@@ -325,11 +327,44 @@ def test_session_scope_is_gone() -> None:
 def test_authorization_code_limits() -> None:
     assert (LIMIT_CLIENT_AUTH_FAILURE.limit, LIMIT_CLIENT_AUTH_FAILURE.window) == (10, timedelta(minutes=15))
     assert LIMIT_CLIENT_AUTH_FAILURE.scopes == ()
-    assert (LIMIT_AUTHORIZE_CLIENT_PUBLIC.limit, LIMIT_AUTHORIZE_CLIENT_PUBLIC.window) == (60, timedelta(minutes=5))
+    assert LIMIT_AUTHORIZE_CLIENT_PUBLIC.limit == dify_config.OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN
+    assert LIMIT_AUTHORIZE_CLIENT_PUBLIC.window == timedelta(minutes=5)
     assert LIMIT_AUTHORIZE_CLIENT_PUBLIC.scopes == (RateLimitScope.IP,)
     assert LIMIT_AUTHORIZE_APPROVE.limit == 10
     assert LIMIT_AUTHORIZE_APPROVE.scopes == (RateLimitScope.CONSOLE_ACCOUNT,)
     assert limiter_prefix(LIMIT_AUTHORIZE_APPROVE) != limiter_prefix(LIMIT_DEVICE_FLOW_APPROVE)
+
+
+def test_dcr_limit_reads_its_setting() -> None:
+    assert LIMIT_DCR_PER_IP.limit == dify_config.OAUTH_DCR_RATE_LIMIT_PER_HOUR
+    assert LIMIT_DCR_PER_IP.window == timedelta(hours=1)
+    assert LIMIT_DCR_PER_IP.scopes == (RateLimitScope.IP,)
+
+
+_OFF = RateLimit(name="off", limit=0, window=timedelta(minutes=1), scopes=(RateLimitScope.IP,))
+
+
+def test_a_zero_limit_lets_every_request_through(app: Flask, fake_redis: _FakeZsetRedis) -> None:
+    with _ip_request(app):
+        for _ in range(5):
+            _hit(_OFF)
+
+    assert fake_redis.zsets == {}
+    assert fake_redis.writes == 0
+
+
+def test_a_zero_limit_needs_no_identity(app: Flask, fake_redis: _FakeZsetRedis) -> None:
+    with app.test_request_context("/"):
+        _hit(_OFF)
+
+    assert fake_redis.writes == 0
+
+
+def test_manual_helpers_never_limit_or_count_a_zero_limit(fake_redis: _FakeZsetRedis) -> None:
+    record_hit(_OFF, key="k")
+
+    assert not is_limited(_OFF, key="k")
+    assert fake_redis.writes == 0
 
 
 def test_manual_helpers_count_per_key_inside_the_window(
