@@ -900,7 +900,6 @@ class TestPluginUploadFromGithubApi:
             result = raised_error(lambda: method(api, ParserGithubUpload.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
-
     def test_download_error_reports_status(self, app: Flask):
         api = PluginUploadFromGithubApi()
         method = unwrap(api.post)
@@ -916,6 +915,7 @@ class TestPluginUploadFromGithubApi:
         ):
             result = raised_error(lambda: method(api, ParserGithubUpload.model_validate(payload), "t1"))
             assert result == ({"code": "plugin_error", "message": "Failed to download file: HTTP 403"}, 400)
+
 
 class TestPluginUploadFromBundleApi:
     def test_success(self, app: Flask):
