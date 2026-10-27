@@ -176,6 +176,7 @@ def test_retry_exhaustion_preserves_the_last_request_error(monkeypatch: pytest.M
     assert sleep_calls == [BACKOFF_FACTOR]
 
 
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
 def test_retry_exhaustion_keeps_the_last_status(mock_get_client, client_factory, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
     mock_response = httpx.Response(503)
@@ -214,7 +215,7 @@ def test_retry_then_success_returns_the_later_response(mock_get_client, monkeypa
     responses = iter([httpx.Response(503), httpx.Response(200, content=b"ok")])
     sends = 0
 
-    def answer(request: httpx.Request) -> httpx.Response:
+    def answer(_request: httpx.Request) -> httpx.Response:
         nonlocal sends
         sends += 1
         return next(responses)
