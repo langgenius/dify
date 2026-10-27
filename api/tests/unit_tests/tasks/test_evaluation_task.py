@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 from celery.exceptions import Retry
@@ -229,8 +230,17 @@ def test_missing_target_rows_preserve_execution_error() -> None:
 
 
 def test_workflow_task_ids_are_deterministic_per_run_phase_and_position() -> None:
-    assert _workflow_task_id("run-1", "target", 3) == "evaluation:run-1:target:3"
-    assert _workflow_task_id("run-1", "evaluator", 3) == "evaluation:run-1:evaluator:3"
+    target_id = _workflow_task_id("run-1", "target", 3)
+
+    assert UUID(target_id).version == 5
+    assert target_id == _workflow_task_id("run-1", "target", 3)
+    ids = {
+        target_id,
+        _workflow_task_id("run-1", "evaluator", 3),
+        _workflow_task_id("run-1", "target", 4),
+        _workflow_task_id("run-2", "target", 3),
+    }
+    assert len(ids) == 4
 
 
 def test_execute_evaluation_starts_running_lease_before_work(
@@ -1000,7 +1010,7 @@ def test_evaluate_agent_row_runs_customized_evaluator_without_native_metrics(
     assert synthetic_result.outputs["expected_output"] == "expected"
     assert call_kwargs["customized_metrics"] == run_data.customized_metrics
     assert call_kwargs["tenant_id"] == "tenant-1"
-    assert call_kwargs["task_id_factory"](0) == "evaluation:run-1:evaluator:4"
+    assert call_kwargs["task_id_factory"](0) == _workflow_task_id("run-1", "evaluator", 4)
     persisted_result = persist_results.call_args.args[2][0]
     assert persisted_result.index == 7
     assert persisted_result.actual_output == "done"
