@@ -34,7 +34,6 @@ def init_app(app: DifyApp):
         migrate_member_roles_to_rbac,
         migrate_oss,
         migration_data_wizard,
-        oauth_client,
         old_metadata_migration,
         remove_orphaned_files_on_storage,
         reset_email,
@@ -93,7 +92,6 @@ def init_app(app: DifyApp):
         import_migration_data,
         migration_data_wizard,
         knowledge_fs_control_space,
-        oauth_client,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)

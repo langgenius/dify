@@ -7,10 +7,10 @@ from sqlalchemy import Engine, Table, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums.oauth_client import OAuthClientKind
-from models.model import OAuthProviderApp
+from libs.oauth_bearer import sha256_hex
 from models.oauth import OpenAPIOAuthClient
 from repositories.oauth_client_repository import SQLAlchemyOAuthClientRepository
-from services.oauth_clients import OAuthClientRegistry, ResolvedClient, hash_client_secret
+from services.oauth_clients import OAuthClientRegistry, ResolvedClient
 from services.oauth_token_contracts import GrantType
 
 
@@ -26,7 +26,6 @@ class _FixedSource:
 def engine() -> Iterator[Engine]:
     engine = create_engine("sqlite://")
     cast(Table, OpenAPIOAuthClient.__table__).create(engine)
-    cast(Table, OAuthProviderApp.__table__).create(engine)
     yield engine
     engine.dispose()
 
@@ -42,7 +41,7 @@ def _create(
     kind: OAuthClientKind = OAuthClientKind.CONFIDENTIAL,
     display_name: str = "Claude Desktop",
     grant_types: Sequence[str] = (GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN),
-    client_secret_hash: str | None = hash_client_secret("s3cret"),
+    client_secret_hash: str | None = sha256_hex("s3cret"),
     logo_uri: str | None = None,
 ) -> OpenAPIOAuthClient:
     return repository.create(
@@ -67,7 +66,7 @@ def test_table_row_resolves(repository: SQLAlchemyOAuthClientRepository) -> None
         logo_uri="https://example.com/logo.png",
         redirect_uris=("https://example.com/cb",),
         grant_types=frozenset({GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN}),
-        secret_hash=hash_client_secret("s3cret"),
+        secret_hash=sha256_hex("s3cret"),
     )
 
 
@@ -128,11 +127,3 @@ def test_first_source_hit_wins(repository: SQLAlchemyOAuthClientRepository) -> N
     client = OAuthClientRegistry([repository, _FixedSource(second)]).resolve("claude-desktop")
     assert client is not None
     assert client.display_name == "First"
-
-
-def test_provider_app_exists(repository: SQLAlchemyOAuthClientRepository, engine: Engine) -> None:
-    assert repository.provider_app_exists("legacy") is False
-    with Session(engine) as session:
-        session.add(OAuthProviderApp(app_icon="i", client_id="legacy", client_secret="s"))
-        session.commit()
-    assert repository.provider_app_exists("legacy") is True

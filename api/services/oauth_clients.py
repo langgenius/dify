@@ -1,12 +1,12 @@
 """Registry of OAuth clients allowed to use the /openapi/v1 token endpoint."""
 
-import hashlib
 import hmac
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
 from enums.oauth_client import OAuthClientKind
+from libs.oauth_bearer import sha256_hex
 from services.oauth_token_contracts import GrantType
 
 
@@ -26,10 +26,6 @@ class ClientSource(Protocol):
     def resolve(self, client_id: str) -> ResolvedClient | None: ...
 
 
-def hash_client_secret(secret: str) -> str:
-    return hashlib.sha256(secret.encode()).hexdigest()
-
-
 class OAuthClientRegistry:
     def __init__(self, sources: Sequence[ClientSource]) -> None:
         self._sources = tuple(sources)
@@ -46,4 +42,4 @@ class OAuthClientRegistry:
             return secret is None
         if secret is None or client.secret_hash is None:
             return False
-        return hmac.compare_digest(hash_client_secret(secret), client.secret_hash)
+        return hmac.compare_digest(sha256_hex(secret), client.secret_hash)

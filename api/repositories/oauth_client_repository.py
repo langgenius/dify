@@ -6,7 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums.oauth_client import OAuthClientKind
-from models.model import OAuthProviderApp
 from models.oauth import OpenAPIOAuthClient
 from services.oauth_clients import ResolvedClient
 from services.oauth_token_contracts import GrantType
@@ -58,11 +57,6 @@ class SQLAlchemyOAuthClientRepository:
             session.refresh(row)
             session.expunge(row)
         return row
-
-    def provider_app_exists(self, client_id: str) -> bool:
-        with self._session_factory() as session:
-            found = session.scalar(select(OAuthProviderApp.id).where(OAuthProviderApp.client_id == client_id).limit(1))
-        return found is not None
 
 
 def _known_grant_types(raw: Sequence[str]) -> frozenset[GrantType]:

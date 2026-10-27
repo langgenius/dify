@@ -8,8 +8,9 @@ import pytest
 
 from enums.oauth_client import OAuthClientKind
 from libs.helper import RateLimiter
+from libs.oauth_bearer import sha256_hex
 from services.entities.account_entities import AccountSnapshot
-from services.oauth_clients import OAuthClientRegistry, ResolvedClient, hash_client_secret
+from services.oauth_clients import OAuthClientRegistry, ResolvedClient
 from services.oauth_device_contracts import (
     DeviceWorkspace,
     IssuedOAuthToken,
@@ -45,7 +46,7 @@ def confidential_client(
         logo_uri="https://nango-qwenwork.cn/logo.png",
         redirect_uris=tuple(redirect_uris),
         grant_types=grant_types,
-        secret_hash=hash_client_secret(CONFIDENTIAL_SECRET),
+        secret_hash=sha256_hex(CONFIDENTIAL_SECRET),
     )
 
 
