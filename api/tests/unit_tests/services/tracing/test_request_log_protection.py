@@ -1,4 +1,4 @@
-"""Real HTTPX/SSRF diagnostics with synthetic credential-bearing destinations."""
+"""Real HTTPX/SSRF diagnostics with synthetic credential-bearing destinations, sent through the egress."""
 
 import logging
 import traceback
@@ -10,13 +10,13 @@ from urllib.parse import quote
 
 import httpx
 import pytest
+from dify_trace_sdk.egress import EgressResponse
+from dify_trace_sdk.errors import EgressBlockedError, EgressError
 from opentelemetry.context import _SUPPRESS_INSTRUMENTATION_KEY, get_value
 
 from core.helper import ssrf_proxy
 from core.logging.structured_formatter import StructuredJSONFormatter
-from core.ops.exceptions import RetryableTraceDispatchError
-from services.tracing.provider_common import request
-from services.tracing.provider_dispatch import TraceExportRejectedError, TraceExportUncertainError
+from services.tracing.egress import SSRFEgress
 from services.tracing.request_log_protection import SAFE_HTTP_LOG_MESSAGE, protect_http_request_logs
 
 SYNTHETIC_KEY = "SYNTHETIC-NOT-A-REAL-LICENSE/+?=测试"
@@ -49,6 +49,10 @@ def install_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[InstallClient]:
         yield install
 
 
+def send(url: str, *, sensitive: bool) -> EgressResponse:
+    return SSRFEgress().request("POST", url, headers={}, content=b"synthetic", timeout=30.0, sensitive_url=sensitive)
+
+
 def evidence(caplog: pytest.LogCaptureFixture) -> str:
     formatter = StructuredJSONFormatter()
     return caplog.text + "".join(repr(record.__dict__) + formatter.format(record) for record in caplog.records)
@@ -56,7 +60,7 @@ def evidence(caplog: pytest.LogCaptureFixture) -> str:
 
 @pytest.mark.parametrize("outcome", [200, 503, 302, "squid", "timeout", "invalid"])
 @pytest.mark.parametrize("scheme", ["http", "https"])
-def test_aliyun_keeps_real_wire_url_but_protects_transport_logs_and_exception_chains(
+def test_sensitive_urls_reach_the_wire_but_never_logs_or_exception_chains(
     install_client: InstallClient, caplog: pytest.LogCaptureFixture, outcome: int | str, scheme: str
 ) -> None:
     caplog.set_level(logging.INFO)
@@ -94,20 +98,15 @@ def test_aliyun_keeps_real_wire_url_but_protects_transport_logs_and_exception_ch
         return httpx.Response(outcome, headers={"Location": "https://redirect.test/"})
 
     install_client(handler)
-    if outcome == 200:
-        result = request("POST", private_url, "aliyun", content=b"synthetic")
-        assert result.status_code == 200
+    if isinstance(outcome, int):
+        # Providers classify statuses; the egress only bounds and returns the response.
+        assert send(private_url, sensitive=True).status_code == outcome
         rendered_exception = ""
     else:
-        expected = (
-            TraceExportUncertainError
-            if outcome == "timeout"
-            else RetryableTraceDispatchError
-            if outcome == 503
-            else TraceExportRejectedError
-        )
+        expected = EgressBlockedError if outcome == "squid" else EgressError
         with pytest.raises(expected) as caught:
-            request("POST", private_url, "aliyun", content=b"synthetic")
+            send(private_url, sensitive=True)
+        assert caught.value.request_sent is (outcome == "timeout")
         assert caught.value.__cause__ is None
         assert caught.value.__context__ is None
         rendered_exception = "".join(traceback.format_exception(caught.value))
@@ -152,7 +151,7 @@ def test_overlapping_private_requests_keep_public_request_logs_and_restore_facto
     install_client(handler)
 
     def run(label: str) -> int:
-        result = request("POST", urls[label], "aliyun" if label in keys else "weave")
+        result = send(urls[label], sensitive=label in keys)
         if label == "a":
             first_finished.set()
         return result.status_code

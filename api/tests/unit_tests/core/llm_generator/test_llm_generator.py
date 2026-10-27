@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ConversationNamed, TraceCorrelation, TraceEvent
 from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
@@ -15,6 +17,7 @@ from core.app.app_config.entities import ModelConfig
 from core.llm_generator import llm_generator as llm_generator_module
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator, _parse_string_list
+from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
 from core.model_manager import ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
 from core.workflow.generator import tool_catalogue as tool_catalogue_module
@@ -44,6 +47,14 @@ def _llm_result(content: str) -> LLMResult:
         message=AssistantPromptMessage(content=content),
         usage=LLMUsage.empty_usage(),
     )
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
 
 
 def _persist_app(database: Session, *, tenant_id: str | None = None) -> App:
@@ -189,19 +200,44 @@ class TestLlmGeneratorCases:
                 provider="openai", name="gpt-4", mode=LLMMode.CHAT, completion_params={"temperature": 0.7}
             )
 
-        def test_generate_conversation_name_success(self, mock_model_instance):
+        def test_generate_conversation_name_success(
+            self, mock_model_instance: MagicMock, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = json.dumps({"Your Output": "Test Conversation Name"})
             mock_model_instance.invoke_llm.return_value = mock_response
+            recorder = _Recorder()
+            scope = TraceScope(
+                emitter=recorder,
+                tenant_id="tenant_id",
+                app_id="app-1",
+                user_id=None,
+                correlation=TraceCorrelation(
+                    external_trace_id="caller-trace",
+                    session_id=None,
+                    parent_workflow_run_id=None,
+                    parent_node_execution_id=None,
+                ),
+            )
 
-            with patch("core.llm_generator.llm_generator.TraceQueueManager") as mock_trace:
-                name = LLMGenerator.generate_conversation_name(
-                    "tenant_id", "test query", "conversation-1", "app-1", message_id="message-1"
-                )
-                assert name == "Test Conversation Name"
-                mock_trace.assert_called_once_with(app_id="app-1")
-                trace_task = mock_trace.return_value.add_trace_task.call_args.args[0]
-                assert trace_task.message_id == "message-1"
+            name = LLMGenerator.generate_conversation_name(
+                "tenant_id", "test query", "conversation-1", "app-1", message_id="message-1", trace_scope=scope
+            )
+
+            assert name == "Test Conversation Name"
+            [event] = recorder.events
+            assert event.correlation.external_trace_id == "caller-trace"
+            payload = event.payload
+            assert isinstance(payload, ConversationNamed)
+            assert payload == ConversationNamed(
+                conversation_id="conversation-1",
+                message_id="message-1",
+                inputs=CONVERSATION_TITLE_PROMPT + "test query\n",
+                name="Test Conversation Name",
+                started_at=payload.started_at,
+                ended_at=payload.ended_at,
+            )
+            assert payload.ended_at >= payload.started_at
 
         def test_generate_conversation_name_truncated(self, mock_model_instance):
             long_query = "a" * 2100
@@ -209,16 +245,15 @@ class TestLlmGeneratorCases:
             mock_response.message.get_text_content.return_value = json.dumps({"Your Output": "Short Name"})
             mock_model_instance.invoke_llm.return_value = mock_response
 
-            with patch("core.llm_generator.llm_generator.TraceQueueManager"):
-                name = LLMGenerator.generate_conversation_name("tenant_id", long_query)
-                assert name == "Short Name"
+            name = LLMGenerator.generate_conversation_name("tenant_id", long_query, trace_scope=None)
+            assert name == "Short Name"
 
         def test_generate_conversation_name_empty_answer(self, mock_model_instance):
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = ""
             mock_model_instance.invoke_llm.return_value = mock_response
 
-            name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
+            name = LLMGenerator.generate_conversation_name("tenant_id", "test query", trace_scope=None)
             assert name == "test query"
 
         def test_generate_conversation_name_json_repair(self, mock_model_instance):
@@ -227,25 +262,22 @@ class TestLlmGeneratorCases:
             mock_response.message.get_text_content.return_value = "{'Your Output': 'Repaired Name'}"
             mock_model_instance.invoke_llm.return_value = mock_response
 
-            with patch("core.llm_generator.llm_generator.TraceQueueManager"):
-                name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
-                assert name == "Repaired Name"
+            name = LLMGenerator.generate_conversation_name("tenant_id", "test query", trace_scope=None)
+            assert name == "Repaired Name"
 
         def test_generate_conversation_name_not_dict_result(self, mock_model_instance):
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = '["not a dict"]'
             mock_model_instance.invoke_llm.return_value = mock_response
-            with patch("core.llm_generator.llm_generator.TraceQueueManager"):
-                name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
-                assert name == "test query"
+            name = LLMGenerator.generate_conversation_name("tenant_id", "test query", trace_scope=None)
+            assert name == "test query"
 
         def test_generate_conversation_name_no_output_in_dict(self, mock_model_instance):
             mock_response = MagicMock()
             mock_response.message.get_text_content.return_value = '{"something": "else"}'
             mock_model_instance.invoke_llm.return_value = mock_response
-            with patch("core.llm_generator.llm_generator.TraceQueueManager"):
-                name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
-                assert name == "test query"
+            name = LLMGenerator.generate_conversation_name("tenant_id", "test query", trace_scope=None)
+            assert name == "test query"
 
         def test_generate_conversation_name_long_output(self, mock_model_instance):
             long_output = "a" * 100
@@ -253,10 +285,9 @@ class TestLlmGeneratorCases:
             mock_response.message.get_text_content.return_value = json.dumps({"Your Output": long_output})
             mock_model_instance.invoke_llm.return_value = mock_response
 
-            with patch("core.llm_generator.llm_generator.TraceQueueManager"):
-                name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
-                assert len(name) == 78  # 75 + "..."
-                assert name.endswith("...")
+            name = LLMGenerator.generate_conversation_name("tenant_id", "test query", trace_scope=None)
+            assert len(name) == 78  # 75 + "..."
+            assert name.endswith("...")
 
         def test_generate_rule_config_no_variable_success(self, mock_model_instance, model_config_entity):
             payload = RuleGeneratePayload(
@@ -790,6 +821,8 @@ class TestLlmGeneratorCases:
             assert event.context.tenant_id == "t-1"
             assert event.context.app_id == "app-1"
             assert event.payload["error"] is None
+            started_at, ended_at = event.payload["started_at"], event.payload["ended_at"]
+            assert event.payload["latency"] == (ended_at - started_at).total_seconds()
 
         @patch("core.llm_generator.llm_generator.telemetry_emit")
         def test_generate_code_emits_on_failure(self, mock_emit: MagicMock) -> None:

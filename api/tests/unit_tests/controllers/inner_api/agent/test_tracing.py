@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.testing import RecordingEgress
 from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import func, select
@@ -11,10 +12,23 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.inner_api import bp
 from models.application_trace import ApplicationTraceBatch
+from repositories.application_trace_repository import ApplicationTraceRepository
+from services.tracing.assembly import TraceAssembler
+from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.service import ApplicationTracingService
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.unit_tests.services.tracing.test_service import _application_trace_collection_batch_for as batch_for
 from tests.unit_tests.services.tracing.test_service import _application_trace_collection_seed as seed
+
+
+def _service(sessions: sessionmaker[Session], repository: ApplicationTraceRepository) -> ApplicationTracingService:
+    return ApplicationTracingService(
+        repository,
+        assembler=TraceAssembler(sessions, files_url="https://files.test", enterprise_details=False),
+        builder=CanonicalTraceBuilder(),
+        # Ingesting batches never exports; an unexpected request fails the test.
+        egress=RecordingEgress([], grpc_target=None),
+    )
 
 
 @pytest.fixture
@@ -36,7 +50,7 @@ def test_trace_http_ack_follows_commit_and_replay_is_idempotent(
     collection = seed(sqlite_session_factory, "http", capture_content=False)
     invocation = collection.invocation()
     payload = batch_for(collection.run, invocation).model_dump(mode="json")
-    service = ApplicationTracingService(collection.repository)
+    service = _service(sqlite_session_factory, collection.repository)
     monkeypatch.setattr("controllers.inner_api.agent.tracing.application_tracing_service", lambda: service)
     scheduled = []
 
@@ -73,7 +87,7 @@ def test_trace_http_rejects_invalid_span_and_unknown_owner(
     collection = seed(sqlite_session_factory, "http-validation")
     invocation = collection.invocation()
     payload = batch_for(collection.run, invocation).model_dump(mode="json")
-    service = ApplicationTracingService(collection.repository)
+    service = _service(sqlite_session_factory, collection.repository)
     monkeypatch.setattr("controllers.inner_api.agent.tracing.application_tracing_service", lambda: service)
     payload["spans"][0]["end_time_ns"] = 0
     response = client.post("/inner/api/agent/tracing/batches", json=payload, headers={"X-Inner-Api-Key": "inner"})

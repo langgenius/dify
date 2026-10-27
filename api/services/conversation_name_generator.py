@@ -8,6 +8,7 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.model_context import use_credit_usage_metadata
 from core.model_manager import ModelManager
 from extensions.ext_database import db
+from extensions.tracing import create_trace_scope_for_app
 from graphon.model_runtime.entities.model_entities import ModelType
 
 
@@ -30,4 +31,5 @@ def generate_conversation_name(*, tenant_id: str, app_id: str, conversation_id: 
             conversation_id=conversation_id,
             query=query,
             model_instance=model,
+            trace_scope=create_trace_scope_for_app(tenant_id=tenant_id, app_id=app_id, user_id=None, extras={}),
         )

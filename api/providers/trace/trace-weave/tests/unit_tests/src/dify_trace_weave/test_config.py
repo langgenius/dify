@@ -3,74 +3,37 @@ from dify_trace_weave.config import WeaveConfig
 from pydantic import ValidationError
 
 
-class TestWeaveConfig:
-    """Test cases for WeaveConfig"""
-
-    def test_valid_config(self):
-        """Test valid Weave configuration"""
-        config = WeaveConfig(
-            api_key="test_key",
-            entity="test_entity",
-            project="test_project",
-            endpoint="https://custom.wandb.ai",
-            host="https://custom.host.com",
-        )
-        assert config.api_key == "test_key"
-        assert config.entity == "test_entity"
-        assert config.project == "test_project"
-        assert config.endpoint == "https://custom.wandb.ai"
-        assert config.host == "https://custom.host.com"
-
-    def test_default_values(self):
-        """Test default values are set correctly"""
-        config = WeaveConfig(api_key="key", project="project")
-        assert config.entity is None
-        assert config.endpoint == "https://trace.wandb.ai"
-        assert config.host is None
-
-    def test_missing_required_fields(self):
-        """Test that required fields are enforced"""
+def test_config_fields_and_defaults() -> None:
+    assert WeaveConfig.secret_fields() == {"api_key"}
+    assert WeaveConfig.derived_fields() == set()
+    assert [field.name for field in WeaveConfig.form_fields()] == ["api_key", "entity", "project", "endpoint", "host"]
+    stored = WeaveConfig.model_validate(
+        {"api_key": "k", "entity": None, "project": "demo", "endpoint": " ", "host": "", "project_url": "ignored"}
+    )
+    assert (stored.entity, stored.endpoint, stored.host) == (None, "https://trace.wandb.ai", None)
+    private = WeaveConfig(
+        api_key="k", project="demo", endpoint="https://wandb.internal/traces/", host="http://wandb.internal/wandb"
+    )
+    assert (private.endpoint, private.host) == ("https://wandb.internal/traces/", "http://wandb.internal/wandb")
+    for incomplete in ({"api_key": "k"}, {"project": "demo"}):
         with pytest.raises(ValidationError):
-            WeaveConfig.model_validate({})
+            WeaveConfig.model_validate(incomplete)
 
-        with pytest.raises(ValidationError):
-            WeaveConfig.model_validate({"api_key": "key"})
 
-        with pytest.raises(ValidationError):
-            WeaveConfig.model_validate({"project": "project"})
-
-    def test_endpoint_validation_https_only(self):
-        """Test endpoint validation only allows HTTPS"""
-        with pytest.raises(ValidationError, match="URL must start with https://"):
-            WeaveConfig(api_key="key", project="project", endpoint="http://insecure.wandb.ai")
-
-    def test_host_validation_optional(self):
-        """Test host validation is optional but validates when provided"""
-        config = WeaveConfig(api_key="key", project="project", host=None)
-        assert config.host is None
-
-        config = WeaveConfig(api_key="key", project="project", host="")
-        assert config.host == ""
-
-        config = WeaveConfig(api_key="key", project="project", host="https://valid.host.com")
-        assert config.host == "https://valid.host.com"
-
-    def test_host_validation_invalid_scheme(self):
-        """Test host validation rejects invalid schemes when provided"""
-        with pytest.raises(ValidationError, match="URL must start with https:// or http://"):
-            WeaveConfig(api_key="key", project="project", host="ftp://invalid.host.com")
-
-    def test_endpoint_preserves_path(self):
-        """Self-hosted Weave endpoints keep their path prefix"""
-        config = WeaveConfig(api_key="key", project="project", endpoint="https://wandb.internal/api")
-        assert config.endpoint == "https://wandb.internal/api"
-
-    def test_host_preserves_path(self):
-        """Self-hosted W&B hosts keep their path prefix"""
-        config = WeaveConfig(api_key="key", project="project", host="https://wandb.internal/wandb")
-        assert config.host == "https://wandb.internal/wandb"
-
-    def test_host_preserves_http_path(self):
-        """Self-hosted W&B hosts may be plain http and keep their path"""
-        config = WeaveConfig(api_key="key", project="project", host="http://wandb.internal/wandb")
-        assert config.host == "http://wandb.internal/wandb"
+@pytest.mark.parametrize(
+    ("field", "url"),
+    [
+        ("endpoint", "http://trace.internal"),
+        ("host", "ftp://wandb.internal"),
+        ("host", "https://user:secret@wandb.internal"),
+        ("endpoint", "https://trace.internal/?token=secret"),
+        ("host", "https://wandb.internal/#secret"),
+        ("host", "https://wandb.internal/se cret"),
+        ("endpoint", "https://trace.internal\\secret"),
+        ("host", "https://wandb.internal:secret"),
+    ],
+)
+def test_config_rejects_unusable_urls_without_echoing_them(field: str, url: str) -> None:
+    with pytest.raises(ValidationError) as caught:
+        WeaveConfig.model_validate({"api_key": "k", "project": "demo", field: url})
+    assert "secret" not in str(caught.value)

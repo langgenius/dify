@@ -17,10 +17,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
-from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
+from enterprise.telemetry.exporter import is_enterprise_telemetry_enabled
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
 from extensions.application_services.agent import AgentAppServices, build_agent_app_services
@@ -47,6 +47,7 @@ from extensions.application_services.workspace import (
 )
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
+from extensions.tracing import bind_tracing
 from libs.helper import RateLimiter
 from libs.passport import PassportService
 from models.model import EndUser
@@ -131,7 +132,6 @@ from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.app_site_service import AppSiteService
 from services.app_statistic_query import AppStatisticQuery
 from services.app_task_service import AppTaskControlService
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
@@ -214,6 +214,9 @@ from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
+from services.tracing.egress import SSRFEgress
+from services.tracing.emitter import CeleryTraceEmitter, TraceScopes
+from services.tracing.provider_configs import ProviderConfigGateway
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
@@ -513,7 +516,7 @@ def build_application_services(
     )
     tracing_configs = AppTracingConfigService(
         configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
-        provider=OpsTraceManagerGateway(),
+        provider=ProviderConfigGateway(SSRFEgress()),
     )
     apps = build_app_services(
         database_client=database_client,
@@ -860,14 +863,23 @@ def init_app(app: Flask) -> None:
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     ToolManager.register_hardcoded_provider_class(KnowledgeFSProvider)
+    session_maker = get_session_maker()
     services = build_application_services(
-        database_client=get_session_maker(),
+        database_client=session_maker,
         deployment_edition=dify_config.DEPLOYMENT_EDITION,
         initialization_password=dify_config.INIT_PASSWORD,
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
-    bind_application_tracing_hooks(app, RuntimeApplicationTracingHooks())
+    bind_tracing(
+        app,
+        scopes=TraceScopes(
+            emitter=CeleryTraceEmitter(),
+            session_factory=session_maker,
+            enterprise_enabled=is_enterprise_telemetry_enabled,
+        ),
+        hooks=RuntimeApplicationTracingHooks(),
+    )
     bind_account_loader(app, services.accounts.identity.load_user)
 
 

@@ -3,6 +3,8 @@ from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
@@ -22,6 +24,26 @@ from models.model import App, AppMode, AppModelConfig, Conversation, IconType, M
 class DummyGenerateEntity:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope() -> TraceScope:
+    return TraceScope(
+        emitter=_TraceRecorder(),
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id="session-1", parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
 
 
 class DummyQueueManager:
@@ -143,10 +165,21 @@ class TestChatAppGenerator:
                 streaming=False,
             )
 
-    def test_generate_debugger_overrides_model_config(self, unbound_session: Session):
+    def test_generate_debugger_overrides_model_config(
+        self, unbound_session: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         generator = ChatAppGenerator()
         app_model = _app()
+        app_model.tracing = '{"enabled": true, "tracing_provider": "langfuse"}'
         user = _account()
+        trace_scope = _trace_scope()
+        scope_requests: list[dict[str, object]] = []
+
+        def create_trace_scope(**kwargs: object) -> TraceScope:
+            scope_requests.append(kwargs)
+            return trace_scope
+
+        monkeypatch.setattr(generator_module, "create_trace_scope", create_trace_scope)
         args = {
             "query": "hi",
             "inputs": {},
@@ -173,7 +206,6 @@ class TestChatAppGenerator:
                 "core.app.apps.chat.app_generator.ChatAppGenerateEntity",
                 Mock(side_effect=DummyGenerateEntity),
             ) as generate_entity,
-            patch("core.app.apps.chat.app_generator.TraceQueueManager", return_value=SimpleNamespace()),
             patch("core.app.apps.chat.app_generator.MessageBasedAppQueueManager", DummyQueueManager),
             patch(
                 "core.app.apps.chat.app_generator.ChatAppGenerateResponseConverter.convert", return_value={"ok": True}
@@ -196,7 +228,18 @@ class TestChatAppGenerator:
 
         assert result == {"ok": True}
         assert get_conversation.call_args.kwargs["session"] is unbound_session
-        assert generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
+        extras = generate_entity.call_args.kwargs["extras"]
+        assert extras == {"auto_generate_conversation_name": True, "trace_session_id": "session-1"}
+        assert generate_entity.call_args.kwargs["trace_scope"] is trace_scope
+        assert scope_requests == [
+            {
+                "tenant_id": "tenant-1",
+                "app_id": "app-1",
+                "app_tracing": '{"enabled": true, "tracing_provider": "langfuse"}',
+                "user_id": "user-1",
+                "extras": extras,
+            }
+        ]
 
     def test_generate_uses_session_for_annotation_reply(self, unbound_session: Session):
         generator = ChatAppGenerator()

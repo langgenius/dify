@@ -872,6 +872,7 @@ export const zTraceProviderCapabilitiesResponse = z.object({
  */
 export const zTraceAppConfigResponse = z.object({
   app_id: z.string().nullish(),
+  configured_secrets: z.array(z.string()).nullish(),
   created_at: z.string().nullish(),
   error: z.string().nullish(),
   has_not_configured: z.boolean().nullish(),

@@ -121,12 +121,8 @@ def test_real_provider_invocation_releases_preparation_session_and_preserves_cal
         assert caller_app.name == "Pending caller edit"
         assert all(session is not caller_session for session in naming_sessions)
         assert all(not session.in_transaction() and not session.identity_map for session in naming_sessions)
-        if fail_invoke:
-            assert naming_sessions == preparation_sessions
-        else:
-            # Trace configuration is read after invocation using a new inner session.
-            assert len(naming_sessions) > len(preparation_sessions)
-            assert naming_sessions[-1] not in preparation_sessions
+        # Tracing reads its policy through its own store, so preparation is the only scoped session.
+        assert naming_sessions == preparation_sessions
         with sqlite_session_factory() as session:
             assert session.scalar(select(App.name).where(App.id == target.id)) == "Original app"
 

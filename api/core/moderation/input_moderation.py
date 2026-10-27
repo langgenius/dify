@@ -2,14 +2,15 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import ModerationChecked, json_safe
+
 from core.app.app_config.entities import AppConfig
 from core.app.entities.app_invoke_entities import get_credit_usage_app_type
 from core.model_context import use_credit_usage_metadata
 from core.moderation.base import ModerationAction, ModerationError
 from core.moderation.factory import ModerationFactory
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.ops.utils import measure_time
+from libs.datetime_utils import measure_time
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class InputModeration:
         inputs: Mapping[str, Any],
         query: str,
         message_id: str,
-        trace_manager: TraceQueueManager | None = None,
+        trace_scope: TraceScope | None,
     ) -> tuple[bool, Mapping[str, Any], str]:
         """
         Process sensitive_word_avoidance.
@@ -33,7 +34,7 @@ class InputModeration:
         :param inputs: inputs
         :param query: query
         :param message_id: message id
-        :param trace_manager: trace manager
+        :param trace_scope: where the moderation verdict is reported, if anywhere
         :return:
         """
         inputs = dict(inputs)
@@ -51,14 +52,17 @@ class InputModeration:
             with measure_time() as timer:
                 moderation_result = moderation_factory.moderation_for_inputs(inputs, query)
 
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.MODERATION_TRACE,
+        if trace_scope is not None:
+            trace_scope.emit(
+                ModerationChecked(
                     message_id=message_id,
-                    moderation_result=moderation_result,
-                    inputs=inputs,
-                    timer=timer,
+                    inputs={key: json_safe(value) for key, value in inputs.items()},
+                    query=moderation_result.query,
+                    flagged=moderation_result.flagged,
+                    action=moderation_result.action.value,
+                    preset_response=moderation_result.preset_response,
+                    started_at=timer.started_at,
+                    ended_at=timer.ended_at,
                 )
             )
 

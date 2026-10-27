@@ -75,7 +75,7 @@ def test_prepared_records_preserve_input_and_actor_ownership(
             assert saved.from_end_user_id is None
         assert verification.scalar(select(func.count()).select_from(Message)) == 1
         assert verification.scalar(select(func.count()).select_from(Conversation)) == 1
-    assert entity.trace_manager is None
+    assert entity.trace_scope is None
     assert entity.file_upload_config is None
 
 

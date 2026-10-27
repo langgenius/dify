@@ -1,14 +1,16 @@
 import threading
 from collections.abc import Generator
-from contextlib import contextmanager, nullcontext
+from contextlib import nullcontext
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import DatasetRetrieved, TraceCorrelation, TraceEvent
 from flask import Flask, current_app
 from sqlalchemy import event, inspect, select
 from sqlalchemy.dialects import postgresql
@@ -20,6 +22,9 @@ import core.rag.retrieval.dataset_retrieval as dataset_retrieval_module
 from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
+    EasyUIBasedAppModelConfigFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
 )
 from core.app.app_config.entities import (
     MetadataFilteringCondition as AppMetadataFilteringCondition,
@@ -28,7 +33,13 @@ from core.app.app_config.entities import (
     ModelConfig as AppModelConfig,
 )
 from core.app.app_config.entities import ModelConfig as WorkflowModelConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity, UserFrom
+from core.app.apps.completion.app_config_manager import CompletionAppConfig
+from core.app.entities.app_invoke_entities import (
+    CompletionAppGenerateEntity,
+    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+    UserFrom,
+)
 from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
@@ -38,6 +49,7 @@ from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.entities import Condition as AppCondition
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.models.document import AttachmentDocument, ChildDocument
 from core.rag.models.document import Document as RetrievedDocument
 from core.rag.models.document import Document as _dataset_retrieval_Document
 from core.rag.models.document import Document as _dataset_retrieval_methods_Document
@@ -50,6 +62,7 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrieval
 from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.model_entities import ModelFeature
+from libs.datetime_utils import Timing
 from models import UploadFile
 from models.dataset import (
     ChildChunk,
@@ -63,10 +76,61 @@ from models.dataset import (
 from models.dataset import Document as DatasetDocument
 from models.dataset import Document as _retrieval_source_query_Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
+from models.model import AppMode
 from repositories.knowledge.retrieval_source_repository import get_retrieval_source_documents
+from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_document
 
 # ==================== Helper Functions ====================
+
+
+class _Recorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _trace_scope(recorder: _Recorder) -> TraceScope:
+    return TraceScope(
+        emitter=recorder,
+        tenant_id="tenant",
+        app_id="app",
+        user_id="user",
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+    )
+
+
+def _completion_generate_entity(trace_scope: TraceScope) -> CompletionAppGenerateEntity:
+    return CompletionAppGenerateEntity(
+        task_id="task",
+        app_config=CompletionAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.COMPLETION,
+            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+            app_model_config_dict={},
+            model=ModelConfigEntity(provider="openai", model="gpt-4", mode="completion"),
+            prompt_template=PromptTemplateEntity(
+                prompt_type=PromptTemplateEntity.PromptType.SIMPLE, simple_prompt_template="Answer the query."
+            ),
+        ),
+        model_conf=make_model_config(provider="openai", model="gpt-4", mode="completion"),
+        inputs={},
+        files=[],
+        user_id="user",
+        stream=False,
+        invoke_from=InvokeFrom.SERVICE_API,
+        trace_scope=trace_scope,
+    )
+
+
+def _timing() -> Timing:
+    started_at = datetime(2026, 1, 1, tzinfo=UTC)
+    return Timing(started_at=started_at, ended_at=started_at + timedelta(seconds=1))
 
 
 def create_mock_document(
@@ -341,11 +405,6 @@ class _JoinDrivenThread:
 
     def is_alive(self) -> bool:
         return self._alive
-
-
-@contextmanager
-def _timer():
-    yield {"cost": 1}
 
 
 class TestDatasetRetrievalCases:
@@ -4092,18 +4151,60 @@ class TestDatasetRetrievalCases:
             assert "keywords" in ranked[0].metadata
             assert ranked[0].metadata["doc_id"] == "1"
 
-        def test_send_trace_task(self, retrieval: DatasetRetrieval) -> None:
-            trace_manager = Mock()
-            retrieval.application_generate_entity = SimpleNamespace(trace_manager=trace_manager)
-            docs = [_dataset_retrieval_Document(page_content="d", metadata={}, provider="dify")]
+        def test_send_trace_task_emits_documents_without_vectors(self) -> None:
+            recorder = _Recorder()
+            retrieval = DatasetRetrieval(_completion_generate_entity(_trace_scope(recorder)))
+            documents = [
+                _dataset_retrieval_Document(
+                    page_content="parent",
+                    vector=[0.1, 0.2],
+                    metadata={"doc_id": "n1", "score": 0.9},
+                    provider="dify",
+                    children=[ChildDocument(page_content="child", vector=[0.3], metadata={"doc_id": "c1"})],
+                    attachments=[AttachmentDocument(page_content="image", vector=[0.4], metadata={"doc_id": "a1"})],
+                ),
+                _dataset_retrieval_Document(page_content="external", vector=[0.5], metadata={}, provider="external"),
+            ]
+            timer = _timing()
 
-            retrieval._send_trace_task("m1", docs, {"cost": 1})
-            trace_manager.add_trace_task.assert_called_once()
+            retrieval._send_trace_task("m1", documents, timer)
 
-            retrieval.application_generate_entity = None
-            trace_manager.reset_mock()
-            retrieval._send_trace_task("m1", docs, {"cost": 1})
-            trace_manager.add_trace_task.assert_not_called()
+            assert [event.payload for event in recorder.events] == [
+                DatasetRetrieved(
+                    message_id="m1",
+                    documents=[
+                        {
+                            "page_content": "parent",
+                            "metadata": {"doc_id": "n1", "score": 0.9},
+                            "provider": "dify",
+                            "children": [{"page_content": "child", "metadata": {"doc_id": "c1"}}],
+                            "attachments": [
+                                {"page_content": "image", "provider": "dify", "metadata": {"doc_id": "a1"}}
+                            ],
+                        },
+                        {
+                            "page_content": "external",
+                            "metadata": {},
+                            "provider": "external",
+                            "children": None,
+                            "attachments": None,
+                        },
+                    ],
+                    started_at=timer.started_at,
+                    ended_at=timer.ended_at,
+                )
+            ]
+
+        def test_send_trace_task_requires_scope_and_timer(self) -> None:
+            recorder = _Recorder()
+            documents = [_dataset_retrieval_Document(page_content="d", metadata={}, provider="dify")]
+
+            DatasetRetrieval()._send_trace_task("m1", documents, _timing())
+            DatasetRetrieval(_completion_generate_entity(_trace_scope(recorder)))._send_trace_task(
+                "m1", documents, None
+            )
+
+            assert recorder.events == []
 
         def test_on_query(self, retrieval: DatasetRetrieval, sqlite_engine: Engine, sqlite_session: Session) -> None:
             dataset_ids = [str(uuid4()), str(uuid4())]
@@ -5349,7 +5450,6 @@ class TestDatasetRetrievalCases:
 
             with app.app_context():
                 with (
-                    patch("core.rag.retrieval.dataset_retrieval.measure_time", _timer),
                     patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
                     patch.object(retrieval, "_multiple_retrieve_thread", side_effect=fake_multiple_thread),
                     patch.object(retrieval, "_on_query") as mock_on_query,
@@ -5394,7 +5494,6 @@ class TestDatasetRetrievalCases:
 
             with app.app_context():
                 with (
-                    patch("core.rag.retrieval.dataset_retrieval.measure_time", _timer),
                     patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
                     patch.object(retrieval, "_multiple_retrieve_thread", side_effect=failing_thread),
                 ):
@@ -5428,7 +5527,7 @@ class TestDatasetRetrievalCases:
                     flask_app=app,
                     documents=[_doc(provider="external")],
                     message_id="m1",
-                    timer={"cost": 1},
+                    timer=_timing(),
                 )
             mock_trace.assert_called_once()
 
@@ -5439,7 +5538,7 @@ class TestDatasetRetrievalCases:
                 patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=self.orm_engine)),
                 patch.object(retrieval, "_send_trace_task") as mock_trace,
             ):
-                retrieval._on_retrieval_end(flask_app=app, documents=[doc], message_id="m1", timer={"cost": 1})
+                retrieval._on_retrieval_end(flask_app=app, documents=[doc], message_id="m1", timer=_timing())
             mock_trace.assert_called_once()
 
         def test_on_retrieval_end_updates_segments_for_text_and_image(self, retrieval: DatasetRetrieval) -> None:
@@ -5561,7 +5660,7 @@ class TestDatasetRetrievalCases:
                     patch("core.rag.retrieval.dataset_retrieval.db", SimpleNamespace(engine=self.orm_engine)),
                     patch.object(retrieval, "_send_trace_task") as mock_trace,
                 ):
-                    retrieval._on_retrieval_end(flask_app=app, documents=docs, message_id="m1", timer={"cost": 1})
+                    retrieval._on_retrieval_end(flask_app=app, documents=docs, message_id="m1", timer=_timing())
             finally:
                 event.remove(self.orm_engine, "before_execute", capture_statement)
 
@@ -5592,10 +5691,10 @@ class TestDatasetRetrievalCases:
                 patch.object(retrieval, "_send_trace_task") as mock_trace,
             ):
                 mock_sessionmaker.return_value.begin.side_effect = [deadlock, nullcontext(retry_session)]
-                retrieval._on_retrieval_end(flask_app=app, documents=[doc], message_id="m1", timer={"cost": 1})
+                retrieval._on_retrieval_end(flask_app=app, documents=[doc], message_id="m1", timer=_timing())
 
             assert mock_sessionmaker.return_value.begin.call_count == 2
-            mock_trace.assert_called_once_with("m1", [doc], {"cost": 1})
+            mock_trace.assert_called_once_with("m1", [doc], _timing())
 
         @pytest.mark.parametrize(
             ("error", "expected"),

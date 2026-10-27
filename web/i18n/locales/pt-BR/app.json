@@ -268,6 +268,7 @@
   "tracing.config": "Configurar",
   "tracing.configProvider.clientId": "ID do Cliente OAuth",
   "tracing.configProvider.clientSecret": "Segredo do Cliente OAuth",
+  "tracing.configProvider.configuredSecretPlaceholder": "Configurado. Deixe em branco para manter o valor salvo.",
   "tracing.configProvider.databricksHost": "URL do Workspace do Databricks",
   "tracing.configProvider.experimentId": "ID do Experimento",
   "tracing.configProvider.password": "Senha",

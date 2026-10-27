@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from functools import partial
 from typing import TYPE_CHECKING, cast
 
+from dify_trace_sdk.events import SuggestedQuestionsGenerated
 from flask import current_app
 
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy, get_credit_usage_app_type
@@ -14,15 +15,14 @@ from core.llm_generator.llm_generator import _normalize_completion_params
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.model_context import use_credit_usage_metadata, with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.ops.utils import measure_time
 from core.plugin.impl.base import use_plugin_daemon_request_timeout
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
+from extensions.tracing import create_trace_scope_for_app
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
+from libs.datetime_utils import measure_time
 
 if TYPE_CHECKING:
     from core.memory.token_buffer_memory import PreparedHistory
@@ -122,7 +122,7 @@ class SuggestedQuestionsGenerator:
         ):
             model = self._prepare_model(tenant_id=context.tenant_id, model_config=model_config)
             db.session.remove()
-            questions = (
+            questions: list[str] = (
                 list(self._invoke(prepared_model=model, histories=histories, instruction_prompt=instruction_prompt))
                 if model is not None
                 else []
@@ -131,14 +131,18 @@ class SuggestedQuestionsGenerator:
         # Invocation catches provider failures, including failed database
         # transactions. Tracing always starts with a fresh scoped session.
         db.session.remove()
-        TraceQueueManager(app_id=context.app_id).add_trace_task(
-            TraceTask(
-                TraceTaskName.SUGGESTED_QUESTION_TRACE,
-                message_id=context.message_id,
-                suggested_question=questions,
-                timer=timer,
-            )
+        trace_scope = create_trace_scope_for_app(
+            tenant_id=context.tenant_id, app_id=context.app_id, user_id=None, extras={}
         )
+        if trace_scope is not None:
+            trace_scope.emit(
+                SuggestedQuestionsGenerated(
+                    message_id=context.message_id,
+                    questions=questions,
+                    started_at=timer.started_at,
+                    ended_at=timer.ended_at,
+                )
+            )
         return questions
 
     @staticmethod

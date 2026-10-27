@@ -1525,7 +1525,7 @@ Get available TTS voices for an Agent and language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Provider support declarations | **application/json**: [TraceProviderCapabilitiesResponse](#traceprovidercapabilitiesresponse)<br> |
-| 400 | Bad Request | **application/json**: [UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/trace-config
@@ -3827,7 +3827,7 @@ Update app tracing configuration
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Provider support declarations | **application/json**: [TraceProviderCapabilitiesResponse](#traceprovidercapabilitiesresponse)<br> |
-| 400 | Bad Request | **application/json**: [UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/trace-config
@@ -33851,13 +33851,14 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
+| configured_secrets | [ string ] | Secret fields that hold a value; submit them empty to keep that value | No |
 | created_at | string |  | No |
 | error | string |  | No |
 | has_not_configured | boolean |  | No |
 | id | string |  | No |
 | is_active | boolean |  | No |
 | result | string |  | No |
-| tracing_config | object |  | No |
+| tracing_config | object | Non-secret fields; secrets are write-only and never returned | No |
 | tracing_provider | string |  | No |
 | updated_at | string |  | No |
 

@@ -1,48 +1,35 @@
 import pytest
 from dify_trace_opik.config import OpikConfig
+from dify_trace_sdk.config import FormField
 from pydantic import ValidationError
 
+API_URL = "https://www.comet.com/opik/api/"
 
-class TestOpikConfig:
-    """Test cases for OpikConfig"""
 
-    def test_valid_config(self):
-        """Test valid Opik configuration"""
-        config = OpikConfig(
-            api_key="test_key",
-            project="test_project",
-            workspace="test_workspace",
-            url="https://custom.comet.com/opik/api/",
-        )
-        assert config.api_key == "test_key"
-        assert config.project == "test_project"
-        assert config.workspace == "test_workspace"
-        assert config.url == "https://custom.comet.com/opik/api/"
+def test_config_fields_and_defaults() -> None:
+    assert OpikConfig.secret_fields() == {"api_key"}
+    assert OpikConfig.derived_fields() == frozenset()
+    assert OpikConfig.form_fields() == (
+        FormField(name="api_key", secret=True, required=False),
+        FormField(name="project", secret=False, required=False),
+        FormField(name="workspace", secret=False, required=False),
+        FormField(name="url", secret=False, required=False),
+    )
+    stored = OpikConfig.model_validate({"api_key": None, "project": None, "workspace": " ", "url": ""})
+    assert (stored.api_key, stored.project, stored.workspace, stored.url) == (None, "Default Project", None, API_URL)
+    named = OpikConfig(project=" Dify ", workspace=" team-1 ", url=" http://localhost:5173/api/ ")
+    assert (named.project, named.workspace, named.url) == ("Dify", "team-1", "http://localhost:5173/api/")
 
-    def test_default_values(self):
-        """Test default values are set correctly"""
-        config = OpikConfig()
-        assert config.api_key is None
-        assert config.project is None
-        assert config.workspace is None
-        assert config.url == "https://www.comet.com/opik/api/"
 
-    def test_project_validation_empty(self):
-        """Test project validation with empty value"""
-        config = OpikConfig(project="")
-        assert config.project == "Default Project"
-
-    def test_url_validation_empty(self):
-        """Test URL validation with empty value"""
-        config = OpikConfig(url="")
-        assert config.url == "https://www.comet.com/opik/api/"
-
-    def test_url_validation_missing_suffix(self):
-        """Test URL validation requires /api/ suffix"""
-        with pytest.raises(ValidationError, match="URL should end with /api/"):
-            OpikConfig(url="https://custom.comet.com/opik/")
-
-    def test_url_validation_invalid_scheme(self):
-        """Test URL validation rejects invalid schemes"""
-        with pytest.raises(ValidationError, match="URL must start with https:// or http://"):
-            OpikConfig(url="ftp://custom.comet.com/opik/api/")
+@pytest.mark.parametrize(
+    ("url", "message"),
+    [
+        ("ftp://comet.example.com/api/", "URL must start with https:// or http://"),
+        ("https://comet.example.com/opik/", "URL should end with /api/"),
+        ("https://user:secret@comet.example.com/api/", "URL must name a host and must not contain credentials"),
+    ],
+)
+def test_config_rejects_unusable_urls_without_echoing_them(url: str, message: str) -> None:
+    with pytest.raises(ValidationError, match=message) as caught:
+        OpikConfig(url=url)
+    assert "secret" not in str(caught.value)

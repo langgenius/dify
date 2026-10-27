@@ -811,6 +811,7 @@ export default interface Resources {
     'tracing.config': 'Config'
     'tracing.configProvider.clientId': 'OAuth Client ID'
     'tracing.configProvider.clientSecret': 'OAuth Client Secret'
+    'tracing.configProvider.configuredSecretPlaceholder': 'Configured. Leave blank to keep the saved value.'
     'tracing.configProvider.databricksHost': 'Databricks Workspace URL'
     'tracing.configProvider.experimentId': 'Experiment ID'
     'tracing.configProvider.password': 'Password'

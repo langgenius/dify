@@ -25,7 +25,6 @@ from configs import dify_config
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_context import get_credit_usage_metadata
 from core.model_manager import ModelManager
-from core.ops import ops_trace_manager
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl import base as plugin_base
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
@@ -59,7 +58,7 @@ class _Scenario:
 
 
 @pytest.fixture
-def scenario(db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[_Scenario]:
+def scenario(db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch) -> _Scenario:
     monkeypatch.setattr(dify_config, "PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED", True)
     session = db_session_with_containers
     account, tenant = create_console_account_and_tenant(session)
@@ -139,15 +138,7 @@ def scenario(db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatc
 
     # The container fixture reloads config after this module-level URL was bound.
     monkeypatch.setattr(plugin_base, "plugin_daemon_inner_api_baseurl", URL(str(dify_config.PLUGIN_DAEMON_URL)))
-    previous_timer = ops_trace_manager.trace_manager_timer
-    try:
-        yield _Scenario(account=account, context=context)
-    finally:
-        timer = ops_trace_manager.trace_manager_timer
-        if timer is not None and timer is not previous_timer:
-            timer.cancel()
-            timer.join(timeout=1)
-            ops_trace_manager.trace_manager_timer = previous_timer
+    return _Scenario(account=account, context=context)
 
 
 @pytest.fixture

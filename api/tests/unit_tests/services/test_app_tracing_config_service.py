@@ -1,9 +1,10 @@
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_sdk.testing import RecordingEgress
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -11,7 +12,6 @@ from machinery.context import RequestContext
 from models.model import App, AppMode, TraceAppConfig
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import (
     AppTraceSettings,
     AppTracingConfigAlreadyExistsError,
@@ -20,7 +20,9 @@ from services.app_tracing_config_service import (
     AppTracingConfigRecord,
     AppTracingConfigService,
     AppTracingConfigVerificationFailedError,
+    PresentedTracingConfig,
 )
+from services.tracing.provider_configs import ProviderConfigGateway
 
 """Public tracing operations keep credentials and policy in one transaction."""
 
@@ -33,7 +35,7 @@ class Case:
     sessions: sessionmaker[Session]
     store: SQLAlchemyAppTracingConfigRepository
     service: AppTracingConfigService
-    gateway: OpsTraceManagerGateway
+    gateway: ProviderConfigGateway
     reader: ConsoleAppRepository
 
     def policy(self) -> AppTraceSettings:
@@ -61,7 +63,7 @@ class TestAppTracingAtomicOperationsCases:
                     ),
                 )
             )
-        gateway = OpsTraceManagerGateway()
+        gateway = ProviderConfigGateway(RecordingEgress([], grpc_target=None))
 
         def prepare(*, tracing_config: dict[str, object], **_: object) -> dict[str, object]:
             return dict(tracing_config)
@@ -257,12 +259,16 @@ class TestAppTracingConfigServiceCases:
         configs = MagicMock()
         configs.get.return_value = stored
         provider = MagicMock()
-        provider.present_config.return_value = {"api_key": "******", "project_url": "https://example.com"}
+        provider.present_config.return_value = PresentedTracingConfig(
+            values={"project_url": "https://example.com"}, configured_secrets=("api_key",)
+        )
         service = AppTracingConfigService(configs=configs, provider=provider)
 
         result = service.get(_context(), "app-1", "arize")
 
-        assert result == _record(tracing_config={"api_key": "******", "project_url": "https://example.com"})
+        assert result == replace(
+            _record(tracing_config={"project_url": "https://example.com"}), configured_secrets=("api_key",)
+        )
         assert stored.tracing_config == {"api_key": "encrypted"}
         provider.validate_provider.assert_called_once_with("arize")
         configs.get.assert_called_once_with(

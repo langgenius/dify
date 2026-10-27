@@ -919,6 +919,7 @@ export type TraceProviderCapabilitiesResponse = {
 
 export type TraceAppConfigResponse = {
   app_id?: string | null
+  configured_secrets?: Array<string> | null
   created_at?: string | null
   error?: string | null
   has_not_configured?: boolean | null
@@ -7260,7 +7261,7 @@ export type GetAppsByAppIdTraceCapabilitiesData = {
 }
 
 export type GetAppsByAppIdTraceCapabilitiesErrors = {
-  400: UnsupportedTracingProviderError | ErrorResponse
+  400: TracingProviderUnavailableError | UnsupportedTracingProviderError | ErrorResponse
   default: ErrorResponse
 }
 
