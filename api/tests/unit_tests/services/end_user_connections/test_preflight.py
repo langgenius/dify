@@ -23,7 +23,7 @@ from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionConflictError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.preflight import ConnectionPreflightInput, ConnectionPreflightService
 from services.errors.conversation import ConversationNotExistsError
@@ -43,6 +43,7 @@ def service(harness: OAuthHarness) -> ConnectionPreflightService:
         checks=harness.base.service,
         requirements=PublishedPreflightRequirements(
             workflows=harness.base.repository,
+            snapshots=harness.base.repository,
             providers=harness.providers,
             oauth=harness.gateway,
         ),
@@ -50,7 +51,9 @@ def service(harness: OAuthHarness) -> ConnectionPreflightService:
 
 
 def command(harness: OAuthHarness, selections: dict[str, str | None]) -> ConnectionPreflightInput:
-    return ConnectionPreflightInput.model_validate({"workflow_id": harness.base.workflow_id, "connections": selections})
+    return ConnectionPreflightInput.model_validate(
+        {"connection_revision": harness.base.connection_revision, "connections": selections}
+    )
 
 
 def add_node(harness: OAuthHarness, *, reuse: bool) -> None:
@@ -71,7 +74,7 @@ def test_empty_selection_checks_explicit_version_without_credentials_or_run(
     harness: OAuthHarness, service: ConnectionPreflightService
 ) -> None:
     result = service.check(harness.base.context, command(harness, {}))
-    assert result.workflow_id == harness.base.workflow_id
+    assert result.connection_revision == harness.base.connection_revision
     assert not result.ready
     assert result.connections[0].status == NodeConnectionStatus.DISCONNECTED
     assert result.connections[0].connection_id is None
@@ -94,7 +97,7 @@ def test_same_connection_is_checked_once_for_independent_nodes(
     assert len(harness.base.auth.calls) == 1
     assert all(item.connection_id == connection.id for item in result.connections)
     assert "original-secret" not in result.model_dump_json()
-    assert "revision" not in result.model_dump_json()
+    assert "encrypted_credentials" not in result.model_dump_json()
 
 
 def test_reuse_nodes_share_root_requirement_without_provider_wide_merging(
@@ -240,7 +243,9 @@ def test_same_provider_nodes_resolve_clients_independently_and_reuse_inherits_se
     default = harness.finish(
         harness.service.start_oauth(
             harness.base.context,
-            StartConnectionOAuthInput(workflow_id=harness.command().workflow_id, node_id="reuse", name="Default"),
+            StartConnectionOAuthInput(
+                connection_revision=harness.command().connection_revision, node_id="reuse", name="Default"
+            ),
             callback_url="http://web-api.example/api/connections/oauth",
         )
     )
@@ -285,7 +290,7 @@ def test_changes_during_checks_cannot_produce_ready(
                 workflow.graph = json.dumps(graph)
 
     harness.base.auth.on_check = mutate
-    with pytest.raises(ConnectionWorkflowChangedError if change == "version" else ConnectionConflictError):
+    with pytest.raises(ConnectionConflictError if change == "connection" else ConnectionRevisionChangedError):
         service.check(harness.base.context, command(harness, {"tool-1": connection.id}))
 
 
@@ -319,7 +324,7 @@ def test_existing_chatflow_session_is_validated_even_with_empty_selections(
     with pytest.raises(ConversationNotExistsError):
         service.check(harness.base.context, payload)
     payload = ConnectionPreflightInput.model_validate(
-        {"workflow_id": harness.base.workflow_id, "conversation_id": conversation_id, "connections": {}}
+        {"connection_revision": harness.base.connection_revision, "conversation_id": conversation_id, "connections": {}}
     )
     assert not service.check(harness.base.context, payload).ready
     with harness.base.sessions.begin() as session:
@@ -339,7 +344,7 @@ def test_two_conversations_check_independent_choices_without_persisting_selectio
         conversation_id = conversation(harness)
         payload = ConnectionPreflightInput.model_validate(
             {
-                "workflow_id": harness.base.workflow_id,
+                "connection_revision": harness.base.connection_revision,
                 "conversation_id": conversation_id,
                 "connections": {"tool-1": connection.id},
             }
@@ -377,8 +382,8 @@ def test_replacement_after_check_completion_cannot_reuse_old_validation(
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     original = harness.base.service.check_connection_result
 
-    def check(context: WebConnectionContext, connection_id: str) -> ConnectionCheckOutcome:
-        outcome = original(context, connection_id)
+    def check(context: WebConnectionContext, connection_id: str, *, connection_revision: str) -> ConnectionCheckOutcome:
+        outcome = original(context, connection_id, connection_revision=connection_revision)
         with harness.base.sessions.begin() as session:
             session.execute(
                 sa.update(EndUserConnection)
@@ -402,7 +407,10 @@ def test_workspace_only_graph_requires_no_personal_connections(
         graph["nodes"][0]["data"].pop("end_user_auth")
         graph["nodes"][0]["data"]["credential_source"] = "workspace"
         workflow.graph = json.dumps(graph)
-    result = service.check(harness.base.context, command(harness, {}))
+    result = service.check(
+        harness.base.context,
+        command(harness, {}).model_copy(update={"connection_revision": harness.base.connection_revision}),
+    )
     assert result.ready
     assert result.connections == ()
     assert harness.base.auth.calls == []
@@ -437,7 +445,7 @@ def test_conversation_deleted_during_check_cannot_produce_ready(
     harness.base.auth.on_check = delete
     payload = ConnectionPreflightInput.model_validate(
         {
-            "workflow_id": harness.base.workflow_id,
+            "connection_revision": harness.base.connection_revision,
             "conversation_id": conversation_id,
             "connections": {"tool-1": connection.id},
         }

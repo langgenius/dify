@@ -9,8 +9,8 @@ from controllers.common.end_user_connections import (
     ConnectionConflictHTTPError,
     ConnectionLoginRequiredError,
     ConnectionReauthorizationHTTPError,
+    ConnectionRevisionChangedHTTPError,
     ConnectionSecretUnavailableHTTPError,
-    ConnectionWorkflowChangedHTTPError,
     raise_connection_error,
 )
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -51,7 +51,7 @@ class EndUserConnectionPreflightApi(WebApiResource):
         ConnectionConfigurationHTTPError,
         ConnectionLoginRequiredError,
         ConnectionConflictHTTPError,
-        ConnectionWorkflowChangedHTTPError,
+        ConnectionRevisionChangedHTTPError,
         ConnectionReauthorizationHTTPError,
         ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableHTTPError,

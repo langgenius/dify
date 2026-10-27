@@ -10,7 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from context.connection_execution import ConnectionExecutionContext
 from services.end_user_connections.contracts import ConnectionSummary
 from services.end_user_connections.entities import WebConnectionContext
-from services.end_user_connections.errors import ConnectionWorkflowChangedError
+from services.end_user_connections.errors import ConnectionRevisionChangedError
+from services.end_user_connections.revision import AuthorizationRequirementSnapshot
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,10 @@ class ConnectionSelections(Protocol):
         update_conversation: bool,
     ) -> None: ...
 
+    def workflow_requirements(
+        self, context: WebConnectionContext, workflow_id: str
+    ) -> tuple[AuthorizationRequirementSnapshot, ...]: ...
+
     def app_selections(self, context: WebConnectionContext) -> tuple[SavedConnectionSelection, ...]: ...
 
     def conversation_selections(
@@ -59,8 +64,11 @@ class ConnectionSelectionService:
 
     def restore(self, context: WebConnectionContext, workflow_id: str, conversation_id: str) -> dict[str, UUID]:
         saved = self._store.conversation_selections(context, conversation_id)
-        if any(item.workflow_id != workflow_id for item in saved):
-            raise ConnectionWorkflowChangedError()
+        previous_versions = {item.workflow_id for item in saved if item.workflow_id != workflow_id}
+        if previous_versions:
+            current = self._store.workflow_requirements(context, workflow_id)
+            if any(self._store.workflow_requirements(context, version) != current for version in previous_versions):
+                raise ConnectionRevisionChangedError()
         return {item.node_id: UUID(item.connection_id) for item in saved}
 
     def get(self, context: WebConnectionContext, conversation_id: str | None) -> ConnectionConfiguration:

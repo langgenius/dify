@@ -19,6 +19,7 @@ from models.provider_ids import ToolProviderID
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway, validate_provider_authentication
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
@@ -27,6 +28,7 @@ from services.end_user_connections.errors import (
     ConnectionRequiredError,
 )
 from services.end_user_connections.policy import require_owned_connection
+from services.end_user_connections.revision import ConnectionRevisionAcceptance
 from services.workflow.tool_credentials import resolve_tool_credential_root
 
 if TYPE_CHECKING:
@@ -95,6 +97,8 @@ def get_tool_runtime(
                 identity, repository.access_records(identity, frozenset({connection_id})).get(connection_id)
             )
             auth = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
+            revisions = PluginConnectionRevisions(providers=auth, snapshots=repository)
+            revisions.require(identity.tenant_id, identity.app_id, graph, context.connection_revision)
             provider = auth.provider(identity.tenant_id, root.provider_id)
             canonical = str(ToolProviderID(provider.entity.identity.name))
             if selection.provider != canonical or root.end_user_auth is None:
@@ -111,7 +115,7 @@ def get_tool_runtime(
                 )
                 if source is None:
                     raise ConnectionConfigurationError()
-                oauth_client = gateway.resolve_client(identity.tenant_id, canonical, source).snapshot.reference
+                oauth_client = gateway.resolve_client(identity.tenant_id, canonical, source).snapshot
             target = ToolConnectionTarget(
                 tenant_id=identity.tenant_id,
                 app_id=identity.app_id,
@@ -132,7 +136,13 @@ def get_tool_runtime(
             from extensions.ext_application_services import application_services
 
             resolved = application_services().end_user_connection_runtime.resolve(
-                identity, connection=record, target=target
+                identity, connection=record, target=target, connection_revision=context.connection_revision
+            )
+            accepted_revision = revisions.require(
+                identity.tenant_id, identity.app_id, graph, context.connection_revision
+            )
+            repository.record_revision_acceptance(
+                identity, ConnectionRevisionAcceptance.from_revisions(context.connection_revision, accepted_revision)
             )
             tool = provider.get_tool(spec.tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(

@@ -22,6 +22,7 @@ from clients.plugin.auth_entities import (
     CredentialCheckResult,
     OAuthRevokeResult,
 )
+from clients.plugin.identifiers import plugin_id_from_unique_identifier
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.base import BasePluginClient, use_plugin_daemon_request_timeout
 from core.plugin.impl.exc import PluginDaemonInternalServerError
@@ -76,9 +77,9 @@ class PluginCredentialAuthClient(BasePluginClient):
         tenant_id: str,
         user_id: str,
         provider: str,
+        plugin_unique_identifier: str,
         system_credentials: Mapping[str, Any],
         credentials: Mapping[str, Any],
-        plugin_unique_identifier: str | None = None,
     ) -> OAuthRevokeResult:
         """Return the provider result; callers handle best-effort cleanup on errors.
 
@@ -86,6 +87,8 @@ class PluginCredentialAuthClient(BasePluginClient):
         grant. App unbinding must not call this operation.
         """
         provider_id = ToolProviderID(provider)
+        if plugin_id_from_unique_identifier(plugin_unique_identifier) != provider_id.plugin_id:
+            raise ValueError("OAuth revocation artifact does not match the Provider.")
         return self._dispatch(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -107,15 +110,21 @@ class PluginCredentialAuthClient(BasePluginClient):
         data: dict[str, Any],
         response_type: type[T],
     ) -> T:
+        path = f"plugin/{tenant_id}/dispatch/{operation}"
+        headers = plugin_dispatch_headers(provider_id.plugin_id, plugin_unique_identifier)
+        payload = {"user_id": user_id, "data": {"provider": provider_id.provider_name, **data}}
+        if plugin_unique_identifier is not None:
+            if plugin_id_from_unique_identifier(plugin_unique_identifier) != provider_id.plugin_id:
+                raise ValueError("Authentication artifact does not match the Provider.")
         with (
             use_plugin_daemon_request_timeout(10),
             closing(
                 self._request_with_plugin_daemon_response_stream(
                     "POST",
-                    f"plugin/{tenant_id}/dispatch/{operation}",
+                    path,
                     dict[str, object],
-                    headers=plugin_dispatch_headers(provider_id.plugin_id, plugin_unique_identifier),
-                    data={"user_id": user_id, "data": {"provider": provider_id.provider_name, **data}},
+                    headers=headers,
+                    data=payload,
                 )
             ) as response,
         ):

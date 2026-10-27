@@ -17,6 +17,7 @@ from models.workflow import Workflow
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.preflight import ConnectionPreflightService
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
 
@@ -40,7 +41,10 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
         connections=harness.base.repository,
         checks=harness.base.service,
         requirements=PublishedPreflightRequirements(
-            workflows=harness.base.repository, providers=harness.providers, oauth=harness.gateway
+            workflows=harness.base.repository,
+            snapshots=harness.base.repository,
+            providers=harness.providers,
+            oauth=harness.gateway,
         ),
     )
     monkeypatch.setattr(wraps, "decode_jwt_token", identity)
@@ -50,6 +54,7 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
     definitions = AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=harness.base.sessions),
         builtin_icon_url_prefix="",
+        connection_revisions=PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository),
     )
     monkeypatch.setattr(app_controller, "application_services", lambda: SimpleNamespace(app_definitions=definitions))
     app = Flask(__name__)
@@ -60,10 +65,12 @@ def client(harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch) -> Iterator[F
 
 
 def test_explicit_version_and_selection_response(client: FlaskClient, harness: OAuthHarness) -> None:
+    from core.plugin.plugin_service import PluginService
+
     parameters = client.get("/api/parameters")
     assert parameters.status_code == 200
-    version = parameters.get_json()["workflow_id"]
-    assert version == harness.base.workflow_id
+    version = parameters.get_json()["connection_revision"]
+    assert version == harness.base.connection_revision
     assert parameters.get_json()["requires_end_user_connections"] is True
     assert parameters.get_json()["connection_requirements"] == [
         {
@@ -72,29 +79,33 @@ def test_explicit_version_and_selection_response(client: FlaskClient, harness: O
             "title": "tool-1",
             "purpose": "Read calendar",
             "provider": "vendor/calendar/calendar",
+            "plugin_unique_identifier": harness.providers.controller.plugin_unique_identifier,
+            "icon": PluginService.get_plugin_icon_url(tenant_id=harness.base.context.tenant_id, filename="icon.svg"),
+            "icon_dark": None,
             "allowed_credential_types": ["api-key", "oauth2"],
         }
     ]
     assert harness.base.auth.calls == []
-    response = client.post("/api/connections/preflight", json={"workflow_id": version, "connections": {}})
+    response = client.post("/api/connections/preflight", json={"connection_revision": version, "connections": {}})
     assert response.status_code == 200
     data = response.get_json()
-    assert data["workflow_id"] == harness.base.workflow_id
+    assert data["connection_revision"] == harness.base.connection_revision
     assert data["ready"] is False
     assert data["connections"][0]["status"] == "disconnected"
     assert data["connections"] == [
         {"node_id": "tool-1", "connection_id": None, "status": "disconnected", "check": None}
     ]
-    assert set(data) == {"workflow_id", "connections", "ready"}
+    assert set(data) == {"connection_revision", "connections", "ready"}
     created = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     response = client.post(
-        "/api/connections/preflight", json={"workflow_id": data["workflow_id"], "connections": {"tool-1": created.id}}
+        "/api/connections/preflight",
+        json={"connection_revision": data["connection_revision"], "connections": {"tool-1": created.id}},
     )
     assert response.status_code == 200
     assert response.get_json()["ready"] is True
     assert response.get_json()["connections"][0]["connection_id"] == created.id
     assert "original-secret" not in response.get_data(as_text=True)
-    assert "revision" not in response.get_data(as_text=True)
+    assert "encrypted_credentials" not in response.get_data(as_text=True)
     assert "account_id" not in response.get_data(as_text=True)
 
 
@@ -115,7 +126,7 @@ def test_temporary_check_failure_has_unknown_effective_state(client: FlaskClient
     )
     response = client.post(
         "/api/connections/preflight",
-        json={"workflow_id": harness.base.workflow_id, "connections": {"tool-1": connection.id}},
+        json={"connection_revision": harness.base.connection_revision, "connections": {"tool-1": connection.id}},
     )
     assert response.status_code == 200
     assert response.get_json()["ready"] is False
@@ -125,9 +136,12 @@ def test_temporary_check_failure_has_unknown_effective_state(client: FlaskClient
 
 
 def test_stale_workflow_is_documented_conflict(client: FlaskClient, harness: OAuthHarness) -> None:
-    response = client.post("/api/connections/preflight", json={"workflow_id": str(uuid4()), "connections": {}})
+    response = client.post(
+        "/api/connections/preflight",
+        json={"connection_revision": "00000000-0000-7000-8000-000000000001", "connections": {}},
+    )
     assert response.status_code == 409
-    assert response.get_json()["code"] == "workflow_changed"
+    assert response.get_json()["code"] == "connection_revision_changed"
     assert harness.base.auth.calls == []
 
 
@@ -136,7 +150,11 @@ def test_foreign_or_missing_chatflow_session_is_not_found(client: FlaskClient, h
         session.execute(sa.update(App).where(App.id == harness.base.context.app_id).values(mode=AppMode.ADVANCED_CHAT))
     response = client.post(
         "/api/connections/preflight",
-        json={"workflow_id": harness.base.workflow_id, "conversation_id": str(uuid4()), "connections": {}},
+        json={
+            "connection_revision": harness.base.connection_revision,
+            "conversation_id": str(uuid4()),
+            "connections": {},
+        },
     )
     assert response.status_code == 404
     assert response.get_json()["code"] == "not_found"
@@ -160,11 +178,14 @@ def test_guest_can_discover_requirements(
     ("payload", "valid"),
     [
         ({"connections": {}}, False),
-        ({"connections": {}, "workflow_id": str(uuid4())}, True),
-        ({"connections": {}, "workflow_id": None}, False),
+        ({"connections": {}, "connection_revision": "00000000-0000-7000-8000-000000000001"}, True),
+        ({"connections": {}, "connection_revision": None}, False),
         ({"connections": {"tool-1": None}}, False),
-        ({"connections": {"tool-1": str(uuid4())}, "workflow_id": None}, False),
-        ({"connections": {"tool-1": str(uuid4())}, "workflow_id": str(uuid4())}, True),
+        ({"connections": {"tool-1": str(uuid4())}, "connection_revision": None}, False),
+        (
+            {"connections": {"tool-1": str(uuid4())}, "connection_revision": "00000000-0000-7000-8000-000000000001"},
+            True,
+        ),
         ({}, False),
     ],
 )
@@ -197,7 +218,8 @@ def test_anonymous_policy_preserves_page_access_and_workflows_without_personal_c
     assert parameters.get_json()["allow_anonymous_end_user_auth"] is False
     assert bool(parameters.get_json()["connection_requirements"]) is personal_tools
     response = client.post(
-        "/api/connections/preflight", json={"workflow_id": harness.base.workflow_id, "connections": {}}
+        "/api/connections/preflight",
+        json={"connection_revision": parameters.get_json()["connection_revision"], "connections": {}},
     )
     if personal_tools:
         assert response.status_code == 401
@@ -206,4 +228,56 @@ def test_anonymous_policy_preserves_page_access_and_workflows_without_personal_c
         assert response.status_code == 200
         assert response.get_json()["connections"] == []
         assert response.get_json()["ready"] is True
+    assert harness.base.auth.calls == []
+
+
+def test_parameters_replace_workflow_id_and_plugin_upgrade_invalidates_the_revision(
+    client: FlaskClient, harness: OAuthHarness
+) -> None:
+    connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    harness.base.auth.calls.clear()
+    before = client.get("/api/parameters").get_json()
+    assert "workflow_id" not in before
+    harness.providers.controller.plugin_unique_identifier = "vendor/calendar:1.0.0@" + "b" * 64
+    after = client.get("/api/parameters").get_json()
+    assert before["connection_revision"] != after["connection_revision"]
+    old_requirement = before["connection_requirements"][0]
+    new_requirement = after["connection_requirements"][0]
+    assert old_requirement["plugin_unique_identifier"] != new_requirement["plugin_unique_identifier"]
+    assert {key: value for key, value in old_requirement.items() if key != "plugin_unique_identifier"} == {
+        key: value for key, value in new_requirement.items() if key != "plugin_unique_identifier"
+    }
+    snapshot = harness.base.repository.get_revision(
+        harness.base.context.tenant_id, harness.base.context.app_id, after["connection_revision"]
+    )
+    assert snapshot is not None
+    assert new_requirement["provider"] == snapshot.providers[0].provider
+    assert new_requirement["plugin_unique_identifier"] == snapshot.providers[0].plugin_unique_identifier
+    response = client.post(
+        "/api/connections/preflight", json={"connection_revision": before["connection_revision"], "connections": {}}
+    )
+    assert response.status_code == 409
+    assert response.get_json()["code"] == "connection_revision_changed"
+    assert harness.base.auth.calls == []
+    current = client.post(
+        "/api/connections/preflight",
+        json={"connection_revision": after["connection_revision"], "connections": {"tool-1": connection.id}},
+    )
+    assert current.status_code == 200
+    assert current.get_json()["ready"] is True
+    assert current.get_json()["connection_revision"] == after["connection_revision"]
+    assert harness.base.auth.check_artifacts[-1] == new_requirement["plugin_unique_identifier"]
+
+
+def test_unverified_plugin_change_returns_only_current_revision(client: FlaskClient, harness: OAuthHarness) -> None:
+    previous = harness.base.connection_revision
+    upgraded = "vendor/calendar:2.0.0@" + "b" * 64
+    harness.providers.controller.plugin_unique_identifier = upgraded
+    response = client.post("/api/connections/preflight", json={"connection_revision": previous, "connections": {}})
+    assert response.status_code == 409
+    payload = response.get_json()
+    assert payload["code"] == "connection_revision_changed"
+    details = payload["details"]
+    assert set(details) == {"connection_revision"}
+    assert details["connection_revision"] != previous
     assert harness.base.auth.calls == []

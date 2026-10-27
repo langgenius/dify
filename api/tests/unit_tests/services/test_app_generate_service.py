@@ -661,17 +661,18 @@ class TestAppGenerateServiceCases:
             AppGenerateService.generate(
                 app_model=app,
                 user=_make_user(),
-                args={"inputs": {}, "workflow_id": requested_id, "connections": {}},
+                args={"inputs": {}, "connection_revision": requested_id, "connections": {}},
                 invoke_from=InvokeFrom.WEB_APP,
                 streaming=streaming,
                 session=self.session,
             )
             get_workflow.assert_called_once_with(app, InvokeFrom.WEB_APP, None, session=self.session)
             assert prepare.call_args.kwargs["workflow"] is workflow
-            assert prepare.call_args.kwargs["args"]["workflow_id"] == requested_id
+            assert prepare.call_args.kwargs["args"]["connection_revision"] == requested_id
             forwarded = params.call_args.kwargs if streaming else generate.call_args.kwargs
             assert forwarded["workflow"] is workflow
             assert "workflow_id" not in forwarded["args"]
+            assert "connection_revision" not in forwarded["args"]
             assert "connections" not in forwarded["args"]
             assert "connection_context" in forwarded
 

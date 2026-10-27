@@ -13,8 +13,8 @@ from controllers.common.end_user_connections import (
     ConnectionNotFoundHTTPError,
     ConnectionReauthorizationHTTPError,
     ConnectionRequiredHTTPError,
+    ConnectionRevisionChangedHTTPError,
     ConnectionSecretUnavailableHTTPError,
-    ConnectionWorkflowChangedHTTPError,
     raise_connection_error,
 )
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
@@ -73,7 +73,7 @@ class WorkflowRunApi(WebApiResource):
         ConnectionReauthorizationHTTPError,
         ConnectionRequiredHTTPError,
         ConnectionSecretUnavailableHTTPError,
-        ConnectionWorkflowChangedHTTPError,
+        ConnectionRevisionChangedHTTPError,
         CompletionRequestError,
         InvokeRateLimitHttpError,
         NotWorkflowAppError,

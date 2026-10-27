@@ -24,7 +24,6 @@ from services.end_user_connections.errors import (
     ConnectionInvalidCredentialsError,
     ConnectionNotFoundError,
     ConnectionRequiredError,
-    ConnectionWorkflowChangedError,
 )
 from tests.helpers.end_user_conversation import ConversationHarness, make_conversation_harness
 from tests.helpers.end_user_oauth import make_oauth_harness
@@ -88,7 +87,7 @@ def test_explicit_choices_do_not_merge_missing_nodes_or_select_reuse_nodes(harne
     assert harness.saved(conversation_id) == {"tool-1": a.id, "tool-2": b.id}
 
 
-def test_workflow_changes_require_explicit_reconfirmation(harness: ConversationHarness) -> None:
+def test_republishing_unchanged_requirements_preserves_saved_choices(harness: ConversationHarness) -> None:
     base = harness.oauth.base
     connection = base.service.create_api_key(base.context, base.command())
     conversation_id = harness.create_conversation()
@@ -109,9 +108,7 @@ def test_workflow_changes_require_explicit_reconfirmation(harness: ConversationH
         session.flush()
         base.workflow_id = new.id
         session.execute(sa.update(App).where(App.id == base.context.app_id).values({"workflow_id": new.id}))
-    with pytest.raises(ConnectionWorkflowChangedError):
-        harness.run(conversation_id)
-    confirmed = harness.run(conversation_id, {"tool-1": connection.id})
+    confirmed = harness.run(conversation_id)
     assert confirmed.workflow_id == base.workflow_id
     assert accepted.workflow_id != confirmed.workflow_id
     assert harness.run(conversation_id).workflow_id == confirmed.workflow_id
@@ -299,3 +296,37 @@ def test_initial_choices_cannot_be_bound_to_another_conversation_owner(
         with pytest.raises(ConnectionIdentityError):
             base.repository.initialize_conversation_selections(session, accepted, conversation)
     assert harness.saved(conversation_id) == {}
+
+
+def test_changed_authorization_requirements_need_explicit_saved_choice_confirmation(
+    harness: ConversationHarness,
+) -> None:
+    from services.end_user_connections.errors import ConnectionRevisionChangedError
+
+    base = harness.oauth.base
+    selected = base.service.create_api_key(base.context, base.command())
+    conversation_id = harness.create_conversation()
+    harness.run(conversation_id, {"tool-1": selected.id})
+    with harness.sessions.begin() as session:
+        previous = session.get(Workflow, base.workflow_id)
+        assert previous is not None
+        graph = previous.graph_dict
+        graph["nodes"][0]["data"]["end_user_auth"]["purpose"] = "Changed authorization purpose"
+        current = Workflow(
+            tenant_id=previous.tenant_id,
+            app_id=previous.app_id,
+            type=previous.type,
+            version="changed-authorization",
+            graph=json.dumps(graph),
+            _features=previous.features,
+            created_by=previous.created_by,
+        )
+        session.add(current)
+        session.flush()
+        app = session.get(App, previous.app_id)
+        assert app is not None
+        app.workflow_id = current.id
+        base.workflow_id = current.id
+    with pytest.raises(ConnectionRevisionChangedError):
+        harness.run(conversation_id)
+    assert harness.run(conversation_id, {"tool-1": selected.id}).selections[0].connection_id == selected.id

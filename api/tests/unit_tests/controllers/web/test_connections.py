@@ -72,7 +72,10 @@ def test_http_api_key_management_round_trip(
     assert client.get(f"/api/connections/{connection_id}").get_json() == data
     page = client.get("/api/connections?limit=1").get_json()
     assert page == {"data": [data], "has_more": False, "next_cursor": None}
-    changed = client.patch(f"/api/connections/{connection_id}", json={"credentials": {"api_key": "replacement-secret"}})
+    changed = client.patch(
+        f"/api/connections/{connection_id}",
+        json={"credentials": {"api_key": "replacement-secret"}, "connection_revision": harness.connection_revision},
+    )
     assert changed.status_code == 200
     assert "replacement-secret" not in changed.get_data(as_text=True)
     deleted = client.delete(f"/api/connections/{connection_id}")
@@ -119,6 +122,10 @@ def test_foreign_and_missing_ids_return_same_not_found(client: FlaskClient, harn
     denied = client.get(f"/api/connections/{foreign.id}")
     assert denied.status_code == missing.status_code == 404
     assert denied.get_json() == missing.get_json()
+    missing_revision = client.get(f"/api/connections/{uuid4()}/revision")
+    foreign_revision = client.get(f"/api/connections/{foreign.id}/revision")
+    assert foreign_revision.status_code == missing_revision.status_code == 404
+    assert foreign_revision.get_json() == missing_revision.get_json()
 
 
 def test_disabling_anonymous_connections_blocks_existing_guest_management(
@@ -135,7 +142,11 @@ def test_disabling_anonymous_connections_blocks_existing_guest_management(
     for method, path, payload in [
         ("GET", "/api/connections", None),
         ("GET", f"/api/connections/{connection_id}", None),
-        ("PATCH", f"/api/connections/{connection_id}", {"credentials": {"api_key": "replacement"}}),
+        (
+            "PATCH",
+            f"/api/connections/{connection_id}",
+            {"credentials": {"api_key": "replacement"}, "connection_revision": harness.connection_revision},
+        ),
         ("DELETE", f"/api/connections/{connection_id}", None),
     ]:
         response = client.open(path, method=method, json=payload)
@@ -149,10 +160,13 @@ def test_disabling_anonymous_connections_blocks_existing_guest_management(
 def test_stale_workflow_request_is_rejected_before_plugin_calls(
     client: FlaskClient, harness: ConnectionHarness
 ) -> None:
-    payload = {**harness.command().model_dump(mode="json"), "workflow_id": str(uuid4())}
+    payload = {
+        **harness.command().model_dump(mode="json"),
+        "connection_revision": "00000000-0000-7000-8000-000000000001",
+    }
     response = client.post("/api/connections", json=payload)
     assert response.status_code == 409
-    assert response.get_json()["code"] == "workflow_changed"
+    assert response.get_json()["code"] == "connection_revision_changed"
     assert harness.auth.calls == []
 
 
@@ -164,7 +178,10 @@ def test_lost_update_race_returns_conflict(client: FlaskClient, harness: Connect
             session.execute(sa.update(EndUserConnection).where(EndUserConnection.id == created.id).values(revision=2))
 
     harness.auth.on_check = change
-    response = client.patch(f"/api/connections/{created.id}", json={"credentials": {"api_key": "replacement"}})
+    response = client.patch(
+        f"/api/connections/{created.id}",
+        json={"credentials": {"api_key": "replacement"}, "connection_revision": harness.connection_revision},
+    )
     assert response.status_code == 409
     assert response.get_json()["code"] == "connection_conflict"
 
@@ -202,3 +219,94 @@ def test_standalone_check_route_is_removed(client: FlaskClient, harness: Connect
     harness.auth.calls.clear()
     assert client.post(f"/api/connections/{created.id}/check").status_code == 404
     assert harness.auth.calls == []
+
+
+def test_provider_revision_is_available_after_the_authorization_node_is_removed(
+    client: FlaskClient, harness: ConnectionHarness
+) -> None:
+    from models.workflow import Workflow
+
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    with harness.sessions.begin() as session:
+        workflow = session.get(Workflow, harness.workflow_id)
+        assert workflow is not None
+        workflow.graph = '{"nodes":[]}'
+    response = client.get(f"/api/connections/{connection.id}/revision")
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    snapshot = harness.repository.get_revision(
+        harness.context.tenant_id, harness.context.app_id, response.get_json()["connection_revision"]
+    )
+    assert snapshot is not None
+    assert snapshot.app_id == harness.context.app_id
+    assert snapshot.tenant_id == harness.context.tenant_id
+    assert snapshot.requirements == ()
+    assert snapshot.providers[0].provider == connection.provider
+    changed = client.patch(
+        f"/api/connections/{connection.id}",
+        json={
+            "credentials": {"api_key": "replacement"},
+            "connection_revision": response.get_json()["connection_revision"],
+        },
+    )
+    assert changed.status_code == 200
+
+
+@pytest.mark.parametrize("revision", [None, "stale", "forged"])
+def test_credential_patch_requires_confirmed_revision_before_sending_credentials(
+    client: FlaskClient, harness: ConnectionHarness, revision: str | None
+) -> None:
+    from tests.helpers.end_user_api_key import TestProviders
+
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    original = harness.repository.find(harness.context, connection.id)
+    assert original is not None
+    payload: dict[str, object] = {"credentials": {"api_key": "private-replacement"}}
+    if revision is not None:
+        payload["connection_revision"] = (
+            harness.connection_revision if revision == "stale" else "00000000-0000-7000-8000-000000000001"
+        )
+    assert isinstance(harness.service._credentials, TestProviders)
+    harness.service._credentials.controller.plugin_unique_identifier = "vendor/calendar:2.0.0@" + "b" * 64
+    harness.auth.calls.clear()
+    response = client.patch(f"/api/connections/{connection.id}", json=payload)
+    assert response.status_code == (400 if revision is None else 409)
+    assert harness.auth.calls == []
+    latest = harness.repository.find(harness.context, connection.id)
+    assert latest is not None
+    assert latest.encrypted_credentials == original.encrypted_credentials
+    assert "private-replacement" not in response.get_data(as_text=True)
+
+
+def test_credential_patch_revalidates_after_the_plugin_check(client: FlaskClient, harness: ConnectionHarness) -> None:
+    from tests.helpers.end_user_api_key import TestProviders
+
+    connection = harness.service.create_api_key(harness.context, harness.command())
+    original = harness.repository.find(harness.context, connection.id)
+    assert original is not None
+    revision = client.get(f"/api/connections/{connection.id}/revision").get_json()["connection_revision"]
+    assert isinstance(harness.service._credentials, TestProviders)
+    controller = harness.service._credentials.controller
+    harness.auth.on_check = lambda: setattr(controller, "plugin_unique_identifier", "vendor/calendar:2.0.0@" + "b" * 64)
+    response = client.patch(
+        f"/api/connections/{connection.id}",
+        json={"credentials": {"api_key": "replacement"}, "connection_revision": revision},
+    )
+    assert response.status_code == 409
+    latest = harness.repository.find(harness.context, connection.id)
+    assert latest is not None
+    assert latest.encrypted_credentials == original.encrypted_credentials
+
+
+def test_name_only_patch_does_not_require_provider_access(
+    client: FlaskClient, harness: ConnectionHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    connection = harness.service.create_api_key(harness.context, harness.command())
+
+    def unavailable(_tenant_id: str, _provider: str) -> str:
+        pytest.fail("A local name change must not consult a plugin.")
+
+    monkeypatch.setattr(harness.service._credentials, "provider", unavailable)
+    response = client.patch(f"/api/connections/{connection.id}", json={"name": "Renamed"})
+    assert response.status_code == 200
+    assert response.get_json()["name"] == "Renamed"

@@ -40,13 +40,14 @@ from services.end_user_connections.errors import (
     ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
     ConnectionRequiredError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.execution import (
     ConnectionExecutionService,
     ConnectionRunInput,
 )
 from services.end_user_connections.preflight import ConnectionPreflightInput, ConnectionPreflightService
+from services.end_user_connections.revision import ConnectionContractSnapshot
 from services.end_user_connections.selections import ConnectionSelectionService
 from services.errors.conversation import ConversationNotExistsError
 from tasks.app_generate.workflow_execute_task import AppExecutionParams
@@ -65,7 +66,10 @@ def preflight(harness: OAuthHarness) -> ConnectionPreflightService:
         connections=harness.base.repository,
         checks=harness.base.service,
         requirements=PublishedPreflightRequirements(
-            workflows=harness.base.repository, providers=harness.providers, oauth=harness.gateway
+            workflows=harness.base.repository,
+            snapshots=harness.base.repository,
+            providers=harness.providers,
+            oauth=harness.gateway,
         ),
     )
 
@@ -83,7 +87,9 @@ def prepare(
 ) -> ConnectionExecutionContext:
     return service.prepare(
         harness.base.context,
-        ConnectionRunInput.model_validate({"workflow_id": harness.base.workflow_id, "connections": choices}),
+        ConnectionRunInput.model_validate(
+            {"connection_revision": harness.base.connection_revision, "connections": choices}
+        ),
         workflow_id=harness.base.workflow_id,
         conversation_id=conversation_id,
     )
@@ -107,7 +113,8 @@ def test_explicit_selection_is_checked_without_copying_secrets(
     serialized = context.model_dump_json()
     assert "original-secret" not in serialized
     assert "encrypted_credentials" not in serialized
-    assert "revision" not in serialized
+    assert context.connection_revision == harness.base.connection_revision
+    assert "encrypted_credentials" not in serialized
     assert ConnectionExecutionContext.model_validate_json(serialized) == context
     assert len(harness.base.auth.calls) == 2
 
@@ -175,10 +182,12 @@ def test_reuse_requires_root_selection_and_keeps_independent_nodes_separate(
 def test_protocol_mismatch_never_selects_the_requested_workflow(
     harness: OAuthHarness, service: ConnectionExecutionService
 ) -> None:
-    with pytest.raises(ConnectionWorkflowChangedError):
+    with pytest.raises(ConnectionRevisionChangedError):
         service.prepare(
             harness.base.context,
-            ConnectionRunInput.model_validate({"workflow_id": str(uuid4()), "connections": {}}),
+            ConnectionRunInput.model_validate(
+                {"connection_revision": "00000000-0000-7000-8000-000000000001", "connections": {}}
+            ),
             workflow_id=harness.base.workflow_id,
             conversation_id=None,
         )
@@ -202,12 +211,12 @@ def test_async_authority_revalidated_without_rebinding_to_new_publication(
     )
     published_version = workflow.version
     workflow.version = Workflow.VERSION_DRAFT
-    with pytest.raises(ConnectionWorkflowChangedError):
+    with pytest.raises(ConnectionRevisionChangedError):
         validate_connection_execution(
             context, app=app, user=user, workflow=workflow, conversation_id=None, repository=harness.base.repository
         )
     workflow.version = published_version
-    with pytest.raises(ConnectionWorkflowChangedError):
+    with pytest.raises(ConnectionRevisionChangedError):
         prepare(harness, service, {})
     changed = context.model_copy(update={"account_id": str(uuid4())})
     with pytest.raises(ConnectionIdentityError):
@@ -374,7 +383,7 @@ def test_entry_ignores_client_authority_fields(
         workflow=workflow,
         workflow_run_id=str(uuid4()),
         args={
-            "workflow_id": workflow.id,
+            "connection_revision": harness.base.connection_revision,
             "connections": {"tool-1": connection.id},
             "tenant_id": "foreign",
             "account_id": "foreign",
@@ -414,9 +423,15 @@ def test_workspace_only_entry_checks_protocol_and_rejects_unused_selections(
             choices["removed-node"] = None if selection == "unused-null" else str(uuid4())
         args["connections"] = choices
     if pin != "missing":
-        args["workflow_id"] = workflow.id if pin == "matching" else str(uuid4())
+        args["connection_revision"] = (
+            harness.base.repository.save_revision(
+                ConnectionContractSnapshot(tenant_id=app.tenant_id, app_id=app.id, providers=(), requirements=())
+            )
+            if pin == "matching"
+            else "00000000-0000-7000-8000-000000000001"
+        )
     if pin == "stale":
-        with pytest.raises(ConnectionWorkflowChangedError):
+        with pytest.raises(ConnectionRevisionChangedError):
             prepare_web_connection_execution(
                 app=app, user=user, workflow=workflow, args=args, workflow_run_id=str(uuid4())
             )
@@ -490,7 +505,9 @@ def test_missing_selection_never_uses_saved_defaults(
     with pytest.raises(ConnectionRequiredError):
         service.prepare(
             harness.base.context,
-            ConnectionRunInput.model_validate({"workflow_id": harness.base.workflow_id, "connections": choices}),
+            ConnectionRunInput.model_validate(
+                {"connection_revision": harness.base.connection_revision, "connections": choices}
+            ),
             workflow_id=harness.base.workflow_id,
             conversation_id=conversation_id,
         )
@@ -556,7 +573,7 @@ def test_previous_preflight_success_does_not_skip_execution_check(
     connection = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     command = ConnectionPreflightInput.model_validate(
         {
-            "workflow_id": harness.base.workflow_id,
+            "connection_revision": harness.base.connection_revision,
             "connections": {"tool-1": connection.id},
         }
     )
@@ -586,7 +603,7 @@ def test_gate_rejects_changes_during_selected_connection_check(
                 )
 
     harness.base.auth.on_check = mutate
-    with pytest.raises(ConnectionWorkflowChangedError if change == "publication" else ConnectionConflictError):
+    with pytest.raises(ConnectionRevisionChangedError if change == "publication" else ConnectionConflictError):
         prepare(harness, service, {"tool-1": connection.id})
 
 

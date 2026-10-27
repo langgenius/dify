@@ -116,6 +116,7 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
+  connection_revision: z.uuid().nullish(),
   connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   conversation_id: z.string().nullish(),
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
@@ -124,7 +125,6 @@ export const zChatMessagePayload = z.object({
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
-  workflow_id: z.uuid().nullish(),
 })
 
 /**
@@ -152,6 +152,13 @@ export const zConnectionCredentialStatus = z.enum(['connected', 'invalid', 'reco
  * ConnectionCredentialType
  */
 export const zConnectionCredentialType = z.enum(['api-key', 'oauth2'])
+
+/**
+ * ConnectionRevisionChangeDetails
+ */
+export const zConnectionRevisionChangeDetails = z.object({
+  connection_revision: z.uuid().nullable(),
+})
 
 /**
  * ConversationListQuery
@@ -240,9 +247,9 @@ export const zEndUserConnectionListQuery = z.object({
  * EndUserConnectionOAuthPayload
  */
 export const zEndUserConnectionOAuthPayload = z.object({
+  connection_revision: z.uuid(),
   name: z.string().min(1).max(100),
   node_id: z.string().min(1).max(255),
-  workflow_id: z.uuid(),
 })
 
 /**
@@ -256,9 +263,16 @@ export const zEndUserConnectionOAuthResponse = z.object({
  * EndUserConnectionPreflightPayload
  */
 export const zEndUserConnectionPreflightPayload = z.object({
+  connection_revision: z.uuid(),
   connections: z.record(z.string(), z.uuid().nullable()),
   conversation_id: z.uuid().nullish(),
-  workflow_id: z.uuid(),
+})
+
+/**
+ * EndUserConnectionReauthorizePayload
+ */
+export const zEndUserConnectionReauthorizePayload = z.object({
+  connection_revision: z.uuid(),
 })
 
 /**
@@ -291,6 +305,13 @@ export const zEndUserConnectionListResponse = z.object({
   data: z.array(zEndUserConnectionResponse),
   has_more: z.boolean(),
   next_cursor: z.string().nullable(),
+})
+
+/**
+ * EndUserConnectionRevisionResponse
+ */
+export const zEndUserConnectionRevisionResponse = z.object({
+  connection_revision: z.uuid(),
 })
 
 /**
@@ -498,6 +519,19 @@ export const zConnectionRequiredError = zErrorResponse.and(
   z.object({
     code: z.literal('connection_required'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * ConnectionRevisionChangedError
+ *
+ * The connection requirements changed. Refresh and confirm again.
+ */
+export const zConnectionRevisionChangedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('connection_revision_changed'),
+    details: zConnectionRevisionChangeDetails.optional(),
+    status: z.literal(409),
   }),
 )
 
@@ -814,16 +848,17 @@ export const zJsonValue = z.unknown()
  * EndUserConnectionCreatePayload
  */
 export const zEndUserConnectionCreatePayload = z.object({
+  connection_revision: z.uuid(),
   credentials: z.record(z.string(), zJsonValue),
   name: z.string().min(1).max(100),
   node_id: z.string().min(1).max(255),
-  workflow_id: z.uuid(),
 })
 
 /**
  * EndUserConnectionUpdatePayload
  */
 export const zEndUserConnectionUpdatePayload = z.object({
+  connection_revision: z.uuid().optional(),
   credentials: z.record(z.string(), zJsonValue).optional(),
   name: z.string().min(1).max(100).optional(),
 })
@@ -1024,9 +1059,9 @@ export const zConnectionPreflightStatus = z.object({
  * EndUserConnectionPreflightResponse
  */
 export const zEndUserConnectionPreflightResponse = z.object({
+  connection_revision: z.string(),
   connections: z.array(zConnectionPreflightStatus),
   ready: z.boolean().readonly(),
-  workflow_id: z.string(),
 })
 
 /**
@@ -1467,20 +1502,6 @@ export const zTooManyFilesError = zErrorResponse.and(
 )
 
 /**
- * ToolConnectionRequirement
- *
- * Published authorization requirements, independent of personal connection readiness.
- */
-export const zToolConnectionRequirement = z.object({
-  allowed_credential_types: z.array(zConnectionCredentialType),
-  node_id: z.string(),
-  node_ids: z.array(z.string()),
-  provider: z.string(),
-  purpose: z.string(),
-  title: z.string(),
-})
-
-/**
  * TriggerWorkflowServiceModeUnavailableError
  *
  * This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
@@ -1692,6 +1713,21 @@ export const zSystemFeatureModel = z.object({
 })
 
 /**
+ * WebAppConnectionRequirement
+ */
+export const zWebAppConnectionRequirement = z.object({
+  allowed_credential_types: z.array(zConnectionCredentialType),
+  icon: z.string(),
+  icon_dark: z.string().nullable(),
+  node_id: z.string(),
+  node_ids: z.array(z.string()),
+  plugin_unique_identifier: z.string(),
+  provider: z.string(),
+  purpose: z.string(),
+  title: z.string(),
+})
+
+/**
  * WebAppCustomConfigResponse
  */
 export const zWebAppCustomConfigResponse = z.object({
@@ -1709,7 +1745,8 @@ export const zWebAppParametersResponse = z.object({
   annotation_reply: z.object({
     enabled: z.boolean().optional(),
   }),
-  connection_requirements: z.array(zToolConnectionRequirement),
+  connection_requirements: z.array(zWebAppConnectionRequirement),
+  connection_revision: z.string().nullable(),
   file_upload: z.object({
     allowed_file_extensions: z.array(z.string()).optional(),
     allowed_file_types: z
@@ -2026,7 +2063,6 @@ export const zWebAppParametersResponse = z.object({
       }),
     ]),
   ),
-  workflow_id: z.string().nullable(),
 })
 
 /**
@@ -2155,21 +2191,10 @@ export const zHumanInputFormDefinitionResponse = z.object({
 })
 
 /**
- * WorkflowChangedError
- *
- * The workflow changed. Confirm the connection selection again.
- */
-export const zWorkflowChangedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('workflow_changed'),
-    status: z.literal(409),
-  }),
-)
-
-/**
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
+  connection_revision: z.uuid().nullish(),
   connections: z.record(z.string(), z.uuid().nullable()).nullish(),
   files: z
     .array(
@@ -2206,15 +2231,14 @@ export const zWorkflowRunPayload = z.object({
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
-  workflow_id: z.uuid().nullish(),
 })
 
 /**
  * EndUserConnectionPreflightResponse
  */
 export const zEndUserConnectionPreflightResponseWritable = z.object({
+  connection_revision: z.string(),
   connections: z.array(zConnectionPreflightStatus),
-  workflow_id: z.string(),
 })
 
 /**
@@ -2372,6 +2396,8 @@ export const zPatchConnectionsByConnectionIdPath = z.object({
  */
 export const zPatchConnectionsByConnectionIdResponse = zEndUserConnectionResponse
 
+export const zPostConnectionsByConnectionIdReauthorizeBody = zEndUserConnectionReauthorizePayload
+
 export const zPostConnectionsByConnectionIdReauthorizePath = z.object({
   connection_id: z.uuid(),
 })
@@ -2380,6 +2406,15 @@ export const zPostConnectionsByConnectionIdReauthorizePath = z.object({
  * OAuth reauthorization URL
  */
 export const zPostConnectionsByConnectionIdReauthorizeResponse = zEndUserConnectionOAuthResponse
+
+export const zGetConnectionsByConnectionIdRevisionPath = z.object({
+  connection_id: z.uuid(),
+})
+
+/**
+ * Current Provider revision
+ */
+export const zGetConnectionsByConnectionIdRevisionResponse = zEndUserConnectionRevisionResponse
 
 export const zGetConversationsQuery = z.object({
   last_id: z.string().optional(),
