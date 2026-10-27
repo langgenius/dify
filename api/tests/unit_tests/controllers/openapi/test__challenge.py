@@ -67,8 +67,8 @@ def client(config_overrides: ConfigOverrides) -> FlaskClient:
     return app.test_client()
 
 
-def _challenge(client: FlaskClient, path: str, method: str = "get") -> str | None:
-    response = getattr(client, method)(f"/openapi/v1{path}", base_url=ORIGIN)
+def _challenge(client: FlaskClient, path: str, method: str = "GET") -> str | None:
+    response = client.open(f"/openapi/v1{path}", method=method, base_url=ORIGIN)
     return response.headers.get("WWW-Authenticate")
 
 
@@ -96,8 +96,8 @@ def test_other_statuses_get_no_header(client: FlaskClient, path: str) -> None:
 
 
 def test_oauth_endpoints_are_left_alone(client: FlaskClient) -> None:
-    assert _challenge(client, "/oauth/token", "post") == 'Basic realm="oauth"'
-    assert _challenge(client, "/oauth/other", "post") is None
+    assert _challenge(client, "/oauth/token", "POST") == 'Basic realm="oauth"'
+    assert _challenge(client, "/oauth/other", "POST") is None
 
 
 def test_body_and_status_are_untouched(client: FlaskClient) -> None:
