@@ -1228,6 +1228,18 @@ export const zFilenameNotExistsError = zErrorResponse.and(
 )
 
 /**
+ * ForbiddenError
+ *
+ * You don't have the permission to access the requested resource.
+ */
+export const zForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * HitTestingChildChunk
  */
 export const zHitTestingChildChunk = z.object({

@@ -1204,6 +1204,11 @@ export type FilenameNotExistsError = ErrorResponse & {
   status: 400
 }
 
+export type ForbiddenError = ErrorResponse & {
+  code: 'forbidden'
+  status: 403
+}
+
 export type FormInputConfig =
   | ({
       type: 'paragraph'
@@ -4577,6 +4582,7 @@ export type GetAppFeedbacksErrors = {
     | AppAbnormalStatusError
     | AppApiDisabledError
     | AppNotFoundError
+    | ForbiddenError
     | WorkspaceArchivedError
     | WorkspaceNotFoundError
     | ErrorResponse
@@ -4601,8 +4607,18 @@ export type PostAppsAnnotationReplyByActionData = {
 }
 
 export type PostAppsAnnotationReplyByActionErrors = {
+  400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -4629,7 +4645,15 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdData = {
 export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
   400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -4655,8 +4679,18 @@ export type GetAppsAnnotationsData = {
 }
 
 export type GetAppsAnnotationsErrors = {
+  400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -4677,8 +4711,18 @@ export type PostAppsAnnotationsData = {
 }
 
 export type PostAppsAnnotationsErrors = {
+  400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -4701,8 +4745,16 @@ export type DeleteAppsAnnotationsByAnnotationIdData = {
 }
 
 export type DeleteAppsAnnotationsByAnnotationIdErrors = {
+  400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -4727,9 +4779,18 @@ export type PutAppsAnnotationsByAnnotationIdData = {
 }
 
 export type PutAppsAnnotationsByAnnotationIdErrors = {
+  400: ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
   404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -8820,6 +8881,7 @@ export type GetMessagesErrors = {
     | AppAbnormalStatusError
     | AppApiDisabledError
     | AppNotFoundError
+    | ForbiddenError
     | WorkspaceArchivedError
     | WorkspaceNotFoundError
     | ErrorResponse
@@ -8851,6 +8913,7 @@ export type PostMessagesByMessageIdFeedbacksErrors = {
     | AppAbnormalStatusError
     | AppApiDisabledError
     | AppNotFoundError
+    | ForbiddenError
     | WorkspaceArchivedError
     | WorkspaceNotFoundError
     | ErrorResponse
@@ -8894,6 +8957,7 @@ export type GetMessagesByMessageIdSuggestedErrors = {
     | AppApiDisabledError
     | AppNotFoundError
     | AppSuggestedQuestionsAfterAnswerDisabledError
+    | ForbiddenError
     | WorkspaceArchivedError
     | WorkspaceNotFoundError
     | ErrorResponse
