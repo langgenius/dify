@@ -1,7 +1,8 @@
 """Consent-page use cases for the authorization-code flow of ``/openapi/v1``.
 
 The client and its ``redirect_uri`` are verified before anything that could
-produce a URL, so an unverified request never yields a redirect.
+produce a URL, so an unverified request never yields a redirect. Once they
+are verified, other errors go back to the client by redirect (RFC 6749 §4.1.2.1).
 """
 
 from collections.abc import Mapping
@@ -22,8 +23,6 @@ class AuthorizeErrorCode(StrEnum):
     INVALID_CLIENT = "invalid_client"
     INVALID_REDIRECT_URI = "invalid_redirect_uri"
     INVALID_REQUEST = "invalid_request"
-    INVALID_TARGET = "invalid_target"
-    UNSUPPORTED_CODE_CHALLENGE_METHOD = "unsupported_code_challenge_method"
 
 
 class AuthorizeRequestError(Exception):
@@ -59,6 +58,14 @@ class AuthorizeRequest:
     state: str | None
 
 
+def _has_valid_pkce(request: AuthorizeRequest) -> bool:
+    try:
+        PkceMethod(request.code_challenge_method)
+    except ValueError:
+        return False
+    return is_valid_challenge(request.code_challenge)
+
+
 def _redirect_with(redirect_uri: str, params: Mapping[RedirectParam, str]) -> str:
     """Append ``params`` to the registered URI, keeping its own query text unchanged."""
     parts = urlsplit(redirect_uri)
@@ -91,16 +98,12 @@ class OAuthAuthorizeService:
 
     def approve(self, context: RequestContext, request: AuthorizeRequest, *, issuer: str) -> str:
         client = self._verified_client(request.client_id, request.redirect_uri)
-        try:
-            PkceMethod(request.code_challenge_method)
-        except ValueError:
-            raise AuthorizeRequestError(AuthorizeErrorCode.UNSUPPORTED_CODE_CHALLENGE_METHOD) from None
-        if not is_valid_challenge(request.code_challenge):
-            raise AuthorizeRequestError(AuthorizeErrorCode.INVALID_REQUEST)
+        if not _has_valid_pkce(request):
+            return self._client_error(request, issuer=issuer, error=TokenErrorCode.INVALID_REQUEST)
         try:
             resource = resolve_resource(request.resource, issuer=issuer)
         except InvalidResourceError:
-            raise AuthorizeRequestError(AuthorizeErrorCode.INVALID_TARGET) from None
+            return self._client_error(request, issuer=issuer, error=TokenErrorCode.INVALID_TARGET)
 
         code = self._codes.save(
             AuthorizationCodeRecord(
@@ -118,9 +121,7 @@ class OAuthAuthorizeService:
 
     def deny(self, request: AuthorizeRequest, *, issuer: str) -> str:
         self._verified_client(request.client_id, request.redirect_uri)
-        return self._client_redirect(
-            request, issuer=issuer, outcome={RedirectParam.ERROR: TokenErrorCode.ACCESS_DENIED}
-        )
+        return self._client_error(request, issuer=issuer, error=TokenErrorCode.ACCESS_DENIED)
 
     def _verified_client(self, client_id: str, redirect_uri: str) -> ResolvedClient:
         client = self._clients.resolve(client_id)
@@ -133,6 +134,10 @@ class OAuthAuthorizeService:
         if not redirect_uri_allowed(redirect_uri, client.redirect_uris):
             raise AuthorizeRequestError(AuthorizeErrorCode.INVALID_REDIRECT_URI)
         return client
+
+    @classmethod
+    def _client_error(cls, request: AuthorizeRequest, *, issuer: str, error: TokenErrorCode) -> str:
+        return cls._client_redirect(request, issuer=issuer, outcome={RedirectParam.ERROR: error})
 
     @staticmethod
     def _client_redirect(request: AuthorizeRequest, *, issuer: str, outcome: Mapping[RedirectParam, str]) -> str:

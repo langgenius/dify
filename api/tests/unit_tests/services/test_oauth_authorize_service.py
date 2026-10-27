@@ -194,29 +194,43 @@ def test_approve_accepts_missing_or_canonical_resource(service: OAuthAuthorizeSe
     assert "code=" in service.approve(CONTEXT, _request(resource=resource), issuer=ISSUER)
 
 
-@pytest.mark.parametrize(
-    ("overrides", "code"),
-    [
-        *UNVERIFIED,
-        pytest.param({"code_challenge_method": "plain"}, AuthorizeErrorCode.UNSUPPORTED_CODE_CHALLENGE_METHOD),
-        pytest.param({"code_challenge_method": ""}, AuthorizeErrorCode.UNSUPPORTED_CODE_CHALLENGE_METHOD),
-        pytest.param({"code_challenge_method": "S512"}, AuthorizeErrorCode.UNSUPPORTED_CODE_CHALLENGE_METHOD),
-        pytest.param({"code_challenge_method": "s256"}, AuthorizeErrorCode.UNSUPPORTED_CODE_CHALLENGE_METHOD),
-        pytest.param({"code_challenge": ""}, AuthorizeErrorCode.INVALID_REQUEST, id="missing-challenge"),
-        pytest.param({"code_challenge": "short"}, AuthorizeErrorCode.INVALID_REQUEST, id="short-challenge"),
-        pytest.param({"code_challenge": "x" * 129}, AuthorizeErrorCode.INVALID_REQUEST, id="long-challenge"),
-        pytest.param({"resource": "https://api.example"}, AuthorizeErrorCode.INVALID_TARGET, id="bare-host"),
-        pytest.param({"resource": "https://other.example/openapi/v1"}, AuthorizeErrorCode.INVALID_TARGET),
-        pytest.param({"resource": ""}, AuthorizeErrorCode.INVALID_TARGET, id="empty-resource"),
-    ],
-)
-def test_approve_rejects_without_saving_a_code(
+@pytest.mark.parametrize(("overrides", "code"), UNVERIFIED)
+def test_approve_rejects_unverified_client_or_redirect_without_saving_a_code(
     service: OAuthAuthorizeService, redis: DictRedis, overrides: dict[str, str], code: AuthorizeErrorCode
 ) -> None:
     with pytest.raises(AuthorizeRequestError) as caught:
         service.approve(CONTEXT, _request(**overrides), issuer=ISSUER)
 
     assert caught.value.code is code
+    assert redis.data == {}
+
+
+@pytest.mark.parametrize(
+    ("overrides", "error"),
+    [
+        pytest.param({"code_challenge_method": "plain"}, "invalid_request"),
+        pytest.param({"code_challenge_method": ""}, "invalid_request", id="missing-method"),
+        pytest.param({"code_challenge_method": "S512"}, "invalid_request"),
+        pytest.param({"code_challenge_method": "s256"}, "invalid_request"),
+        pytest.param({"code_challenge": ""}, "invalid_request", id="missing-challenge"),
+        pytest.param({"code_challenge": "short"}, "invalid_request", id="short-challenge"),
+        pytest.param({"code_challenge": "x" * 129}, "invalid_request", id="long-challenge"),
+        pytest.param({"resource": "https://api.example"}, "invalid_target", id="bare-host"),
+        pytest.param({"resource": "https://other.example/openapi/v1"}, "invalid_target"),
+        pytest.param({"resource": ""}, "invalid_target", id="empty-resource"),
+    ],
+)
+def test_approve_reports_a_bad_request_to_the_verified_redirect_without_saving_a_code(
+    service: OAuthAuthorizeService, redis: DictRedis, overrides: dict[str, str], error: str
+) -> None:
+    url = service.approve(CONTEXT, _request(redirect_uri=QUERY_REDIRECT, **overrides), issuer=ISSUER)
+
+    assert url.startswith(QUERY_REDIRECT + "&")
+    query = _query(url)
+    assert query["error"] == [error]
+    assert query["state"] == ["xyz"]
+    assert query["iss"] == [ISSUER]
+    assert "code" not in query
     assert redis.data == {}
 
 

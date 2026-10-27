@@ -257,12 +257,7 @@ export type AppSettingsInfo = {
   name: string
 }
 
-export type AuthorizeErrorCode =
-  | 'invalid_client'
-  | 'invalid_redirect_uri'
-  | 'invalid_request'
-  | 'invalid_target'
-  | 'unsupported_code_challenge_method'
+export type AuthorizeErrorCode = 'invalid_client' | 'invalid_redirect_uri' | 'invalid_request'
 
 export type ChatAppInfo = {
   description?: string | null

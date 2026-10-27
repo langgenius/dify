@@ -288,14 +288,10 @@ class TestAuthorizeDecisionCases:
     @pytest.mark.parametrize(
         ("overrides", "error"),
         [
-            ({"code_challenge_method": "plain"}, "unsupported_code_challenge_method"),
-            ({"code_challenge_method": ""}, "unsupported_code_challenge_method"),
-            ({"code_challenge_method": "S512"}, "unsupported_code_challenge_method"),
             ({"code_challenge": None}, "invalid_request"),
             ({"code_challenge_method": None}, "invalid_request"),
             ({"code_challenge": 7}, "invalid_request"),
             ({"state": ["x"]}, "invalid_request"),
-            ({"resource": "https://api.example"}, "invalid_target"),
             ({"client_id": "unknown"}, "invalid_client"),
             ({"redirect_uri": "https://attacker.example/cb"}, "invalid_redirect_uri"),
         ],
@@ -305,6 +301,30 @@ class TestAuthorizeDecisionCases:
 
         assert response.status_code == 400
         assert response.get_json() == {"error": error}
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("overrides", "error"),
+        [
+            ({"code_challenge_method": "plain"}, "invalid_request"),
+            ({"code_challenge_method": ""}, "invalid_request"),
+            ({"code_challenge_method": "S512"}, "invalid_request"),
+            ({"code_challenge": "short"}, "invalid_request"),
+            ({"resource": "https://api.example"}, "invalid_target"),
+        ],
+    )
+    def test_approve_reports_a_bad_request_to_the_verified_redirect(
+        world: _World, overrides: dict[str, object], error: str
+    ) -> None:
+        response = _post(world, "approve", **overrides)
+
+        assert response.status_code == 200
+        assert response.headers["Cache-Control"] == "no-store"
+        query = _redirect_query(response)
+        assert query["error"] == [error]
+        assert query["state"] == ["xyz"]
+        assert query["iss"] == [ISSUER]
+        assert "code" not in query
 
     @staticmethod
     def test_approve_with_a_non_object_body_is_invalid_request(world: _World) -> None:

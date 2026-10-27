@@ -292,8 +292,6 @@ export const zAuthorizeErrorCode = z.enum([
   'invalid_client',
   'invalid_redirect_uri',
   'invalid_request',
-  'invalid_target',
-  'unsupported_code_challenge_method',
 ])
 
 /**
@@ -3227,7 +3225,7 @@ export const zGetNodeTypesByNodeTypeResponse = zNodeTypeDetailResponse
 export const zPostOauthAuthorizeApproveBody = zOAuthAuthorizeRequest
 
 /**
- * Client redirect with a code
+ * Client redirect with a code, or with an error for a bad PKCE or resource value
  */
 export const zPostOauthAuthorizeApproveResponse = zOAuthAuthorizeRedirectResponse
 

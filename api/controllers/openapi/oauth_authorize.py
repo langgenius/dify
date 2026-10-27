@@ -86,7 +86,9 @@ class OAuthAuthorizeClientApi(Resource):
 class OAuthAuthorizeApproveApi(Resource):
     @openapi_ns.expect(openapi_ns.models[OAuthAuthorizeRequest.__name__])
     @openapi_ns.response(
-        HTTPStatus.OK, "Client redirect with a code", openapi_ns.models[OAuthAuthorizeRedirectResponse.__name__]
+        HTTPStatus.OK,
+        "Client redirect with a code, or with an error for a bad PKCE or resource value",
+        openapi_ns.models[OAuthAuthorizeRedirectResponse.__name__],
     )
     @openapi_ns.response(
         HTTPStatus.BAD_REQUEST, "Request rejected", openapi_ns.models[OAuthAuthorizeErrorResponse.__name__]
