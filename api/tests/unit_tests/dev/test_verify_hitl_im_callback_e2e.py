@@ -92,6 +92,8 @@ def test_empty_workspace_gets_synthetic_fixture_and_cleans_owned_resources(
             channel = WorkspaceIMChannelReader(session, ci_tenant).get()
             assert channel is not None
             assert channel.provider == IMProvider.SLACK
+            assert 0 < len(channel.webhook_id) <= 32
+            assert channel.webhook_id == fixture.webhook_id
             codec = IMCredentialCodec(
                 TenantBoundCredentialCipher(verifier.key_provider_manager.provider, str(ci_tenant))
             )
@@ -198,7 +200,7 @@ def test_cleanup_refuses_replaced_channel_without_deleting_its_configuration(
     with sqlite_session_factory.begin() as session:
         channel = WorkspaceIMChannelReader(session, ci_tenant).get()
         assert channel is not None
-        replacement = replace(channel, id=IMChannelId(str(uuid4())), webhook_id=WebhookId(str(uuid4())))
+        replacement = replace(channel, id=IMChannelId(str(uuid4())), webhook_id=WebhookId(uuid4().hex))
         WorkspaceIMChannelWriter(session, ci_tenant, AccountId(fixture.account_id)).replace(channel.id, 1, replacement)
     with pytest.raises(StaleIMChannelWriteError):
         verifier._cleanup(sqlite_session_factory, fixture)
@@ -218,7 +220,7 @@ def test_cleanup_removes_owned_form_audits_and_inbox_but_preserves_unrelated_sta
         other_tenant = Tenant(name="Real provider workspace")
         session.add(other_tenant)
         session.flush()
-        other_channel = replace(channel, id=IMChannelId(str(uuid4())), webhook_id=WebhookId(str(uuid4())))
+        other_channel = replace(channel, id=IMChannelId(str(uuid4())), webhook_id=WebhookId(uuid4().hex))
         WorkspaceIMChannelWriter(session, TenantId(other_tenant.id), AccountId(fixture.account_id)).create(
             other_channel
         )

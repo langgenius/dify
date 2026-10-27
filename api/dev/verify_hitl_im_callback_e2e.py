@@ -168,7 +168,7 @@ def _create_fixture(sessions: sessionmaker[Session], tenant_id: TenantId) -> Fix
                 provider_tenant_id="T_CI_" + uuid4().hex,
                 encrypted_credentials=IMCredentialCodec(cipher).seal(credentials),
                 app_identifier=credentials.client_id,
-                webhook_id=WebhookId(str(uuid4())),
+                webhook_id=WebhookId(uuid4().hex),
                 config_version=1,
                 status=IMChannelStatus.CONNECTED,
             )
