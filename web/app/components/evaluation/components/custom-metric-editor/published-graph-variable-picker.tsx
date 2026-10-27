@@ -1,5 +1,6 @@
 'use client'
 
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type {
   ConversationVariable,
@@ -11,6 +12,7 @@ import type {
 import { useMemo } from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { createHooksStore, HooksStoreContext } from '@/app/components/workflow/hooks-store'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
@@ -19,6 +21,7 @@ import { variableTransformer } from '@/app/components/workflow/utils/variable'
 
 type PublishedGraphVariablePickerProps = {
   className?: string
+  resource: EditorResource
   nodes: Node[]
   edges: Edge[]
   environmentVariables?: EnvironmentVariable[]
@@ -44,6 +47,7 @@ const createPickerNode = (): Node<EndNodeType> => ({
 
 const PublishedGraphVariablePicker = ({
   className,
+  resource,
   nodes,
   edges,
   environmentVariables = [],
@@ -77,40 +81,42 @@ const PublishedGraphVariablePicker = ({
   }, [value])
 
   return (
-    <WorkflowContext value={workflowStore}>
-      <HooksStoreContext value={hooksStore}>
-        <div id="workflow-container" className={className}>
-          <ReactFlowProvider>
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0"
-            >
-              <div style={{ width: 800, height: 600 }}>
-                <ReactFlow nodes={pickerNodes} edges={edges} fitView />
+    <EditorResourceScope resource={resource}>
+      <WorkflowContext value={workflowStore}>
+        <HooksStoreContext value={hooksStore}>
+          <div id="workflow-container" className={className}>
+            <ReactFlowProvider>
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0"
+              >
+                <div style={{ width: 800, height: 600 }}>
+                  <ReactFlow nodes={pickerNodes} edges={edges} fitView />
+                </div>
               </div>
-            </div>
 
-            <VarReferencePicker
-              className="grow"
-              nodeId={PICKER_NODE_ID}
-              readonly={!nodes.length}
-              isShowNodeName
-              value={pickerValue}
-              onChange={(nextValue) => {
-                if (!Array.isArray(nextValue) || !nextValue.length) {
-                  onChange(null)
-                  return
-                }
+              <VarReferencePicker
+                className="grow"
+                nodeId={PICKER_NODE_ID}
+                readonly={!nodes.length}
+                isShowNodeName
+                value={pickerValue}
+                onChange={(nextValue) => {
+                  if (!Array.isArray(nextValue) || !nextValue.length) {
+                    onChange(null)
+                    return
+                  }
 
-                onChange(nextValue.join('.'))
-              }}
-              availableNodes={nodes}
-              placeholder={placeholder}
-            />
-          </ReactFlowProvider>
-        </div>
-      </HooksStoreContext>
-    </WorkflowContext>
+                  onChange(nextValue.join('.'))
+                }}
+                availableNodes={nodes}
+                placeholder={placeholder}
+              />
+            </ReactFlowProvider>
+          </div>
+        </HooksStoreContext>
+      </WorkflowContext>
+    </EditorResourceScope>
   )
 }
 

@@ -1,5 +1,6 @@
 'use client'
 
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type {
   ConversationVariable,
   Edge,
@@ -16,6 +17,7 @@ type MappingSource =
     }
   | {
       type: 'workflow'
+      resource: EditorResource
       publishedGraph: {
         nodes: Node[]
         edges: Edge[]
@@ -66,6 +68,7 @@ const MappingRow = ({ inputVariable, source, value, onUpdate }: MappingRowProps)
       ) : (
         <PublishedGraphVariablePicker
           className="grow"
+          resource={source.resource}
           nodes={source.publishedGraph.nodes}
           edges={source.publishedGraph.edges}
           environmentVariables={source.publishedGraph.environmentVariables}

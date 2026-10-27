@@ -1,6 +1,7 @@
 'use client'
 
 import type { EvaluationMetric, EvaluationResourceProps } from '../../types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type {
@@ -10,10 +11,13 @@ import type {
   InputVar,
   Node,
 } from '@/app/components/workflow/types'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isWorkflowAppMode } from '@/app/components/apps/app-type'
 import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
 import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { isCustomMetricConfigured, useEvaluationStore } from '../../store'
@@ -88,6 +92,11 @@ const CustomMetricEditorCard = ({
   const selectedWorkflowAppId =
     metric.customConfig?.workflowAppId ?? metric.customConfig?.workflowId ?? ''
   const { data: selectedWorkflow } = useAppWorkflow(selectedWorkflowAppId)
+  const { data: currentApp } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: resourceType === 'apps' ? { params: { app_id: resourceId } } : skipToken,
+    }),
+  )
   const { data: currentAppWorkflow } = useAppWorkflow(resourceType === 'apps' ? resourceId : '')
   const { data: currentSnippetWorkflow } = useSnippetPublishedWorkflow(
     resourceType === 'snippets' ? resourceId : '',
@@ -133,6 +142,18 @@ const CustomMetricEditorCard = ({
   )
   const isConfigured = isCustomMetricConfigured(metric)
   const isSelectedWorkflowLoaded = !!selectedWorkflow
+  const pickerResource: EditorResource | null =
+    resourceType === 'snippets'
+      ? { kind: 'snippet', snippetId: resourceId }
+      : resourceType === 'apps' && currentApp && isWorkflowAppMode(currentApp.mode)
+        ? { kind: 'app', appId: resourceId, mode: currentApp.mode }
+        : null
+  const mappingSource =
+    resourceType === 'agents'
+      ? ({ type: 'agent' } as const)
+      : pickerResource
+        ? ({ type: 'workflow', resource: pickerResource, publishedGraph } as const)
+        : null
 
   useEffect(() => {
     if (!metric.customConfig?.workflowId || !isSelectedWorkflowLoaded) return
@@ -210,31 +231,28 @@ const CustomMetricEditorCard = ({
           </div>
         </div>
         <div className="space-y-2">
-          {inputVariables.map((inputVariable) => {
-            const mapping = metric.customConfig?.mappings.find(
-              (item) => item.inputVariableId === inputVariable.id,
-            )
+          {mappingSource &&
+            inputVariables.map((inputVariable) => {
+              const mapping = metric.customConfig?.mappings.find(
+                (item) => item.inputVariableId === inputVariable.id,
+              )
 
-            return (
-              <MappingRow
-                key={inputVariable.id}
-                inputVariable={inputVariable}
-                source={
-                  resourceType === 'agents'
-                    ? { type: 'agent' }
-                    : { type: 'workflow', publishedGraph }
-                }
-                value={mapping?.outputVariableId ?? null}
-                onUpdate={(outputVariableId) => {
-                  if (!mapping) return
+              return (
+                <MappingRow
+                  key={inputVariable.id}
+                  inputVariable={inputVariable}
+                  source={mappingSource}
+                  value={mapping?.outputVariableId ?? null}
+                  onUpdate={(outputVariableId) => {
+                    if (!mapping) return
 
-                  updateCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id, {
-                    outputVariableId,
-                  })
-                }}
-              />
-            )
-          })}
+                    updateCustomMetricMapping(resourceType, resourceId, metric.id, mapping.id, {
+                      outputVariableId,
+                    })
+                  }}
+                />
+              )
+            })}
         </div>
         {!isConfigured && (
           <div className="mt-3 rounded-lg bg-background-section px-3 py-2 system-xs-regular text-text-tertiary">
