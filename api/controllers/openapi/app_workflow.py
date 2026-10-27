@@ -13,6 +13,7 @@ from werkzeug.exceptions import BadRequest
 
 from constants import HIDDEN_VALUE
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
@@ -232,6 +233,7 @@ class AppVersionListApi(Resource):
             Example(title="Latest versions", input={"app_id": "<app_id>"}),
             Example(title="Only named versions", input={"app_id": "<app_id>", "named_only": True}),
         ),
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=VERSION_READ_GUARDS,
         query=VersionListQuery,
         returns=(HTTPStatus.OK, VersionListResponse, "Version list"),
