@@ -29,7 +29,7 @@ from services.account_access_service import AccountAccessService
 from services.entities.account_access_entities import AccountWorkspaceSnapshot
 from services.entities.oauth_server_entities import OAuthProviderAccountRecord, OAuthProviderAppRecord
 from services.oauth_authorize_service import AuthorizeRequest, OAuthAuthorizeService
-from services.oauth_cimd import CimdClientSource, CimdResponse, cimd_storage_id
+from services.oauth_cimd import UNLIMITED_FETCHES, CimdClientSource, CimdResponse, cimd_storage_id
 from services.oauth_clients import ClientSource, OAuthClientRegistry
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
 from services.oauth_device_application_service import OAuthDeviceTokenIssuer
@@ -1419,7 +1419,9 @@ def _cimd_source() -> CimdClientSource:
         _ = host
         return ["93.184.216.34"]
 
-    return CimdClientSource(cache=DictRedis(), fetch=fetch, resolve_host=resolve_host)
+    return CimdClientSource(
+        cache=DictRedis(), fetch=fetch, resolve_host=resolve_host, fetch_limit_per_minute=UNLIMITED_FETCHES
+    )
 
 
 @pytest.mark.usefixtures("client_auth_hits", "issuer_from_origin")

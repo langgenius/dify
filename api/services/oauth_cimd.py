@@ -41,14 +41,17 @@ CIMD_TIMEOUT_SECONDS = 5
 CIMD_TOTAL_DEADLINE_SECONDS = 10
 CIMD_STALE_SECONDS = 300
 CIMD_CACHE_MIN_SECONDS = 60
-CIMD_CACHE_MAX_SECONDS = 86400
+CIMD_CACHE_MAX_SECONDS = 3600
 CIMD_FETCH_INTERVAL_SECONDS = 10
+FETCH_BUDGET_WINDOW_SECONDS = 60
+UNLIMITED_FETCHES = 0
 MAX_CLIENT_ID_URL_LENGTH = 2048
 MAX_DNS_LABEL_LENGTH = 63
 STORAGE_ID_PREFIX = "cimd:"
 STORAGE_ID_HASH_LENGTH = 32
 CACHE_KEY = "openapi_oauth:cimd:{digest}"
 FETCH_THROTTLE_KEY = "openapi_oauth:cimd_fetch:{digest}"
+FETCH_BUDGET_KEY = "openapi_oauth:cimd_fetch_budget:{window}"
 HTTPS_PREFIX = f"{HTTPS_SCHEME}://"
 DOT_SEGMENTS = frozenset({".", ".."})
 FORBIDDEN_DOCUMENT_FIELDS = ("client_secret", "client_secret_expires_at")
@@ -59,7 +62,7 @@ MAX_AGE_PATTERN = re.compile(r"(?:^|[\s,])max-age\s*=\s*\"?(\d+)\"?", re.IGNOREC
 
 
 class CimdFetchError(Exception):
-    """The document could not be reached or answered 5xx; a cached copy may still be served."""
+    """The document could not be reached or answered 5xx; a stale cached copy is served instead."""
 
 
 class CimdRejectedError(Exception):
@@ -80,6 +83,10 @@ class CimdCache(Protocol):
     def delete(self, *names: str) -> object: ...
 
     def set(self, name: str, value: str, *, nx: bool, ex: int) -> object: ...
+
+    def incr(self, name: str) -> int: ...
+
+    def expire(self, name: str, time: int) -> object: ...
 
 
 def cimd_storage_id(url: str) -> str:
@@ -306,7 +313,9 @@ class CimdClientSource:
     """Resolves https client ids from their metadata documents.
 
     A cached client is fresh until its soft expiry, then stale for ``CIMD_STALE_SECONDS``. A stale client is
-    served while another request holds the fetch throttle, so concurrent requests at expiry still resolve.
+    served while another request holds the fetch throttle, when the refetch cannot reach the document, and when
+    the server-wide fetch budget is spent. The budget caps outbound fetches per minute, so unknown client ids
+    sent to the anonymous endpoints cannot make Dify fetch and cache documents without bound.
     """
 
     def __init__(
@@ -315,11 +324,13 @@ class CimdClientSource:
         cache: CimdCache,
         fetch: Callable[[str], CimdResponse],
         resolve_host: Callable[[str], Sequence[str]],
+        fetch_limit_per_minute: int,
         now: Callable[[], float] = time.time,
     ) -> None:
         self._cache = cache
         self._fetch = fetch
         self._resolve_host = resolve_host
+        self._fetch_limit_per_minute = fetch_limit_per_minute
         self._now = now
 
     def resolve(self, client_id: str) -> ResolvedClient | None:
@@ -333,15 +344,28 @@ class CimdClientSource:
         if cached is not None:
             if self._now() < cached.soft_expires_at:
                 return cached.client
+        stale = None if cached is None else cached.client
         if not self._take_fetch_slot(digest):
-            return None if cached is None else cached.client
-        return self._fetch_and_cache(client_id, host, digest)
+            return stale
+        if not self._take_fetch_budget():
+            return stale
+        return self._fetch_and_cache(client_id, host, digest, stale=stale)
 
     def _take_fetch_slot(self, digest: str) -> bool:
         key = FETCH_THROTTLE_KEY.format(digest=digest)
         return bool(self._cache.set(key, "1", nx=True, ex=CIMD_FETCH_INTERVAL_SECONDS))
 
-    def _fetch_and_cache(self, url: str, host: str, digest: str) -> ResolvedClient | None:
+    def _take_fetch_budget(self) -> bool:
+        if self._fetch_limit_per_minute == UNLIMITED_FETCHES:
+            return True
+        key = FETCH_BUDGET_KEY.format(window=int(self._now() // FETCH_BUDGET_WINDOW_SECONDS))
+        count = self._cache.incr(key)
+        self._cache.expire(key, FETCH_BUDGET_WINDOW_SECONDS * 2)
+        return count <= self._fetch_limit_per_minute
+
+    def _fetch_and_cache(
+        self, url: str, host: str, digest: str, *, stale: ResolvedClient | None
+    ) -> ResolvedClient | None:
         try:
             _check_host_is_public(host, self._resolve_host)
             response = self._fetch(url)
@@ -350,7 +374,7 @@ class CimdClientSource:
             self._cache.delete(CACHE_KEY.format(digest=digest))
             return None
         except CimdFetchError:
-            return None
+            return stale
         lifetime = CIMD_CACHE_MIN_SECONDS if response.max_age is None else response.max_age
         lifetime = max(CIMD_CACHE_MIN_SECONDS, min(CIMD_CACHE_MAX_SECONDS, lifetime))
         entry = _dump(client, soft_expires_at=self._now() + lifetime)

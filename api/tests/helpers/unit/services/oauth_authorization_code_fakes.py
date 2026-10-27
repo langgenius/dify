@@ -152,6 +152,15 @@ class DictRedis:
     def getdel(self, name: str) -> str | bytes | None:
         return self.data.pop(name, None)
 
+    def incr(self, name: str) -> int:
+        count = int(self.data.get(name, 0)) + 1
+        self.data[name] = str(count)
+        return count
+
+    def expire(self, name: str, time: int) -> bool:
+        self.ttls[name] = time
+        return True
+
 
 @dataclass(frozen=True)
 class FakeTokenSettings:

@@ -441,6 +441,7 @@ def _build_oauth_services(
                 cache=redis,
                 fetch=fetch_client_metadata,
                 resolve_host=resolve_host_addresses,
+                fetch_limit_per_minute=dify_config.OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
             )
         )
     clients = OAuthClientRegistry(sources=client_sources)

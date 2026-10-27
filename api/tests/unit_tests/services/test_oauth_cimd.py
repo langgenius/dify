@@ -19,6 +19,8 @@ from services.oauth_cimd import (
     CIMD_STALE_SECONDS,
     CIMD_TIMEOUT_SECONDS,
     CIMD_TOTAL_DEADLINE_SECONDS,
+    FETCH_BUDGET_WINDOW_SECONDS,
+    UNLIMITED_FETCHES,
     CimdClientSource,
     CimdFetchError,
     CimdResponse,
@@ -48,6 +50,7 @@ class _Cache:
     data: dict[str, str] = field(default_factory=dict)
     ttls: dict[str, int | timedelta] = field(default_factory=dict)
     fetch_slots: set[str] = field(default_factory=set)
+    counters: dict[str, int] = field(default_factory=dict)
 
     def get(self, name: str) -> str | bytes | None:
         return self.data.get(name)
@@ -68,6 +71,14 @@ class _Cache:
 
     def delete(self, *names: str) -> int:
         return sum(self.data.pop(name, None) is not None for name in names)
+
+    def incr(self, name: str) -> int:
+        self.counters[name] = self.counters.get(name, 0) + 1
+        return self.counters[name]
+
+    def expire(self, name: str, time: int) -> bool:
+        self.ttls[name] = time
+        return True
 
     def expire_throttle(self) -> None:
         self.fetch_slots.clear()
@@ -120,12 +131,22 @@ class _World:
     clock: _Clock
 
 
-def _world(*responses: CimdResponse | Exception, resolver: _Resolver | None = None) -> _World:
+def _world(
+    *responses: CimdResponse | Exception,
+    resolver: _Resolver | None = None,
+    fetch_limit_per_minute: int = UNLIMITED_FETCHES,
+) -> _World:
     clock = _Clock()
     cache = _Cache()
     fetcher = _Fetcher(list(responses))
     the_resolver = resolver or _Resolver()
-    source = CimdClientSource(cache=cache, fetch=fetcher, resolve_host=the_resolver, now=clock)
+    source = CimdClientSource(
+        cache=cache,
+        fetch=fetcher,
+        resolve_host=the_resolver,
+        fetch_limit_per_minute=fetch_limit_per_minute,
+        now=clock,
+    )
     return _World(source=source, cache=cache, fetcher=fetcher, resolver=the_resolver, clock=clock)
 
 
@@ -365,7 +386,9 @@ def test_an_unresolvable_host_fails_without_a_fetch() -> None:
 
     cache = _Cache()
     fetcher = _Fetcher([_response(_document())])
-    source = CimdClientSource(cache=cache, fetch=fetcher, resolve_host=failing_resolver)
+    source = CimdClientSource(
+        cache=cache, fetch=fetcher, resolve_host=failing_resolver, fetch_limit_per_minute=UNLIMITED_FETCHES
+    )
 
     assert source.resolve(URL) is None
     assert fetcher.urls == []
@@ -417,7 +440,7 @@ def test_a_stale_client_is_served_while_another_request_holds_the_throttle() -> 
     assert world.fetcher.urls == [URL]
 
 
-def test_a_stale_client_whose_refetch_fails_resolves_to_none_and_is_not_overwritten() -> None:
+def test_a_stale_client_whose_refetch_fails_is_served_and_not_overwritten() -> None:
     world = _world(_response(_document(), max_age=300), CimdFetchError("down"))
     first = world.source.resolve(URL)
     world.cache.expire_throttle()
@@ -425,9 +448,10 @@ def test_a_stale_client_whose_refetch_fails_resolves_to_none_and_is_not_overwrit
     cache_key = f"openapi_oauth:cimd:{sha256_hex(URL)}"
     before = world.cache.data[cache_key]
 
-    assert world.source.resolve(URL) is None
-    assert world.cache.data[cache_key] == before
     assert first is not None
+    assert world.source.resolve(URL) == first
+    assert world.cache.data[cache_key] == before
+    assert world.fetcher.urls == [URL, URL]
 
 
 def test_a_stale_client_whose_refetch_is_invalid_is_dropped_from_the_cache() -> None:
@@ -501,7 +525,8 @@ def test_cache_lifetime_follows_max_age_clamped(max_age: int | None, expected: i
 
 def test_defaults_are_the_documented_values() -> None:
     assert CIMD_CACHE_MIN_SECONDS == 60
-    assert CIMD_CACHE_MAX_SECONDS == 86400
+    assert CIMD_CACHE_MAX_SECONDS == 3600
+    assert FETCH_BUDGET_WINDOW_SECONDS == 60
     assert CIMD_FETCH_INTERVAL_SECONDS == 10
     assert CIMD_MAX_BYTES == 5 * 1024
     assert CIMD_TIMEOUT_SECONDS == 5
@@ -558,6 +583,75 @@ def test_a_corrupt_cache_entry_is_a_miss() -> None:
 
     assert world.source.resolve(URL) is not None
     assert world.fetcher.urls == [URL]
+
+
+OTHER_URLS = [f"https://agent{i}.example/c.json" for i in range(3)]
+
+
+def _documents_for(urls: list[str]) -> list[CimdResponse | Exception]:
+    return [_response(_document(client_id=url)) for url in urls]
+
+
+def test_the_fetch_budget_stops_the_fetch_past_the_limit_in_a_window() -> None:
+    world = _world(*_documents_for(OTHER_URLS), fetch_limit_per_minute=2)
+
+    assert world.source.resolve(OTHER_URLS[0]) is not None
+    assert world.source.resolve(OTHER_URLS[1]) is not None
+    assert world.source.resolve(OTHER_URLS[2]) is None
+    assert world.fetcher.urls == OTHER_URLS[:2]
+    assert world.resolver.hosts == ["agent0.example", "agent1.example"]
+
+
+def test_the_fetch_budget_counter_expires() -> None:
+    world = _world(*_documents_for(OTHER_URLS[:1]), fetch_limit_per_minute=2)
+
+    world.source.resolve(OTHER_URLS[0])
+
+    [budget_key] = world.cache.counters
+    assert world.cache.ttls[budget_key] == 2 * FETCH_BUDGET_WINDOW_SECONDS
+
+
+def test_a_cached_client_resolves_when_the_budget_is_spent() -> None:
+    world = _world(*_documents_for([URL, OTHER_URLS[0]]), fetch_limit_per_minute=1)
+    first = world.source.resolve(URL)
+
+    assert world.source.resolve(OTHER_URLS[0]) is None
+    assert first is not None
+    assert world.source.resolve(URL) == first
+    assert world.fetcher.urls == [URL]
+
+
+def test_a_stale_client_is_served_without_a_fetch_when_the_budget_is_spent() -> None:
+    world = _world(_response(_document(), max_age=300), *_documents_for(OTHER_URLS[:1]), fetch_limit_per_minute=1)
+    first = world.source.resolve(URL)
+    world.cache.expire_throttle()
+    world.clock.advance(301)
+    assert world.source.resolve(OTHER_URLS[0]) is not None
+
+    assert first is not None
+    assert world.source.resolve(URL) == first
+    assert world.fetcher.urls == [URL, OTHER_URLS[0]]
+
+
+def test_the_fetch_budget_resets_with_the_window() -> None:
+    world = _world(*_documents_for(OTHER_URLS[:2]), fetch_limit_per_minute=1)
+    assert world.source.resolve(OTHER_URLS[0]) is not None
+    assert world.source.resolve(OTHER_URLS[1]) is None
+
+    world.cache.expire_throttle()
+    world.clock.advance(FETCH_BUDGET_WINDOW_SECONDS)
+
+    assert world.source.resolve(OTHER_URLS[1]) is not None
+    assert world.fetcher.urls == OTHER_URLS[:2]
+
+
+def test_no_fetch_budget_means_unlimited_fetches() -> None:
+    urls = [f"https://agent{i}.example/c.json" for i in range(50)]
+    world = _world(*_documents_for(urls), fetch_limit_per_minute=UNLIMITED_FETCHES)
+
+    assert all(world.source.resolve(url) is not None for url in urls)
+    assert world.fetcher.urls == urls
+    assert world.cache.counters == {}
 
 
 def _http_response(status: int = 200, *, body: bytes = b"{}", headers: dict[str, str] | None = None) -> httpx.Response:
@@ -726,7 +820,9 @@ def test_an_invalid_url_error_from_the_http_client_is_a_fetch_error(monkeypatch:
 def test_a_deadline_error_resolves_to_none(monkeypatch: pytest.MonkeyPatch) -> None:
     _transport(monkeypatch, ResponseDeadlineError("too slow"))
     cache = _Cache()
-    source = CimdClientSource(cache=cache, fetch=fetch_client_metadata, resolve_host=_Resolver())
+    source = CimdClientSource(
+        cache=cache, fetch=fetch_client_metadata, resolve_host=_Resolver(), fetch_limit_per_minute=UNLIMITED_FETCHES
+    )
 
     assert source.resolve(URL) is None
     assert cache.data == {}
@@ -738,7 +834,9 @@ def test_a_deadline_error_resolves_to_none(monkeypatch: pytest.MonkeyPatch) -> N
 )
 def test_numeric_spellings_of_loopback_are_rejected_through_the_real_resolver(client_id: str) -> None:
     fetcher = _Fetcher([_response(_document(client_id=client_id))])
-    source = CimdClientSource(cache=_Cache(), fetch=fetcher, resolve_host=resolve_host_addresses)
+    source = CimdClientSource(
+        cache=_Cache(), fetch=fetcher, resolve_host=resolve_host_addresses, fetch_limit_per_minute=UNLIMITED_FETCHES
+    )
 
     assert source.resolve(client_id) is None
     assert fetcher.urls == []
@@ -748,7 +846,9 @@ def test_numeric_spellings_of_loopback_are_rejected_through_the_real_resolver(cl
 def test_malformed_labels_are_rejected_without_a_fetch_even_through_the_real_resolver(host: str) -> None:
     client_id = f"https://{host}/x"
     fetcher = _Fetcher([_response(_document(client_id=client_id))])
-    source = CimdClientSource(cache=_Cache(), fetch=fetcher, resolve_host=resolve_host_addresses)
+    source = CimdClientSource(
+        cache=_Cache(), fetch=fetcher, resolve_host=resolve_host_addresses, fetch_limit_per_minute=UNLIMITED_FETCHES
+    )
 
     assert source.resolve(client_id) is None
     assert fetcher.urls == []
@@ -759,7 +859,9 @@ def test_a_resolver_unicode_error_is_a_rejection() -> None:
         raise UnicodeError(host)
 
     fetcher = _Fetcher([_response(_document())])
-    source = CimdClientSource(cache=_Cache(), fetch=fetcher, resolve_host=raising)
+    source = CimdClientSource(
+        cache=_Cache(), fetch=fetcher, resolve_host=raising, fetch_limit_per_minute=UNLIMITED_FETCHES
+    )
 
     assert source.resolve(URL) is None
     assert fetcher.urls == []

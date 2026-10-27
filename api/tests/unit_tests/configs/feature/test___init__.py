@@ -106,6 +106,22 @@ def test_oauth_unused_dcr_client_retention_days_clamps_or_falls_back(configured:
     assert expected == config.OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS
 
 
+def test_oauth_cimd_fetch_limit_defaults_to_sixty_per_minute() -> None:
+    config = _IsolatedAuthConfig()
+
+    assert config.OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE == 60
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [("100", 100), ("0", 0), ("10000", 10000), ("-5", 0), ("20000", 10000), ("abc", 60), ("", 60)],
+)
+def test_oauth_cimd_fetch_limit_clamps_or_falls_back(configured: str, expected: int) -> None:
+    config = _IsolatedAuthConfig(OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE=configured)
+
+    assert expected == config.OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE
+
+
 class _IsolatedFileUploadConfig(InitSettingsOnly, FileUploadConfig):
     pass
 

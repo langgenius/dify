@@ -49,6 +49,10 @@ DEFAULT_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 7
 MIN_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 1
 MAX_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 365
 
+DEFAULT_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: Final = 60
+MIN_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: Final = 0
+MAX_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: Final = 10000
+
 
 def _clamp_int_setting(name: str, value: object, *, default: int, minimum: int, maximum: int) -> int:
     # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
@@ -1305,6 +1309,27 @@ class AuthConfig(BaseSettings):
             default=DEFAULT_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
             minimum=MIN_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
             maximum=MAX_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
+        )
+
+    OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE: int = Field(
+        description="Max OAuth client metadata documents Dify fetches per minute, across the whole server. "
+        "Cached clients do not count; past the limit an uncached https:// client_id is unknown until the next "
+        f"minute. 0 means no limit. Values outside {MIN_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE}-"
+        f"{MAX_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE} are clamped; a non-integer falls back to the default.",
+        ge=MIN_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+        le=MAX_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+        default=DEFAULT_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+    )
+
+    @field_validator("OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE", mode="before")
+    @classmethod
+    def _clamp_oauth_cimd_fetch_limit_per_minute(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE",
+            v,
+            default=DEFAULT_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+            minimum=MIN_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
+            maximum=MAX_OAUTH_CIMD_FETCH_LIMIT_PER_MINUTE,
         )
 
     OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(
