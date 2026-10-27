@@ -16,6 +16,7 @@ import {
   zAppTriggerNotFoundError,
   zAppUnavailableError,
   zAudioTooLargeError,
+  zBadRequestError,
   zBindingFileDownloadUnavailableError,
   zCompletionRequestError,
   zDraftWorkflowNotExistError,
@@ -1579,6 +1580,7 @@ export const delete4 = oc
     }),
   )
   .output(zDeleteAppsByAppIdAnnotationsResponse)
+  .errors({ bad_request: { status: 400, data: zBadRequestError } })
 
 /**
  * Get annotations for an app with pagination
@@ -1826,7 +1828,10 @@ export const get27 = oc
     z.object({ params: zGetAppsByAppIdChatMessagesPath, query: zGetAppsByAppIdChatMessagesQuery }),
   )
   .output(zGetAppsByAppIdChatMessagesResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const chatMessages = {
   get: get27,
@@ -2112,7 +2117,10 @@ export const get32 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdMessagesByMessageIdPath }))
   .output(zGetAppsByAppIdMessagesByMessageIdResponse)
-  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const byMessageId2 = {
   get: get32,

@@ -60,11 +60,11 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_message_service import MessageNotChatAppError
 from services.message_more_like_this_service import (
     MoreLikeThisConfigNotFoundError,
     MoreLikeThisNotCompletionError,
 )
+from services.message_query_service import MessageNotChatAppError
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +131,9 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     endpoint="installed_app_messages",
 )
 class MessageListApi(Resource):
-    @error_responses(ConversationNotFoundHTTPError, MessageCursorNotFoundHTTPError, NotChatAppError)
+    @error_responses(
+        AppUnavailableError, ConversationNotFoundHTTPError, MessageCursorNotFoundHTTPError, NotChatAppError
+    )
     @console_ns.doc(params=query_params_from_model(MessageListQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ExploreMessageInfiniteScrollPagination.__name__])
     @console_account_admission()
@@ -141,9 +143,11 @@ class MessageListApi(Resource):
     def get(
         self, query: MessageListQuery, request_context: RequestContext, installed_app: InstalledAppRef
     ) -> dict[str, object]:
-        page = application_services().installed_apps.messages.get_page(
+        page = application_services().message_queries.get_page(
+            app_id=installed_app.app_id,
+            app_owner_tenant_id=installed_app.app_owner_tenant_id,
+            actor=MessageAccount(account_id=request_context.account_id),
             installed_app=installed_app,
-            account_id=request_context.account_id,
             conversation_id=query.conversation_id,
             first_id=query.first_id or None,
             limit=query.limit,

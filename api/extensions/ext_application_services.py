@@ -53,6 +53,9 @@ from models.model import EndUser
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.annotation_import_job_repository import RedisAnnotationImportJobRepository
+from repositories.annotation_reply_job_repository import RedisAnnotationReplyJobRepository
+from repositories.annotation_repository import AnnotationRepository
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.console_repository import ConsoleAppRepository
@@ -80,6 +83,7 @@ from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploa
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_repository import TrialAppRepository
@@ -104,6 +108,10 @@ from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent_tracing_config_service import AgentTracingConfigService
+from services.annotation_command_service import AnnotationCommandService
+from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
+from services.annotation_query import AnnotationQuery
+from services.annotation_reply_service import AnnotationReplyService
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
@@ -134,6 +142,7 @@ from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
+from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_grant_gateways import FileGrantFileGateway, FileGrantRemoteFileGateway, FileGrantTokenGateway
 from services.file_grant_service import FileGrantService
@@ -148,6 +157,8 @@ from services.message_feedback_service import MessageFeedbackService
 from services.message_file_preview_service import MessageFilePreviewService
 from services.message_more_like_this_generator import MessageMoreLikeThisGenerator
 from services.message_more_like_this_service import MessageMoreLikeThisService
+from services.message_query_adapters import ExecutionExtraContentReader, MessageFileResolver
+from services.message_query_service import MessageQueryService
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import MessageSuggestedQuestions, MessageSuggestedQuestionsService
@@ -218,6 +229,12 @@ from services.webapp_access_query_service import WebAppAccessQueryService, WebAp
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
+from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
+from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
+from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
+from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
+from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
+from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -268,6 +285,10 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    annotation_commands: AnnotationCommandService
+    annotation_imports: AnnotationImportService
+    annotation_queries: AnnotationQuery
+    annotation_reply: AnnotationReplyService
     rbac: RBACServices
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
@@ -303,6 +324,7 @@ class ApplicationServices:
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
     message_feedbacks: MessageFeedbackService
+    message_queries: MessageQueryService
     message_file_previews: MessageFilePreviewService
     message_suggested_questions: MessageSuggestedQuestions
     message_more_like_this: MessageMoreLikeThisService
@@ -401,6 +423,13 @@ def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> File
         ),
         now=lambda: int(time.time()),
     )
+
+
+def _get_annotation_import_quota(*, tenant_id: str) -> AnnotationImportQuota | None:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        return None
+    quota = FeatureService.get_features(tenant_id, exclude_vector_space=True).annotation_quota_limit
+    return AnnotationImportQuota(limit=quota.limit, size=quota.size)
 
 
 def build_application_services(
@@ -542,6 +571,7 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
     )
+    annotations = AnnotationRepository(session_factory=database_client)
     messages = MessageRepository(session_factory=database_client)
     suggested_questions = SuggestedQuestionsQuery(
         session_factory=database_client,
@@ -549,6 +579,32 @@ def build_application_services(
     )
 
     return ApplicationServices(
+        annotation_commands=AnnotationCommandService(
+            annotations=annotations,
+            add_index=add_annotation_to_index_task.delay,
+            update_index=update_annotation_to_index_task.delay,
+            delete_index=delete_annotation_index_task.delay,
+        ),
+        annotation_queries=annotations,
+        annotation_imports=AnnotationImportService(
+            apps=annotations,
+            jobs=RedisAnnotationImportJobRepository(redis=redis),
+            publish=batch_import_annotations_task.delay,
+            quota=_get_annotation_import_quota,
+            limits=AnnotationImportLimits(
+                min_records=dify_config.ANNOTATION_IMPORT_MIN_RECORDS,
+                max_records=dify_config.ANNOTATION_IMPORT_MAX_RECORDS,
+                requests_per_minute=dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE,
+                requests_per_hour=dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR,
+                max_concurrent=dify_config.ANNOTATION_IMPORT_MAX_CONCURRENT,
+            ),
+        ),
+        annotation_reply=AnnotationReplyService(
+            apps=annotations,
+            jobs=RedisAnnotationReplyJobRepository(redis=redis),
+            enable_task=enable_annotation_reply_task.delay,
+            disable_task=disable_annotation_reply_task.delay,
+        ),
         rbac=rbac,
         accounts=account_services,
         apps=apps,
@@ -666,6 +722,13 @@ def build_application_services(
             remote_files=remote_file_service,
         ),
         message_feedbacks=MessageFeedbackService(repository=messages),
+        message_queries=MessageQueryService(
+            messages=messages,
+            files=MessageFileResolver(),
+            extra_contents=ExecutionExtraContentReader(
+                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=database_client)
+            ),
+        ),
         message_file_previews=MessageFilePreviewService(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
             storage=storage,

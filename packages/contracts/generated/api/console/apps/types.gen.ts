@@ -352,6 +352,11 @@ export type AnnotationSettingUpdatePayload = {
   score_threshold: number
 }
 
+export type BadRequestError = ErrorResponse & {
+  code: 'bad_request'
+  status: 400
+}
+
 export type AnnotationList = {
   data: Array<Annotation>
   has_more: boolean
@@ -5636,7 +5641,10 @@ export type PostAppsByAppIdAnnotationReplyByActionData = {
 }
 
 export type PostAppsByAppIdAnnotationReplyByActionErrors = {
+  400: ErrorResponse
   403: ErrorResponse
+  404: ErrorResponse
+  422: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5662,7 +5670,9 @@ export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdData = {
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors = {
+  400: ErrorResponse
   403: ErrorResponse
+  404: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5737,6 +5747,7 @@ export type DeleteAppsByAppIdAnnotationsData = {
 }
 
 export type DeleteAppsByAppIdAnnotationsErrors = {
+  400: BadRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5814,8 +5825,10 @@ export type PostAppsByAppIdAnnotationsBatchImportData = {
 export type PostAppsByAppIdAnnotationsBatchImportErrors = {
   400: NoFileUploadedError | TooManyFilesError | ErrorResponse
   403: ErrorResponse
+  404: ErrorResponse
   413: ErrorResponse
   429: ErrorResponse
+  500: ErrorResponse
   default: ErrorResponse
 }
 
@@ -5841,6 +5854,8 @@ export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdData = {
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors = {
   403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
   default: ErrorResponse
 }
 
@@ -6141,6 +6156,7 @@ export type GetAppsByAppIdChatMessagesData = {
 }
 
 export type GetAppsByAppIdChatMessagesErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -6523,6 +6539,7 @@ export type GetAppsByAppIdMessagesByMessageIdData = {
 }
 
 export type GetAppsByAppIdMessagesByMessageIdErrors = {
+  400: AppUnavailableError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
