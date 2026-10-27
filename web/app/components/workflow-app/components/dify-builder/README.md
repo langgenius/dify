@@ -72,6 +72,32 @@ Build creation persists the opening goal before dispatching the internal
 `start_build` command. `build.capability_check` is an automatic working step;
 it never exposes a first-step goal action to the frontend.
 
+Canvas notifications have three variants. `graph_changed` is emitted once after
+a changed mutation batch commits (`cause: apply`), or after a checkpoint is
+restored (`cause: restore`). Rejected and unchanged batches emit no graph event.
+`edit_targets_changed` replaces the complete local highlight set with `node_ids`;
+an empty list clears it. `publish_workflow` refreshes publication metadata.
+Highlights never select nodes, open configuration panels, or move the viewport.
+Session event handlers clear targets on task completion and entry into testing,
+including accepted restore snapshots. Reset and rollback events also clear them.
+Restoring a checkpoint uses the graph notification itself to clear highlights;
+a revert without a checkpoint sends only an empty edit-target set. Repeated
+clears leave an already empty target set unchanged.
+
+Builder draft refreshes preserve the current viewport and apply the returned
+graph without restoring local node or edge selections. Session updates, graph
+notifications, restore, and retry use the same fetch-and-apply path. A successful
+refresh confirms canvas readiness; failed or superseded refreshes cannot start
+the pending automatic retest.
+Refresh scheduling follows accepted session events, graph notifications, and
+command completion. Manual retry invokes the refresh command directly. Starting
+a command, reset, and unmount invalidate older responses; no atom-watching effect
+starts requests. The same events synchronize the canvas lock directly, including
+refresh failure and completion. Only unmount cleanup retains lifecycle effects.
+The refresh module owns canvas-state reset; the outer reset command clears
+the composer and checklist state.
+Native test events retain the editor's existing per-node tracking and navigation.
+
 `workflow` envelopes carry the complete native debugger payload alongside
 Builder's session, operation, version, and revision metadata. Accepted
 payloads dispatch directly to the editor's shared `useWorkflowRunEvent`

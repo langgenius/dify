@@ -4163,11 +4163,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/_base/node.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/nodes/_base/types.ts": {
     "typescript/no-explicit-any": {
       "count": 1

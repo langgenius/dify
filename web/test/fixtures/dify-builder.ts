@@ -11,6 +11,7 @@ export const createDifyBuilderRuntime = (overrides: RuntimeOverrides = {}): Dify
   enabled: true,
   getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
   setShowPanel: vi.fn(),
+  retryCanvasRefresh: vi.fn(),
   ...overrides,
   session: {
     onCanvasRefreshed: vi.fn(),

@@ -127,16 +127,21 @@ const renderPanel = (
   conversation: ConversationItem[] = sessionConversation,
 ) => {
   const store = createStore()
+  const retryCanvasRefresh = vi.fn(() => store.set(difyBuilderCanvasRefreshingAtom, true))
   const queryClient = createConsoleQueryClient()
   store.set(queryClientAtom, queryClient)
   store.set(difyBuilderSessionViewAtom, view)
-  store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: view.session_id, version: view.version })
+  store.set(difyBuilderCanvasAppliedViewAtom, {
+    sessionId: view.session_id,
+    version: view.version,
+  })
   store.set(difyBuilderConversationAtom, conversation)
   store.set(difyBuilderRuntimeAtom, {
     appId: 'app-1',
     canEdit: true,
     enabled: true,
     getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
+    retryCanvasRefresh,
     session: {
       onCanvasRefreshed: vi.fn(),
       refresh: vi.fn(async () => true),
@@ -164,7 +169,7 @@ const renderPanel = (
     </Provider>,
     { queryClient },
   )
-  return { ...result, store }
+  return { ...result, store, retryCanvasRefresh }
 }
 
 describe('DifyBuilderPanel', () => {
@@ -956,7 +961,10 @@ describe('DifyBuilderPanel', () => {
     expect(screen.getByRole('textbox', { name: 'Topic' })).toHaveValue('AI agents')
     expect(screen.getByRole('button', { name: 'difyBuilder.runTest' })).toBeDisabled()
     act(() =>
-      store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: view.session_id, version: 2 }),
+      store.set(difyBuilderCanvasAppliedViewAtom, {
+        sessionId: view.session_id,
+        version: 2,
+      }),
     )
     await user.click(screen.getByRole('button', { name: 'difyBuilder.runTest' }))
     expect(mocks.runAction.mock.calls.at(-1)?.slice(0, 2)).toEqual([
@@ -1134,7 +1142,7 @@ describe('DifyBuilderPanel', () => {
 
   it('offers an accessible retry action after canvas refresh failure', async () => {
     const user = userEvent.setup()
-    const { store } = renderPanel(choiceView, (store) => {
+    const { store, retryCanvasRefresh } = renderPanel(choiceView, (store) => {
       store.set(difyBuilderCanvasRefreshFailedAtom, true)
     })
 
@@ -1147,6 +1155,7 @@ describe('DifyBuilderPanel', () => {
 
     await user.click(retry)
 
+    expect(retryCanvasRefresh).toHaveBeenCalledOnce()
     expect(store.get(difyBuilderCanvasRefreshingAtom)).toBe(true)
     expect(retry).toHaveAttribute('aria-disabled', 'true')
   })

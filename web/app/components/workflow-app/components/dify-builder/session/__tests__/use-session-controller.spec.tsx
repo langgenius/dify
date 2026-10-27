@@ -1,4 +1,5 @@
 import type { ConversationItem } from '../../types'
+import type { SessionRunEvents } from '../types'
 import { act, waitFor } from '@testing-library/react'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -152,6 +153,57 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     clientMocks.conversation.mockResolvedValue(conversationPage())
   })
 
+  const createSessionEvents = () => ({
+    onSessionStateChanged: vi.fn<NonNullable<SessionRunEvents['onSessionStateChanged']>>(),
+    onCanvasEvent: vi.fn(),
+    onWorkflowEvent: vi.fn(),
+    onStreamInterrupted: vi.fn(),
+    restoreRun: vi.fn(),
+    finishCommand: vi.fn(),
+    reset: vi.fn(),
+    onCanvasRefreshed: vi.fn(),
+  })
+
+  it('notifies test entry immediately and completion after accepting the streamed state', async () => {
+    const stream = createControlledEventStream()
+    const events = createSessionEvents()
+    clientMocks.create.mockResolvedValue(stream.iterable)
+    const { result } = renderSessionHook(undefined, events)
+    let command!: Promise<boolean>
+    act(() => {
+      command = result.current.startBuild('app-1', 'Build a workflow')
+    })
+    await waitFor(() => expect(clientMocks.create).toHaveBeenCalledOnce())
+    await act(async () => {
+      stream.push(commandStartedEvent(createSessionView({ phase: 'test' })))
+    })
+    expect(events.onSessionStateChanged).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ phase: 'test', run_status: 'processing' }),
+    )
+
+    const complete = createSessionView({ version: 2, phase: 'complete', run_status: 'complete' })
+    await act(async () => {
+      stream.push(stateEvent(complete))
+      expect(await command).toBe(true)
+    })
+    expect(events.onSessionStateChanged).toHaveBeenCalledTimes(2)
+    expect(events.onSessionStateChanged).toHaveBeenLastCalledWith(complete)
+  })
+
+  it.each([2, 4])('notifies only accepted restore snapshots at version %i', async (version) => {
+    const events = createSessionEvents()
+    const { result, store } = renderSessionHook(undefined, events)
+    store.set(difyBuilderSessionViewAtom, createSessionView({ version: 3, phase: 'modify' }))
+    const restored = createSessionView({ version, phase: 'test', run_status: 'waiting_input' })
+    clientMocks.get.mockResolvedValue(restored)
+
+    await act(async () => {
+      await result.current.restore('session-1')
+    })
+    if (version > 3) expect(events.onSessionStateChanged).toHaveBeenCalledExactlyOnceWith(restored)
+    else expect(events.onSessionStateChanged).not.toHaveBeenCalled()
+  })
+
   it('opts into deriving the app name for a starter build and refreshes app metadata', async () => {
     const waiting = createSessionView({ run_status: 'waiting_input', canvas_read_only: false })
     clientMocks.create.mockResolvedValue(
@@ -271,8 +323,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
             operation_id: 'stale-operation',
             at_version: 1,
             revision: 1,
-            event: 'highlight_edit_target',
-            node_id: 'llm-1',
+            event: 'edit_targets_changed',
+            node_ids: ['llm-1'],
           },
         },
         {
@@ -282,8 +334,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
             operation_id: 'operation-1',
             at_version: 2,
             revision: 1,
-            event: 'add_llm_node',
-            node_id: 'node-1',
+            event: 'graph_changed',
+            cause: 'apply',
           },
         },
         {
@@ -293,8 +345,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
             operation_id: 'operation-1',
             at_version: 2,
             revision: 1,
-            event: 'add_llm_node',
-            node_id: 'node-1',
+            event: 'graph_changed',
+            cause: 'apply',
           },
         },
         {
@@ -304,8 +356,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
             operation_id: 'operation-2',
             at_version: 3,
             revision: 1,
-            event: 'highlight_edit_target',
-            node_id: 'llm-1',
+            event: 'edit_targets_changed',
+            node_ids: ['llm-1'],
           },
         },
         {
@@ -315,8 +367,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
             operation_id: 'operation-1',
             at_version: 2,
             revision: 2,
-            event: 'add_llm_node',
-            node_id: 'stale-node',
+            event: 'graph_changed',
+            cause: 'apply',
           },
         },
         conversationItemEvent(notice),
@@ -354,8 +406,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
       operation_id: 'operation-2',
       at_version: 3,
       revision: 1,
-      event: 'highlight_edit_target',
-      node_id: 'llm-1',
+      event: 'edit_targets_changed',
+      node_ids: ['llm-1'],
     })
     expect(store.get(difyBuilderSessionViewAtom)).toEqual(terminal)
     expect(store.get(difyBuilderConversationAtom)).toEqual([initial, notice])

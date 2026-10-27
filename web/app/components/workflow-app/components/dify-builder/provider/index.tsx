@@ -6,6 +6,7 @@ import type { SessionRunEvents } from '../session/types'
 import type { DifyBuilderCanvasSnapshot } from '../utils'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useStore as useAtomStore } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useHydrateAtoms } from 'jotai/utils'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -16,11 +17,12 @@ import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { difyBuilderSessionScopedAtoms } from '../session/state'
 import { useDifyBuilderSessionController } from '../session/use-session-controller'
 import { difyBuilderRuntimeAtom, difyBuilderScopedAtoms } from '../store'
-import { DifyBuilderCanvasLockSync, DifyBuilderCanvasRefreshSync } from './canvas-sync'
+import { DifyBuilderCanvasLockCleanup } from './canvas-sync'
 import { DifyBuilderCreationStart } from './creation-start'
 import { DifyBuilderSessionPersistence } from './session-persistence'
 import { getSessionStorageKey } from './session-storage'
 import { useDifyBuilderCanvasEvents } from './use-canvas-events'
+import { useDifyBuilderCanvasRefresh } from './use-canvas-refresh'
 import { useDifyBuilderRunEvents } from './use-run-events'
 
 type DifyBuilderProviderProps = {
@@ -95,20 +97,36 @@ const DifyBuilderProviderContent = ({
   }, [])
 
   const runEvents = useDifyBuilderRunEvents(appId)
+  const store = useAtomStore()
+  const onCanvasRefreshed = useCallback(() => {
+    store.get(difyBuilderRuntimeAtom)?.session.onCanvasRefreshed()
+  }, [store])
+  const canvasRefresh = useDifyBuilderCanvasRefresh(onRefreshCanvas, onCanvasRefreshed)
   const canvasEvents = useDifyBuilderCanvasEvents(onPublishWorkflow, onResetPublication)
   const sessionEvents = useMemo<SessionRunEvents>(
     () => ({
       ...runEvents,
+      onCommandStarted: canvasRefresh.cancel,
+      onSessionStateChanged: (state) => {
+        canvasEvents.onSessionStateChanged(state)
+        void canvasRefresh.refresh()
+      },
       onCanvasEvent: (event) => {
         runEvents.onCanvasEvent(event)
         canvasEvents.onCanvasEvent(event)
+        if (event.event === 'graph_changed') void canvasRefresh.refresh()
+      },
+      finishCommand: () => {
+        runEvents.finishCommand()
+        canvasRefresh.finishCommand()
       },
       reset: () => {
         runEvents.reset()
         canvasEvents.reset()
+        canvasRefresh.reset()
       },
     }),
-    [canvasEvents, runEvents],
+    [canvasEvents, canvasRefresh, runEvents],
   )
   const session = useDifyBuilderSessionController(onSyncDraft, sessionEvents)
   const runtime = useMemo(
@@ -118,9 +136,10 @@ const DifyBuilderProviderContent = ({
       enabled,
       getCanvasSnapshot,
       session,
+      retryCanvasRefresh: canvasRefresh.retry,
       setShowPanel,
     }),
-    [appId, canEdit, enabled, getCanvasSnapshot, session, setShowPanel],
+    [appId, canEdit, enabled, getCanvasSnapshot, session, setShowPanel, canvasRefresh.retry],
   )
 
   useHydrateAtoms([[difyBuilderRuntimeAtom, runtime]] as const, {
@@ -129,13 +148,9 @@ const DifyBuilderProviderContent = ({
 
   return (
     <>
-      <DifyBuilderCanvasLockSync />
-      <DifyBuilderCanvasRefreshSync
-        onRefreshCanvas={onRefreshCanvas}
-        onCanvasRefreshed={session.onCanvasRefreshed}
-      />
+      <DifyBuilderCanvasLockCleanup />
       {children}
-      {/* Mount canvas and panel subscriptions before restoring or starting a session. */}
+      {/* Install canvas and panel handlers before restoring or starting a session. */}
       <DifyBuilderSessionPersistence
         appId={appId}
         enabled={enabled}

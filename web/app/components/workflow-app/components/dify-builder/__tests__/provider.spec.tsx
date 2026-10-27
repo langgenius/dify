@@ -1,5 +1,6 @@
 import type { WorkflowDraftRefreshResult } from '../../../hooks/use-workflow-refresh-draft'
 import type { SessionRunEvents } from '../session/types'
+import type { SessionView } from '../types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
@@ -27,6 +28,7 @@ import {
 import { builderModel, createBuilderQueryClient } from './model-fixtures'
 
 const mocks = vi.hoisted(() => ({
+  editTargetNodeIds: [] as string[],
   controllerHook:
     vi.fn<(prepare: (saveDraft: boolean) => Promise<void>, events: SessionRunEvents) => void>(),
   refreshCanvas: vi.fn<(shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>>(
@@ -37,6 +39,7 @@ const mocks = vi.hoisted(() => ({
   runAction: vi.fn(async () => true),
   sendMessage: vi.fn(async () => true),
   setCanvasReadOnly: vi.fn(),
+  setBuilderEditTargetNodeIds: vi.fn(),
   setBuilderViewportManuallyChanged: vi.fn(),
   setShowPanel: vi.fn(),
   selectWorkflowNode: vi.fn(),
@@ -90,17 +93,22 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
     getState: () => ({
       builderViewportManuallyChanged: false,
+      builderEditTargetNodeIds: mocks.editTargetNodeIds,
+      setCanvasReadOnly: mocks.setCanvasReadOnly,
+      setBuilderEditTargetNodeIds: mocks.setBuilderEditTargetNodeIds,
       setBuilderViewportManuallyChanged: mocks.setBuilderViewportManuallyChanged,
     }),
   }),
   useStore: <T,>(
     selector: (state: {
       setCanvasReadOnly: typeof mocks.setCanvasReadOnly
+      setBuilderEditTargetNodeIds: typeof mocks.setBuilderEditTargetNodeIds
       setShowDifyBuilderPanel: typeof mocks.setShowPanel
     }) => T,
   ) =>
     selector({
       setCanvasReadOnly: mocks.setCanvasReadOnly,
+      setBuilderEditTargetNodeIds: mocks.setBuilderEditTargetNodeIds,
       setShowDifyBuilderPanel: mocks.setShowPanel,
     }),
 }))
@@ -115,16 +123,34 @@ const Probe = () => {
   const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
   const setActiveSessionId = useSetAtom(difyBuilderActiveSessionIdAtom)
   const setBusy = useSetAtom(difyBuilderSessionBusyAtom)
-  const setSessionView = useSetAtom(difyBuilderSessionViewAtom)
+  const setView = useSetAtom(difyBuilderSessionViewAtom)
+  const setSessionView = (view: SessionView | null) => {
+    setView(view)
+    const events = mocks.controllerHook.mock.lastCall![1]
+    if (view) events.onSessionStateChanged?.(view)
+    else events.reset()
+  }
   const startPrompt = useSetAtom(difyBuilderStartPromptAtom)
   const startRunFix = useSetAtom(difyBuilderStartRunFixAtom)
   const [draft, setDraft] = useAtom(difyBuilderDraftAtom)
   return (
     <>
-      <button type="button" onClick={() => setBusy(true)}>
+      <button
+        type="button"
+        onClick={() => {
+          setBusy(true)
+          mocks.controllerHook.mock.lastCall![1].onCommandStarted?.()
+        }}
+      >
         Start command
       </button>
-      <button type="button" onClick={() => setBusy(false)}>
+      <button
+        type="button"
+        onClick={() => {
+          setBusy(false)
+          mocks.controllerHook.mock.lastCall![1].finishCommand()
+        }}
+      >
         Finish command
       </button>
       <button type="button" onClick={() => setSessionView(null)}>
@@ -191,15 +217,15 @@ const Probe = () => {
         onClick={() =>
           mocks.controllerHook.mock.lastCall![1].onCanvasEvent({
             at_version: 2,
-            event: 'highlight_edit_target',
-            node_id: 'llm-1',
+            event: 'edit_targets_changed',
+            node_ids: ['llm-1'],
             operation_id: 'operation-1',
             revision: 1,
             session_id: 'session-1',
           })
         }
       >
-        Focus event node
+        Mark edit targets
       </button>
       <output aria-label="Canvas refreshing">{String(canvasRefreshing)}</output>
       <textarea
@@ -285,6 +311,10 @@ const CreationNavigation = ({
 describe('DifyBuilderProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.editTargetNodeIds = []
+    mocks.setBuilderEditTargetNodeIds.mockImplementation((nodeIds: string[]) => {
+      mocks.editTargetNodeIds = nodeIds
+    })
     mocks.refreshCanvas.mockReset().mockResolvedValue('refreshed')
     mocks.restore.mockReset().mockResolvedValue(true)
     mocks.startBuild.mockReset().mockResolvedValue(true)
@@ -365,6 +395,7 @@ describe('DifyBuilderProvider', () => {
       mocks.syncDraft,
       expect.objectContaining({
         onCanvasEvent: expect.any(Function),
+        onSessionStateChanged: expect.any(Function),
       }),
     )
   })
@@ -669,9 +700,10 @@ describe('DifyBuilderProvider', () => {
     const user = userEvent.setup()
     renderProvider()
 
-    await user.click(screen.getByRole('button', { name: 'Focus event node' }))
+    await user.click(screen.getByRole('button', { name: 'Mark edit targets' }))
 
-    expect(mocks.selectWorkflowNode).toHaveBeenCalledWith('llm-1', true, expect.any(Function))
+    expect(mocks.setBuilderEditTargetNodeIds).toHaveBeenLastCalledWith(['llm-1'])
+    expect(mocks.selectWorkflowNode).not.toHaveBeenCalled()
     expect(mocks.refreshCanvas).not.toHaveBeenCalled()
   })
 })

@@ -548,7 +548,7 @@ def test_repair_command_only_requests_retest_after_a_committed_repair(
             english_text(next(node for node in port.graph["nodes"] if node["id"] == "llm")["data"]["title"]) == "Fixed"
         )
         assert canvas_events
-        assert all(event["event"] == "apply_error_fix" for event in canvas_events)
+        assert all(event["event"] == "graph_changed" for event in canvas_events)
     else:
         assert stored.current_state == repair_state
         assert finished["state"] == str(repair_state)
@@ -660,7 +660,7 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(
 
     canvas_events = [ev for _sid, ev in events if ev["kind"] == "canvas"]
     assert canvas_events, "advance_session must publish canvas events once the adapter emits them"
-    assert canvas_events[0]["event"] == "apply_error_fix"
+    assert canvas_events[0]["event"] == "graph_changed"
     assert canvas_events[0]["session_id"] == s.id
     assert canvas_events[0]["operation_id"]
     assert canvas_events[0]["at_version"] > 1

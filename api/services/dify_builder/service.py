@@ -243,7 +243,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="build.reverted",
-            canvas_event="revert_checkpoint",
+            canvas_event="graph_changed",
         ),
     ],
     PcState.BUILD_AWAIT_TESTDATA: [
@@ -267,7 +267,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="build.reverted",
-            canvas_event="revert_checkpoint",
+            canvas_event="graph_changed",
         ),
     ],
     PcState.BUILD_REVIEW: [
@@ -295,7 +295,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="build.reverted",
-            canvas_event="revert_checkpoint",
+            canvas_event="graph_changed",
         ),
     ],
     PcState.BUILD_REVERTED: [
@@ -349,7 +349,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label=copy_text(BuilderCopyId.ACTIONS_DISCARD_THIS_CHANGE_PLAN),
             kind=ActionKind.DESTRUCTIVE,
             next_state="edit.reverted",
-            canvas_event="revert_checkpoint",
+            canvas_event="graph_changed",
         ),
     ],
     PcState.EDIT_APPLY_CHANGES: [
@@ -364,7 +364,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="edit.reverted",
-            canvas_event="revert_checkpoint",
+            canvas_event="graph_changed",
         ),
     ],
     PcState.EDIT_AWAIT_TESTDATA: [
@@ -388,7 +388,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="edit.reverted",
-            canvas_event="revert_checkpoint",
+            canvas_event="graph_changed",
         ),
     ],
     PcState.EDIT_REVIEW: [
@@ -416,7 +416,7 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label=copy_text(BuilderCopyId.ACTIONS_REVERT),
             kind=ActionKind.DESTRUCTIVE,
             next_state="edit.reverted",
-            canvas_event="revert_checkpoint",
+            canvas_event="graph_changed",
         ),
     ],
     PcState.EDIT_REVERTED: [

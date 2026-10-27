@@ -31,6 +31,7 @@ const createRuntime = (
   canEdit: true,
   enabled: true,
   getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
+  retryCanvasRefresh: vi.fn(),
   session: {
     getTrace: () => ({ entries: [], truncated: false }),
     loadOlderConversation: async () => true,

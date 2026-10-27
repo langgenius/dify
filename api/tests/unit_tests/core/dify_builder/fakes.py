@@ -445,9 +445,8 @@ class FakeDifyPort(DifyPort):
         self.applied = copy.deepcopy(intents)
         self.hash = "h1"
         changed = [intent.args["node_id"] for intent in intents if isinstance(intent.args.get("node_id"), str)]
-        if on_canvas is not None:
-            for node_id in changed:
-                on_canvas({"event": "apply_error_fix", "node_id": node_id})
+        if on_canvas is not None and changed:
+            on_canvas({"event": "graph_changed", "cause": "apply"})
         return ApplyResult(
             changed_nodes=changed,
             new_hash=self.hash,
@@ -677,36 +676,11 @@ _BUILD_APPLY_FNS = {
     "insert_between": apply_insert_between,
 }
 
-_ADD_NODE_EVENTS = {
-    "start": "add_start_node",
-    "knowledge-retrieval": "add_knowledge_node",
-    "llm": "add_llm_node",
-    "end": "add_output_node",
-}
-
-
-def _fake_canvas_payload(intent: MutationIntent, changed: list[str]) -> dict[str, object]:
-    """Replicate services.dify_builder.dify_port._canvas_payload without
-    importing that (SQLAlchemy-heavy) module into the core test fakes."""
-    if intent.op == "create_node":
-        event = _ADD_NODE_EVENTS.get(str(intent.args.get("node_type", "")), "apply_edit_plan")
-        return {"event": event, "node_id": changed[0] if changed else None}
-    if intent.op == "connect":
-        return {
-            "event": "apply_edit_plan",
-            "edge": {"source": intent.args.get("from_node"), "target": intent.args.get("to_node")},
-        }
-    if intent.op == "set_node_config":
-        return {"event": "apply_error_fix", "node_id": intent.args.get("node_id")}
-    if intent.op == "delete_node":
-        return {"event": "apply_edit_plan", "node_id": intent.args.get("node_id")}
-    return {"event": "apply_edit_plan", "node_id": changed[0] if changed else None}
-
 
 class FakeBuildDifyPort(DifyPort):
     """A ``DifyPort`` that genuinely applies Build's verbs to an accumulating
     in-memory graph via the pure ``graph_ops`` helpers and emits the same
-    per-intent canvas payloads the real adapter does. Distinct from
+    committed batch notification the real adapter does. Distinct from
     ``FakeDifyPort`` (which records intents without applying them) so Build
     tests can assert the graph was actually built and the reveal fired."""
 
@@ -799,8 +773,6 @@ class FakeBuildDifyPort(DifyPort):
             apply_fn = _BUILD_APPLY_FNS[intent.op]
             graph, changed = apply_fn(graph, **intent.args)
             changed_nodes.extend(changed)
-            if on_canvas is not None:
-                on_canvas(_fake_canvas_payload(intent, changed))
         self.graph = graph
         self.hash = "h1"
         if not changed_nodes:
@@ -812,6 +784,8 @@ class FakeBuildDifyPort(DifyPort):
                 structure_fingerprint=_structural_fingerprint(self.graph),
             )
         changes, scope = diff_graphs(before, graph)
+        if on_canvas is not None and before != graph:
+            on_canvas({"event": "graph_changed", "cause": "apply"})
         return ApplyResult(
             changed_nodes=changed_nodes,
             new_hash=self.hash,

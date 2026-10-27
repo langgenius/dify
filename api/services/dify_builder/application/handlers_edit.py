@@ -169,8 +169,7 @@ def handle_capability_check(
         fc.edit_rules = merge_known_keys(fc.edit_rules, submitted_rules, keys)
         fc.resource_selection = {}
 
-    for node_id in fc.edit_target_node_ids:
-        emit_canvas(env, "highlight_edit_target", node_id=node_id)
+    emit_canvas(env, "edit_targets_changed", node_ids=list(fc.edit_target_node_ids))
 
     progress.activate("edit-prepare-impact")
     form_items = []
@@ -387,8 +386,7 @@ def _change_not_applied(
     failed_step: str = "edit-apply",
 ) -> StepResult:
     """apply_repair refused the edit and wrote nothing: say why and keep the
-    change plan at its gate. (Edit applies with on_canvas=None, so no canvas
-    marker streamed and there is nothing to revert on the client.)
+    change plan at its gate. A refused write emits no graph notification.
 
     ``rejection`` is remembered so the NEXT approval is not blind: the gate
     offers re-approval, the draft is unchanged, and without this the agent is
@@ -433,8 +431,7 @@ def _resume_adjusting(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) 
     may edit nothing and resubmit -- so ``last_edit_rejection`` is left alone
     here and cleared by handle_impact_analysis if and when the submitted
     payload actually changes ``fc.edit_rules``."""
-    for node_id in fc.edit_target_node_ids:
-        emit_canvas(env, "highlight_edit_target", node_id=node_id)
+    emit_canvas(env, "edit_targets_changed", node_ids=list(fc.edit_target_node_ids))
     fc.test_input_ref = ""
     fc.verify_run_id = ""
     fc.unknown_outcome_count = 0
@@ -464,9 +461,8 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     """(waiting) THE EDIT. ``approve_repair`` (resolved from approve_plan)
     applies: read the current graph, generate intents from the approved plan
     and edit rules,
-    highlight the targets, apply once (on_canvas=None -- Edit narrates its own
-    coarse apply_edit_plan rather than the Fix-flavored per-intent apply_error_
-    fix), summarize the applied changes in assistant text, and transition to
+    highlight the targets, apply once with one committed graph notification,
+    summarize the applied changes in assistant text, and transition to
     edit.apply_changes. The checkpoint stays backend-only.
 
     An empty proposal stays at the approval gate without attempting a write.
@@ -556,8 +552,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     fc.staged_repair = list(intents)
 
     progress.activate("edit-highlight")
-    for node_id in fc.edit_target_node_ids:
-        emit_canvas(env, "highlight_edit_target", node_id=node_id)
+    emit_canvas(env, "edit_targets_changed", node_ids=list(fc.edit_target_node_ids))
 
     progress.activate("edit-apply")
     from services.dify_builder.resource_grounding import ResourceBindingError, selection_failure_step
@@ -568,7 +563,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
                 s.app_id,
                 turn.actor,
                 intents,
-                on_canvas=None,
+                on_canvas=env.emit_canvas,
                 expected_revision=fc.last_snapshot_hash,
                 confirmed_resource_ids=list(fc.resource_selection.get("resource_ids", [])),
                 expected_resource_fingerprints=dict(fc.resource_selection.get("fingerprints", {})),
@@ -579,7 +574,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
                 s.app_id,
                 turn.actor,
                 intents,
-                on_canvas=None,
+                on_canvas=env.emit_canvas,
                 expected_revision=fc.last_snapshot_hash,
             )
     except ResourceBindingError as exc:
@@ -637,8 +632,6 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
             context=fc,
             items=[*decision_items, *turn_items],
         )
-    emit_canvas(env, "apply_edit_plan")
-
     changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="no changes")
 
     decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_APPROVED_THE_CHANGE_PLAN)))

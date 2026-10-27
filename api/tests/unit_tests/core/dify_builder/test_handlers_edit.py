@@ -116,7 +116,7 @@ def test_capability_check_send_edit_goal_advances_to_impact_analysis() -> None:
     kinds = [i.kind for i in repo.list_conversation(s.id)]
     assert "form" in kinds
     assert not ({"summary", "challenge", "change_set"} & set(kinds))
-    assert any(e["event"] == "highlight_edit_target" for e in events)
+    assert any(e["event"] == "edit_targets_changed" for e in events)
 
 
 @pytest.mark.parametrize("planning_fails", [False, True])
@@ -349,11 +349,11 @@ def test_plan_approval_approve_edits_graph_and_emits_canvas() -> None:
     # the existing llm node was actually reconfigured.
     llm = next(n for n in dify.graph["nodes"] if n["id"] == "llm")
     assert llm["data"]["risk_threshold"] == "high"
-    # Edit narrates its own canvas events (no per-intent apply_error_fix leak).
+    # Edit highlights its complete scope, then announces the committed batch.
     names = [e["event"] for e in events]
-    assert "highlight_edit_target" in names
-    assert "apply_edit_plan" in names
-    assert "apply_error_fix" not in names
+    assert "edit_targets_changed" in names
+    assert "graph_changed" in names
+    assert names.count("graph_changed") == 1
     assert not any(i.kind in {"change_set", "checkpoint", "plan"} for i in res.items)
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
     assert "Applied" in english_text(assistant.payload["reply_text"])
@@ -399,7 +399,7 @@ def test_apply_changes_revert_records_intent_only() -> None:
     res = handle_apply_changes(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.EDIT_REVERTED
     assert any(i.kind == "decision" for i in res.items)
-    assert {"event": "revert_checkpoint"} in events
+    assert events == [{"event": "edit_targets_changed", "node_ids": []}]
 
 
 def test_edit_test_pass_goes_to_review_with_real_run() -> None:
@@ -762,7 +762,7 @@ def test_review_revert_records_intent_only() -> None:
     s = _seed_edit_session(repo, PcState.EDIT_REVIEW, edit_target_node_ids=["llm"])
     res = handle_review(env, Turn(action=Action(kind="undo", base_version=1), actor=_actor()), *repo.get_session(s.id))
     assert res.next == PcState.EDIT_REVERTED
-    assert {"event": "revert_checkpoint"} in events
+    assert events == [{"event": "edit_targets_changed", "node_ids": []}]
 
 
 def test_reverted_retry_returns_to_plan_approval_with_fresh_checkpoint() -> None:
@@ -1948,7 +1948,7 @@ def test_the_plan_gate_reverts_through_the_checkpoint_it_already_minted() -> Non
     assert out.current_state == PcState.EDIT_REVERTED
     _s, fc = repo.get_session(s.id)
     assert fc.checkpoint_id == ""  # consumed by perform_revert
-    assert any(e["event"] == "revert_checkpoint" for e in events)
+    assert any(e["event"] == "graph_changed" and e["cause"] == "restore" for e in events)
     # and edit.reverted's own Retry still leads back to the gate
     out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.EDIT_PLAN_APPROVAL
@@ -2154,7 +2154,7 @@ def test_plan_approval_no_op_uses_same_revision_despite_touched_nodes(values: tu
     assert dify.last_result.changed_nodes == ["llm"] * len(values)
     assert dify.last_result.changes == []
     assert next(n for n in dify.graph["nodes"] if n["id"] == "llm")["data"]["risk_threshold"] == "high"
-    assert "apply_edit_plan" not in [e["event"] for e in events]
+    assert "graph_changed" not in [e["event"] for e in events]
     assistant = next(i for i in result.items if i.kind == "assistant_turn").payload
     assert "No effective changes" in english_text(assistant["reply_text"])
     assert "Applied" not in english_text(assistant["reply_text"])
@@ -2177,7 +2177,7 @@ def test_plan_approval_different_revision_retains_applied_behavior(omit_summary:
     assert result.context is not None
     assert result.context.last_snapshot_hash == "execution-after"
     assert next(n for n in dify.graph["nodes"] if n["id"] == "llm")["data"]["risk_threshold"] == "low"
-    assert "apply_edit_plan" in [e["event"] for e in events]
+    assert "graph_changed" in [e["event"] for e in events]
     assistant = next(i for i in result.items if i.kind == "assistant_turn").payload
     assert "Applied" in english_text(assistant["reply_text"])
     assert "configuration" in english_text(assistant["reply_text"])
@@ -2205,7 +2205,7 @@ def test_plan_approval_no_op_comparison_preserves_cas_failure() -> None:
     with pytest.raises(HashMismatchError, match="execution configuration changed"):
         _approve(env, _session(current_state=PcState.EDIT_PLAN_APPROVAL), fc)
 
-    assert "apply_edit_plan" not in [e["event"] for e in events]
+    assert "graph_changed" not in [e["event"] for e in events]
     assert dify.applied == []
 
 
