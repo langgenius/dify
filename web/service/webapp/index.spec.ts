@@ -13,6 +13,7 @@ import {
   isAppAccessError,
 } from '@/features/app-access-error/state'
 import {
+  expireWebAppAccountSession,
   getWebAppAuthSessionSnapshot,
   setWebAppAccessToken,
   setWebAppPassport,
@@ -71,9 +72,13 @@ describe('generated Web App client', () => {
     captureAppAccessScope()
   })
 
-  it('sends generated login status through the public transport with both Web App tokens', async () => {
-    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(Response.json(signedInStatus))
+  it('prefers the signed-in Passport and falls back to the retained anonymous Passport after expiry', async () => {
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json(signedInStatus))
+      .mockResolvedValueOnce(Response.json(anonymousStatus))
     const address = { kind: 'default', code: 'shared-code' } as const
+    setWebAppPassport(address, 'anonymous-passport', 'anonymous')
     setWebAppAccessToken('web-account-token')
     setWebAppPassport(address, 'app-passport')
     await expect(
@@ -91,6 +96,14 @@ describe('generated Web App client', () => {
     expect(headers.get('X-App-Code')).toBe(address.code)
     expect(headers.get('X-App-Passport')).toBe('app-passport')
     expect(input instanceof Request ? input.credentials : options?.credentials).toBe('include')
+
+    expireWebAppAccountSession()
+    await expect(
+      webAppClient.login.status.get({ query: { app_code: address.code, mode: 'end_user' } }),
+    ).resolves.toEqual(anonymousStatus)
+    const anonymousHeaders = new Headers(fetch.mock.calls[1]![1]?.headers)
+    expect(anonymousHeaders.get('X-App-Passport')).toBe('anonymous-passport')
+    expect(anonymousHeaders.has('Authorization')).toBe(false)
   })
 
   it('sends the PKCE login exchange body through the generated public transport', async () => {

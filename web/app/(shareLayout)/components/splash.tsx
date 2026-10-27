@@ -152,7 +152,11 @@ function WebAppBootstrap({ children }: PropsWithChildren) {
             })
             if (!canContinue()) return
 
-            setWebAppPassport(address, access_token)
+            setWebAppPassport(
+              address,
+              access_token,
+              getWebAppAccessToken() ? 'authenticated' : 'anonymous',
+            )
             redirectOrFinish()
           } catch (error) {
             if (!canContinue() || isAppAccessError(error)) return

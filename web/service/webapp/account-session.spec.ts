@@ -1,6 +1,8 @@
 import { waitFor } from '@testing-library/react'
 import { PUBLIC_API_PREFIX } from '@/config'
 import {
+  getAnonymousWebAppPassport,
+  getAuthenticatedWebAppPassport,
   getWebAppAccessToken,
   getWebAppPassport,
   setWebAppAccessToken,
@@ -28,6 +30,7 @@ afterEach(() => {
 
 describe('App user session restoration', () => {
   it('renews only the App Passport using the existing account proof and end_user mode', async () => {
+    setWebAppPassport(address, 'anonymous-passport', 'anonymous')
     const fetch = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(Response.json({ logged_in: true, app_logged_in: false }))
@@ -50,6 +53,8 @@ describe('App user session restoration', () => {
     expect(passportRequest.headers.get('X-App-Code')).toBe('research')
     expect(getWebAppAccessToken()).toBe('account-proof')
     expect(getWebAppPassport(address)).toBe('renewed-passport')
+    expect(getAuthenticatedWebAppPassport(address)).toBe('renewed-passport')
+    expect(getAnonymousWebAppPassport(address)).toBe('anonymous-passport')
   })
 
   it('keeps an already valid App Passport without renewing it', async () => {
@@ -65,6 +70,7 @@ describe('App user session restoration', () => {
   })
 
   it('clears an expired account session and preserves anonymous conversation history', async () => {
+    setWebAppPassport(address, 'anonymous-passport', 'anonymous')
     setWebAppPassport(address, 'expired-passport')
     localStorage.setItem('session_id-research', 'anonymous-history')
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
@@ -74,7 +80,8 @@ describe('App user session restoration', () => {
     await expect(restoreWebAppAccountSession(address, () => true)).resolves.toBe(false)
 
     expect(getWebAppAccessToken()).toBe('')
-    expect(getWebAppPassport(address)).toBe('')
+    expect(getAuthenticatedWebAppPassport(address)).toBe('')
+    expect(getWebAppPassport(address)).toBe('anonymous-passport')
     expect(localStorage.getItem('session_id-research')).toBe('anonymous-history')
   })
 

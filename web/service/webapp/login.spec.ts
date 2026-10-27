@@ -2,7 +2,13 @@ import { webcrypto } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { captureAppAccessScope } from '@/features/app-access-error/state'
 import { parseWebAppAddress, resolveWebAppAddress } from '../webapp-address'
-import { getWebAppAccessToken, getWebAppPassport, setWebAppAccessToken } from '../webapp-auth'
+import {
+  getAnonymousWebAppPassport,
+  getWebAppAccessToken,
+  getWebAppPassport,
+  setWebAppAccessToken,
+  setWebAppPassport,
+} from '../webapp-auth'
 import {
   beginWebAppAccountLogin,
   cancelWebAppAccountLogin,
@@ -73,6 +79,10 @@ describe('Webapp Account PKCE transaction', () => {
   })
 
   it('exchanges exactly once across concurrent calls and a completed callback remount, then stores both tokens', async () => {
+    const address = { kind: 'default', code: `app-${sequence}` } as const
+    const otherApp = { kind: 'default', code: 'another-app' } as const
+    setWebAppPassport(address, 'anonymous-passport', 'anonymous')
+    setWebAppPassport(otherApp, 'another-anonymous-passport', 'anonymous')
     await beginWebAppAccountLogin(accountUrl, returnUrl)
     callback()
     let body: unknown
@@ -96,7 +106,9 @@ describe('Webapp Account PKCE transaction', () => {
       code_verifier: expect.stringMatching(/^[\w-]{43}$/),
     })
     expect(getWebAppAccessToken()).toBe('web-proof')
-    expect(getWebAppPassport({ kind: 'default', code: `app-${sequence}` })).toBe('app-passport')
+    expect(getWebAppPassport(address)).toBe('app-passport')
+    expect(getAnonymousWebAppPassport(address)).toBe('anonymous-passport')
+    expect(getAnonymousWebAppPassport(otherApp)).toBe('another-anonymous-passport')
     expect(sessionStorage.getItem(`webapp-account-login-app-${sequence}`)).toBeNull()
   })
 
@@ -165,7 +177,9 @@ describe('Webapp Account PKCE transaction', () => {
     },
   )
 
-  it('retains neither a failed exchange transaction nor tokens', async () => {
+  it('discards a failed exchange transaction without losing anonymous history credentials', async () => {
+    const address = { kind: 'default', code: `app-${sequence}` } as const
+    setWebAppPassport(address, 'anonymous-passport', 'anonymous')
     await beginWebAppAccountLogin(accountUrl, returnUrl)
     callback()
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -176,6 +190,7 @@ describe('Webapp Account PKCE transaction', () => {
     )
     await expect(completeWebAppAccountLogin(returnUrl, 'expired-code')).rejects.toThrow()
     expect(getWebAppAccessToken()).toBe('')
+    expect(getWebAppPassport(address)).toBe('anonymous-passport')
     expect(sessionStorage.getItem(`webapp-account-login-app-${sequence}`)).toBeNull()
   })
 

@@ -175,7 +175,7 @@ export function completeWebAppAccountLogin(
       )
         throw new DOMException('The Web App login changed.', 'AbortError')
       setWebAppAccessToken(tokens.webapp_access_token, 'end_user')
-      setWebAppPassport(target.address, tokens.access_token)
+      setWebAppPassport(target.address, tokens.access_token, 'authenticated')
       isCurrent = captureWebAppAuthSession()
       removeTransaction(target.address.code)
       return target.url

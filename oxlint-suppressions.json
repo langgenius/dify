@@ -77,11 +77,6 @@
       "count": 1
     }
   },
-  "web/app/(shareLayout)/webapp-signin/check-code/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/(shareLayout)/webapp-signin/normalForm.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3

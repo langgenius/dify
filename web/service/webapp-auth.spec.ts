@@ -4,8 +4,12 @@ import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
 import { createDeferred } from '@/test/deferred'
 import {
   beginWebAppAuthorizationRecovery,
+  clearAnonymousWebAppPassports,
+  clearWebAppPassport,
   completeWebAppAuthorizationRecovery,
   expireWebAppAccountSession,
+  getAnonymousWebAppPassport,
+  getAuthenticatedWebAppPassport,
   getOrCreateWebAppSessionId,
   getWebAppAccessToken,
   getWebAppAuthSessionSnapshot,
@@ -46,6 +50,43 @@ describe('Webapp credentials', () => {
     expect(localStorage.getItem('passport-workflow-app')).toBe('ordinary-passport')
   })
 
+  it('keeps the anonymous Passport when invalidating the preferred signed-in Passport', () => {
+    setWebAppPassport(ordinary, 'anonymous-passport', 'anonymous')
+    setWebAppPassport(ordinary, 'signed-in-passport', 'authenticated')
+
+    expect(getWebAppPassport(ordinary)).toBe('signed-in-passport')
+    expect(getAnonymousWebAppPassport(ordinary)).toBe('anonymous-passport')
+    expect(localStorage.getItem('authenticated-passport-workflow-app')).toBe('signed-in-passport')
+    clearWebAppPassport(ordinary)
+
+    expect(getAuthenticatedWebAppPassport(ordinary)).toBe('')
+    expect(getWebAppPassport(ordinary)).toBe('anonymous-passport')
+    clearWebAppPassport(ordinary)
+    expect(getWebAppPassport(ordinary)).toBe('')
+  })
+
+  it('clears anonymous Passports across every Webapp without clearing signed-in Passports or session IDs', () => {
+    const otherApp = { kind: 'default', code: 'another-app' } as const
+    const scopes = [ordinary, environment, otherApp]
+    for (const address of scopes) {
+      setWebAppPassport(address, `anonymous-${address.kind}-${address.code}`, 'anonymous')
+      setWebAppPassport(address, `account-${address.kind}-${address.code}`, 'authenticated')
+    }
+    localStorage.setItem('session_id-another-app', 'history-session')
+    localStorage.setItem('unrelated-preference', 'retained')
+    const environmentSession = getOrCreateWebAppSessionId(environment)
+
+    clearAnonymousWebAppPassports()
+
+    for (const address of scopes) {
+      expect(getAnonymousWebAppPassport(address)).toBe('')
+      expect(getWebAppPassport(address)).toBe(`account-${address.kind}-${address.code}`)
+    }
+    expect(getOrCreateWebAppSessionId(environment)).toBe(environmentSession)
+    expect(localStorage.getItem('session_id-another-app')).toBe('history-session')
+    expect(localStorage.getItem('unrelated-preference')).toBe('retained')
+  })
+
   it('keeps a stable anonymous session ID for each environment', () => {
     const firstEnvironment = { kind: 'environment', code: 'environment-1' } as const
     const secondEnvironment = { kind: 'environment', code: 'environment-2' } as const
@@ -65,7 +106,9 @@ describe('Webapp credentials', () => {
     expect(beginWebAppAuthorizationRecovery(environment)).toBe(true)
   })
 
-  it('clears every previous account Passport on login while preserving anonymous session IDs', () => {
+  it('clears every previous account Passport on login while preserving anonymous Passports and session IDs', () => {
+    setWebAppPassport(ordinary, 'anonymous-ordinary', 'anonymous')
+    setWebAppPassport(environment, 'anonymous-environment', 'anonymous')
     setWebAppAccessToken('account-a', 'end_user')
     setWebAppPassport(ordinary, 'account-a-ordinary')
     setWebAppPassport(environment, 'account-a-environment')
@@ -79,8 +122,10 @@ describe('Webapp credentials', () => {
 
     expect(getWebAppAccessToken()).toBe('account-b')
     expect(getWebAppLoginMode()).toBe('end_user')
-    expect(getWebAppPassport(ordinary)).toBe('')
-    expect(getWebAppPassport(environment)).toBe('')
+    expect(getAuthenticatedWebAppPassport(ordinary)).toBe('')
+    expect(getAuthenticatedWebAppPassport(environment)).toBe('')
+    expect(getWebAppPassport(ordinary)).toBe('anonymous-ordinary')
+    expect(getWebAppPassport(environment)).toBe('anonymous-environment')
     expect(getOrCreateWebAppSessionId(environment)).toBe(anonymousSession)
     expect(beginWebAppAuthorizationRecovery(environment)).toBe(true)
     expect(getWebAppAuthSessionSnapshot()).not.toBe(previousRevision)
@@ -130,7 +175,9 @@ describe('Webapp credentials', () => {
     unsubscribe()
   })
 
-  it('sends logout with the current proof, then clears all App credentials', async () => {
+  it('sends logout with the current proof, then keeps anonymous Passports for a deferred history decision', async () => {
+    setWebAppPassport(ordinary, 'anonymous-ordinary', 'anonymous')
+    setWebAppPassport(environment, 'anonymous-environment', 'anonymous')
     setWebAppAccessToken('account-proof', 'end_user')
     setWebAppPassport(ordinary, 'ordinary-passport')
     setWebAppPassport(environment, 'environment-passport')
@@ -143,12 +190,15 @@ describe('Webapp credentials', () => {
     const [, options] = fetch.mock.calls[0]!
     expect(new Headers(options?.headers).get('Authorization')).toBe('Bearer account-proof')
     expect(getWebAppAccessToken()).toBe('')
-    expect(getWebAppPassport(ordinary)).toBe('')
-    expect(getWebAppPassport(environment)).toBe('')
+    expect(getAuthenticatedWebAppPassport(ordinary)).toBe('')
+    expect(getAuthenticatedWebAppPassport(environment)).toBe('')
+    expect(getWebAppPassport(ordinary)).toBe('anonymous-ordinary')
+    expect(getWebAppPassport(environment)).toBe('anonymous-environment')
   })
 
   it('clears local credentials and preserves a logout failure for its owner', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    setWebAppPassport(ordinary, 'anonymous-passport', 'anonymous')
     setWebAppAccessToken('account-proof', 'end_user')
     setWebAppPassport(ordinary, 'ordinary-passport')
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'))
@@ -156,7 +206,8 @@ describe('Webapp credentials', () => {
     await expect(webAppLogout(ordinary)).rejects.toThrow()
 
     expect(getWebAppAccessToken()).toBe('')
-    expect(getWebAppPassport(ordinary)).toBe('')
+    expect(getAuthenticatedWebAppPassport(ordinary)).toBe('')
+    expect(getWebAppPassport(ordinary)).toBe('anonymous-passport')
   })
 
   it.each(['success', 'failure'] as const)(

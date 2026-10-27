@@ -125,6 +125,7 @@ describe('Splash', () => {
     expect(webAppAuthMocks.setWebAppPassport).toHaveBeenCalledWith(
       { kind: 'default', code: 'share-app' },
       'account-passport',
+      'authenticated',
     )
     expect(fetchAccessTokenMock).not.toHaveBeenCalled()
   })

@@ -522,6 +522,7 @@ describe('Webapp account transports', () => {
     'sends both Webapp credentials on a public SSE %s request',
     async (method) => {
       window.history.replaceState({}, '', '/chat/account-app')
+      setWebAppPassport({ kind: 'default', code: 'account-app' }, 'anonymous-passport', 'anonymous')
       setWebAppAccessToken('account-proof', 'end_user')
       setWebAppPassport({ kind: 'default', code: 'account-app' }, 'app-passport')
       const fetch = vi

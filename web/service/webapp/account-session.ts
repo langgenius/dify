@@ -33,7 +33,7 @@ export async function restoreWebAppAccountSession(
         { context },
       )
       if (!canContinue()) return false
-      setWebAppPassport(address, access_token)
+      setWebAppPassport(address, access_token, 'authenticated')
     }
     return true
   } catch (error) {
