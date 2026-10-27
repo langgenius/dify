@@ -3927,7 +3927,7 @@ export const zAllWorkspaceContacts = z.object({
  *
  * Timeout unit for form expiration.
  */
-export const zTimeoutUnit94274613199040StrictStrictFalse = z.enum(['day', 'hour'])
+export const zTimeoutUnit93869625862960StrictStrictFalse = z.enum(['day', 'hour'])
 
 /**
  * UnaddedModelConfiguration
@@ -5425,7 +5425,7 @@ export const zHumanInputNodeData = z.object({
   ),
   retry_config: zRetryConfig.optional(),
   timeout: z.int().optional().default(36),
-  timeout_unit: zTimeoutUnit94274613199040StrictStrictFalse.optional().default('hour'),
+  timeout_unit: zTimeoutUnit93869625862960StrictStrictFalse.optional().default('hour'),
   title: z.string().optional().default(''),
   type: z.literal('human-input').optional().default('human-input'),
   user_actions: z.array(zUserActionConfig).optional(),
