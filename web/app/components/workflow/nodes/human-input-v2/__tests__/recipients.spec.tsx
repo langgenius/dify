@@ -428,42 +428,6 @@ describe('Human Input v2 Recipients', () => {
     },
   )
 
-  it('keeps an invalid email edit local until corrected and confirmed', async () => {
-    const user = userEvent.setup()
-    const observe = vi.fn()
-    render(
-      <Harness
-        initial={[{ type: 'initiator' }, { type: 'onetime_email', email: 'before@example.com' }]}
-        observe={observe}
-      />,
-    )
-    await user.click(screen.getByRole('button', { name: /recipients\.edit:.*before@example.com/ }))
-    const input = screen.getByRole('textbox', {
-      name: 'workflow.nodes.humanInputV2.recipients.emailLabel',
-    })
-    await user.clear(input)
-    await user.type(input, 'qa..1022@example.com')
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.confirm' }),
-    )
-
-    expect(input).toHaveValue('qa..1022@example.com')
-    expect(input).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'workflow.nodes.humanInputV2.error.recipientInvalid',
-    )
-    expect(observe).not.toHaveBeenCalled()
-
-    await user.clear(input)
-    await user.type(input, 'qa+1022@example.com{Enter}')
-
-    expect(observe).toHaveBeenCalledExactlyOnceWith([
-      { type: 'initiator' },
-      { type: 'onetime_email', email: 'qa+1022@example.com' },
-    ])
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-  })
-
   it('opens variable insertion with slash only from an empty non-composing recipient input', async () => {
     const user = userEvent.setup()
     const observe = vi.fn()
@@ -630,46 +594,6 @@ describe('Human Input v2 Recipients', () => {
     )
     expect(screen.getByText('Requester')).toBeInTheDocument()
     expect(screen.queryByText('Request details')).not.toBeInTheDocument()
-  })
-
-  it('shows the source node in the dynamic recipient editor and preserves the selector on save', async () => {
-    const user = userEvent.setup()
-    const observe = vi.fn()
-    const source: Node = {
-      id: '1790152799766',
-      position: { x: 0, y: 0 },
-      data: { type: BlockEnum.Start, title: 'Start', desc: '' },
-    }
-    const initial: HumanInputV2Recipient[] = [
-      { type: 'dynamic_email', selector: [source.id, 'email'] },
-    ]
-    const { rerender } = render(
-      <Harness initial={initial} availableNodes={[source]} observe={observe} />,
-    )
-
-    await user.click(screen.getByRole('button', { name: /recipients\.edit:.*Start \/ email/ }))
-    const editor = screen.getByRole('group', {
-      name: 'workflow.nodes.humanInputV2.recipients.editRecipient',
-    })
-    expect(within(editor).getByText('Start')).toBeInTheDocument()
-    expect(within(editor).getByText('email')).toBeInTheDocument()
-    expect(within(editor).queryByText(/1790152799766/)).not.toBeInTheDocument()
-
-    rerender(
-      <Harness
-        initial={initial}
-        availableNodes={[{ ...source, data: { ...source.data, title: 'User input' } }]}
-        observe={observe}
-      />,
-    )
-    expect(within(editor).getByText('User input')).toBeInTheDocument()
-    expect(within(editor).queryByText('Start')).not.toBeInTheDocument()
-    await user.click(
-      within(editor).getByRole('button', {
-        name: 'workflow.nodes.humanInputV2.recipients.confirm',
-      }),
-    )
-    expect(observe).toHaveBeenLastCalledWith(initial)
   })
 
   it.each(['owner', 'editor'] as const)(
@@ -1022,31 +946,171 @@ describe('Human Input v2 Recipients', () => {
     ])
   })
 
-  it('edits and removes a recipient through its chip without changing other recipients', async () => {
-    const user = userEvent.setup()
-    const observe = vi.fn()
-    render(
-      <Harness
-        initial={[{ type: 'onetime_email', email: 'owner@example.com' }, { type: 'initiator' }]}
-        observe={observe}
-      />,
+  describe('Keyboard deletion of a focused recipient', () => {
+    it.each(['Backspace', 'Delete'])(
+      'removes only the focused middle recipient with %s and returns focus to the input',
+      async (key) => {
+        const user = userEvent.setup()
+        const observe = vi.fn()
+        const parentKeyDown = vi.fn()
+        const first: HumanInputV2Recipient = { type: 'initiator' }
+        const last: HumanInputV2Recipient = { type: 'all_workspace_contacts' }
+        render(
+          <Harness
+            initial={[first, { type: 'onetime_email', email: 'middle@example.com' }, last]}
+            observe={observe}
+          />,
+        )
+        const chip = screen.getByRole('button', { name: /middle@example.com/ })
+        await user.click(chip)
+        expect(chip).toHaveFocus()
+        expect(observe).not.toHaveBeenCalled()
+
+        document.addEventListener('keydown', parentKeyDown)
+        try {
+          await user.keyboard(`{${key}}`)
+        } finally {
+          document.removeEventListener('keydown', parentKeyDown)
+        }
+
+        expect(observe).toHaveBeenCalledExactlyOnceWith([first, last])
+        expect(parentKeyDown).not.toHaveBeenCalled()
+        expect(
+          screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder'),
+        ).toHaveFocus()
+      },
     )
 
-    expect(screen.queryByRole('button', { name: /recipients\.remove:/ })).not.toBeInTheDocument()
-    const chip = screen.getByRole('button', { name: /recipients\.edit:.*owner@example.com/ })
-    expect(chip).toHaveTextContent('owner@example.com')
-    await user.click(chip)
-    const editor = screen.getByRole('group', {
-      name: 'workflow.nodes.humanInputV2.recipients.editRecipient',
-    })
-    await user.click(within(editor).getByRole('button', { name: /recipients\.remove:/ }))
+    it.each([
+      {
+        recipient: { type: 'contact', contact_id: contact.id },
+        label: 'Evan Zhang · evan@example.com',
+      },
+      {
+        recipient: { type: 'contact', contact_id: 'unresolved-contact' },
+        label: 'unresolved-contact',
+      },
+      {
+        recipient: { type: 'onetime_email', email: 'owner@example.com' },
+        label: 'owner@example.com',
+      },
+      {
+        recipient: { type: 'onetime_email', email: 'invalid-email' },
+        label: 'invalid-email',
+      },
+      {
+        recipient: { type: 'dynamic_email', selector: ['start', 'email'] },
+        label: 'email',
+      },
+      {
+        recipient: { type: 'initiator' },
+        label: 'workflow.nodes.humanInputV2.recipients.type.initiator',
+      },
+      {
+        recipient: { type: 'all_workspace_contacts' },
+        label: 'workflow.nodes.humanInputV2.recipients.allWorkspaceContacts',
+      },
+    ] satisfies { recipient: HumanInputV2Recipient; label: string }[])(
+      'selects $label without opening an editor and permits deleting that recipient',
+      async ({ recipient, label }) => {
+        const user = userEvent.setup()
+        const observe = vi.fn()
+        render(<Harness initial={[recipient]} observe={observe} />)
+        const chip = await screen.findByRole('button', { name: label })
 
-    expect(observe).toHaveBeenLastCalledWith([{ type: 'initiator' }])
-    expect(
-      screen.queryByRole('group', {
-        name: 'workflow.nodes.humanInputV2.recipients.editRecipient',
-      }),
-    ).not.toBeInTheDocument()
+        await user.click(chip)
+
+        expect(chip).toHaveFocus()
+        expect(
+          screen.queryByRole('group', {
+            name: 'workflow.nodes.humanInputV2.recipients.editRecipient',
+          }),
+        ).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog', { name: contact.name })).not.toBeInTheDocument()
+        expect(observe).not.toHaveBeenCalled()
+
+        await user.keyboard('{Delete}')
+
+        expect(observe).toHaveBeenCalledExactlyOnceWith([])
+      },
+    )
+
+    it.each(['altKey', 'ctrlKey', 'metaKey', 'shiftKey', 'isComposing'])(
+      'does not delete a focused recipient when %s handles the key',
+      async (flag) => {
+        const user = userEvent.setup()
+        const observe = vi.fn()
+        render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
+        const chip = screen.getByRole('button', {
+          name: 'workflow.nodes.humanInputV2.recipients.type.initiator',
+        })
+        await user.click(chip)
+
+        expect(fireEvent.keyDown(chip, { key: 'Delete', [flag]: true })).toBe(true)
+        expect(observe).not.toHaveBeenCalled()
+        expect(chip).toHaveFocus()
+      },
+    )
+
+    it('consumes held-key repeats without deleting the focused recipient', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      const parentKeyDown = vi.fn()
+      render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
+      const chip = screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.type.initiator',
+      })
+      await user.click(chip)
+
+      document.addEventListener('keydown', parentKeyDown)
+      try {
+        expect(fireEvent.keyDown(chip, { key: 'Delete', repeat: true })).toBe(false)
+      } finally {
+        document.removeEventListener('keydown', parentKeyDown)
+      }
+      expect(observe).not.toHaveBeenCalled()
+      expect(parentKeyDown).not.toHaveBeenCalled()
+
+      await user.keyboard('{Delete}')
+
+      expect(observe).toHaveBeenCalledExactlyOnceWith([])
+    })
+
+    it('leaves the previously focused chip intact when Delete is pressed in the main input', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
+      await user.click(
+        screen.getByRole('button', {
+          name: 'workflow.nodes.humanInputV2.recipients.type.initiator',
+        }),
+      )
+      const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
+      await user.click(input)
+      await user.keyboard('{Delete}')
+
+      expect(observe).not.toHaveBeenCalled()
+      expect(input).toHaveFocus()
+    })
+
+    it('removes one selected occurrence of an imported duplicate without clearing both', async () => {
+      const user = userEvent.setup()
+      const observe = vi.fn()
+      render(<Harness initial={[{ type: 'initiator' }, { type: 'initiator' }]} observe={observe} />)
+      const chips = screen.getAllByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.type.initiator',
+      })
+
+      await user.click(chips[1]!)
+      await user.keyboard('{Delete}')
+
+      expect(observe).toHaveBeenCalledExactlyOnceWith([{ type: 'initiator' }])
+      expect(
+        screen.getByRole('button', {
+          name: 'workflow.nodes.humanInputV2.recipients.type.initiator',
+        }),
+      ).toBeInTheDocument()
+    })
   })
 
   describe('Backspace in the main recipient input', () => {
@@ -1155,64 +1219,6 @@ describe('Human Input v2 Recipients', () => {
       expect(input).toHaveFocus()
     })
 
-    it('closes the editor when Backspace removes its recipient', async () => {
-      const user = userEvent.setup()
-      const observe = vi.fn()
-      render(
-        <Harness
-          initial={[{ type: 'initiator' }, { type: 'onetime_email', email: 'last@example.com' }]}
-          observe={observe}
-        />,
-      )
-      await user.click(screen.getByRole('button', { name: /recipients\.edit:.*last@example.com/ }))
-      expect(
-        screen.getByRole('group', { name: 'workflow.nodes.humanInputV2.recipients.editRecipient' }),
-      ).toBeInTheDocument()
-      const input = screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder')
-      await user.click(input)
-      await user.keyboard('{Backspace}')
-
-      expect(observe).toHaveBeenCalledExactlyOnceWith([{ type: 'initiator' }])
-      expect(
-        screen.queryByRole('group', {
-          name: 'workflow.nodes.humanInputV2.recipients.editRecipient',
-        }),
-      ).not.toBeInTheDocument()
-      expect(input).toHaveFocus()
-    })
-
-    it('preserves another recipient editor draft when Backspace removes the last recipient', async () => {
-      const user = userEvent.setup()
-      const observe = vi.fn()
-      const firstRecipient: HumanInputV2Recipient = {
-        type: 'onetime_email',
-        email: 'first@example.com',
-      }
-      render(<Harness initial={[firstRecipient, { type: 'initiator' }]} observe={observe} />)
-      await user.click(screen.getByRole('button', { name: /recipients\.edit:.*first@example.com/ }))
-      const editor = screen.getByRole('group', {
-        name: 'workflow.nodes.humanInputV2.recipients.editRecipient',
-      })
-      const editorInput = within(editor).getByRole('textbox', {
-        name: 'workflow.nodes.humanInputV2.recipients.emailLabel',
-      })
-      await user.clear(editorInput)
-      await user.type(editorInput, 'edited@example.com')
-      await user.click(screen.getByLabelText('workflow.nodes.humanInputV2.recipients.placeholder'))
-      await user.keyboard('{Backspace}')
-
-      expect(observe).toHaveBeenCalledExactlyOnceWith([firstRecipient])
-      expect(editorInput).toHaveValue('edited@example.com')
-      await user.click(
-        within(editor).getByRole('button', {
-          name: 'workflow.nodes.humanInputV2.recipients.confirm',
-        }),
-      )
-      expect(observe).toHaveBeenLastCalledWith([
-        { type: 'onetime_email', email: 'edited@example.com' },
-      ])
-    })
-
     it('keeps focus in the main input after closing its search and deleting a recipient', async () => {
       const user = userEvent.setup()
       const observe = vi.fn()
@@ -1234,7 +1240,7 @@ describe('Human Input v2 Recipients', () => {
       expect(input).toHaveFocus()
     })
 
-    it('does not remove recipients from the separate picker search or email editor', async () => {
+    it('does not remove recipients from the separate picker search', async () => {
       const user = userEvent.setup()
       const observe = vi.fn()
       render(
@@ -1250,58 +1256,34 @@ describe('Human Input v2 Recipients', () => {
         name: 'workflow.nodes.humanInputV2.recipients.search',
       })
       await user.click(search)
-      await user.keyboard('{Backspace}{Escape}')
-      await user.click(screen.getByRole('button', { name: /recipients\.edit:.*last@example.com/ }))
-      const editorInput = screen.getByRole('textbox', {
-        name: 'workflow.nodes.humanInputV2.recipients.emailLabel',
-      })
-      await user.clear(editorInput)
-      await user.keyboard('{Backspace}')
+      await user.keyboard('{Backspace}{Delete}{Escape}')
 
       expect(observe).not.toHaveBeenCalled()
-      expect(editorInput).toHaveValue('')
     })
 
-    it('does not expose a main input or remove recipients in readonly mode', async () => {
-      const user = userEvent.setup()
-      const observe = vi.fn()
-      render(
-        <Harness
-          initial={[{ type: 'contact', contact_id: contact.id }]}
-          readonly
-          observe={observe}
-        />,
-      )
-      const chip = await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
-      expect(
-        screen.queryByLabelText('workflow.nodes.humanInputV2.recipients.placeholder'),
-      ).not.toBeInTheDocument()
-      act(() => chip.focus())
-      await user.keyboard('{Backspace}')
+    it.each(['Backspace', 'Delete'])(
+      'does not expose a main input or remove readonly recipients with %s',
+      async (key) => {
+        const user = userEvent.setup()
+        const observe = vi.fn()
+        render(
+          <Harness
+            initial={[{ type: 'contact', contact_id: contact.id }]}
+            readonly
+            observe={observe}
+          />,
+        )
+        const chip = await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
+        expect(
+          screen.queryByLabelText('workflow.nodes.humanInputV2.recipients.placeholder'),
+        ).not.toBeInTheDocument()
+        act(() => chip.focus())
+        await user.keyboard(`{${key}}`)
 
-      expect(observe).not.toHaveBeenCalled()
-      expect(chip).toBeInTheDocument()
-    })
-  })
-
-  it('opens the selected contact editor instead of leaving its hover card over the controls', async () => {
-    const user = userEvent.setup()
-    const observe = vi.fn()
-    render(<Harness initial={[{ type: 'contact', contact_id: contact.id }]} observe={observe} />)
-    const chip = await screen.findByRole('button', { name: 'Evan Zhang · evan@example.com' })
-
-    await user.hover(chip)
-    await screen.findByRole('dialog', { name: contact.name })
-    await user.click(chip)
-    expect(
-      screen.getByRole('group', {
-        name: 'workflow.nodes.humanInputV2.recipients.editRecipient',
-      }),
-    ).toBeInTheDocument()
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: contact.name })).not.toBeInTheDocument(),
+        expect(observe).not.toHaveBeenCalled()
+        expect(chip).toBeInTheDocument()
+      },
     )
-    expect(observe).not.toHaveBeenCalled()
   })
 
   it.each([false, true])(
@@ -1519,6 +1501,34 @@ describe('Human Input v2 Recipients', () => {
     expect(screen.getByText('Amanda Lin')).toBeInTheDocument()
   })
 
+  it('adds all workspace contacts once without changing existing recipients', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
+    const openPicker = screen.getByRole('button', {
+      name: 'workflow.nodes.humanInputV2.recipients.addContact',
+    })
+
+    await user.click(openPicker)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.allWorkspaceContacts',
+      }),
+    )
+
+    expect(observe).toHaveBeenCalledExactlyOnceWith([
+      { type: 'initiator' },
+      { type: 'all_workspace_contacts' },
+    ])
+    await user.click(openPicker)
+    expect(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'workflow.nodes.humanInputV2.recipients.allWorkspaceContacts',
+      }),
+    ).toBeDisabled()
+    expect(observe).toHaveBeenCalledTimes(1)
+  })
+
   it('resolves stored contacts and removes nothing in read-only mode', async () => {
     const observe = vi.fn()
     const optionProvider = provider()
@@ -1548,175 +1558,5 @@ describe('Human Input v2 Recipients', () => {
       screen.queryByLabelText(/workflow\.nodes\.humanInputV2\.recipients\.remove/),
     ).not.toBeInTheDocument()
     expect(observe).not.toHaveBeenCalled()
-  })
-
-  it('keeps local edits out of DSL until confirm and resets type-specific draft fields', async () => {
-    const user = userEvent.setup()
-    const observe = vi.fn()
-    render(<Harness initial={[{ type: 'onetime_email', email: 'invalid' }]} observe={observe} />)
-
-    await user.click(
-      screen.getByRole('button', { name: /workflow\.nodes\.humanInputV2\.recipients\.edit/ }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputV2.recipients.type.initiator',
-      }),
-    )
-    await user.click(
-      screen.getAllByRole('button', {
-        name: 'workflow.nodes.humanInputV2.recipients.cancel',
-      })[0]!,
-    )
-    expect(observe).not.toHaveBeenCalled()
-
-    await user.click(
-      screen.getByRole('button', { name: /workflow\.nodes\.humanInputV2\.recipients\.edit/ }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputV2.recipients.type.initiator',
-      }),
-    )
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.confirm' }),
-    )
-
-    expect(observe).toHaveBeenLastCalledWith([{ type: 'initiator' }])
-  })
-
-  it('repairs an unresolved imported contact in place without reordering', async () => {
-    const user = userEvent.setup()
-    const observe = vi.fn()
-    render(
-      <Harness
-        initial={[
-          { type: 'initiator' },
-          { type: 'contact', contact_id: 'missing-contact' },
-          { type: 'onetime_email', email: 'owner@example.com' },
-        ]}
-        observe={observe}
-      />,
-    )
-
-    await user.click(
-      screen.getByRole('button', {
-        name: /workflow\.nodes\.humanInputV2\.recipients\.edit:.*missing-contact/,
-      }),
-    )
-    await user.click(await screen.findByText('Evan Zhang · evan@example.com'))
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.confirm' }),
-    )
-
-    expect(observe).toHaveBeenLastCalledWith([
-      { type: 'initiator' },
-      { type: 'contact', contact_id: 'contact-evan' },
-      { type: 'onetime_email', email: 'owner@example.com' },
-    ])
-  })
-
-  it('renders a migrated whole-workspace recipient and preserves it while editing other recipients', async () => {
-    const user = userEvent.setup()
-    const observe = vi.fn()
-    const optionProvider = provider()
-    render(
-      <Harness
-        initial={[
-          { type: 'all_workspace_contacts' },
-          { type: 'onetime_email', email: 'before@example.com' },
-        ]}
-        optionProvider={optionProvider}
-        observe={observe}
-      />,
-    )
-
-    expect(
-      screen.getByText('workflow.nodes.humanInputV2.recipients.allWorkspaceContacts'),
-    ).toBeInTheDocument()
-    expect(optionProvider.resolve).not.toHaveBeenCalled()
-    expect(observe).not.toHaveBeenCalled()
-    await user.click(
-      screen.getByRole('button', { name: /recipients\.edit:.*allWorkspaceContacts/ }),
-    )
-    expect(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputV2.recipients.type.all_workspace_contacts',
-      }),
-    ).toHaveAttribute('aria-pressed', 'true')
-    expect(
-      screen.getByText('workflow.nodes.humanInputV2.recipients.allWorkspaceContactsDescription'),
-    ).toBeInTheDocument()
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.confirm' }),
-    )
-    expect(observe).toHaveBeenLastCalledWith([
-      { type: 'all_workspace_contacts' },
-      { type: 'onetime_email', email: 'before@example.com' },
-    ])
-
-    await user.click(screen.getByRole('button', { name: /recipients\.edit:.*before@example.com/ }))
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.type.initiator' }),
-    )
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.confirm' }),
-    )
-    expect(observe).toHaveBeenLastCalledWith([
-      { type: 'all_workspace_contacts' },
-      { type: 'initiator' },
-    ])
-  })
-
-  it('adds all workspace contacts once, rejects duplicate edits, and removes only that recipient', async () => {
-    const user = userEvent.setup()
-    const observe = vi.fn()
-    render(<Harness initial={[{ type: 'initiator' }]} observe={observe} />)
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputV2.recipients.allWorkspaceContacts',
-      }),
-    )
-    expect(observe).toHaveBeenLastCalledWith([
-      { type: 'initiator' },
-      { type: 'all_workspace_contacts' },
-    ])
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
-    )
-    expect(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputV2.recipients.allWorkspaceContacts',
-      }),
-    ).toBeDisabled()
-    await user.keyboard('{Escape}')
-    await user.click(
-      screen.getByRole('button', { name: /recipients\.edit:.*recipients\.type\.initiator/ }),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'workflow.nodes.humanInputV2.recipients.type.all_workspace_contacts',
-      }),
-    )
-    await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.confirm' }),
-    )
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'workflow.nodes.humanInputV2.error.recipientDuplicate',
-    )
-    expect(observe).toHaveBeenCalledTimes(1)
-    await user.click(
-      screen.getAllByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.cancel' })[0]!,
-    )
-    await user.click(
-      screen.getByRole('button', { name: /recipients\.edit:.*allWorkspaceContacts/ }),
-    )
-    await user.click(
-      screen.getByRole('button', { name: /recipients\.remove:.*allWorkspaceContacts/ }),
-    )
-    expect(observe).toHaveBeenLastCalledWith([{ type: 'initiator' }])
   })
 })
