@@ -5,7 +5,7 @@ import type {
   PersonalAccessTokenResponse,
   PersonalAccessTokenWorkspaceResponse,
 } from '@dify/contracts/api/console/account/types.gen'
-import type { FormEvent } from 'react'
+import type { SubmitEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -69,7 +69,7 @@ export default function TokenForm({
   const [expiration, setExpiration] =
     useState<NonNullable<PersonalAccessTokenCreatePayload['expiration']>>('90_days')
   const [resourceMode, setResourceMode] = useState(initial?.token.resource_scope_mode ?? 'all')
-  const [workspaceMode, setWorkspaceMode] = useState(initial?.token.workspace_scope_mode ?? 'all')
+  const [workspaceMode, setWorkspaceMode] = useState(initial?.token.workspace_scope_mode ?? 'none')
   const [resources, setResources] = useState<PersonalAccessTokenResourceResponse[]>(
     initial?.resources.filter((item) => !duplicate || item.available) ?? [],
   )
@@ -107,7 +107,7 @@ export default function TokenForm({
   const validScope =
     (resourceMode !== 'selected' || resources.length > 0) &&
     (workspaceMode !== 'selected' || workspaces.length > 0)
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!name.trim() || !validScope || editExpired) return
     const body: PersonalAccessTokenCreatePayload = {
@@ -156,7 +156,7 @@ export default function TokenForm({
   }
   return (
     <>
-      <div className="px-6 pt-6 pr-14 pb-3">
+      <div className="px-6 pe-14 pt-6 pb-3">
         <DialogTitle>
           {created
             ? t(($) => $['personalAccessToken.createdTitle'])
@@ -170,7 +170,7 @@ export default function TokenForm({
           render={
             <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
             >
               <span aria-hidden="true" className="i-ri-close-line size-4" />
             </IconButton>
@@ -310,7 +310,7 @@ export default function TokenForm({
                   {resourceMode === 'selected' && resources.length > 0 && (
                     <span
                       aria-hidden
-                      className="ml-1 rounded border border-divider-deep px-1 system-2xs-medium text-text-tertiary"
+                      className="ms-1 rounded border border-divider-deep px-1 system-2xs-medium text-text-tertiary"
                     >
                       {resources.length}
                     </span>
@@ -387,7 +387,7 @@ export default function TokenForm({
                   {workspaceMode === 'selected' && workspaces.length > 0 && (
                     <span
                       aria-hidden
-                      className="ml-1 rounded border border-divider-deep px-1 system-2xs-medium text-text-tertiary"
+                      className="ms-1 rounded border border-divider-deep px-1 system-2xs-medium text-text-tertiary"
                     >
                       {workspaces.length}
                     </span>

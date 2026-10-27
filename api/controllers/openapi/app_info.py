@@ -49,6 +49,7 @@ class WorkflowAppInfoApi(Resource):
         kind=Kind.OBJECT,
         summary="Name, description, icon and run cap of a workflow app",
         examples=(_INFO_EXAMPLE,),
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=account_settings_guards(_INFO_READ, scope=Scope.APPS_READ, modes=(AppMode.WORKFLOW,), roles=None),
         returns=(HTTPStatus.OK, AppSettingsInfo, "App info"),
     )

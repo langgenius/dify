@@ -12,6 +12,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
 from configs import dify_config
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
@@ -196,6 +197,7 @@ class PluginsApi(Resource):
         kind=Kind.OBJECT,
         summary="Plugins installed in the workspace, with the provider ids each one adds",
         examples=(Example(title="Installed model plugins", input={"category": "model"}),),
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         requirements=WORKSPACE_READ_GUARDS,
         query=PluginListQuery,
         returns=(HTTPStatus.OK, PluginListResponse, "Installed plugins"),
