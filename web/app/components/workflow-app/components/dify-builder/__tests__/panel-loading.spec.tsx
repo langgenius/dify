@@ -24,6 +24,7 @@ import {
   difyBuilderExecutionProgressAtom,
   difyBuilderSessionViewAtom,
 } from '../session/state'
+import { difyBuilderCanvasRefreshFailedAtom } from '../store'
 
 vi.unmock('react-i18next')
 
@@ -171,8 +172,10 @@ const renderPanel = async (
                   ? resources
                   : {
                       common: resources.common,
-                      workflow: resources.workflow,
                       difyBuilder: resources.difyBuilder,
+                      ...(language === locale || language === 'en-US'
+                        ? { workflow: resources.workflow }
+                        : {}),
                     },
               ]),
           )}
@@ -264,6 +267,59 @@ describe('DifyBuilderPanel translation loading', () => {
     expect(
       await screen.findByText(chineseBuilder['copy.progress.understandTheRequestedWorkflow']),
     ).toBeVisible()
+    expect(mocks.closePanel).not.toHaveBeenCalled()
+  })
+
+  it('loads workflow translations only for the canvas retry action without hiding the panel', async () => {
+    const user = userEvent.setup()
+    let resolveWorkflow!: () => void
+    const workflowLoaded = new Promise<void>((resolve) => {
+      resolveWorkflow = resolve
+    })
+    mocks.loadResource.mockImplementation(
+      async (
+        locale: keyof typeof translations,
+        namespace: keyof (typeof translations)['en-US'],
+      ) => {
+        if (namespace === 'workflow') await workflowLoaded
+        return { default: translations[locale][namespace] }
+      },
+    )
+    const store = await renderPanel('en-US', { preloadReplyLocale: false })
+    await screen.findByRole('complementary', { name: englishBuilder.panelTitle })
+    showRequirements(store)
+    const input = screen.getByRole('textbox', { name: 'Goal' })
+    await user.type(input, ' keep editing')
+
+    act(() => {
+      store.set(difyBuilderSessionViewAtom, (view) => ({ ...view!, reply_language: 'zh-Hans' }))
+    })
+
+    expect(
+      await screen.findByRole('button', { name: chineseCommon['operation.close'] }),
+    ).toBeVisible()
+    expect(mocks.loadResource).not.toHaveBeenCalledWith('zh-Hans', 'workflow')
+    expect(input).toBeVisible()
+    expect(input).toHaveValue('Translate documents keep editing')
+    expect(input).toHaveFocus()
+
+    act(() => store.set(difyBuilderCanvasRefreshFailedAtom, true))
+    await waitFor(() => expect(mocks.loadResource).toHaveBeenCalledWith('zh-Hans', 'workflow'))
+
+    expect(screen.getByRole('complementary', { name: chineseBuilder.panelTitle })).toBeVisible()
+    expect(screen.getByRole('button', { name: chineseCommon['operation.close'] })).toBeVisible()
+    expect(input).toBeVisible()
+    expect(input).toHaveValue('Translate documents keep editing')
+    expect(screen.getByRole('status', { name: chineseCommon.loading })).toBeVisible()
+
+    await act(async () => resolveWorkflow())
+
+    expect(
+      await screen.findByRole('button', { name: chineseWorkflow['common.retryCanvasSync'] }),
+    ).toBeVisible()
+    expect(input).toBeVisible()
+    expect(input).toHaveValue('Translate documents keep editing')
+    expect(screen.queryByRole('status', { name: chineseCommon.loading })).not.toBeInTheDocument()
     expect(mocks.closePanel).not.toHaveBeenCalled()
   })
 
