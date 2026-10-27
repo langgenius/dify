@@ -6,7 +6,7 @@ run_draft path. Browser payloads identify a disclosed operation, never authority
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 from uuid import NAMESPACE_URL, uuid5
 
@@ -17,6 +17,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.dify_builder.errors import BadRequestError, ConflictError
 from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderConversationItem, DifyBuilderExecutionRequest, DifyBuilderSession
+from models.dify_builder_native_tests import (
+    NativeInvocationState,
+    NativePayloadObject,
+    NativeTestInvocation,
+    NativeTestScope,
+)
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowRun
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, Digest, canonical_digest
@@ -91,6 +97,8 @@ class TestActionPort(Protocol):
 
     def current(self, *, actor: Actor, session_id: str, test_input_id: str) -> NativeTestPublicReceipt | None: ...
 
+    def observation_initializing(self, *, actor: Actor, session_id: str, test_input_id: str) -> bool: ...
+
     def current_diagnostics(
         self, *, actor: Actor, session_id: str, test_input_id: str, receipt: NativeTestPublicReceipt
     ) -> list[dict[str, Any]]: ...
@@ -147,6 +155,95 @@ class BuilderTestActions:
         if request_id is None:
             return None
         return self.command_factory(actor=actor).peek(actor=actor, session_id=session_id, request_id=request_id)
+
+    def observation_initializing(self, *, actor: Actor, session_id: str, test_input_id: str) -> bool:
+        """Defer SSE projection only before admission acknowledges its first context.
+
+        This never substitutes a public receipt or authorizes a command. Context
+        acknowledgement and root-state insertion share a transaction; a retained
+        context therefore rules out treating a missing initialized root as startup.
+        """
+        request_id = self._current_id(actor=actor, session_id=session_id, test_input_id=test_input_id)
+        if request_id is None:
+            return False
+        with self.sessions() as sql:
+            request = sql.get(DifyBuilderExecutionRequest, request_id)
+            builder = sql.get(DifyBuilderSession, session_id)
+            scope = sql.get(NativeTestScope, request_id)
+            if (
+                request is None
+                or builder is None
+                or scope is None
+                or (request.tenant_id, request.actor_id, request.session_id, request.test_input_id, request.app_id)
+                != (actor.tenant_id, actor.account_id, session_id, test_input_id, builder.app_id)
+                or (builder.tenant_id, builder.owner_account_id) != (actor.tenant_id, actor.account_id)
+                or request.state != "running"
+                or request.native_run_id is not None
+                or scope.tenant_id != actor.tenant_id
+                or scope.generation != 0
+                or not scope.task_approved
+                or scope.cancelled
+                or (scope.expires_at.replace(tzinfo=UTC) if scope.expires_at.tzinfo is None else scope.expires_at)
+                <= datetime.now(UTC)
+                or canonical_digest(request.context) != request.context_digest
+                or len(request.observations) != 1
+            ):
+                return False
+            record = request.observations[0]
+            if (
+                not isinstance(record, dict)
+                or not record.get("native_command_key")
+                or not record.get("body_digest")
+                or record.get("admission_launched") is not None
+            ):
+                return False
+            try:
+                receipt = NativeTestPublicReceipt.model_validate(record.get("receipt"))
+            except ValidationError:
+                return False
+            if (receipt.request_id, receipt.generation, receipt.version, receipt.status, receipt.native_run_id) != (
+                request_id,
+                0,
+                1,
+                "prepared",
+                None,
+            ):
+                return False
+            if (
+                receipt.wait_reason,
+                receipt.native_status,
+                receipt.pending,
+                receipt.outcome,
+                receipt.evidence_refs,
+                receipt.cancellation,
+                receipt.can_resume,
+            ) != (None, None, (), None, (), None, False):
+                return False
+            invocations = list(
+                sql.scalars(select(NativeTestInvocation).where(NativeTestInvocation.request_id == request_id))
+            )
+            if len(invocations) != 1:
+                return False
+            invocation = invocations[0]
+            if (
+                invocation.tenant_id != actor.tenant_id
+                or not invocation.active
+                or invocation.bindings
+                or invocation.invocation_id != request.context.get("invocation_id")
+            ):
+                return False
+            return (
+                sql.scalar(
+                    select(NativeInvocationState.id).where(NativeInvocationState.request_id == request_id).limit(1)
+                )
+                is None
+                and sql.scalar(
+                    select(NativePayloadObject.id)
+                    .where(NativePayloadObject.request_id == request_id, NativePayloadObject.kind == "context")
+                    .limit(1)
+                )
+                is None
+            )
 
     def current_diagnostics(
         self, *, actor: Actor, session_id: str, test_input_id: str, receipt: NativeTestPublicReceipt
