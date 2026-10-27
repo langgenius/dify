@@ -44,7 +44,7 @@ from models.dify_builder_native_tests import (
 )
 from models.enums import AppStatus
 from models.model import App
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
@@ -233,7 +233,7 @@ def case(monkeypatch: pytest.MonkeyPatch) -> HostCapacityCase:
     monkeypatch.setattr(host_capacity, "native_observation_transaction", lambda factory, **_: factory.begin())
     events: list[str] = []
     workflow = Workflow(
-        type="workflow",
+        type=WorkflowType.WORKFLOW,
         version="draft",
         created_by="actor",
         id="workflow",

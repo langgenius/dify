@@ -403,7 +403,7 @@ def test_resume_rejects_autosave_between_dsl_read_and_reservation(
 
     s = seed(repo, PcState.BUILD_PLAN_APPROVAL)
     with repo._session_factory() as sql, sql.begin():
-        workflow = Workflow(
+        workflow = Workflow.new(
             tenant_id=TENANT_ID,
             app_id=APP_ID,
             type="workflow",
@@ -413,6 +413,7 @@ def test_resume_rejects_autosave_between_dsl_read_and_reservation(
             features="{}",
             environment_variables=[],
             conversation_variables=[],
+            rag_pipeline_variables=[],
         )
         sql.add(workflow)
         sql.flush()
