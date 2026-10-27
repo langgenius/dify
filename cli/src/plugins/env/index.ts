@@ -1,3 +1,4 @@
+import { readTokenFile } from '@/auth/token-file'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { definePlugin } from '@/kernel/plugin'
@@ -19,8 +20,8 @@ export const ENV = {
 
 export type EnvService = Readonly<{
   server?: string
-  token?: string
-  tokenFile?: string
+  // Set when DIFY_TOKEN or DIFY_TOKEN_FILE supplies the login; the file is read on each call.
+  readToken?: () => Promise<string>
   workspaceId?: string
   configDir: string
   cacheDirSet: boolean
@@ -48,25 +49,37 @@ function validateServer(server: string | undefined): void {
   }
 }
 
+type EnvCredential = Readonly<{
+  variable: string
+  read: () => Promise<string>
+}>
+
+function envCredential(): EnvCredential | undefined {
+  const token = getEnv(ENV.Token)
+  const tokenFile = getEnv(ENV.TokenFile)
+  if (token !== undefined && tokenFile !== undefined) {
+    throw new BaseError({
+      code: ErrorCode.UsageInvalidFlag,
+      message: `${ENV.Token} and ${ENV.TokenFile} cannot both be set`,
+    })
+  }
+  if (token !== undefined) return { variable: ENV.Token, read: async () => token }
+  if (tokenFile !== undefined)
+    return { variable: ENV.TokenFile, read: () => readTokenFile(tokenFile) }
+  return undefined
+}
+
 export const env = definePlugin({
   name: 'env',
   needs: [],
   build: (): EnvService => {
     const server = getEnv(ENV.Server)
-    const token = getEnv(ENV.Token)
-    const tokenFile = getEnv(ENV.TokenFile)
     validateServer(server)
-    if (token !== undefined && tokenFile !== undefined) {
+    const credential = envCredential()
+    if (server === undefined && credential !== undefined) {
       throw new BaseError({
         code: ErrorCode.UsageInvalidFlag,
-        message: `${ENV.Token} and ${ENV.TokenFile} cannot both be set`,
-      })
-    }
-    const credentialVar = token !== undefined ? ENV.Token : ENV.TokenFile
-    if (server === undefined && (token !== undefined || tokenFile !== undefined)) {
-      throw new BaseError({
-        code: ErrorCode.UsageInvalidFlag,
-        message: `${credentialVar} requires ${ENV.Server} to be set`,
+        message: `${credential.variable} requires ${ENV.Server} to be set`,
         hint:
           getEnv(ENV.V1Host) === undefined
             ? undefined
@@ -75,8 +88,7 @@ export const env = definePlugin({
     }
     return Object.freeze({
       server,
-      token,
-      tokenFile,
+      readToken: credential?.read,
       workspaceId: getEnv(ENV.WorkspaceId),
       configDir: resolveConfigDir(),
       cacheDirSet: getEnv(ENV.CacheDir) !== undefined,

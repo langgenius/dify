@@ -74,15 +74,9 @@ export const session = definePlugin({
   name: 'session',
   needs: [env, io],
   build: async (ctx): Promise<SessionService> => {
-    const {
-      server,
-      token: envToken,
-      tokenFile: envTokenFile,
-      workspaceId: envWorkspaceId,
-      configDir,
-    } = await ctx.get(env)
+    const { server, readToken, workspaceId: envWorkspaceId, configDir } = await ctx.get(env)
     // An env login is the pair: a server on its own only says where to log in.
-    const fromEnv = server !== undefined && (envToken !== undefined || envTokenFile !== undefined)
+    const fromEnv = server !== undefined && readToken !== undefined
     const file = localFile(
       join(configDir, LOGIN_FILE_NAME),
       LOGIN_SCHEMA,

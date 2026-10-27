@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, expect, it } from 'vite-plus/test'
 import { Context } from '@/kernel/context'
 import { env } from './index'
@@ -39,11 +42,27 @@ it('rejects a non-http server url', async () => {
   await expect(new Context().get(env)).rejects.toMatchObject({ code: 'usage_invalid_flag' })
 })
 
+it('reads DIFY_TOKEN alongside the server', async () => {
+  process.env.DIFY_SERVER = 'https://dify.example'
+  process.env.DIFY_TOKEN = 'dfoa_x'
+  delete process.env.DIFY_TOKEN_FILE
+  expect(await (await new Context().get(env)).readToken?.()).toBe('dfoa_x')
+})
+
 it('reads DIFY_TOKEN_FILE alongside the server', async () => {
+  const path = join(mkdtempSync(join(tmpdir(), 'difyctl-env-')), 'token.json')
+  writeFileSync(path, JSON.stringify({ access_token: 'dfoa_from_file' }))
   process.env.DIFY_SERVER = 'https://dify.example'
   delete process.env.DIFY_TOKEN
-  process.env.DIFY_TOKEN_FILE = '/run/dify/token.json'
-  expect((await new Context().get(env)).tokenFile).toBe('/run/dify/token.json')
+  process.env.DIFY_TOKEN_FILE = path
+  expect(await (await new Context().get(env)).readToken?.()).toBe('dfoa_from_file')
+})
+
+it('has no env token when neither variable is set', async () => {
+  process.env.DIFY_SERVER = 'https://dify.example'
+  delete process.env.DIFY_TOKEN
+  delete process.env.DIFY_TOKEN_FILE
+  expect((await new Context().get(env)).readToken).toBeUndefined()
 })
 
 it('rejects DIFY_TOKEN together with DIFY_TOKEN_FILE', async () => {
