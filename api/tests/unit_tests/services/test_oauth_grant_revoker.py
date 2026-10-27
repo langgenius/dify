@@ -16,6 +16,7 @@ from services.oauth_device_contracts import GrantKey, IssuedOAuthToken
 from services.oauth_grant_revoker import GrantRevoker, OAuthRevocationService, RevokeRequest
 from services.oauth_token_contracts import TokenEndpointError, TokenErrorCode
 from tests.helpers.unit.repositories.oauth_lock_order import record_locks
+from tests.helpers.unit.repositories.oauth_refresh_tokens import seed_refresh_token
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (
     CONFIDENTIAL_ID,
     CONFIDENTIAL_SECRET,
@@ -63,11 +64,11 @@ class _Harness:
         )
 
     def issue_refresh(self, grant: GrantKey) -> str:
-        return self.refresh.issue(
+        return seed_refresh_token(
+            self.factory,
             grant=grant,
             account_id="account-1",
             workspace_id="workspace-1",
-            family_id=None,
             lifetime=REFRESH_LIFETIME,
         )
 

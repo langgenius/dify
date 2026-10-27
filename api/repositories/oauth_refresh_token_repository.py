@@ -1,10 +1,9 @@
 """SQLAlchemy persistence adapter for rotating OAuth refresh tokens."""
 
 import secrets
-import uuid
 from collections.abc import Collection
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import ColumnElement, Row, and_, delete, or_, select, update
@@ -180,27 +179,6 @@ def refresh_token_grant(session: Session, *, account_id: str, token_id: str) -> 
 class SQLAlchemyOAuthRefreshTokenRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
-
-    def issue(
-        self,
-        *,
-        grant: GrantKey,
-        account_id: str,
-        workspace_id: str | None,
-        family_id: str | None,
-        lifetime: timedelta,
-    ) -> str:
-        token = new_refresh_token()
-        write = RefreshTokenWrite(
-            token_hash=sha256_hex(token),
-            family_id=family_id or str(uuid.uuid4()),
-            workspace_id=workspace_id,
-            expires_at=datetime.now(UTC) + lifetime,
-            presented=None,
-        )
-        with self._session_factory() as session, session.begin():
-            insert_refresh_token(session, grant=grant, account_id=account_id, write=write)
-        return token
 
     def find(self, token: str) -> RefreshTokenRecord | None:
         with self._session_factory() as session:

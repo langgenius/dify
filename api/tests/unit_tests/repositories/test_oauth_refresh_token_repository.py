@@ -19,6 +19,7 @@ from services.oauth_device_contracts import (
     RefreshTokenRejectedError,
     RefreshTokenReusedError,
 )
+from tests.helpers.unit.repositories.oauth_refresh_tokens import seed_refresh_token
 
 ACCOUNT_ID = "00000000-0000-0000-0000-000000000001"
 WORKSPACE_ID = "00000000-0000-0000-0000-000000000002"
@@ -39,13 +40,14 @@ def _repository(factory: sessionmaker[Session]) -> SQLAlchemyOAuthRefreshTokenRe
 
 
 def _issue(
-    repo: SQLAlchemyOAuthRefreshTokenRepository,
+    factory: sessionmaker[Session],
     *,
     grant: GrantKey | None = None,
     family_id: str | None = None,
     lifetime: timedelta = LIFETIME,
 ) -> str:
-    return repo.issue(
+    return seed_refresh_token(
+        factory,
         grant=grant or _grant(),
         account_id=ACCOUNT_ID,
         workspace_id=WORKSPACE_ID,
@@ -54,11 +56,11 @@ def _issue(
     )
 
 
-def test_issue_stores_only_the_hash_and_find_returns_the_record(sqlite_session_factory: sessionmaker[Session]) -> None:
+def test_insert_stores_only_the_hash_and_find_returns_the_record(sqlite_session_factory: sessionmaker[Session]) -> None:
     repo = _repository(sqlite_session_factory)
     before = datetime.now(UTC)
 
-    token = _issue(repo)
+    token = _issue(sqlite_session_factory)
 
     assert token.startswith(REFRESH_TOKEN_PREFIX)
     with sqlite_session_factory() as session:
@@ -77,23 +79,23 @@ def test_issue_stores_only_the_hash_and_find_returns_the_record(sqlite_session_f
 
 def test_find_unknown_token_returns_none(sqlite_session_factory: sessionmaker[Session]) -> None:
     repo = _repository(sqlite_session_factory)
-    _issue(repo)
+    _issue(sqlite_session_factory)
 
     assert repo.find("dfor_unknown") is None
     assert repo.find("") is None
 
 
-def test_issue_without_family_starts_a_new_family_and_with_family_joins_it(
+def test_find_returns_the_family_each_token_was_stored_with(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     repo = _repository(sqlite_session_factory)
-    first = repo.find(_issue(repo))
-    other = repo.find(_issue(repo))
+    first = repo.find(_issue(sqlite_session_factory))
+    other = repo.find(_issue(sqlite_session_factory))
     assert first is not None
     assert other is not None
     assert first.family_id != other.family_id
 
-    joined = repo.find(_issue(repo, family_id=first.family_id))
+    joined = repo.find(_issue(sqlite_session_factory, family_id=first.family_id))
     assert joined is not None
     assert joined.family_id == first.family_id
 
@@ -109,8 +111,8 @@ def _set_rotated_at(factory: sessionmaker[Session], token: str, rotated_at: date
 
 def test_find_returns_expired_and_rotated_records_as_they_are(sqlite_session_factory: sessionmaker[Session]) -> None:
     repo = _repository(sqlite_session_factory)
-    expired_token = _issue(repo, lifetime=timedelta(seconds=-1))
-    rotated_token = _issue(repo)
+    expired_token = _issue(sqlite_session_factory, lifetime=timedelta(seconds=-1))
+    rotated_token = _issue(sqlite_session_factory)
     _set_rotated_at(sqlite_session_factory, rotated_token, datetime.now(UTC))
 
     expired = repo.find(expired_token)
@@ -139,7 +141,7 @@ def test_spend_marks_a_fresh_token_rotated_and_lets_it_replay_in_the_grace(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     repo = _repository(sqlite_session_factory)
-    token = _issue(repo)
+    token = _issue(sqlite_session_factory)
     record = _found(repo, token)
 
     _spend(sqlite_session_factory, record)
@@ -161,7 +163,7 @@ def test_spend_past_the_grace_is_reuse(
     sqlite_session_factory: sessionmaker[Session], grace: timedelta, rotated_ago: timedelta
 ) -> None:
     repo = _repository(sqlite_session_factory)
-    token = _issue(repo)
+    token = _issue(sqlite_session_factory)
     _set_rotated_at(sqlite_session_factory, token, datetime.now(UTC) - rotated_ago)
 
     with pytest.raises(RefreshTokenReusedError):
@@ -170,8 +172,8 @@ def test_spend_past_the_grace_is_reuse(
 
 def test_spend_rejects_an_expired_or_deleted_token(sqlite_session_factory: sessionmaker[Session]) -> None:
     repo = _repository(sqlite_session_factory)
-    expired = _found(repo, _issue(repo, lifetime=timedelta(seconds=-1)))
-    deleted = _found(repo, _issue(repo))
+    expired = _found(repo, _issue(sqlite_session_factory, lifetime=timedelta(seconds=-1)))
+    deleted = _found(repo, _issue(sqlite_session_factory))
     with sqlite_session_factory() as session, session.begin():
         session.execute(delete(OAuthRefreshToken).where(OAuthRefreshToken.id == deleted.id))
 

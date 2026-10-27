@@ -14,11 +14,11 @@ from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import sha256_hex
 from models.oauth import OAuthAccessToken, OAuthRefreshToken
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
-from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTokenRepository
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
 from services.oauth_device_contracts import GrantKey, IssuedOAuthToken
 from tests.helpers.unit.repositories.oauth_lock_order import record_locks
+from tests.helpers.unit.repositories.oauth_refresh_tokens import seed_refresh_token
 
 
 @dataclass
@@ -526,11 +526,11 @@ def _grant(device_label: str) -> GrantKey:
 
 
 def _issue_refresh(factory: sessionmaker[Session], grant: GrantKey) -> str:
-    return SQLAlchemyOAuthRefreshTokenRepository(session_factory=factory).issue(
+    return seed_refresh_token(
+        factory,
         grant=grant,
         account_id="account-1",
         workspace_id="workspace-1",
-        family_id=None,
         lifetime=timedelta(days=30),
     )
 
