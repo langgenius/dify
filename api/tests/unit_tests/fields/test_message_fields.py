@@ -131,3 +131,76 @@ class TestRetrieverResourceDocMetadata:
         ).model_dump(mode="json")
 
         assert payload["retriever_resources"][0]["doc_metadata"]["start_seconds"] == 1036.0
+
+
+class TestMessageListItemNullListFields:
+    def test_none_list_fields_normalize_to_empty_lists(self):
+        # Legacy messages stored before 1.18 can carry null for these fields
+        # (Message.retriever_resources returns None when the key is missing
+        # or explicitly null in message_metadata). Parsing must not 422.
+        kwargs = _base_kwargs()
+        kwargs["retriever_resources"] = None
+        kwargs["agent_thoughts"] = None
+        kwargs["message_files"] = None
+
+        item = MessageListItem(**kwargs)
+
+        assert item.retriever_resources == []
+        assert item.agent_thoughts == []
+        assert item.message_files == []
+
+    def test_missing_list_fields_default_to_empty_lists(self):
+        kwargs = _base_kwargs()
+        kwargs.pop("retriever_resources")
+        kwargs.pop("agent_thoughts")
+        kwargs.pop("message_files")
+
+        item = MessageListItem(**kwargs)
+
+        assert item.retriever_resources == []
+        assert item.agent_thoughts == []
+        assert item.message_files == []
+
+    def test_populated_list_fields_are_preserved(self):
+        kwargs = _base_kwargs()
+        kwargs["retriever_resources"] = [_retrieved_video_resource()]
+        kwargs["agent_thoughts"] = [
+            {
+                "id": "thought-1",
+                "message_id": "m1",
+                "position": 1,
+                "thought": "thinking",
+                "tool_labels": {},
+                "files": [],
+            }
+        ]
+        kwargs["message_files"] = [
+            {
+                "id": "11111111-1111-4111-8111-111111111111",
+                "filename": "notes.txt",
+                "type": "document",
+                "transfer_method": "local_file",
+            }
+        ]
+
+        payload = MessageListItem(**kwargs).model_dump(mode="json")
+
+        assert len(payload["retriever_resources"]) == 1
+        assert payload["retriever_resources"][0]["document_name"] == "training.mp4"
+        assert payload["agent_thoughts"][0]["id"] == "thought-1"
+        assert payload["agent_thoughts"][0]["thought"] == "thinking"
+        assert payload["message_files"][0]["filename"] == "notes.txt"
+
+    def test_web_message_list_item_parses_legacy_metadata_with_null_retriever_resources(self):
+        # A pre-upgrade message whose message_metadata_dict carries
+        # "retriever_resources": None must still load in the Web UI.
+        payload = {
+            **_base_kwargs(),
+            "retriever_resources": None,
+            "message_metadata_dict": {"retriever_resources": None},
+        }
+
+        item = WebMessageListItem.model_validate(payload)
+
+        assert item.retriever_resources == []
+        assert item.metadata == {"retriever_resources": None}
