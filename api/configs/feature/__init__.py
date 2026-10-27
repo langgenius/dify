@@ -1163,7 +1163,8 @@ class AuthConfig(BaseSettings):
         )
 
     OAUTH_MAX_TOKENS_PER_ACCOUNT: int = Field(
-        description="Max live OAuth sessions per account; issuing one past the cap revokes the least recently used. "
+        description="Max live OAuth sessions per account, across device and browser logins; issuing one past the "
+        "cap revokes the session with the oldest login or refresh. "
         f"Values outside {MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT}-{MAX_OAUTH_MAX_TOKENS_PER_ACCOUNT} are clamped; "
         "a non-integer falls back to the default.",
         ge=MIN_OAUTH_MAX_TOKENS_PER_ACCOUNT,
@@ -1183,7 +1184,8 @@ class AuthConfig(BaseSettings):
         )
 
     ENABLE_OAUTH_AUTHORIZATION_CODE: bool = Field(
-        description="Enable the OAuth authorization code + PKCE flow on /openapi/v1/oauth/*.",
+        description="Enable the OAuth authorization code + PKCE flow: the /openapi/v1/oauth/authorize routes and the "
+        "authorization_code and refresh_token grants. /openapi/v1/oauth/token stays on for the device grant.",
         default=True,
     )
 
@@ -1276,7 +1278,8 @@ class AuthConfig(BaseSettings):
     )
 
     DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
-        description="Max device-flow approve and deny requests per console account per hour.",
+        description="Max approve and deny requests per console account per hour, on the device-flow page and on "
+        "the browser consent page (each has its own bucket).",
         default=10,
     )
 
