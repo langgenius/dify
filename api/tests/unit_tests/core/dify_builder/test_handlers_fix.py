@@ -297,7 +297,7 @@ def test_apply_forwards_env_emit_canvas_to_the_adapters_on_canvas_callback() -> 
     turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
     runner.advance(s.id, turn)
 
-    assert events == [{"event": "apply_error_fix", "node_id": "output"}]
+    assert events == [{"event": "graph_changed", "cause": "apply"}]
 
 
 def test_apply_without_env_emit_canvas_does_not_error() -> None:

@@ -185,7 +185,10 @@ describe('Builder workflow stream', () => {
       })
       store.set(difyBuilderSessionViewAtom, before)
       store.set(difyBuilderActiveSessionIdAtom, before.session_id)
-      store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: before.session_id, version: 1 })
+      store.set(difyBuilderCanvasAppliedViewAtom, {
+        sessionId: before.session_id,
+        version: 1,
+      })
       mocks.action.mockResolvedValueOnce(
         streamOf(
           commandStartedEvent(before),
@@ -200,7 +203,10 @@ describe('Builder workflow stream', () => {
       act(() => result.current.onCanvasRefreshed())
       expect(mocks.action).toHaveBeenCalledOnce()
       act(() => {
-        store.set(difyBuilderCanvasAppliedViewAtom, { sessionId: after.session_id, version: 2 })
+        store.set(difyBuilderCanvasAppliedViewAtom, {
+          sessionId: after.session_id,
+          version: 2,
+        })
         store.set(difyBuilderCanvasRefreshingAtom, true)
         result.current.onCanvasRefreshed()
       })
