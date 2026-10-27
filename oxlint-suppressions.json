@@ -6894,16 +6894,6 @@
       "count": 3
     }
   },
-  "web/features/new-rag/sources/create/connected-source-workflow.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/features/new-rag/sources/create/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/features/new-rag/sources/create/website-crawl-preview.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
