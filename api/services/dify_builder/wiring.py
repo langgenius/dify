@@ -616,7 +616,7 @@ def stream_advance_frames(
     emit_command_started: bool = True,
     command_id: str = "",
     initial_items: Sequence[ConversationItem] = (),
-    read_session_view: Callable[[], dict[str, object]] | None = None,
+    read_session_view: Callable[[], dict[str, object] | None] | None = None,
     initial_progress: ProgressSnapshot | None = None,
     native_receipts: Callable[[], tuple[NativeTestPublicReceipt, ...]] | None = None,
     native_cursor: str = "",
@@ -631,7 +631,9 @@ def stream_advance_frames(
     handshake unless ``emit_command_finished_when_settled`` is requested. The
     stream is bounded by ``_MAX_STREAM_SECONDS``. Reconnect calls supply
     ``read_session_view`` to recover a settled or interrupted command on an
-    idle heartbeat when its terminal broadcast was missed.
+    idle heartbeat when its terminal broadcast was missed. A callback returning
+    None defers only an uninitialized admission projection without supplying
+    a public receipt; the existing notification/heartbeat drives the next read.
     ``initial_progress`` restores the current worker's ordered activity state
     before consuming the already-established live subscription.
 
@@ -721,6 +723,9 @@ def stream_advance_frames(
                     # heartbeats must not become receipt polling in disguise.
                     if native_receipts is None and read_session_view is not None:
                         latest = read_session_view()
+                        if latest is None:
+                            yield ": keep-alive\n\n"
+                            continue
                         if latest.get("_task_paused") or latest["run_status"] != "processing" or latest["interrupted"]:
                             yield _event_frame(
                                 "command_finished",
@@ -744,6 +749,9 @@ def stream_advance_frames(
                     if native_receipts is None:
                         if read_session_view is not None:
                             latest = read_session_view()
+                            if latest is None:
+                                yield ": keep-alive\n\n"
+                                continue
                             if (
                                 latest.get("_task_paused")
                                 or latest["run_status"] != "processing"
@@ -763,6 +771,9 @@ def stream_advance_frames(
                     yield from native_frames()
                     if read_session_view is not None:
                         latest = read_session_view()
+                        if latest is None:
+                            yield ": keep-alive\n\n"
+                            continue
                         yield _event_frame(
                             "command_finished",
                             {
@@ -784,6 +795,16 @@ def stream_advance_frames(
                     "code": "timeout",
                     "message": "Builder operation timed out",
                     "session_id": view_dict.get("session_id"),
+                    "command_id": command_id,
+                },
+            )
+        except BuilderExecutionPolicyError as error:
+            yield _event_frame(
+                "error",
+                {
+                    "code": error.reason_code,
+                    "message": "Builder observation unavailable",
+                    "session_id": view_dict.get("session_id", ""),
                     "command_id": command_id,
                 },
             )

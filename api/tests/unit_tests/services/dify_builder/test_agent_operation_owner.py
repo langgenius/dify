@@ -18,6 +18,7 @@ from typing_extensions import TypedDict
 
 from core.dify_builder.models import Actor
 from models.dify_builder_native_tests import (
+    NativeEffectDispatchClaim,
     NativeEffectOperation,
     NativeEffectOutcome,
     NativeTestInvocation,
@@ -183,9 +184,13 @@ def test_reasoning_assessment_cannot_grant_or_hide_opaque_tool_scope() -> None:
         AgentCallAssessment.model_validate({**assessment.model_dump(), "approved": True})
 
 
-@pytest.mark.parametrize("boundary", ["core_tool", "model", "shell_run", "bootstrap", "config_pull"])
+@pytest.mark.parametrize(
+    ("boundary", "destructive"),
+    [(boundary, False) for boundary in ("core_tool", "model", "shell_run", "bootstrap", "config_pull")]
+    + [(boundary, True) for boundary in ("shell_run", "bootstrap", "config_pull")],
+)
 def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth(
-    monkeypatch: pytest.MonkeyPatch, boundary: str, operations_service: AgentOperationService
+    monkeypatch: pytest.MonkeyPatch, boundary: str, destructive: bool, operations_service: AgentOperationService
 ) -> None:
     from contextlib import contextmanager
     from datetime import UTC, datetime
@@ -263,7 +268,7 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
         "target_summary": {"tool": "write"},
         "parameters_summary": {"enabled": True},
         "risk_notice": "Creates one test value.",
-        "destructive": False,
+        "destructive": destructive,
     }
     from runtime_contracts.builder.native.agent_contracts import (
         AgentParentNodeRef,
@@ -389,7 +394,9 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
             assert capability.execution_context is not None
             assert capability.execution_context["initial_working_directory"] == "request_owned_agent_workspace"
             assert capability.execution_context["may_contain_cloned_files"] is True
-            assert capability.execution_context["filesystem_confinement_guaranteed"] is False
+            assert "filesystem_confinement_guaranteed" not in capability.execution_context
+            assert capability.execution_context["initial_working_directory_is_confinement"] is False
+            assert capability.execution_context["runtime_filesystem_isolation"] == "not_attested_to_assessor"
             asset_cli = capability.execution_context["configured_asset_cli"]
             assert isinstance(asset_cli, dict)
             assert asset_cli["may_overwrite_local_copies"] is True
@@ -406,6 +413,25 @@ def test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth
     assert binding["isolated"] is False
     assert "parameters" not in binding
     assert result.key.occurrence_path == key.occurrence_path
+
+    if destructive:
+        from dify_agent.protocol.native_testing import AgentPolicyStop
+        from sqlalchemy import func, select
+
+        from models.dify_builder_native_tests import NativeEffectAttempt
+
+        # Encrypted payload I/O is the explicit boundary; SQL identity,
+        # saved verdict and the before-call reservation gate remain real.
+        monkeypatch.setattr(service.state_store, "_read_object", lambda _receipt: payload)
+        owned.bindings.update(persisted.bindings)
+        decision = service.bridge.before_call(
+            ref=AgentNativeTestRef.model_validate(ref.model_dump(mode="json")), intent=result
+        )
+        assert isinstance(decision, AgentPolicyStop)
+        assert decision.reason_code == "destructive_effect_forbidden"
+        with service.loader.session_factory() as session:
+            for model in (NativeEffectOperation, NativeEffectAttempt, NativeEffectDispatchClaim):
+                assert session.scalar(select(func.count()).select_from(model)) == 0
 
 
 def test_only_the_selected_confirmed_model_can_use_the_outer_task_grant() -> None:
