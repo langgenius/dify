@@ -8,14 +8,15 @@ from uuid import uuid4
 
 import pytest
 from pydantic import JsonValue
-from sqlalchemy import update
+from sqlalchemy import Engine, event, update
+from sqlalchemy.orm import Session, SessionTransaction
 from werkzeug.test import TestResponse
 
 from constants import HEADER_NAME_APP_CODE, HEADER_NAME_PASSPORT
 from controllers.web.conversation import ConversationListApi
 from graphon.file import File, FileTransferMethod, FileType
 from models.enums import ConversationFromSource, CreatorUserRole, InvokeFrom
-from models.model import AppMode, Conversation, EndUser
+from models.model import App, AppMode, Conversation, EndUser
 from models.utils.file_input_compat import restore_input_files
 from models.web import PinnedConversation
 from repositories.conversation_repository import ConversationRepository
@@ -229,6 +230,43 @@ def test_end_user_outside_app_owner_scope_is_rejected(harness: _Harness, field: 
     response = harness.get()
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.get_json()["code"] == "not_found"
+    source.assert_closed()
+
+
+@pytest.mark.parametrize("change_app_too", [False, True], ids=["end-user-workspace", "app-workspace"])
+def test_workspace_change_after_admission_returns_conversation_not_found(
+    harness: _Harness, sqlite_engine: Engine, change_app_too: bool
+) -> None:
+    source = harness.source
+    owner_changed = False
+
+    def change_owner(session: Session, _transaction: SessionTransaction) -> None:
+        nonlocal owner_changed
+        assert session in source.admission_sessions
+        assert not source.repository_sessions
+        # Change persisted ownership after passport resolution has closed its transaction.
+        new_tenant_id = str(uuid4())
+        with Session(sqlite_engine) as writer, writer.begin():
+            writer.execute(update(EndUser).where(EndUser.id == source.end_user.id).values(tenant_id=new_tenant_id))
+            if change_app_too:
+                writer.execute(update(App).where(App.id == source.target.id).values(tenant_id=new_tenant_id))
+        owner_changed = True
+
+    event.listen(source.factory, "after_transaction_end", change_owner, once=True)
+    try:
+        response = harness.get()
+    finally:
+        event.remove(source.factory, "after_transaction_end", change_owner)
+
+    assert owner_changed
+    assert source.repository_sessions
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.get_json() == {
+        "code": "conversation_not_found",
+        "message": "The conversation was not found for this user and app.",
+        "status": HTTPStatus.NOT_FOUND,
+    }
+    assert harness.restored_inputs == []
     source.assert_closed()
 
 
