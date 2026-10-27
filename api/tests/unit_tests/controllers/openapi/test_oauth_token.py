@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from http import HTTPStatus
 
 import pytest
 from flask import Flask
@@ -150,7 +149,7 @@ def test_non_string_json_field_is_invalid_request(app: Flask) -> None:
 
 
 def test_401_sends_basic_challenge_and_other_errors_do_not(app: Flask) -> None:
-    _install(app, _Handler(error=TokenEndpointError(TokenErrorCode.INVALID_CLIENT, HTTPStatus.UNAUTHORIZED)))
+    _install(app, _Handler(error=TokenEndpointError(TokenErrorCode.INVALID_CLIENT)))
     unauthorized = app.test_client().post(_PATH, data={"grant_type": GrantType.DEVICE_CODE})
     _install(app, _Handler(error=TokenEndpointError(TokenErrorCode.SLOW_DOWN)))
     slow = app.test_client().post(_PATH, data={"grant_type": GrantType.DEVICE_CODE})

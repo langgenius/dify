@@ -1,5 +1,7 @@
 """Contracts shared by the OAuth token endpoint and its services."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
@@ -16,8 +18,11 @@ class GrantType(StrEnum):
 
 
 class TokenErrorCode(StrEnum):
+    # Annotation-only name, not a member; it declares what `__new__` attaches.
+    status: HTTPStatus
+
     INVALID_REQUEST = "invalid_request"
-    INVALID_CLIENT = "invalid_client"
+    INVALID_CLIENT = ("invalid_client", HTTPStatus.UNAUTHORIZED)
     INVALID_GRANT = "invalid_grant"
     UNAUTHORIZED_CLIENT = "unauthorized_client"
     UNSUPPORTED_GRANT_TYPE = "unsupported_grant_type"
@@ -27,22 +32,20 @@ class TokenErrorCode(StrEnum):
     SLOW_DOWN = "slow_down"
     EXPIRED_TOKEN = "expired_token"
     ACCESS_DENIED = "access_denied"
-    TEMPORARILY_UNAVAILABLE = "temporarily_unavailable"
+    TEMPORARILY_UNAVAILABLE = ("temporarily_unavailable", HTTPStatus.TOO_MANY_REQUESTS)
 
-    @property
-    def status(self) -> HTTPStatus:
-        if self is TokenErrorCode.INVALID_CLIENT:
-            return HTTPStatus.UNAUTHORIZED
-        if self is TokenErrorCode.TEMPORARILY_UNAVAILABLE:
-            return HTTPStatus.TOO_MANY_REQUESTS
-        return HTTPStatus.BAD_REQUEST
+    def __new__(cls, value: str, status: HTTPStatus = HTTPStatus.BAD_REQUEST) -> TokenErrorCode:
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.status = status
+        return obj
 
 
 class TokenEndpointError(Exception):
-    def __init__(self, code: TokenErrorCode, status: HTTPStatus | None = None) -> None:
+    def __init__(self, code: TokenErrorCode) -> None:
         super().__init__(code.value)
         self.code = code
-        self.status = status or code.status
+        self.status = code.status
 
 
 @dataclass(frozen=True)

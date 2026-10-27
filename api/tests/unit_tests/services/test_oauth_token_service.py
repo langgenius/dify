@@ -91,4 +91,21 @@ def test_exchange_dispatches_to_registered_handler() -> None:
 def test_token_error_code_owns_its_status(code: TokenErrorCode, status: HTTPStatus) -> None:
     assert code.status == status
     assert TokenEndpointError(code).status == status
-    assert TokenEndpointError(code, HTTPStatus.CONFLICT).status == HTTPStatus.CONFLICT
+
+
+def test_token_error_codes_keep_their_wire_values() -> None:
+    assert [str(code) for code in TokenErrorCode] == [
+        "invalid_request",
+        "invalid_client",
+        "invalid_grant",
+        "unauthorized_client",
+        "unsupported_grant_type",
+        "invalid_scope",
+        "invalid_target",
+        "authorization_pending",
+        "slow_down",
+        "expired_token",
+        "access_denied",
+        "temporarily_unavailable",
+    ]
+    assert TokenErrorCode("invalid_grant") is TokenErrorCode.INVALID_GRANT
