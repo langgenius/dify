@@ -8,6 +8,7 @@ import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skel
 import DifyBuilderComposer from '../composer'
 import { useBuilderText } from '../copy/use-builder-text'
 import { DifyBuilderInteractionDock } from '../interactions/interaction-dock'
+import { useDifyBuilderInteractionLocale } from '../interactions/use-interaction-locale'
 import { difyBuilderSessionBusyAtom, difyBuilderTaskControlAtom } from '../session/state'
 import {
   difyBuilderActiveInteractionAtom,
@@ -30,6 +31,26 @@ import {
   difyBuilderTestExecutionAtom,
   difyBuilderViewVersionAtom,
 } from '../store'
+
+const CanvasSyncRetryButton = () => {
+  const locale = useDifyBuilderInteractionLocale()
+  const { t } = useTranslation(['workflow'], { lng: locale })
+  const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
+  const interactionBusy = useAtomValue(difyBuilderInteractionBusyAtom)
+  const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
+
+  return (
+    <Button
+      size="small"
+      variant="secondary"
+      loading={canvasRefreshing}
+      disabled={interactionBusy && !canvasRefreshing}
+      onClick={() => retryCanvasRefresh()}
+    >
+      {t(($) => $['common.retryCanvasSync'])}
+    </Button>
+  )
+}
 
 const AnimatedInteractionDock = ({
   children,
@@ -83,14 +104,13 @@ export const DifyBuilderPanelFooter = ({
   focusTargetRef: RefObject<HTMLElement | null>
 }) => {
   const { locale, renderText } = useBuilderText()
-  const { t } = useTranslation(['common', 'difyBuilder', 'workflow'], { lng: locale })
+  const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const testExecution = useAtomValue(difyBuilderTestExecutionAtom)
   const taskControlOperation = useAtomValue(difyBuilderTaskControlOperationAtom)
   const nativeCancel = useAtomValue(difyBuilderNativeCancelAtom)
   const commandBusy = useAtomValue(difyBuilderSessionBusyAtom)
   const taskControl = useAtomValue(difyBuilderTaskControlAtom)
   const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
-  const canvasRefreshing = useAtomValue(difyBuilderCanvasRefreshingAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
   const activeInteraction = useAtomValue(difyBuilderActiveInteractionAtom)
   const interactionRef = useAtomValue(difyBuilderInteractionRefAtom)
@@ -103,7 +123,6 @@ export const DifyBuilderPanelFooter = ({
   const runActive = useAtomValue(difyBuilderRunActiveAtom)
   const sessionId = useAtomValue(difyBuilderSessionIdAtom)
   const viewVersion = useAtomValue(difyBuilderViewVersionAtom)
-  const retryCanvasRefresh = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
   const submitInteraction = useSetAtom(difyBuilderSubmitActionAtom)
   const interactionPending = Boolean(interactionRef || decision)
   const interactionSubmitted = Boolean(
@@ -173,15 +192,17 @@ export const DifyBuilderPanelFooter = ({
       )}
       {canvasRefreshFailed && (
         <div className="mx-4 mb-2 flex justify-end">
-          <Button
-            size="small"
-            variant="secondary"
-            loading={canvasRefreshing}
-            disabled={interactionBusy && !canvasRefreshing}
-            onClick={() => retryCanvasRefresh()}
+          <Suspense
+            fallback={
+              <SkeletonRectangle
+                role="status"
+                aria-label={t(($) => $.loading, { ns: 'common' })}
+                className="my-0 h-7 w-28 rounded-md"
+              />
+            }
           >
-            {t(($) => $['common.retryCanvasSync'], { ns: 'workflow' })}
-          </Button>
+            <CanvasSyncRetryButton />
+          </Suspense>
         </div>
       )}
       <div className="relative">
