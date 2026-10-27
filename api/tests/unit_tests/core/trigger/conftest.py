@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from core.entities.provider_entities import ProviderConfig
 from core.tools.entities.common_entities import I18nObject
 from core.trigger.entities.entities import (
@@ -72,15 +70,14 @@ def make_controller(
     )
 
 
-def make_subscription(**overrides: Any) -> Subscription:
-    defaults = {
+def make_subscription(**overrides: object) -> Subscription:
+    defaults: dict[str, object] = {
         "expires_at": 9999999999,
         "endpoint": "https://hook.test",
         "properties": {"k": "v"},
         "parameters": dict[str, object](),
     }
-    defaults.update(overrides)
-    return Subscription(**defaults)
+    return Subscription.model_validate(defaults | overrides)
 
 
 def make_provider_config(

@@ -28,11 +28,17 @@ class RequestContext(NamedTuple):
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class ServiceApiAccountRequestContext:
+class ServiceApiEndUserContext(AppRequestContext):
+    """Validated application mode and end-user identity for a Service API request."""
+
+    app_mode: str
+    end_user_id: str
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ServiceApiAccountRequestContext(AppRequestContext):
     """App scope and its workspace owner admitted for account-backed Service APIs."""
 
-    tenant_id: str
-    app_id: str
     account_id: str
 
 

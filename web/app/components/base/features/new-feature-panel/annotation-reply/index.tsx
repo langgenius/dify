@@ -12,9 +12,11 @@ import ConfigParamModal from '@/app/components/base/features/new-feature-panel/a
 import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { toast } from '@/app/notifications'
 import { ANNOTATION_DEFAULT } from '@/config'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
+import { getErrorMessage } from '@/utils/error-message'
 
 type Props = Readonly<{
   disabled?: boolean
@@ -72,8 +74,8 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
         setIsDisabling(true)
         try {
           await handleDisableAnnotation(annotationReply?.embedding_model as any)
-        } catch {
-          // Request and job failures already have error feedback; keep the current state.
+        } catch (error) {
+          toast.error(getErrorMessage(error) || t(($) => $['api.actionFailed'], { ns: 'common' }))
         } finally {
           setIsDisabling(false)
         }
@@ -84,6 +86,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
       handleDisableAnnotation,
       isDisabling,
       setIsShowAnnotationConfigInit,
+      t,
     ],
   )
 
@@ -160,20 +163,22 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
           )}
         </>
       </FeatureCard>
-      <ConfigParamModal
-        appId={appId}
-        isInit
-        isShow={isShowAnnotationConfigInit}
-        onHide={() => {
-          setIsShowAnnotationConfigInit(false)
-          // showChooseFeatureTrue()
-        }}
-        onSave={async (embeddingModel, score) => {
-          await handleEnableAnnotation(embeddingModel, score)
-          setIsShowAnnotationConfigInit(false)
-        }}
-        annotationConfig={annotationReply as any}
-      />
+      {isShowAnnotationConfigInit && (
+        <ConfigParamModal
+          appId={appId}
+          isInit
+          isShow={isShowAnnotationConfigInit}
+          onHide={() => {
+            setIsShowAnnotationConfigInit(false)
+            // showChooseFeatureTrue()
+          }}
+          onSave={async (embeddingModel, score) => {
+            await handleEnableAnnotation(embeddingModel, score)
+            setIsShowAnnotationConfigInit(false)
+          }}
+          annotationConfig={annotationReply as any}
+        />
+      )}
       {isShowAnnotationFullModal && (
         <AnnotationFullModal
           show={isShowAnnotationFullModal}

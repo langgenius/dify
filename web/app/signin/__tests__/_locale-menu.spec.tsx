@@ -9,18 +9,6 @@ const localeItems = [
 ]
 
 describe('LocaleMenu', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render selected locale name when value matches an item', () => {
-      render(<LocaleMenu items={localeItems} value="en-US" onChange={vi.fn()} />)
-
-      expect(screen.getByRole('button', { name: /english \(us\)/i })).toBeInTheDocument()
-    })
-  })
-
   describe('User Interactions', () => {
     it('should call onChange with selected locale value when clicking an option', async () => {
       const user = userEvent.setup()

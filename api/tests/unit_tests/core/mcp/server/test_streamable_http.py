@@ -780,7 +780,7 @@ class TestUtilityFunctions:
         jsonschema.Draft202012Validator.check_schema(schema)
 
         # 2) Validate instances with all types
-        jsonschema.validate(instance={"count": 3.14, "name": "alice"}, schema=schema)
+        jsonschema.validate(instance={"count": float("3.14"), "name": "alice"}, schema=schema)
         jsonschema.validate(
             instance={"count": 2, "enabled": True, "metadata": {"key": "val"}},
             schema=schema,

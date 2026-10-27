@@ -13,14 +13,14 @@ from tasks import mail_human_input_delivery_task as task_module
 
 
 class _DummyMail:
-    def __init__(self):
+    def __init__(self) -> None:
         self.sent: list[dict[str, str]] = []
         self._inited = True
 
     def is_inited(self) -> bool:
         return self._inited
 
-    def send(self, *, to: str, subject: str, html: str):
+    def send(self, *, to: str, subject: str, html: str) -> None:
         self.sent.append({"to": to, "subject": subject, "html": html})
 
 
@@ -54,7 +54,7 @@ def _build_job(recipient_count: int = 1) -> task_module._EmailDeliveryJob:
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
 def test_dispatch_human_input_email_task_sends_to_each_recipient(
     monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
-):
+) -> None:
     mail = _DummyMail()
     form = _form()
     sqlite_session.add(form)
@@ -83,7 +83,7 @@ def test_dispatch_human_input_email_task_sends_to_each_recipient(
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
 def test_dispatch_human_input_email_task_skips_when_feature_disabled(
     monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
-):
+) -> None:
     mail = _DummyMail()
     form = _form()
     sqlite_session.add(form)
@@ -109,7 +109,7 @@ def test_dispatch_human_input_email_task_skips_when_feature_disabled(
 @pytest.mark.parametrize("sqlite_session", [(HumanInputForm,)], indirect=True)
 def test_dispatch_human_input_email_task_replaces_body_variables(
     monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session: Session
-):
+) -> None:
     mail = _DummyMail()
     form = _form(workflow_run_id=str(uuid4()))
     sqlite_session.add(form)
@@ -150,7 +150,7 @@ def test_dispatch_human_input_email_task_sanitizes_subject(
     line_break: str,
     sqlite_engine: Engine,
     sqlite_session: Session,
-):
+) -> None:
     mail = _DummyMail()
     form = _form()
     sqlite_session.add(form)
@@ -181,8 +181,8 @@ def test_dispatch_human_input_email_task_sanitizes_subject(
     assert mail.sent[0]["subject"] == "Notice BCC:attacker@example.com Alert"
 
 
-def test_parse_recipient_payload_reads_email_and_type():
-    payload = json.dumps({"email": "user@example.com", "TYPE": RecipientType.EMAIL_MEMBER.value})
+def test_parse_recipient_payload_reads_email_and_type() -> None:
+    payload = json.dumps({"email": "user@example.com", "TYPE": RecipientType.EMAIL_MEMBER})
 
     assert task_module._parse_recipient_payload(payload) == ("user@example.com", RecipientType.EMAIL_MEMBER)
 
@@ -191,11 +191,11 @@ def test_parse_recipient_payload_reads_email_and_type():
     "payload",
     [
         "not json",
-        json.dumps({"TYPE": RecipientType.EMAIL_MEMBER.value}),
+        json.dumps({"TYPE": RecipientType.EMAIL_MEMBER}),
         json.dumps({"email": "user@example.com", "TYPE": "unknown-channel"}),
-        json.dumps({"email": 42, "TYPE": RecipientType.EMAIL_MEMBER.value}),
+        json.dumps({"email": 42, "TYPE": RecipientType.EMAIL_MEMBER}),
     ],
 )
-def test_parse_recipient_payload_rejects_unusable_payloads(payload: str):
+def test_parse_recipient_payload_rejects_unusable_payloads(payload: str) -> None:
     """Payloads the recipients layer cannot produce must degrade to a skipped recipient."""
     assert task_module._parse_recipient_payload(payload) == (None, None)

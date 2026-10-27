@@ -6,7 +6,6 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SkillFileMutationCoordinator } from './shared'
 import type { TagComboboxItem } from '@/features/tag-management/components/tag-combobox-item'
-import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -243,7 +242,7 @@ export function SkillTagsEditor({
               </span>
             </ComboboxTrigger>
             <ComboboxPortal>
-              <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+              <ComboboxPositioner>
                 <ComboboxPopup className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]">
                   <TagSearchContentView
                     type="skill"
@@ -499,11 +498,6 @@ function SkillReferenceItem({
   reference: SkillReferenceResponse
 }) {
   const isWorkflowAgent = reference.type === 'workflow_agent_node'
-  const agentIconType = reference.agent_icon_type as AppIconType | null | undefined
-  const agentImageUrl =
-    reference.agent_icon_type === 'image' || reference.agent_icon_type === 'link'
-      ? reference.agent_icon
-      : undefined
 
   if (!isWorkflowAgent) {
     const title = reference.display_name || reference.name
@@ -520,15 +514,16 @@ function SkillReferenceItem({
         <span aria-hidden className="shrink-0">
           <AppIcon
             size="tiny"
-            iconType={agentIconType}
-            icon={reference.agent_icon ?? undefined}
-            background={reference.agent_icon_background}
-            imageUrl={agentImageUrl}
-            innerIcon={
-              agentIconType ? undefined : (
-                <span className="i-ri-robot-2-line size-4 text-util-colors-blue-blue-600" />
-              )
-            }
+            icon={{
+              icon_type: reference.agent_icon_type,
+              icon: reference.agent_icon,
+              icon_url: reference.agent_icon,
+              icon_background: reference.agent_icon_background,
+            }}
+            fallback={{
+              content: <span className="i-ri-robot-2-line size-4 text-util-colors-blue-blue-600" />,
+              background: reference.agent_icon_background,
+            }}
           />
         </span>
         <span
@@ -551,25 +546,22 @@ function SkillReferenceItem({
   }
 
   const workflowName = reference.workflow_name || reference.display_name || reference.name
-  const workflowIconType = reference.workflow_icon_type as AppIconType | null | undefined
-  const workflowImageUrl =
-    reference.workflow_icon_type === 'image' || reference.workflow_icon_type === 'link'
-      ? reference.workflow_icon
-      : undefined
+
   const workflowContent = (
     <>
       <span aria-hidden className="shrink-0">
         <AppIcon
           size="tiny"
-          iconType={workflowIconType}
-          icon={reference.workflow_icon ?? undefined}
-          background={reference.workflow_icon_background}
-          imageUrl={workflowImageUrl}
-          innerIcon={
-            workflowIconType ? undefined : (
-              <span className="i-ri-flow-chart size-4 text-util-colors-blue-blue-600" />
-            )
-          }
+          icon={{
+            icon_type: reference.workflow_icon_type,
+            icon: reference.workflow_icon,
+            icon_url: reference.workflow_icon,
+            icon_background: reference.workflow_icon_background,
+          }}
+          fallback={{
+            content: <span className="i-ri-flow-chart size-4 text-util-colors-blue-blue-600" />,
+            background: reference.workflow_icon_background,
+          }}
         />
       </span>
       <span

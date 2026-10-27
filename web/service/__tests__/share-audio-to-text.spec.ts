@@ -20,7 +20,8 @@ vi.mock('../webapp-auth', () => ({
 
 describe('audioToText', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    consolePost.mockReset().mockResolvedValue({ text: 'transcript' })
+    publicPost.mockReset().mockResolvedValue({ text: 'transcript' })
   })
 
   // Each chat owner maps to one concrete backend route instead of route-param guessing.
@@ -32,11 +33,14 @@ describe('audioToText', () => {
       const { AppSourceType, audioToText } = await import('../share')
       const formData = new FormData()
 
-      audioToText(AppSourceType[source], 'app-1', formData)
+      const { signal } = new AbortController()
+      const result = await audioToText(AppSourceType[source], 'app-1', formData, signal)
+
+      expect(result).toEqual({ text: 'transcript' })
 
       expect(consolePost).toHaveBeenCalledWith(
         expectedUrl,
-        { body: formData },
+        { body: formData, signal },
         { bodyStringify: false, deleteContentType: true },
       )
       expect(publicPost).not.toHaveBeenCalled()
@@ -46,11 +50,11 @@ describe('audioToText', () => {
       const { AppSourceType, audioToText } = await import('../share')
       const formData = new FormData()
 
-      audioToText(AppSourceType.webApp, undefined, formData)
+      await audioToText(AppSourceType.webApp, undefined, formData)
 
       expect(publicPost).toHaveBeenCalledWith(
         '/audio-to-text',
-        { body: formData },
+        { body: formData, signal: undefined },
         { bodyStringify: false, deleteContentType: true },
       )
       expect(consolePost).not.toHaveBeenCalled()

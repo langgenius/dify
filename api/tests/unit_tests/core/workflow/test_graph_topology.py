@@ -24,25 +24,25 @@ _GRAPH = {
 }
 
 
-def test_upstream_node_ids_collects_all_ancestors_excluding_ghosts():
+def test_upstream_node_ids_collects_all_ancestors_excluding_ghosts() -> None:
     topology = WorkflowGraphTopology.from_graph(_GRAPH)
     assert topology.upstream_node_ids("agent") == {"start", "llm-1", "llm-2"}
 
 
-def test_upstream_node_ids_differ_per_target_node():
+def test_upstream_node_ids_differ_per_target_node() -> None:
     topology = WorkflowGraphTopology.from_graph(_GRAPH)
     assert topology.upstream_node_ids("llm-1") == {"start"}
     assert topology.upstream_node_ids("end") == {"start", "llm-1", "llm-2", "agent"}
     assert topology.upstream_node_ids("start") == set()
 
 
-def test_is_upstream_kept_for_publish_validation():
+def test_is_upstream_kept_for_publish_validation() -> None:
     topology = WorkflowGraphTopology.from_graph(_GRAPH)
     assert topology.is_upstream(source_node_id="start", target_node_id="end")
     assert not topology.is_upstream(source_node_id="end", target_node_id="start")
 
 
-def test_cycle_safe():
+def test_cycle_safe() -> None:
     graph = {
         "nodes": [{"id": "a"}, {"id": "b"}],
         "edges": [{"source": "a", "target": "b"}, {"source": "b", "target": "a"}],

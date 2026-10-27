@@ -40,6 +40,6 @@ class ServiceApiAppAccessRepository(ServiceApiAppAccessStore):
                 tenant_id=admitted_tenant_id,
                 app_status=app_status,
                 enable_api=enable_api,
-                workspace_status=workspace_status,
+                workspace_status=workspace_status.value if workspace_status is not None else None,
                 account_id=owner_id,
             )

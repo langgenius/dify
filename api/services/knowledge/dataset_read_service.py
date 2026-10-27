@@ -52,6 +52,7 @@ def _dataset_detail_values(dataset: Dataset, prefetch: DatasetDetailPrefetch) ->
         "permission": dataset.permission,
         "data_source_type": dataset.data_source_type,
         "indexing_technique": dataset.indexing_technique,
+        "keyword_number": dataset.keyword_number,
         "app_count": prefetch.app_counts.get(dataset.id, 0),
         "document_count": prefetch.document_counts.get(dataset.id, 0),
         "word_count": prefetch.word_counts.get(dataset.id, 0),
@@ -212,7 +213,11 @@ def format_document_metadata(
 def document_response_values(document: Document, batch: DocumentReadBatch) -> dict[str, Any]:
     """Build response-only values from a loaded snapshot without database access."""
     file_id = document.data_source_info_dict.get("upload_file_id")
-    process_rule = batch.process_rules.get(document.dataset_process_rule_id)
+    process_rule = (
+        batch.process_rules.get(document.dataset_process_rule_id)
+        if document.dataset_process_rule_id is not None
+        else None
+    )
     if process_rule is not None and process_rule.dataset_id != document.dataset_id:
         process_rule = None
     return {
@@ -252,33 +257,29 @@ def get_document_built_in_fields(document: Document, *, session: Session) -> lis
 
 def format_document_built_in_fields(document: Document, *, uploader_name: str | None) -> list[DocMetadataDetailItem]:
     built_in_fields: list[DocMetadataDetailItem] = []
-    built_in_fields.append(
-        {"id": "built-in", "name": BuiltInField.document_name, "type": "string", "value": document.name}
-    )
-    built_in_fields.append({"id": "built-in", "name": BuiltInField.uploader, "type": "string", "value": uploader_name})
-    built_in_fields.append(
-        {
-            "id": "built-in",
-            "name": BuiltInField.upload_date,
-            "type": "time",
-            "value": str(document.created_at.timestamp()),
-        }
-    )
-    built_in_fields.append(
-        {
-            "id": "built-in",
-            "name": BuiltInField.last_update_date,
-            "type": "time",
-            "value": str(document.updated_at.timestamp()),
-        }
-    )
-    built_in_fields.append(
-        {
-            "id": "built-in",
-            "name": BuiltInField.source,
-            "type": "string",
-            "value": MetadataDataSource[document.data_source_type],
-        }
+    built_in_fields.extend(
+        (
+            {"id": "built-in", "name": BuiltInField.document_name, "type": "string", "value": document.name},
+            {"id": "built-in", "name": BuiltInField.uploader, "type": "string", "value": uploader_name},
+            {
+                "id": "built-in",
+                "name": BuiltInField.upload_date,
+                "type": "time",
+                "value": str(document.created_at.timestamp()),
+            },
+            {
+                "id": "built-in",
+                "name": BuiltInField.last_update_date,
+                "type": "time",
+                "value": str(document.updated_at.timestamp()),
+            },
+            {
+                "id": "built-in",
+                "name": BuiltInField.source,
+                "type": "string",
+                "value": MetadataDataSource[document.data_source_type],
+            },
+        )
     )
     return built_in_fields
 

@@ -1,0 +1,369 @@
+import time
+import uuid
+
+import pytest
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session, sessionmaker
+
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.nodes.human_input.callback import (
+    DifyHITLCallback,
+)
+from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.system_variables import build_system_variables
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
+from graphon.enums import WorkflowType
+from graphon.graph import Graph
+from graphon.nodes.end.end_node import EndNode
+from graphon.nodes.end.entities import EndNodeData
+from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHumanInputNodeData
+from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.nodes.start.entities import StartNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.runtime import RuntimeState, VariablePool
+from libs.datetime_utils import naive_utc_now
+from models import Account
+from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.human_input import HumanInputDelivery, HumanInputForm, HumanInputFormRecipient
+from models.model import App, AppMode, IconType
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
+from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from services.workflow_run_index import WorkflowRunIndex
+from tests.workflow_test_utils import build_test_graph_init_params
+
+
+def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: str, user_id: str) -> RuntimeState:
+    variable_pool = VariablePool.from_bootstrap(
+        system_variables=build_system_variables(
+            workflow_execution_id=workflow_execution_id,
+            app_id=app_id,
+            workflow_id=workflow_id,
+            user_id=user_id,
+        ),
+        user_inputs={},
+        conversation_variables=[],
+    )
+    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
+
+
+def _build_graph(
+    runtime_state: RuntimeState,
+    tenant_id: str,
+    app_id: str,
+    workflow_id: str,
+    user_id: str,
+    form_repository: HumanInputFormRepository,
+) -> Graph:
+    graph_config: dict[str, object] = {"nodes": [], "edges": []}
+    params = build_test_graph_init_params(
+        workflow_id=workflow_id,
+        graph_config=graph_config,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        user_id=user_id,
+        user_from="account",
+        invoke_from="debugger",
+        call_depth=0,
+    )
+
+    start_data = StartNodeData(title="start", variables=[])
+    start_node = StartNode(
+        node_id="start",
+        data=start_data,
+        init_params=params,
+        runtime_state=runtime_state,
+    )
+
+    human_data = HumanInputNodeData(
+        title="human",
+        form_content="Awaiting human input",
+        inputs=[],
+        user_actions=[
+            UserActionConfig(id="continue", title="Continue"),
+        ],
+    )
+    hitl_callback = DifyHITLCallback(
+        form_repository=form_repository,
+        node_data=human_data,
+    )
+    human_node = HumanInputNode(
+        node_id="human",
+        data=GraphonHumanInputNodeData(title=human_data.title),
+        init_params=params,
+        runtime_state=runtime_state,
+        hitl_callback=hitl_callback,
+    )
+
+    end_data = EndNodeData(
+        title="end",
+        outputs=[],
+        desc=None,
+    )
+    end_node = EndNode(
+        node_id="end",
+        data=end_data,
+        init_params=params,
+        runtime_state=runtime_state,
+    )
+
+    return (
+        Graph.new()
+        .add_root(start_node)
+        .add_node(human_node)
+        .add_node(end_node, from_node_id="human", source_handle="continue")
+        .build()
+    )
+
+
+def _build_generate_entity(
+    tenant_id: str,
+    app_id: str,
+    workflow_id: str,
+    workflow_execution_id: str,
+    user_id: str,
+) -> WorkflowAppGenerateEntity:
+    app_config = WorkflowUIBasedAppConfig(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        app_mode=AppMode.WORKFLOW,
+        workflow_id=workflow_id,
+    )
+    return WorkflowAppGenerateEntity(
+        task_id=str(uuid.uuid4()),
+        app_config=app_config,
+        inputs={},
+        files=[],
+        user_id=user_id,
+        stream=False,
+        invoke_from=InvokeFrom.DEBUGGER,
+        workflow_execution_id=workflow_execution_id,
+    )
+
+
+class TestHumanInputResumeNodeExecutionIntegration:
+    @pytest.fixture(autouse=True)
+    def setup_test_data(self, db_session_with_containers: Session):
+        tenant = Tenant(
+            name="Test Tenant",
+            status=TenantStatus.NORMAL,
+        )
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.commit()
+
+        account = Account(
+            email="test@example.com",
+            name="Test User",
+            interface_language="en-US",
+            status=AccountStatus.ACTIVE,
+        )
+        db_session_with_containers.add(account)
+        db_session_with_containers.commit()
+
+        tenant_join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.OWNER,
+            current=True,
+        )
+        db_session_with_containers.add(tenant_join)
+        db_session_with_containers.commit()
+
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
+
+        app = App(
+            tenant_id=tenant.id,
+            name="Test App",
+            description="",
+            mode=AppMode.WORKFLOW,
+            icon_type=IconType.EMOJI.value,
+            icon="rocket",
+            icon_background="#4ECDC4",
+            enable_site=False,
+            enable_api=False,
+            api_rpm=0,
+            api_rph=0,
+            is_demo=False,
+            is_public=False,
+            is_universal=False,
+            max_active_requests=None,
+            created_by=account.id,
+            updated_by=account.id,
+        )
+        db_session_with_containers.add(app)
+        db_session_with_containers.commit()
+
+        workflow = Workflow(
+            tenant_id=tenant.id,
+            app_id=app.id,
+            type=ModelWorkflowType("workflow"),
+            version="draft",
+            graph='{"nodes": [], "edges": []}',
+            _features='{"file_upload": {"enabled": false}}',
+            created_by=account.id,
+        )
+        workflow.created_at = naive_utc_now()
+        db_session_with_containers.add(workflow)
+        db_session_with_containers.commit()
+
+        self.session = db_session_with_containers
+        self.tenant = tenant
+        self.account = account
+        self.app = app
+        self.workflow = workflow
+
+        yield
+
+        form_ids = select(HumanInputForm.id).where(
+            HumanInputForm.tenant_id == self.tenant.id, HumanInputForm.app_id == self.app.id
+        )
+        self.session.execute(delete(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids)))
+        self.session.execute(delete(HumanInputDelivery).where(HumanInputDelivery.form_id.in_(form_ids)))
+        self.session.execute(
+            delete(HumanInputForm).where(
+                HumanInputForm.tenant_id == self.tenant.id, HumanInputForm.app_id == self.app.id
+            )
+        )
+        self.session.execute(delete(WorkflowNodeExecutionModel))
+        self.session.execute(delete(WorkflowRun))
+        self.session.execute(delete(Workflow).where(Workflow.id == self.workflow.id))
+        self.session.execute(delete(App).where(App.id == self.app.id))
+        self.session.execute(delete(TenantAccountJoin).where(TenantAccountJoin.tenant_id == self.tenant.id))
+        self.session.execute(delete(Account).where(Account.id == self.account.id))
+        self.session.execute(delete(Tenant).where(Tenant.id == self.tenant.id))
+        self.session.commit()
+
+    def _build_run_layers(
+        self, execution_id: str, *, resuming: bool
+    ) -> tuple[WorkflowRunIndex, WorkflowPersistenceLayer]:
+        generate_entity = _build_generate_entity(
+            tenant_id=self.tenant.id,
+            app_id=self.app.id,
+            workflow_id=self.workflow.id,
+            workflow_execution_id=execution_id,
+            user_id=self.account.id,
+        )
+        session_factory = sessionmaker(bind=self.session.get_bind(), expire_on_commit=False)
+        execution_repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=session_factory,
+            tenant_id=self.tenant.id,
+            user=self.account,
+            app_id=self.app.id,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+        )
+        node_execution_repo = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=session_factory,
+            tenant_id=self.tenant.id,
+            user=self.account,
+            app_id=self.app.id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+        history = node_execution_repo.get_by_workflow_execution(execution_id, include_paused=True) if resuming else ()
+        run_index = WorkflowRunIndex(history)
+        persistence = WorkflowPersistenceLayer(
+            application_generate_entity=generate_entity,
+            workflow_info=PersistenceWorkflowInfo(
+                workflow_id=self.workflow.id,
+                workflow_type=WorkflowType.WORKFLOW,
+                version=self.workflow.version,
+                graph_data=self.workflow.graph_dict,
+            ),
+            workflow_execution_repository=execution_repo,
+            workflow_node_execution_repository=node_execution_repo,
+        )
+        persistence.set_node_run_indices(run_index.indices)
+        persistence.set_node_execution_history(history)
+        return run_index, persistence
+
+    def _run_graph(self, graph: Graph, runtime_state: RuntimeState, execution_id: str) -> None:
+        engine = Engine(
+            graph=graph,
+            runtime_state=runtime_state,
+            command_channel=InMemoryChannel(),
+        )
+        for layer in self._build_run_layers(execution_id, resuming=runtime_state.graph_execution.paused):
+            engine.add_layer(layer)
+        for _ in engine.run():
+            continue
+
+    def test_resume_human_input_does_not_create_duplicate_node_execution(self):
+        execution_id = str(uuid.uuid4())
+        runtime_state = _build_runtime_state(
+            workflow_execution_id=execution_id,
+            app_id=self.app.id,
+            workflow_id=self.workflow.id,
+            user_id=self.account.id,
+        )
+        form_repository = HumanInputFormRepositoryImpl(
+            tenant_id=self.tenant.id, app_id=self.app.id, workflow_execution_id=execution_id
+        )
+        paused_graph = _build_graph(
+            runtime_state,
+            self.tenant.id,
+            self.app.id,
+            self.workflow.id,
+            self.account.id,
+            form_repository,
+        )
+        self._run_graph(paused_graph, runtime_state, execution_id)
+        human_execution_id = self.session.scalar(
+            select(WorkflowNodeExecutionModel.id).where(
+                WorkflowNodeExecutionModel.workflow_run_id == execution_id,
+                WorkflowNodeExecutionModel.node_id == "human",
+            )
+        )
+        assert human_execution_id is not None
+
+        snapshot = runtime_state.dumps()
+        resumed_state = RuntimeState.from_snapshot(snapshot)
+        form = self.session.scalar(
+            select(HumanInputForm).where(
+                HumanInputForm.tenant_id == self.tenant.id,
+                HumanInputForm.workflow_run_id == execution_id,
+                HumanInputForm.node_id == "human",
+            )
+        )
+        assert form is not None
+        assert form.status == HumanInputFormStatus.WAITING
+        form.selected_action_id = "continue"
+        form.submitted_data = "{}"
+        form.submitted_at = naive_utc_now()
+        form.status = HumanInputFormStatus.SUBMITTED
+        self.session.commit()
+        resumed_graph = _build_graph(
+            resumed_state,
+            self.tenant.id,
+            self.app.id,
+            self.workflow.id,
+            self.account.id,
+            form_repository,
+        )
+        self._run_graph(resumed_graph, resumed_state, execution_id)
+
+        stmt = select(WorkflowNodeExecutionModel).where(
+            WorkflowNodeExecutionModel.workflow_run_id == execution_id,
+            WorkflowNodeExecutionModel.node_id == "human",
+        )
+        records = self.session.execute(stmt).scalars().all()
+        assert len(records) == 1
+        assert records[0].id == human_execution_id
+        assert records[0].status == "succeeded"
+        assert records[0].triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+        assert records[0].created_by_role == CreatorUserRole.ACCOUNT
+        executions = self.session.scalars(
+            select(WorkflowNodeExecutionModel)
+            .where(WorkflowNodeExecutionModel.workflow_run_id == execution_id)
+            .order_by(WorkflowNodeExecutionModel.index)
+        ).all()
+        assert [(execution.node_id, execution.index) for execution in executions] == [
+            ("start", 1),
+            ("human", 2),
+            ("end", 3),
+        ]

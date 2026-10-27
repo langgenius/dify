@@ -2,7 +2,14 @@
 import type { FC } from 'react'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +18,7 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { toast } from '@/app/notifications'
 import { ANNOTATION_DEFAULT } from '@/config'
+import { getErrorMessage } from '@/utils/error-message'
 import { Item } from './config-param'
 import ScoreSlider from './score-slider'
 
@@ -41,7 +49,10 @@ const ConfigParamModal: FC<Props> = ({
     defaultModel: embeddingsDefaultModel,
     currentModel: isEmbeddingsDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textEmbedding)
-  const [annotationConfig, setAnnotationConfig] = useState(oldAnnotationConfig)
+  const [annotationConfig, setAnnotationConfig] = useState({
+    ...oldAnnotationConfig,
+    score_threshold: oldAnnotationConfig.score_threshold ?? ANNOTATION_DEFAULT.score_threshold,
+  })
   const [isLoading, setLoading] = useState(false)
   const [embeddingModel, setEmbeddingModel] = useState(
     oldAnnotationConfig.embedding_model
@@ -77,8 +88,8 @@ const ConfigParamModal: FC<Props> = ({
         },
         annotationConfig.score_threshold,
       )
-    } catch {
-      // Request and job failures already have error feedback; leave the dialog open for retry.
+    } catch (error) {
+      toast.error(getErrorMessage(error) || t(($) => $['api.actionFailed'], { ns: 'common' }))
     } finally {
       setLoading(false)
     }
@@ -90,12 +101,14 @@ const ConfigParamModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="mt-14! w-160! max-w-none! border-none p-6! text-left align-middle">
-        <div className="mb-2 title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`initSetup.${isInit ? 'title' : 'configTitle'}`], { ns: 'appAnnotation' })}
-        </div>
+      <DialogContent className="w-160">
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $[`initSetup.${isInit ? 'title' : 'configTitle'}`], { ns: 'appAnnotation' })}
+          </DialogTitle>
+        </DialogHeader>
 
-        <div className="mt-6 space-y-3">
+        <DialogBody className="space-y-3">
           <Item
             title={t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
             tooltip={t(($) => $['feature.annotation.scoreThreshold.description'], {
@@ -136,9 +149,9 @@ const ConfigParamModal: FC<Props> = ({
               />
             </div>
           </Item>
-        </div>
+        </DialogBody>
 
-        <div className="mt-6 flex justify-end gap-2">
+        <DialogFooter>
           <Button onClick={onHide}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
           <Button variant="primary" onClick={handleSave} loading={isLoading}>
             <div>
@@ -147,7 +160,7 @@ const ConfigParamModal: FC<Props> = ({
               })}
             </div>
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

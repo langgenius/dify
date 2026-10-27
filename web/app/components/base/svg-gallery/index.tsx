@@ -39,7 +39,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
       const rootElement = draw.svg(DOMPurify.sanitize(content))
 
       rootElement.click(() => {
-        setImagePreview(svgToDataURL(svgElement as Element))
+        setImagePreview(svgToDataURL(svgElement))
       })
     } catch {
       /* v8 ignore next 2 -- if unmounted while handling parser/render errors, ref becomes null; guard avoids writing to a detached node. @preserve */

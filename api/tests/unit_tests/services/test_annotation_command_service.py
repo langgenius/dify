@@ -24,7 +24,7 @@ from services.annotation_query import AnnotationNotFoundError, AnnotationRecord
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
-from tests.unit_tests.model_factories import make_app
+from tests.helpers.unit.model_factories import make_app
 
 type Operation = Literal["create", "upsert", "update", "delete", "delete_many", "clear"]
 type BulkOperation = Literal["delete_many", "clear"]

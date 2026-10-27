@@ -37,7 +37,6 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import { useDocLink } from '@/context/i18n'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
 import { useWorkflowStore } from '../../../store'
 import { AgentStrategySelector } from './agent-strategy-selector'
 import Field from './field'
@@ -172,7 +171,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               modelConfig={
                 defaultModel.data
                   ? {
-                      mode: AppModeEnum.CHAT,
+                      mode: 'chat' as const,
                       name: defaultModel.data.model,
                       provider: defaultModel.data.provider.provider,
                       completion_params: {},

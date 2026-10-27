@@ -3,15 +3,17 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 
 type Props = Readonly<{
+  readOnly?: boolean
   value: boolean
   onChange: (value: boolean) => void
 }>
 
-const FormInputBoolean: FC<Props> = ({ value, onChange }) => {
+const FormInputBoolean: FC<Props> = ({ value, onChange, readOnly = false }) => {
   return (
     <div className="flex w-full space-x-1">
       <button
         type="button"
+        disabled={readOnly}
         className={cn(
           'flex h-8 grow cursor-default appearance-none items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
           !value &&
@@ -25,6 +27,7 @@ const FormInputBoolean: FC<Props> = ({ value, onChange }) => {
       </button>
       <button
         type="button"
+        disabled={readOnly}
         className={cn(
           'flex h-8 grow cursor-default appearance-none items-center justify-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
           value &&

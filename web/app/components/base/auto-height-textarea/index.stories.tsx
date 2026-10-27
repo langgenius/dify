@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { ComponentProps } from 'react'
 import { useState } from 'react'
+import { fn } from 'storybook/test'
 import AutoHeightTextarea from '.'
 
 const meta = {
@@ -50,9 +52,7 @@ const meta = {
     },
   },
   args: {
-    onChange: (e) => {
-      console.log('Text changed:', e.target.value)
-    },
+    onChange: fn(),
   },
 } satisfies Meta<typeof AutoHeightTextarea>
 
@@ -60,7 +60,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 // Interactive demo wrapper
-const AutoHeightTextareaDemo = (args: any) => {
+const AutoHeightTextareaDemo = (args: ComponentProps<typeof AutoHeightTextarea>) => {
   const [value, setValue] = useState(args.value || '')
 
   return (
@@ -70,7 +70,7 @@ const AutoHeightTextareaDemo = (args: any) => {
         value={value}
         onChange={(e) => {
           setValue(e.target.value)
-          console.log('Text changed:', e.target.value)
+          args.onChange?.(e)
         }}
       />
     </div>

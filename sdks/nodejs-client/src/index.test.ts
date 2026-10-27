@@ -68,9 +68,9 @@ describe('Send Requests', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe(`${BASE_URL}${endpoint}`)
     expect(init.method).toBe(method)
-    expect(init.headers).toMatchObject({
-      Authorization: 'Bearer test',
-      'User-Agent': 'dify-client-node',
+    expect(Object.fromEntries(new Headers(init.headers).entries())).toMatchObject({
+      authorization: 'Bearer test',
+      'user-agent': 'dify-client-node',
     })
   })
 
@@ -84,8 +84,8 @@ describe('Send Requests', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe(`${BASE_URL}${routes.getMeta.url()}?user=end-user`)
     expect(init.method).toBe(routes.getMeta.method)
-    expect(init.headers).toMatchObject({
-      Authorization: 'Bearer test',
+    expect(Object.fromEntries(new Headers(init.headers).entries())).toMatchObject({
+      authorization: 'Bearer test',
     })
   })
 })
@@ -131,8 +131,8 @@ describe('File uploads', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe(`${BASE_URL}${routes.fileUpload.url()}`)
     expect(init.method).toBe(routes.fileUpload.method)
-    expect(init.headers).toMatchObject({
-      Authorization: 'Bearer test',
+    expect(Object.fromEntries(new Headers(init.headers).entries())).toMatchObject({
+      authorization: 'Bearer test',
       'content-type': 'multipart/form-data; boundary=test',
     })
     expect(init.body).not.toBe(form)
@@ -156,9 +156,9 @@ describe('Workflow client', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe(`${BASE_URL}${routes.stopWorkflow.url('task-1')}`)
     expect(init.method).toBe(routes.stopWorkflow.method)
-    expect(init.headers).toMatchObject({
-      Authorization: 'Bearer test',
-      'Content-Type': 'application/json',
+    expect(Object.fromEntries(new Headers(init.headers).entries())).toMatchObject({
+      authorization: 'Bearer test',
+      'content-type': 'application/json',
     })
     expect(init.body).toBe(JSON.stringify({ user: 'end-user' }))
   })
@@ -205,8 +205,8 @@ describe('Chat client', () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(url).toBe(`${BASE_URL}${routes.getSuggested.url('msg-1')}?user=end-user`)
     expect(init.method).toBe(routes.getSuggested.method)
-    expect(init.headers).toMatchObject({
-      Authorization: 'Bearer test',
+    expect(Object.fromEntries(new Headers(init.headers).entries())).toMatchObject({
+      authorization: 'Bearer test',
     })
   })
 

@@ -1,12 +1,23 @@
 import type { AnnotationReplyConfig } from '@/models/debug'
-import { act, render, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PathnameContext } from 'next/dist/shared/lib/hooks-client-context.shared-runtime'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { toast } from '@/app/notifications'
-import { AppToastHost } from '@/app/notifications/host'
-import { renderHookWithConsoleQuery, renderWithConsoleQuery } from '@/test/console/query-data'
+import { AppToaster } from '@/app/notifications/app-toaster'
+import {
+  createCatalogModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import {
+  createConsoleQueryClient,
+  renderHookWithConsoleQuery,
+  renderWithConsoleQuery,
+} from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import AnnotationReply from '../index'
 import useAnnotationConfig from '../use-annotation-config'
 
@@ -58,7 +69,6 @@ describe('annotation reply job status', () => {
           error_msg: errorMessage,
         })
       }
-      render(<AppToastHost timeout={0} />)
       const { result } = renderHookWithConsoleQuery(() =>
         useAnnotationConfig({
           appId: 'test-app',
@@ -84,7 +94,6 @@ describe('annotation reply job status', () => {
       const expectedMessage = errorMessage || 'common.api.actionFailed'
       await expect(outcome).resolves.toEqual(new Error(expectedMessage))
       expect(updatedConfig).toBeUndefined()
-      expect(screen.getAllByRole('dialog', { name: expectedMessage })).toHaveLength(1)
       expect(requests).toEqual([
         `POST /console/api/apps/test-app/annotation-reply/${action}`,
         `GET /console/api/apps/test-app/annotation-reply/${action}/status/test-job`,
@@ -160,7 +169,7 @@ describe('annotation reply job status', () => {
           <FeaturesContext value={store}>
             <AnnotationReply />
           </FeaturesContext>
-          <AppToastHost timeout={0} />
+          <AppToaster timeout={0} />
         </PathnameContext>,
       )
 
@@ -198,11 +207,106 @@ describe('annotation reply job status', () => {
         expect(toggle).not.toBeChecked()
       } else {
         expect(toggle).toBeChecked()
+        expect(screen.getAllByRole('dialog', { name: 'Vector index unavailable' })).toHaveLength(1)
         expect(screen.getByRole('button', { name: 'common.operation.params' })).not.toBeDisabled()
         expect(
           screen.getByRole('link', { name: 'appDebug.feature.annotation.cacheManagement' }),
         ).toHaveAttribute('href', '/app/test-app/annotations')
       }
+    },
+  )
+  it.each([
+    ['enable', 'POST', 'network', 'Failed to fetch'],
+    ['disable', 'POST', 'network', 'Failed to fetch'],
+    ['enable', 'GET', 'network', 'Failed to fetch'],
+    ['disable', 'GET', 'network', 'Failed to fetch'],
+    ['enable', 'POST', 'json', 'Broker unavailable'],
+    ['disable', 'GET', 'proxy', 'Bad Gateway'],
+    ['enable', 'GET', 'job', 'Vector index unavailable'],
+  ] as const)(
+    'shows one error and preserves config when %s %s fails with %s',
+    async (action, failedMethod, failure, expectedMessage) => {
+      vi.useRealTimers()
+      const user = userEvent.setup()
+      const pending = createDeferred<Response>()
+      const requests: string[] = []
+      globalThis.fetch = async (input) => {
+        const request = new Request(input)
+        const path = new URL(request.url).pathname
+        requests.push(`${request.method} ${path}`)
+        if (request.method === failedMethod) return pending.promise
+        return Response.json({ job_id: 'test-job', job_status: 'waiting' })
+      }
+      const config = { ...annotationConfig, enabled: action === 'disable' }
+      const store = createFeaturesStore()
+      store.getState().setFeatures({ ...store.getState().features, annotationReply: config })
+      const queryClient = createConsoleQueryClient()
+      seedModelProviderQueries(queryClient, [
+        createModelCatalogFixture({
+          models: [
+            createCatalogModelFixture({
+              model: embeddingModel.embedding_model_name,
+              model_type: 'text-embedding',
+            }),
+          ],
+        }),
+      ])
+      renderWithConsoleQuery(
+        <NuqsTestingAdapter>
+          <PathnameContext value="/app/test-app/configuration">
+            <FeaturesContext value={store}>
+              <AnnotationReply />
+            </FeaturesContext>
+            <AppToaster timeout={0} />
+          </PathnameContext>
+        </NuqsTestingAdapter>,
+        { queryClient },
+      )
+
+      const toggle = screen.getByRole('switch')
+      await user.click(toggle)
+      const control =
+        action === 'enable' ? screen.getByRole('button', { name: /initSetup.confirmBtn/ }) : toggle
+      if (action === 'enable') await user.click(control)
+      await waitFor(() => expect(requests).toHaveLength(failedMethod === 'POST' ? 1 : 2))
+      expect(control).toHaveAttribute('aria-disabled', 'true')
+      if (action === 'disable') expect(control).toHaveAttribute('aria-busy', 'true')
+
+      await act(async () => {
+        if (failure === 'network') pending.reject(new TypeError(expectedMessage))
+        else if (failure === 'json')
+          pending.resolve(
+            Response.json(
+              { code: 'internal_server_error', message: expectedMessage },
+              { status: 500 },
+            ),
+          )
+        else if (failure === 'proxy')
+          pending.resolve(
+            new Response('<html>upstream unavailable</html>', {
+              status: 502,
+              statusText: expectedMessage,
+              headers: { 'content-type': 'text/html' },
+            }),
+          )
+        else pending.resolve(Response.json({ job_status: 'error', error_msg: expectedMessage }))
+      })
+
+      const toastName = failure === 'network' ? /network error/ : expectedMessage
+      expect(await screen.findByRole('dialog', { name: toastName })).toBeVisible()
+      expect(screen.getAllByRole('dialog', { name: toastName })).toHaveLength(1)
+      expect(control).not.toHaveAttribute('aria-busy', 'true')
+      expect(control).not.toHaveAttribute('aria-disabled', 'true')
+      expect(store.getState().features.annotationReply).toEqual(config)
+      expect(toggle).toHaveAttribute('aria-checked', String(config.enabled))
+      if (action === 'enable')
+        expect(screen.getByRole('dialog', { name: /initSetup.title/ })).toBeVisible()
+      expect(requests).toEqual([
+        `POST /console/api/apps/test-app/annotation-reply/${action}`,
+        ...(failedMethod === 'GET'
+          ? [`GET /console/api/apps/test-app/annotation-reply/${action}/status/test-job`]
+          : []),
+      ])
     },
   )
 })

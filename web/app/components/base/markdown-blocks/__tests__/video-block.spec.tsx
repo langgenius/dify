@@ -1,7 +1,6 @@
 import { render } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it } from 'vite-plus/test'
-import VideoGallery from '../../video-gallery'
 import VideoBlock from '../video-block'
 
 type ChildNode = {
@@ -20,15 +19,17 @@ type BlockNode = {
 describe('VideoBlock', () => {
   it('renders multiple video sources from node.children', () => {
     const node: BlockNode = {
-      children: [{ properties: { src: 'a.mp4' } }, { properties: { src: 'b.mp4' } }],
+      children: [
+        { properties: { src: 'a.mp4' } },
+        {},
+        { properties: { src: '' } },
+        { properties: { src: 'b.mp4' } },
+      ],
     }
 
-    render(<VideoBlock node={node} />)
+    const { container } = render(<VideoBlock node={node} />)
 
-    const video = document.querySelector('video')
-    expect(video).toBeTruthy()
-
-    const sources = document.querySelectorAll('source')
+    const sources = container.querySelectorAll('source')
     expect(sources).toHaveLength(2)
     expect(sources[0]).toHaveAttribute('src', 'a.mp4')
     expect(sources[1]).toHaveAttribute('src', 'b.mp4')
@@ -40,9 +41,9 @@ describe('VideoBlock', () => {
       properties: { src: 'single.mp4' },
     }
 
-    render(<VideoBlock node={node} />)
+    const { container } = render(<VideoBlock node={node} />)
 
-    const sources = document.querySelectorAll('source')
+    const sources = container.querySelectorAll('source')
     expect(sources).toHaveLength(1)
     expect(sources[0]).toHaveAttribute('src', 'single.mp4')
   })
@@ -55,22 +56,6 @@ describe('VideoBlock', () => {
 
     const { container } = render(<VideoBlock node={node} />)
 
-    expect(container.innerHTML).toBe('')
-  })
-})
-
-describe('VideoGallery', () => {
-  it('returns null when srcs are empty or invalid', () => {
-    const { container } = render(<VideoGallery srcs={['', '']} />)
-    expect(container.innerHTML).toBe('')
-  })
-
-  it('renders video when valid srcs provided', () => {
-    render(<VideoGallery srcs={['ok.mp4', 'also.mp4']} />)
-
-    const sources = document.querySelectorAll('source')
-    expect(sources).toHaveLength(2)
-    expect(sources[0]).toHaveAttribute('src', 'ok.mp4')
-    expect(sources[1]).toHaveAttribute('src', 'also.mp4')
+    expect(container).toBeEmptyDOMElement()
   })
 })

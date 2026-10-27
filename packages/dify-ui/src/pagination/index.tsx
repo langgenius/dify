@@ -3,6 +3,7 @@
 import { Button as BaseButton } from '@base-ui/react/button'
 import * as React from 'react'
 import { cn } from '../cn'
+import { iconButtonVariants } from '../icon-button'
 import { focusRingClassName } from '../internal/focus'
 import { resolveClassName } from '../internal/resolve-class-name'
 import { mergeProps } from '../merge-props'
@@ -217,13 +218,10 @@ type PaginationNextProps = Omit<BaseButton.Props, 'children'> & {
   children?: React.ReactNode
 }
 
-const paginationArrowButtonClassName = [
-  'inline-flex size-7 shrink-0 touch-manipulation items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs backdrop-blur-[10px] transition-[background-color,border-color,color,box-shadow]',
-  'hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
-  focusRingClassName,
-  'disabled:cursor-not-allowed disabled:border-components-button-secondary-border-disabled disabled:bg-components-button-secondary-bg-disabled disabled:text-components-button-secondary-text-disabled disabled:shadow-none',
-  'motion-reduce:transition-none',
-]
+const paginationArrowButtonClassName = cn(
+  iconButtonVariants({ variant: 'secondary', size: 'lg' }),
+  'size-7 shrink-0 touch-manipulation',
+)
 
 function PaginationPrevious({
   className,
@@ -387,7 +385,7 @@ function PaginationPageJump({
       }
       className={(state) =>
         cn(
-          'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium text-text-secondary tabular-nums transition-colors hover:cursor-text hover:bg-state-base-hover-alt motion-reduce:transition-none',
+          'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium text-text-secondary tabular-nums hover:cursor-text hover:bg-state-base-hover-alt',
           focusRingClassName,
           resolveClassName(className, state),
         )

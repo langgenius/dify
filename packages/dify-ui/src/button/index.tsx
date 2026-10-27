@@ -10,7 +10,7 @@ import { resolveClassName } from '../internal/resolve-class-name'
 const buttonVariants = cva(
   [
     focusRingClassName,
-    'inline-flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap data-disabled:cursor-not-allowed',
+    'inline-flex items-center justify-center overflow-hidden whitespace-nowrap data-disabled:cursor-not-allowed',
   ],
   {
     variants: {
@@ -81,6 +81,7 @@ const buttonVariants = cva(
         class: [
           'bg-components-button-destructive-secondary-bg text-components-button-destructive-secondary-text inset-ring-components-button-destructive-secondary-border',
           'hover:bg-components-button-destructive-secondary-bg-hover hover:inset-ring-components-button-destructive-secondary-border-hover',
+          'not-data-disabled:focus-visible:bg-components-button-destructive-secondary-bg-hover',
           'data-disabled:text-components-button-destructive-secondary-text-disabled',
         ],
       },
@@ -99,6 +100,7 @@ const buttonVariants = cva(
         class: [
           'text-components-button-destructive-ghost-text',
           'hover:bg-components-button-destructive-ghost-bg-hover',
+          'not-data-disabled:focus-visible:bg-components-button-destructive-ghost-bg-hover',
           'data-disabled:text-components-button-destructive-ghost-text-disabled',
         ],
       },

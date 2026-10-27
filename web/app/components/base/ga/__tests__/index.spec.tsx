@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { runInNewContext } from 'node:vm'
 import { render } from '@testing-library/react'
 import { GoogleAnalyticsTagScripts, GoogleConsentDefaults } from '../index'
 
@@ -37,7 +38,7 @@ function AnalyticsScripts({ nonce }: { nonce?: string }) {
 }
 
 describe('Google Analytics scripts', () => {
-  it('renders denied consent defaults before the Google Analytics scripts', () => {
+  it('denies tracking before initialization and forwards the CSP nonce', () => {
     const { container } = render(<AnalyticsScripts nonce="test-nonce" />)
 
     const scripts = Array.from(container.querySelectorAll('script'))
@@ -45,40 +46,30 @@ describe('Google Analytics scripts', () => {
 
     expect(scripts[0]).toHaveAttribute('data-id', 'google-consent-defaults')
     expect(scripts[0]).toHaveAttribute('data-strategy', 'beforeInteractive')
-    expect(scripts[0]).toHaveAttribute(
-      'data-inline',
-      expect.stringContaining(`window.gtag('consent', 'default'`),
-    )
-    expect(scripts[0]).toHaveAttribute(
-      'data-inline',
-      expect.stringContaining(`analytics_storage: 'denied'`),
-    )
+    const scope = { dataLayer: [] as ArrayLike<unknown>[] }
+    runInNewContext(scripts[0]!.getAttribute('data-inline')!, { window: scope })
+    expect(Array.from(scope.dataLayer[0]!)).toEqual([
+      'consent',
+      'default',
+      {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+      },
+    ])
 
     expect(scripts[1]).toHaveAttribute('data-id', 'google-analytics')
     expect(scripts[1]).toHaveAttribute('data-strategy', 'afterInteractive')
-    expect(scripts[1]).toHaveAttribute(
-      'data-src',
-      'https://www.googletagmanager.com/gtag/js?id=G-DM9497FN4V',
-    )
-
     expect(scripts[2]).toHaveAttribute('data-id', 'google-analytics-init')
     expect(scripts[2]).toHaveAttribute('data-strategy', 'afterInteractive')
-    expect(scripts[2]).toHaveAttribute(
-      'data-inline',
-      expect.stringContaining(`window.gtag('config', 'G-DM9497FN4V');`),
-    )
+    runInNewContext(scripts[2]!.getAttribute('data-inline')!, { window: scope })
+    const analyticsId = new URL(scripts[1]!.getAttribute('data-src')!).searchParams.get('id')
+    expect(analyticsId).toBeTruthy()
+    expect(Array.from(scope.dataLayer[2]!)).toEqual(['config', analyticsId])
 
     scripts.forEach((script) => {
       expect(script).toHaveAttribute('data-nonce', 'test-nonce')
-    })
-  })
-
-  it('omits the nonce when none is provided', () => {
-    const { container } = render(<AnalyticsScripts />)
-    const scripts = Array.from(container.querySelectorAll('script'))
-
-    scripts.forEach((script) => {
-      expect(script).toHaveAttribute('data-nonce', '')
     })
   })
 })

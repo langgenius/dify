@@ -26,7 +26,7 @@ type FileTreeFileState = {
 
 function fileTreeRowClassName({ className }: { className?: string }) {
   return cn(
-    'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md ps-2 pe-1.5 text-start select-none',
+    'group/file-tree-row relative flex h-6 w-full min-w-0 items-center rounded-md ps-2 pe-1.5 text-start select-none',
     'hover:bg-state-base-hover',
     insetFocusRingClassName,
     'data-selected:bg-state-base-active',
@@ -94,7 +94,6 @@ function FileTreeFolderTrigger({
     <BaseCollapsible.Trigger
       className={(state) => fileTreeRowClassName({ className: resolveClassName(className, state) })}
       disabled={disabled}
-      data-disabled={disabled || undefined}
       {...props}
     >
       {renderGuides(level)}

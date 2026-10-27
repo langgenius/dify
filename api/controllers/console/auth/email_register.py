@@ -15,10 +15,17 @@ from controllers.console.auth.error import (
     NormalizedEmailAlreadyInUseError,
     PasswordMismatchError,
 )
+from controllers.console.error import (
+    AccountInFreezeError,
+    EmailDomainSuspendedError,
+    EmailSendIpLimitError,
+    SeatsLimitExceeded,
+)
 from controllers.console.flask_admission import console_email_registration_admission
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
 from libs.password import valid_password
@@ -36,8 +43,6 @@ from services.account_errors import (
     InvalidEmailRegistrationCodeError,
     InvalidEmailRegistrationTokenError,
 )
-
-from ..error import AccountInFreezeError, EmailDomainSuspendedError, EmailSendIpLimitError, SeatsLimitExceeded
 
 
 class EmailRegisterSendPayload(BaseModel):
@@ -93,6 +98,9 @@ register_response_schema_models(
 
 @console_ns.route("/email-register/send-email")
 class EmailRegisterSendEmailApi(Resource):
+    @error_responses(
+        AccountInFreezeError, EmailDomainSuspendedError, EmailRegisterRateLimitExceededError, EmailSendIpLimitError
+    )
     @console_ns.expect(console_ns.models[EmailRegisterSendPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @console_email_registration_admission
@@ -117,6 +125,7 @@ class EmailRegisterSendEmailApi(Resource):
 
 @console_ns.route("/email-register/validity")
 class EmailRegisterCheckApi(Resource):
+    @error_responses(EmailCodeError, EmailRegisterLimitError, InvalidEmailError, InvalidTokenError)
     @console_ns.expect(console_ns.models[EmailRegisterValidityPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @console_email_registration_admission
@@ -148,6 +157,15 @@ class EmailRegisterCheckApi(Resource):
 
 @console_ns.route("/email-register")
 class EmailRegisterResetApi(Resource):
+    @error_responses(
+        AccountInFreezeError,
+        EmailAlreadyInUseError,
+        EmailDomainSuspendedError,
+        InvalidTokenError,
+        NormalizedEmailAlreadyInUseError,
+        PasswordMismatchError,
+        SeatsLimitExceeded,
+    )
     @console_ns.expect(console_ns.models[EmailRegisterResetPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[EmailRegisterResetResponse.__name__])
     @console_email_registration_admission

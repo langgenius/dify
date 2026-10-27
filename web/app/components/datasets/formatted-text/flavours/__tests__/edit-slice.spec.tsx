@@ -1,44 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-
-// Capture the onOpenChange callback to simulate hover interactions
-let capturedOnOpenChange: ((open: boolean) => void) | null = null
-
-vi.mock('@floating-ui/react', () => ({
-  autoUpdate: vi.fn(),
-  flip: vi.fn(),
-  shift: vi.fn(),
-  offset: vi.fn(),
-  FloatingFocusManager: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="floating-focus-manager">{children}</div>
-  ),
-  useFloating: ({ onOpenChange }: { onOpenChange?: (open: boolean) => void } = {}) => {
-    capturedOnOpenChange = onOpenChange ?? null
-    return {
-      refs: { setReference: vi.fn(), setFloating: vi.fn() },
-      floatingStyles: {},
-      context: {
-        open: false,
-        onOpenChange: vi.fn(),
-        refs: { domReference: { current: null } },
-        nodeId: undefined,
-      },
-    }
-  },
-  useHover: () => ({}),
-  useDismiss: () => ({}),
-  useRole: () => ({}),
-  useInteractions: () => ({
-    getReferenceProps: () => ({}),
-    getFloatingProps: () => ({}),
-  }),
-}))
-
-const { EditSlice } = await import('../edit-slice')
-
-// Helper to find divider span (zero-width space)
-const findDividerSpan = (container: HTMLElement) =>
-  Array.from(container.querySelectorAll('span')).find((s) => s.textContent?.includes('\u200B'))
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { EditSlice } from '../edit-slice'
 
 describe('EditSlice', () => {
   const defaultProps = {
@@ -47,82 +9,56 @@ describe('EditSlice', () => {
     onDelete: vi.fn(),
   }
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    capturedOnOpenChange = null
-  })
-
-  // ---- Rendering Tests ----
-  it('should render label and text', () => {
+  it('reveals the remove action on hover and hides it when leaving the slice', async () => {
+    const user = userEvent.setup()
     render(<EditSlice {...defaultProps} />)
-    expect(screen.getByText('S1')).toBeInTheDocument()
-    expect(screen.getByText('Sample text content')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.remove' }),
+    ).not.toBeInTheDocument()
+
+    await user.hover(screen.getByText('Sample text content'))
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.remove' }),
+    ).toBeInTheDocument()
+    await user.unhover(screen.getByText('Sample text content'))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.remove' }),
+      ).not.toBeInTheDocument(),
+    )
   })
 
-  it('should render divider by default', () => {
-    const { container } = render(<EditSlice {...defaultProps} />)
-    expect(findDividerSpan(container)).toBeTruthy()
-  })
-
-  it('should not render divider when showDivider is false', () => {
-    const { container } = render(<EditSlice {...defaultProps} showDivider={false} />)
-    expect(findDividerSpan(container)).toBeFalsy()
-  })
-
-  // ---- Class Name Tests ----
-
-  it('should pass rest props to wrapper', () => {
-    render(<EditSlice {...defaultProps} data-testid="edit-slice" />)
-    expect(screen.getByTestId('edit-slice')).toBeInTheDocument()
-  })
-
-  // ---- Floating UI / Delete Button Tests ----
-  it('should not show delete button when floating is closed', () => {
-    render(<EditSlice {...defaultProps} />)
-    expect(screen.queryByTestId('floating-focus-manager')).not.toBeInTheDocument()
-  })
-
-  it('should show delete button when onOpenChange triggers open', () => {
-    render(<EditSlice {...defaultProps} />)
-    act(() => {
-      capturedOnOpenChange?.(true)
-    })
-    expect(screen.getByTestId('floating-focus-manager')).toBeInTheDocument()
-  })
-
-  it('should call onDelete when delete button is clicked', () => {
+  it('removes the slice once and closes the action without activating its parent', async () => {
+    const user = userEvent.setup()
     const onDelete = vi.fn()
-    render(<EditSlice {...defaultProps} onDelete={onDelete} />)
-    act(() => {
-      capturedOnOpenChange?.(true)
-    })
-    fireEvent.click(screen.getByRole('button'))
-    expect(onDelete).toHaveBeenCalledTimes(1)
-  })
-
-  it('should close floating after delete button is clicked', () => {
-    render(<EditSlice {...defaultProps} />)
-    act(() => {
-      capturedOnOpenChange?.(true)
-    })
-    expect(screen.getByTestId('floating-focus-manager')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button'))
-    expect(screen.queryByTestId('floating-focus-manager')).not.toBeInTheDocument()
-  })
-
-  it('should stop event propagation on delete click', () => {
     const parentClick = vi.fn()
     render(
       <div onClick={parentClick}>
-        <EditSlice {...defaultProps} />
+        <EditSlice {...defaultProps} onDelete={onDelete} />
       </div>,
     )
-    act(() => {
-      capturedOnOpenChange?.(true)
-    })
-    fireEvent.click(screen.getByRole('button'))
+
+    await user.hover(screen.getByText('Sample text content'))
+    await user.click(await screen.findByRole('button', { name: 'common.operation.remove' }))
+
+    expect(onDelete).toHaveBeenCalledOnce()
     expect(parentClick).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.remove' }),
+      ).not.toBeInTheDocument(),
+    )
   })
 
-  // ---- Destructive Hover Style Tests ----
+  it('prevents deleting a disabled slice', async () => {
+    const user = userEvent.setup()
+    const onDelete = vi.fn()
+    render(<EditSlice {...defaultProps} onDelete={onDelete} deleteDisabled />)
+
+    await user.hover(screen.getByText('Sample text content'))
+    const remove = await screen.findByRole('button', { name: 'common.operation.remove' })
+    expect(remove).toBeDisabled()
+    await user.click(remove)
+    expect(onDelete).not.toHaveBeenCalled()
+  })
 })

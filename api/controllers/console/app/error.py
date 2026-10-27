@@ -3,6 +3,12 @@ from http import HTTPStatus
 from libs.exception import BaseHTTPException
 
 
+class AnnotationIdsRequiredError(BaseHTTPException):
+    error_code = "bad_request"
+    description = "annotation_ids are required if the parameter is provided."
+    code = HTTPStatus.BAD_REQUEST
+
+
 class AnnotationImportRateLimitError(BaseHTTPException):
     error_code = "too_many_requests"
     code = HTTPStatus.TOO_MANY_REQUESTS
@@ -12,6 +18,18 @@ class AppNotFoundError(BaseHTTPException):
     error_code = "app_not_found"
     description = "App not found."
     code = 404
+
+
+class AppTriggerNotFoundError(BaseHTTPException):
+    error_code = "app_trigger_not_found"
+    description = "Trigger not found."
+    code = HTTPStatus.NOT_FOUND
+
+
+class WebhookTriggerNotFoundError(BaseHTTPException):
+    error_code = "webhook_trigger_not_found"
+    description = "Webhook trigger not found for this node."
+    code = HTTPStatus.NOT_FOUND
 
 
 class ProviderNotInitializeError(BaseHTTPException):
@@ -164,3 +182,39 @@ class NeedAddIdsError(BaseHTTPException):
     error_code = "need_add_ids"
     description = "Need to add ids."
     code = 400
+
+
+class AgentSandboxBindingNotFoundHTTPError(BaseHTTPException):
+    error_code = "no_active_binding"
+    description = "No active sandbox binding."
+    code = 404
+
+
+class AgentSandboxUnavailableHTTPError(BaseHTTPException):
+    error_code = "inspector_unavailable"
+    description = "Sandbox inspector is unavailable."
+    code = 503
+
+
+class AgentSandboxDownloadUnavailableHTTPError(BaseHTTPException):
+    error_code = "binding_file_download_unavailable"
+    description = "Sandbox file download is unavailable."
+    code = 502
+
+
+class AgentBackendUnreachableError(BaseHTTPException):
+    error_code = "agent_backend_unreachable"
+    description = "Agent backend is unreachable."
+    code = 502
+
+
+class AgentNotBoundError(BaseHTTPException):
+    error_code = "agent_not_bound"
+    description = "no agent is bound for this app/node"
+    code = 400
+
+
+class TracingConfigConflictError(BaseHTTPException):
+    error_code = "tracing_config_conflict"
+    description = "Tracing configuration changed. Refresh and try again."
+    code = 409

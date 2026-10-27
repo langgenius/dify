@@ -1,4 +1,4 @@
-import { DropdownMenuItem, DropdownMenuLinkItem } from '@langgenius/dify-ui/dropdown-menu'
+import { MenuItem, MenuLinkItem } from '@langgenius/dify-ui/menu'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
@@ -10,7 +10,7 @@ import {
 import {
   ExternalLinkIndicator,
   MenuItemContent,
-} from '@/app/components/header/account-dropdown/menu-item-content'
+} from '@/app/components/header/account-menu/menu-item-content'
 import { generateMailToLink, mailToSupport } from '@/app/components/header/utils/util'
 import { toast } from '@/app/notifications'
 import { SUPPORT_EMAIL_ADDRESS, ZENDESK_WIDGET_KEY } from '@/config'
@@ -59,8 +59,8 @@ export default function SupportMenu() {
   return (
     <>
       {shouldShowUpgradeContact && (
-        <DropdownMenuItem
-          className="mx-0 h-8 gap-1 px-3 py-1"
+        <MenuItem
+          className="h-8 gap-1 px-3 py-1"
           onClick={() => {
             setPricing('open')
           }}
@@ -78,11 +78,11 @@ export default function SupportMenu() {
               </span>
             }
           />
-        </DropdownMenuItem>
+        </MenuItem>
       )}
       {!shouldShowUpgradeContact && hasDedicatedChannel && hasZendeskWidget && (
-        <DropdownMenuItem
-          className="mx-0 h-8 gap-1 px-3 py-1"
+        <MenuItem
+          className="h-8 gap-1 px-3 py-1"
           onClick={() => {
             void zendeskRuntime.open(deploymentEdition).catch(() => {
               toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
@@ -93,11 +93,11 @@ export default function SupportMenu() {
             iconClassName="i-ri-chat-smile-2-line"
             label={t(($) => $['userProfile.contactUs'], { ns: 'common' })}
           />
-        </DropdownMenuItem>
+        </MenuItem>
       )}
       {!shouldShowUpgradeContact && hasDedicatedChannel && !hasZendeskWidget && supportMailLink && (
-        <DropdownMenuLinkItem
-          className="mx-0 h-8 gap-1 px-3 py-1"
+        <MenuLinkItem
+          className="h-8 gap-1 px-3 py-1"
           href={supportMailLink}
           rel="noopener noreferrer"
           target="_blank"
@@ -107,10 +107,10 @@ export default function SupportMenu() {
             label={t(($) => $['userProfile.emailSupport'], { ns: 'common' })}
             trailing={<ExternalLinkIndicator />}
           />
-        </DropdownMenuLinkItem>
+        </MenuLinkItem>
       )}
-      <DropdownMenuLinkItem
-        className="mx-0 h-8 gap-1 px-3 py-1"
+      <MenuLinkItem
+        className="h-8 gap-1 px-3 py-1"
         href="https://discord.gg/5AEfbxcd9k"
         rel="noopener noreferrer"
         target="_blank"
@@ -120,7 +120,7 @@ export default function SupportMenu() {
           label={t(($) => $['userProfile.discord'], { ns: 'common' })}
           trailing={<ExternalLinkIndicator />}
         />
-      </DropdownMenuLinkItem>
+      </MenuLinkItem>
     </>
   )
 }
