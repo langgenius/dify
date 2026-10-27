@@ -1,15 +1,23 @@
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+import pytest
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.oauth_bearer import sha256_hex
 from models.oauth import OAuthRefreshToken
 from repositories.oauth_refresh_token_repository import (
     REFRESH_TOKEN_PREFIX,
+    RefreshTokenRecord,
     SQLAlchemyOAuthRefreshTokenRepository,
+    spend_refresh_token,
 )
-from services.oauth_device_contracts import GrantKey
+from services.oauth_device_contracts import (
+    GrantKey,
+    PresentedRefreshToken,
+    RefreshTokenRejectedError,
+    RefreshTokenReusedError,
+)
 
 ACCOUNT_ID = "00000000-0000-0000-0000-000000000001"
 WORKSPACE_ID = "00000000-0000-0000-0000-000000000002"
@@ -43,11 +51,6 @@ def _issue(
         family_id=family_id,
         lifetime=lifetime,
     )
-
-
-def _count(factory: sessionmaker[Session]) -> int:
-    with factory() as session:
-        return session.scalar(select(func.count()).select_from(OAuthRefreshToken)) or 0
 
 
 def test_issue_stores_only_the_hash_and_find_returns_the_record(sqlite_session_factory: sessionmaker[Session]) -> None:
@@ -94,13 +97,20 @@ def test_issue_without_family_starts_a_new_family_and_with_family_joins_it(
     assert joined.family_id == first.family_id
 
 
+def _set_rotated_at(factory: sessionmaker[Session], token: str, rotated_at: datetime) -> None:
+    with factory() as session, session.begin():
+        session.execute(
+            update(OAuthRefreshToken)
+            .where(OAuthRefreshToken.token_hash == sha256_hex(token))
+            .values(rotated_at=rotated_at)
+        )
+
+
 def test_find_returns_expired_and_rotated_records_as_they_are(sqlite_session_factory: sessionmaker[Session]) -> None:
     repo = _repository(sqlite_session_factory)
     expired_token = _issue(repo, lifetime=timedelta(seconds=-1))
     rotated_token = _issue(repo)
-    rotated = repo.find(rotated_token)
-    assert rotated is not None
-    assert repo.rotate(rotated) is True
+    _set_rotated_at(sqlite_session_factory, rotated_token, datetime.now(UTC))
 
     expired = repo.find(expired_token)
     assert expired is not None
@@ -110,62 +120,69 @@ def test_find_returns_expired_and_rotated_records_as_they_are(sqlite_session_fac
     assert after.rotated_at is not None
 
 
-def test_rotate_succeeds_only_once(sqlite_session_factory: sessionmaker[Session]) -> None:
-    repo = _repository(sqlite_session_factory)
-    record = repo.find(_issue(repo))
+def _spend(
+    factory: sessionmaker[Session], record: RefreshTokenRecord, *, grace: timedelta = timedelta(minutes=30)
+) -> None:
+    presented = PresentedRefreshToken(id=record.id, family_id=record.family_id, reuse_grace=grace)
+    with factory() as session, session.begin():
+        spend_refresh_token(session, presented, now=datetime.now(UTC))
+
+
+def _found(repo: SQLAlchemyOAuthRefreshTokenRepository, token: str) -> RefreshTokenRecord:
+    record = repo.find(token)
     assert record is not None
-
-    results = [repo.rotate(record), repo.rotate(record)]
-
-    assert results.count(True) == 1
-    assert results == [True, False]
+    return record
 
 
-def test_revoke_family_deletes_only_that_family(sqlite_session_factory: sessionmaker[Session]) -> None:
+def test_spend_marks_a_fresh_token_rotated_and_lets_it_replay_in_the_grace(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     repo = _repository(sqlite_session_factory)
-    first_token = _issue(repo)
-    first = repo.find(first_token)
-    assert first is not None
-    sibling_token = _issue(repo, family_id=first.family_id)
-    other_token = _issue(repo)
+    token = _issue(repo)
+    record = _found(repo, token)
 
-    repo.revoke_family(first.family_id)
+    _spend(sqlite_session_factory, record)
+    rotated_at = _found(repo, token).rotated_at
+    _spend(sqlite_session_factory, record)
 
-    assert repo.find(first_token) is None
-    assert repo.find(sibling_token) is None
-    assert repo.find(other_token) is not None
+    assert rotated_at is not None
+    assert _found(repo, token).rotated_at == rotated_at
 
 
-def test_revoke_grant_deletes_every_family_of_the_grant(sqlite_session_factory: sessionmaker[Session]) -> None:
+@pytest.mark.parametrize(
+    ("grace", "rotated_ago"),
+    [
+        pytest.param(timedelta(minutes=30), timedelta(minutes=31), id="past-the-grace"),
+        pytest.param(timedelta(), timedelta(), id="zero-grace"),
+    ],
+)
+def test_spend_past_the_grace_is_reuse(
+    sqlite_session_factory: sessionmaker[Session], grace: timedelta, rotated_ago: timedelta
+) -> None:
     repo = _repository(sqlite_session_factory)
-    _issue(repo)
-    _issue(repo)
-    kept = _issue(repo, grant=_grant("phone"))
+    token = _issue(repo)
+    _set_rotated_at(sqlite_session_factory, token, datetime.now(UTC) - rotated_ago)
 
-    repo.revoke_grant(_grant())
-
-    assert _count(sqlite_session_factory) == 1
-    assert repo.find(kept) is not None
+    with pytest.raises(RefreshTokenReusedError):
+        _spend(sqlite_session_factory, _found(repo, token), grace=grace)
 
 
-def test_live_grant_keys_skip_expired_and_rotated(sqlite_session_factory: sessionmaker[Session]) -> None:
+def test_spend_rejects_an_expired_or_deleted_token(sqlite_session_factory: sessionmaker[Session]) -> None:
     repo = _repository(sqlite_session_factory)
-    _issue(repo, grant=_grant("expired"), lifetime=timedelta(seconds=-1))
-    rotated = repo.find(_issue(repo, grant=_grant("rotated")))
-    assert rotated is not None
-    repo.rotate(rotated)
-    _issue(repo, grant=_grant("live"))
-    _issue(repo, grant=_grant("live"))
+    expired = _found(repo, _issue(repo, lifetime=timedelta(seconds=-1)))
+    deleted = _found(repo, _issue(repo))
+    with sqlite_session_factory() as session, session.begin():
+        session.execute(delete(OAuthRefreshToken).where(OAuthRefreshToken.id == deleted.id))
 
-    assert repo.live_grant_keys(ACCOUNT_ID) == [_grant("live")]
-    assert repo.live_grant_keys("00000000-0000-0000-0000-0000000000ff") == []
+    for record in (expired, deleted):
+        with pytest.raises(RefreshTokenRejectedError) as caught:
+            _spend(sqlite_session_factory, record)
+        assert not isinstance(caught.value, RefreshTokenReusedError)
 
 
-def test_live_grant_keys_keep_grant_with_rotated_and_fresh_token(sqlite_session_factory: sessionmaker[Session]) -> None:
-    repo = _repository(sqlite_session_factory)
-    old = repo.find(_issue(repo))
-    assert old is not None
-    repo.rotate(old)
-    _issue(repo, family_id=old.family_id)
+def test_replay_check_accepts_naive_and_aware_times() -> None:
+    presented = PresentedRefreshToken(id="r", family_id="f", reuse_grace=timedelta(minutes=30))
+    now = datetime.now(UTC)
 
-    assert repo.live_grant_keys(ACCOUNT_ID) == [_grant()]
+    assert presented.may_replay(rotated_at=(now - timedelta(minutes=5)).replace(tzinfo=None), now=now)
+    assert not presented.may_replay(rotated_at=now - timedelta(minutes=31), now=now)

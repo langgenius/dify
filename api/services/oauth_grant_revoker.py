@@ -13,7 +13,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import sha256_hex
-from repositories.oauth_device_token_repository import find_live_access_grant, revoke_grant_rows
+from repositories.oauth_device_token_repository import (
+    find_live_access_grant,
+    grant_account_id,
+    lock_account,
+    revoke_grant_rows,
+)
 from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTokenRepository
 from services.oauth_client_auth import authenticate_client
 from services.oauth_clients import OAuthClientRegistry
@@ -35,6 +40,11 @@ class GrantRevoker:
 
     def revoke_grant(self, grant: GrantKey) -> None:
         with self._session_factory() as session, session.begin():
+            # The account lock orders this after any refresh of the grant already
+            # under way, and makes later ones see the refresh tokens gone.
+            account_id = grant_account_id(session, grant)
+            if account_id is not None:
+                lock_account(session, account_id)
             hashes = revoke_grant_rows(session, grant, now=datetime.now(UTC))
         if hashes:
             self._redis.delete(*(TOKEN_CACHE_KEY_FMT.format(hash=token_hash) for token_hash in hashes))

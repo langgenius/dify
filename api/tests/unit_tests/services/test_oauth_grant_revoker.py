@@ -15,6 +15,7 @@ from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
 from services.oauth_device_contracts import GrantKey, IssuedOAuthToken
 from services.oauth_grant_revoker import GrantRevoker, OAuthRevocationService, RevokeRequest
 from services.oauth_token_contracts import TokenEndpointError, TokenErrorCode
+from tests.helpers.unit.repositories.oauth_lock_order import record_locks
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (
     CONFIDENTIAL_ID,
     CONFIDENTIAL_SECRET,
@@ -209,6 +210,44 @@ def test_revoke_grant_stops_a_later_rollback_from_restoring_rows(harness: _Harne
     assert harness.access_row(first).revoked_at is not None
     assert harness.access_row(first).token_hash is None
     assert harness.access_row(second).revoked_at is not None
+
+
+@pytest.mark.parametrize("by", ["access", "refresh"])
+def test_revoke_by_token_locks_the_account_row_first(harness: _Harness, by: str) -> None:
+    access = harness.login()
+    refresh = harness.issue_refresh(_grant())
+
+    with record_locks(harness.factory) as log:
+        harness.revoker.revoke_by_token(access.token if by == "access" else refresh, client_id=CONFIDENTIAL_ID)
+
+    assert log.tables[0] == "accounts"
+    assert log.tables.count("accounts") == 1
+    assert log.follows_lock_order()
+
+
+def test_revoke_of_a_refresh_only_grant_still_locks_the_account(harness: _Harness) -> None:
+    harness.issue_refresh(_grant())
+
+    with record_locks(harness.factory) as log:
+        harness.revoker.revoke_grant(_grant())
+
+    assert log.tables[0] == "accounts"
+    assert harness.refresh_count(_grant()) == 0
+
+
+def test_external_sso_grant_revoke_takes_no_account_lock(harness: _Harness) -> None:
+    external = harness.issuer.issue_external_token(
+        subject_email="sso@example.com", subject_issuer="https://idp.example", client_id="difyctl", device_label="cli"
+    )
+    grant = GrantKey(
+        subject_email="sso@example.com", subject_issuer="https://idp.example", client_id="difyctl", device_label="cli"
+    )
+
+    with record_locks(harness.factory) as log:
+        harness.revoker.revoke_grant(grant)
+
+    assert "accounts" not in log.tables
+    assert harness.access_row(external).revoked_at is not None
 
 
 @dataclass

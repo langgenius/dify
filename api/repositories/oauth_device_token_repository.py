@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Generator, Sequence
-from contextlib import contextmanager
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -15,14 +14,20 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
 from models.account import Account
-from models.oauth import OAuthAccessToken
-from repositories.oauth_refresh_token_repository import delete_refresh_grants, live_refresh_grants
+from models.oauth import OAuthAccessToken, OAuthRefreshToken
+from repositories.oauth_refresh_token_repository import (
+    delete_refresh_grants,
+    insert_refresh_token,
+    live_refresh_grants,
+    spend_refresh_token,
+)
 from services.oauth_device_contracts import (
     GrantKey,
     OAuthDeviceSession,
     OAuthDeviceSessionPage,
     OAuthDeviceTokenRotation,
     OAuthDeviceTokenWrite,
+    RefreshTokenWrite,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,6 +65,37 @@ def _grant_filter(grant: GrantKey) -> ColumnElement[bool]:
     )
 
 
+def lock_account(session: Session, account_id: str) -> None:
+    """Take the account's row lock, the mutex for its logins, refreshes, revocations and session cap.
+
+    Row locks on token rows cannot stop a concurrent insert, so the account row
+    serializes them. Every path locks the account row first, then access rows,
+    then refresh rows.
+    """
+    session.execute(select(Account.id).where(Account.id == account_id).with_for_update())
+
+
+def grant_account_id(session: Session, grant: GrantKey) -> str | None:
+    """The account behind a grant, or None for an external-SSO grant. Read without a lock: it never changes."""
+    account_id = session.scalar(
+        select(OAuthAccessToken.account_id)
+        .where(_grant_filter(grant), OAuthAccessToken.account_id.is_not(None))
+        .limit(1)
+    )
+    if account_id is not None:
+        return account_id
+    return session.scalar(
+        select(OAuthRefreshToken.account_id)
+        .where(
+            OAuthRefreshToken.subject_email == grant.subject_email,
+            OAuthRefreshToken.subject_issuer == grant.subject_issuer,
+            OAuthRefreshToken.client_id == grant.client_id,
+            OAuthRefreshToken.device_label == grant.device_label,
+        )
+        .limit(1)
+    )
+
+
 def find_live_access_grant(session: Session, token_hash: str) -> GrantKey | None:
     row = session.execute(
         select(*_GRANT_COLUMNS).where(
@@ -93,6 +129,27 @@ def revoke_grant_rows(session: Session, grant: GrantKey, *, now: datetime) -> li
         session.execute(update(OAuthAccessToken).where(OAuthAccessToken.id.in_(ids)).values(token_hash=None))
     delete_refresh_grants(session, (grant,))
     return [row.token_hash for row in rows]
+
+
+def _write_refresh(
+    session: Session, token: OAuthDeviceTokenWrite, refresh: RefreshTokenWrite, *, now: datetime
+) -> None:
+    if token.account_id is None:
+        raise ValueError("refresh tokens are issued with account tokens only")
+    # A raise here rolls back the whole rotation: a revoked or reused token issues nothing.
+    if refresh.presented is not None:
+        spend_refresh_token(session, refresh.presented, now=now)
+    insert_refresh_token(
+        session,
+        grant=GrantKey(
+            subject_email=token.subject_email,
+            subject_issuer=token.subject_issuer,
+            client_id=token.client_id,
+            device_label=token.device_label,
+        ),
+        account_id=token.account_id,
+        write=refresh,
+    )
 
 
 @dataclass
@@ -171,9 +228,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
         eviction = _Eviction()
         with self._session_factory() as session:
             if token.account_id is not None:
-                # Row locks on token rows cannot stop a concurrent insert, so the
-                # account row serializes this account's logins for the cap check.
-                session.execute(select(Account.id).where(Account.id == token.account_id).with_for_update())
+                lock_account(session, token.account_id)
 
             prior = session.execute(
                 select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
@@ -229,6 +284,12 @@ class SQLAlchemyOAuthDeviceTokenRepository:
                 ).apply_to(record)
             session.flush()
             token_id = record.id
+            # Refresh rows go last, in lock order. The evicted grants' refresh tokens
+            # are deleted in this transaction, so a refresh waiting on the account
+            # lock can never revive them; rollback_rotation cannot bring them back.
+            delete_refresh_grants(session, eviction.grants)
+            if token.refresh is not None:
+                _write_refresh(session, token, token.refresh, now=now)
             session.commit()
 
         replaced = previous if previous is not None and previous.revoked_at is None else None
@@ -245,22 +306,12 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             if token_hash
         ]
         if cache_keys:
-            with self._undone_on_failure(rotation):
+            try:
                 self._redis.delete(*cache_keys)
-        # Refresh rows are deleted, not flagged, so rollback_rotation cannot bring
-        # them back. They go last, once the new row is committed and nothing else can fail.
-        if eviction.grants:
-            with self._undone_on_failure(rotation), self._session_factory() as session, session.begin():
-                delete_refresh_grants(session, eviction.grants)
+            except Exception:
+                self.rollback_rotation(rotation)
+                raise
         return rotation
-
-    @contextmanager
-    def _undone_on_failure(self, rotation: OAuthDeviceTokenRotation) -> Generator[None]:
-        try:
-            yield
-        except Exception:
-            self.rollback_rotation(rotation)
-            raise
 
     def _evict_over_cap(
         self,
@@ -421,6 +472,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
         """Revoke the session's whole grant: its access row and its refresh tokens."""
         now = datetime.now(UTC)
         with self._session_factory() as session:
+            lock_account(session, account_id)
             prior = session.execute(
                 select(OAuthAccessToken.id, OAuthAccessToken.token_hash, *_GRANT_COLUMNS)
                 .where(

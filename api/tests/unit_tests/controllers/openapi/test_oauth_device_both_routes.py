@@ -13,6 +13,7 @@ from werkzeug.test import TestResponse
 from controllers.openapi import bp as openapi_bp
 from libs.helper import RateLimiter
 from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
+from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTokenRepository
 from services.oauth_device_application_service import (
     DeviceWorkspaceQuery,
     ExternalApprovalLimiter,
@@ -28,6 +29,7 @@ from services.oauth_device_contracts import (
     PollPayload,
     SlowDownDecision,
 )
+from services.oauth_grant_revoker import GrantRevoker
 from services.oauth_token_contracts import GrantType
 from services.oauth_token_grants import build_grant_handlers
 from services.oauth_token_service import OAuthTokenService
@@ -162,9 +164,11 @@ def client(store: FakeStore, monkeypatch: pytest.MonkeyPatch) -> FlaskClient:
                 device=device,
                 clients=registry(),
                 codes=RedisAuthorizationCodeRepository(DictRedis()),
+                refresh=create_autospec(SQLAlchemyOAuthRefreshTokenRepository, instance=True),
                 accounts=FakeAccounts(),
                 workspaces=FakeWorkspaces(),
                 tokens=FakeTokenIssuer(),
+                revoke=create_autospec(GrantRevoker, instance=True),
                 settings=FakeTokenSettings(authorization_code_enabled=False),
             )
         ),

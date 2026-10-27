@@ -2,11 +2,13 @@
 
 import secrets
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Literal, NotRequired, Protocol, TypedDict
 
 from constants.oauth_bearer import SubjectType
+
+from libs.datetime_utils import ensure_naive_utc
 
 DEVICE_FLOW_TTL_SECONDS = 15 * 60
 DEFAULT_POLL_INTERVAL_SECONDS = 5
@@ -142,10 +144,42 @@ class IssuedOAuthToken:
     token: str
     expires_at: str
     rotation: OAuthDeviceTokenRotation
+    refresh_token: str | None = None
 
     @property
     def token_id(self) -> str:
         return self.rotation.token_id
+
+
+@dataclass(frozen=True, slots=True)
+class PresentedRefreshToken:
+    """A refresh token being exchanged. ``rotate_token`` spends it under the account lock."""
+
+    id: str
+    family_id: str
+    reuse_grace: timedelta
+
+    def may_replay(self, *, rotated_at: datetime, now: datetime) -> bool:
+        if not self.reuse_grace:
+            return False
+        return ensure_naive_utc(now) - ensure_naive_utc(rotated_at) <= self.reuse_grace
+
+
+@dataclass(frozen=True, slots=True)
+class RefreshTokenIssue:
+    """Asks for a refresh token with the access token: in a new family, or in the presented token's."""
+
+    lifetime: timedelta
+    presented: PresentedRefreshToken | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RefreshTokenWrite:
+    token_hash: str
+    family_id: str
+    workspace_id: str | None
+    expires_at: datetime
+    presented: PresentedRefreshToken | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,6 +192,7 @@ class OAuthDeviceTokenWrite:
     prefix: str
     token_hash: str
     expires_at: datetime
+    refresh: RefreshTokenWrite | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -328,6 +363,14 @@ class ExternalIdentityConflictError(OAuthDeviceError):
 
 class ApprovalSessionConsumedError(OAuthDeviceError):
     pass
+
+
+class RefreshTokenRejectedError(Exception):
+    """The presented refresh token is gone (its grant was revoked) or expired."""
+
+
+class RefreshTokenReusedError(RefreshTokenRejectedError):
+    """The presented refresh token was rotated longer ago than the replay grace allows."""
 
 
 class StateNotFoundError(Exception):

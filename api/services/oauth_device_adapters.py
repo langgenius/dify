@@ -2,6 +2,7 @@
 
 import logging
 import secrets
+import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Protocol, override
@@ -22,6 +23,7 @@ from libs.device_flow_security import (
 from libs.helper import RateLimiter
 from libs.oauth_bearer import sha256_hex
 from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL, limiter_prefix
+from repositories.oauth_refresh_token_repository import new_refresh_token
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_application_service import (
     ExternalApprovalLimiter,
@@ -40,6 +42,8 @@ from services.oauth_device_contracts import (
     IssuedOAuthToken,
     OAuthDeviceSSOInitiationError,
     OAuthDeviceTokenWrite,
+    RefreshTokenIssue,
+    RefreshTokenWrite,
 )
 
 logger = logging.getLogger(__name__)
@@ -111,6 +115,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         client_id: str,
         device_label: str,
         lifetime: timedelta | None = None,
+        refresh: RefreshTokenIssue | None = None,
     ) -> IssuedOAuthToken:
         return self._issue_token(
             token_type=TokenType.OAUTH_ACCOUNT,
@@ -121,6 +126,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
             device_label=device_label,
             workspace_id=workspace_id,
             lifetime=lifetime,
+            refresh=refresh,
         )
 
     @override
@@ -143,6 +149,7 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
             device_label=device_label,
             workspace_id=None,
             lifetime=None,
+            refresh=None,
         )
 
     def _issue_token(
@@ -156,10 +163,17 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
         device_label: str,
         workspace_id: str | None,
         lifetime: timedelta | None,
+        refresh: RefreshTokenIssue | None,
     ) -> IssuedOAuthToken:
         plaintext = token_type.prefix + secrets.token_urlsafe(_OAUTH_TOKEN_BODY_BYTES)
+        now = datetime.now(UTC)
         max_lifetime = timedelta(days=self._ttl_policy.ttl_days(workspace_id))
-        expires_at = datetime.now(UTC) + (max_lifetime if lifetime is None else min(lifetime, max_lifetime))
+        expires_at = now + (max_lifetime if lifetime is None else min(lifetime, max_lifetime))
+        refresh_token: str | None = None
+        refresh_write: RefreshTokenWrite | None = None
+        if refresh is not None:
+            refresh_token = new_refresh_token()
+            refresh_write = _refresh_write(refresh, refresh_token, workspace_id=workspace_id, now=now)
         rotation = self._tokens.rotate_token(
             OAuthDeviceTokenWrite(
                 subject_email=subject_email,
@@ -170,9 +184,32 @@ class OAuthDeviceTokenIssuanceGateway(OAuthDeviceTokenIssuer):
                 prefix=token_type.prefix,
                 token_hash=sha256_hex(plaintext),
                 expires_at=expires_at,
+                refresh=refresh_write,
             )
         )
-        return IssuedOAuthToken(token=plaintext, expires_at=expires_at.isoformat(), rotation=rotation)
+        return IssuedOAuthToken(
+            token=plaintext,
+            expires_at=expires_at.isoformat(),
+            rotation=rotation,
+            refresh_token=refresh_token,
+        )
+
+
+def _refresh_write(
+    refresh: RefreshTokenIssue,
+    token: str,
+    *,
+    workspace_id: str | None,
+    now: datetime,
+) -> RefreshTokenWrite:
+    presented = refresh.presented
+    return RefreshTokenWrite(
+        token_hash=sha256_hex(token),
+        family_id=str(uuid.uuid4()) if presented is None else presented.family_id,
+        workspace_id=workspace_id,
+        expires_at=now + refresh.lifetime,
+        presented=presented,
+    )
 
 
 class _ExternalSubjectAssertionPayload(BaseModel):

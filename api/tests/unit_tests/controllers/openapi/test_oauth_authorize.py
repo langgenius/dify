@@ -3,6 +3,7 @@ import builtins
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
+from unittest.mock import create_autospec
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -24,8 +25,10 @@ from libs.rate_limit import (
 )
 from models.account import Account, AccountStatus
 from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
+from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTokenRepository
 from services.oauth_authorize_service import OAuthAuthorizeService
 from services.oauth_device_contracts import PollPayload
+from services.oauth_grant_revoker import GrantRevoker
 from services.oauth_token_grants import build_grant_handlers
 from services.oauth_token_service import OAuthTokenService
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (
@@ -110,9 +113,11 @@ def _build_services(*, authorization_code_enabled: bool = True) -> tuple[_Servic
         device=device,
         clients=clients,
         codes=codes,
+        refresh=create_autospec(SQLAlchemyOAuthRefreshTokenRepository, instance=True),
         accounts=FakeAccounts(),
         workspaces=FakeWorkspaces(),
         tokens=tokens,
+        revoke=create_autospec(GrantRevoker, instance=True),
         settings=settings,
     )
     services = _Services(
@@ -397,6 +402,7 @@ class TestAuthorizationCodeTokenCases:
         assert body["access_token"] == "dfoa_token-1"
         assert body["token_type"] == "Bearer"
         assert 86_000 < body["expires_in"] <= 86_400
+        assert body["refresh_token"] == "dfor_refresh-1"
         assert body["default_workspace_id"] == WORKSPACE_ID
         assert response.headers["Cache-Control"] == "no-store"
 
@@ -448,6 +454,7 @@ class TestAuthorizationCodeTokenCases:
         )
         assert device_poll.status_code == 200
         assert device_poll.get_json()["access_token"] == "dfoa_device"
+        assert "refresh_token" not in device_poll.get_json()
         assert world.device.polls == [DEVICE_CLIENT_ID]
         failure_prefix = limiter_prefix(LIMIT_CLIENT_AUTH_FAILURE)
         assert {key for key in world.hits.hits if key.startswith(failure_prefix)} == {

@@ -10,7 +10,12 @@ from enums.oauth_client import OAuthClientKind
 from libs.helper import RateLimiter
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_clients import OAuthClientRegistry, ResolvedClient, hash_client_secret
-from services.oauth_device_contracts import DeviceWorkspace, IssuedOAuthToken, OAuthDeviceTokenRotation
+from services.oauth_device_contracts import (
+    DeviceWorkspace,
+    IssuedOAuthToken,
+    OAuthDeviceTokenRotation,
+    RefreshTokenIssue,
+)
 from services.oauth_token_contracts import GrantType
 
 CONFIDENTIAL_ID = "qwenwork"
@@ -99,9 +104,11 @@ class FakeTokenSettings:
     authorization_code_enabled: bool = True
     auth_code_access_token_lifetime: timedelta = timedelta(hours=24)
     authorization_code_ttl: timedelta = timedelta(seconds=600)
+    refresh_token_lifetime: timedelta = timedelta(days=30)
+    refresh_reuse_grace: timedelta = timedelta(minutes=30)
 
 
-def account_snapshot(account_id: str = ACCOUNT_ID) -> AccountSnapshot:
+def account_snapshot(account_id: str = ACCOUNT_ID, *, status: str = "active") -> AccountSnapshot:
     now = datetime.now(UTC)
     return AccountSnapshot(
         id=account_id,
@@ -114,7 +121,7 @@ def account_snapshot(account_id: str = ACCOUNT_ID) -> AccountSnapshot:
         timezone="UTC",
         last_login_at=now,
         last_login_ip="127.0.0.1",
-        status="active",
+        status=status,
         initialized_at=now,
         created_at=now,
     )
@@ -148,6 +155,7 @@ class IssueCall:
     client_id: str
     device_label: str
     lifetime: timedelta | None
+    refresh: RefreshTokenIssue | None
 
 
 @dataclass
@@ -162,6 +170,7 @@ class FakeTokenIssuer:
         client_id: str,
         device_label: str,
         lifetime: timedelta | None = None,
+        refresh: RefreshTokenIssue | None = None,
     ) -> IssuedOAuthToken:
         self.calls.append(
             IssueCall(
@@ -170,6 +179,7 @@ class FakeTokenIssuer:
                 client_id=client_id,
                 device_label=device_label,
                 lifetime=lifetime,
+                refresh=refresh,
             )
         )
         number = len(self.calls)
@@ -179,6 +189,7 @@ class FakeTokenIssuer:
             rotation=OAuthDeviceTokenRotation(
                 token_id=f"token-{number}", replaced_token_id=None, replaced_token_hash=None
             ),
+            refresh_token=None if refresh is None else f"dfor_refresh-{number}",
         )
 
     def issue_external_token(

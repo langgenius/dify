@@ -18,6 +18,7 @@ from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTo
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
 from services.oauth_device_contracts import GrantKey, IssuedOAuthToken
+from tests.helpers.unit.repositories.oauth_lock_order import record_locks
 
 
 @dataclass
@@ -566,6 +567,35 @@ def test_console_session_revoke_also_deletes_the_refresh_token(
 
     assert _refresh_labels(sqlite_session) == {"b"}
     assert _live_token_ids(sqlite_session) == {kept.token_id}
+
+
+def test_console_session_revoke_locks_the_account_row_first(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, repository, _redis, _ttl_policy = _repository(sqlite_session_factory)
+    [revoked] = _issue_sessions(issuer, ["a"])
+    _issue_refresh(sqlite_session_factory, _grant("a"))
+
+    with record_locks(sqlite_session_factory) as log:
+        repository.revoke_account_session(account_id="account-1", token_id=revoked.token_id)
+
+    assert log.tables[0] == "accounts"
+    assert "oauth_refresh_tokens" in log.tables
+    assert log.follows_lock_order()
+
+
+def test_eviction_deletes_the_refresh_token_in_the_login_transaction(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=1)
+    _issue_sessions(issuer, ["a"])
+    _issue_refresh(sqlite_session_factory, _grant("a"))
+
+    with record_locks(sqlite_session_factory) as log:
+        _issue_sessions(issuer, ["b"])
+
+    assert log.tables.index("oauth_refresh_tokens") < log.commits[0]
+    assert log.follows_lock_order()
 
 
 def test_expired_access_with_live_refresh_counts_toward_the_cap(

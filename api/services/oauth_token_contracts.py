@@ -78,3 +78,9 @@ class OAuthTokenSettings(Protocol):
 
     @property
     def authorization_code_ttl(self) -> timedelta: ...
+
+    @property
+    def refresh_token_lifetime(self) -> timedelta: ...
+
+    @property
+    def refresh_reuse_grace(self) -> timedelta: ...

@@ -5,14 +5,19 @@ import uuid
 from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import cast
 
-from sqlalchemy import CursorResult, and_, delete, func, or_, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.oauth_bearer import sha256_hex
 from models.oauth import OAuthRefreshToken
-from services.oauth_device_contracts import GrantKey
+from services.oauth_device_contracts import (
+    GrantKey,
+    PresentedRefreshToken,
+    RefreshTokenRejectedError,
+    RefreshTokenReusedError,
+    RefreshTokenWrite,
+)
 
 REFRESH_TOKEN_PREFIX = "dfor_"
 _REFRESH_TOKEN_BYTES = 32
@@ -47,6 +52,47 @@ _GRANT_COLUMNS = (
     OAuthRefreshToken.client_id,
     OAuthRefreshToken.device_label,
 )
+
+
+def new_refresh_token() -> str:
+    return f"{REFRESH_TOKEN_PREFIX}{secrets.token_urlsafe(_REFRESH_TOKEN_BYTES)}"
+
+
+def insert_refresh_token(session: Session, *, grant: GrantKey, account_id: str, write: RefreshTokenWrite) -> None:
+    session.add(
+        OAuthRefreshToken(
+            family_id=write.family_id,
+            token_hash=write.token_hash,
+            subject_email=grant.subject_email,
+            subject_issuer=grant.subject_issuer,
+            account_id=account_id,
+            client_id=grant.client_id,
+            device_label=grant.device_label,
+            expires_at=write.expires_at,
+            workspace_id=write.workspace_id,
+        )
+    )
+
+
+def spend_refresh_token(session: Session, presented: PresentedRefreshToken, *, now: datetime) -> None:
+    """Spend the presented token in the caller's transaction, which holds the account lock.
+
+    A fresh token is marked rotated. A rotated one passes only inside the replay
+    grace, and is left as it is. Raises ``RefreshTokenRejectedError`` when the
+    token is gone or expired, ``RefreshTokenReusedError`` past the grace.
+    """
+    row = session.execute(
+        select(OAuthRefreshToken.rotated_at)
+        .where(OAuthRefreshToken.id == presented.id, OAuthRefreshToken.expires_at > now)
+        .with_for_update()
+    ).first()
+    if row is None:
+        raise RefreshTokenRejectedError
+    if row.rotated_at is None:
+        session.execute(update(OAuthRefreshToken).where(OAuthRefreshToken.id == presented.id).values(rotated_at=now))
+        return
+    if not presented.may_replay(rotated_at=row.rotated_at, now=now):
+        raise RefreshTokenReusedError
 
 
 def delete_refresh_grants(session: Session, grants: Collection[GrantKey]) -> None:
@@ -105,20 +151,16 @@ class SQLAlchemyOAuthRefreshTokenRepository:
         family_id: str | None,
         lifetime: timedelta,
     ) -> str:
-        token = f"{REFRESH_TOKEN_PREFIX}{secrets.token_urlsafe(_REFRESH_TOKEN_BYTES)}"
-        row = OAuthRefreshToken(
-            family_id=family_id or str(uuid.uuid4()),
+        token = new_refresh_token()
+        write = RefreshTokenWrite(
             token_hash=sha256_hex(token),
-            subject_email=grant.subject_email,
-            subject_issuer=grant.subject_issuer,
-            account_id=account_id,
-            client_id=grant.client_id,
-            device_label=grant.device_label,
-            expires_at=datetime.now(UTC) + lifetime,
+            family_id=family_id or str(uuid.uuid4()),
             workspace_id=workspace_id,
+            expires_at=datetime.now(UTC) + lifetime,
+            presented=None,
         )
         with self._session_factory() as session, session.begin():
-            session.add(row)
+            insert_refresh_token(session, grant=grant, account_id=account_id, write=write)
         return token
 
     def find(self, token: str) -> RefreshTokenRecord | None:
@@ -138,24 +180,3 @@ class SQLAlchemyOAuthRefreshTokenRepository:
                 expires_at=row.expires_at,
                 rotated_at=row.rotated_at,
             )
-
-    def rotate(self, record: RefreshTokenRecord) -> bool:
-        with self._session_factory() as session, session.begin():
-            result = session.execute(
-                update(OAuthRefreshToken)
-                .where(OAuthRefreshToken.id == record.id, OAuthRefreshToken.rotated_at.is_(None))
-                .values(rotated_at=datetime.now(UTC))
-            )
-            return cast(CursorResult, result).rowcount == 1
-
-    def revoke_family(self, family_id: str) -> None:
-        with self._session_factory() as session, session.begin():
-            session.execute(delete(OAuthRefreshToken).where(OAuthRefreshToken.family_id == family_id))
-
-    def revoke_grant(self, grant: GrantKey) -> None:
-        with self._session_factory() as session, session.begin():
-            delete_refresh_grants(session, (grant,))
-
-    def live_grant_keys(self, account_id: str) -> list[GrantKey]:
-        with self._session_factory() as session:
-            return list(live_refresh_grants(session, account_id=account_id, now=datetime.now(UTC)))

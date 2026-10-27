@@ -37,6 +37,14 @@ DEFAULT_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: Final = 600
 MIN_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: Final = 60
 MAX_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS: Final = 600
 
+DEFAULT_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 30
+MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 1
+MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS: Final = 365
+
+DEFAULT_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES: Final = 30
+MIN_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES: Final = 0
+MAX_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES: Final = 1440
+
 
 def _clamp_int_setting(name: str, value: object, *, default: int, minimum: int, maximum: int) -> int:
     # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
@@ -1217,6 +1225,47 @@ class AuthConfig(BaseSettings):
             default=DEFAULT_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
             minimum=MIN_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
             maximum=MAX_OAUTH_AUTHORIZATION_CODE_TTL_SECONDS,
+        )
+
+    OAUTH_REFRESH_TOKEN_TTL_DAYS: int = Field(
+        description="Lifetime in days of refresh tokens issued by the authorization code flow; each refresh "
+        f"starts a new lifetime. Values outside {MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS}-{MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS} "
+        "are clamped; a non-integer falls back to the default.",
+        ge=MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+        le=MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+        default=DEFAULT_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+    )
+
+    @field_validator("OAUTH_REFRESH_TOKEN_TTL_DAYS", mode="before")
+    @classmethod
+    def _clamp_oauth_refresh_token_ttl_days(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_REFRESH_TOKEN_TTL_DAYS",
+            v,
+            default=DEFAULT_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+            minimum=MIN_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+            maximum=MAX_OAUTH_REFRESH_TOKEN_TTL_DAYS,
+        )
+
+    OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES: int = Field(
+        description="Minutes a rotated refresh token may still be exchanged (a lost response, or two refreshes "
+        "racing); reuse after that revokes the login. 0 makes any reuse revoke it. Values outside "
+        f"{MIN_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES}-{MAX_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES} are clamped; "
+        "a non-integer falls back to the default.",
+        ge=MIN_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
+        le=MAX_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
+        default=DEFAULT_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
+    )
+
+    @field_validator("OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES", mode="before")
+    @classmethod
+    def _clamp_oauth_refresh_token_reuse_grace_minutes(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES",
+            v,
+            default=DEFAULT_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
+            minimum=MIN_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
+            maximum=MAX_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
         )
 
     OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(

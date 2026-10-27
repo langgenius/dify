@@ -46,6 +46,8 @@ def test_oauth_authorization_code_settings_default() -> None:
     assert config.ENABLE_OAUTH_AUTHORIZATION_CODE is True
     assert config.OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS == 24
     assert config.OAUTH_AUTHORIZATION_CODE_TTL_SECONDS == 600
+    assert config.OAUTH_REFRESH_TOKEN_TTL_DAYS == 30
+    assert config.OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES == 30
 
 
 @pytest.mark.parametrize(
@@ -66,6 +68,26 @@ def test_oauth_authorization_code_ttl_seconds_clamps_or_falls_back(configured: s
     config = _IsolatedAuthConfig(OAUTH_AUTHORIZATION_CODE_TTL_SECONDS=configured)
 
     assert expected == config.OAUTH_AUTHORIZATION_CODE_TTL_SECONDS
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [("7", 7), ("1", 1), ("365", 365), ("0", 1), ("-5", 1), ("1000", 365), ("abc", 30), ("", 30)],
+)
+def test_oauth_refresh_token_ttl_days_clamps_or_falls_back(configured: str, expected: int) -> None:
+    config = _IsolatedAuthConfig(OAUTH_REFRESH_TOKEN_TTL_DAYS=configured)
+
+    assert expected == config.OAUTH_REFRESH_TOKEN_TTL_DAYS
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [("5", 5), ("0", 0), ("1440", 1440), ("-5", 0), ("2000", 1440), ("abc", 30), ("", 30)],
+)
+def test_oauth_refresh_token_reuse_grace_minutes_clamps_or_falls_back(configured: str, expected: int) -> None:
+    config = _IsolatedAuthConfig(OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES=configured)
+
+    assert expected == config.OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES
 
 
 class _IsolatedFileUploadConfig(InitSettingsOnly, FileUploadConfig):

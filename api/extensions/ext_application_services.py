@@ -432,19 +432,18 @@ def _build_oauth_services(
     clients = OAuthClientRegistry(sources=[SQLAlchemyOAuthClientRepository(session_factory=database_client)])
     codes = RedisAuthorizationCodeRepository(redis)
     settings = DifyConfigOAuthTokenSettings()
+    refresh = SQLAlchemyOAuthRefreshTokenRepository(session_factory=database_client)
+    grants = GrantRevoker(session_factory=database_client, redis=redis, refresh=refresh)
     handlers = build_grant_handlers(
         device=device,
         clients=clients,
         codes=codes,
+        refresh=refresh,
         accounts=accounts,
         workspaces=workspaces,
         tokens=tokens,
+        revoke=grants,
         settings=settings,
-    )
-    grants = GrantRevoker(
-        session_factory=database_client,
-        redis=redis,
-        refresh=SQLAlchemyOAuthRefreshTokenRepository(session_factory=database_client),
     )
     return _OAuthServices(
         device=device,

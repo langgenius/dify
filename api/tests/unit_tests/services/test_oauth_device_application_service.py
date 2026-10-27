@@ -55,6 +55,7 @@ from services.oauth_device_contracts import (
     OAuthDeviceTokenRotation,
     PollPayload,
     PollTooFastError,
+    RefreshTokenIssue,
     SlowDownDecision,
     StateNotFoundError,
     UnsupportedClientError,
@@ -201,8 +202,9 @@ class FakeTokens:
         client_id: str,
         device_label: str,
         lifetime: timedelta | None = None,
+        refresh: RefreshTokenIssue | None = None,
     ) -> IssuedOAuthToken:
-        _ = (account, workspace_id, client_id, device_label, lifetime)
+        _ = (account, workspace_id, client_id, device_label, lifetime, refresh)
         self.account_issues += 1
         return self.account_token
 
