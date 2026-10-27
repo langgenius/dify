@@ -308,6 +308,42 @@ class TestCustomToolCases:
             invalid_method_tool.do_http_request("https://api.example.com", "TRACE", headers={}, parameters={})
 
     @staticmethod
+    @pytest.mark.parametrize("content_type", ["application/json; charset=utf-8", "Application/JSON"])
+    def test_do_http_request_serializes_json_body_when_content_type_has_parameters(
+        monkeypatch: pytest.MonkeyPatch, content_type: str
+    ):
+        openapi = {
+            "parameters": [],
+            "requestBody": {
+                "content": {
+                    content_type: {
+                        "schema": {
+                            "type": "object",
+                            "properties": {"name": {"type": "string"}, "count": {"type": "integer"}},
+                        }
+                    }
+                }
+            },
+        }
+        tool = _build_tool(openapi=openapi)
+        captured = {}
+
+        def _fake_post(url, **kwargs):
+            captured["kwargs"] = kwargs
+            return httpx.Response(200, text="ok")
+
+        monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.post", _fake_post)
+        tool.do_http_request(
+            "https://api.example.com/items",
+            "POST",
+            headers={},
+            parameters={"name": "widget", "count": "2"},
+        )
+
+        assert captured["kwargs"]["headers"]["Content-Type"] == content_type
+        assert json.loads(captured["kwargs"]["data"]) == {"name": "widget", "count": 2}
+
+    @staticmethod
     def test_do_http_request_handles_file_upload_and_invoke_paths(
         monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ):
