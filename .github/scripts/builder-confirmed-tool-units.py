@@ -2085,6 +2085,21 @@ a4_expected["tests.unit_tests.core.workflow.generator.test_template_generation"]
 a4_expected["tests.unit_tests.services.workflow_generation.test_runner"].update({'test_output_representations_reach_both_builders_without_changing_runtime_data': 1, 'test_unusable_representation_metadata_preserves_names_only_prompts': 3, 'test_representation_contracts_preserve_parallel_call_count_and_public_events': 1})
 a4_expected['tests.unit_tests.services.dify_builder.test_mock_inputs'] = {'test_generate_uses_llm_values_keyed_by_variable': 1, 'test_generate_degrades_to_typed_defaults_on_boom': 1, 'test_generate_degrades_on_none_model': 1, 'test_generate_empty_schema_is_empty_inputs': 1, 'test_all_mock_input_paths_ground_prompt_in_current_business_context': 6, 'test_business_context_preserves_existing_type_fallbacks': 5, 'test_json_text_samples_are_serialized_once_for_declared_text_fields': 1, 'test_malformed_outer_json_is_corrected_before_nested_values_are_used': 1, 'test_invalid_generated_content_gets_one_correction': 7, 'test_outer_and_inner_failures_share_two_completion_budget': 1, 'test_legacy_strings_and_nontext_values_keep_their_original_representation': 1, 'test_explicit_json_string_is_validated_without_reserializing': 1, 'test_json_text_metadata_cannot_reinterpret_a_nontext_field': 1}
 a4_expected['tests.unit_tests.core.workflow.generator.test_output_contracts'] = {'test_contracts_bind_to_normalized_declared_names_and_skip_kept_producers': 1, 'test_malformed_contracts_degrade_to_names_only': 6, 'test_bad_entries_do_not_discard_valid_siblings': 5, 'test_contracts_are_capped_at_ten_producers_and_six_outputs': 1, 'test_representations_preserve_generic_units_scale_shape_and_timezone': 4}
+# SSE startup observation: defer only the owned pre-initialization window.
+a4_expected["tests.unit_tests.services.dify_builder.test_native_live_stream"].update({
+    "test_startup_stream_defers_only_until_sql_root_initialization": 9,
+})
+a4_expected["tests.unit_tests.services.dify_builder.test_stream_frames"].update({
+    "test_stream_defers_initializing_observation_until_real_view": 2,
+    "test_stream_surfaces_projection_policy_refusal_as_terminal_error": 2,
+})
+# Risk wording keeps unknown isolation separate from a destructive verdict.
+a4_expected["tests.unit_tests.services.dify_builder.test_agent_operation_owner"].update({
+    "test_prepare_actual_call_freezes_builder_reasoning_without_business_or_oauth": 8,
+})
+a4_expected["tests.unit_tests.services.dify_builder.native_testing.test_agent_risk_assessor"].update({
+    "test_risk_rubric_separates_observed_destruction_from_uncertain_side_effects": 1,
+})
 for module, expected in {**a3_expected, **a4_expected}.items():
     actual = {}
     for classname, name in identities:
