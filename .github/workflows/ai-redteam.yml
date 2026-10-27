@@ -1,0 +1,39 @@
+name: AI Red-Team Security Gate
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  red-team-audit:
+    runs-on: ubuntu-latest
+    
+    # Optional: If you want to spin up Ollama as a service container in GitHub Actions
+    services:
+      ollama:
+        image: ollama/ollama:latest
+        ports:
+          - 11434:11434
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Pull Test Model in CI
+        run: |
+          curl -X POST http://localhost:11434/api/pull -d '{"name": "gemma4:latest"}'
+
+      - name: Run SawOne Agentic Red-Team Action
+        uses: hackin2minutes-oss/sawone-agentic-action@v1
+        with:
+          redteam-endpoint: "http://localhost:11434/v1/chat/completions"
+          model-name: "gemma4:latest"
+          severity: HIGH,CRITICAL
+          enforce: true # Fails the PR if safety guardrails fail
+
+      - name: Upload Red-Team Audit Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: redteam-audit-results
+          path: promptfoo-redteam.yaml
