@@ -1,7 +1,9 @@
 """Verify the deployed Slack HTTP callback, Celery worker, and workflow resume.
 
 Run inside the API container of hitl-dev with --tenant-id identifying the test
-workspace. Fixtures are isolated under an E2E app and cleaned up afterwards.
+workspace named HITL IM callback CI, with an owner, Contact and tenant key already
+provisioned. It must have no IM or Email channel. Synthetic credentials, directory
+entries and the E2E app are disposable; the workspace/account/key are not.
 This exercises signed Slack protocol requests; a real Slack UI click is separate.
 """
 
@@ -12,6 +14,8 @@ import json
 import secrets
 import sys
 import time
+from collections.abc import Generator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -20,20 +24,24 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from configs.deploy import IMEventTransportMode
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
-from core.human_input_v2.shared.values import AccountId, IMBindingId, RecipientId, TenantId
+from core.human_input_v2.shared.values import AccountId, ContactId, IMIdentityId, IMSyncRunId, RecipientId, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from enums import DeploymentEdition
+from enums.account import TenantAccountRole
 from extensions.ext_key_provider import key_provider_manager
 from graphon.enums import WorkflowExecutionStatus
-from models.account import Account
+from libs.datetime_utils import naive_utc_now
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantStatus
 from models.human_input_v2 import (
+    HumanInputAuditEvent,
     HumanInputDelivery,
     HumanInputDeliveryAttempt,
     HumanInputForm,
-    HumanInputIMChannel,
     HumanInputRecipient,
     IMMessageEvent,
 )
@@ -44,16 +52,24 @@ from repositories.human_input_v2.delivery_repository import (
     IMUserTargetSnapshot,
     SubmissionAuthType,
 )
-from repositories.human_input_v2.im_channel_repository import IMChannelId
+from repositories.human_input_v2.email_channel.repository import SQLAlchemyEmailChannelRepository
+from repositories.human_input_v2.im_binding_repository import IMBinding, IMBindingAssignment
+from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelId, IMChannelStatus, WebhookId
+from repositories.human_input_v2.im_identity_repository import IMIdentityObservation, OpaqueProviderPayload
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
+from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
+    WorkspaceIMChannelReader,
+    WorkspaceIMChannelWriter,
+)
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.app_generate_service import AppGenerateService
 from services.app_service import AppService
 from services.human_input_v2.im_credential_codec import IMCredentialCodec
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
+_WORKSPACE_NAME = "HITL IM callback CI"
 _ORIGIN = "https://hitl-im-api.dify.dev"
 _APP_PREFIX = "E2E WTA-3101 "
 _NOTE = "E2E WTA-3101 approval"
@@ -66,7 +82,8 @@ class Fixture:
     account_id: str
     tenant_id: TenantId
     channel_id: IMChannelId
-    binding_id: IMBindingId
+    contact_id: ContactId
+    identity_id: IMIdentityId
     webhook_id: str
     provider_tenant_id: str
     provider_user_id: str
@@ -112,27 +129,63 @@ def _graph() -> dict:
 
 def _create_fixture(sessions: sessionmaker[Session], tenant_id: TenantId) -> Fixture:
     with sessions.begin() as session:
-        channel = session.scalar(
-            sa.select(HumanInputIMChannel).where(
-                HumanInputIMChannel.owner_key == f"workspace:{tenant_id}",
-                HumanInputIMChannel.provider == IMProvider.SLACK,
+        tenant = session.get(Tenant, str(tenant_id))
+        assert tenant is not None, "Provision the dedicated CI workspace before running this verifier"
+        assert tenant.name == _WORKSPACE_NAME, "Refusing a workspace not dedicated to callback CI"
+        assert tenant.status == TenantStatus.NORMAL, "CI workspace is not active"
+        assert tenant.encrypt_public_key, "CI workspace needs its provisioned tenant encryption key"
+        assert WorkspaceIMChannelReader(session, tenant_id).get() is None, "CI workspace already has an IM channel"
+        assert SQLAlchemyEmailChannelRepository(session).load(tenant_id) is None, (
+            "CI workspace must not have an Email channel"
+        )
+        account = session.scalar(
+            sa.select(Account)
+            .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+            .where(
+                TenantAccountJoin.tenant_id == str(tenant_id),
+                TenantAccountJoin.role == TenantAccountRole.OWNER,
+                Account.status == AccountStatus.ACTIVE,
             )
         )
-        assert channel is not None, "Test workspace needs a configured Slack channel"
-        assert channel.configured_by_account_id is not None, "Slack channel has no configuring actor"
-        account = session.get_one(Account, channel.configured_by_account_id)
-        account.set_tenant_id_with_session(str(tenant_id), session=session)
-        assert account.current_tenant_id == tenant_id, "Configuring actor no longer belongs to the workspace"
+        assert account is not None, "CI workspace needs an active owner"
         contact = SQLAlchemyContactRepository(session).get_contact_by_account_id(tenant_id, AccountId(account.id))
-        assert contact is not None, "Configuring actor needs a Contact"
-        channel_id = IMChannelId(channel.id)
-        binding = SQLAlchemyIMBindingRepository(session, channel_id).get_effective(tenant_id, contact.id)
-        assert binding is not None, "Configuring actor needs a Slack identity binding"
-        identity = SQLAlchemyIMIdentityRepository(session, channel_id).get(binding.identity_id)
-        assert identity is not None, "Bound Slack identity is unavailable"
+        assert contact is not None, "CI workspace owner needs a provisioned Contact"
+        credentials = SlackCredentials(
+            provider=IMProvider.SLACK,
+            client_id="ci-" + uuid4().hex,
+            client_secret=secrets.token_urlsafe(32),
+            signing_secret=secrets.token_urlsafe(32),
+            bot_token="xoxb-ci-" + secrets.token_urlsafe(32),
+        )
         cipher = TenantBoundCredentialCipher(key_provider_manager.provider, str(tenant_id))
-        credentials = IMCredentialCodec(cipher).load(channel.provider, channel.encrypted_credentials)
-        assert isinstance(credentials, SlackCredentials)
+        now = naive_utc_now()
+        channel = WorkspaceIMChannelWriter(session, tenant_id, AccountId(account.id)).create(
+            IMChannel(
+                id=IMChannelId(str(uuid4())),
+                created_at=now,
+                updated_at=now,
+                provider=IMProvider.SLACK,
+                provider_tenant_id="T_CI_" + uuid4().hex,
+                encrypted_credentials=IMCredentialCodec(cipher).seal(credentials),
+                app_identifier=credentials.client_id,
+                webhook_id=WebhookId(str(uuid4())),
+                config_version=1,
+                status=IMChannelStatus.CONNECTED,
+            )
+        )
+        identity = SQLAlchemyIMIdentityRepository(session, channel.id).create(
+            IMIdentityId(str(uuid4())),
+            IMIdentityObservation(
+                provider_user_id="U_CI_" + uuid4().hex,
+                display_name="Synthetic callback approver",
+                email=None,
+                raw_payload=OpaqueProviderPayload({}),
+                sync_run_id=IMSyncRunId(str(uuid4())),
+                observed_at=now,
+            ),
+        )
+        # No binding until the workflow pauses: the initiator can receive its
+        # internal form token, but delivery cannot send to the synthetic bot.
         app_id = str(uuid4())
         workflow = Workflow.new(
             tenant_id=str(tenant_id),
@@ -167,13 +220,31 @@ def _create_fixture(sessions: sessionmaker[Session], tenant_id: TenantId) -> Fix
             app_id,
             account.id,
             tenant_id,
-            channel_id,
-            binding.id,
+            channel.id,
+            contact.id,
+            identity.id,
             channel.webhook_id,
             channel.provider_tenant_id,
             identity.provider_user_id,
             credentials,
         )
+
+
+@contextmanager
+def _fixture(sessions: sessionmaker[Session], tenant_id: TenantId) -> Generator[Fixture]:
+    # Setup is one transaction, including failures before a Fixture is returned.
+    fixture = _create_fixture(sessions, tenant_id)
+    try:
+        yield fixture
+    finally:
+        _cleanup(sessions, fixture)
+
+
+def _bind_fixture(session: Session, fixture: Fixture) -> IMBinding:
+    return SQLAlchemyIMBindingRepository(session, fixture.channel_id).create(
+        IMBindingAssignment(fixture.contact_id, fixture.identity_id, naive_utc_now()),
+        bound_by_account_id=AccountId(fixture.account_id),
+    )
 
 
 def _start_workflow(sessions: sessionmaker[Session], fixture: Fixture) -> None:
@@ -271,6 +342,7 @@ def _verify(sessions: sessionmaker[Session], fixture: Fixture, token: str) -> No
     _start_workflow(sessions, fixture)
     form = _wait_for_pause(sessions, fixture)
     with sessions.begin() as session:
+        binding = _bind_fixture(session, fixture)
         recipient = session.scalars(sa.select(HumanInputRecipient).where(HumanInputRecipient.form_id == form.id)).one()
         SQLAlchemyDeliveryRepository(session).create_delivery(
             tenant_id=fixture.tenant_id,
@@ -283,7 +355,7 @@ def _verify(sessions: sessionmaker[Session], fixture: Fixture, token: str) -> No
                     im_provider=IMProvider.SLACK,
                     im_tenant_id=fixture.provider_tenant_id,
                     im_provider_user_id=fixture.provider_user_id,
-                    im_binding_id=fixture.binding_id,
+                    im_binding_id=binding.id,
                     message_type="card",
                 ),
             ),
@@ -336,8 +408,19 @@ def _verify(sessions: sessionmaker[Session], fixture: Fixture, token: str) -> No
             )
 
 
-def _cleanup(sessions: sessionmaker[Session], fixture: Fixture, token: str) -> None:
+def _cleanup(sessions: sessionmaker[Session], fixture: Fixture) -> None:
     with sessions.begin() as session:
+        # CAS protects replacement configuration; a stale cleanup rolls back
+        # instead of deleting another run's or an operator's current channel.
+        WorkspaceIMChannelWriter(session, fixture.tenant_id, AccountId(fixture.account_id)).delete(
+            fixture.channel_id, expected_config_version=1
+        )
+        bindings = SQLAlchemyIMBindingRepository(session, fixture.channel_id)
+        binding = bindings.get_default_for_contact(fixture.contact_id)
+        if binding is not None:
+            assert binding.identity_id == fixture.identity_id, "Synthetic binding was replaced"
+            bindings.delete(binding.id, expected_identity_id=fixture.identity_id)
+        SQLAlchemyIMIdentityRepository(session, fixture.channel_id).delete(fixture.identity_id)
         form_ids = session.scalars(sa.select(HumanInputForm.id).where(HumanInputForm.app_id == fixture.app_id)).all()
         delivery_ids = session.scalars(
             sa.select(HumanInputDelivery.id).where(HumanInputDelivery.form_id.in_(form_ids))
@@ -347,18 +430,18 @@ def _cleanup(sessions: sessionmaker[Session], fixture: Fixture, token: str) -> N
         )
         session.execute(sa.delete(HumanInputDelivery).where(HumanInputDelivery.form_id.in_(form_ids)))
         session.execute(sa.delete(HumanInputRecipient).where(HumanInputRecipient.form_id.in_(form_ids)))
+        session.execute(sa.delete(HumanInputAuditEvent).where(HumanInputAuditEvent.form_id.in_(form_ids)))
         session.execute(sa.delete(HumanInputForm).where(HumanInputForm.id.in_(form_ids)))
         session.execute(
             sa.delete(IMMessageEvent).where(
                 IMMessageEvent.channel_id == fixture.channel_id,
-                IMMessageEvent.payload.contains(token, autoescape=True),
             )
         )
     with sessions() as session:
         app_model = session.get_one(App, fixture.app_id)
         assert app_model.tenant_id == fixture.tenant_id
         assert app_model.name.startswith(_APP_PREFIX)
-        AppService().delete_app(app_model, session=session)
+        AppService().delete_app(app_model, session=session, account_id=None)
 
 
 def main() -> None:
@@ -366,16 +449,16 @@ def main() -> None:
     parser.add_argument("--tenant-id", required=True)
     arguments = parser.parse_args()
     assert dify_config.TRIGGER_URL.rstrip("/") == _ORIGIN, "This verifier is restricted to hitl-dev"
+    assert dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD, "This verifier requires workspace channels"
+    assert dify_config.HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE == IMEventTransportMode.WEBHOOK, (
+        "This verifier requires HTTP callback transport"
+    )
     from app import app
 
     with app.app_context():
         sessions = session_factory.get_session_maker()
-        fixture = _create_fixture(sessions, TenantId(arguments.tenant_id))
-        token = secrets.token_urlsafe(32)
-        try:
-            _verify(sessions, fixture, token)
-        finally:
-            _cleanup(sessions, fixture, token)
+        with _fixture(sessions, TenantId(arguments.tenant_id)) as fixture:
+            _verify(sessions, fixture, secrets.token_urlsafe(32))
     sys.stdout.write(
         json.dumps(
             {

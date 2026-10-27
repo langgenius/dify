@@ -13,7 +13,9 @@ on:
 
 concurrency:
   group: hitl-im-callback-deployment
-  cancel-in-progress: true
+  # Avoid interrupting fixture cleanup. Superseded revisions time out within the
+  # bounded deployment wait; container termination still needs manual recovery.
+  cancel-in-progress: false
 
 jobs:
   callback-e2e:
@@ -60,5 +62,5 @@ jobs:
             $callback_deployed || { echo 'Expected API and worker revision was not deployed'; exit 1; }
             callback_script_file=$(mktemp /tmp/hitl-callback-e2e.XXXXXX.py)
             trap 'rm -f "$callback_script_file"' EXIT
-            curl -fsS --max-time 30 'https://raw.githubusercontent.com/langgenius/dify/${{ github.sha }}/api/dev/verify_hitl_im_callback_e2e.py' -o "$callback_script_file"
+            curl -fsS --max-time 30 'https://raw.githubusercontent.com/langgenius/dify/${{ steps.target.outputs.revision }}/api/dev/verify_hitl_im_callback_e2e.py' -o "$callback_script_file"
             docker compose exec -T --workdir /app/api api uv run --no-cache --no-sync --project /app/api python - --tenant-id '${{ vars.HITL_IM_E2E_TENANT_ID }}' < "$callback_script_file"
