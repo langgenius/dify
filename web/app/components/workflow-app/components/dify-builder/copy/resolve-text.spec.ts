@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict'
+import { getTranslationSourceKey } from '@dify/tooling/i18n-plurals'
 import { createInstance } from 'i18next'
 import languages from '@/i18n/languages'
 import english from '@/i18n/locales/en-US/dify-builder.json'
 import { resolveBuilderText } from './resolve-text'
 import { builderSceneKeys } from './scene-keys'
 
-const catalogs = import.meta.glob<typeof english>('/i18n/locales/*/dify-builder.json', {
+const sourceCatalog: Record<string, string> = english
+const sourceKeys = new Set(Object.keys(english))
+const pluralBases = Object.keys(english)
+  .filter((key) => key.startsWith('copy.') && key.endsWith('_other'))
+  .map((key) => key.slice(0, -'_other'.length))
+
+const catalogs = import.meta.glob<Record<string, string>>('/i18n/locales/*/dify-builder.json', {
   eager: true,
   import: 'default',
 })
@@ -63,23 +70,28 @@ describe('Builder scene presentation', () => {
     (locale) => {
       const catalog = catalogs[`/i18n/locales/${locale}/dify-builder.json`]
       assert(catalog, `Missing difyBuilder catalog for ${locale}`)
-      const pluralKeys = new Set(
-        new Intl.PluralRules(locale)
-          .resolvedOptions()
-          .pluralCategories.map((form) => `plan.stepCount_${form}`),
-      )
       expect(
-        Object.keys(catalog).filter((key) => Object.hasOwn(english, key) || !pluralKeys.has(key)),
+        Object.keys(catalog).filter(
+          (key) => sourceKeys.has(key) || !getTranslationSourceKey(sourceKeys, key, locale),
+        ),
       ).toEqual(Object.keys(english))
       expect(Object.keys(catalog)).toEqual(Object.keys(catalog).sort())
       const params = (text: string) =>
         [...text.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]).sort()
       for (const key of Object.values(builderSceneKeys)) {
-        expect(catalog[key]).toBeTruthy()
-        expect(params(catalog[key])).toEqual(params(english[key]))
+        expect(catalog[sourceKeys.has(key) ? key : `${key}_other`]).toBeTruthy()
       }
       for (const [key, value] of Object.entries(catalog)) {
-        if (key.startsWith('plan.stepCount_')) expect(params(value)).toEqual(['count'])
+        const sourceKey = getTranslationSourceKey(sourceKeys, key, locale)
+        assert(sourceKey, `Unknown difyBuilder key ${key} for ${locale}`)
+        const sourceText = sourceCatalog[sourceKey]
+        assert(sourceText, `Missing English difyBuilder key ${sourceKey}`)
+        expect(params(value)).toEqual(params(sourceText))
+      }
+      for (const base of pluralBases) {
+        for (const category of new Intl.PluralRules(locale).resolvedOptions().pluralCategories) {
+          expect(catalog[`${base}_${category}`]).toBeTruthy()
+        }
       }
     },
   )
@@ -96,5 +108,67 @@ describe('Builder scene presentation', () => {
   ])('uses the %s plural form for %i plan steps', (locale, count, expected) => {
     const t = instance.getFixedT(locale, ['difyBuilder'])
     expect(t(($) => $['plan.stepCount'], { count })).toBe(expected)
+  })
+
+  it.each(
+    (
+      [
+        {
+          id: 'build.graphApplied',
+          expected: [
+            'Workflow draft created with 0 changes (configuration).',
+            'Workflow draft created with 1 change (configuration).',
+            'Workflow draft created with 2 changes (configuration).',
+          ],
+        },
+        {
+          id: 'edit.applied',
+          expected: [
+            'Applied 0 changes to the workflow draft (configuration).',
+            'Applied 1 change to the workflow draft (configuration).',
+            'Applied 2 changes to the workflow draft (configuration).',
+          ],
+        },
+        {
+          id: 'repair.applied',
+          expected: [
+            'Applied 0 changes (configuration).',
+            'Applied 1 change (configuration).',
+            'Applied 2 changes (configuration).',
+          ],
+        },
+        {
+          id: 'repair.changesApplied',
+          expected: [
+            'Applied 0 changes (configuration).',
+            'Applied 1 change (configuration).',
+            'Applied 2 changes (configuration).',
+          ],
+        },
+      ] as const
+    ).flatMap(({ id, expected }) => expected.map((text, count) => ({ id, count, expected: text }))),
+  )('renders $id with count $count in English', ({ id, count, expected }) => {
+    const t = instance.getFixedT('en-US', ['difyBuilder'])
+    expect(
+      resolveBuilderText({ type: 'copy', id, params: { count, scope: 'configuration' } }, t),
+    ).toBe(expected)
+  })
+
+  it.each([
+    ['ru-RU', 1, 'Применено 1 изменение (configuration).'],
+    ['ru-RU', 2, 'Применено 2 изменения (configuration).'],
+    ['ru-RU', 5, 'Применено 5 изменений (configuration).'],
+    ['ar-TN', 0, 'تم تطبيق 0 تغيير (configuration).'],
+    ['ar-TN', 2, 'تم تطبيق 2 من التغييرات (configuration).'],
+    ['ar-TN', 3, 'تم تطبيق 3 تغييرات (configuration).'],
+    ['zh-Hans', 2, '已应用 2 项更改（configuration）。'],
+  ])('uses the %s plural form for %i applied changes', (locale, count, expected) => {
+    const t = instance.getFixedT(locale, ['difyBuilder'])
+    expect(
+      resolveBuilderText(
+        { type: 'copy', id: 'repair.changesApplied', params: { count, scope: 'configuration' } },
+        t,
+      ),
+    ).toBe(expected)
   })
 })

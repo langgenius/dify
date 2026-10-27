@@ -19,7 +19,10 @@ def english_text(value: object) -> str:
     if value.get("type") == "parts":
         return "".join(english_text(part) for part in value["parts"])
     assert value["type"] == "copy"
-    text = _CATALOG["copy." + value["id"]]
+    key = "copy." + value["id"]
+    if key + "_other" in _CATALOG:
+        key += "_one" if value["params"]["count"] == 1 else "_other"
+    text = _CATALOG[key]
     return re.sub(r"\{\{(\w+)\}\}", lambda match: str(value["params"][match[1]]), text)
 
 

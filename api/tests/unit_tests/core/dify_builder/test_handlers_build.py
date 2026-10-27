@@ -458,7 +458,7 @@ def test_plan_approval_approve_builds_graph_and_notifies_once() -> None:
     assert events == [{"event": "graph_changed", "cause": "apply"}]
     assert not any(i.kind in {"change_set", "plan"} for i in res.items)
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
-    assert "Workflow built on the canvas" in english_text(assistant.payload["reply_text"])
+    assert "Workflow draft created" in english_text(assistant.payload["reply_text"])
     summary = english_text(assistant.payload["reply_text"])
     assert "Affected nodes:" in summary
     assert "Knowledge Retrieval" in summary
@@ -532,7 +532,7 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas() -> None:
     """If build_nodes yields no create_node intents (generation ultimately failed),
     the handler must NOT delete the placeholder start, must NOT claim a successful
     build, and must stay in plan_approval -- otherwise the canvas is emptied while
-    the assistant reports 'Workflow built on the canvas.'"""
+    the assistant reports 'Workflow draft created.'"""
     from services.dify_builder.application.handlers_build import handle_plan_approval
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
 
@@ -566,7 +566,7 @@ def test_plan_approval_empty_build_surfaces_error_and_keeps_canvas() -> None:
     assert not any(i.kind == "error" for i in res.items)
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
     assert "UNRESOLVED_REFERENCE" in english_text(assistant.payload["reply_text"])
-    assert english_text(assistant.payload["reply_text"]) != "Workflow built on the canvas."  # no false success claim
+    assert "Workflow draft created" not in english_text(assistant.payload["reply_text"])  # no false success claim
 
 
 def test_plan_approval_records_diagnostics_in_backend_logs(caplog: pytest.LogCaptureFixture) -> None:
@@ -2274,7 +2274,9 @@ def test_an_empty_recommendation_is_explained_rather_than_shown_blank() -> None:
 
     card = next(i for i in res.items if i.kind == "resource_select")
     assert card.payload["recommended"] == []
-    assert "No workspace resources matched" in english_text(card.payload["description"])
+    description = english_text(card.payload["description"])
+    assert "No resource recommendations are available" in description
+    assert "Confirm to continue" in description
     assert not any(i.kind == "notice" for i in res.items)
 
 
@@ -2356,8 +2358,8 @@ def test_an_empty_recommendation_and_a_capability_gap_use_the_card_and_reply() -
     card = next(i for i in res.items if i.kind == "resource_select")
     reply = next(i for i in res.items if i.kind == "assistant_turn")
     assert (
-        english_text(card.payload["description"])
-        == "No workspace resources matched this plan — continuing without any."
+        english_text(card.payload["description"]) == "No resource recommendations are available for this plan. "
+        "Confirm to continue without selecting resources."
     )
     assert "Nothing installed can send email." in english_text(reply.payload["reply_text"])
     assert not any(i.kind == "notice" for i in res.items)
