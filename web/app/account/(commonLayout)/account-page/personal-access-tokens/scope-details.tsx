@@ -30,7 +30,7 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
   const unavailableCount = unavailableResourceCount + unavailableWorkspaceCount
   return (
     <>
-      <div className="px-6 pt-6 pr-14 pb-2">
+      <div className="px-6 pe-14 pt-6 pb-2">
         <DialogTitle>{t(($) => $['personalAccessToken.scopeTitle'])}</DialogTitle>
         <div className="mt-1">
           <DialogDescription>
@@ -41,7 +41,7 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
           render={
             <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
             >
               <span aria-hidden="true" className="i-ri-close-line size-4" />
             </IconButton>
@@ -103,7 +103,7 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
               </h3>
               {detail.token.resource_scope_mode === 'selected' ? (
                 <div className="overflow-hidden rounded-lg border border-components-panel-border">
-                  <table className="w-full table-fixed text-left system-xs-regular text-text-secondary">
+                  <table className="w-full table-fixed text-start system-xs-regular text-text-secondary">
                     <thead className="bg-background-section text-text-tertiary">
                       <tr>
                         <th className="w-2/5 px-3 py-2 font-normal">
@@ -164,7 +164,7 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
                                 ? t(($) => $['personalAccessToken.allowed'])
                                 : resource.reason === 'workspace_not_current'
                                   ? t(($) => $['personalAccessToken.workspaceNotCurrent'])
-                                  : t(($) => $['personalAccessToken.accessRemoved'])}
+                                  : t(($) => $['personalAccessToken.deleted'])}
                             </td>
                           </tr>
                         )
@@ -186,7 +186,7 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
               </h3>
               {detail.token.workspace_scope_mode === 'selected' ? (
                 <div className="overflow-hidden rounded-lg border border-components-panel-border">
-                  <table className="w-full table-fixed text-left system-xs-regular text-text-secondary">
+                  <table className="w-full table-fixed text-start system-xs-regular text-text-secondary">
                     <thead className="bg-background-section text-text-tertiary">
                       <tr>
                         <th className="w-2/5 px-3 py-2 font-normal">

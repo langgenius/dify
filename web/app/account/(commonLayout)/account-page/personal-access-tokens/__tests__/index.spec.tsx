@@ -683,7 +683,7 @@ it.each([
   })
   expect(await within(dialog).findByText('Support assistant')).toBeInTheDocument()
   expect(
-    within(dialog).getByText('accountSettings.personalAccessToken.accessRemoved'),
+    within(dialog).getByText('accountSettings.personalAccessToken.deleted'),
   ).toBeInTheDocument()
   expect(
     within(dialog).getByText(`accountSettings.personalAccessToken.${label}`),
@@ -1178,6 +1178,6 @@ it('shows a workspace-switch hint instead of revoked access for a saved runner i
     await within(dialog).findByText('accountSettings.personalAccessToken.workspaceNotCurrent'),
   ).toBeInTheDocument()
   expect(
-    within(dialog).queryByText('accountSettings.personalAccessToken.accessRemoved'),
+    within(dialog).queryByText('accountSettings.personalAccessToken.deleted'),
   ).not.toBeInTheDocument()
 })

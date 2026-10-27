@@ -91,7 +91,7 @@ export default function ResourcePicker({
                   type="button"
                   onClick={() => onToggle(resource)}
                   disabled={!resource.available && !checked}
-                  className="max-w-full truncate text-left system-sm-medium text-text-secondary focus-visible:outline-2"
+                  className="max-w-full truncate text-start system-sm-medium text-text-secondary focus-visible:outline-2"
                 />
               }
             >
@@ -117,7 +117,7 @@ export default function ResourcePicker({
           <span className="system-xs-regular text-text-warning">
             {resource.reason === 'workspace_not_current'
               ? t(($) => $['personalAccessToken.workspaceNotCurrent'])
-              : t(($) => $['personalAccessToken.accessRemoved'])}
+              : t(($) => $['personalAccessToken.deleted'])}
           </span>
         )}
         <Checkbox
@@ -205,7 +205,7 @@ export default function ResourcePicker({
                     </button>
                   </div>
                   {isExpanded(app.resource_id) && (
-                    <div className="ml-3">
+                    <div className="ms-3">
                       {renderResource(
                         app,
                         true,
