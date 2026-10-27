@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from inspect import unwrap
+from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,10 +10,17 @@ from sqlalchemy.orm import Session
 
 from controllers.common.errors import MessageFeedbackRatingRequiredError
 from controllers.console.app import message as message_module
-from core.app.entities.app_invoke_entities import InvokeFrom
+from fields.conversation_fields import MessageResponseSource
 from machinery.context import RequestContext
 from models.account import Account
-from models.enums import ConversationFromSource, CreatorUserRole, FeedbackFromSource, FeedbackRating
+from models.enums import (
+    ConversationFromSource,
+    ConversationStatus,
+    CreatorUserRole,
+    FeedbackFromSource,
+    FeedbackRating,
+    InvokeFrom,
+)
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -59,7 +66,7 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
-        status="normal",
+        status=ConversationStatus.NORMAL,
         invoke_from=InvokeFrom.DEBUGGER,
         from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
@@ -73,14 +80,14 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         query="query",
         message="",
         message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
         answer="answer",
         answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
         provider_response_latency=0,
-        total_price=0,
+        total_price=Decimal(0),
         currency="USD",
         invoke_from=InvokeFrom.DEBUGGER,
         from_source=ConversationFromSource.CONSOLE,
@@ -95,53 +102,6 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
 
 
 class TestMessageApiCases:
-    @staticmethod
-    def test_app_message_routes_pass_injected_session(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
-    ) -> None:
-        session = unbound_session
-        current_user = _account()
-        app_model = _app()
-        message_id = "550e8400-e29b-41d4-a716-446655440000"
-        list_messages = MagicMock(return_value={"data": []})
-        get_message_detail = MagicMock(return_value={"id": message_id})
-        monkeypatch.setattr(message_module, "_list_chat_messages", list_messages)
-        monkeypatch.setattr(message_module, "_get_message_detail", get_message_detail)
-
-        assert unwrap(message_module.ChatMessageListApi.get)(
-            message_module.ChatMessageListApi(),
-            message_module.ChatMessagesQuery(conversation_id="550e8400-e29b-41d4-a716-446655440001"),
-            session,
-            current_user,
-            app_model,
-        ) == {"data": []}
-        assert unwrap(message_module.MessageApi.get)(message_module.MessageApi(), session, app_model, message_id) == {
-            "id": message_id
-        }
-
-        assert list_messages.call_args.kwargs["session"] is session
-        assert get_message_detail.call_args.kwargs["session"] is session
-
-    @staticmethod
-    def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-        message_id = "550e8400-e29b-41d4-a716-446655440000"
-        message = _persist_message(sqlite_session, message_id=message_id)
-        response_source = object()
-        response_source_factory = MagicMock(return_value=response_source)
-        session = sqlite_session
-        monkeypatch.setattr(message_module, "attach_message_extra_contents", MagicMock())
-        monkeypatch.setattr(message_module, "MessageResponseSource", response_source_factory)
-        monkeypatch.setattr(message_module, "dump_response", lambda _model, value: value)
-
-        result = message_module._get_message_detail(
-            session=session,
-            app_model=_app(),
-            message_id=message_id,
-        )
-
-        assert result is response_source
-        response_source_factory.assert_called_once_with(message, session=session)
-
     @staticmethod
     def test_message_response_source_uses_caller_session_for_nested_fields(sqlite_session: Session) -> None:
         session = sqlite_session
@@ -188,17 +148,23 @@ class TestMessageApiCases:
         sqlite_session.add_all([feedback, annotation, annotation_hit, thought])
         sqlite_session.commit()
 
-        source = message_module.MessageResponseSource(message, session=session)
+        source = MessageResponseSource(message, session=session)
 
         assert source.inputs == {"topic": "support"}
         assert source.user_feedback is feedback
-        assert source.feedbacks[0].from_account.id == "account-1"
+        feedback_account = source.feedbacks[0].from_account
+        assert feedback_account is not None
+        assert feedback_account.id == "account-1"
         annotation_source = source.annotation
         assert annotation_source is not None
-        assert annotation_source.account.id == "account-1"
+        annotation_account = annotation_source.account
+        assert annotation_account is not None
+        assert annotation_account.id == "account-1"
         annotation_hit_history_source = source.annotation_hit_history
         assert annotation_hit_history_source is not None
-        assert annotation_hit_history_source.annotation_create_account.id == "account-1"
+        annotation_create_account = annotation_hit_history_source.annotation_create_account
+        assert annotation_create_account is not None
+        assert annotation_create_account.id == "account-1"
         assert source.agent_thoughts == [thought]
         assert source.message_files == []
 

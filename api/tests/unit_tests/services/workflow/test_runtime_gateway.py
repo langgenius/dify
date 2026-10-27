@@ -776,8 +776,8 @@ def test_node_response_materializes_actor_extras_and_offload_flags(
         inputs='{"query":"value"}',
         outputs="{}",
         execution_metadata=None,
-        offload_data=[],
     )
+    execution.offload_data = []
     monkeypatch.setattr(gateway._workflows, "run_draft_workflow_node", lambda **_kwargs: execution)
 
     def extras(_execution: WorkflowNodeExecutionModel, *, tool_providers: ToolProviderIcons) -> dict[str, object]:
@@ -820,7 +820,8 @@ def test_trigger_response_preserves_all_offload_types(
     # exactly as in the runtime, without resolving file relationships.
     with sqlite_session_factory() as session:
         offloads = list(session.scalars(select(WorkflowNodeExecutionOffload)))
-    execution = WorkflowNodeExecutionModel(id="execution", offload_data=offloads)
+    execution = WorkflowNodeExecutionModel(id="execution")
+    execution.offload_data = offloads
     raw = gateway._execution(execution, include_details=False)
     assert {item["type_"] for item in raw["offload_data"]} == {"inputs", "outputs", "process_data"}
     assert raw["offload_data"] == [
