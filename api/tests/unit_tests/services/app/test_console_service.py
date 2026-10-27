@@ -1104,12 +1104,12 @@ def _workflow(*, tenant_id: str, app_id: str, version: str, graph: dict[str, obj
         id=str(uuid4()),
         tenant_id=tenant_id,
         app_id=app_id,
-        type=WorkflowType.WORKFLOW.value,
+        type=WorkflowType.WORKFLOW,
         version=version,
         graph=json.dumps(graph),
-        features=json.dumps({}),
-        environment_variables=[],
-        conversation_variables=[],
+        _features=json.dumps({}),
+        _environment_variables=[],
+        _conversation_variables=[],
         created_by=created_by,
     )
 
