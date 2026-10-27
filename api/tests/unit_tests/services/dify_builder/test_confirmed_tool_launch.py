@@ -39,9 +39,17 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.real_call_consent import ConfirmedToolBinding, ConsentReceipt
 from core.dify_builder.state import PcState
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.dify_builder import DifyBuilderExecutionRequest
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import (
+    Workflow,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowType,
+)
 from services.dify_builder.application.execution_policy import (
     BuilderExecutionObservation,
     BuilderExecutionPolicyError,
@@ -972,13 +980,13 @@ def native_rows(owner: Owner, run_id: str, tool_execution_id: str, *, status: st
                 tenant_id=owner.actor.tenant_id,
                 app_id=owner.app_id,
                 workflow_id=owner.workflow_id,
-                type="workflow",
-                triggered_from="debugging",
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
                 version="draft",
                 graph=workflow.graph,
                 inputs=json.dumps({"note": "hello", "sys.workflow_run_id": run_id}),
-                status=status,
-                created_by_role="account",
+                status=WorkflowExecutionStatus(status),
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=owner.actor.account_id,
                 total_steps=3,
                 finished_at=datetime.now(),
@@ -1000,10 +1008,14 @@ def native_rows(owner: Owner, run_id: str, tool_execution_id: str, *, status: st
                     title="test",
                     index=index,
                     predecessor_node_id=None,
-                    triggered_from="workflow-run",
-                    created_by_role="account",
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                    created_by_role=CreatorUserRole.ACCOUNT,
                     created_by=owner.actor.account_id,
-                    status="succeeded" if status == "succeeded" or node["id"] != "end" else "failed",
+                    status=(
+                        WorkflowNodeExecutionStatus.SUCCEEDED
+                        if status == "succeeded" or node["id"] != "end"
+                        else WorkflowNodeExecutionStatus.FAILED
+                    ),
                     finished_at=datetime.now(),
                     outputs=json.dumps({"text": BODY_SENTINEL}),
                 )

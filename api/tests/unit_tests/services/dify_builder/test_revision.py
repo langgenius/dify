@@ -37,9 +37,9 @@ def workflow() -> Workflow:
                 "viewport": {"x": 0, "y": 0, "zoom": 1},
             }
         ),
-        features="{}",
-        environment_variables=[],
-        conversation_variables=[],
+        _features="{}",
+        _environment_variables="{}",
+        _conversation_variables="{}",
     )
 
 
@@ -142,9 +142,9 @@ def builder_workflow() -> Workflow:
     return Workflow(
         tenant_id="tenant-1",
         graph=json.dumps(graph),
-        features="{}",
-        environment_variables=[],
-        conversation_variables=[],
+        _features="{}",
+        _environment_variables="{}",
+        _conversation_variables="{}",
     )
 
 
@@ -246,9 +246,9 @@ def test_chatflow_requirements_accept_canvas_node_reordering() -> None:
     workflow = Workflow(
         tenant_id="tenant-1",
         graph=json.dumps(_CHATFLOW_STARTER_GRAPH),
-        features="{}",
-        environment_variables=[],
-        conversation_variables=[],
+        _features="{}",
+        _environment_variables="{}",
+        _conversation_variables="{}",
     )
     session = Session(
         id="session-1",

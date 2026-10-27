@@ -40,9 +40,17 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.dify_builder.models import Actor, ChangedNode, Graph, MutationIntent, NodeEvent, Run
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.account import Account
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from models.workflow import (
+    Workflow,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowType,
+)
 from runtime_contracts.builder.execution import BuilderExecutionContext
 from services.dify_builder import run_mapping
 from services.dify_builder.application.ports import DifyPort
@@ -60,7 +68,7 @@ from tests.unit_tests.services.dify_builder.workflow_stream_fixtures import (
 def _workflow(
     *, graph_dict: Graph | None = None, features_dict: Graph | None = None, session: Session | None = None
 ) -> Workflow:
-    row = Workflow(
+    row = Workflow.new(
         tenant_id="tenant-1",
         app_id="app-1",
         type="workflow",
@@ -70,6 +78,7 @@ def _workflow(
         features=json.dumps(features_dict or {}),
         environment_variables=[],
         conversation_variables=[],
+        rag_pipeline_variables=[],
     )
     if session is not None:
         session.add(row)
@@ -125,15 +134,15 @@ def _execution(
         app_id="app-1",
         workflow_id="workflow-1",
         workflow_run_id="run-1",
-        triggered_from="workflow-run",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom("workflow-run"),
         index=1,
         node_id=node_id,
         node_type=node_type,
         title=title,
-        status=status,
+        status=WorkflowNodeExecutionStatus(status),
         error=error,
         created_by="acc-1",
-        created_by_role="account",
+        created_by_role=CreatorUserRole("account"),
         inputs=json.dumps(inputs_dict) if inputs_dict is not None else None,
         outputs=json.dumps(outputs_dict) if outputs_dict is not None else None,
     )
@@ -153,12 +162,12 @@ def _run(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type="workflow",
-        triggered_from="debugging",
+        type=WorkflowType("workflow"),
+        triggered_from=WorkflowRunTriggeredFrom("debugging"),
         version="draft",
         created_by="acc-1",
-        created_by_role="account",
-        status=status,
+        created_by_role=CreatorUserRole("account"),
+        status=WorkflowExecutionStatus(status),
         error=error,
         elapsed_time=elapsed_time,
         total_tokens=total_tokens,
