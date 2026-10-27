@@ -734,6 +734,11 @@ export type PluginInstallationScope =
   | 'official_and_specific_partners'
   | 'official_only'
 
+export type ProviderContractSnapshot = {
+  plugin_unique_identifier: string
+  provider: string
+}
+
 export type ProviderNotInitializeError = ErrorResponse & {
   code: 'provider_not_initialize'
   status: 400
@@ -1035,6 +1040,7 @@ export type WebAppParametersResponse = {
   annotation_reply: {
     enabled?: boolean
   }
+  connection_providers: Array<ProviderContractSnapshot>
   connection_requirements: Array<ToolConnectionRequirement>
   connection_revision: string | null
   file_upload: {

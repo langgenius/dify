@@ -2207,6 +2207,13 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
 
+#### ProviderContractSnapshot
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_unique_identifier | string |  | Yes |
+| provider | string |  | Yes |
+
 #### ProviderNotInitializeError
 
 No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
@@ -2613,6 +2620,7 @@ in form definition, or a variable while the workflow is running.
 | account_login_url | string | Account-origin sign-in page for the existing Web App login flow | Yes |
 | allow_anonymous_end_user_auth | boolean | Whether Guest identities may manage and use personal Connections; does not control App entry. | Yes |
 | annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| connection_providers | [ [ProviderContractSnapshot](#providercontractsnapshot) ] | Distinct EndUser tool Providers and their exact plugin artifacts in connection_revision. | Yes |
 | connection_requirements | [ [ToolConnectionRequirement](#toolconnectionrequirement) ] | Static authorization requirements for this published version, without personal connection state. | Yes |
 | connection_revision | string | Opaque revision of the connection requirements and installed plugin artifacts; null for other app modes. Return it unchanged in connection requests and runs. | Yes |
 | file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |

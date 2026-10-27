@@ -20,7 +20,7 @@ _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/curre
 def _service() -> tuple[AppDefinitionQueryService, MagicMock]:
     definitions: MagicMock = create_autospec(AppDefinitionQuery, instance=True, spec_set=True)
     revisions = create_autospec(module.ConnectionRevisions, instance=True, spec_set=True)
-    revisions.resolve.return_value = "connection-revision"
+    revisions.resolve.return_value = ("connection-revision", ())
     return (
         AppDefinitionQueryService(
             definitions=definitions,
@@ -201,8 +201,15 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
         },
     )
     definitions.get_published_parameter_config.return_value = parameters
-    result = service.get_web_parameters("app-1", "tenant-1")
+    providers = (
+        module.ProviderContractSnapshot(
+            provider="vendor/calendar/calendar", plugin_unique_identifier="vendor/calendar:1.0.0@" + "a" * 64
+        ),
+    )
+    with patch.object(service._connection_revisions, "resolve", return_value=("connection-revision", providers)):
+        result = service.get_web_parameters("app-1", "tenant-1")
     assert result["connection_revision"] == "connection-revision"
+    assert result["connection_providers"] == providers
     assert "workflow_id" not in result
     assert result["requires_end_user_connections"] is True
     requirement = result["connection_requirements"][0]
@@ -217,6 +224,7 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
     assert "workflow_id" not in public
     assert "requires_end_user_connections" not in public
     assert "connection_requirements" not in public
+    assert "connection_providers" not in public
 
 
 @pytest.mark.parametrize(
@@ -245,7 +253,9 @@ def test_web_parameters_without_personal_tools_have_empty_requirements(graph: di
         graph=graph,
     )
 
-    assert service.get_web_parameters("app-1", "tenant-1")["connection_requirements"] == ()
+    result = service.get_web_parameters("app-1", "tenant-1")
+    assert result["connection_requirements"] == ()
+    assert result["connection_providers"] == ()
 
 
 def test_incomplete_published_connection_requirement_is_not_reported_as_connection_free() -> None:

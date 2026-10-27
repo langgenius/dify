@@ -59,16 +59,17 @@ def test_revision_tracks_only_involved_plugins_and_ignores_node_order_and_duplic
     )
     app_id = str(uuid4())
     graph = {"nodes": [tool("one", calendar), tool("two", mail), tool("three", calendar)]}
-    expected = revisions.resolve("tenant", app_id, graph)
+    expected, providers = revisions.resolve("tenant", app_id, graph)
+    assert [(item.provider, item.plugin_unique_identifier) for item in providers] == sorted(identifiers.items())
     assert installed.calls == [("tenant", calendar), ("tenant", mail)]
     graph["nodes"].reverse()
     graph["nodes"].extend([tool("workspace", "vendor/other/other", "workspace"), tool("reuse", calendar, "reuse_node")])
     graph["nodes"].append({**tool("note", "vendor/ignored/ignored"), "type": "custom-note"})
-    assert revisions.resolve("tenant", app_id, graph) == expected
-    assert revisions.resolve("tenant", str(uuid4()), graph) != expected
+    assert revisions.resolve("tenant", app_id, graph)[0] == expected
+    assert revisions.resolve("tenant", str(uuid4()), graph)[0] != expected
     # The artifact digest matters even when the semantic version stays unchanged.
     identifiers[mail] = "vendor/mail:1.0@rebuilt"
-    assert revisions.resolve("tenant", app_id, graph) != expected
+    assert revisions.resolve("tenant", app_id, graph)[0] != expected
 
 
 @pytest.fixture
@@ -140,7 +141,7 @@ def test_reloaded_contract_accepts_the_new_plugin_artifact(harness: OAuthHarness
     with harness.base.sessions() as session:
         workflow = session.get(Workflow, harness.base.workflow_id)
         assert workflow is not None
-        revision = PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository).resolve(
+        revision, _ = PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository).resolve(
             harness.base.context.tenant_id, harness.base.context.app_id, workflow.graph_dict
         )
     result = preflight(harness).check(
@@ -230,15 +231,15 @@ def test_revision_tracks_authentication_content_and_ignores_presentation_changes
         snapshots=EndUserConnectionRepository(session_factory=sqlite_session_factory),
     )
     graph = {"nodes": [tool("root", provider)]}
-    before = revisions.resolve("tenant", "app", graph)
+    before, _ = revisions.resolve("tenant", "app", graph)
     presentation = deepcopy(graph)
     presentation["nodes"][0]["position"] = {"x": 100, "y": 100}
     cast(dict[str, object], presentation["nodes"][0]["data"])["title"] = "Renamed tool"
-    assert revisions.resolve("tenant", "app", presentation) == before
+    assert revisions.resolve("tenant", "app", presentation)[0] == before
     changed = deepcopy(graph)
     data = cast(dict[str, object], changed["nodes"][0]["data"])
     cast(dict[str, object], data["end_user_auth"])["purpose"] = "Different access purpose"
-    assert revisions.resolve("tenant", "app", changed) != before
+    assert revisions.resolve("tenant", "app", changed)[0] != before
 
 
 def test_republishing_during_a_check_preserves_the_confirmed_contract(harness: OAuthHarness) -> None:

@@ -167,9 +167,10 @@ class ConnectionHarness:
             workflow = session.get(Workflow, self.workflow_id)
             assert workflow is not None
             graph = workflow.graph_dict
-        return PluginConnectionRevisions(
+        revision, _ = PluginConnectionRevisions(
             providers=TestProviders(self.auth, plugin_provider(self.context.tenant_id)), snapshots=self.repository
         ).resolve(self.context.tenant_id, self.context.app_id, graph)
+        return revision
 
     def command(self, secret: str = "original-secret") -> CreateApiKeyConnectionInput:
         return CreateApiKeyConnectionInput.model_validate(

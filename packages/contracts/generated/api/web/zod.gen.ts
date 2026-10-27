@@ -1174,6 +1174,14 @@ export const zPluginInstallationPermissionModel = z.object({
 })
 
 /**
+ * ProviderContractSnapshot
+ */
+export const zProviderContractSnapshot = z.object({
+  plugin_unique_identifier: z.string(),
+  provider: z.string(),
+})
+
+/**
  * ProviderNotInitializeError
  *
  * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
@@ -1744,6 +1752,7 @@ export const zWebAppParametersResponse = z.object({
   annotation_reply: z.object({
     enabled: z.boolean().optional(),
   }),
+  connection_providers: z.array(zProviderContractSnapshot),
   connection_requirements: z.array(zToolConnectionRequirement),
   connection_revision: z.string().nullable(),
   file_upload: z.object({

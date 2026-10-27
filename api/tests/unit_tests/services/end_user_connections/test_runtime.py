@@ -76,7 +76,7 @@ def context(
     identity = harness.base.context
     revision = harness.base.connection_revision
     if graph is not None:
-        revision = PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository).resolve(
+        revision, _ = PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository).resolve(
             identity.tenant_id, identity.app_id, graph
         )
     return DifyRunContext(

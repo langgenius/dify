@@ -41,8 +41,11 @@ class PluginConnectionRevisions:
             requirements=tuple(requirements),
         )
 
-    def resolve(self, tenant_id: str, app_id: str, graph: Mapping[str, Any]) -> str:
-        return self._snapshots.save_revision(self.snapshot(tenant_id, app_id, graph))
+    def resolve(
+        self, tenant_id: str, app_id: str, graph: Mapping[str, Any]
+    ) -> tuple[str, tuple[ProviderContractSnapshot, ...]]:
+        snapshot = self.snapshot(tenant_id, app_id, graph)
+        return self._snapshots.save_revision(snapshot), snapshot.providers
 
     def require(self, tenant_id: str, app_id: str, graph: Mapping[str, Any], revision: str) -> str:
         previous = self._snapshots.get_revision(tenant_id, app_id, revision)

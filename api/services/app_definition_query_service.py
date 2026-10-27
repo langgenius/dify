@@ -7,7 +7,7 @@ from typing import Any, NamedTuple, Protocol
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from services.end_user_connections.errors import ConnectionError
-from services.end_user_connections.revision import ConnectionRevisions
+from services.end_user_connections.revision import ConnectionRevisions, ProviderContractSnapshot
 from services.workflow.tool_credentials import ToolConnectionRequirement, get_tool_connection_requirements
 
 
@@ -26,6 +26,7 @@ class WebAppParameterConfig(NamedTuple):
 
 class WebAppParametersDict(AppParametersDict):
     connection_revision: str | None
+    connection_providers: tuple[ProviderContractSnapshot, ...]
     requires_end_user_connections: bool
     connection_requirements: tuple[ToolConnectionRequirement, ...]
 
@@ -138,16 +139,17 @@ class AppDefinitionQueryService:
             raise AppDefinitionUnavailableError()
         try:
             requirements = get_tool_connection_requirements(config.graph) if config.graph is not None else ()
-            revision = (
+            revision, providers = (
                 self._connection_revisions.resolve(tenant_id, app_id, config.graph)
                 if config.workflow_id is not None and config.graph is not None
-                else None
+                else (None, ())
             )
         except (KeyError, TypeError, ValueError, ConnectionError):
             raise AppDefinitionUnavailableError() from None
         return {
             **self._map_parameters(config.parameters),
             "connection_revision": revision,
+            "connection_providers": providers,
             "requires_end_user_connections": config.requires_end_user_connections,
             "connection_requirements": requirements,
         }

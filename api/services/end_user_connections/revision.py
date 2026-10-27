@@ -80,7 +80,9 @@ class ConnectionRevisionSnapshots(Protocol):
 
 
 class ConnectionRevisions(Protocol):
-    def resolve(self, tenant_id: str, app_id: str, graph: Mapping[str, Any]) -> str: ...
+    def resolve(
+        self, tenant_id: str, app_id: str, graph: Mapping[str, Any]
+    ) -> tuple[str, tuple[ProviderContractSnapshot, ...]]: ...
 
 
 class ConnectionProviderRevisions(Protocol):

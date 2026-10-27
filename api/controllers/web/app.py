@@ -29,6 +29,7 @@ from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, EndUser
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
+from services.end_user_connections.revision import ProviderContractSnapshot
 from services.web_passport_service import WebAppAuthType
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
@@ -71,6 +72,9 @@ class WebAppParametersResponse(Parameters, ResponseModel):
             "Opaque revision of the connection requirements and installed plugin artifacts; "
             "null for other app modes. Return it unchanged in connection requests and runs."
         ),
+    )
+    connection_providers: tuple[ProviderContractSnapshot, ...] = Field(
+        description="Distinct EndUser tool Providers and their exact plugin artifacts in connection_revision."
     )
     requires_end_user_connections: bool = Field(
         description="Whether this published version declares EndUser tool connections, independent of user readiness.",
