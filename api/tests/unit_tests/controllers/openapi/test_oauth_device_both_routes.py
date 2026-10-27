@@ -12,6 +12,7 @@ from werkzeug.test import TestResponse
 
 from controllers.openapi import bp as openapi_bp
 from libs.helper import RateLimiter
+from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
 from services.oauth_device_application_service import (
     DeviceWorkspaceQuery,
     ExternalApprovalLimiter,
@@ -30,6 +31,14 @@ from services.oauth_device_contracts import (
 from services.oauth_token_contracts import GrantType
 from services.oauth_token_grants import build_grant_handlers
 from services.oauth_token_service import OAuthTokenService
+from tests.helpers.unit.services.oauth_authorization_code_fakes import (
+    DictRedis,
+    FakeAccounts,
+    FakeTokenIssuer,
+    FakeTokenSettings,
+    FakeWorkspaces,
+    registry,
+)
 
 OLD_POLL_PATH = "/openapi/v1/oauth/device/token"
 NEW_POLL_PATH = "/openapi/v1/oauth/token"
@@ -148,7 +157,17 @@ def client(store: FakeStore, monkeypatch: pytest.MonkeyPatch) -> FlaskClient:
     app.register_blueprint(openapi_bp)
     app.extensions["application_services"] = _Services(
         oauth_device=device,
-        oauth_token=OAuthTokenService(handlers=build_grant_handlers(device=device)),
+        oauth_token=OAuthTokenService(
+            handlers=build_grant_handlers(
+                device=device,
+                clients=registry(),
+                codes=RedisAuthorizationCodeRepository(DictRedis()),
+                accounts=FakeAccounts(),
+                workspaces=FakeWorkspaces(),
+                tokens=FakeTokenIssuer(),
+                settings=FakeTokenSettings(authorization_code_enabled=False),
+            )
+        ),
     )
     return app.test_client()
 

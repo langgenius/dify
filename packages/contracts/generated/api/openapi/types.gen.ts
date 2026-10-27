@@ -257,6 +257,13 @@ export type AppSettingsInfo = {
   name: string
 }
 
+export type AuthorizeErrorCode =
+  | 'invalid_client'
+  | 'invalid_redirect_uri'
+  | 'invalid_request'
+  | 'invalid_target'
+  | 'unsupported_code_challenge_method'
+
 export type ChatAppInfo = {
   description?: string | null
   icon?: string | null
@@ -1039,6 +1046,37 @@ export type NodeTypeListResponse = {
 export type NodeTypeRow = {
   type: string
   version: string
+}
+
+export type OAuthAuthorizeClientQuery = {
+  client_id: string
+  redirect_uri: string
+}
+
+export type OAuthAuthorizeClientResponse = {
+  client_id: string
+  display_name: string
+  localhost_only: boolean
+  logo_uri?: string | null
+  redirect_host: string
+}
+
+export type OAuthAuthorizeErrorResponse = {
+  error: AuthorizeErrorCode
+}
+
+export type OAuthAuthorizeRedirectResponse = {
+  redirect_to: string
+}
+
+export type OAuthAuthorizeRequest = {
+  client_id: string
+  code_challenge: string
+  code_challenge_method: string
+  redirect_uri: string
+  resource?: string | null
+  scope?: string | null
+  state?: string | null
 }
 
 export type OAuthTokenErrorResponse = {
@@ -3397,6 +3435,75 @@ export type GetNodeTypesByNodeTypeResponses = {
 export type GetNodeTypesByNodeTypeResponse =
   GetNodeTypesByNodeTypeResponses[keyof GetNodeTypesByNodeTypeResponses]
 
+export type PostOauthAuthorizeApproveData = {
+  body: OAuthAuthorizeRequest
+  path?: never
+  query?: never
+  url: '/oauth/authorize/approve'
+}
+
+export type PostOauthAuthorizeApproveErrors = {
+  400: OAuthAuthorizeErrorResponse | ErrorBody
+  default: ErrorBody
+}
+
+export type PostOauthAuthorizeApproveError =
+  PostOauthAuthorizeApproveErrors[keyof PostOauthAuthorizeApproveErrors]
+
+export type PostOauthAuthorizeApproveResponses = {
+  200: OAuthAuthorizeRedirectResponse
+}
+
+export type PostOauthAuthorizeApproveResponse =
+  PostOauthAuthorizeApproveResponses[keyof PostOauthAuthorizeApproveResponses]
+
+export type GetOauthAuthorizeClientData = {
+  body?: never
+  path?: never
+  query: {
+    client_id: string
+    redirect_uri: string
+  }
+  url: '/oauth/authorize/client'
+}
+
+export type GetOauthAuthorizeClientErrors = {
+  400: OAuthAuthorizeErrorResponse | ErrorBody
+  default: ErrorBody
+}
+
+export type GetOauthAuthorizeClientError =
+  GetOauthAuthorizeClientErrors[keyof GetOauthAuthorizeClientErrors]
+
+export type GetOauthAuthorizeClientResponses = {
+  200: OAuthAuthorizeClientResponse
+}
+
+export type GetOauthAuthorizeClientResponse =
+  GetOauthAuthorizeClientResponses[keyof GetOauthAuthorizeClientResponses]
+
+export type PostOauthAuthorizeDenyData = {
+  body: OAuthAuthorizeRequest
+  path?: never
+  query?: never
+  url: '/oauth/authorize/deny'
+}
+
+export type PostOauthAuthorizeDenyErrors = {
+  400: OAuthAuthorizeErrorResponse | ErrorBody
+  default: ErrorBody
+}
+
+export type PostOauthAuthorizeDenyError =
+  PostOauthAuthorizeDenyErrors[keyof PostOauthAuthorizeDenyErrors]
+
+export type PostOauthAuthorizeDenyResponses = {
+  200: OAuthAuthorizeRedirectResponse
+}
+
+export type PostOauthAuthorizeDenyResponse =
+  PostOauthAuthorizeDenyResponses[keyof PostOauthAuthorizeDenyResponses]
+
 export type PostOauthDeviceApproveData = {
   body: DeviceMutateRequest
   path?: never
@@ -3518,6 +3625,7 @@ export type PostOauthTokenData = {
 export type PostOauthTokenErrors = {
   400: OAuthTokenErrorResponse | ErrorBody
   401: OAuthTokenErrorResponse | ErrorBody
+  429: OAuthTokenErrorResponse | ErrorBody
   default: ErrorBody
 }
 

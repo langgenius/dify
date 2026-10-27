@@ -286,6 +286,17 @@ export const zAppSettingsInfo = z.object({
 })
 
 /**
+ * AuthorizeErrorCode
+ */
+export const zAuthorizeErrorCode = z.enum([
+  'invalid_client',
+  'invalid_redirect_uri',
+  'invalid_request',
+  'invalid_target',
+  'unsupported_code_challenge_method',
+])
+
+/**
  * ChatAppInfo
  */
 export const zChatAppInfo = z.object({
@@ -1406,6 +1417,54 @@ export const zNodeTypeRow = z.object({
  */
 export const zNodeTypeListResponse = z.object({
   data: z.array(zNodeTypeRow),
+})
+
+/**
+ * OAuthAuthorizeClientQuery
+ */
+export const zOAuthAuthorizeClientQuery = z.object({
+  client_id: z.string(),
+  redirect_uri: z.string(),
+})
+
+/**
+ * OAuthAuthorizeClientResponse
+ */
+export const zOAuthAuthorizeClientResponse = z.object({
+  client_id: z.string(),
+  display_name: z.string(),
+  localhost_only: z.boolean(),
+  logo_uri: z.string().nullish(),
+  redirect_host: z.string(),
+})
+
+/**
+ * OAuthAuthorizeErrorResponse
+ */
+export const zOAuthAuthorizeErrorResponse = z.object({
+  error: zAuthorizeErrorCode,
+})
+
+/**
+ * OAuthAuthorizeRedirectResponse
+ *
+ * Where the consent page navigates next; the server builds it.
+ */
+export const zOAuthAuthorizeRedirectResponse = z.object({
+  redirect_to: z.string(),
+})
+
+/**
+ * OAuthAuthorizeRequest
+ */
+export const zOAuthAuthorizeRequest = z.object({
+  client_id: z.string(),
+  code_challenge: z.string(),
+  code_challenge_method: z.string(),
+  redirect_uri: z.string(),
+  resource: z.string().nullish(),
+  scope: z.string().nullish(),
+  state: z.string().nullish(),
 })
 
 /**
@@ -3164,6 +3223,30 @@ export const zGetNodeTypesByNodeTypePath = z.object({
  * Node type
  */
 export const zGetNodeTypesByNodeTypeResponse = zNodeTypeDetailResponse
+
+export const zPostOauthAuthorizeApproveBody = zOAuthAuthorizeRequest
+
+/**
+ * Client redirect with a code
+ */
+export const zPostOauthAuthorizeApproveResponse = zOAuthAuthorizeRedirectResponse
+
+export const zGetOauthAuthorizeClientQuery = z.object({
+  client_id: z.string(),
+  redirect_uri: z.string(),
+})
+
+/**
+ * Client to show
+ */
+export const zGetOauthAuthorizeClientResponse = zOAuthAuthorizeClientResponse
+
+export const zPostOauthAuthorizeDenyBody = zOAuthAuthorizeRequest
+
+/**
+ * Client redirect with access_denied
+ */
+export const zPostOauthAuthorizeDenyResponse = zOAuthAuthorizeRedirectResponse
 
 export const zPostOauthDeviceApproveBody = zDeviceMutateRequest
 

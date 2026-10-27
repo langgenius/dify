@@ -28,6 +28,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
+from services.oauth_authorize_service import AuthorizeErrorCode
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
@@ -180,6 +181,24 @@ class OAuthTokenResponse(BaseModel):
 
 class OAuthTokenErrorResponse(BaseModel):
     error: str
+
+
+class OAuthAuthorizeClientResponse(BaseModel):
+    client_id: str
+    display_name: str
+    logo_uri: str | None = None
+    redirect_host: str
+    localhost_only: bool
+
+
+class OAuthAuthorizeRedirectResponse(BaseModel):
+    """Where the consent page navigates next; the server builds it."""
+
+    redirect_to: str
+
+
+class OAuthAuthorizeErrorResponse(BaseModel):
+    error: AuthorizeErrorCode
 
 
 class AccountResponse(BaseModel):
@@ -450,6 +469,21 @@ class DeviceLookupQuery(BaseModel):
 
 class DeviceMutateRequest(BaseModel):
     user_code: str
+
+
+class OAuthAuthorizeClientQuery(BaseModel):
+    client_id: str
+    redirect_uri: str
+
+
+class OAuthAuthorizeRequest(BaseModel):
+    client_id: str
+    redirect_uri: str
+    code_challenge: str
+    code_challenge_method: str
+    resource: str | None = None
+    scope: str | None = None
+    state: str | None = None
 
 
 class PermittedExternalAppsListQuery(PageQuery):

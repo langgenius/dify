@@ -10,13 +10,17 @@ from flask_restx import Resource
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import OAuthTokenErrorResponse, OAuthTokenResponse
-from controllers.openapi._oauth_input import InvalidOAuthBodyError, basic_client_credentials, read_oauth_body
+from controllers.openapi._oauth_input import (
+    NO_STORE_HEADERS,
+    InvalidOAuthBodyError,
+    basic_client_credentials,
+    read_oauth_body,
+)
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response, extract_remote_ip
 from services.oauth_token_contracts import TokenEndpointError, TokenErrorCode, TokenGrantResult, TokenRequest
 
 BASIC_CHALLENGE = 'Basic realm="dify-openapi"'
-NO_STORE_HEADERS = {"Cache-Control": "no-store", "Pragma": "no-cache"}
 BEARER = "Bearer"
 
 
@@ -68,6 +72,11 @@ class OAuthTokenApi(Resource):
     )
     @openapi_ns.response(
         HTTPStatus.UNAUTHORIZED, "Client authentication failed", openapi_ns.models[OAuthTokenErrorResponse.__name__]
+    )
+    @openapi_ns.response(
+        HTTPStatus.TOO_MANY_REQUESTS,
+        "Too many failed client authentications",
+        openapi_ns.models[OAuthTokenErrorResponse.__name__],
     )
     def post(self):
         try:

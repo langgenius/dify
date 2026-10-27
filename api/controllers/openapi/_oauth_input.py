@@ -7,6 +7,8 @@ from urllib.parse import unquote_plus
 from flask import request
 from werkzeug.exceptions import NotFound
 
+NO_STORE_HEADERS = {"Cache-Control": "no-store", "Pragma": "no-cache"}
+
 
 class InvalidOAuthBodyError(Exception):
     """A JSON field is neither a string nor null."""
