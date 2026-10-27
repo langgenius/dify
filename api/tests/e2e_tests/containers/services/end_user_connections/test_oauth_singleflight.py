@@ -13,7 +13,6 @@ from services.end_user_connection_oauth_adapters import RedisOAuthRefreshSingleF
 from services.end_user_connections.contracts import ConnectionCheckView
 from services.end_user_connections.entities import ConnectionMutationGuard, ConnectionOAuthClient, ConnectionOwner
 from services.end_user_connections.errors import ConnectionConflictError
-from services.end_user_connections.oauth import OAuthClientSnapshot
 from services.end_user_connections.oauth_lifecycle import OAuthRefreshLease, OAuthRefreshResult
 
 
@@ -37,11 +36,8 @@ def test_redis_singleflight_shares_only_inflight_outcomes(
             check=CredentialCheckResult(status="valid", reason_code=None, retryable=False, checked_at=1),
         ),
         revision=2,
-        client=OAuthClientSnapshot(
-            reference=ConnectionOAuthClient(
-                source=OAuthClientSource.WORKSPACE, configuration_id="client", client_id=None
-            ),
-            fingerprint="fingerprint",
+        client=ConnectionOAuthClient(
+            source=OAuthClientSource.WORKSPACE, configuration_id="client", client_id=None, fingerprint="fingerprint"
         ),
     )
     entered, joined, release = Event(), Event(), Event()

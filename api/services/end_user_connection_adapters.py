@@ -16,19 +16,24 @@ from constants.end_user_connections import ConnectionCredentialType
 from core.entities.provider_entities import ProviderConfigType
 from core.helper.encrypter import decrypt_token, encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.impl.exc import PluginDaemonError
+from core.plugin.impl.exc import PluginDaemonError, PluginDaemonNotFoundError, PluginNotFoundError
+from core.plugin.impl.tool import PluginToolManager
+from core.plugin.plugin_service import PluginService
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from models.provider_ids import ToolProviderID
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.contracts import ConnectionTargetInput
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
     ConnectionInvalidCredentialsError,
+    ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
 )
+from services.end_user_connections.revision import ConnectionProviderMetadata, ConnectionRevisionSnapshots
 from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig, check_tool_credentials
 
 
@@ -43,7 +48,7 @@ def validate_provider_authentication(provider: PluginToolProviderController, aut
 
 
 class ConnectionWorkflowQuery(Protocol):
-    def published_graph(self, context: WebConnectionContext, workflow_id: str) -> Mapping[str, Any]: ...
+    def published_graph(self, context: WebConnectionContext) -> tuple[str, Mapping[str, Any]]: ...
 
 
 class TenantConnectionCipher:
@@ -84,8 +89,42 @@ class PluginApiKeyCredentialGateway:
             raise ConnectionConfigurationError() from None
         return controller
 
-    def validate_format(self, tenant_id: str, provider: str, credentials: Mapping[str, Any]) -> dict[str, Any]:
+    def plugin_unique_identifier(self, tenant_id: str, provider: str) -> str:
+        return self.provider_metadata(tenant_id, provider).plugin_unique_identifier
+
+    def provider_metadata(self, tenant_id: str, provider: str) -> ConnectionProviderMetadata:
+        # ToolManager caches controllers for the request. Contract revalidation
+        # must observe upgrades during an external credential check.
+        try:
+            installed = PluginToolManager().fetch_tool_provider(tenant_id, provider)
+        except (PluginNotFoundError, PluginDaemonNotFoundError, KeyError, ValueError):
+            raise ConnectionConfigurationError() from None
+        except (PluginDaemonError, httpx.HTTPError):
+            raise ConnectionCheckUnavailableError() from None
+        identity = installed.declaration.identity
+        return ConnectionProviderMetadata(
+            provider=str(ToolProviderID(provider)),
+            plugin_unique_identifier=installed.plugin_unique_identifier,
+            icon=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon),
+            icon_dark=PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=identity.icon_dark)
+            if identity.icon_dark
+            else None,
+        )
+
+    def is_plugin_trusted(self, tenant_id: str, identifier: str) -> bool:
+        return PluginService.is_plugin_verified(tenant_id, identifier)
+
+    def validate_format(
+        self,
+        tenant_id: str,
+        provider: str,
+        credentials: Mapping[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
+    ) -> dict[str, Any]:
         controller = self.provider(tenant_id, provider)
+        if plugin_unique_identifier is not None and controller.plugin_unique_identifier != plugin_unique_identifier:
+            raise ConnectionRevisionChangedError()
         if CredentialType.API_KEY not in controller.get_supported_credential_types():
             raise ConnectionConfigurationError()
         normalized = deepcopy(dict(credentials))
@@ -109,9 +148,16 @@ class PluginApiKeyCredentialGateway:
         return normalized
 
     def check(
-        self, context: WebConnectionContext, provider: str, credentials: Mapping[str, Any]
+        self,
+        context: WebConnectionContext,
+        provider: str,
+        credentials: Mapping[str, Any],
+        *,
+        plugin_unique_identifier: str | None = None,
     ) -> CredentialCheckResult:
         controller = self.provider(context.tenant_id, provider)
+        if plugin_unique_identifier is not None and controller.plugin_unique_identifier != plugin_unique_identifier:
+            raise ConnectionRevisionChangedError()
         canonical = str(ToolProviderID(controller.entity.identity.name))
         try:
             return self._auth.check_provider_credentials(
@@ -136,12 +182,20 @@ class PluginApiKeyCredentialGateway:
 
 
 class PublishedConnectionTargetResolver:
-    def __init__(self, *, workflows: ConnectionWorkflowQuery, providers: PluginApiKeyCredentialGateway) -> None:
+    def __init__(
+        self,
+        *,
+        workflows: ConnectionWorkflowQuery,
+        providers: PluginApiKeyCredentialGateway,
+        snapshots: ConnectionRevisionSnapshots,
+    ) -> None:
         self._workflows = workflows
         self._providers = providers
+        self._revisions = PluginConnectionRevisions(providers=providers, snapshots=snapshots)
 
     def resolve(self, context: WebConnectionContext, reference: ConnectionTargetInput) -> ToolConnectionTarget:
-        graph = self._workflows.published_graph(context, str(reference.workflow_id))
+        workflow_id, graph = self._workflows.published_graph(context)
+        self._revisions.require(context.tenant_id, context.app_id, graph, reference.connection_revision)
         try:
             if check_tool_credentials(graph, complete=True):
                 raise ConnectionConfigurationError()
@@ -170,7 +224,7 @@ class PublishedConnectionTargetResolver:
         return ToolConnectionTarget(
             tenant_id=context.tenant_id,
             app_id=context.app_id,
-            workflow_id=str(reference.workflow_id),
+            workflow_id=workflow_id,
             node_id=reference.node_id,
             provider=canonical,
             allowed_credential_types=frozenset(

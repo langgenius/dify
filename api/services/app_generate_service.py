@@ -257,7 +257,11 @@ class AppGenerateService:
                     else None
                 )
                 if invoke_from == InvokeFrom.WEB_APP:
-                    args = {key: value for key, value in args.items() if key not in {"workflow_id", "connections"}}
+                    args = {
+                        key: value
+                        for key, value in args.items()
+                        if key not in {"workflow_id", "connection_revision", "connections"}
+                    }
 
                 if streaming:
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
@@ -327,7 +331,11 @@ class AppGenerateService:
                     else None
                 )
                 if invoke_from == InvokeFrom.WEB_APP:
-                    args = {key: value for key, value in args.items() if key not in {"workflow_id", "connections"}}
+                    args = {
+                        key: value
+                        for key, value in args.items()
+                        if key not in {"workflow_id", "connection_revision", "connections"}
+                    }
                 if streaming:
                     with rate_limit_context(rate_limit, request_id):
                         payload = AppExecutionParams.new(

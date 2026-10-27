@@ -1,5 +1,5 @@
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
@@ -26,6 +26,7 @@ from models.model import App, EndUser
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
 from services import end_user_connection_runtime_adapters as adapters
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.contracts import UpdateConnectionInput
 from services.end_user_connections.runtime import ConnectionRuntimeService
 from tests.helpers.end_user_api_key import PROVIDER
@@ -40,6 +41,7 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
     )
     monkeypatch.setattr(adapters.session_factory, "get_session_maker", lambda: harness.base.sessions)
     monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: harness.providers.controller)
+    monkeypatch.setattr(adapters, "PluginApiKeyCredentialGateway", lambda **_kwargs: harness.providers)
     monkeypatch.setattr(
         ext_application_services, "application_services", lambda: SimpleNamespace(end_user_connection_runtime=service)
     )
@@ -67,8 +69,15 @@ def node_data(**updates: object) -> dict[str, object]:
     }
 
 
-def context(harness: OAuthHarness, selections: dict[str, str]) -> DifyRunContext:
+def context(
+    harness: OAuthHarness, selections: dict[str, str], graph: Mapping[str, object] | None = None
+) -> DifyRunContext:
     identity = harness.base.context
+    revision = harness.base.connection_revision
+    if graph is not None:
+        revision, _ = PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository).resolve(
+            identity.tenant_id, identity.app_id, graph
+        )
     return DifyRunContext(
         tenant_id=identity.tenant_id,
         app_id=identity.app_id,
@@ -81,6 +90,7 @@ def context(harness: OAuthHarness, selections: dict[str, str]) -> DifyRunContext
             end_user_id=identity.end_user_id,
             account_id=identity.account_id,
             workflow_id=harness.base.workflow_id,
+            connection_revision=revision,
             selections=tuple(
                 ExecutionConnectionSelection(node_id=key, provider=PROVIDER, connection_id=value)
                 for key, value in selections.items()
@@ -111,7 +121,11 @@ def test_personal_tool_injects_selected_current_credentials_without_workspace_fa
     assert "selected-secret" not in repr(tool.runtime)
     assert "connection_id" not in tool.runtime.model_dump()
     harness.base.service.update_connection(
-        harness.base.context, selected.id, UpdateConnectionInput(credentials={"api_key": "replacement-secret"})
+        harness.base.context,
+        selected.id,
+        UpdateConnectionInput(
+            credentials={"api_key": "replacement-secret"}, connection_revision=harness.base.connection_revision
+        ),
     )
     second = loader.get_runtime(
         node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None
@@ -174,7 +188,7 @@ def test_reuse_inherits_only_credentials_and_uses_the_run_graph(harness: OAuthHa
         )
     ]
     loader = DifyToolNodeRuntime(
-        context(harness, {"tool-1": selected.id}), workflow_id=harness.base.workflow_id, graph=graph
+        context(harness, {"tool-1": selected.id}, graph), workflow_id=harness.base.workflow_id, graph=graph
     )
     with harness.base.sessions.begin() as session:
         app = session.get(App, harness.base.context.app_id)
@@ -194,7 +208,11 @@ def test_independent_nodes_for_same_provider_keep_distinct_choices(harness: OAut
     first = harness.base.service.create_api_key(harness.base.context, harness.base.command("first-secret"))
     second = harness.base.service.create_api_key(harness.base.context, harness.base.command("second-secret"))
     loader = DifyToolNodeRuntime(
-        context(harness, {"tool-1": first.id, "tool-2": second.id}),
+        context(
+            harness,
+            {"tool-1": first.id, "tool-2": second.id},
+            {"nodes": [{"id": key, "data": node_data()} for key in ("tool-1", "tool-2")]},
+        ),
         workflow_id=harness.base.workflow_id,
         graph={"nodes": [{"id": key, "data": node_data()} for key in ("tool-1", "tool-2")]},
     )
@@ -246,7 +264,7 @@ def test_oauth_refresh_preserves_connection_id_and_checks_current_client(harness
             .where(ToolOAuthTenantClient.id == harness.client_id)
             .values(encrypted_oauth_params=json.dumps({"client_id": "new-client"}))
         )
-    with pytest.raises(ToolRuntimeResolutionError, match="OAuth client"):
+    with pytest.raises(ToolRuntimeResolutionError, match="connection requirements changed"):
         loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
 
 
@@ -272,7 +290,7 @@ def test_runtime_respects_fixed_graph_client_selection(harness: OAuthHarness, mo
     )
     for selected in (default, custom):
         loader = DifyToolNodeRuntime(
-            context(harness, {"tool-1": selected.id}),
+            context(harness, {"tool-1": selected.id}, {"nodes": [{"id": "tool-1", "data": data}]}),
             workflow_id=harness.base.workflow_id,
             graph={"nodes": [{"id": "tool-1", "data": data}]},
         )
@@ -433,3 +451,58 @@ def test_deleted_connection_uses_normal_tool_node_failure(harness: OAuthHarness)
     assert events[0].node_run_result.status == "failed"
     assert events[0].node_run_result.error_type == "ToolRuntimeResolutionError"
     assert "original-secret" not in repr(events)
+
+
+@pytest.mark.parametrize("phase", ["queued", "check"])
+def test_plugin_upgrade_invalidates_the_fixed_execution_contract(harness: OAuthHarness, phase: str) -> None:
+    selected = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    loader = runtime(harness, selected.id)
+    harness.base.auth.calls.clear()
+
+    def upgrade() -> None:
+        harness.providers.controller.plugin_unique_identifier = "vendor/calendar:1.0@rebuilt"
+
+    if phase == "queued":
+        upgrade()
+    else:
+        harness.base.auth.on_check = upgrade
+    with pytest.raises(ToolRuntimeResolutionError, match="requirements changed"):
+        loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
+    assert len(harness.base.auth.calls) == (0 if phase == "queued" else 1)
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+
+    with harness.base.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 1
+
+
+@pytest.mark.parametrize("oauth", [False, True])
+def test_verified_plugin_upgrade_can_resume_a_fixed_execution(harness: OAuthHarness, oauth: bool) -> None:
+    connection = (
+        harness.finish(harness.start())
+        if oauth
+        else harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    )
+    loader = runtime(harness, connection.id)
+    upgraded = "vendor/calendar:2.0.0@" + "b" * 64
+    harness.providers.controller.plugin_unique_identifier = upgraded
+    harness.providers.trusted_artifacts.add(upgraded)
+    handle = loader.get_runtime(
+        node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None
+    )
+    tool = loader._tool_from_handle(handle)
+    assert tool.runtime.connection_id == connection.id
+    from core.tools.plugin_tool.tool import PluginTool
+
+    assert isinstance(tool, PluginTool)
+    assert tool.plugin_unique_identifier == upgraded
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+
+    with harness.base.sessions() as session:
+        inherited = session.scalars(
+            sa.select(EndUserConnectionRevisionAcceptance).where(
+                EndUserConnectionRevisionAcceptance.reason == "inherited"
+            )
+        ).all()
+        assert len(inherited) == 1
+        assert inherited[0].source_revision_id == harness.base.connection_revision
+        assert inherited[0].end_user_id == harness.base.context.end_user_id

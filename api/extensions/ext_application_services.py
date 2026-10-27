@@ -14,6 +14,7 @@ from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
+from clients.plugin.auth import PluginCredentialAuthClient
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
@@ -135,6 +136,8 @@ from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
+from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.execution import ConnectionExecutionService
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
@@ -433,6 +436,10 @@ def build_application_services(
     app_definitions = AppDefinitionQueryService(
         get_connection_requirements=get_tool_connection_requirements,
         definitions=app_definition_repository,
+        connection_revisions=PluginConnectionRevisions(
+            providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()),
+            snapshots=EndUserConnectionRepository(session_factory=database_client),
+        ),
         builtin_icon_url_prefix=(
             dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
         ),

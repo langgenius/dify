@@ -28,8 +28,11 @@ from libs.helper import dump_response
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, EndUser
-from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
-from services.entities.tool_connection_entities import ToolConnectionRequirement
+from services.app_definition_query_service import (
+    AppDefinitionNotPublishedError,
+    AppDefinitionUnavailableError,
+    WebAppConnectionRequirement,
+)
 from services.web_passport_service import WebAppAuthType
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
@@ -66,18 +69,20 @@ class WebAppParametersResponse(Parameters, ResponseModel):
         description="Whether Guest identities may manage and use personal Connections; does not control App entry."
     )
     account_login_enabled: bool = Field(description="Whether explicit Account login and Passport exchange are enabled.")
-    workflow_id: str | None = Field(
+    connection_revision: str | None = Field(
         description=(
-            "Connection contract revision represented by the published workflow/chatflow ID; "
-            "null for other app modes. This is not an execution-version selector."
+            "Opaque revision of connection requirements, plugin artifacts and OAuth Client configurations; "
+            "null for other app modes. Return it unchanged in connection requests and runs."
         ),
     )
     requires_end_user_connections: bool = Field(
         description="Whether this published version declares EndUser tool connections, independent of user readiness.",
     )
 
-    connection_requirements: tuple[ToolConnectionRequirement, ...] = Field(
-        description="Static authorization requirements for this published version, without personal connection state."
+    connection_requirements: tuple[WebAppConnectionRequirement, ...] = Field(
+        description=(
+            "Authorization requirements and exact plugin artifacts in connection_revision, without personal state."
+        )
     )
 
 

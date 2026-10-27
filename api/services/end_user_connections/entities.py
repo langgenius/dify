@@ -53,6 +53,19 @@ class ConnectionOAuthClient:
     configuration_id: str
     # None means the plugin does not expose a public Client ID.
     client_id: str | None = field(repr=False)
+    # None identifies a legacy grant with no trustworthy Client credential snapshot.
+    fingerprint: str | None = field(default=None, repr=False)
+    # Preserve the authorizing artifact across trusted upgrades for best-effort revocation.
+    plugin_unique_identifier: str | None = field(default=None, repr=False)
+
+    def same_credentials(self, other: "ConnectionOAuthClient") -> bool:
+        return (
+            self.source == other.source
+            and self.configuration_id == other.configuration_id
+            and self.client_id == other.client_id
+            and self.fingerprint is not None
+            and self.fingerprint == other.fingerprint
+        )
 
 
 @dataclass(frozen=True, slots=True)

@@ -3,6 +3,7 @@
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from threading import Event, Lock
 from typing import Any, override
 from urllib.parse import parse_qs, urlsplit
@@ -13,8 +14,10 @@ from werkzeug import Request
 
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.plugin.entities.oauth import OAuthSchema
+from core.plugin.entities.plugin import PluginCategory, PluginDeclaration, PluginResourceRequirements
 from core.plugin.entities.plugin_daemon import PluginOAuthAuthorizationUrlResponse, PluginOAuthCredentialsResponse
 from core.plugin.impl.oauth import OAuthHandler
+from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.common_entities import I18nObject
 from extensions.ext_redis import redis_client
 from libs.uuid_utils import uuidv7
@@ -28,11 +31,19 @@ from services.end_user_connection_oauth_adapters import (
     RedisConnectionOAuthAttempts,
     RedisOAuthRefreshSingleFlight,
 )
+from services.end_user_connection_revision_adapters import PluginConnectionProviderRevisions
 from services.end_user_connections.contracts import ConnectionOAuthStart, ConnectionSummary, StartConnectionOAuthInput
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
 from services.end_user_connections.oauth_lifecycle import OAuthConnectionLifecycleService
-from tests.helpers.end_user_api_key import PROVIDER, ConnectionHarness, TestProviders, make_harness, plugin_provider
+from tests.helpers.end_user_api_key import (
+    PLUGIN_UNIQUE_IDENTIFIER,
+    PROVIDER,
+    ConnectionHarness,
+    TestProviders,
+    make_harness,
+    plugin_provider,
+)
 
 
 class ScriptedOAuthHandler(OAuthHandler):
@@ -44,7 +55,7 @@ class ScriptedOAuthHandler(OAuthHandler):
         )
         self.on_exchange: Callable[[], None] | None = None
         self.callback_headers: dict[str, str] = {}
-        self.requested_artifacts: list[str | None] = []
+        self.requested_artifacts: list[str] = []
         self.exchanges = 0
         self.refreshes: list[dict[str, Any]] = []
         self.on_refresh: Callable[[], None] | None = None
@@ -66,6 +77,7 @@ class ScriptedOAuthHandler(OAuthHandler):
         *,
         plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthAuthorizationUrlResponse:
+        assert plugin_unique_identifier is not None
         self.requested_artifacts.append(plugin_unique_identifier)
         return PluginOAuthAuthorizationUrlResponse(
             authorization_url=f"https://provider.example/authorize?state={uuidv7()}"
@@ -84,6 +96,7 @@ class ScriptedOAuthHandler(OAuthHandler):
         *,
         plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthCredentialsResponse:
+        assert plugin_unique_identifier is not None
         self.requested_artifacts.append(plugin_unique_identifier)
         self.exchanges += 1
         self.callback_headers = dict(request.headers)
@@ -105,6 +118,7 @@ class ScriptedOAuthHandler(OAuthHandler):
         *,
         plugin_unique_identifier: str | None = None,
     ) -> PluginOAuthCredentialsResponse:
+        assert plugin_unique_identifier is not None
         self.requested_artifacts.append(plugin_unique_identifier)
         self.refreshes.append(dict(credentials))
         if callback := self.on_refresh:
@@ -130,7 +144,7 @@ class OAuthHarness:
 
     def command(self) -> StartConnectionOAuthInput:
         return StartConnectionOAuthInput(
-            workflow_id=self.base.command().workflow_id, node_id="tool-1", name="My calendar"
+            connection_revision=self.base.command().connection_revision, node_id="tool-1", name="My calendar"
         )
 
     def start(self) -> ConnectionOAuthStart:
@@ -162,6 +176,26 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
             ProviderConfig(name="access_token", label=label, type=ProviderConfigType.SECRET_INPUT, required=True)
         ],
     )
+    manifest = PluginDeclaration(
+        version="1.0.0",
+        author="vendor",
+        name="calendar",
+        description=label,
+        icon="icon.svg",
+        label=label,
+        category=PluginCategory.Tool,
+        created_at=datetime(2026, 10, 26),
+        resource=PluginResourceRequirements(memory=1024 * 1024),
+        plugins=PluginDeclaration.Plugins(tools=[]),
+        meta=PluginDeclaration.Meta(),
+        tool=controller.entity.model_copy(deep=True),
+    )
+
+    def original_manifest(_self: PluginInstaller, tenant_id: str, plugin_unique_identifier: str) -> PluginDeclaration:
+        assert plugin_unique_identifier == PLUGIN_UNIQUE_IDENTIFIER
+        return manifest
+
+    monkeypatch.setattr(PluginInstaller, "fetch_plugin_manifest", original_manifest)
     app_code = str(uuidv7())
     with sessions.begin() as session:
         workflow = session.get(Workflow, base.workflow_id)
@@ -233,15 +267,21 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
     )
     attempts = RedisConnectionOAuthAttempts()
     service = OAuthConnectionService(
+        revisions=PluginConnectionProviderRevisions(providers=providers, snapshots=base.repository),
         store=base.repository,
-        targets=PublishedConnectionTargetResolver(workflows=base.repository, providers=providers),
+        targets=PublishedConnectionTargetResolver(
+            workflows=base.repository, snapshots=base.repository, providers=providers
+        ),
         gateway=gateway,
         attempts=attempts,
         cipher=base.cipher,
     )
     base.service = ConnectionService(
+        revisions=PluginConnectionProviderRevisions(providers=providers, snapshots=base.repository),
         store=base.repository,
-        targets=PublishedConnectionTargetResolver(workflows=base.repository, providers=providers),
+        targets=PublishedConnectionTargetResolver(
+            workflows=base.repository, snapshots=base.repository, providers=providers
+        ),
         credentials=providers,
         cipher=base.cipher,
         oauth=OAuthConnectionLifecycleService(

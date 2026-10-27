@@ -40,7 +40,12 @@ class ConnectionRuntimeService:
         self._cipher = cipher
 
     def resolve(
-        self, context: WebConnectionContext, *, connection: ConnectionAccessRecord, target: ToolConnectionTarget
+        self,
+        context: WebConnectionContext,
+        *,
+        connection: ConnectionAccessRecord,
+        target: ToolConnectionTarget,
+        connection_revision: str,
     ) -> ResolvedConnectionCredentials:
         require_personal_connection_access(context)
         connection_id = connection.id
@@ -55,7 +60,7 @@ class ConnectionRuntimeService:
             raise ConnectionInvalidCredentialsError()
         if access.credential_status == ConnectionCredentialStatus.RECONNECT_REQUIRED:
             raise ConnectionReauthorizationRequiredError()
-        outcome = self._checks.check_connection_result(context, connection_id)
+        outcome = self._checks.check_connection_result(context, connection_id, connection_revision=connection_revision)
         current = self._store.find(context, connection_id)
         latest = require_applicable_connection(
             context,

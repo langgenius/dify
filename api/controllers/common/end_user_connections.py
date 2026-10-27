@@ -2,6 +2,7 @@
 
 from typing import NoReturn
 
+from pydantic import BaseModel
 from werkzeug.exceptions import Unauthorized
 
 from libs.exception import BaseHTTPException
@@ -17,9 +18,10 @@ from services.end_user_connections.errors import (
     ConnectionOAuthError,
     ConnectionReauthorizationRequiredError,
     ConnectionRequiredError,
+    ConnectionRevisionChangedError,
     ConnectionSecretUnavailableError,
-    ConnectionWorkflowChangedError,
 )
+from services.end_user_connections.revision import ConnectionRevision
 
 
 class ConnectionLoginRequiredError(BaseHTTPException):
@@ -52,10 +54,15 @@ class ConnectionConflictHTTPError(BaseHTTPException):
     description = "Connection changed during the operation."
 
 
-class ConnectionWorkflowChangedHTTPError(BaseHTTPException):
+class ConnectionRevisionChangeDetails(BaseModel):
+    connection_revision: ConnectionRevision | None
+
+
+class ConnectionRevisionChangedHTTPError(BaseHTTPException):
     code = 409
-    error_code = "workflow_changed"
-    description = "The workflow changed. Confirm the connection selection again."
+    error_code = "connection_revision_changed"
+    details_model = ConnectionRevisionChangeDetails
+    description = "The connection requirements changed. Refresh and confirm again."
 
 
 class ConnectionCredentialsHTTPError(BaseHTTPException):
@@ -91,6 +98,12 @@ class ConnectionReauthorizationHTTPError(BaseHTTPException):
 def raise_connection_error(error: ConnectionError) -> NoReturn:
     if isinstance(error, ConnectionIdentityError):
         raise Unauthorized(str(error)) from None
+    if isinstance(error, ConnectionRevisionChangedError):
+        exception = ConnectionRevisionChangedHTTPError()
+        details = ConnectionRevisionChangeDetails(connection_revision=error.current_revision)
+        assert exception.data is not None
+        exception.data["details"] = details.model_dump(mode="json")
+        raise exception from None
     errors: dict[type[ConnectionError], type[BaseHTTPException]] = {
         ConnectionAccountRequiredError: ConnectionLoginRequiredError,
         ConnectionOAuthError: ConnectionOAuthHTTPError,
@@ -99,7 +112,6 @@ def raise_connection_error(error: ConnectionError) -> NoReturn:
         ConnectionConfigurationError: ConnectionConfigurationHTTPError,
         ConnectionRequiredError: ConnectionRequiredHTTPError,
         ConnectionConflictError: ConnectionConflictHTTPError,
-        ConnectionWorkflowChangedError: ConnectionWorkflowChangedHTTPError,
         ConnectionInvalidCredentialsError: ConnectionCredentialsHTTPError,
         ConnectionCheckUnavailableError: ConnectionCheckUnavailableHTTPError,
         ConnectionSecretUnavailableError: ConnectionSecretUnavailableHTTPError,

@@ -14,6 +14,7 @@ from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonInner
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginDaemonInternalServerError, PluginInvokeError
 from core.plugin.impl.tool import PluginToolManager
 
+ARTIFACT = "org/plugin:1.0.0@" + "a" * 64
 SECRET = "secret-that-must-not-escape"
 
 
@@ -51,6 +52,7 @@ def _revoke(client: PluginCredentialAuthClient) -> OAuthRevokeResult:
         tenant_id="tenant-1",
         user_id="user-1",
         provider="org/plugin/provider",
+        plugin_unique_identifier=ARTIFACT,
         system_credentials={"client_secret": SECRET},
         credentials={"access_token": SECRET},
     )
@@ -148,6 +150,7 @@ def test_check_request_and_api_timestamp(
 def test_revoke_request_uses_original_oauth_client() -> None:
     def respond(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/plugin/tenant-1/dispatch/oauth/revoke_credentials"
+        assert request.headers["X-Plugin-Unique-Identifier"] == ARTIFACT
         assert request.headers["X-Plugin-ID"] == "org/plugin"
         assert json.loads(request.content) == {
             "user_id": "user-1",

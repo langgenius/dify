@@ -19,6 +19,7 @@ from services.end_user_connection_oauth_adapters import (
     RedisOAuthRefreshSingleFlight,
 )
 from services.end_user_connection_preflight_adapters import PublishedPreflightRequirements
+from services.end_user_connection_revision_adapters import PluginConnectionProviderRevisions
 from services.end_user_connection_runtime_adapters import get_tool_runtime
 from services.end_user_connections.management import ConnectionService
 from services.end_user_connections.oauth import OAuthConnectionService
@@ -41,8 +42,9 @@ def build_end_user_connections(*, database_client: sessionmaker[Session]) -> Con
     providers = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
     cipher = TenantConnectionCipher()
     return ConnectionService(
+        revisions=PluginConnectionProviderRevisions(providers=providers, snapshots=repository),
         store=repository,
-        targets=PublishedConnectionTargetResolver(workflows=repository, providers=providers),
+        targets=PublishedConnectionTargetResolver(workflows=repository, snapshots=repository, providers=providers),
         credentials=providers,
         cipher=cipher,
         oauth=OAuthConnectionLifecycleService(
@@ -63,8 +65,9 @@ def build_end_user_connection_oauth(*, database_client: sessionmaker[Session]) -
     repository = EndUserConnectionRepository(session_factory=database_client)
     providers = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
     return OAuthConnectionService(
+        revisions=PluginConnectionProviderRevisions(providers=providers, snapshots=repository),
         store=repository,
-        targets=PublishedConnectionTargetResolver(workflows=repository, providers=providers),
+        targets=PublishedConnectionTargetResolver(workflows=repository, snapshots=repository, providers=providers),
         gateway=PluginConnectionOAuthGateway(
             clients=repository,
             providers=providers,
@@ -86,6 +89,7 @@ def build_end_user_connection_preflight(
         checks=connections,
         requirements=PublishedPreflightRequirements(
             workflows=repository,
+            snapshots=repository,
             providers=providers,
             oauth=PluginConnectionOAuthGateway(
                 clients=repository,

@@ -10,11 +10,94 @@ from datetime import datetime
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
-from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, OAuthClientSource
+from constants.end_user_connections import (
+    ConnectionCredentialStatus,
+    ConnectionCredentialType,
+    ConnectionRevisionAcceptanceReason,
+    OAuthClientSource,
+)
 from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
 
 from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, LongText, StringUUID
+
+
+class EndUserConnectionRevision(TypeBase):
+    """Immutable authorization snapshots deduplicated within one Web App.
+
+    Keep old snapshots for consent validation after upgrades and for revocation
+    references after uninstall. They contain no personal credentials or Client secrets.
+    """
+
+    __tablename__ = "end_user_connection_revisions"
+
+    __table_args__ = (
+        sa.UniqueConstraint("tenant_id", "app_id", "fingerprint", name="end_user_connection_revision_content_key"),
+        sa.UniqueConstraint("id", "tenant_id", "app_id", name="end_user_connection_revision_scope_key"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
+    fingerprint: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    snapshot: Mapped[str] = mapped_column(LongText, nullable=False, repr=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        default_factory=naive_utc_now,
+        server_default=sa.func.current_timestamp(),
+    )
+
+
+class EndUserConnectionRevisionAcceptance(TypeBase):
+    """First acceptance of an authorization contract by one App-scoped EndUser.
+
+    Preserve the original reason when a later request resubmits an inherited ID.
+    """
+
+    __tablename__ = "end_user_connection_revision_acceptances"
+    __table_args__ = (
+        sa.CheckConstraint(
+            "(reason = 'approved' AND source_revision_id IS NULL) OR "
+            "(reason = 'inherited' AND source_revision_id IS NOT NULL AND source_revision_id <> revision_id)",
+            name=sa.schema.conv("end_user_revision_acceptance_reason_check"),
+        ),
+        sa.UniqueConstraint(
+            "tenant_id", "app_id", "end_user_id", "revision_id", name="end_user_revision_acceptance_end_user_key"
+        ),
+        sa.ForeignKeyConstraint(
+            ["revision_id", "tenant_id", "app_id"],
+            [
+                "end_user_connection_revisions.id",
+                "end_user_connection_revisions.tenant_id",
+                "end_user_connection_revisions.app_id",
+            ],
+            name="end_user_revision_acceptance_scope_fkey",
+        ),
+        sa.ForeignKeyConstraint(
+            ["source_revision_id", "tenant_id", "app_id"],
+            [
+                "end_user_connection_revisions.id",
+                "end_user_connection_revisions.tenant_id",
+                "end_user_connection_revisions.app_id",
+            ],
+            name="end_user_revision_acceptance_source_scope_fkey",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    revision_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    reason: Mapped[ConnectionRevisionAcceptanceReason] = mapped_column(
+        EnumText(ConnectionRevisionAcceptanceReason), nullable=False
+    )
+    source_revision_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, default_factory=naive_utc_now, server_default=sa.func.current_timestamp()
+    )
 
 
 class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
@@ -82,6 +165,9 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
     # Already masked OAuth account identity, independent of the editable name.
     # None means unavailable identity metadata or an API-key connection.
     account_label: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    oauth_plugin_unique_identifier: Mapped[str | None] = mapped_column(sa.String(512), nullable=True, default=None)
+    # Legacy grants without provenance must be reauthorized before use.
+    oauth_client_fingerprint: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None, repr=False)
     revision: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=1, server_default=sa.text("1"))
     last_active_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
@@ -99,8 +185,8 @@ class AppConnection(DefaultFieldsDCMixin, TypeBase):
     timing and ordering; row timestamps do not define the latest Run. Empty defaults
     have no rows. Run references never cascade into historical execution records.
     workflow_id and node_id identify the published graph version where this choice
-    was saved. A different execution version requires reconfirmation, even if node
-    IDs match. Callers validate Workflow ownership and node authentication requirements
+    was saved. Changed authorization requirements require reconfirmation; republishing the
+    same requirements preserves the choice. Callers validate Workflow ownership and node authentication requirements
     before replacing the saved version and choice; these rows are not version history.
     """
 

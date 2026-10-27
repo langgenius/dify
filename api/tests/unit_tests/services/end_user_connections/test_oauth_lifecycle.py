@@ -10,11 +10,10 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
-from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
+from clients.plugin.auth_entities import CredentialCheckResult
 from clients.plugin.errors import PluginNotImplementedError
 from constants.end_user_connections import ConnectionCredentialStatus
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.impl.exc import PluginDaemonInternalServerError
 from models.account import Account, AccountStatus
 from models.end_user_connection import EndUserConnection
 from models.model import EndUser
@@ -51,7 +50,9 @@ def test_check_refreshes_and_preserves_refresh_token_identity_and_activity(harne
     connection_id = create(harness, expired=True)
     before = harness.base.repository.find(harness.base.context, connection_id)
     assert before is not None
-    result = harness.base.service.check_connection(harness.base.context, connection_id)
+    result = harness.base.service.check_connection(
+        harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+    )
     assert result.check.status == "valid"
     assert result.credential_status == ConnectionCredentialStatus.CONNECTED
     assert harness.base.auth.credential_types == [CredentialType.OAUTH2]
@@ -78,7 +79,9 @@ def test_check_updates_only_definitive_status_without_touching_activity(harness:
     harness.base.auth.result = CredentialCheckResult.model_validate(
         {"status": status, "reason_code": None, "retryable": False, "checked_at": 1}
     )
-    result = harness.base.service.check_connection(harness.base.context, connection_id)
+    result = harness.base.service.check_connection(
+        harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+    )
     expected = ConnectionCredentialStatus.INVALID if status == "invalid" else ConnectionCredentialStatus.CONNECTED
     assert result.credential_status == expected
     record = harness.base.repository.find(harness.base.context, connection_id)
@@ -104,7 +107,9 @@ def test_failed_refresh_distinguishes_temporary_failures_from_unrefreshable_expi
         outer = ValueError("private-provider-secret")
         outer.__context__ = PluginNotImplementedError("unsupported-secret")
         harness.handler.refresh_error = outer
-    result = harness.base.service.check_connection(harness.base.context, connection_id)
+    result = harness.base.service.check_connection(
+        harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+    )
     assert result.check.status == ("invalid" if failure == "unsupported" else "temporarily_unavailable")
     record = harness.base.repository.find(harness.base.context, connection_id)
     assert record is not None
@@ -124,7 +129,9 @@ def test_rotated_refresh_token_is_saved_even_when_check_temporarily_fails(harnes
         }
     )
     harness.base.auth.check_error = httpx.ConnectError("private-token")
-    result = harness.base.service.check_connection(harness.base.context, connection_id)
+    result = harness.base.service.check_connection(
+        harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+    )
     assert result.check.status == "temporarily_unavailable"
     record = harness.base.repository.find(harness.base.context, connection_id)
     assert record is not None
@@ -145,7 +152,9 @@ def test_remote_expiry_without_local_expiration_refreshes_once(harness: OAuthHar
     harness.base.auth.result = CredentialCheckResult(
         status="invalid", reason_code="credential_expired", retryable=False, checked_at=1
     )
-    result = harness.base.service.check_connection(harness.base.context, connection_id)
+    result = harness.base.service.check_connection(
+        harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+    )
     assert result.credential_status == ConnectionCredentialStatus.INVALID
     assert len(harness.handler.refreshes) == 1
     assert len(harness.base.auth.calls) == 2
@@ -160,7 +169,9 @@ def test_successful_refresh_repairs_invalid_status_even_when_check_is_unsupporte
             .values(status=ConnectionCredentialStatus.INVALID)
         )
     harness.base.auth.check_error = PluginNotImplementedError("private-message")
-    result = harness.base.service.check_connection(harness.base.context, connection_id)
+    result = harness.base.service.check_connection(
+        harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+    )
     assert result.check.status == "unsupported"
     assert result.credential_status == ConnectionCredentialStatus.CONNECTED
 
@@ -184,7 +195,9 @@ def test_client_change_requires_reauthorization_without_global_status_mutation(
     else:
         harness.handler.on_refresh = mutate
     with pytest.raises(ConnectionReauthorizationRequiredError):
-        harness.base.service.check_connection(harness.base.context, connection_id)
+        harness.base.service.check_connection(
+            harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+        )
     record = harness.base.repository.find(harness.base.context, connection_id)
     assert record is not None
     assert record.access.revision == 1
@@ -228,7 +241,9 @@ def test_refresh_cannot_overwrite_identity_or_connection_changes(harness: OAuthH
 
     harness.handler.on_refresh = mutate
     with pytest.raises((ConnectionConflictError, ConnectionIdentityError)):
-        harness.base.service.check_connection(harness.base.context, connection_id)
+        harness.base.service.check_connection(
+            harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+        )
     with harness.base.sessions() as session:
         row = session.get(EndUserConnection, connection_id)
         assert (
@@ -251,9 +266,19 @@ def test_concurrent_checks_share_one_refresh_result(harness: OAuthHarness, failu
     if failure:
         harness.handler.refresh_error = ValueError("private-provider-message")
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        first = pool.submit(
+            harness.base.service.check_connection,
+            harness.base.context,
+            connection_id,
+            connection_revision=harness.base.connection_revision,
+        )
         assert entered.wait(5)
-        second = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        second = pool.submit(
+            harness.base.service.check_connection,
+            harness.base.context,
+            connection_id,
+            connection_revision=harness.base.connection_revision,
+        )
         try:
             assert harness.flight_joined.wait(5)
         finally:
@@ -266,7 +291,9 @@ def test_concurrent_checks_share_one_refresh_result(harness: OAuthHarness, failu
         "access-secret" not in value and "refresh-secret" not in value for value in harness.redis_values.values()
     )
     if failure:
-        harness.base.service.check_connection(harness.base.context, connection_id)
+        harness.base.service.check_connection(
+            harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+        )
         assert len(harness.handler.refreshes) == 2
 
 
@@ -279,37 +306,41 @@ def test_lost_refresh_lease_cannot_persist_remote_result(harness: OAuthHarness) 
 
     harness.handler.on_refresh = lose_lease
     with pytest.raises(ConnectionCheckUnavailableError):
-        harness.base.service.check_connection(harness.base.context, connection_id)
+        harness.base.service.check_connection(
+            harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+        )
     record = harness.base.repository.find(harness.base.context, connection_id)
     assert record is not None
     assert record.access.revision == 1
 
 
-@pytest.mark.parametrize("revoke_status", ["revoked", "unsupported", "failed", "temporarily_unavailable"])
-def test_delete_commits_before_best_effort_revocation(harness: OAuthHarness, revoke_status: str) -> None:
+@pytest.mark.parametrize("plugin_change", [False, True])
+def test_delete_never_dispatches_secrets_to_an_unpinned_plugin(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, plugin_change: bool
+) -> None:
     connection_id = create(harness, expired=False)
-    harness.base.auth.revoke_result = OAuthRevokeResult.model_validate(
-        {"status": revoke_status, "reason_code": None, "retryable": False}
-    )
+    if plugin_change:
+        harness.providers.controller.plugin_unique_identifier = "vendor/calendar:9.0@untrusted"
+
+    original = harness.base.repository.find(harness.base.context, connection_id)
+    assert original is not None
+    assert original.access.oauth_client is not None
 
     def assert_deleted() -> None:
-        with harness.base.sessions() as session:
-            assert session.get(EndUserConnection, connection_id) is None
+        assert harness.base.repository.find(harness.base.context, connection_id) is None
 
+    def unavailable_provider(_tenant_id: str, _provider: str) -> None:
+        pytest.fail("Revocation must use the original manifest, not the installed Provider.")
+
+    monkeypatch.setattr(harness.providers, "provider", unavailable_provider)
     harness.base.auth.on_revoke = assert_deleted
     harness.base.service.delete_connection(harness.base.context, connection_id)
     assert harness.base.repository.find(harness.base.context, connection_id) is None
+    assert harness.base.auth.revocation_artifacts == [original.access.oauth_client.plugin_unique_identifier]
     assert len(harness.base.auth.revocations) == 1
-    tenant_id, user_id, _, client, credentials = harness.base.auth.revocations[0]
-    assert tenant_id == harness.base.context.tenant_id
-    assert user_id == harness.base.context.end_user_id
-    assert client == {"client_id": "public-client"}
-    assert credentials["access_token"] == "access-secret"
 
 
-@pytest.mark.parametrize(
-    "change", ["missing_client", "changed_client", "disabled_client", "secret_error", "revoke_error"]
-)
+@pytest.mark.parametrize("change", ["missing_client", "changed_client", "disabled_client", "secret_error"])
 def test_configuration_and_provider_failures_do_not_prevent_local_delete(
     harness: OAuthHarness, change: str, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -331,15 +362,9 @@ def test_configuration_and_provider_failures_do_not_prevent_local_delete(
             )
     if change == "secret_error":
         harness.base.cipher.values.clear()
-    elif change == "revoke_error":
-
-        def fail() -> None:
-            raise PluginDaemonInternalServerError("private-access-token")
-
-        harness.base.auth.on_revoke = fail
     harness.base.service.delete_connection(harness.base.context, connection_id)
     assert harness.base.repository.find(harness.base.context, connection_id) is None
-    assert len(harness.base.auth.revocations) == (1 if change in {"disabled_client", "revoke_error"} else 0)
+    assert len(harness.base.auth.revocations) == (1 if change == "disabled_client" else 0)
     assert "private-access-token" not in caplog.text
 
 
@@ -352,7 +377,9 @@ def test_missing_connection_has_no_remote_side_effect(harness: OAuthHarness) -> 
 def test_expired_refresh_response_is_saved_but_not_reported_as_connected(harness: OAuthHarness) -> None:
     connection_id = create(harness, expired=True)
     harness.handler.refresh_result = harness.handler.refresh_result.model_copy(update={"expires_at": 1})
-    result = harness.base.service.check_connection(harness.base.context, connection_id)
+    result = harness.base.service.check_connection(
+        harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+    )
     assert result.credential_status == ConnectionCredentialStatus.INVALID
     assert result.check.reason_code == "credential_expired"
     assert harness.base.auth.calls == []
@@ -377,7 +404,9 @@ def test_client_secret_change_during_check_cannot_persist_a_stale_result(harness
         status="invalid", reason_code="credential_revoked", retryable=False, checked_at=1
     )
     with pytest.raises(ConnectionReauthorizationRequiredError):
-        harness.base.service.check_connection(harness.base.context, connection_id)
+        harness.base.service.check_connection(
+            harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+        )
     record = harness.base.repository.find(harness.base.context, connection_id)
     assert record is not None
     assert record.access.revision == 1
@@ -413,9 +442,19 @@ def test_concurrent_checks_share_refresh_failure(harness: OAuthHarness) -> None:
 
     harness.handler.on_refresh = refresh
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        first = pool.submit(
+            harness.base.service.check_connection,
+            harness.base.context,
+            connection_id,
+            connection_revision=harness.base.connection_revision,
+        )
         assert entered.wait(5)
-        second = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        second = pool.submit(
+            harness.base.service.check_connection,
+            harness.base.context,
+            connection_id,
+            connection_revision=harness.base.connection_revision,
+        )
         try:
             assert harness.flight_joined.wait(5)
         finally:
@@ -461,9 +500,19 @@ def test_waiter_revalidates_after_shared_refresh(
 
     harness.handler.on_refresh = refresh
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        first = pool.submit(
+            harness.base.service.check_connection,
+            harness.base.context,
+            connection_id,
+            connection_revision=harness.base.connection_revision,
+        )
         assert entered.wait(5)
-        second = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        second = pool.submit(
+            harness.base.service.check_connection,
+            harness.base.context,
+            connection_id,
+            connection_revision=harness.base.connection_revision,
+        )
         try:
             assert harness.flight_joined.wait(5)
         finally:
@@ -489,13 +538,55 @@ def test_waiter_timeout_does_not_start_another_refresh(harness: OAuthHarness, mo
 
     harness.handler.on_refresh = refresh
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(harness.base.service.check_connection, harness.base.context, connection_id)
+        first = pool.submit(
+            harness.base.service.check_connection,
+            harness.base.context,
+            connection_id,
+            connection_revision=harness.base.connection_revision,
+        )
         assert entered.wait(5)
         monkeypatch.setattr(RedisOAuthRefreshSingleFlight, "_TIMEOUT", 0)
         try:
             with pytest.raises(ConnectionCheckUnavailableError):
-                harness.base.service.check_connection(harness.base.context, connection_id)
+                harness.base.service.check_connection(
+                    harness.base.context, connection_id, connection_revision=harness.base.connection_revision
+                )
         finally:
             release.set()
         assert first.result(timeout=5).check.status == "valid"
     assert len(harness.handler.refreshes) == 1
+
+
+@pytest.mark.parametrize("failure", ["manifest_missing", "legacy_grant", "unsupported", "transport_error"])
+def test_original_artifact_revoke_is_best_effort_without_fallback(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    from clients.plugin.auth_entities import OAuthRevokeResult
+    from core.plugin.impl.plugin import PluginInstaller
+
+    connection_id = create(harness, expired=False)
+    if failure == "manifest_missing":
+
+        def unavailable(*_args: object) -> None:
+            raise ValueError("Artifact no longer exists")
+
+        monkeypatch.setattr(PluginInstaller, "fetch_plugin_manifest", unavailable)
+    elif failure == "legacy_grant":
+        with harness.base.sessions.begin() as session:
+            session.execute(
+                sa.update(EndUserConnection)
+                .where(EndUserConnection.id == connection_id)
+                .values(oauth_plugin_unique_identifier=None)
+            )
+    elif failure == "unsupported":
+        harness.base.auth.revoke_result = OAuthRevokeResult(status="unsupported", reason_code=None, retryable=False)
+    else:
+
+        def fail() -> None:
+            raise ValueError("Private provider failure")
+
+        harness.base.auth.on_revoke = fail
+    harness.providers.controller.plugin_unique_identifier = "vendor/calendar:9.0.0@" + "f" * 64
+    harness.base.service.delete_connection(harness.base.context, connection_id)
+    assert harness.base.repository.find(harness.base.context, connection_id) is None
+    assert len(harness.base.auth.revocations) == (1 if failure in {"unsupported", "transport_error"} else 0)

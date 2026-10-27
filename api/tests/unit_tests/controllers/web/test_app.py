@@ -96,7 +96,7 @@ class TestAppParameterApi:
             calls.append((app_id, tenant_id))
             return {
                 **get_parameters_from_feature_dict(features_dict={"opening_statement": "Hello"}, user_input_form=[]),
-                "workflow_id": None,
+                "connection_revision": None,
                 "requires_end_user_connections": False,
                 "connection_requirements": [],
             }
@@ -113,7 +113,7 @@ class TestAppParameterApi:
 
         assert result["opening_statement"] == "Hello"
         assert calls == [("app-1", "tenant-1")]
-        assert result["workflow_id"] is None
+        assert result["connection_revision"] is None
         assert result["requires_end_user_connections"] is False
         assert result["connection_requirements"] == []
         assert result["allow_anonymous_end_user_auth"] is allow_anonymous

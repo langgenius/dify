@@ -10,9 +10,14 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.provider_ids import ToolProviderID
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway, validate_provider_authentication
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.entities import ConnectionOAuthClient, ToolConnectionTarget, WebConnectionContext
-from services.end_user_connections.errors import ConnectionConfigurationError, ConnectionReauthorizationRequiredError
+from services.end_user_connections.errors import (
+    ConnectionConfigurationError,
+    ConnectionReauthorizationRequiredError,
+)
 from services.end_user_connections.preflight import ConnectionRequirement
+from services.end_user_connections.revision import ConnectionRevisionSnapshots
 from services.workflow.tool_credentials import (
     ToolCredentialConfig,
     check_tool_credentials,
@@ -22,8 +27,8 @@ from services.workflow.tool_credentials import (
 
 class PreflightGraphQuery(Protocol):
     def preflight_graph(
-        self, context: WebConnectionContext, workflow_id: str, conversation_id: str | None
-    ) -> Mapping[str, Any]: ...
+        self, context: WebConnectionContext, workflow_id: str | None, conversation_id: str | None
+    ) -> tuple[str, Mapping[str, Any]]: ...
 
 
 class PublishedPreflightRequirements:
@@ -33,20 +38,24 @@ class PublishedPreflightRequirements:
         workflows: PreflightGraphQuery,
         providers: PluginApiKeyCredentialGateway,
         oauth: PluginConnectionOAuthGateway,
+        snapshots: ConnectionRevisionSnapshots,
     ) -> None:
         self._workflows = workflows
         self._providers = providers
         self._oauth = oauth
+        self._revisions = PluginConnectionRevisions(providers=providers, snapshots=snapshots)
 
     def resolve(
         self,
         context: WebConnectionContext,
-        workflow_id: str,
+        workflow_id: str | None,
         conversation_id: str | None,
         *,
         oauth_providers: frozenset[str],
-    ) -> tuple[ConnectionRequirement, ...]:
-        graph = self._workflows.preflight_graph(context, workflow_id, conversation_id)
+        connection_revision: str,
+    ) -> tuple[str, str, tuple[ConnectionRequirement, ...]]:
+        workflow_id, graph = self._workflows.preflight_graph(context, workflow_id, conversation_id)
+        revision = self._revisions.require(context.tenant_id, context.app_id, graph, connection_revision)
         try:
             if check_tool_credentials(graph, complete=True):
                 raise ConnectionConfigurationError()
@@ -94,7 +103,7 @@ class PublishedPreflightRequirements:
                     try:
                         clients[client_key] = self._oauth.resolve_client(
                             context.tenant_id, canonical, client_key[1]
-                        ).snapshot.reference
+                        ).snapshot
                     except ConnectionReauthorizationRequiredError:
                         clients[client_key] = None
                 requirements.append(
@@ -115,6 +124,6 @@ class PublishedPreflightRequirements:
                         node_ids=requirement.node_ids,
                     )
                 )
-            return tuple(requirements)
+            return workflow_id, revision, tuple(requirements)
         except (KeyError, TypeError, ValueError, ValidationError):
             raise ConnectionConfigurationError() from None

@@ -173,6 +173,7 @@ def _harness(
             get_connection_requirements=get_tool_connection_requirements,
             definitions=definitions,
             builtin_icon_url_prefix="",
+            connection_revisions=base_services.app_definitions._connection_revisions,
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=definitions,

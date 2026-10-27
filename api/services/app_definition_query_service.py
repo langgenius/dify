@@ -4,8 +4,12 @@ import json
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, NamedTuple, Protocol
 
+from pydantic import Field
+
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from services.end_user_connections.errors import ConnectionError
+from services.end_user_connections.revision import ConnectionRevisions
 from services.entities.tool_connection_entities import ToolConnectionRequirement
 
 
@@ -22,10 +26,16 @@ class WebAppParameterConfig(NamedTuple):
     graph: Mapping[str, Any] | None
 
 
+class WebAppConnectionRequirement(ToolConnectionRequirement):
+    plugin_unique_identifier: str = Field(description="Exact plugin artifact recorded in connection_revision.")
+    icon: str = Field(description="Plugin icon URL, using the Integrations asset endpoint.")
+    icon_dark: str | None = Field(description="Dark plugin icon URL; null when the plugin has no dark icon.")
+
+
 class WebAppParametersDict(AppParametersDict):
-    workflow_id: str | None
+    connection_revision: str | None
     requires_end_user_connections: bool
-    connection_requirements: tuple[ToolConnectionRequirement, ...]
+    connection_requirements: tuple[WebAppConnectionRequirement, ...]
 
 
 class AppToolIconSource(NamedTuple):
@@ -98,8 +108,10 @@ class AppDefinitionQueryService:
         definitions: AppDefinitionQuery,
         builtin_icon_url_prefix: str,
         get_connection_requirements: Callable[[Mapping[str, Any]], tuple[ToolConnectionRequirement, ...]],
+        connection_revisions: ConnectionRevisions,
     ) -> None:
         self._definitions = definitions
+        self._connection_revisions = connection_revisions
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
         self._get_connection_requirements = get_connection_requirements
 
@@ -136,13 +148,30 @@ class AppDefinitionQueryService:
             raise AppDefinitionUnavailableError()
         try:
             requirements = self._get_connection_requirements(config.graph) if config.graph is not None else ()
-        except (KeyError, TypeError, ValueError):
+            revision, providers = (
+                self._connection_revisions.resolve(tenant_id, app_id, config.graph)
+                if config.workflow_id is not None and config.graph is not None
+                else (None, ())
+            )
+            providers_by_name = {provider.provider: provider for provider in providers}
+            web_requirements = []
+            for requirement in requirements:
+                metadata = providers_by_name[requirement.provider]
+                web_requirements.append(
+                    WebAppConnectionRequirement(
+                        **requirement.model_dump(),
+                        plugin_unique_identifier=metadata.plugin_unique_identifier,
+                        icon=metadata.icon,
+                        icon_dark=metadata.icon_dark,
+                    )
+                )
+        except (KeyError, TypeError, ValueError, ConnectionError):
             raise AppDefinitionUnavailableError() from None
         return {
             **self._map_parameters(config.parameters),
-            "workflow_id": config.workflow_id,
+            "connection_revision": revision,
             "requires_end_user_connections": config.requires_end_user_connections,
-            "connection_requirements": requirements,
+            "connection_requirements": tuple(web_requirements),
         }
 
     @staticmethod

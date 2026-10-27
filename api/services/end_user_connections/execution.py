@@ -14,7 +14,6 @@ from services.end_user_connections.errors import (
     ConnectionNotFoundError,
     ConnectionReauthorizationRequiredError,
     ConnectionRequiredError,
-    ConnectionWorkflowChangedError,
 )
 from services.end_user_connections.preflight import (
     ConnectionId,
@@ -22,17 +21,18 @@ from services.end_user_connections.preflight import (
     ConnectionPreflightService,
     NodeId,
 )
+from services.end_user_connections.revision import ConnectionRevision
 
 
 class ConnectionRunInput(BaseModel):
-    workflow_id: UUID | None = Field(
+    connection_revision: ConnectionRevision | None = Field(
         default=None,
-        strict=False,
         description=(
-            "Connections protocol revision from Web App parameters. Required for EndUser tool authentication; "
-            "must match the current published workflow and does not select an execution version."
+            "Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; "
+            "must match current authorization requirements; verified plugin upgrades may inherit consent."
         ),
     )
+
     connections: dict[NodeId, ConnectionId | None] | None = Field(
         default=None,
         description=(
@@ -54,17 +54,16 @@ class ConnectionExecutionService:
         workflow_id: str,
         conversation_id: str | None,
     ) -> ConnectionExecutionContext:
-        if command.workflow_id is None:
+        if command.connection_revision is None:
             raise ConnectionConfigurationError()
-        if str(command.workflow_id) != workflow_id:
-            raise ConnectionWorkflowChangedError()
         result = self._preflight.check(
             identity,
             ConnectionPreflightInput(
-                workflow_id=command.workflow_id,
+                connection_revision=command.connection_revision,
                 conversation_id=UUID(conversation_id) if conversation_id is not None else None,
                 connections=command.connections or {},
             ),
+            workflow_id=workflow_id,
         )
         selections: list[ExecutionConnectionSelection] = []
         for requirement in result.connections:
@@ -95,5 +94,6 @@ class ConnectionExecutionService:
             end_user_id=identity.end_user_id,
             account_id=identity.account_id,
             workflow_id=workflow_id,
+            connection_revision=result.connection_revision,
             selections=tuple(selections),
         )
