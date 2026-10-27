@@ -556,9 +556,16 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
 ) -> None:
     """Actual normal SQL/crypto owners; only backend allocation is a no-I/O fixture."""
     from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
+    from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
     from models.dify_builder import DifyBuilderSession
     from models.dify_builder_native_tests import NativeEffectAttempt, NativeInvocationState, NativeTestScope
-    from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+    from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+    from models.workflow import (
+        WorkflowNodeExecutionModel,
+        WorkflowNodeExecutionTriggeredFrom,
+        WorkflowRun,
+        WorkflowType,
+    )
     from services.dify_builder.native_testing.agent_confirmed_workspace import (
         build_confirmed_agent_preparation,
         prepare_confirmed_agent_request,
@@ -604,13 +611,13 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
                 tenant_id=actor.tenant_id,
                 app_id=context.app_id,
                 workflow_id=context.workflow_id,
-                type="workflow",
-                triggered_from="debugging",
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
                 version="draft",
                 graph=json.dumps(context.graph),
                 inputs=json.dumps(context.inputs),
-                status="running",
-                created_by_role="account",
+                status=WorkflowExecutionStatus.RUNNING,
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=actor.account_id,
             )
         )
@@ -624,12 +631,12 @@ def test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read(
                 node_id=node_id,
                 node_type="agent",
                 node_execution_id=execution_id,
-                triggered_from="workflow-run",
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
                 index=1,
                 title="blank-home fixture",
-                status="running",
+                status=WorkflowNodeExecutionStatus.RUNNING,
                 process_data=json.dumps({"workflow_agent_binding_id": workflow_binding_id}),
-                created_by_role="account",
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=actor.account_id,
             )
         )
