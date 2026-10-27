@@ -55,6 +55,9 @@ class _TenantContactPort:
         self.tenant_calls.append(tenant_id)
         return next((contact for contact in self._contacts if contact.id == contact_id), None)
 
+    def get_contact_by_account_id(self, tenant_id: TenantId, account_id: AccountId) -> Contact | None:
+        raise AssertionError(f"Account identity lookup is outside this contract: {tenant_id}, {account_id}")
+
     def get_contacts_by_ids(self, tenant_id: TenantId, contact_ids: Sequence[ContactId]) -> Sequence[Contact]:
         self.tenant_calls.append(tenant_id)
         requested_ids = set(contact_ids)

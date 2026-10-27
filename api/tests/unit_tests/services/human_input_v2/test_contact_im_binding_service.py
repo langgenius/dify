@@ -8,7 +8,6 @@ from datetime import datetime
 from functools import partial
 from importlib import import_module
 from inspect import unwrap
-from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
@@ -60,6 +59,7 @@ from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlch
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.human_input_v2.contact_service import ContactManagementService
 from services.human_input_v2.im_contact_sync.binding_service import ContactIMBindingService
+from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_application
 
 _NOW = datetime(2026, 8, 11, 8)
 _TENANT_ID = TenantId("00000000-0000-0000-0000-000000000101")
@@ -443,7 +443,10 @@ def test_put_replaces_default_binding_and_retries_are_idempotent(
     monkeypatch.setattr(
         import_module("controllers.console.human_input_v2.contact"),
         "build_im_contact_sync_application",
-        lambda: SimpleNamespace(binding_service=binding_context.service),
+        lambda: replace(
+            build_im_contact_sync_application(session_maker=binding_context.sessions),
+            binding_service=binding_context.service,
+        ),
     )
     with binding_context.sessions() as session:
         account = session.get_one(Account, str(_ACCOUNT_ID))
@@ -525,7 +528,10 @@ def test_put_transfers_identity_from_another_contact(
     monkeypatch.setattr(
         human_input,
         "build_im_contact_sync_application",
-        lambda: SimpleNamespace(binding_service=binding_context.service),
+        lambda: replace(
+            build_im_contact_sync_application(session_maker=binding_context.sessions),
+            binding_service=binding_context.service,
+        ),
     )
     with binding_context.sessions() as session:
         account = session.get_one(Account, str(_ACCOUNT_ID))
@@ -754,7 +760,10 @@ def test_delete_binding_through_uuid_route(
     monkeypatch.setattr(
         human_input,
         "build_im_contact_sync_application",
-        lambda: SimpleNamespace(binding_service=binding_context.service),
+        lambda: replace(
+            build_im_contact_sync_application(session_maker=binding_context.sessions),
+            binding_service=binding_context.service,
+        ),
     )
     app = Flask(__name__)
 

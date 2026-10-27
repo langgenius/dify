@@ -1,18 +1,30 @@
+from __future__ import annotations
+
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import timedelta
+from sqlite3 import Connection as SQLiteConnection
+from typing import Protocol
 from unittest.mock import Mock, create_autospec
 from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from celery import Task
 from flask.testing import FlaskClient
-from sqlalchemy.exc import IntegrityError
+from pydantic import JsonValue
+from sqlalchemy import event
+from sqlalchemy.engine import Connection
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import ConnectionPoolEntry
+from werkzeug.test import TestResponse
 
 from core.human_input_v2.entities import EmailProviderType, IMProvider
-from core.human_input_v2.shared.values import AccountId, ContactId, NormalizedEmail, TenantId
+from core.human_input_v2.im_integration.adapters.entities import MessageAccepted, StaticCardIntent
+from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
+from core.human_input_v2.shared.values import AccountId, ContactId, NormalizedEmail, RecipientId, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import (
     Contact,
@@ -22,7 +34,7 @@ from core.workflow.nodes.human_input_v2.entities import (
     OnetimeEmail,
 )
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import CreatorUserRole
@@ -45,11 +57,18 @@ from models.human_input_v2 import (
     HumanInputPlatformContactWorkspaceEntry,
     HumanInputRecipient,
     OtpVerificationEvent,
+    RecipientSubjectType,
 )
 from models.model import EndUser
-from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
-from repositories.human_input_v2.email_channel.entities import ResendCredentials
+from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun, WorkflowType
+from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot, SubmissionAuthType
+from repositories.human_input_v2.email_channel.entities import ResendCandidate, ResendCredentials
+from repositories.human_input_v2.form_repository import Form
 from repositories.human_input_v2.recipient_repository import ContactRecipientSubject, EmailRecipientSubject
+from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
+from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+)
 from services.human_input_v2.email_otp_service import AccessChallenge
 from services.human_input_v2.form_service import (
     AccountInitiator,
@@ -64,6 +83,34 @@ _RUN = "00000000-0000-0000-0000-000000000003"
 _ACCOUNT = AccountId("00000000-0000-0000-0000-000000000004")
 _CONTACT = ContactId("00000000-0000-0000-0000-000000000005")
 _EXECUTION = "00000000-0000-0000-0000-000000000006"
+
+
+CreatedIMCards = tuple[str, str, set[str], Mock, list[dict[str, str]], list[dict[str, object]]]
+
+
+@dataclass(frozen=True)
+class SentEmail:
+    candidate: ResendCandidate
+    to: str
+    subject: str
+    html: str
+
+
+class EmailAcceptance(Protocol):
+    def __call__(self, candidate: ResendCandidate, *, to: str, subject: str, html: str) -> None: ...
+
+
+@dataclass
+class EmailOutbox:
+    on_send: EmailAcceptance
+    messages: list[SentEmail] = field(default_factory=list)
+    failure: Exception | None = None
+
+    def send_message(self, candidate: ResendCandidate, *, to: str, subject: str, html: str) -> None:
+        self.messages.append(SentEmail(candidate, to, subject, html))
+        if self.failure is not None:
+            raise self.failure
+        self.on_send(candidate, to=to, subject=subject, html=html)
 
 
 def _pause_state(form_id: str, *, node_version: str = "2") -> str:
@@ -111,7 +158,7 @@ class Context:
     service: HumanInputFormService
     execution: FormExecutionContext
 
-    def prepare(self, data: HumanInputNodeData, pool: VariablePool | None = None):
+    def prepare(self, data: HumanInputNodeData, pool: VariablePool | None = None) -> CreatedForm | PreparedForm:
         return self.service.prepare_form(
             node_execution_id=_EXECUTION, node_data=data, variable_pool=pool or VariablePool()
         )
@@ -122,7 +169,7 @@ class Context:
         handle_form_timeouts(session_factory=self.sessions, tenant_id=_TENANT, app_id=_APP, workflow_run_id=_RUN)
 
 
-def _node(*recipients) -> HumanInputNodeData:
+def _node(*recipients: Contact | DynamicEmail | Initiator | OnetimeEmail) -> HumanInputNodeData:
     return HumanInputNodeData.model_validate(
         {
             "recipients_spec": list(recipients),
@@ -137,7 +184,9 @@ def _node(*recipients) -> HumanInputNodeData:
 
 @pytest.mark.usefixtures("providers")
 @pytest.mark.parametrize("selected", [None, False, True])
-def test_factory_runs_v2_and_reuses_persisted_approval(context: Context, monkeypatch, selected):
+def test_factory_runs_v2_and_reuses_persisted_approval(
+    context: Context, monkeypatch: pytest.MonkeyPatch, selected: bool | None
+) -> None:
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
     from core.db.session_factory import session_factory
     from core.workflow.node_factory import DifyNodeFactory
@@ -181,6 +230,9 @@ def test_factory_runs_v2_and_reuses_persisted_approval(context: Context, monkeyp
     required = next(event for event in first_events if isinstance(event, NodeRunHumanInputV2FormRequiredEvent))
     revisited = next(event for event in second_events if isinstance(event, NodeRunHumanInputV2FormRequiredEvent))
     assert required.prepared_form.form.resolved_form.legacy_form_content == "Please approve"
+    from graphon.entities.pause_reason import HitlRequired
+
+    assert isinstance(first[0].reason, HitlRequired)
     assert first[0].reason.session_id == f"hitlv2:{required.prepared_form.form.id}"
     assert required.prepared_form.form_token == revisited.prepared_form.form_token
 
@@ -189,15 +241,15 @@ def test_factory_runs_v2_and_reuses_persisted_approval(context: Context, monkeyp
 def context(sqlite_engine: sa.Engine, monkeypatch: pytest.MonkeyPatch) -> Context:
     from tasks.human_input_im_card_tasks import update_human_input_im_card_task
 
-    monkeypatch.setattr(update_human_input_im_card_task, "apply_async", Mock())
+    monkeypatch.setattr(update_human_input_im_card_task, "apply_async", lambda **_kwargs: None)
     engine = sqlite_engine
 
-    @sa.event.listens_for(engine, "connect")
-    def setup_connection(connection, _record):
+    @event.listens_for(engine, "connect")
+    def setup_connection(connection: SQLiteConnection, _record: ConnectionPoolEntry) -> None:
         connection.isolation_level = None
 
-    @sa.event.listens_for(engine, "begin")
-    def begin_transaction(connection):
+    @event.listens_for(engine, "begin")
+    def begin_transaction(connection: Connection) -> None:
         # SQLite cannot upgrade competing read transactions to writers. Reserve
         # its writer at begin so concurrent calls can wait for serialized commits.
         connection.exec_driver_sql("BEGIN IMMEDIATE")
@@ -243,33 +295,36 @@ def context(sqlite_engine: sa.Engine, monkeypatch: pytest.MonkeyPatch) -> Contex
 
 
 @pytest.fixture
-def timeout_publications(context: Context, monkeypatch: pytest.MonkeyPatch) -> Mock:
-    from types import SimpleNamespace
-
+def timeout_publications(context: Context, monkeypatch: pytest.MonkeyPatch) -> list[dict[str, str]]:
     from tasks import human_input_timeout_tasks
 
     with context.sessions() as session:
-        monkeypatch.setattr(human_input_timeout_tasks, "db", SimpleNamespace(engine=session.get_bind()))
+        engine = session.get_bind()
+    monkeypatch.setattr(type(human_input_timeout_tasks.db), "engine", property(lambda _: engine))
     monkeypatch.setattr("core.db.session_factory.session_factory.create_session", context.sessions)
-    publish = Mock()
+    publications: list[dict[str, str]] = []
+
+    def publish(*, kwargs: dict[str, str]) -> None:
+        publications.append(kwargs)
+
     monkeypatch.setattr(human_input_timeout_tasks.handle_human_input_v2_timeout, "apply_async", publish)
-    return publish
+    return publications
 
 
 @pytest.fixture
-def dispatch_timeouts(timeout_publications: Mock) -> Callable[[int], None]:
+def dispatch_timeouts(timeout_publications: list[dict[str, str]]) -> Callable[[int], None]:
     from tasks import human_input_timeout_tasks
 
     def dispatch(limit: int = 100) -> None:
-        timeout_publications.reset_mock()
+        timeout_publications.clear()
         human_input_timeout_tasks.check_and_handle_human_input_timeouts(limit=limit)
-        for publication in timeout_publications.call_args_list:
-            human_input_timeout_tasks.handle_human_input_v2_timeout(**publication.kwargs["kwargs"])
+        for publication in timeout_publications:
+            human_input_timeout_tasks.handle_human_input_v2_timeout(**publication)
 
     return dispatch
 
 
-def test_initialize_and_revisit_freezes_form_and_recipient_sources(context: Context):
+def test_initialize_and_revisit_freezes_form_and_recipient_sources(context: Context) -> None:
     created = context.prepare(
         _node(Contact(contact_id=_CONTACT), Initiator(), OnetimeEmail(email="MEMBER@example.com"))
     )
@@ -278,6 +333,7 @@ def test_initialize_and_revisit_freezes_form_and_recipient_sources(context: Cont
     contact = next(r for r in created.recipients if isinstance(r.subject, ContactRecipientSubject))
     assert len(contact.sources) == 2
     direct = next(r for r in created.recipients if isinstance(r.subject, EmailRecipientSubject))
+    assert isinstance(direct.subject, EmailRecipientSubject)
     assert direct.subject.email.value == "member@example.com"
     changed = _node(OnetimeEmail(email="changed@example.com")).model_copy(update={"title": "Changed"})
     revisited = context.prepare(changed)
@@ -288,7 +344,9 @@ def test_initialize_and_revisit_freezes_form_and_recipient_sources(context: Cont
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDelivery)) == 0
 
 
-def test_invalid_dynamic_email_does_not_discard_another_recipient(context: Context, caplog):
+def test_invalid_dynamic_email_does_not_discard_another_recipient(
+    context: Context, caplog: pytest.LogCaptureFixture
+) -> None:
     pool = VariablePool()
     pool.add(["upstream", "email"], ["wrong@example.com"])
     result = context.prepare(
@@ -299,14 +357,14 @@ def test_invalid_dynamic_email_does_not_discard_another_recipient(context: Conte
     assert "unsupported_type" in caplog.text
 
 
-def test_no_resolved_recipient_rolls_back_form(context: Context):
+def test_no_resolved_recipient_rolls_back_form(context: Context) -> None:
     with pytest.raises(HumanInputDeliveryError):
         context.prepare(_node(DynamicEmail(selector=["upstream", "absent"])))
     with context.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputForm)) == 0
 
 
-def test_recipient_write_failure_rolls_back_whole_initialization(context: Context):
+def test_recipient_write_failure_rolls_back_whole_initialization(context: Context) -> None:
     with context.sessions.begin() as session:
         session.execute(
             sa.text(
@@ -322,7 +380,7 @@ def test_recipient_write_failure_rolls_back_whole_initialization(context: Contex
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputRecipient)) == 0
 
 
-def test_concurrent_entries_have_one_initial_delivery_owner(context: Context):
+def test_concurrent_entries_have_one_initial_delivery_owner(context: Context) -> None:
     node = _node(OnetimeEmail(email="recipient@example.com"))
     with ThreadPoolExecutor(max_workers=2) as executor:
         results = list(executor.map(lambda _: context.prepare(node), range(2)))
@@ -333,7 +391,7 @@ def test_concurrent_entries_have_one_initial_delivery_owner(context: Context):
 
 
 @pytest.fixture
-def providers(context: Context, monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, Mock]:
+def providers(context: Context, monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, EmailOutbox]:
     from cryptography.fernet import Fernet
 
     from configs import dify_config
@@ -368,21 +426,21 @@ def providers(context: Context, monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, 
         )
     active: set[object] = set()
     engine = context.sessions.kw["bind"]
-    sa.event.listen(engine, "begin", lambda conn: active.add(conn))
-    sa.event.listen(engine, "commit", lambda conn: active.discard(conn))
-    sa.event.listen(engine, "rollback", lambda conn: active.discard(conn))
+    event.listen(engine, "begin", lambda conn: active.add(conn))
+    event.listen(engine, "commit", lambda conn: active.discard(conn))
+    event.listen(engine, "rollback", lambda conn: active.discard(conn))
 
-    def accepted(*_args, **_kwargs):
+    def accepted(*_args: object, **_kwargs: object) -> MessageAccepted:
         assert not active, "Provider I/O must not hold a DB transaction"
         with context.sessions() as session:
-            assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDelivery)) > 0
+            assert session.scalars(sa.select(sa.func.count()).select_from(HumanInputDelivery)).one() > 0
         return MessageAccepted(MessageLocator("provider-message"))
 
     adapter = create_autospec(IMProviderAdapter, instance=True)
     adapter.dynamic_card_messaging.assess.return_value = CardAssessment(True)
     adapter.dynamic_card_messaging.send_card.side_effect = accepted
     adapter.messaging.send_text.side_effect = accepted
-    monkeypatch.setattr(factory, "build_im_provider_adapter", Mock(return_value=adapter))
+    monkeypatch.setattr(factory, "build_im_provider_adapter", lambda _credentials: adapter)
     monkeypatch.setattr(
         IMCredentialCodec,
         "load",
@@ -394,12 +452,17 @@ def providers(context: Context, monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, 
             bot_token="xoxb-test",
         ),
     )
-    gateway_send = Mock(side_effect=accepted)
-    monkeypatch.setattr(ResendProviderGateway, "send_message", gateway_send)
-    return adapter, gateway_send
+
+    def email_accepted(candidate: ResendCandidate, *, to: str, subject: str, html: str) -> None:
+        del candidate, to, subject, html
+        accepted()
+
+    outbox = EmailOutbox(email_accepted)
+    monkeypatch.setattr(ResendProviderGateway, "send_message", outbox.send_message)
+    return adapter, outbox
 
 
-def _add_im(context: Context):
+def _add_im(context: Context) -> None:
     from libs.datetime_utils import naive_utc_now
     from models.human_input_v2 import IMIdentityRawPayload
     from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
@@ -439,7 +502,9 @@ def _add_im(context: Context):
 
 @pytest.mark.parametrize("include_contact", [False, True])
 @pytest.mark.parametrize("with_im", [False, True])
-def test_initiator_keeps_other_notification_channels(context: Context, providers, include_contact, with_im):
+def test_initiator_keeps_other_notification_channels(
+    context: Context, providers: tuple[Mock, EmailOutbox], include_contact: bool, with_im: bool
+) -> None:
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
     from services.human_input_v2.composition import build_human_input_delivery_service
 
@@ -460,14 +525,16 @@ def test_initiator_keeps_other_notification_channels(context: Context, providers
     assert len(result.attempts) == (2 if with_im else 1)
     assert all(attempt.status == DeliveryStatus.SUCCEEDED for attempt in result.attempts)
     adapter, email_send = providers
-    email_send.assert_called_once()
+    assert len(email_send.messages) == 1
     if with_im:
         adapter.dynamic_card_messaging.send_card.assert_called_once()
     else:
         adapter.dynamic_card_messaging.send_card.assert_not_called()
 
 
-def test_initiator_token_is_encrypted_and_recovered_without_another_delivery(context: Context, providers):
+def test_initiator_token_is_encrypted_and_recovered_without_another_delivery(
+    context: Context, providers: tuple[Mock, EmailOutbox]
+) -> None:
     import hashlib
 
     from repositories.human_input_v2.delivery_repository import InitiatorSnapshot
@@ -489,6 +556,9 @@ def test_initiator_token_is_encrypted_and_recovered_without_another_delivery(con
             for item in session.scalars(sa.select(HumanInputDelivery))
             if isinstance(item.target_snapshot, InitiatorSnapshot)
         )
+        from repositories.human_input_v2.delivery_repository import InitiatorSnapshot
+
+        assert isinstance(delivery.target_snapshot, InitiatorSnapshot)
         assert delivery.target_snapshot.protected_form_token != token
         assert delivery.token_hash == hashlib.sha256(token.encode()).hexdigest()
         assert token not in repr(delivery.target_snapshot)
@@ -498,14 +568,14 @@ def test_initiator_token_is_encrypted_and_recovered_without_another_delivery(con
     with context.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDelivery)) == 2
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDeliveryAttempt)) == 1
-    providers[1].assert_called_once()
+    assert len(providers[1].messages) == 1
 
 
 @pytest.mark.parametrize("supports_card", [True, False])
 @pytest.mark.parametrize("workspace_override", [False, True])
 def test_im_assessment_controls_message_form_and_auth_without_losing_email(
-    context: Context, providers, supports_card, workspace_override
-):
+    context: Context, providers: tuple[Mock, EmailOutbox], supports_card: bool, workspace_override: bool
+) -> None:
     from core.human_input_v2.im_integration.adapters.entities import CardAssessment
     from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot, SubmissionAuthType
     from services.human_input_v2.composition import build_human_input_delivery_service
@@ -547,11 +617,13 @@ def test_im_assessment_controls_message_form_and_auth_without_losing_email(
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDeliveryAttempt)) == 2
     assert adapter.dynamic_card_messaging.send_card.call_count == int(supports_card)
     assert adapter.messaging.send_text.call_count == int(not supports_card)
-    assert email_send.call_count == 1
+    assert len(email_send.messages) == 1
     adapter.close.assert_called_once()
 
 
-def test_im_link_subject_stays_literal_like_email_while_body_renders_markdown(context: Context, providers):
+def test_im_link_subject_stays_literal_like_email_while_body_renders_markdown(
+    context: Context, providers: tuple[Mock, EmailOutbox]
+) -> None:
     from core.human_input_v2.im_integration.adapters.entities import CardAssessment
     from services.human_input_v2.composition import build_human_input_delivery_service
 
@@ -575,15 +647,19 @@ def test_im_link_subject_stays_literal_like_email_while_body_renders_markdown(co
     message = adapter.messaging.send_text.call_args.args[1]
     assert adapter.messaging.send_text.call_args.kwargs["subject"] == "### Review **Alice**"
     assert message.startswith("# H1\n\n[Approval](https://console.example.com/human-input/")
-    assert email_send.call_args.kwargs["subject"] == "### Review **Alice**"
-    assert "<h1>H1</h1>" in email_send.call_args.kwargs["html"]
+    assert email_send.messages[-1].subject == "### Review **Alice**"
+    assert "<h1>H1</h1>" in email_send.messages[-1].html
 
 
 @pytest.mark.parametrize("contact_kind", ["workspace", "organization"])
 @pytest.mark.parametrize("app_web_url", ["https://app.example.com", ""])
 def test_account_contact_notifications_use_console_form_page(
-    context: Context, providers, monkeypatch, contact_kind, app_web_url
-):
+    context: Context,
+    providers: tuple[Mock, EmailOutbox],
+    monkeypatch: pytest.MonkeyPatch,
+    contact_kind: str,
+    app_web_url: str,
+) -> None:
     from configs import dify_config
     from core.human_input_v2.im_integration.adapters.entities import CardAssessment
     from services.human_input_v2.composition import build_human_input_delivery_service
@@ -614,12 +690,14 @@ def test_account_contact_notifications_use_console_form_page(
         message_template=created.message_template,
     )
 
-    assert "https://console.example.com/console/human-input/" in email_send.call_args.kwargs["html"]
+    assert "https://console.example.com/console/human-input/" in email_send.messages[-1].html
     assert "https://console.example.com/console/human-input/" in adapter.messaging.send_text.call_args.args[1]
 
 
 @pytest.mark.usefixtures("providers")
-def test_account_contact_notification_requires_console_web_url(context: Context, monkeypatch: pytest.MonkeyPatch):
+def test_account_contact_notification_requires_console_web_url(
+    context: Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from configs import dify_config
     from services.human_input_v2.composition import build_human_input_delivery_service
 
@@ -635,13 +713,15 @@ def test_account_contact_notification_requires_console_web_url(context: Context,
         )
 
 
-def test_email_failure_is_recorded_without_discarding_im_success(context: Context, providers):
+def test_email_failure_is_recorded_without_discarding_im_success(
+    context: Context, providers: tuple[Mock, EmailOutbox]
+) -> None:
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
     from repositories.human_input_v2.email_channel.ports import EmailProviderOperationError
     from services.human_input_v2.composition import build_human_input_delivery_service
 
     _add_im(context)
-    providers[1].side_effect = EmailProviderOperationError("provider_timeout")
+    providers[1].failure = EmailProviderOperationError("provider_timeout")
     created = context.prepare(_node(Contact(contact_id=_CONTACT)))
     assert isinstance(created, CreatedForm)
     result = build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions).deliver(
@@ -652,7 +732,9 @@ def test_email_failure_is_recorded_without_discarding_im_success(context: Contex
     assert {attempt.status for attempt in result.attempts} == {DeliveryStatus.SUCCEEDED, DeliveryStatus.FAILED}
 
 
-def test_runtime_delivers_independently_to_recipients_sharing_email(context: Context, providers):
+def test_runtime_delivers_independently_to_recipients_sharing_email(
+    context: Context, providers: tuple[Mock, EmailOutbox]
+) -> None:
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.human_input_v2.runtime import DifyHumanInputRuntime
 
@@ -664,17 +746,19 @@ def test_runtime_delivers_independently_to_recipients_sharing_email(context: Con
     result = runtime.prepare_form(node_execution_id=_EXECUTION, node_data=node, variable_pool=VariablePool())
     assert result.form.status == HumanInputFormStatus.WAITING
     assert result.form_token is None
-    assert providers[1].call_count == 2
+    assert len(providers[1].messages) == 2
     runtime.prepare_form(node_execution_id=_EXECUTION, node_data=node, variable_pool=VariablePool())
-    assert providers[1].call_count == 2
+    assert len(providers[1].messages) == 2
 
 
-def test_all_provider_failures_fail_node_but_do_not_rollback_committed_form(context: Context, providers):
+def test_all_provider_failures_fail_node_but_do_not_rollback_committed_form(
+    context: Context, providers: tuple[Mock, EmailOutbox]
+) -> None:
     from repositories.human_input_v2.email_channel.ports import EmailProviderOperationError
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.human_input_v2.runtime import DifyHumanInputRuntime
 
-    providers[1].side_effect = EmailProviderOperationError("provider_timeout")
+    providers[1].failure = EmailProviderOperationError("provider_timeout")
     runtime = DifyHumanInputRuntime(
         form_service=context.service,
         delivery_service=build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions),
@@ -692,8 +776,8 @@ def test_all_provider_failures_fail_node_but_do_not_rollback_committed_form(cont
 
 @pytest.mark.parametrize("include_initiator", [False, True])
 def test_submission_during_delivery_is_rejected_until_workflow_pauses(
-    context: Context, providers, monkeypatch, include_initiator
-):
+    context: Context, providers: tuple[Mock, EmailOutbox], monkeypatch: pytest.MonkeyPatch, include_initiator: bool
+) -> None:
     import re
 
     from services.human_input_v2.composition import build_human_input_delivery_service
@@ -705,25 +789,28 @@ def test_submission_during_delivery_is_rejected_until_workflow_pauses(
     )
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
-    provider_accept = providers[1].side_effect
-    enqueue = Mock()
+    provider_accept = providers[1].on_send
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     submission_service = HumanInputSubmissionService(session_factory=context.sessions)
 
-    def submit_on_acceptance(*args, **kwargs):
-        accepted = provider_accept(*args, **kwargs)
-        if kwargs["to"] != "member@example.com":
-            return accepted
-        approval_link = re.search(r"/human-input/([A-Za-z0-9_-]+)", kwargs["html"])
+    def submit_on_acceptance(candidate: ResendCandidate, *, to: str, subject: str, html: str) -> None:
+        provider_accept(candidate, to=to, subject=subject, html=html)
+        if to != "member@example.com":
+            return
+        approval_link = re.search(r"/human-input/([A-Za-z0-9_-]+)", html)
         assert approval_link is not None
         with pytest.raises(HumanInputFormError) as exc:
             submission_service.submit_console_form(
                 account_id=_ACCOUNT, form_token=approval_link.group(1), action="approve", inputs={}
             )
         assert exc.value.code == HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE
-        return accepted
 
-    providers[1].side_effect = submit_on_acceptance
+    providers[1].on_send = submit_on_acceptance
     runtime = DifyHumanInputRuntime(
         form_service=context.service,
         delivery_service=build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions),
@@ -739,22 +826,23 @@ def test_submission_during_delivery_is_rejected_until_workflow_pauses(
     assert result.form.status == HumanInputFormStatus.WAITING
     assert result.form.submission is None
     assert (result.form_token is not None) == include_initiator
-    assert [call.kwargs["to"] for call in providers[1].call_args_list] == [
+    assert [message.to for message in providers[1].messages] == [
         "member@example.com",
         "second@example.com",
     ]
     with context.sessions() as session:
-        assert session.get(HumanInputForm, result.form.id).status == HumanInputFormStatus.WAITING
-    enqueue.assert_not_called()
+        assert session.get_one(HumanInputForm, result.form.id).status == HumanInputFormStatus.WAITING
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize("during_delivery", [False, True])
 @pytest.mark.parametrize(
     "state_change", ["submitted", "timeout", "expired", "form_deadline", "global_deadline", "workflow_stopped"]
 )
-def test_delivery_is_independent_of_form_and_workflow_state(context: Context, providers, during_delivery, state_change):
+def test_delivery_is_independent_of_form_and_workflow_state(
+    context: Context, providers: tuple[Mock, EmailOutbox], during_delivery: bool, state_change: str
+) -> None:
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
-    from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
     from services.human_input_v2.composition import build_human_input_delivery_service
 
     _add_im(context)
@@ -762,14 +850,14 @@ def test_delivery_is_independent_of_form_and_workflow_state(context: Context, pr
     assert isinstance(created, CreatedForm)
     recipient = created.recipients[0]
 
-    def change_state():
+    def change_state() -> None:
         with context.sessions.begin() as session:
-            record = session.get(HumanInputForm, created.form.id)
+            record = session.get_one(HumanInputForm, created.form.id)
             match state_change:
                 case "submitted":
                     SQLAlchemyFormRepository(session, _TENANT, _APP).submit_form(
                         created.form.id,
-                        submitted_by_recipient_id=recipient.id,
+                        submitted_by_recipient_id=RecipientId(recipient.id),
                         submitted_by_delivery_id=str(uuid4()),
                         selected_action_id="approve",
                         raw_submission_inputs={},
@@ -784,13 +872,13 @@ def test_delivery_is_independent_of_form_and_workflow_state(context: Context, pr
                 case "global_deadline":
                     record.global_timeout_deadline = naive_utc_now() - timedelta(seconds=1)
                 case "workflow_stopped":
-                    session.get(WorkflowRun, _RUN).status = WorkflowExecutionStatus.STOPPED
+                    session.get_one(WorkflowRun, _RUN).status = WorkflowExecutionStatus.STOPPED
 
     adapter, email_send = providers
     if during_delivery:
         provider_accept = adapter.dynamic_card_messaging.send_card.side_effect
 
-        def accept_and_change_state(*args, **kwargs):
+        def accept_and_change_state(*args: object, **kwargs: object) -> MessageAccepted:
             accepted = provider_accept(*args, **kwargs)
             change_state()
             return accepted
@@ -806,13 +894,15 @@ def test_delivery_is_independent_of_form_and_workflow_state(context: Context, pr
     assert result.form_token is not None
     assert [attempt.status for attempt in result.attempts] == [DeliveryStatus.SUCCEEDED, DeliveryStatus.SUCCEEDED]
     adapter.dynamic_card_messaging.send_card.assert_called_once()
-    email_send.assert_called_once()
+    assert len(email_send.messages) == 1
     with context.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDelivery)) == 3
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDeliveryAttempt)) == 2
 
 
-def test_debug_mode_uses_only_editor_and_selected_test_channels(context: Context, providers):
+def test_debug_mode_uses_only_editor_and_selected_test_channels(
+    context: Context, providers: tuple[Mock, EmailOutbox]
+) -> None:
     from core.human_input_v2.entities import DebugChannel
     from core.workflow.nodes.human_input_v2.entities import DebugModeConfig
     from services.human_input_v2.composition import build_human_input_delivery_service
@@ -833,14 +923,14 @@ def test_debug_mode_uses_only_editor_and_selected_test_channels(context: Context
     )
     result = runtime.prepare_form(node_execution_id=_EXECUTION, node_data=node, variable_pool=VariablePool())
     assert result.form_token is None
-    assert providers[1].call_args.kwargs["to"] == "member@example.com"
+    assert providers[1].messages[-1].to == "member@example.com"
     providers[0].dynamic_card_messaging.send_card.assert_not_called()
     with context.sessions() as session:
         recipient = session.scalars(sa.select(HumanInputRecipient)).one()
         assert recipient.subject_value == _CONTACT
 
 
-def test_production_invocation_does_not_activate_node_debug_mode(context: Context):
+def test_production_invocation_does_not_activate_node_debug_mode(context: Context) -> None:
     from core.human_input_v2.entities import DebugChannel
     from core.workflow.nodes.human_input_v2.entities import DebugModeConfig
 
@@ -856,7 +946,7 @@ def test_production_invocation_does_not_activate_node_debug_mode(context: Contex
 
 
 def test_timeout_scan_fans_out_one_task_for_a_run_without_settling_its_forms(
-    context: Context, timeout_publications: Mock
+    context: Context, timeout_publications: list[dict[str, str]]
 ) -> None:
     from tasks import human_input_timeout_tasks
 
@@ -870,30 +960,30 @@ def test_timeout_scan_fans_out_one_task_for_a_run_without_settling_its_forms(
     ]
     with context.sessions.begin() as session:
         for form in forms:
-            session.get(HumanInputForm, form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
+            session.get_one(HumanInputForm, form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
     human_input_timeout_tasks.check_and_handle_human_input_timeouts()
 
     with context.sessions() as session:
-        assert all(session.get(HumanInputForm, form.id).status == HumanInputFormStatus.WAITING for form in forms)
-    assert len(timeout_publications.call_args_list) == 1
-    publication = timeout_publications.call_args
-    assert publication.kwargs["kwargs"] == {"tenant_id": _TENANT, "app_id": _APP, "workflow_run_id": _RUN}
+        assert all(session.get_one(HumanInputForm, form.id).status == HumanInputFormStatus.WAITING for form in forms)
+    assert len(timeout_publications) == 1
+    publication = timeout_publications[-1]
+    assert publication == {"tenant_id": _TENANT, "app_id": _APP, "workflow_run_id": _RUN}
 
 
 @pytest.mark.parametrize("outcome", ["submitted", "extended", "globally_expired"])
 def test_timeout_task_reloads_changes_made_while_it_was_queued(
-    context: Context, monkeypatch: pytest.MonkeyPatch, timeout_publications: Mock, outcome: str
+    context: Context, monkeypatch: pytest.MonkeyPatch, timeout_publications: list[dict[str, str]], outcome: str
 ) -> None:
     from tasks import human_input_timeout_tasks
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     assert isinstance(created, CreatedForm)
     with context.sessions.begin() as session:
-        session.get(HumanInputForm, created.form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
+        session.get_one(HumanInputForm, created.form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
     human_input_timeout_tasks.check_and_handle_human_input_timeouts()
-    timeout_publications.assert_called_once()
+    assert len(timeout_publications) == 1
     with context.sessions.begin() as session:
-        form = session.get(HumanInputForm, created.form.id)
+        form = session.get_one(HumanInputForm, created.form.id)
         if outcome == "submitted":
             form.status = HumanInputFormStatus.SUBMITTED
             form.submitted_at = naive_utc_now()
@@ -905,10 +995,14 @@ def test_timeout_task_reloads_changes_made_while_it_was_queued(
             form.expiration_time = naive_utc_now() + timedelta(hours=1)
         else:
             form.global_timeout_deadline = naive_utc_now() - timedelta(seconds=1)
-    resume = Mock()
+    resume_calls: list[str] = []
+
+    def resume(run_id: str) -> None:
+        resume_calls.append(run_id)
+
     monkeypatch.setattr("services.human_input_v2.form_service._enqueue_resume", resume)
 
-    human_input_timeout_tasks.handle_human_input_v2_timeout(**timeout_publications.call_args.kwargs["kwargs"])
+    human_input_timeout_tasks.handle_human_input_v2_timeout(**timeout_publications[-1])
 
     expected_status = {
         "submitted": HumanInputFormStatus.SUBMITTED,
@@ -916,11 +1010,11 @@ def test_timeout_task_reloads_changes_made_while_it_was_queued(
         "globally_expired": HumanInputFormStatus.EXPIRED,
     }[outcome]
     with context.sessions() as session:
-        assert session.get(HumanInputForm, created.form.id).status == expected_status
-        assert session.get(WorkflowRun, _RUN).status == (
+        assert session.get_one(HumanInputForm, created.form.id).status == expected_status
+        assert session.get_one(WorkflowRun, _RUN).status == (
             WorkflowExecutionStatus.STOPPED if outcome == "globally_expired" else WorkflowExecutionStatus.RUNNING
         )
-    resume.assert_not_called()
+    assert not resume_calls
 
 
 def test_repeated_timeout_task_requests_only_one_resume(context: Context, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -928,16 +1022,20 @@ def test_repeated_timeout_task_requests_only_one_resume(context: Context, monkey
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
-        session.get(HumanInputForm, created.form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
-    resume = Mock()
+        session.get_one(HumanInputForm, created.form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
+    resume_calls: list[str] = []
+
+    def resume(run_id: str) -> None:
+        resume_calls.append(run_id)
+
     monkeypatch.setattr("services.human_input_v2.form_service._enqueue_resume", resume)
 
     handle_human_input_v2_timeout(tenant_id=_TENANT, app_id=_APP, workflow_run_id=_RUN)
     handle_human_input_v2_timeout(tenant_id=_TENANT, app_id=_APP, workflow_run_id=_RUN)
 
     with context.sessions() as session:
-        assert session.get(HumanInputForm, created.form.id).status == HumanInputFormStatus.TIMEOUT
-    resume.assert_called_once_with(_RUN)
+        assert session.get_one(HumanInputForm, created.form.id).status == HumanInputFormStatus.TIMEOUT
+    assert resume_calls == [_RUN]
 
 
 @pytest.mark.parametrize("mismatched_field", ["tenant_id", "app_id", "workflow_run_id"])
@@ -948,24 +1046,32 @@ def test_timeout_task_does_not_handle_a_run_outside_its_owner_scope(
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
-        session.get(HumanInputForm, created.form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
-    resume = Mock()
+        session.get_one(HumanInputForm, created.form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
+    resume_calls: list[str] = []
+
+    def resume(run_id: str) -> None:
+        resume_calls.append(run_id)
+
     monkeypatch.setattr("services.human_input_v2.form_service._enqueue_resume", resume)
     task_arguments = {"tenant_id": _TENANT, "app_id": _APP, "workflow_run_id": _RUN}
     task_arguments[mismatched_field] = str(uuid4())
 
-    handle_human_input_v2_timeout(**task_arguments)
+    handle_human_input_v2_timeout(
+        tenant_id=task_arguments["tenant_id"],
+        app_id=task_arguments["app_id"],
+        workflow_run_id=task_arguments["workflow_run_id"],
+    )
 
     with context.sessions() as session:
-        assert session.get(HumanInputForm, created.form.id).status == HumanInputFormStatus.WAITING
-        assert session.get(WorkflowRun, _RUN).status == WorkflowExecutionStatus.RUNNING
-    resume.assert_not_called()
+        assert session.get_one(HumanInputForm, created.form.id).status == HumanInputFormStatus.WAITING
+        assert session.get_one(WorkflowRun, _RUN).status == WorkflowExecutionStatus.RUNNING
+    assert not resume_calls
 
 
 @pytest.mark.parametrize("limit", [1, 100])
 def test_scheduled_timeouts_commit_all_due_forms_before_one_resume(
-    context: Context, monkeypatch, limit, dispatch_timeouts
-):
+    context: Context, monkeypatch: pytest.MonkeyPatch, limit: int, dispatch_timeouts: Callable[..., None]
+) -> None:
     from core.db.session_factory import session_factory
     from services.human_input_v2 import form_service
 
@@ -979,24 +1085,32 @@ def test_scheduled_timeouts_commit_all_due_forms_before_one_resume(
     ]
     with context.sessions.begin() as session:
         for form in forms:
-            session.get(HumanInputForm, form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
+            session.get_one(HumanInputForm, form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
 
-    def enqueue(run_id):
+    def enqueue(run_id: str) -> None:
         assert run_id == _RUN
         with context.sessions() as session:
-            assert all(session.get(HumanInputForm, form.id).status == HumanInputFormStatus.TIMEOUT for form in forms)
+            assert all(
+                session.get_one(HumanInputForm, form.id).status == HumanInputFormStatus.TIMEOUT for form in forms
+            )
 
-    enqueue_resume = Mock(side_effect=enqueue)
+    resume_calls: list[str] = []
+    original_enqueue = enqueue
+
+    def enqueue_resume(run_id: str) -> None:
+        resume_calls.append(run_id)
+        original_enqueue(run_id)
+
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
     monkeypatch.setattr(form_service, "_enqueue_resume", enqueue_resume)
     dispatch_timeouts(limit=limit)
-    enqueue_resume.assert_called_once_with(_RUN)
+    assert resume_calls == [_RUN]
 
 
 @pytest.mark.parametrize("limit", [1, 100])
 def test_scheduled_global_expiration_wins_over_an_earlier_node_timeout(
-    context: Context, monkeypatch, limit, dispatch_timeouts
-):
+    context: Context, monkeypatch: pytest.MonkeyPatch, limit: int, dispatch_timeouts: Callable[..., None]
+) -> None:
     from core.db.session_factory import session_factory
     from services.human_input_v2 import form_service
 
@@ -1007,23 +1121,28 @@ def test_scheduled_global_expiration_wins_over_an_earlier_node_timeout(
         variable_pool=VariablePool(),
     ).form
     with context.sessions.begin() as session:
-        session.get(HumanInputForm, node_form.id).expiration_time = naive_utc_now() - timedelta(minutes=2)
-        session.get(HumanInputForm, global_form.id).global_timeout_deadline = naive_utc_now() - timedelta(minutes=1)
+        session.get_one(HumanInputForm, node_form.id).expiration_time = naive_utc_now() - timedelta(minutes=2)
+        session.get_one(HumanInputForm, global_form.id).global_timeout_deadline = naive_utc_now() - timedelta(minutes=1)
 
-    enqueue = Mock()
+    enqueue_calls: list[str] = []
+
+    def enqueue(run_id: str) -> None:
+        enqueue_calls.append(run_id)
+
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
     monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
     dispatch_timeouts(limit=limit)
     with context.sessions() as session:
-        assert session.get(WorkflowRun, _RUN).status == WorkflowExecutionStatus.STOPPED
-        assert session.get(HumanInputForm, global_form.id).status == HumanInputFormStatus.EXPIRED
-    enqueue.assert_not_called()
+        assert session.get_one(WorkflowRun, _RUN).status == WorkflowExecutionStatus.STOPPED
+        assert session.get_one(HumanInputForm, global_form.id).status == HumanInputFormStatus.EXPIRED
+    assert not enqueue_calls
 
 
-def test_node_timeout_batch_rolls_back_all_forms_if_a_later_write_fails(context: Context, monkeypatch):
+def test_node_timeout_batch_rolls_back_all_forms_if_a_later_write_fails(
+    context: Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from sqlalchemy.exc import SQLAlchemyError
 
-    from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
     from services.human_input_v2 import form_service
 
     forms = [
@@ -1036,56 +1155,68 @@ def test_node_timeout_batch_rolls_back_all_forms_if_a_later_write_fails(context:
     ]
     with context.sessions.begin() as session:
         for form in forms:
-            session.get(HumanInputForm, form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
+            session.get_one(HumanInputForm, form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
     fail_id = max(form.id for form in forms)
     timeout_form = SQLAlchemyFormRepository.timeout_form
 
-    def fail_later_write(repository, form_id):
+    def fail_later_write(repository: SQLAlchemyFormRepository, form_id: str) -> Form | None:
         result = timeout_form(repository, form_id)
         if form_id == fail_id:
             raise SQLAlchemyError("Write failed")
         return result
 
-    enqueue = Mock()
+    enqueue_calls: list[str] = []
+
+    def enqueue(run_id: str) -> None:
+        enqueue_calls.append(run_id)
+
     monkeypatch.setattr(SQLAlchemyFormRepository, "timeout_form", fail_later_write)
     monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
     with pytest.raises(SQLAlchemyError, match="Write failed"):
         context.handle_timeouts()
     with context.sessions() as session:
-        assert all(session.get(HumanInputForm, form.id).status == HumanInputFormStatus.WAITING for form in forms)
-    enqueue.assert_not_called()
+        assert all(session.get_one(HumanInputForm, form.id).status == HumanInputFormStatus.WAITING for form in forms)
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize("status", [WorkflowExecutionStatus.STOPPED, WorkflowExecutionStatus.SUCCEEDED])
-def test_node_timeout_never_resumes_a_terminal_run(context: Context, monkeypatch, status):
+def test_node_timeout_never_resumes_a_terminal_run(
+    context: Context, monkeypatch: pytest.MonkeyPatch, status: WorkflowExecutionStatus
+) -> None:
     from services.human_input_v2 import form_service
 
     form = context.prepare(_node(OnetimeEmail(email="person@example.com"))).form
     with context.sessions.begin() as session:
-        session.get(HumanInputForm, form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
-        session.get(WorkflowRun, _RUN).status = status
-    enqueue = Mock()
+        session.get_one(HumanInputForm, form.id).expiration_time = naive_utc_now() - timedelta(minutes=1)
+        session.get_one(WorkflowRun, _RUN).status = status
+    enqueue_calls: list[str] = []
+
+    def enqueue(run_id: str) -> None:
+        enqueue_calls.append(run_id)
+
     monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
     context.handle_timeouts()
     with context.sessions() as session:
-        assert session.get(WorkflowRun, _RUN).status == status
-        assert session.get(HumanInputForm, form.id).status == HumanInputFormStatus.TIMEOUT
-    enqueue.assert_not_called()
+        assert session.get_one(WorkflowRun, _RUN).status == status
+        assert session.get_one(HumanInputForm, form.id).status == HumanInputFormStatus.TIMEOUT
+    assert not enqueue_calls
 
 
-def test_timeout_publication_failure_preserves_committed_forms_without_rehandling(context: Context, monkeypatch):
+def test_timeout_publication_failure_preserves_committed_forms_without_rehandling(
+    context: Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.human_input_v2 import form_service
 
     result = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
-        form = session.get(HumanInputForm, result.form.id)
+        form = session.get_one(HumanInputForm, result.form.id)
         assert form is not None
         form.expiration_time = naive_utc_now() - timedelta(seconds=1)
     publications = []
 
-    def enqueue(run_id):
+    def enqueue(run_id: str) -> None:
         with context.sessions() as session:
-            assert session.get(HumanInputForm, result.form.id).status == HumanInputFormStatus.TIMEOUT
+            assert session.get_one(HumanInputForm, result.form.id).status == HumanInputFormStatus.TIMEOUT
         publications.append(run_id)
         if len(publications) == 1:
             raise ConnectionError("queue unavailable")
@@ -1097,91 +1228,115 @@ def test_timeout_publication_failure_preserves_committed_forms_without_rehandlin
     assert publications == [_RUN]
 
 
-def test_global_expiration_stops_run_without_requesting_node_resume(context: Context, monkeypatch):
+def test_global_expiration_stops_run_without_requesting_node_resume(
+    context: Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from services.human_input_v2 import form_service
 
     result = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
-        form = session.get(HumanInputForm, result.form.id)
+        form = session.get_one(HumanInputForm, result.form.id)
         assert form is not None
         form.expiration_time = naive_utc_now() - timedelta(seconds=1)
         form.global_timeout_deadline = naive_utc_now() - timedelta(seconds=1)
-        run = session.get(WorkflowRun, _RUN)
+        run = session.get_one(WorkflowRun, _RUN)
         run.status = WorkflowExecutionStatus.PAUSED
         pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=_RUN, state_object_key="pause")
         session.add(pause)
-    enqueue = Mock()
+    enqueue_calls: list[str] = []
+
+    def enqueue(run_id: str) -> None:
+        enqueue_calls.append(run_id)
+
     monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
     context.handle_timeouts()
     with context.sessions() as session:
-        assert session.get(HumanInputForm, result.form.id).status == HumanInputFormStatus.EXPIRED
-        run = session.get(WorkflowRun, _RUN)
+        assert session.get_one(HumanInputForm, result.form.id).status == HumanInputFormStatus.EXPIRED
+        run = session.get_one(WorkflowRun, _RUN)
         assert run.status == WorkflowExecutionStatus.STOPPED
         assert run.finished_at is not None
-        assert session.get(WorkflowPause, pause.id).resumed_at == run.finished_at
-    enqueue.assert_not_called()
+        assert session.get_one(WorkflowPause, pause.id).resumed_at == run.finished_at
+    assert not enqueue_calls
 
 
-def test_timeout_handling_uses_persisted_global_deadlines(context: Context, monkeypatch):
+def test_timeout_handling_uses_persisted_global_deadlines(context: Context, monkeypatch: pytest.MonkeyPatch) -> None:
     from services.human_input_v2 import form_service
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
-        record = session.get(HumanInputForm, created.form.id)
+        record = session.get_one(HumanInputForm, created.form.id)
         record.expiration_time = naive_utc_now() - timedelta(minutes=2)
         record.global_timeout_deadline = naive_utc_now() - timedelta(minutes=1)
-    enqueue = Mock()
+    enqueue_calls: list[str] = []
+
+    def enqueue(run_id: str) -> None:
+        enqueue_calls.append(run_id)
+
     monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
 
     context.handle_timeouts()
     with context.sessions() as session:
-        assert session.get(WorkflowRun, _RUN).status == WorkflowExecutionStatus.STOPPED
-        assert session.get(HumanInputForm, created.form.id).status == HumanInputFormStatus.EXPIRED
-    enqueue.assert_not_called()
+        assert session.get_one(WorkflowRun, _RUN).status == WorkflowExecutionStatus.STOPPED
+        assert session.get_one(HumanInputForm, created.form.id).status == HumanInputFormStatus.EXPIRED
+    assert not enqueue_calls
 
 
-def test_timeout_handling_preserves_forms_that_are_not_due(context: Context, monkeypatch):
+def test_timeout_handling_preserves_forms_that_are_not_due(context: Context, monkeypatch: pytest.MonkeyPatch) -> None:
     from services.human_input_v2 import form_service
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
-    enqueue = Mock()
+    enqueue_calls: list[str] = []
+
+    def enqueue(run_id: str) -> None:
+        enqueue_calls.append(run_id)
+
     monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
 
     context.handle_timeouts()
     with context.sessions() as session:
-        assert session.get(WorkflowRun, _RUN).status == WorkflowExecutionStatus.RUNNING
-        assert session.get(HumanInputForm, created.form.id).status == HumanInputFormStatus.WAITING
-    enqueue.assert_not_called()
+        assert session.get_one(WorkflowRun, _RUN).status == WorkflowExecutionStatus.RUNNING
+        assert session.get_one(HumanInputForm, created.form.id).status == HumanInputFormStatus.WAITING
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize(("node_timed_out", "globally_expired"), [(True, False), (False, True), (True, True)])
 def test_scheduled_expiration_uses_v2_deadlines(
-    context: Context, monkeypatch, node_timed_out, globally_expired, dispatch_timeouts
-):
+    context: Context,
+    monkeypatch: pytest.MonkeyPatch,
+    node_timed_out: bool,
+    globally_expired: bool,
+    dispatch_timeouts: Callable[..., None],
+) -> None:
     from core.db.session_factory import session_factory
     from services.human_input_v2 import form_service
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
-        record = session.get(HumanInputForm, created.form.id)
+        record = session.get_one(HumanInputForm, created.form.id)
         if node_timed_out:
             record.expiration_time = naive_utc_now() - timedelta(seconds=1)
         if globally_expired:
             record.global_timeout_deadline = naive_utc_now() - timedelta(seconds=1)
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
-    enqueue = Mock()
+    enqueue_calls: list[str] = []
+
+    def enqueue(run_id: str) -> None:
+        enqueue_calls.append(run_id)
+
     monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
     dispatch_timeouts()
     with context.sessions() as session:
-        record = session.get(HumanInputForm, created.form.id)
+        record = session.get_one(HumanInputForm, created.form.id)
         assert record.status == (HumanInputFormStatus.EXPIRED if globally_expired else HumanInputFormStatus.TIMEOUT)
     if globally_expired:
-        enqueue.assert_not_called()
+        assert not enqueue_calls
     else:
-        enqueue.assert_called_once_with(_RUN)
+        assert enqueue_calls == [_RUN]
 
 
-def test_scheduled_timeout_does_not_rescan_terminal_forms(context: Context, monkeypatch, dispatch_timeouts):
+def test_scheduled_timeout_does_not_rescan_terminal_forms(
+    context: Context, monkeypatch: pytest.MonkeyPatch, dispatch_timeouts: Callable[..., None]
+) -> None:
     from kombu.exceptions import OperationalError
 
     from core.db.session_factory import session_factory
@@ -1189,27 +1344,36 @@ def test_scheduled_timeout_does_not_rescan_terminal_forms(context: Context, monk
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
     with context.sessions.begin() as session:
-        record = session.get(HumanInputForm, created.form.id)
+        record = session.get_one(HumanInputForm, created.form.id)
         record.expiration_time = naive_utc_now() - timedelta(seconds=1)
-        run = session.get(WorkflowRun, _RUN)
+        run = session.get_one(WorkflowRun, _RUN)
         run.status = WorkflowExecutionStatus.PAUSED
         pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=_RUN, state_object_key="pause")
         session.add(pause)
-    read_state = Mock(return_value=_pause_state(created.form.id).encode())
+
+    def read_state(_key: str) -> bytes:
+        return _pause_state(created.form.id).encode()
+
     monkeypatch.setattr("tasks.human_input_timeout_tasks.storage.load", read_state)
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
-    enqueue = Mock(side_effect=[OperationalError("broker unavailable"), None])
+    resume_calls: list[str] = []
+
+    def enqueue(run_id: str) -> None:
+        resume_calls.append(run_id)
+        if len(resume_calls) == 1:
+            raise OperationalError("broker unavailable")
+
     monkeypatch.setattr(form_service, "_enqueue_resume", enqueue)
     with pytest.raises(OperationalError, match="broker unavailable"):
         dispatch_timeouts()
     dispatch_timeouts()
-    assert enqueue.call_count == 1
+    assert resume_calls == [_RUN]
     with context.sessions() as session:
-        assert session.get(HumanInputForm, created.form.id).status == HumanInputFormStatus.TIMEOUT
+        assert session.get_one(HumanInputForm, created.form.id).status == HumanInputFormStatus.TIMEOUT
 
 
 @pytest.mark.usefixtures("providers")
-def test_terminal_form_does_not_return_its_initiator_token(context: Context, monkeypatch):
+def test_terminal_form_does_not_return_its_initiator_token(context: Context, monkeypatch: pytest.MonkeyPatch) -> None:
     from core.helper import encrypter
     from services.human_input_v2.composition import build_human_input_delivery_service
 
@@ -1221,17 +1385,19 @@ def test_terminal_form_does_not_return_its_initiator_token(context: Context, mon
         message_template=created.message_template,
     )
     with context.sessions.begin() as session:
-        form = session.get(HumanInputForm, created.form.id)
+        form = session.get_one(HumanInputForm, created.form.id)
         form.status = HumanInputFormStatus.TIMEOUT
-    decrypt = Mock(side_effect=AssertionError("Terminal token must not be recovered"))
+
+    def decrypt(*_args: object) -> str:
+        raise AssertionError("Terminal token must not be recovered")
+
     monkeypatch.setattr(encrypter, "decrypt_token", decrypt)
     result = context.prepare(_node(Initiator()))
     assert isinstance(result, PreparedForm)
     assert result.form_token is None
-    decrypt.assert_not_called()
 
 
-def test_delivery_rejects_recipient_from_another_form(context: Context, providers):
+def test_delivery_rejects_recipient_from_another_form(context: Context, providers: tuple[Mock, EmailOutbox]) -> None:
     from services.human_input_v2.composition import build_human_input_delivery_service
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
@@ -1245,10 +1411,12 @@ def test_delivery_rejects_recipient_from_another_form(context: Context, provider
             recipient=foreign,
             message_template=created.message_template,
         )
-    providers[1].assert_not_called()
+    assert not providers[1].messages
 
 
-def test_reentry_reads_initialization_without_sending_notifications(context: Context, providers):
+def test_reentry_reads_initialization_without_sending_notifications(
+    context: Context, providers: tuple[Mock, EmailOutbox]
+) -> None:
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.human_input_v2.runtime import DifyHumanInputRuntime
 
@@ -1260,22 +1428,23 @@ def test_reentry_reads_initialization_without_sending_notifications(context: Con
     )
     prepared = runtime.prepare_form(node_execution_id=_EXECUTION, node_data=node, variable_pool=VariablePool())
     assert prepared.form.id == created.form.id
-    providers[1].assert_not_called()
+    assert not providers[1].messages
 
 
-def test_reentry_does_not_retry_failed_notifications(context: Context, providers):
+def test_reentry_does_not_retry_failed_notifications(context: Context, providers: tuple[Mock, EmailOutbox]) -> None:
     from repositories.human_input_v2.email_channel.ports import EmailProviderOperationError
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.human_input_v2.runtime import DifyHumanInputRuntime
 
     sends = []
 
-    def send(_candidate, *, to, subject, html):
+    def send(candidate: ResendCandidate, *, to: str, subject: str, html: str) -> None:
+        del candidate
         sends.append((to, subject, html))
         if len(sends) == 2:
             raise EmailProviderOperationError("provider_timeout")
 
-    providers[1].side_effect = send
+    providers[1].on_send = send
     node = _node(OnetimeEmail(email="first@example.com"), OnetimeEmail(email="second@example.com"))
     runtime = DifyHumanInputRuntime(
         form_service=context.service,
@@ -1296,8 +1465,8 @@ def test_reentry_does_not_retry_failed_notifications(context: Context, providers
 @pytest.mark.usefixtures("providers")
 @pytest.mark.parametrize("recipient", [Initiator(), OnetimeEmail(email="person@example.com")])
 def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_token(
-    context: Context, monkeypatch, recipient
-):
+    context: Context, monkeypatch: pytest.MonkeyPatch, recipient: Initiator | OnetimeEmail
+) -> None:
     from core.app.entities.queue_entities import QueueWorkflowPausedEvent
     from core.app.entities.task_entities import (
         HumanInputRequiredPauseReasonPayload,
@@ -1318,7 +1487,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
         _workflow_response_converter_human_input_build_converter as _build_converter,
     )
 
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", Mock())
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", lambda *_args: None)
     prepared = DifyHumanInputRuntime(
         form_service=context.service,
         delivery_service=build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions),
@@ -1343,16 +1512,14 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     )
     repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
     state = _pause_state(prepared.form.id)
-    monkeypatch.setattr(
-        "repositories.sqlalchemy_api_workflow_run_repository.storage.load", Mock(return_value=state.encode())
-    )
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: state.encode())
     repository.create_workflow_pause(
         workflow_run_id=_RUN, state_owner_user_id=_ACCOUNT, state=state, pause_reasons=[reason]
     )
     pause = repository.get_workflow_pause(_RUN)
     assert pause is not None
     with context.sessions() as session:
-        run = session.get(WorkflowRun, _RUN)
+        run = session.get_one(WorkflowRun, _RUN)
     assert run is not None
     events = workflow_event_snapshot_service._build_paused_snapshot_events(
         workflow_run=run,
@@ -1366,7 +1533,10 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     )
     required = next(event["data"] for event in events if event["event"] == "human_input_required")
     paused = next(event["data"] for event in events if event["event"] == "workflow_paused")
-    expected_token = prepared.form_token.get_secret_value() if isinstance(recipient, Initiator) else None
+    expected_token = None
+    if isinstance(recipient, Initiator):
+        assert prepared.form_token is not None
+        expected_token = prepared.form_token.get_secret_value()
     assert required["form_version"] == "2"
     assert required["form_token"] == expected_token
     assert required["display_in_ui"] == isinstance(recipient, Initiator)
@@ -1374,9 +1544,10 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     assert paused["reasons"][0]["form_token"] == expected_token
     assert paused["reasons"][0]["form_version"] == "2"
 
-    monkeypatch.setattr(
-        session_factory, "create_session", Mock(side_effect=AssertionError("Unexpected live form reload"))
-    )
+    def reject_live_reload() -> Session:
+        raise AssertionError("Unexpected live form reload")
+
+    monkeypatch.setattr(session_factory, "create_session", reject_live_reload)
     converter = _build_converter()
     converter.workflow_start_to_stream_response(
         task_id="task", workflow_run_id=_RUN, workflow_id=run.workflow_id, reason=WorkflowStartReason.INITIAL
@@ -1397,7 +1568,6 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
 
     # Pause details and generic execution resume also work without the legacy table.
     from inspect import unwrap
-    from types import SimpleNamespace
 
     from flask import Flask
 
@@ -1405,8 +1575,22 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     from machinery.context import RequestContext
     from services.workflow_run_service import WorkflowRunService
 
-    service = WorkflowRunService(workflow_runs=repository, node_executions=Mock(), session_factory=context.sessions)
-    monkeypatch.setattr(controller, "application_services", lambda: SimpleNamespace(workflow_runs=service))
+    service = WorkflowRunService(
+        workflow_runs=repository,
+        node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(context.sessions),
+        session_factory=context.sessions,
+    )
+    from configs import dify_config
+    from extensions.ext_application_services import build_application_services
+    from extensions.ext_redis import redis_client
+
+    application = build_application_services(
+        database_client=context.sessions,
+        deployment_edition=dify_config.DEPLOYMENT_EDITION,
+        initialization_password="",
+        redis=redis_client,
+    )
+    monkeypatch.setattr(controller, "application_services", lambda: replace(application, workflow_runs=service))
     request = RequestContext(request_id="request", trace_id="trace", account_id=_ACCOUNT, active_workspace_id=_TENANT)
     with Flask(__name__).test_request_context():
         resource = controller.ConsoleWorkflowPauseDetailsApi()
@@ -1418,10 +1602,12 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     assert url == (f"https://app.example.com/form/{expected_token}" if expected_token else None)
     repository.resume_workflow_pause(_RUN, pause)
     with context.sessions() as session:
-        assert session.get(WorkflowRun, _RUN).status == WorkflowExecutionStatus.RUNNING
+        assert session.get_one(WorkflowRun, _RUN).status == WorkflowExecutionStatus.RUNNING
 
 
-def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(context: Context, monkeypatch):
+def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(
+    context: Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
     from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
@@ -1470,10 +1656,8 @@ def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(context: Con
     runtime.graph_execution.pause(scheduling)
     resumption = resumption.model_copy(update={"serialized_graph_runtime_state": runtime.dumps()})
     state = resumption.dumps()
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", Mock())
-    monkeypatch.setattr(
-        "repositories.sqlalchemy_api_workflow_run_repository.storage.load", Mock(return_value=state.encode())
-    )
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", lambda *_args: None)
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: state.encode())
     repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
     repository.create_workflow_pause(
         workflow_run_id=_RUN,
@@ -1503,7 +1687,9 @@ def test_pause_snapshot_resolves_mixed_versions_in_checkpoint_order(context: Con
 
 @pytest.mark.parametrize("initiator", [False, True])
 @pytest.mark.usefixtures("providers")
-def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(context: Context, monkeypatch, initiator):
+def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(
+    context: Context, monkeypatch: pytest.MonkeyPatch, initiator: bool
+) -> None:
     from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
     from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
@@ -1517,6 +1703,7 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(contex
     from services.workflow_run_service import WorkflowRunPausedNode, WorkflowRunService
 
     created = context.prepare(_node(Initiator() if initiator else OnetimeEmail(email="person@example.com")))
+    assert isinstance(created, CreatedForm)
     token = None
     if initiator:
         delivered = build_human_input_delivery_service(tenant_id=_TENANT, session_factory=context.sessions).deliver(
@@ -1558,10 +1745,8 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(contex
     runtime = RuntimeState.from_snapshot(resumption.serialized_graph_runtime_state)
     runtime.graph_execution.pause(HitlRequired(session_id=legacy_id, node_id="legacy-node", node_title="Legacy title"))
     state = resumption.model_copy(update={"serialized_graph_runtime_state": runtime.dumps()}).dumps()
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", Mock())
-    monkeypatch.setattr(
-        "repositories.sqlalchemy_api_workflow_run_repository.storage.load", Mock(return_value=state.encode())
-    )
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", lambda *_args: None)
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: state.encode())
     repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
     pause = repository.create_workflow_pause(
         workflow_run_id=_RUN,
@@ -1574,7 +1759,11 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(contex
             ),
         ],
     )
-    service = WorkflowRunService(workflow_runs=repository, node_executions=Mock(), session_factory=context.sessions)
+    service = WorkflowRunService(
+        workflow_runs=repository,
+        node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(context.sessions),
+        session_factory=context.sessions,
+    )
     request = RequestContext(request_id="request", trace_id="trace", account_id=_ACCOUNT, active_workspace_id=_TENANT)
 
     result = service.get_pause_details(request, workflow_run_id=_RUN)
@@ -1592,31 +1781,35 @@ def test_console_pause_details_follow_checkpoint_with_mixed_form_versions(contex
 
 
 @pytest.mark.parametrize("checkpoint", ["invalid", "missing_form"])
-def test_console_pause_details_do_not_fall_back_when_checkpoint_is_invalid(context: Context, monkeypatch, checkpoint):
+def test_console_pause_details_do_not_fall_back_when_checkpoint_is_invalid(
+    context: Context, monkeypatch: pytest.MonkeyPatch, checkpoint: str
+) -> None:
     from machinery.context import RequestContext
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
     from services.workflow_run_service import WorkflowRunService
 
     state = "invalid checkpoint" if checkpoint == "invalid" else _pause_state(str(uuid4()))
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", Mock())
-    monkeypatch.setattr(
-        "repositories.sqlalchemy_api_workflow_run_repository.storage.load", Mock(return_value=state.encode())
-    )
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", lambda *_args: None)
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.load", lambda _key: state.encode())
     repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
     repository.create_workflow_pause(workflow_run_id=_RUN, state_owner_user_id=_ACCOUNT, state=state, pause_reasons=[])
-    service = WorkflowRunService(workflow_runs=repository, node_executions=Mock(), session_factory=context.sessions)
+    service = WorkflowRunService(
+        workflow_runs=repository,
+        node_executions=DifyAPISQLAlchemyWorkflowNodeExecutionRepository(context.sessions),
+        session_factory=context.sessions,
+    )
     request = RequestContext(request_id="request", trace_id="trace", account_id=_ACCOUNT, active_workspace_id=_TENANT)
 
     with pytest.raises(ValueError, match="Invalid JSON|Human Input v2 form is missing from its paused run"):
         service.get_pause_details(request, workflow_run_id=_RUN)
 
 
-def test_missing_v1_pause_form_does_not_fall_back_to_v2(context: Context, monkeypatch):
+def test_missing_v1_pause_form_does_not_fall_back_to_v2(context: Context, monkeypatch: pytest.MonkeyPatch) -> None:
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
     from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
-    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", Mock())
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage.save", lambda *_args: None)
     repository = DifyAPISQLAlchemyWorkflowRunRepository(context.sessions)
     repository.create_workflow_pause(
         workflow_run_id=_RUN,
@@ -1641,7 +1834,9 @@ def test_missing_v1_pause_form_does_not_fall_back_to_v2(context: Context, monkey
 
 
 @pytest.mark.usefixtures("providers")
-def test_original_web_app_initiator_uses_web_auth_and_recovers_its_token(context: Context, caplog):
+def test_original_web_app_initiator_uses_web_auth_and_recovers_its_token(
+    context: Context, caplog: pytest.LogCaptureFixture
+) -> None:
     from repositories.human_input_v2.delivery_repository import SubmissionAuthType
     from services.human_input_v2.composition import build_human_input_delivery_service
     from services.human_input_v2.form_service import EndUserInitiator
@@ -1675,14 +1870,20 @@ def test_original_web_app_initiator_uses_web_auth_and_recovers_its_token(context
         assert delivery.auth_type == SubmissionAuthType.WEB_APP
 
 
-def test_cloud_without_workspace_email_configuration_does_not_use_default_mail(context: Context, monkeypatch):
+def test_cloud_without_workspace_email_configuration_does_not_use_default_mail(
+    context: Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from configs import dify_config
     from enums import DeploymentEdition
     from extensions.ext_mail import mail
     from services.human_input_v2.composition import build_human_input_delivery_service
 
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    send = Mock()
+    sent_mail: list[dict[str, str]] = []
+
+    def send(*, to: str, subject: str, html: str) -> None:
+        sent_mail.append({"to": to, "subject": subject, "html": html})
+
     monkeypatch.setattr(mail, "send", send)
     monkeypatch.setattr(mail, "is_inited", lambda: True)
     created = context.prepare(_node(OnetimeEmail(email="person@example.com")))
@@ -1694,10 +1895,12 @@ def test_cloud_without_workspace_email_configuration_does_not_use_default_mail(c
     )
     assert result.attempts == ()
     assert result.form_token is None
-    send.assert_not_called()
+    assert not sent_mail
 
 
-def test_card_send_failure_does_not_change_saved_auth_or_send_an_im_link(context: Context, providers):
+def test_card_send_failure_does_not_change_saved_auth_or_send_an_im_link(
+    context: Context, providers: tuple[Mock, EmailOutbox]
+) -> None:
     from core.human_input_v2.im_integration.adapters.entities import MessageSendingError
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
     from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot, SubmissionAuthType
@@ -1723,12 +1926,13 @@ def test_card_send_failure_does_not_change_saved_auth_or_send_an_im_link(context
             if isinstance(d.target_snapshot, IMUserTargetSnapshot)
         )
         assert delivery.auth_type == SubmissionAuthType.IM
+        assert isinstance(delivery.target_snapshot, IMUserTargetSnapshot)
         assert delivery.target_snapshot.message_type == "card"
         assert delivery.target_snapshot.message_locator is None
 
 
 @pytest.fixture
-def console_approval(context: Context):
+def console_approval(context: Context) -> tuple[str, str]:
     import hashlib
 
     from repositories.human_input_v2.delivery_repository import (
@@ -1758,7 +1962,7 @@ def console_approval(context: Context):
                 target_snapshot=InitiatorSnapshot(protected_form_token="encrypted-token"),
             ),
         )
-        run = session.get(WorkflowRun, _RUN)
+        run = session.get_one(WorkflowRun, _RUN)
         assert run is not None
         run.status = WorkflowExecutionStatus.PAUSED
         session.add(
@@ -1767,7 +1971,9 @@ def console_approval(context: Context):
     return created.form.id, token
 
 
-def test_submission_fans_out_each_created_im_card_after_commit(context: Context, console_approval, monkeypatch):
+def test_submission_fans_out_each_created_im_card_after_commit(
+    context: Context, console_approval: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
     from core.human_input_v2.shared.values import IMBindingId
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryAttemptCreateParams, DeliveryStatus
@@ -1799,7 +2005,7 @@ def test_submission_fans_out_each_created_im_card_after_commit(context: Context,
                 tenant_id=owner,
                 form_id=delivery_form,
                 params=DeliveryCreateParams(
-                    recipient_id=recipient.id,
+                    recipient_id=RecipientId(recipient.id),
                     token_hash=uuid4().hex,
                     auth_type=SubmissionAuthType.IM,
                     target_snapshot=IMUserTargetSnapshot(
@@ -1840,9 +2046,9 @@ def test_submission_fans_out_each_created_im_card_after_commit(context: Context,
 
     published = []
 
-    def publish(task, *, kwargs):
+    def publish(task: Task[..., None], *, kwargs: dict[str, object]) -> None:
         with context.sessions() as session:
-            assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
+            assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
         published.append((task.name, kwargs))
 
     monkeypatch.setattr(resume_app_execution, "apply_async", lambda **kwargs: publish(resume_app_execution, **kwargs))
@@ -1861,12 +2067,16 @@ def test_submission_fans_out_each_created_im_card_after_commit(context: Context,
 
 
 @pytest.fixture
-def created_im_cards(context: Context, console_approval, providers, monkeypatch):
+def created_im_cards(
+    context: Context,
+    console_approval: tuple[str, str],
+    providers: tuple[Mock, EmailOutbox],
+    monkeypatch: pytest.MonkeyPatch,
+) -> CreatedIMCards:
     from core.human_input_v2.im_integration.adapters.entities import MessageAccepted
     from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
     from models.model import App, AppMode
     from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot
-    from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
     from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
     from services.human_input_v2.delivery_service import HumanInputDeliveryService, ResolvedMessageTemplate
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -1888,6 +2098,7 @@ def created_im_cards(context: Context, console_approval, providers, monkeypatch)
     adapter.dynamic_card_messaging.replace_with_static.return_value = None
     with context.sessions() as session:
         form = SQLAlchemyFormRepository(session, _TENANT, _APP).get_form_by_id(form_id)
+        assert form is not None
         recipient = SQLAlchemyRecipientRepository(session, _TENANT, form_id).list_recipients()[0]
     for _ in range(2):
         HumanInputDeliveryService(session_factory=context.sessions, email_client=None).deliver(
@@ -1901,15 +2112,23 @@ def created_im_cards(context: Context, console_approval, providers, monkeypatch)
             for delivery in session.scalars(sa.select(HumanInputDelivery))
             if isinstance(delivery.target_snapshot, IMUserTargetSnapshot)
         }
-    published = Mock()
-    monkeypatch.setattr(update_human_input_im_card_task, "apply_async", published)
-    resumed = Mock()
-    monkeypatch.setattr(resume_app_execution, "apply_async", resumed)
+    published: list[dict[str, str]] = []
+    resumed: list[dict[str, object]] = []
+
+    def publish_card(*, kwargs: dict[str, str]) -> None:
+        published.append(kwargs)
+
+    def publish_resume(*, kwargs: dict[str, object]) -> None:
+        resumed.append(kwargs)
+
+    monkeypatch.setattr(update_human_input_im_card_task, "apply_async", publish_card)
+    monkeypatch.setattr(resume_app_execution, "apply_async", publish_resume)
     return form_id, token, deliveries, adapter, published, resumed
 
 
-def test_im_card_tasks_replace_exact_cards_with_committed_submission(context: Context, created_im_cards):
-    from core.human_input_v2.im_integration.adapters.entities import StaticCardIntent
+def test_im_card_tasks_replace_exact_cards_with_committed_submission(
+    context: Context, created_im_cards: CreatedIMCards
+) -> None:
     from services.human_input_v2.submission_service import HumanInputSubmissionService
     from tasks.human_input_im_card_tasks import update_human_input_im_card_task
 
@@ -1917,16 +2136,16 @@ def test_im_card_tasks_replace_exact_cards_with_committed_submission(context: Co
     HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
         account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Accepted {{#$output.note#}}"}
     )
-    assert {call.kwargs["kwargs"]["delivery_id"] for call in published.call_args_list} == deliveries
+    assert {call["delivery_id"] for call in published} == deliveries
     adapter.dynamic_card_messaging.replace_with_static.assert_not_called()
     active: set[object] = set()
     engine = context.sessions.kw["bind"]
-    sa.event.listen(engine, "begin", lambda conn: active.add(conn))
-    sa.event.listen(engine, "commit", lambda conn: active.discard(conn))
-    sa.event.listen(engine, "rollback", lambda conn: active.discard(conn))
+    event.listen(engine, "begin", lambda conn: active.add(conn))
+    event.listen(engine, "commit", lambda conn: active.discard(conn))
+    event.listen(engine, "rollback", lambda conn: active.discard(conn))
     replacements = []
 
-    def replace_card(locator, intent):
+    def replace_card(locator: MessageLocator, intent: StaticCardIntent) -> None:
         assert not active, "Card updates must not hold a DB transaction"
         replacements.append((locator, intent))
 
@@ -1934,8 +2153,8 @@ def test_im_card_tasks_replace_exact_cards_with_committed_submission(context: Co
     # Bindings may change after delivery; replacement still targets the saved card.
     with context.sessions.begin() as session:
         session.execute(sa.delete(HumanInputIMBinding))
-    for call in published.call_args_list:
-        update_human_input_im_card_task.run(**call.kwargs["kwargs"])
+    for call in published:
+        update_human_input_im_card_task.run(**call)
     assert {locator for locator, _ in replacements} == {"opaque-card-one", "opaque-card-two"}
     assert len(replacements) == 2
     assert all(
@@ -1943,14 +2162,13 @@ def test_im_card_tasks_replace_exact_cards_with_committed_submission(context: Co
         for _, intent in replacements
     )
     # Redelivery renders the identical committed state, without another submission.
-    update_human_input_im_card_task.run(**published.call_args_list[0].kwargs["kwargs"])
+    update_human_input_im_card_task.run(**published[0])
     assert replacements[2] == replacements[0]
 
 
 def test_im_card_updates_render_typed_inputs_and_skip_missing_values(
-    context: Context, created_im_cards: tuple[str, str, set[str], Mock, Mock, Mock]
+    context: Context, created_im_cards: CreatedIMCards
 ) -> None:
-    from core.human_input_v2.im_integration.adapters.entities import StaticCardIntent
     from core.human_input_v2.resolved_form import (
         FileInput,
         FileListInput,
@@ -1989,7 +2207,7 @@ def test_im_card_updates_render_typed_inputs_and_skip_missing_values(
         number_limits=3,
     )
     with context.sessions.begin() as session:
-        record = session.get(HumanInputForm, form_id)
+        record = session.get_one(HumanInputForm, form_id)
         assert record is not None
         record.resolved_form = record.resolved_form.model_copy(
             update={
@@ -2041,7 +2259,7 @@ def test_im_card_updates_render_typed_inputs_and_skip_missing_values(
     assert all(call.args[1] == expected for call in replacements)
 
 
-def test_im_card_updates_do_not_depend_on_attempt_history(context: Context, created_im_cards):
+def test_im_card_updates_do_not_depend_on_attempt_history(context: Context, created_im_cards: CreatedIMCards) -> None:
     import json
 
     from services.human_input_v2.submission_service import HumanInputSubmissionService
@@ -2072,15 +2290,17 @@ def test_im_card_updates_do_not_depend_on_attempt_history(context: Context, crea
     HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
         account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Accepted"}
     )
-    assert {call.kwargs["kwargs"]["delivery_id"] for call in published.call_args_list} == deliveries
-    for call in published.call_args_list:
-        update_human_input_im_card_task.run(**call.kwargs["kwargs"])
+    assert {call["delivery_id"] for call in published} == deliveries
+    for call in published:
+        update_human_input_im_card_task.run(**call)
     calls = adapter.dynamic_card_messaging.replace_with_static.call_args_list
     assert {call.args[0] for call in calls} == {"opaque-card-one", "opaque-card-two"}
 
 
 @pytest.mark.usefixtures("providers")
-def test_attempt_storage_failure_rolls_back_the_accepted_card_identity(context: Context, monkeypatch):
+def test_attempt_storage_failure_rolls_back_the_accepted_card_identity(
+    context: Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot
     from repositories.human_input_v2.sqlalchemy_delivery_attempt_repository import SQLAlchemyDeliveryAttemptRepository
     from services.human_input_v2.delivery_service import HumanInputDeliveryService, ResolvedMessageTemplate
@@ -2088,10 +2308,12 @@ def test_attempt_storage_failure_rolls_back_the_accepted_card_identity(context: 
     _add_im(context)
     created = context.prepare(_node(Initiator()))
     assert isinstance(created, CreatedForm)
-    monkeypatch.setattr(
-        SQLAlchemyDeliveryAttemptRepository, "record_attempt", Mock(side_effect=ValueError("Attempt storage failed"))
-    )
-    with pytest.raises(ValueError, match="Attempt storage failed"):
+
+    def reject_attempt(*_args: object, **_kwargs: object) -> None:
+        raise SQLAlchemyError("Attempt storage failed")
+
+    monkeypatch.setattr(SQLAlchemyDeliveryAttemptRepository, "record_attempt", reject_attempt)
+    with pytest.raises(SQLAlchemyError, match="Attempt storage failed"):
         HumanInputDeliveryService(session_factory=context.sessions, email_client=None).deliver(
             form=created.form,
             recipient=created.recipients[0],
@@ -2104,11 +2326,14 @@ def test_attempt_storage_failure_rolls_back_the_accepted_card_identity(context: 
             if isinstance(record.target_snapshot, IMUserTargetSnapshot)
         ]
         assert len(cards) == 1
+        assert isinstance(cards[0].target_snapshot, IMUserTargetSnapshot)
         assert cards[0].target_snapshot.message_locator is None
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDeliveryAttempt)) == 0
 
 
-def test_im_card_update_uses_delivery_identity_when_attempt_history_conflicts(context: Context, created_im_cards):
+def test_im_card_update_uses_delivery_identity_when_attempt_history_conflicts(
+    context: Context, created_im_cards: CreatedIMCards
+) -> None:
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryAttemptCreateParams, DeliveryStatus
     from repositories.human_input_v2.sqlalchemy_delivery_attempt_repository import SQLAlchemyDeliveryAttemptRepository
     from services.human_input_v2.im_card_service import HumanInputIMCardService
@@ -2120,7 +2345,9 @@ def test_im_card_update_uses_delivery_identity_when_attempt_history_conflicts(co
     )
     delivery_id = next(iter(deliveries))
     with context.sessions.begin() as session:
-        expected_locator = session.get(HumanInputDelivery, delivery_id).target_snapshot.message_locator
+        expected_target = session.get_one(HumanInputDelivery, delivery_id).target_snapshot
+        assert isinstance(expected_target, IMUserTargetSnapshot)
+        expected_locator = expected_target.message_locator
         SQLAlchemyDeliveryAttemptRepository(session, _TENANT, form_id).record_attempt(
             delivery_id,
             DeliveryAttemptCreateParams(
@@ -2149,7 +2376,9 @@ def test_im_card_update_uses_delivery_identity_when_attempt_history_conflicts(co
         "unaccepted",
     ],
 )
-def test_im_card_update_ignores_unrelated_or_unavailable_cards(context: Context, created_im_cards, scenario):
+def test_im_card_update_ignores_unrelated_or_unavailable_cards(
+    context: Context, created_im_cards: CreatedIMCards, scenario: str
+) -> None:
     from repositories.human_input_v2.delivery_repository import (
         DeliveryTargetType,
         EmailTargetSnapshot,
@@ -2176,14 +2405,15 @@ def test_im_card_update_ignores_unrelated_or_unavailable_cards(context: Context,
         elif scenario == "app_owner":
             from models.model import App
 
-            session.get(App, _APP).tenant_id = str(uuid4())
+            session.get_one(App, _APP).tenant_id = str(uuid4())
         elif scenario in ("email", "im_link", "unaccepted"):
-            delivery = session.get(HumanInputDelivery, delivery_id)
+            delivery = session.get_one(HumanInputDelivery, delivery_id)
             if scenario == "email":
                 delivery.target_type = DeliveryTargetType.EMAIL
                 delivery.target_snapshot = EmailTargetSnapshot(email_address="member@example.com")
             else:
                 target = delivery.target_snapshot
+                assert isinstance(target, IMUserTargetSnapshot)
                 delivery.target_snapshot = target.model_copy(
                     update={
                         "message_locator": None if scenario == "unaccepted" else target.message_locator,
@@ -2199,26 +2429,38 @@ def test_im_card_update_ignores_unrelated_or_unavailable_cards(context: Context,
 
 
 def test_card_publication_failure_keeps_other_deliveries_and_workflow_resume(
-    context: Context, created_im_cards, caplog
-):
+    context: Context,
+    created_im_cards: CreatedIMCards,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from kombu.exceptions import OperationalError
 
     from services.human_input_v2.submission_service import HumanInputSubmissionService
 
     form_id, token, deliveries, _, published, resumed = created_im_cards
-    published.side_effect = [OperationalError("broker unavailable"), None]
+    from tasks.human_input_im_card_tasks import update_human_input_im_card_task
+
+    def publish_card(*, kwargs: dict[str, str]) -> None:
+        published.append(kwargs)
+        if len(published) == 1:
+            raise OperationalError("broker unavailable")
+
+    monkeypatch.setattr(update_human_input_im_card_task, "apply_async", publish_card)
     HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
         account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Accepted"}
     )
-    assert published.call_count == len(deliveries)
-    resumed.assert_called_once_with(kwargs={"payload": {"workflow_run_id": _RUN}})
+    assert len(published) == len(deliveries)
+    assert resumed == [{"payload": {"workflow_run_id": _RUN}}]
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
     assert "Failed to enqueue Human Input IM card update" in caplog.text
 
 
 @pytest.mark.parametrize("failure_kind", ["unknown", "stale_reference", "invalid_reference", "unsupported"])
-def test_im_card_update_failure_is_an_independent_follow_up(context: Context, created_im_cards, failure_kind):
+def test_im_card_update_failure_is_an_independent_follow_up(
+    context: Context, created_im_cards: CreatedIMCards, failure_kind: str
+) -> None:
     from core.human_input_v2.im_integration.adapters.entities import ReplacementError, ReplacementErrorKind
     from services.human_input_v2.im_card_service import HumanInputIMCardService, IMCardUpdateRetryableError
     from services.human_input_v2.submission_service import HumanInputSubmissionService
@@ -2239,15 +2481,23 @@ def test_im_card_update_failure_is_an_independent_follow_up(context: Context, cr
     updater = HumanInputIMCardService(session_factory=context.sessions)
     if failure_kind == "unknown":
         with pytest.raises(IMCardUpdateRetryableError):
-            updater.update_card(**task_kwargs)
+            updater.update_card(
+                tenant_id=TenantId(task_kwargs["tenant_id"]),
+                form_id=task_kwargs["form_id"],
+                delivery_id=task_kwargs["delivery_id"],
+            )
     else:
-        update_human_input_im_card_task.run(**task_kwargs)
-    resumed.assert_called_once()
+        update_human_input_im_card_task.run(
+            tenant_id=task_kwargs["tenant_id"], form_id=task_kwargs["form_id"], delivery_id=task_kwargs["delivery_id"]
+        )
+    assert len(resumed) == 1
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
 
 
-def test_im_card_task_retries_unknown_outcome_with_the_same_static_content(context: Context, created_im_cards):
+def test_im_card_task_retries_unknown_outcome_with_the_same_static_content(
+    context: Context, created_im_cards: CreatedIMCards
+) -> None:
     from core.human_input_v2.im_integration.adapters.entities import ReplacementError, ReplacementErrorKind
     from services.human_input_v2.submission_service import HumanInputSubmissionService
     from tasks.human_input_im_card_tasks import update_human_input_im_card_task
@@ -2269,7 +2519,9 @@ def test_im_card_task_retries_unknown_outcome_with_the_same_static_content(conte
     assert calls[0] == calls[1]
 
 
-def test_im_callback_redelivery_republishes_cards_after_workflow_resume(context: Context, created_im_cards):
+def test_im_callback_redelivery_republishes_cards_after_workflow_resume(
+    context: Context, created_im_cards: CreatedIMCards
+) -> None:
     from repositories.human_input_v2.im_channel_repository import IMChannelId
     from services.human_input_v2.submission_service import HumanInputSubmissionService, IMFormActor
 
@@ -2281,18 +2533,20 @@ def test_im_callback_redelivery_republishes_cards_after_workflow_resume(context:
     service = HumanInputSubmissionService(session_factory=context.sessions)
     service.submit_im_form(actor=actor, form_token=token, action="approve", inputs={"note": "Accepted"})
     with context.sessions.begin() as session:
-        original_submitted_at = session.get(HumanInputForm, form_id).submitted_at
-        session.get(WorkflowRun, _RUN).status = WorkflowExecutionStatus.SUCCEEDED
-    published.reset_mock()
-    resumed.reset_mock()
+        original_submitted_at = session.get_one(HumanInputForm, form_id).submitted_at
+        session.get_one(WorkflowRun, _RUN).status = WorkflowExecutionStatus.SUCCEEDED
+    published.clear()
+    resumed.clear()
     service.submit_im_form(actor=actor, form_token=token, action="approve", inputs={"note": "Accepted"})
-    assert {call.kwargs["kwargs"]["delivery_id"] for call in published.call_args_list} == deliveries
-    resumed.assert_not_called()
+    assert {call["delivery_id"] for call in published} == deliveries
+    assert not resumed
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).submitted_at == original_submitted_at
+        assert session.get_one(HumanInputForm, form_id).submitted_at == original_submitted_at
 
 
-def test_console_approve_http_commits_before_resuming(context: Context, console_approval, monkeypatch):
+def test_console_approve_http_commits_before_resuming(
+    context: Context, console_approval: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     from inspect import unwrap
 
     from flask import Flask
@@ -2307,9 +2561,9 @@ def test_console_approve_http_commits_before_resuming(context: Context, console_
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
     published = []
 
-    def publish(*, kwargs):
+    def publish(*, kwargs: dict[str, dict[str, str]]) -> None:
         with context.sessions() as session:
-            record = session.get(HumanInputForm, form_id)
+            record = session.get_one(HumanInputForm, form_id)
             assert record is not None
             assert record.status == HumanInputFormStatus.SUBMITTED
             assert record.selected_action_id == "approve"
@@ -2325,10 +2579,10 @@ def test_console_approve_http_commits_before_resuming(context: Context, console_
     )
     handler = unwrap(resource.post)
     with context.sessions() as session:
-        account = session.get(Account, _ACCOUNT)
+        account = session.get_one(Account, _ACCOUNT)
 
     class ApprovalEndpoint(Resource):
-        def post(self, form_token):
+        def post(self, form_token: str) -> object:
             return handler(resource(), current_user=account, form_token=form_token)
 
     api.add_resource(ApprovalEndpoint, "/form/human-input/v2/<string:form_token>")
@@ -2337,6 +2591,7 @@ def test_console_approve_http_commits_before_resuming(context: Context, console_
     assert response.status_code == 200
     duplicate = client.post(f"/form/human-input/v2/{token}", json={"inputs": {"note": "Changed"}, "action": "approve"})
     assert duplicate.status_code == 409
+    assert duplicate.json is not None
     assert duplicate.json["code"] == "already_submitted"
     unknown = client.post("/form/human-input/v2/unknown", json={"inputs": {"note": "Changed"}, "action": "approve"})
     assert unknown.status_code == 404
@@ -2352,7 +2607,13 @@ def test_console_approve_http_commits_before_resuming(context: Context, console_
         ("approve", {"note": "Approved", "unexpected": "value"}),
     ],
 )
-def test_console_approval_rejects_invalid_submission(context: Context, console_approval, monkeypatch, action, inputs):
+def test_console_approval_rejects_invalid_submission(
+    context: Context,
+    console_approval: tuple[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    action: str,
+    inputs: dict[str, JsonValue],
+) -> None:
     from services.human_input_v2.submission_service import (
         HumanInputFormError,
         HumanInputFormErrorCode,
@@ -2361,7 +2622,11 @@ def test_console_approval_rejects_invalid_submission(context: Context, console_a
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     form_id, token = console_approval
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     with pytest.raises(HumanInputFormError) as exc:
         HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
@@ -2369,14 +2634,16 @@ def test_console_approval_rejects_invalid_submission(context: Context, console_a
         )
     assert exc.value.code == HumanInputFormErrorCode.INVALID_INPUT
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
-    enqueue.assert_not_called()
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize(
     "scenario", ["unknown_token", "wrong_account", "wrong_surface", "wrong_form", "wrong_tenant", "removed_contact"]
 )
-def test_console_approval_requires_the_delivery_recipient(context: Context, console_approval, monkeypatch, scenario):
+def test_console_approval_requires_the_delivery_recipient(
+    context: Context, console_approval: tuple[str, str], monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
     from services.human_input_v2.submission_service import (
         HumanInputFormError,
         HumanInputFormErrorCode,
@@ -2388,20 +2655,25 @@ def test_console_approval_requires_the_delivery_recipient(context: Context, cons
     account_id = _ACCOUNT
     with context.sessions.begin() as session:
         delivery = session.scalar(sa.select(HumanInputDelivery))
+        assert delivery is not None
         match scenario:
             case "unknown_token":
                 token = "unknown-token"
             case "wrong_account":
                 account_id = AccountId(str(uuid4()))
             case "wrong_surface":
-                delivery.auth_type = "email_otp"
+                delivery.auth_type = SubmissionAuthType.EMAIL_OTP
             case "wrong_form":
                 delivery.recipient_id = str(uuid4())
             case "wrong_tenant":
                 delivery.tenant_id = str(uuid4())
             case "removed_contact":
                 session.execute(sa.delete(TenantAccountJoin).where(TenantAccountJoin.account_id == _ACCOUNT))
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     with pytest.raises(HumanInputFormError) as exc:
         HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
@@ -2409,12 +2681,14 @@ def test_console_approval_requires_the_delivery_recipient(context: Context, cons
         )
     assert exc.value.code == HumanInputFormErrorCode.NOT_FOUND
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
-    enqueue.assert_not_called()
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize("deadline", ["expiration_time", "global_timeout_deadline"])
-def test_console_approval_rejects_expiration(context: Context, console_approval, monkeypatch, deadline):
+def test_console_approval_rejects_expiration(
+    context: Context, console_approval: tuple[str, str], monkeypatch: pytest.MonkeyPatch, deadline: str
+) -> None:
     from services.human_input_v2.submission_service import (
         HumanInputFormError,
         HumanInputFormErrorCode,
@@ -2429,19 +2703,24 @@ def test_console_approval_rejects_expiration(context: Context, console_approval,
             .where(HumanInputForm.id == form_id)
             .values({deadline: naive_utc_now() - timedelta(seconds=1)})
         )
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     with pytest.raises(HumanInputFormError) as exc:
         HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
             account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Approved"}
         )
     assert exc.value.code == HumanInputFormErrorCode.EXPIRED
-    enqueue.assert_not_called()
+    assert not enqueue_calls
 
 
-def test_console_approval_preserves_first_submission(context: Context, console_approval, monkeypatch):
+def test_console_approval_preserves_first_submission(
+    context: Context, console_approval: tuple[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     from graphon.variables.segments import StringSegment
-    from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
     from services.human_input_v2.submission_service import (
         HumanInputFormError,
         HumanInputFormErrorCode,
@@ -2450,7 +2729,11 @@ def test_console_approval_preserves_first_submission(context: Context, console_a
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     form_id, token = console_approval
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     service = HumanInputSubmissionService(session_factory=context.sessions)
     service.submit_console_form(account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": " First "})
@@ -2463,7 +2746,7 @@ def test_console_approval_preserves_first_submission(context: Context, console_a
         assert form.submission is not None
         assert form.submission.raw_submission_inputs == {"note": " First "}
         assert form.submission.normalized_submission_data == {"note": StringSegment(value=" First ")}
-    enqueue.assert_called_once_with(kwargs={"payload": {"workflow_run_id": _RUN}})
+    assert enqueue_calls == [{"payload": {"workflow_run_id": _RUN}}]
 
 
 @pytest.mark.parametrize(
@@ -2475,7 +2758,12 @@ def test_console_approval_preserves_first_submission(context: Context, console_a
         WorkflowExecutionStatus.SUCCEEDED,
     ],
 )
-def test_console_approval_requires_paused_workflow(context: Context, console_approval, monkeypatch, status):
+def test_console_approval_requires_paused_workflow(
+    context: Context,
+    console_approval: tuple[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    status: WorkflowExecutionStatus,
+) -> None:
     from services.human_input_v2.submission_service import (
         HumanInputFormError,
         HumanInputFormErrorCode,
@@ -2485,8 +2773,12 @@ def test_console_approval_requires_paused_workflow(context: Context, console_app
 
     form_id, token = console_approval
     with context.sessions.begin() as session:
-        session.get(WorkflowRun, _RUN).status = status
-    enqueue = Mock()
+        session.get_one(WorkflowRun, _RUN).status = status
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     with pytest.raises(HumanInputFormError) as exc:
         HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
@@ -2494,12 +2786,14 @@ def test_console_approval_requires_paused_workflow(context: Context, console_app
         )
     assert exc.value.code == HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
-    enqueue.assert_not_called()
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize("pause_state", ["missing", "resumed"])
-def test_console_approval_requires_committed_active_pause(context: Context, console_approval, monkeypatch, pause_state):
+def test_console_approval_requires_committed_active_pause(
+    context: Context, console_approval: tuple[str, str], monkeypatch: pytest.MonkeyPatch, pause_state: str
+) -> None:
     from services.human_input_v2.submission_service import (
         HumanInputFormError,
         HumanInputFormErrorCode,
@@ -2515,7 +2809,11 @@ def test_console_approval_requires_committed_active_pause(context: Context, cons
             session.delete(pause)
         else:
             pause.resumed_at = naive_utc_now()
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     service = HumanInputSubmissionService(session_factory=context.sessions)
     with pytest.raises(HumanInputFormError) as exc:
@@ -2524,27 +2822,29 @@ def test_console_approval_requires_committed_active_pause(context: Context, cons
         )
     assert exc.value.code == HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
-    enqueue.assert_not_called()
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
+    assert not enqueue_calls
 
     with context.sessions.begin() as session:
         previous_pause = session.scalar(sa.select(WorkflowPause).where(WorkflowPause.workflow_run_id == _RUN))
         if previous_pause is not None:
             session.delete(previous_pause)
             session.flush()
-        run = session.get(WorkflowRun, _RUN)
+        run = session.get_one(WorkflowRun, _RUN)
         assert run is not None
         session.add(
             WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=_RUN, state_object_key="ready-checkpoint")
         )
     service.submit_console_form(account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Approved"})
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
-    enqueue.assert_called_once_with(kwargs={"payload": {"workflow_run_id": _RUN}})
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
+    assert enqueue_calls == [{"payload": {"workflow_run_id": _RUN}}]
 
 
 @pytest.mark.parametrize("choice", ["Yes", "Unknown", 1])
-def test_console_approval_uses_frozen_select_options(context: Context, console_approval, monkeypatch, choice):
+def test_console_approval_uses_frozen_select_options(
+    context: Context, console_approval: tuple[str, str], monkeypatch: pytest.MonkeyPatch, choice: str | int
+) -> None:
     from core.human_input_v2.resolved_form import SelectInput
     from services.human_input_v2.submission_service import (
         HumanInputFormError,
@@ -2555,16 +2855,16 @@ def test_console_approval_uses_frozen_select_options(context: Context, console_a
 
     form_id, token = console_approval
     with context.sessions.begin() as session:
-        record = session.get(HumanInputForm, form_id)
+        record = session.get_one(HumanInputForm, form_id)
         record.resolved_form = record.resolved_form.model_copy(
             update={"parts": (SelectInput(output_variable_name="note", options=("Yes", "No"), default_value=None),)}
         )
-    monkeypatch.setattr(resume_app_execution, "apply_async", Mock())
+    monkeypatch.setattr(resume_app_execution, "apply_async", lambda **_kwargs: None)
     service = HumanInputSubmissionService(session_factory=context.sessions)
     if choice == "Yes":
         service.submit_console_form(account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": choice})
         with context.sessions() as session:
-            assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
+            assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
     else:
         with pytest.raises(HumanInputFormError) as exc:
             service.submit_console_form(
@@ -2575,15 +2875,14 @@ def test_console_approval_uses_frozen_select_options(context: Context, console_a
 
 @pytest.mark.parametrize("scenario", ["single", "list", "empty_list", "foreign_file", "over_limit", "invalid_mapping"])
 def test_console_approval_validates_files_and_persists_typed_segments(
-    context: Context, console_approval, monkeypatch, scenario
-):
+    context: Context, console_approval: tuple[str, str], monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
     from core.db.session_factory import session_factory
     from core.human_input_v2.resolved_form import FileInput, FileListInput
     from extensions.storage.storage_type import StorageType
     from graphon.file.enums import FileTransferMethod, FileType
     from graphon.variables.segments import ArrayFileSegment, FileSegment
     from models.model import UploadFile
-    from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
     from services.human_input_v2.submission_service import (
         HumanInputFormError,
         HumanInputFormErrorCode,
@@ -2615,14 +2914,14 @@ def test_console_approval_validates_files_and_persists_typed_segments(
             "allowed_file_upload_methods": (FileTransferMethod.LOCAL_FILE,),
         }
         part = (
-            FileListInput(**constraints, number_limits=1)
+            FileListInput.model_validate({**constraints, "number_limits": 1})
             if scenario in ("list", "empty_list", "over_limit", "invalid_mapping")
-            else FileInput(**constraints)
+            else FileInput.model_validate(constraints)
         )
-        record = session.get(HumanInputForm, form_id)
+        record = session.get_one(HumanInputForm, form_id)
         record.resolved_form = record.resolved_form.model_copy(update={"parts": (part,)})
-    mapping = {"transfer_method": "local_file", "upload_file_id": file_id, "type": "document"}
-    submitted = mapping
+    mapping: dict[str, JsonValue] = {"transfer_method": "local_file", "upload_file_id": file_id, "type": "document"}
+    submitted: JsonValue = mapping
     match scenario:
         case "list":
             submitted = [mapping]
@@ -2632,7 +2931,11 @@ def test_console_approval_validates_files_and_persists_typed_segments(
             submitted = [mapping, mapping]
         case "invalid_mapping":
             submitted = [{}]
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
     service = HumanInputSubmissionService(session_factory=context.sessions)
@@ -2642,7 +2945,7 @@ def test_console_approval_validates_files_and_persists_typed_segments(
                 account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": submitted}
             )
         assert exc.value.code == HumanInputFormErrorCode.INVALID_INPUT
-        enqueue.assert_not_called()
+        assert not enqueue_calls
         return
     service.submit_console_form(account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": submitted})
     with context.sessions() as session:
@@ -2671,8 +2974,13 @@ def test_console_approval_validates_files_and_persists_typed_segments(
     ids=["all-failed", "first-failed", "last-failed", "all-succeeded", "initiator-with-email-failed"],
 )
 def test_initial_delivery_results_control_graph_failure_and_approval(
-    context: Context, providers, monkeypatch, recipient_outcomes, include_initiator, expect_failure
-):
+    context: Context,
+    providers: tuple[Mock, EmailOutbox],
+    monkeypatch: pytest.MonkeyPatch,
+    recipient_outcomes: tuple[bool, ...],
+    include_initiator: bool,
+    expect_failure: bool,
+) -> None:
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
     from core.db.session_factory import session_factory
     from core.workflow.node_factory import DifyNodeFactory
@@ -2696,15 +3004,15 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
     from repositories.human_input_v2.email_channel.ports import EmailProviderOperationError
 
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
-    provider_accept = providers[1].side_effect
+    provider_accept = providers[1].on_send
     outcomes = iter(recipient_outcomes)
 
-    def send(*args, **kwargs):
+    def send(candidate: ResendCandidate, *, to: str, subject: str, html: str) -> None:
         if not next(outcomes):
             raise EmailProviderOperationError("provider_timeout")
-        return provider_accept(*args, **kwargs)
+        return provider_accept(candidate, to=to, subject=subject, html=html)
 
-    providers[1].side_effect = send
+    providers[1].on_send = send
     pool = VariablePool()
     pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID), _RUN)
     state = RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=0)
@@ -2720,7 +3028,9 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
         ),
         call_depth=0,
     )
-    recipients = [OnetimeEmail(email=f"recipient{index}@example.com") for index in range(len(recipient_outcomes))]
+    recipients: list[Initiator | OnetimeEmail] = [
+        OnetimeEmail(email=f"recipient{index}@example.com") for index in range(len(recipient_outcomes))
+    ]
     if include_initiator:
         recipients[0] = Initiator()
     approval = DifyNodeFactory(params, state).create_node(
@@ -2759,7 +3069,7 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
         events.extend(engine.run())
     starts = [event.node_id for event in events if isinstance(event, NodeRunStartedEvent)]
     assert starts == ["start", "approval"]
-    assert providers[1].call_count == len(recipient_outcomes)
+    assert len(providers[1].messages) == len(recipient_outcomes)
     assert not any(isinstance(event, GraphRunSucceededEvent) for event in events)
     if expect_failure:
         failures = [event for event in events if isinstance(event, NodeRunFailedEvent)]
@@ -2818,11 +3128,13 @@ def test_initial_delivery_results_control_graph_failure_and_approval(
         )
         assert isinstance(resumed[-1], GraphRunSucceededEvent)
         assert [event.node_id for event in resumed if isinstance(event, NodeRunStartedEvent)] == ["approval", "end"]
-        assert providers[1].call_count == len(recipient_outcomes)
+        assert len(providers[1].messages) == len(recipient_outcomes)
 
 
 @pytest.mark.parametrize("recipient_kind", ["external_contact", "dynamic_email", "onetime_email"])
-def test_public_email_links_use_the_v2_form_page(context: Context, providers, recipient_kind):
+def test_public_email_links_use_the_v2_form_page(
+    context: Context, providers: tuple[Mock, EmailOutbox], recipient_kind: str
+) -> None:
     from repositories.human_input_v2.contact import ExternalContact
     from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
     from services.human_input_v2.composition import build_human_input_delivery_service
@@ -2858,11 +3170,13 @@ def test_public_email_links_use_the_v2_form_page(context: Context, providers, re
     )
 
     email_send = providers[1]
-    assert email_send.call_args.kwargs["to"] == email
-    assert "https://app.example.com/form-v2/" in email_send.call_args.kwargs["html"]
+    assert email_send.messages[-1].to == email
+    assert "https://app.example.com/form-v2/" in email_send.messages[-1].html
 
 
-def test_delivery_uses_one_injected_email_client_for_multiple_recipients(context: Context, monkeypatch):
+def test_delivery_uses_one_injected_email_client_for_multiple_recipients(
+    context: Context, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from configs import dify_config
     from repositories.human_input_v2.delivery_attempt_repository import DeliveryStatus
     from services.human_input_v2.delivery_service import HumanInputDeliveryService
@@ -2883,7 +3197,9 @@ def test_delivery_uses_one_injected_email_client_for_multiple_recipients(context
 
 
 @pytest.mark.parametrize("configured", [False, True])
-def test_enterprise_email_delivery_uses_configured_deployment_client(context: Context, monkeypatch, configured):
+def test_enterprise_email_delivery_uses_configured_deployment_client(
+    context: Context, monkeypatch: pytest.MonkeyPatch, configured: bool
+) -> None:
     from configs import dify_config
     from enums import DeploymentEdition
     from extensions.ext_mail import mail
@@ -2893,7 +3209,11 @@ def test_enterprise_email_delivery_uses_configured_deployment_client(context: Co
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr(dify_config, "APP_WEB_URL", "https://app.example.com")
     monkeypatch.setattr(mail, "is_inited", lambda: configured)
-    send = Mock()
+    sent_mail: list[dict[str, str]] = []
+
+    def send(*, to: str, subject: str, html: str) -> None:
+        sent_mail.append({"to": to, "subject": subject, "html": html})
+
     monkeypatch.setattr(mail, "send", send)
     created = context.prepare(_node(OnetimeEmail(email="recipient@example.com")))
     assert isinstance(created, CreatedForm)
@@ -2903,19 +3223,21 @@ def test_enterprise_email_delivery_uses_configured_deployment_client(context: Co
     )
     if configured:
         assert [attempt.status for attempt in result.attempts] == [DeliveryStatus.SUCCEEDED]
-        send.assert_called_once()
-        assert send.call_args.kwargs["to"] == "recipient@example.com"
-        assert send.call_args.kwargs["subject"] == "Review"
-        assert "https://app.example.com/form-v2/" in send.call_args.kwargs["html"]
+        assert len(sent_mail) == 1
+        assert sent_mail[-1]["to"] == "recipient@example.com"
+        assert sent_mail[-1]["subject"] == "Review"
+        assert "https://app.example.com/form-v2/" in sent_mail[-1]["html"]
     else:
         assert result.attempts == ()
-        send.assert_not_called()
+        assert not sent_mail
         with context.sessions() as session:
             assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputDelivery)) == 0
 
 
 @pytest.fixture
-def web_app_approval(context: Context, monkeypatch):
+def web_app_approval(
+    context: Context, monkeypatch: pytest.MonkeyPatch
+) -> tuple[FlaskClient, str, str, dict[str, str], str]:
     import hashlib
 
     from flask import Flask
@@ -2953,7 +3275,7 @@ def web_app_approval(context: Context, monkeypatch):
                     id="published-approval-workflow",
                     tenant_id=_TENANT,
                     app_id=_APP,
-                    type="workflow",
+                    type=WorkflowType.WORKFLOW,
                     version="published",
                     graph="{}",
                     _features="{}",
@@ -3001,7 +3323,7 @@ def web_app_approval(context: Context, monkeypatch):
                 target_snapshot=InitiatorSnapshot(protected_form_token="encrypted-token"),
             ),
         )
-        run = session.get(WorkflowRun, _RUN)
+        run = session.get_one(WorkflowRun, _RUN)
         assert run is not None
         run.status = WorkflowExecutionStatus.PAUSED
         session.add(WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=_RUN, state_object_key="web-checkpoint"))
@@ -3029,12 +3351,15 @@ def test_web_app_approval_reads_frozen_form(
     assert response.status_code == 200, response.json
     assert response.json is not None
     assert response.json["resolved_form"]["legacy_form_content"] == "Review: {{#$output.note#}}"
+    assert response.json is not None
     assert response.json["resolved_form"]["parts"][1] == {
         "type": "paragraph_input",
         "output_variable_name": "note",
         "default_value": None,
     }
+    assert response.json is not None
     assert response.json["resolved_form"]["actions"][0]["id"] == "approve"
+    assert response.json is not None
     assert isinstance(response.json["expiration_time"], int)
     with context.sessions() as session:
         audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
@@ -3046,8 +3371,10 @@ def test_web_app_approval_reads_frozen_form(
 
 
 def test_web_app_approval_commits_before_resuming_and_preserves_first_submission(
-    context: Context, web_app_approval, monkeypatch
-):
+    context: Context,
+    web_app_approval: tuple[FlaskClient, str, str, dict[str, str], str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import json
 
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -3055,11 +3382,12 @@ def test_web_app_approval_commits_before_resuming_and_preserves_first_submission
     client, form_id, token, headers, _ = web_app_approval
     published = []
 
-    def publish(*, kwargs):
+    def publish(*, kwargs: dict[str, dict[str, str]]) -> None:
         with context.sessions() as session:
-            form = session.get(HumanInputForm, form_id)
+            form = session.get_one(HumanInputForm, form_id)
             assert form is not None
             assert form.status == HumanInputFormStatus.SUBMITTED
+            assert form.raw_submission_inputs is not None
             assert json.loads(form.raw_submission_inputs) == {"note": " First "}
         published.append(kwargs)
 
@@ -3073,16 +3401,24 @@ def test_web_app_approval_commits_before_resuming_and_preserves_first_submission
         f"/form/human-input/v2/{token}", headers=headers, json={"action": "approve", "inputs": {"note": "Second"}}
     )
     assert duplicate.status_code == 409
+    assert duplicate.json is not None
     assert duplicate.json["code"] == "already_submitted"
     reread = client.get(f"/form/human-input/v2/{token}", headers=headers)
     assert reread.status_code == 409
+    assert reread.json is not None
     assert reread.json["code"] == "already_submitted"
     assert published == [{"payload": {"workflow_run_id": _RUN}}]
 
 
 @pytest.mark.parametrize("method", ["get", "post"])
 @pytest.mark.parametrize("passport", [None, "invalid", "expired"])
-def test_web_app_approval_requires_passport(context: Context, web_app_approval, monkeypatch, method, passport):
+def test_web_app_approval_requires_passport(
+    context: Context,
+    web_app_approval: tuple[FlaskClient, str, str, dict[str, str], str],
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    passport: str | None,
+) -> None:
     from libs.passport import PassportService
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
@@ -3095,7 +3431,11 @@ def test_web_app_approval_requires_passport(context: Context, web_app_approval, 
         )
     else:
         headers["X-App-Passport"] = passport
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     response = client.open(
         f"/form/human-input/v2/{token}",
@@ -3105,8 +3445,8 @@ def test_web_app_approval_requires_passport(context: Context, web_app_approval, 
     )
     assert response.status_code == 401
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
-    enqueue.assert_not_called()
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize(
@@ -3128,15 +3468,19 @@ def test_web_app_approval_requires_passport(context: Context, web_app_approval, 
     ],
 )
 def test_web_app_approval_requires_original_app_and_recipient(
-    context: Context, web_app_approval, monkeypatch, scenario
-):
+    context: Context,
+    web_app_approval: tuple[FlaskClient, str, str, dict[str, str], str],
+    monkeypatch: pytest.MonkeyPatch,
+    scenario: str,
+) -> None:
     from libs.passport import PassportService
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     client, form_id, token, headers, end_user_id = web_app_approval
     with context.sessions.begin() as session:
         delivery = session.scalar(sa.select(HumanInputDelivery))
-        end_user = session.get(EndUser, end_user_id)
+        assert delivery is not None
+        end_user = session.get_one(EndUser, end_user_id)
         match scenario:
             case "unknown_token":
                 token = "legacy-or-unknown-token"
@@ -3156,25 +3500,29 @@ def test_web_app_approval_requires_original_app_and_recipient(
             case "other_tenant":
                 end_user.tenant_id = str(uuid4())
             case "console" | "email_otp" | "im":
-                delivery.auth_type = scenario
+                delivery.auth_type = SubmissionAuthType(scenario)
             case "wrong_recipient":
                 delivery.recipient_id = str(uuid4())
             case "wrong_owner":
                 delivery.tenant_id = str(uuid4())
             case "form_other_app":
-                session.get(HumanInputForm, form_id).app_id = str(uuid4())
+                session.get_one(HumanInputForm, form_id).app_id = str(uuid4())
             case "form_other_tenant":
-                session.get(HumanInputForm, form_id).tenant_id = str(uuid4())
+                session.get_one(HumanInputForm, form_id).tenant_id = str(uuid4())
             case "recipient_other_form":
-                session.get(HumanInputRecipient, delivery.recipient_id).form_id = str(uuid4())
+                session.get_one(HumanInputRecipient, delivery.recipient_id).form_id = str(uuid4())
             case "contact_recipient":
-                recipient = session.get(HumanInputRecipient, delivery.recipient_id)
-                recipient.subject_type = "contact"
+                recipient = session.get_one(HumanInputRecipient, delivery.recipient_id)
+                recipient.subject_type = RecipientSubjectType.CONTACT
                 recipient.subject_value = _CONTACT
     headers["X-App-Passport"] = PassportService().issue(
         {"app_id": _APP, "app_code": "approval-app", "end_user_id": end_user_id}
     )
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     for method in ("GET", "POST"):
         response = client.open(
@@ -3185,12 +3533,17 @@ def test_web_app_approval_requires_original_app_and_recipient(
         )
         assert response.status_code == 404
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
-    enqueue.assert_not_called()
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize("deadline", ["expiration_time", "global_timeout_deadline"])
-def test_web_app_approval_rejects_expiration(context: Context, web_app_approval, monkeypatch, deadline):
+def test_web_app_approval_rejects_expiration(
+    context: Context,
+    web_app_approval: tuple[FlaskClient, str, str, dict[str, str], str],
+    monkeypatch: pytest.MonkeyPatch,
+    deadline: str,
+) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     client, form_id, token, headers, _ = web_app_approval
@@ -3200,7 +3553,11 @@ def test_web_app_approval_rejects_expiration(context: Context, web_app_approval,
             .where(HumanInputForm.id == form_id)
             .values({deadline: naive_utc_now() - timedelta(seconds=1)})
         )
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     for method in ("GET", "POST"):
         response = client.open(
@@ -3210,33 +3567,45 @@ def test_web_app_approval_rejects_expiration(context: Context, web_app_approval,
             json={"action": "approve", "inputs": {"note": "Approved"}},
         )
         assert response.status_code == 410
+        assert response.json is not None
         assert response.json["code"] == "expired"
-    enqueue.assert_not_called()
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize("scenario", ["running", "missing_pause", "resumed_pause"])
-def test_web_app_approval_requires_active_pause(context: Context, web_app_approval, monkeypatch, scenario):
+def test_web_app_approval_requires_active_pause(
+    context: Context,
+    web_app_approval: tuple[FlaskClient, str, str, dict[str, str], str],
+    monkeypatch: pytest.MonkeyPatch,
+    scenario: str,
+) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     client, form_id, token, headers, _ = web_app_approval
     with context.sessions.begin() as session:
         pause = session.scalar(sa.select(WorkflowPause))
+        assert pause is not None
         if scenario == "running":
-            session.get(WorkflowRun, _RUN).status = WorkflowExecutionStatus.RUNNING
+            session.get_one(WorkflowRun, _RUN).status = WorkflowExecutionStatus.RUNNING
         elif scenario == "missing_pause":
             session.delete(pause)
         else:
             pause.resumed_at = naive_utc_now()
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     response = client.post(
         f"/form/human-input/v2/{token}", headers=headers, json={"action": "approve", "inputs": {"note": "Approved"}}
     )
     assert response.status_code == 409
+    assert response.json is not None
     assert response.json["code"] == "workflow_not_active"
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
-    enqueue.assert_not_called()
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize(
@@ -3258,17 +3627,27 @@ def test_web_app_approval_requires_active_pause(context: Context, web_app_approv
         ),
     ],
 )
-def test_web_app_approval_rejects_invalid_payload(context: Context, web_app_approval, monkeypatch, payload, status):
+def test_web_app_approval_rejects_invalid_payload(
+    context: Context,
+    web_app_approval: tuple[FlaskClient, str, str, dict[str, str], str],
+    monkeypatch: pytest.MonkeyPatch,
+    payload: dict[str, JsonValue],
+    status: int,
+) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     client, form_id, token, headers, _ = web_app_approval
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     response = client.post(f"/form/human-input/v2/{token}", headers=headers, json=payload)
     assert response.status_code == status
     with context.sessions() as session:
-        assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
-    enqueue.assert_not_called()
+        assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
+    assert not enqueue_calls
 
 
 @dataclass
@@ -3280,7 +3659,9 @@ class PublicFormApproval:
     otp_code: str
     redis: Mock
 
-    def submit(self, *, action: str = "approve", inputs=None, proof=True):
+    def submit(
+        self, *, action: str = "approve", inputs: dict[str, JsonValue] | None = None, proof: bool = True
+    ) -> TestResponse:
         body = {"action": action, "inputs": {"note": "Approved"} if inputs is None else inputs}
         if proof:
             body.update(challenge_token=self.challenge.challenge_token, otp_code=self.otp_code)
@@ -3288,11 +3669,14 @@ class PublicFormApproval:
 
 
 @pytest.fixture(params=["email", "external_contact"])
-def public_form_approval(context: Context, monkeypatch, request):
+def public_form_approval(
+    context: Context, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> PublicFormApproval:
     import hashlib
-    from unittest.mock import MagicMock
 
     from flask import Flask
+    from redis import Redis
+    from redis.client import Pipeline
 
     from controllers.web import human_input_form_access_request as controller
     from extensions.ext_redis import RedisClientWrapper
@@ -3349,21 +3733,26 @@ def public_form_approval(context: Context, monkeypatch, request):
                 target_snapshot=EmailTargetSnapshot(email_address="approver@example.com"),
             ),
         )
-        run = session.get(WorkflowRun, _RUN)
+        run = session.get_one(WorkflowRun, _RUN)
         run.status = WorkflowExecutionStatus.PAUSED
         session.add(
             WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=_RUN, state_object_key="public-checkpoint")
         )
     cache: dict[str, bytes] = {}
     redis = create_autospec(RedisClientWrapper, instance=True)
-    pipeline = MagicMock()
-    pipeline.__enter__.return_value = pipeline
-    pipeline.set.side_effect = lambda key, value, **_kwargs: cache.__setitem__(key, str(value).encode())
+    pipeline = Redis().pipeline()
+
+    def store_challenge(key: str, value: str | int, **_kwargs: object) -> Pipeline[bytes]:
+        cache[key] = str(value).encode()
+        return pipeline
+
+    monkeypatch.setattr(pipeline, "set", store_challenge)
+    monkeypatch.setattr(pipeline, "execute", lambda: [])
     redis.pipeline.return_value = pipeline
     redis.get.side_effect = lambda key: cache.get(serialize_redis_name(key))
     redis.ttl.side_effect = lambda key: 600 if serialize_redis_name(key) in cache else -2
 
-    def increment(key):
+    def increment(key: str) -> int | None:
         physical = serialize_redis_name(key)
         if physical not in cache:
             return None
@@ -3371,7 +3760,7 @@ def public_form_approval(context: Context, monkeypatch, request):
         cache[physical] = str(count).encode()
         return count
 
-    def delete(*keys):
+    def delete(*keys: str) -> None:
         for key in keys:
             cache.pop(serialize_redis_name(key), None)
 
@@ -3380,7 +3769,11 @@ def public_form_approval(context: Context, monkeypatch, request):
     limiter = create_autospec(RateLimiter, instance=True)
     limiter.acquire.return_value = 0
     limiter.retry_after.return_value = 60
-    send = Mock()
+    sent_codes: list[tuple[str, str]] = []
+
+    def send(address: str, code: str) -> None:
+        sent_codes.append((address, code))
+
     otp_service = EmailOtpService(
         session_factory=context.sessions, redis=redis, limiter=limiter, mail=OtpMail(available=lambda: True, send=send)
     )
@@ -3388,12 +3781,12 @@ def public_form_approval(context: Context, monkeypatch, request):
     monkeypatch.setattr(controller, "build_email_otp_service", lambda: otp_service)
     app = Flask(__name__)
     ExternalApi(app).add_namespace(controller.web_ns, path="/api")
-    return PublicFormApproval(app.test_client(), created.form.id, token, challenge, send.call_args.args[1], redis)
+    return PublicFormApproval(app.test_client(), created.form.id, token, challenge, sent_codes[-1][1], redis)
 
 
 def test_public_form_submission_commits_form_and_audit_before_resuming(
-    context: Context, public_form_approval, monkeypatch
-):
+    context: Context, public_form_approval: PublicFormApproval, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import json
 
     from models.human_input_v2 import HumanInputAuditEvent, OtpVerificationEvent
@@ -3402,10 +3795,11 @@ def test_public_form_submission_commits_form_and_audit_before_resuming(
     approval = public_form_approval
     published = []
 
-    def publish(*, kwargs):
+    def publish(*, kwargs: dict[str, dict[str, str]]) -> None:
         with context.sessions() as session:
-            form = session.get(HumanInputForm, approval.form_id)
+            form = session.get_one(HumanInputForm, approval.form_id)
             assert form.status == HumanInputFormStatus.SUBMITTED
+            assert form.raw_submission_inputs is not None
             assert json.loads(form.raw_submission_inputs) == {"note": " First "}
             (audit,) = [
                 event
@@ -3429,17 +3823,22 @@ def test_public_form_submission_commits_form_and_audit_before_resuming(
     assert accepted.json == {}
     duplicate = approval.submit(inputs={"note": "Second"})
     assert duplicate.status_code == 412
+    assert duplicate.json is not None
     assert duplicate.json["code"] == "human_input_form_submitted"
     assert published == [{"payload": {"workflow_run_id": _RUN}}]
 
 
 def test_reading_public_definition_does_not_authorize_or_consume_submission_proof(
-    context: Context, public_form_approval, monkeypatch
-):
+    context: Context, public_form_approval: PublicFormApproval, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     approval = public_form_approval
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     response = approval.client.get(f"/api/form/human-input/v2/public/{approval.token}")
     assert response.status_code == 200
@@ -3447,13 +3846,15 @@ def test_reading_public_definition_does_not_authorize_or_consume_submission_proo
     approval.redis.delete.assert_not_called()
     assert approval.submit(proof=False).status_code == 400
     with context.sessions() as session:
-        assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
-    enqueue.assert_not_called()
+        assert session.get_one(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
+    assert not enqueue_calls
     assert approval.submit().status_code == 200
 
 
 @pytest.mark.parametrize("scenario", ["missing", "wrong_code", "unknown_challenge"])
-def test_public_form_submission_requires_proof(context: Context, public_form_approval, monkeypatch, scenario):
+def test_public_form_submission_requires_proof(
+    context: Context, public_form_approval: PublicFormApproval, monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
     from models.human_input_v2 import HumanInputAuditEvent, OtpVerificationEvent
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
@@ -3462,51 +3863,66 @@ def test_public_form_submission_requires_proof(context: Context, public_form_app
         approval.otp_code = "wrong-code"
     elif scenario == "unknown_challenge":
         approval.challenge = approval.challenge.model_copy(update={"challenge_token": "unknown-challenge"})
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     response = approval.submit(proof=scenario != "missing")
     assert response.status_code == 400
+    assert response.json is not None
     assert response.json["code"] == (
         "human_input_challenge_expired" if scenario == "unknown_challenge" else "human_input_invalid_otp"
     )
     with context.sessions() as session:
-        assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
+        assert session.get_one(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
         assert not any(
             event.payload.succeeded
             for event in session.scalars(sa.select(HumanInputAuditEvent))
             if isinstance(event.payload, OtpVerificationEvent)
         )
     approval.redis.delete.assert_not_called()
-    enqueue.assert_not_called()
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize(
     ("action", "inputs"), [("reject", {"note": "Approved"}), ("approve", {}), ("approve", {"note": 123})]
 )
 def test_public_form_invalid_input_keeps_proof_for_retry(
-    context: Context, public_form_approval, monkeypatch, action, inputs
-):
+    context: Context,
+    public_form_approval: PublicFormApproval,
+    monkeypatch: pytest.MonkeyPatch,
+    action: str,
+    inputs: dict[str, JsonValue],
+) -> None:
     from models.human_input_v2 import HumanInputAuditEvent
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     approval = public_form_approval
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     rejected = approval.submit(action=action, inputs=inputs)
     assert rejected.status_code == 400
     with context.sessions() as session:
-        assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
+        assert session.get_one(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
         assert not any(
             isinstance(event.payload, OtpVerificationEvent)
             for event in session.scalars(sa.select(HumanInputAuditEvent))
         )
     approval.redis.delete.assert_not_called()
-    enqueue.assert_not_called()
+    assert not enqueue_calls
     assert approval.submit().status_code == 200
 
 
 @pytest.mark.parametrize("deadline", ["expiration_time", "global_timeout_deadline"])
-def test_public_form_submission_rejects_expiration(context: Context, public_form_approval, monkeypatch, deadline):
+def test_public_form_submission_rejects_expiration(
+    context: Context, public_form_approval: PublicFormApproval, monkeypatch: pytest.MonkeyPatch, deadline: str
+) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     approval = public_form_approval
@@ -3516,37 +3932,52 @@ def test_public_form_submission_rejects_expiration(context: Context, public_form
             .where(HumanInputForm.id == approval.form_id)
             .values({deadline: naive_utc_now() - timedelta(seconds=1)})
         )
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     response = approval.submit()
     assert response.status_code == 412
+    assert response.json is not None
     assert response.json["code"] == "human_input_form_expired"
     approval.redis.delete.assert_not_called()
-    enqueue.assert_not_called()
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize("scenario", ["running", "missing_pause", "resumed_pause"])
-def test_public_form_submission_requires_active_pause(context: Context, public_form_approval, monkeypatch, scenario):
+def test_public_form_submission_requires_active_pause(
+    context: Context, public_form_approval: PublicFormApproval, monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     with context.sessions.begin() as session:
         pause = session.scalar(sa.select(WorkflowPause))
+        assert pause is not None
         if scenario == "running":
-            session.get(WorkflowRun, _RUN).status = WorkflowExecutionStatus.RUNNING
+            session.get_one(WorkflowRun, _RUN).status = WorkflowExecutionStatus.RUNNING
         elif scenario == "missing_pause":
             session.delete(pause)
         else:
             pause.resumed_at = naive_utc_now()
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     response = public_form_approval.submit()
     assert response.status_code == 409
+    assert response.json is not None
     assert response.json["code"] == "workflow_not_active"
     public_form_approval.redis.delete.assert_not_called()
-    enqueue.assert_not_called()
+    assert not enqueue_calls
 
 
-def test_public_form_audit_failure_rolls_back_and_keeps_proof(context: Context, public_form_approval, monkeypatch):
+def test_public_form_audit_failure_rolls_back_and_keeps_proof(
+    context: Context, public_form_approval: PublicFormApproval, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from models.human_input_v2 import HumanInputAuditEvent
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
@@ -3554,32 +3985,38 @@ def test_public_form_audit_failure_rolls_back_and_keeps_proof(context: Context, 
     with context.sessions() as session:
         engine = session.get_bind()
 
-    def fail_audit(_connection, _cursor, statement, _parameters, _execution, _many):
+    def fail_audit(
+        _connection: object, _cursor: object, statement: str, _parameters: object, _execution: object, _many: bool
+    ) -> None:
         if statement.startswith("INSERT INTO hitlv2_audit_events"):
             raise OSError("Audit storage unavailable")
 
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
-    sa.event.listen(engine, "before_cursor_execute", fail_audit)
+    event.listen(engine, "before_cursor_execute", fail_audit)
     try:
         assert approval.submit().status_code == 500
     finally:
-        sa.event.remove(engine, "before_cursor_execute", fail_audit)
+        event.remove(engine, "before_cursor_execute", fail_audit)
     with context.sessions() as session:
-        assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
+        assert session.get_one(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
         assert not any(
             isinstance(event.payload, OtpVerificationEvent)
             for event in session.scalars(sa.select(HumanInputAuditEvent))
         )
     approval.redis.delete.assert_not_called()
-    enqueue.assert_not_called()
+    assert not enqueue_calls
     assert approval.submit().status_code == 200
 
 
 @pytest.mark.parametrize("scenario", ["contact_email", "recipient_removed", "delivery_auth", "form_owner"])
 def test_public_form_submission_rechecks_current_authorization(
-    context: Context, public_form_approval, monkeypatch, scenario
-):
+    context: Context, public_form_approval: PublicFormApproval, monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
     from models.human_input_v2 import HumanInputAuditEvent
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
@@ -3587,41 +4024,48 @@ def test_public_form_submission_rechecks_current_authorization(
     read = approval.redis.get.side_effect
     changed = False
 
-    def revoke_on_read(key):
+    def revoke_on_read(key: str) -> bytes | None:
         nonlocal changed
         stored = read(key)
         if not changed:
             changed = True
             with context.sessions.begin() as session:
                 delivery = session.scalar(sa.select(HumanInputDelivery))
-                recipient = session.get(HumanInputRecipient, delivery.recipient_id)
+                assert delivery is not None
+                recipient = session.get_one(HumanInputRecipient, delivery.recipient_id)
                 match scenario:
                     case "contact_email":
                         if recipient.subject_type == "contact":
-                            session.scalar(sa.select(HumanInputExternalContactProfile)).email = "changed@example.com"
+                            session.scalars(
+                                sa.select(HumanInputExternalContactProfile)
+                            ).one().email = "changed@example.com"
                         else:
                             recipient.subject_value = "changed@example.com"
                     case "recipient_removed":
                         session.delete(recipient)
                     case "delivery_auth":
-                        delivery.auth_type = "console"
+                        delivery.auth_type = SubmissionAuthType.CONSOLE
                     case "form_owner":
-                        session.get(HumanInputForm, approval.form_id).app_id = str(uuid4())
+                        session.get_one(HumanInputForm, approval.form_id).app_id = str(uuid4())
         return stored
 
     approval.redis.get.side_effect = revoke_on_read
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     response = approval.submit()
     assert response.status_code == (400 if scenario == "contact_email" else 404)
     with context.sessions() as session:
-        assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
+        assert session.get_one(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
         assert not any(
             isinstance(event.payload, OtpVerificationEvent)
             for event in session.scalars(sa.select(HumanInputAuditEvent))
         )
     approval.redis.delete.assert_not_called()
-    enqueue.assert_not_called()
+    assert not enqueue_calls
 
 
 @pytest.mark.parametrize("denial", [None, "recipient", "expired", "token"])

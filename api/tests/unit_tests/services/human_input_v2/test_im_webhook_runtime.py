@@ -6,12 +6,13 @@ import json
 import time
 from functools import partial
 from pathlib import Path
-from unittest.mock import Mock, create_autospec
+from unittest.mock import create_autospec
 from urllib.parse import urlencode
 from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from flask import Blueprint
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -91,7 +92,7 @@ def binding_scope() -> str:
 
 
 @pytest.fixture
-def approval(context: Context, monkeypatch: pytest.MonkeyPatch, binding_scope: str):
+def approval(context: Context, monkeypatch: pytest.MonkeyPatch, binding_scope: str) -> tuple[str, IMChannelId]:
     from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
 
     key_provider = create_autospec(BaseKeyProvider, instance=True)
@@ -192,7 +193,9 @@ def approval(context: Context, monkeypatch: pytest.MonkeyPatch, binding_scope: s
 
 
 @pytest.fixture
-def callback_app(approval, fresh_blueprints, monkeypatch):
+def callback_app(
+    approval: tuple[str, IMChannelId], fresh_blueprints: dict[str, Blueprint], monkeypatch: pytest.MonkeyPatch
+) -> tuple[DifyApp, list[str]]:
     _ = approval, fresh_blueprints
     app = DifyApp(__name__)
     app.config["TESTING"] = True
@@ -228,8 +231,8 @@ def _headers(body: bytes, *, secret: str = _SIGNING_SECRET, age: int = 0) -> dic
 
 @pytest.mark.parametrize("provider", [IMProvider.FEISHU, IMProvider.LARK, IMProvider.SLACK])
 def test_url_verification_returns_provider_response_without_persisting_or_publishing_an_event(
-    context, approval, callback_app, provider
-):
+    context: Context, approval: tuple[str, IMChannelId], callback_app: tuple[DifyApp, list[str]], provider: IMProvider
+) -> None:
     from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentialsAdapter
 
     _, channel_id = approval
@@ -260,18 +263,24 @@ def test_url_verification_returns_provider_response_without_persisting_or_publis
         assert session.scalar(sa.select(sa.func.count()).select_from(IMMessageEvent)) == 0
 
 
-def test_signed_callback_is_committed_before_ack_then_submitted_by_worker(context, approval, callback_app, monkeypatch):
+def test_signed_callback_is_committed_before_ack_then_submitted_by_worker(
+    context: Context,
+    approval: tuple[str, IMChannelId],
+    callback_app: tuple[DifyApp, list[str]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     form_id, _ = approval
     app, published = callback_app
     resumed = []
 
-    def resume(*, kwargs):
+    def resume(*, kwargs: dict[str, dict[str, str]]) -> None:
         with context.sessions() as session:
             form = session.get_one(HumanInputForm, form_id)
             assert form.status == HumanInputFormStatus.SUBMITTED
             assert form.selected_action_id == "approve"
+            assert form.raw_submission_inputs is not None
             assert json.loads(form.raw_submission_inputs) == {"note": "你好，世界 🌍", "decision": "选项 β"}
         resumed.append(kwargs["payload"]["workflow_run_id"])
 
@@ -292,7 +301,9 @@ def test_signed_callback_is_committed_before_ack_then_submitted_by_worker(contex
 
 
 @pytest.mark.parametrize(("secret", "age"), [("wrong-signing-secret", 0), (_SIGNING_SECRET, 600)])
-def test_invalid_signature_or_old_request_cannot_enter_inbox(context, callback_app, secret, age):
+def test_invalid_signature_or_old_request_cannot_enter_inbox(
+    context: Context, callback_app: tuple[DifyApp, list[str]], secret: str, age: int
+) -> None:
     app, published = callback_app
     body = _request_body()
     response = app.test_client().post(_PATH, data=body, headers=_headers(body, secret=secret, age=age))
@@ -303,7 +314,13 @@ def test_invalid_signature_or_old_request_cannot_enter_inbox(context, callback_a
 
 
 @pytest.mark.parametrize(("user_id", "token"), [("another-user", _TOKEN), (_USER, "unknown-token")])
-def test_authenticated_callback_cannot_submit_another_recipient(context, approval, callback_app, user_id, token):
+def test_authenticated_callback_cannot_submit_another_recipient(
+    context: Context,
+    approval: tuple[str, IMChannelId],
+    callback_app: tuple[DifyApp, list[str]],
+    user_id: str,
+    token: str,
+) -> None:
     form_id, _ = approval
     app, published = callback_app
     body = _request_body(user_id=user_id, token=token)
@@ -315,7 +332,9 @@ def test_authenticated_callback_cannot_submit_another_recipient(context, approva
         assert session.get_one(IMMessageEvent, published[0]).processed_at is not None
 
 
-def test_oversized_callback_and_unknown_route_fail_before_acceptance(callback_app, monkeypatch):
+def test_oversized_callback_and_unknown_route_fail_before_acceptance(
+    callback_app: tuple[DifyApp, list[str]], monkeypatch: pytest.MonkeyPatch
+) -> None:
     app, published = callback_app
     monkeypatch.setattr(dify_config, "WEBHOOK_REQUEST_BODY_MAX_SIZE", 16)
     body = _request_body()
@@ -325,7 +344,7 @@ def test_oversized_callback_and_unknown_route_fail_before_acceptance(callback_ap
 
 
 @pytest.mark.usefixtures("approval", "fresh_blueprints")
-def test_stream_mode_does_not_register_webhook_route(monkeypatch):
+def test_stream_mode_does_not_register_webhook_route(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(dify_config, "HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE", IMEventTransportMode.STREAM)
     app = DifyApp(__name__)
     ext_blueprints.init_app(app)
@@ -333,14 +352,24 @@ def test_stream_mode_does_not_register_webhook_route(monkeypatch):
 
 
 def test_worker_redelivery_repairs_resume_publication_without_resubmitting(
-    context, approval, callback_app, monkeypatch, caplog
-):
+    context: Context,
+    approval: tuple[str, IMChannelId],
+    callback_app: tuple[DifyApp, list[str]],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
     from tasks.im_message_inbox_tasks import IMInboxTaskRetryError
 
     form_id, _ = approval
     app, published = callback_app
-    publication = Mock(side_effect=[ConnectionError("sensitive-broker-detail"), None])
+    publications: list[dict[str, object]] = []
+
+    def publication(*, kwargs: dict[str, object]) -> None:
+        publications.append(kwargs)
+        if len(publications) == 1:
+            raise ConnectionError("sensitive-broker-detail")
+
     monkeypatch.setattr(resume_app_execution, "apply_async", publication)
     body = _request_body()
     assert app.test_client().post(_PATH, data=body, headers=_headers(body)).status_code == 200
@@ -518,7 +547,15 @@ def test_worker_rejects_revoked_im_authorization(
             case "override_reset":
                 session.delete(session.scalars(sa.select(HumanInputIMBindingWorkspaceOverride)).one())
 
-    resumed, card_updates = Mock(), Mock()
+    resume_publications: list[dict[str, object]] = []
+    card_publications: list[dict[str, object]] = []
+
+    def resumed(*, kwargs: dict[str, object]) -> None:
+        resume_publications.append(kwargs)
+
+    def card_updates(*, kwargs: dict[str, object]) -> None:
+        card_publications.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", resumed)
     monkeypatch.setattr(update_human_input_im_card_task, "apply_async", card_updates)
     with app.app_context():
@@ -542,8 +579,8 @@ def test_worker_rejects_revoked_im_authorization(
     assert f"channel_id={channel_id}" in caplog.text
     assert _TOKEN not in caplog.text
     assert _SIGNING_SECRET not in caplog.text
-    resumed.assert_not_called()
-    card_updates.assert_not_called()
+    assert not resume_publications
+    assert not card_publications
 
 
 @pytest.mark.parametrize("binding_scope", ["default", "workspace_override", "other_workspace_override"])
@@ -566,7 +603,11 @@ def test_worker_accepts_current_binding_matching_frozen_target(
             replacement = _add_identity(session, channel_id, "replacement-user")
             binding.im_identity_id = replacement.id
         contact_id = ContactId(binding.contact_id)
-    resumed = Mock()
+    resumed_calls: list[dict[str, object]] = []
+
+    def resumed(*, kwargs: dict[str, object]) -> None:
+        resumed_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", resumed)
     body = _request_body()
     assert app.test_client().post(_PATH, data=body, headers=_headers(body)).status_code == 200
@@ -589,7 +630,7 @@ def test_worker_accepts_current_binding_matching_frozen_target(
         process_im_message_inbox_record.run(published[0])
     with context.sessions() as session:
         assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
-    resumed.assert_called_once()
+    assert len(resumed_calls) == 1
 
 
 @pytest.mark.parametrize("keep_platform_entry", [False, True])
@@ -626,7 +667,11 @@ def test_worker_uses_current_platform_contact_visibility(
     if not keep_platform_entry:
         with context.sessions.begin() as session:
             session.delete(session.get_one(HumanInputPlatformContactWorkspaceEntry, entry_id))
-    resumed = Mock()
+    resumed_calls: list[dict[str, object]] = []
+
+    def resumed(*, kwargs: dict[str, object]) -> None:
+        resumed_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", resumed)
     with app.app_context():
         process_im_message_inbox_record.run(published[0])
@@ -634,11 +679,11 @@ def test_worker_uses_current_platform_contact_visibility(
         form = session.get_one(HumanInputForm, form_id)
         if keep_platform_entry:
             assert form.status == HumanInputFormStatus.SUBMITTED
-            resumed.assert_called_once()
+            assert len(resumed_calls) == 1
         else:
             assert form.status == HumanInputFormStatus.WAITING
             assert form.submitted_at is None
-            resumed.assert_not_called()
+            assert not resumed_calls
 
 
 @pytest.mark.parametrize(("ip_address", "expected_ip"), [("192.0.2.15", "192.0.2.15"), (None, None), ("", None)])
@@ -668,7 +713,7 @@ def test_callback_verification_audit_is_independent_of_submission(
 ) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
-    monkeypatch.setattr(resume_app_execution, "apply_async", Mock())
+    monkeypatch.setattr(resume_app_execution, "apply_async", lambda **_kwargs: None)
     form_id, _ = approval
     app, published = callback_app
     body = _request_body(user_id=user_id, token=token).replace(b"approve", action.encode())
@@ -728,11 +773,13 @@ def test_verification_storage_failure_propagates_without_recording_rejection(
     from services.human_input_v2.submission_service import HumanInputSubmissionService, IMFormActor
 
     form_id, channel_id = approval
-    monkeypatch.setattr(
-        SQLAlchemyIMBindingRepository,
-        "get_effective",
-        Mock(side_effect=OperationalError("SELECT", {}, OSError("Storage unavailable"))),
-    )
+
+    def fail_binding_read(
+        _repository: SQLAlchemyIMBindingRepository, _tenant_id: TenantId, _contact_id: ContactId
+    ) -> None:
+        raise OperationalError("SELECT", {}, OSError("Storage unavailable"))
+
+    monkeypatch.setattr(SQLAlchemyIMBindingRepository, "get_effective", fail_binding_read)
     service = HumanInputSubmissionService(session_factory=context.sessions)
     with pytest.raises(OperationalError):
         service.submit_im_form(

@@ -2,7 +2,6 @@
 
 from collections.abc import Callable
 from hashlib import sha256
-from unittest.mock import Mock
 
 import pytest
 from flask.testing import FlaskClient
@@ -42,7 +41,7 @@ def fail_commit(request: pytest.FixtureRequest) -> bool:
 def submission_service(context: Context, monkeypatch: pytest.MonkeyPatch) -> HumanInputSubmissionService:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
-    monkeypatch.setattr(resume_app_execution, "apply_async", Mock())
+    monkeypatch.setattr(resume_app_execution, "apply_async", lambda **_kwargs: None)
     return HumanInputSubmissionService(session_factory=context.sessions)
 
 

@@ -16,8 +16,8 @@ class _RecordingKeyProvider(BaseKeyProvider):
         raise AssertionError(f"key provisioning is outside this contract: {tenant_id}")
 
     @override
-    def encrypt(self, tenant_id: str, plaintext: str) -> bytes:
-        self.encrypt_calls.append((tenant_id, plaintext))
+    def encrypt(self, tenant_id: str, text: str) -> bytes:
+        self.encrypt_calls.append((tenant_id, text))
         return b"opaque-ciphertext"
 
     @override
@@ -29,8 +29,8 @@ class _RecordingKeyProvider(BaseKeyProvider):
         raise AssertionError(f"the wrapper must not assemble a decoding path: {encrypted_text!r}, {decoding!r}")
 
     @override
-    def decrypt(self, tenant_id: str, ciphertext: bytes) -> str:
-        self.decrypt_calls.append((tenant_id, ciphertext))
+    def decrypt(self, tenant_id: str, encrypted_text: bytes) -> str:
+        self.decrypt_calls.append((tenant_id, encrypted_text))
         return "recovered-plaintext"
 
 

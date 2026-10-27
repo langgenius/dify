@@ -423,7 +423,9 @@ def test_classified_provider_failures_map_to_safe_stable_errors(
 
 
 @pytest.mark.parametrize("operation", ["test", "create"])
-def test_provider_diagnostics_reach_channel_errors_without_raw_provider_reason(monkeypatch, operation: str) -> None:
+def test_provider_diagnostics_reach_channel_errors_without_raw_provider_reason(
+    monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
     state = _State()
     service = _TestService(state)
     _install_adapter(

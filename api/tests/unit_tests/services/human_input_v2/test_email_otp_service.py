@@ -1,15 +1,16 @@
 """OTP authorization and audit transactions against actual SQLite persistence."""
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from hashlib import sha256
 from sqlite3 import Connection as SQLiteConnection
-from unittest.mock import MagicMock, Mock, create_autospec
+from unittest.mock import Mock, create_autospec
 from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from redis import Redis
 from sqlalchemy import event
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session, sessionmaker
@@ -66,14 +67,20 @@ class Context:
     service: EmailOtpService
     redis: Mock
     limiter: Mock
-    send: Mock
     delivery: Delivery
     form: Form
     token: str
+    sent_emails: list[tuple[str, str]] = field(default_factory=list)
+    mail_failure: EmailOtpError | None = None
+
+    def send(self, address: str, code: str) -> None:
+        self.sent_emails.append((address, code))
+        if self.mail_failure is not None:
+            raise self.mail_failure
 
 
 @pytest.fixture(params=["email", "dynamic_email", "external_contact"])
-def context(request: pytest.FixtureRequest, sqlite_engine: sa.Engine) -> Context:
+def context(request: pytest.FixtureRequest, sqlite_engine: sa.Engine, monkeypatch: pytest.MonkeyPatch) -> Context:
     engine = sqlite_engine
     # Explicit BEGIN keeps repository savepoints inside the caller's transaction.
 
@@ -151,25 +158,30 @@ def context(request: pytest.FixtureRequest, sqlite_engine: sa.Engine) -> Context
     redis.get.side_effect = lambda key: b"0" if key.endswith(":failed_attempts") else redis.get.return_value
     redis.ttl.return_value = 600
     redis.incr_if_exists.return_value = 1
-    pipeline = MagicMock()
-    pipeline.__enter__.return_value = pipeline
+    pipeline = Redis().pipeline()
+    monkeypatch.setattr(pipeline, "execute", lambda: [])
     redis.pipeline.return_value = pipeline
     limiter = create_autospec(RateLimiter, instance=True)
     limiter.acquire.return_value = 0
     limiter.retry_after.return_value = 60
-    send = Mock()
+    sent_emails: list[tuple[str, str]] = []
+
+    def send(address: str, code: str) -> None:
+        result.send(address, code)
+
     service = EmailOtpService(
         session_factory=sessions,
         redis=redis,
         limiter=limiter,
         mail=OtpMail(available=lambda: True, send=send),
     )
-    return Context(sessions, service, redis, limiter, send, delivery, form, token)
+    result = Context(sessions, service, redis, limiter, delivery, form, token, sent_emails)
+    return result
 
 
 def test_send_uses_frozen_email_and_six_digit_code_without_tokens(context: Context) -> None:
     response = context.service.request_access(context.token)
-    address, code = context.send.call_args.args
+    address, code = context.sent_emails[-1]
     assert address == "approver@example.com"
     assert len(code) == 6
     assert code.isascii()
@@ -226,26 +238,29 @@ def test_rate_limit_does_not_send_email(context: Context) -> None:
         context.service.request_access(context.token)
     assert error.value.reason == OtpFailure.RATE_LIMIT
     assert error.value.retry_after == 32
-    context.send.assert_not_called()
+    assert not context.sent_emails
 
 
 def test_send_failure_removes_only_its_challenge(context: Context) -> None:
-    context.send.side_effect = EmailOtpError(OtpFailure.DELIVERY)
+    context.mail_failure = EmailOtpError(OtpFailure.DELIVERY)
     with pytest.raises(EmailOtpError) as error:
         context.service.request_access(context.token)
     assert error.value.reason == OtpFailure.DELIVERY
     assert error.value.retry_after == 60
 
 
-def test_storage_failure_does_not_send(context: Context) -> None:
+def test_storage_failure_does_not_send(context: Context, monkeypatch: pytest.MonkeyPatch) -> None:
     from redis.exceptions import ConnectionError
 
-    context.redis.pipeline.return_value.execute.side_effect = ConnectionError("secret-command")
+    def fail_execute() -> None:
+        raise ConnectionError("secret-command")
+
+    monkeypatch.setattr(context.redis.pipeline.return_value, "execute", fail_execute)
     with pytest.raises(EmailOtpError) as error:
         context.service.request_access(context.token)
     assert error.value.reason == OtpFailure.UNAVAILABLE
     assert "secret-command" not in str(error.value)
-    context.send.assert_not_called()
+    assert not context.sent_emails
 
 
 @pytest.mark.parametrize("status", [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.EXPIRED])
@@ -256,7 +271,7 @@ def test_terminal_form_cannot_issue_or_verify_proof(context: Context, status: Hu
         context.service.request_access(context.token)
     with pytest.raises(EmailOtpError):
         context.service.verify(context.token, challenge_token="proof", otp_code="123456", ip_address=None)
-    context.send.assert_not_called()
+    assert not context.sent_emails
     context.redis.incr_if_exists.assert_not_called()
 
 
@@ -266,7 +281,7 @@ def test_wrong_auth_type_does_not_issue_otp(context: Context) -> None:
     with pytest.raises(EmailOtpError) as error:
         context.service.request_access(context.token)
     assert error.value.reason == OtpFailure.NOT_FOUND
-    context.send.assert_not_called()
+    assert not context.sent_emails
 
 
 def test_submission_and_success_audit_commit_or_rollback_together(context: Context) -> None:
@@ -353,7 +368,7 @@ def test_recreated_contact_with_same_email_does_not_restore_old_delivery(context
         assert error.value.reason == OtpFailure.NOT_FOUND
     else:
         context.service.request_access(context.token)
-        assert context.send.call_args.args[0] == "approver@example.com"
+        assert context.sent_emails[-1][0] == "approver@example.com"
 
 
 def test_form_deadline_is_checked_independently_of_proof(context: Context) -> None:
@@ -436,7 +451,7 @@ def test_unconfigured_deployment_mail_does_not_spend_sending_budget(context: Con
         service.request_access(context.token)
     assert error.value.reason == OtpFailure.UNAVAILABLE
     context.limiter.acquire.assert_not_called()
-    context.send.assert_not_called()
+    assert not context.sent_emails
 
 
 def test_two_verified_challenges_accept_one_submission_and_success_audit(context: Context) -> None:
@@ -503,7 +518,7 @@ def test_cross_tenant_owner_chain_is_rejected(context: Context, owner: str) -> N
     with pytest.raises(EmailOtpError) as error:
         context.service.request_access(context.token)
     assert error.value.reason == OtpFailure.NOT_FOUND
-    context.send.assert_not_called()
+    assert not context.sent_emails
 
 
 def test_no_access_token_is_returned_if_challenge_expires_during_send(context: Context) -> None:
@@ -551,7 +566,7 @@ def test_deleted_tenant_email_channel_does_not_block_deployment_otp(context: Con
         session.delete(channel)
     response = context.service.request_access(context.token)
     assert response.expires_in_seconds == 600
-    assert context.send.call_args.args[0] == "approver@example.com"
+    assert context.sent_emails[-1][0] == "approver@example.com"
 
 
 def test_binding_mismatch_does_not_consume_guesses(context: Context) -> None:
@@ -608,12 +623,12 @@ def test_successful_send_persists_otp_send_audit(context: Context, ip_address: s
         stored = audit.payload.model_dump_json()
         assert context.token not in stored
         assert response.challenge_token not in stored
-        assert context.send.call_args is not None
-        assert context.send.call_args.args[1] not in stored
+        assert context.sent_emails
+        assert context.sent_emails[-1][1] not in stored
 
 
 @pytest.mark.parametrize("failure", ["rate_limit", "unavailable", "storage", "send"])
-def test_unsent_otp_does_not_record_a_send(context: Context, failure: str) -> None:
+def test_unsent_otp_does_not_record_a_send(context: Context, failure: str, monkeypatch: pytest.MonkeyPatch) -> None:
     from redis.exceptions import RedisError
 
     service = context.service
@@ -628,9 +643,13 @@ def test_unsent_otp_does_not_record_a_send(context: Context, failure: str) -> No
                 mail=OtpMail(available=lambda: False, send=context.send),
             )
         case "storage":
-            context.redis.pipeline.return_value.execute.side_effect = RedisError()
+
+            def fail_execute() -> None:
+                raise RedisError()
+
+            monkeypatch.setattr(context.redis.pipeline.return_value, "execute", fail_execute)
         case "send":
-            context.send.side_effect = EmailOtpError(OtpFailure.DELIVERY)
+            context.mail_failure = EmailOtpError(OtpFailure.DELIVERY)
     with pytest.raises(EmailOtpError):
         service.request_access(context.token)
     with context.sessions() as session:

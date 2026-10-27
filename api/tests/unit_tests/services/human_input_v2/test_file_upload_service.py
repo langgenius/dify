@@ -19,10 +19,10 @@ from controllers.web import human_input_form_access_request as token_controller
 from controllers.web import human_input_v2_file_upload as controller
 from core.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import FileInput, ResolvedForm, UserAction
-from core.human_input_v2.shared.values import AccountId, NormalizedEmail, TenantId
+from core.human_input_v2.shared.values import AccountId, NormalizedEmail, RecipientId, TenantId
 from core.workflow.nodes.human_input_v2.entities import OnetimeEmail
 from extensions.ext_storage import storage
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus
 from graphon.file.enums import FileTransferMethod, FileType
 from graphon.variables.segments import FileSegment
 from libs.datetime_utils import naive_utc_now
@@ -31,7 +31,7 @@ from models.account import TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input_v2 import HumanInputAuditEvent, HumanInputDelivery, HumanInputForm
 from models.model import UploadFile
-from models.workflow import WorkflowPause, WorkflowRun
+from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
 from repositories.human_input_v2.delivery_repository import (
     DeliveryCreateParams,
     EmailTargetSnapshot,
@@ -46,7 +46,7 @@ from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchem
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
 from services.file_service import FileService
-from services.human_input_file_upload_service import InvalidUploadTokenError
+from services.human_input_file_upload_service import HumanInputUploadToken, InvalidUploadTokenError
 from services.human_input_v2.file_upload_service import V2_UPLOAD_TOKEN_PREFIX, HumanInputV2FileUploadService
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
@@ -70,16 +70,19 @@ class Approval:
     token: str
     owner_role: CreatorUserRole
 
-    def issue(self):
+    def issue(self) -> HumanInputUploadToken:
         return self.service.issue_public_upload_token(self.token)
 
 
 @pytest.fixture(params=[CreatorUserRole.ACCOUNT, CreatorUserRole.END_USER])
-def approval(sqlite_session_factory, monkeypatch, request) -> Approval:
+def approval(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> Approval:
     monkeypatch.setattr(dify_config, "SECRET_KEY", "v2-upload-test-key-long-enough-for-hs256")
     monkeypatch.setattr(storage, "save", lambda *_args: None)
     tenant_id, app_id, account_id, end_user_id, run_id = [str(uuid4()) for _ in range(5)]
     owner_role = request.param
+    assert isinstance(owner_role, CreatorUserRole)
     now = naive_utc_now()
     with sqlite_session_factory.begin() as session:
         session.add_all(
@@ -168,10 +171,12 @@ def approval(sqlite_session_factory, monkeypatch, request) -> Approval:
     )
 
 
-def test_uploads_local_and_remote_files_as_the_original_initiator(approval: Approval, monkeypatch):
+def test_uploads_local_and_remote_files_as_the_original_initiator(
+    approval: Approval, monkeypatch: pytest.MonkeyPatch
+) -> None:
     grant = approval.issue()
     with approval.sessions() as session:
-        form = session.get(HumanInputForm, approval.form_id)
+        form = session.get_one(HumanInputForm, approval.form_id)
         assert grant.expires_at == form.global_timeout_deadline
     app = Flask(__name__)
     ExternalApi(app).add_namespace(controller.web_ns)
@@ -179,10 +184,11 @@ def test_uploads_local_and_remote_files_as_the_original_initiator(approval: Appr
     headers = {"Authorization": "Bearer " + grant.upload_token}
     local = client.post("/human-input/v2/files", headers=headers, data={"file": (io.BytesIO(b"review"), "review.txt")})
     assert local.status_code == 201, local.json
+    assert local.json is not None
     assert local.json["name"] == "review.txt"
     assert local.json["url"]
 
-    def fetch(method, url, **_kwargs):
+    def fetch(method: str, url: str, **_kwargs: object) -> httpx.Response:
         return httpx.Response(
             200,
             headers={"Content-Type": "text/plain", "Content-Length": "6"},
@@ -195,6 +201,7 @@ def test_uploads_local_and_remote_files_as_the_original_initiator(approval: Appr
         "/human-input/v2/files/remote", headers=headers, json={"url": "https://example.com/remote.txt"}
     )
     assert remote.status_code == 201, remote.json
+    assert remote.json is not None
     with approval.sessions() as session:
         files = list(session.scalars(sa.select(UploadFile)))
         assert {file.id for file in files} == {local.json["id"], remote.json["id"]}
@@ -209,15 +216,15 @@ def test_uploads_local_and_remote_files_as_the_original_initiator(approval: Appr
 
 
 @pytest.mark.parametrize("change", ["submitted", "node_deadline", "global_deadline", "recipient_revoked"])
-def test_rechecks_form_and_delivery_before_using_a_grant(approval: Approval, change):
+def test_rechecks_form_and_delivery_before_using_a_grant(approval: Approval, change: str) -> None:
     grant = approval.issue()
     with approval.sessions.begin() as session:
-        form = session.get(HumanInputForm, approval.form_id)
+        form = session.get_one(HumanInputForm, approval.form_id)
         if change == "submitted":
-            delivery = session.get(HumanInputDelivery, approval.delivery_id)
+            delivery = session.get_one(HumanInputDelivery, approval.delivery_id)
             SQLAlchemyFormRepository(session, approval.tenant_id, approval.app_id).submit_form(
                 form.id,
-                submitted_by_recipient_id=delivery.recipient_id,
+                submitted_by_recipient_id=RecipientId(delivery.recipient_id),
                 submitted_by_delivery_id=delivery.id,
                 selected_action_id="approve",
                 raw_submission_inputs={},
@@ -228,7 +235,7 @@ def test_rechecks_form_and_delivery_before_using_a_grant(approval: Approval, cha
         elif change == "global_deadline":
             form.global_timeout_deadline = naive_utc_now() - timedelta(seconds=1)
         else:
-            delivery = session.get(HumanInputDelivery, approval.delivery_id)
+            delivery = session.get_one(HumanInputDelivery, approval.delivery_id)
             session.delete(delivery)
     with pytest.raises(HumanInputFormError) as caught:
         approval.service.validate_upload_token(grant.upload_token)
@@ -243,7 +250,7 @@ def test_rechecks_form_and_delivery_before_using_a_grant(approval: Approval, cha
     )
 
 
-def test_rejects_tampered_expired_or_legacy_grants(approval: Approval):
+def test_rejects_tampered_expired_or_legacy_grants(approval: Approval) -> None:
     grant = approval.issue()
     claims = jwt.decode(grant.upload_token.removeprefix(V2_UPLOAD_TOKEN_PREFIX), options={"verify_signature": False})
     claims["exp"] = 1
@@ -256,9 +263,9 @@ def test_rejects_tampered_expired_or_legacy_grants(approval: Approval):
 
 
 @pytest.mark.parametrize("auth_type", [SubmissionAuthType.CONSOLE, SubmissionAuthType.WEB_APP, SubmissionAuthType.IM])
-def test_public_upload_rejects_other_delivery_authentication(approval: Approval, auth_type):
+def test_public_upload_rejects_other_delivery_authentication(approval: Approval, auth_type: SubmissionAuthType) -> None:
     with approval.sessions.begin() as session:
-        delivery = session.get(HumanInputDelivery, approval.delivery_id)
+        delivery = session.get_one(HumanInputDelivery, approval.delivery_id)
         assert delivery is not None
         delivery.auth_type = auth_type
     with pytest.raises(HumanInputFormError) as caught:
@@ -266,15 +273,17 @@ def test_public_upload_rejects_other_delivery_authentication(approval: Approval,
     assert caught.value.code == HumanInputFormErrorCode.NOT_FOUND
 
 
-def test_public_uploaded_file_can_be_submitted_and_restored(approval: Approval, monkeypatch):
+def test_public_uploaded_file_can_be_submitted_and_restored(
+    approval: Approval, monkeypatch: pytest.MonkeyPatch
+) -> None:
     grant = approval.issue()
     context = approval.service.validate_upload_token(grant.upload_token)
     uploaded = approval.service.upload_local_file(
         context=context, filename="review.txt", content=b"review", mimetype="text/plain"
     )
     with approval.sessions.begin() as session:
-        form = session.get(HumanInputForm, approval.form_id)
-        run = session.get(WorkflowRun, form.workflow_run_id)
+        form = session.get_one(HumanInputForm, approval.form_id)
+        run = session.get_one(WorkflowRun, form.workflow_run_id)
         session.add(WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="checkpoint"))
     monkeypatch.setattr(
         "tasks.app_generate.workflow_execute_task.resume_app_execution.apply_async", lambda **_kwargs: None
@@ -304,6 +313,7 @@ def test_public_uploaded_file_can_be_submitted_and_restored(approval: Approval, 
         restored = SQLAlchemyFormRepository(session, approval.tenant_id, approval.app_id).get_form_by_id(
             approval.form_id
         )
+        assert restored is not None
         assert restored.submission is not None
         segment = restored.submission.normalized_submission_data["file"]
         assert isinstance(segment, FileSegment)

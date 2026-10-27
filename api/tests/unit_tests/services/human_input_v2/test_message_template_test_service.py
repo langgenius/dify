@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from unittest.mock import Mock, create_autospec
 from urllib.parse import urlsplit
@@ -19,7 +19,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.human_input_v2.entities import DebugChannel, EmailProviderType, IMProvider
-from core.human_input_v2.im_integration.adapters.entities import MessageSendingError
+from core.human_input_v2.im_integration.adapters.entities import MessageAccepted, MessageSendingError
+from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator
 from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
 from core.human_input_v2.resolved_form import ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import AccountId, TenantId
@@ -83,7 +84,8 @@ class _Context:
     sessions: sessionmaker[Session]
     gateway: Mock
     adapter: Mock
-    adapter_factory: Mock
+    adapter_errors: list[Exception] = field(default_factory=list)
+    requested_channels: list[IMChannel] = field(default_factory=list)
 
     def template(
         self,
@@ -137,7 +139,15 @@ def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
     sessions = sessionmaker(engine, expire_on_commit=False)
     gateway = create_autospec(ResendProviderGateway, instance=True)
     adapter = create_autospec(IMProviderAdapter, instance=True)
-    adapter_factory = Mock(return_value=adapter)
+    adapter_errors: list[Exception] = []
+    requested_channels: list[IMChannel] = []
+
+    def adapter_factory(_channel: IMChannel) -> IMProviderAdapter:
+        requested_channels.append(_channel)
+        if adapter_errors:
+            raise adapter_errors[0]
+        return adapter
+
     service = MessageTemplateTestService(
         session_factory=sessions,
         tenant_id=_TENANT,
@@ -222,13 +232,13 @@ def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
     event.listen(engine, "rollback", lambda conn: active_connections.discard(conn))
     event.listen(engine, "commit", lambda conn: active_connections.discard(conn))
 
-    def accepted(*_args: object, **_kwargs: object) -> Mock:
+    def accepted(*_args: object, **_kwargs: object) -> MessageAccepted:
         assert not active_connections, "Provider I/O must happen after database transactions close"
-        return Mock()
+        return MessageAccepted(MessageLocator("provider-message"))
 
     gateway.send_message.side_effect = accepted
     adapter.messaging.send_text.side_effect = accepted
-    result = _Context(service, sessions, gateway, adapter, adapter_factory)
+    result = _Context(service, sessions, gateway, adapter, adapter_errors, requested_channels)
     result.template("Review {{#start.name#}}", "Please review {{#url#}}")
     return result
 
@@ -255,7 +265,7 @@ def test_email_renders_and_sends_only_to_editor_with_a_real_test_form(context: _
     with context.sessions() as session:
         recipient = session.query(HumanInputRecipient).one()
         assert recipient.subject_value == _CONTACT
-    context.adapter_factory.assert_not_called()
+    assert not context.requested_channels
 
 
 def test_email_template_test_uses_complete_encrypted_credentials(
@@ -304,7 +314,11 @@ def test_test_link_submits_only_its_frozen_form_without_resuming_a_workflow(
 ) -> None:
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
-    resumed = Mock()
+    resumed_calls: list[dict[str, object]] = []
+
+    def resumed(*, kwargs: dict[str, object]) -> None:
+        resumed_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", resumed)
     context.send(channel, **{"#start.name#": "Alice"})
     token = urlsplit(context.request_url(channel)).path.rsplit("/", 1)[1]
@@ -326,7 +340,7 @@ def test_test_link_submits_only_its_frozen_form_without_resuming_a_workflow(
         delivery = session.query(HumanInputDelivery).one()
         assert delivery.token_hash == hashlib.sha256(token.encode()).hexdigest()
         assert token not in delivery.target_snapshot.model_dump_json()
-    resumed.assert_not_called()
+    assert not resumed_calls
     with pytest.raises(HumanInputFormError) as submitted:
         submissions.get_console_form(account_id=_ACCOUNT, form_token=token)
     assert submitted.value.code is HumanInputFormErrorCode.ALREADY_SUBMITTED
@@ -447,9 +461,10 @@ def test_invalid_form_definition_rejects_before_creating_or_sending(context: _Co
 def test_failed_grant_storage_rolls_back_the_form_and_prevents_send(
     context: _Context, monkeypatch: pytest.MonkeyPatch, channel: DebugChannel
 ) -> None:
-    monkeypatch.setattr(
-        SQLAlchemyDeliveryRepository, "create_delivery", Mock(side_effect=SQLAlchemyError("Storage unavailable"))
-    )
+    def reject_delivery(*_args: object, **_kwargs: object) -> None:
+        raise SQLAlchemyError("Storage unavailable")
+
+    monkeypatch.setattr(SQLAlchemyDeliveryRepository, "create_delivery", reject_delivery)
 
     with pytest.raises(SQLAlchemyError):
         context.send(channel, **{"#start.name#": "Alice"})
@@ -506,7 +521,7 @@ def test_requested_debug_channel_selects_the_notification_and_access_target(
             assert delivery.target_snapshot.im_provider_user_id == "editor-slack-id"
     if channel is DebugChannel.EMAIL:
         context.gateway.send_message.assert_called_once()
-        context.adapter_factory.assert_not_called()
+        assert not context.requested_channels
     else:
         context.adapter.messaging.send_text.assert_called_once()
         context.gateway.send_message.assert_not_called()
@@ -592,13 +607,13 @@ def test_missing_channel_or_current_editor_binding_prevents_send(
     with pytest.raises(MessageTemplateTestError):
         context.send(channel, **{"#start.name#": "Alice"})
     context.gateway.send_message.assert_not_called()
-    context.adapter_factory.assert_not_called()
+    assert not context.requested_channels
 
 
 def test_other_im_provider_is_not_silently_substituted(context: _Context) -> None:
     with pytest.raises(MessageTemplateTestError, match="not configured"):
         context.send(DebugChannel.FEISHU, **{"#start.name#": "Alice"})
-    context.adapter_factory.assert_not_called()
+    assert not context.requested_channels
 
 
 @pytest.mark.parametrize("version", ["1", "3"])
@@ -686,7 +701,7 @@ def test_blank_rendered_template_is_rejected(context: _Context, subject: str, bo
 def test_invalid_im_credentials_are_reported_without_attempting_send(context: _Context) -> None:
     from services.human_input_v2.im_credential_codec import IMCredentialError
 
-    context.adapter_factory.side_effect = IMCredentialError("IM credential configuration is unavailable")
+    context.adapter_errors.append(IMCredentialError("IM credential configuration is unavailable"))
     with pytest.raises(MessageTemplateTestError, match="credentials"):
         context.send(DebugChannel.SLACK, **{"#start.name#": "Alice"})
     context.adapter.messaging.send_text.assert_not_called()

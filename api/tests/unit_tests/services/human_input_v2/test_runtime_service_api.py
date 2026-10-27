@@ -13,12 +13,12 @@ from core.helper import encrypter
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, system_variable_selector
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.human_input_v2 import HumanInputDelivery, HumanInputRecipient, RecipientSubjectType
 from models.model import AppMode, EndUser
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowRun, WorkflowType
 from repositories.human_input_v2.delivery_repository import SubmissionAuthType
 from services.human_input_v2.composition import WorkflowHumanInputRuntime
 from tests.helpers.unit.model_factories import make_app, make_tenant

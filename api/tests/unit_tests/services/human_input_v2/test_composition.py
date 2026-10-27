@@ -1,7 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
-from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
@@ -21,14 +20,14 @@ from enums import DeploymentEdition
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
 from graphon.engine_events import GraphRunPausedEvent, GraphRunSucceededEvent, NodeRunSucceededEvent
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus
 from graphon.graph import Graph
 from graphon.runtime import InitParams, RuntimeState, VariablePool
 from models import CreatorUserRole
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
 from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity, HumanInputForm
-from models.workflow import WorkflowPause, WorkflowRun
+from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
 from services.human_input_v2.submission_service import HumanInputSubmissionService
 from tasks.app_generate.workflow_execute_task import resume_app_execution
 from tasks.human_input_im_card_tasks import update_human_input_im_card_task
@@ -52,7 +51,7 @@ def container_workflow(
     cipher = Fernet(Fernet.generate_key())
     monkeypatch.setattr(encrypter, "encrypt_token", lambda _tenant, token: cipher.encrypt(token.encode()).decode())
     monkeypatch.setattr(encrypter, "decrypt_token", lambda _tenant, token: cipher.decrypt(token.encode()).decode())
-    monkeypatch.setattr(update_human_input_im_card_task, "apply_async", Mock())
+    monkeypatch.setattr(update_human_input_im_card_task, "apply_async", lambda **_kwargs: None)
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     with sqlite_session_factory.begin() as session:
         tenant = Tenant(name="Workspace")
@@ -175,7 +174,11 @@ def test_container_approvals_resume_from_checkpoints_with_independent_forms(
 ) -> None:
     workflow = container_workflow
     monkeypatch.setattr(session_factory, "create_session", sqlite_session_factory)
-    enqueue = Mock()
+    enqueue_calls: list[dict[str, object]] = []
+
+    def enqueue(*, kwargs: dict[str, object]) -> None:
+        enqueue_calls.append(kwargs)
+
     monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
     graph_config = _container_graph_config(kind)
     params = InitParams(
@@ -267,4 +270,4 @@ def test_container_approvals_resume_from_checkpoints_with_independent_forms(
         assert len(forms) == 2
         assert len({form.node_execution_id for form in forms}) == 2
         assert all(form.status == HumanInputFormStatus.SUBMITTED for form in forms)
-    assert enqueue.call_count == 2
+    assert len(enqueue_calls) == 2
