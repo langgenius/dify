@@ -445,6 +445,21 @@ def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client, client_f
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
+def test_squid_401_with_x_squid_error_triggers_actionable_error(mock_get_client, client_factory) -> None:
+    """A Squid denial is identified by X-Squid-Error even when Squid does not
+    set a Server header. This is the explicit denial signal; Via alone is
+    handled separately because a bare Squid error page may omit both."""
+    response = httpx.Response(401, headers={"x-squid-error": "ERR_ACCESS_DENIED 0", "via": "1.1 squid (squid/4.10)"})
+    mock_client, _ = client_factory(response)
+    mock_get_client.return_value = mock_client
+
+    with pytest.raises(ToolSSRFError) as exc_info:
+        make_request("GET", "http://10.0.0.1/internal")
+
+    assert "SSRF_PROXY_ALLOW_PRIVATE_IPS" in str(exc_info.value)
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
 def test_squid_401_via_header_also_triggers_actionable_error(mock_get_client, client_factory) -> None:
     """Squid can return 401 with only the Via header set (no Server header)
     on some configurations. The detection must work for both."""
