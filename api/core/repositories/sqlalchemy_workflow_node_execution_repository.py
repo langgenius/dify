@@ -13,7 +13,7 @@ from typing import Any, override
 
 import psycopg2.errors
 from pydantic import ValidationError
-from sqlalchemy import UnaryExpression, and_, asc, desc, or_, select
+from sqlalchemy import UnaryExpression, and_, asc, desc, or_, select, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
@@ -474,7 +474,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
     @override
     def save_many(self, executions: Sequence[WorkflowNodeExecution]) -> None:
-        """Upsert a cleanup batch in one transaction, preserving existing offloads."""
+        """Upsert a cleanup batch in one transaction, preserving workspace bindings and existing offloads."""
         if not executions:
             return
         db_models = [self._to_db_model(execution) for execution in executions]
@@ -512,6 +512,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 if existing is None:
                     session.add(db_model)
                     continue
+                # The workspace service owns this binding, independently of engine snapshots.
+                db_model.agent_workspace_binding_id = existing.agent_workspace_binding_id
                 process_data = keep_agent_and_tool_ids(existing.process_data_dict, db_model.process_data_dict)
                 db_model.process_data = _deterministic_json_dump(process_data) if process_data is not None else None
                 if db_model.triggered_from_workflow_id is None:
@@ -538,7 +540,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         """
         Persist the database model to the database.
 
-        Checks if a record with the same ID exists and either updates it or creates a new one.
+        Create a new record or update only fields owned by execution persistence.
+        The workspace store owns the workspace binding independently of execution snapshots.
 
         Args:
             db_model: The database model to persist
@@ -559,9 +562,15 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                     ),
                 )
             # Check if record already exists
-            existing = session.scalar(
-                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == db_model.id).with_for_update()
+            execution_scope = (
+                WorkflowNodeExecutionModel.id == db_model.id,
+                WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
+                WorkflowNodeExecutionModel.app_id == self._app_id,
+                WorkflowNodeExecutionModel.workflow_id == db_model.workflow_id,
+                WorkflowNodeExecutionModel.workflow_run_id == db_model.workflow_run_id,
+                WorkflowNodeExecutionModel.triggered_from == self._triggered_from,
             )
+            existing = session.scalar(select(WorkflowNodeExecutionModel).where(*execution_scope).with_for_update())
 
             if existing:
                 merged_process_data = _preserve_agent_process_data(
@@ -571,10 +580,33 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 db_model.process_data = (
                     _deterministic_json_dump(merged_process_data) if merged_process_data is not None else None
                 )
-                # Update existing record by copying all non-private attributes
-                for key, value in db_model.__dict__.items():
-                    if not key.startswith("_"):
-                        setattr(existing, key, value)
+                # Dataclass defaults can include fields owned by other stores.
+                # Copy only the fields populated by execution conversion.
+                session.execute(
+                    update(WorkflowNodeExecutionModel)
+                    .where(*execution_scope)
+                    .values(
+                        index=db_model.index,
+                        predecessor_node_id=db_model.predecessor_node_id,
+                        node_execution_id=db_model.node_execution_id,
+                        node_id=db_model.node_id,
+                        node_type=db_model.node_type,
+                        title=db_model.title,
+                        inputs=db_model.inputs,
+                        process_data=db_model.process_data,
+                        outputs=db_model.outputs,
+                        status=db_model.status,
+                        error=db_model.error,
+                        elapsed_time=db_model.elapsed_time,
+                        execution_metadata=db_model.execution_metadata,
+                        created_at=db_model.created_at,
+                        created_by_role=db_model.created_by_role,
+                        created_by=db_model.created_by,
+                        finished_at=db_model.finished_at,
+                        triggered_from_workflow_id=db_model.triggered_from_workflow_id,
+                        triggered_from_node_execution_id=db_model.triggered_from_node_execution_id,
+                    )
+                )
             else:
                 # Add new record
                 session.add(db_model)
