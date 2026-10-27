@@ -61,7 +61,7 @@ def _stub_account_service(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mod, "application_services", lambda: services)
 
 
-def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """A valid page/limit round-trips through SessionListQuery into the response envelope."""
     api = AccountSessionsApi()
     _stub_account_service(monkeypatch)
@@ -82,6 +82,6 @@ def test_sessions_list_valid_query_parses_page_and_limit(app: Flask, monkeypatch
         {"foo": "bar"},
     ],
 )
-def test_session_list_query_rejects_out_of_bounds(params):
+def test_session_list_query_rejects_out_of_bounds(params: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         SessionListQuery.model_validate(params)
