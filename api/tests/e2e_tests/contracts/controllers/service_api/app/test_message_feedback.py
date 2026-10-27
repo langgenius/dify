@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
 from constants.resource_access_token import ResourceAccessTokenResourceType
-from controllers.service_api.app.message import AppGetFeedbacksApi, MessageFeedbackApi
+from controllers.service_api.app.message import AppGetFeedbacksApi, MessageFeedbackApi, MessageListApi
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_database import db
@@ -163,6 +163,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
     app.extensions["application_services"] = services
     api = ExternalApi(app)
     api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
+    api.add_resource(MessageListApi, "/messages")
     api.add_resource(AppGetFeedbacksApi, "/app/feedbacks")
     yield _Harness(
         app,
