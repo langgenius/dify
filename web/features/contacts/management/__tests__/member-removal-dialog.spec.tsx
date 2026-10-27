@@ -3,6 +3,7 @@ import type { ContactsFeatureContextValue } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { ContactsManagementProvider } from '../composition'
 import { MemberRemovalContactImpactDialog } from '../member-removal-dialog'
 import { createContactsMockRepository } from '../mock/repository'
@@ -20,6 +21,33 @@ const member: Member = {
   role: 'admin',
   roles: [],
   status: 'active',
+}
+
+function MemberRemovalHarness({
+  onOpenChange,
+  onRemoved,
+}: {
+  onOpenChange: (open: boolean) => void
+  onRemoved: () => void
+}) {
+  const [open, setOpen] = useState(true)
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Reopen member removal
+      </button>
+      <MemberRemovalContactImpactDialog
+        member={member}
+        open={open}
+        onOpenChange={(nextOpen) => {
+          onOpenChange(nextOpen)
+          setOpen(nextOpen)
+        }}
+        onRemoved={onRemoved}
+      />
+    </>
+  )
 }
 
 function renderDialog(
@@ -57,12 +85,7 @@ function renderDialog(
         }}
         repository={repository}
       >
-        <MemberRemovalContactImpactDialog
-          member={member}
-          open
-          onOpenChange={onOpenChange}
-          onRemoved={onRemoved}
-        />
+        <MemberRemovalHarness onOpenChange={onOpenChange} onRemoved={onRemoved} />
       </ContactsManagementProvider>
     </QueryClientProvider>,
   )
@@ -165,33 +188,85 @@ describe('MemberRemovalContactImpactDialog', () => {
     },
   )
 
-  it('keeps the dialog and selection after a recoverable failure', async () => {
+  it('retains the visible choice after failure and submits it on a successful retry', async () => {
     const user = userEvent.setup()
-    const { onOpenChange, onRemoved } = renderDialog(ContactsMockScenario.RemovalFailure)
+    const { onOpenChange, onRemoved, removeMember } = renderDialog(ContactsMockScenario.EeMixed)
+    removeMember.mockResolvedValueOnce({ kind: 'failed' })
+    await user.click(screen.getByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: 'contacts.memberRemoval.remove' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('contacts.memberRemoval.failed')
-    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(screen.getByRole('checkbox')).not.toBeChecked()
     expect(onOpenChange).not.toHaveBeenCalled()
+    expect(onRemoved).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'contacts.memberRemoval.remove' }))
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(removeMember).toHaveBeenCalledTimes(2)
+    expect(removeMember).toHaveBeenNthCalledWith(2, {
+      keepAsPlatformContact: false,
+      memberId: member.id,
+    })
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
+    expect(onRemoved).toHaveBeenCalledOnce()
+  })
+
+  it('resets the retention choice and failure after cancelling and reopening', async () => {
+    const user = userEvent.setup()
+    const { onOpenChange, onRemoved, removeMember } = renderDialog(
+      ContactsMockScenario.RemovalFailure,
+    )
+    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('button', { name: 'contacts.memberRemoval.remove' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('contacts.memberRemoval.failed')
+
+    await user.click(screen.getByRole('button', { name: 'contacts.action.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Reopen member removal' }))
+
+    expect(screen.getByRole('checkbox')).toBeChecked()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'contacts.memberRemoval.remove' })).toBeEnabled()
+    expect(removeMember).toHaveBeenCalledOnce()
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
     expect(onRemoved).not.toHaveBeenCalled()
   })
 
-  it('disables duplicate confirmation while the removal is pending', async () => {
+  it('locks confirmation, retention, cancellation, and Escape while removal is pending', async () => {
     let resolveRemoval: (() => void) | undefined
     const wait = () =>
       new Promise<void>((resolve) => {
         resolveRemoval = resolve
       })
     const user = userEvent.setup()
-    const { onRemoved } = renderDialog(ContactsMockScenario.EeMixed, wait)
+    const { onOpenChange, onRemoved, removeMember } = renderDialog(
+      ContactsMockScenario.EeMixed,
+      wait,
+    )
     await user.click(screen.getByRole('button', { name: 'contacts.memberRemoval.remove' }))
 
     const pendingButton = screen.getByRole('button', {
       name: 'contacts.memberRemoval.removing',
     })
     expect(pendingButton).toBeDisabled()
+    const retention = screen.getByRole('checkbox')
+    expect(retention).toHaveAttribute('aria-disabled', 'true')
+    const cancel = screen.getByRole('button', { name: 'contacts.action.cancel' })
+    expect(cancel).toBeDisabled()
+    await user.click(pendingButton)
+    await user.click(retention)
+    await user.click(cancel)
+    await user.keyboard('{Escape}')
+
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(retention).toBeChecked()
+    expect(removeMember).toHaveBeenCalledOnce()
+    expect(onOpenChange).not.toHaveBeenCalled()
     expect(onRemoved).not.toHaveBeenCalled()
     await act(async () => resolveRemoval?.())
     await waitFor(() => expect(onRemoved).toHaveBeenCalledOnce())
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false)
   })
 })

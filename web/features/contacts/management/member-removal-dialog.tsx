@@ -3,11 +3,13 @@
 import type { AccountWithRoleResponse as Member } from '@dify/contracts/api/console/workspaces/types.gen'
 import {
   AlertDialog,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
@@ -69,22 +71,22 @@ export function MemberRemovalContactImpactDialog({
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent backdropProps={{ forceRender: true }}>
-        <div className="flex flex-col gap-4 px-6 pt-6 pb-4">
-          <div>
-            <AlertDialogTitle>
-              {t(($) => $['memberRemoval.title'], { memberName: member.name || member.email })}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t(
-                ($) =>
-                  $[
-                    imBindingCentrallyManaged
-                      ? 'memberRemoval.eeDescription'
-                      : 'memberRemoval.standardDescription'
-                  ],
-              )}
-            </AlertDialogDescription>
-          </div>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {t(($) => $['memberRemoval.title'], { memberName: member.name || member.email })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {t(
+              ($) =>
+                $[
+                  imBindingCentrallyManaged
+                    ? 'memberRemoval.eeDescription'
+                    : 'memberRemoval.standardDescription'
+                ],
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogBody className="flex flex-col gap-4">
           <div className="flex items-center gap-3 rounded-xl border border-divider-subtle bg-background-default-subtle p-3">
             <Avatar size="lg">
               <AvatarImage
@@ -146,7 +148,7 @@ export function MemberRemovalContactImpactDialog({
               )}
             </div>
           )}
-        </div>
+        </AlertDialogBody>
         <AlertDialogFooter>
           <AlertDialogCancelButton disabled={removal.isPending}>
             {t(($) => $['action.cancel'])}
