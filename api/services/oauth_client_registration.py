@@ -10,19 +10,24 @@ from typing import Protocol
 from enums.oauth_client import OAuthClientKind, TokenEndpointAuthMethod
 from libs.oauth_bearer import sha256_hex
 from models.oauth import OpenAPIOAuthClient
-from services.oauth_redirect import is_valid_logo_uri, is_valid_redirect_uri, redirect_host
+from services.oauth_client_metadata import (
+    DEFAULT_GRANT_TYPES,
+    MAX_CLIENT_NAME_LENGTH,
+    InvalidClientMetadataError,
+    MetadataErrorKind,
+    invalid_metadata,
+    optional_string,
+    string_list,
+    validated_logo_uri,
+    validated_redirect_uris,
+)
+from services.oauth_redirect import redirect_host
 from services.oauth_token_contracts import GrantType
 
-MAX_REDIRECT_URIS = 10
-MAX_REDIRECT_URI_LENGTH = 2048
-MAX_CLIENT_NAME_LENGTH = 255
-MAX_REDIRECT_HOST_LENGTH = 253
-MAX_LOGO_URI_LENGTH = 1024
 CLIENT_ID_PREFIX = "dcr_"
 CLIENT_ID_BYTES = 16
 CLIENT_SECRET_BYTES = 32
 CODE_RESPONSE_TYPE = "code"
-DEFAULT_GRANT_TYPES = (GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN)
 
 
 class RegistrationErrorCode(StrEnum):
@@ -63,71 +68,25 @@ class ClientCreator(Protocol):
     ) -> OpenAPIOAuthClient: ...
 
 
-def _invalid_metadata(description: str) -> RegistrationError:
-    return RegistrationError(RegistrationErrorCode.INVALID_CLIENT_METADATA, description)
-
-
-def _invalid_redirect_uri() -> RegistrationError:
-    return RegistrationError(RegistrationErrorCode.INVALID_REDIRECT_URI, "redirect_uris holds an invalid URI")
-
-
-def optional_string(metadata: Mapping[str, object], field: str, *, max_length: int) -> str | None:
-    value = metadata.get(field)
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise _invalid_metadata(f"{field} must be a string")
-    if len(value) > max_length:
-        raise _invalid_metadata(f"{field} is too long")
-    return value
-
-
-def string_list(metadata: Mapping[str, object], field: str, *, error: RegistrationErrorCode) -> list[str] | None:
-    value = metadata.get(field)
-    if value is None:
-        return None
-    if not isinstance(value, list):
-        raise RegistrationError(error, f"{field} must be an array of strings")
-    if not all(isinstance(item, str) for item in value):
-        raise RegistrationError(error, f"{field} must be an array of strings")
-    return value
-
-
-def validated_redirect_uris(metadata: Mapping[str, object]) -> tuple[str, ...]:
-    uris = string_list(metadata, "redirect_uris", error=RegistrationErrorCode.INVALID_REDIRECT_URI)
-    if not uris:
-        raise RegistrationError(RegistrationErrorCode.INVALID_REDIRECT_URI, "redirect_uris is required")
-    if len(uris) > MAX_REDIRECT_URIS:
-        raise RegistrationError(RegistrationErrorCode.INVALID_REDIRECT_URI, "too many redirect_uris")
-    for uri in uris:
-        if len(uri) > MAX_REDIRECT_URI_LENGTH:
-            raise _invalid_redirect_uri()
-        if not is_valid_redirect_uri(uri):
-            raise _invalid_redirect_uri()
-        if len(redirect_host(uri)) > MAX_REDIRECT_HOST_LENGTH:
-            raise _invalid_redirect_uri()
-    return tuple(uris)
-
-
 def _grant_types(metadata: Mapping[str, object]) -> tuple[GrantType, ...]:
-    values = string_list(metadata, "grant_types", error=RegistrationErrorCode.INVALID_CLIENT_METADATA)
+    values = string_list(metadata, "grant_types", kind=MetadataErrorKind.INVALID_CLIENT_METADATA)
     if values is None:
         return DEFAULT_GRANT_TYPES
     allowed = {grant.value: grant for grant in DEFAULT_GRANT_TYPES}
     if not all(value in allowed for value in values):
-        raise _invalid_metadata("grant_types holds an unsupported grant")
+        raise invalid_metadata("grant_types holds an unsupported grant")
     grants = tuple(dict.fromkeys(allowed[value] for value in values))
     if GrantType.AUTHORIZATION_CODE not in grants:
-        raise _invalid_metadata("grant_types must include authorization_code")
+        raise invalid_metadata("grant_types must include authorization_code")
     return grants
 
 
 def _check_response_types(metadata: Mapping[str, object]) -> None:
-    values = string_list(metadata, "response_types", error=RegistrationErrorCode.INVALID_CLIENT_METADATA)
+    values = string_list(metadata, "response_types", kind=MetadataErrorKind.INVALID_CLIENT_METADATA)
     if values is None:
         return
     if values != [CODE_RESPONSE_TYPE]:
-        raise _invalid_metadata("response_types must be [code]")
+        raise invalid_metadata("response_types must be [code]")
 
 
 def _auth_method(metadata: Mapping[str, object]) -> TokenEndpointAuthMethod:
@@ -137,16 +96,7 @@ def _auth_method(metadata: Mapping[str, object]) -> TokenEndpointAuthMethod:
     try:
         return TokenEndpointAuthMethod(value)
     except ValueError:
-        raise _invalid_metadata("token_endpoint_auth_method is not supported") from None
-
-
-def validated_logo_uri(metadata: Mapping[str, object]) -> str | None:
-    logo_uri = optional_string(metadata, "logo_uri", max_length=MAX_LOGO_URI_LENGTH)
-    if logo_uri is None:
-        return None
-    if not is_valid_logo_uri(logo_uri):
-        raise _invalid_metadata("logo_uri must be an https URL")
-    return logo_uri
+        raise invalid_metadata("token_endpoint_auth_method is not supported") from None
 
 
 class OAuthClientRegistrationService:
@@ -154,12 +104,15 @@ class OAuthClientRegistrationService:
         self._clients = clients
 
     def register(self, metadata: Mapping[str, object]) -> RegisteredClient:
-        redirect_uris = validated_redirect_uris(metadata)
-        client_name = optional_string(metadata, "client_name", max_length=MAX_CLIENT_NAME_LENGTH)
-        logo_uri = validated_logo_uri(metadata)
-        grant_types = _grant_types(metadata)
-        _check_response_types(metadata)
-        auth_method = _auth_method(metadata)
+        try:
+            redirect_uris = validated_redirect_uris(metadata)
+            client_name = optional_string(metadata, "client_name", max_length=MAX_CLIENT_NAME_LENGTH)
+            logo_uri = validated_logo_uri(metadata)
+            grant_types = _grant_types(metadata)
+            _check_response_types(metadata)
+            auth_method = _auth_method(metadata)
+        except InvalidClientMetadataError as error:
+            raise RegistrationError(RegistrationErrorCode(error.kind.value), error.description) from None
 
         display_name = (client_name or "").strip() or redirect_host(redirect_uris[0])
         client_id = CLIENT_ID_PREFIX + secrets.token_urlsafe(CLIENT_ID_BYTES)

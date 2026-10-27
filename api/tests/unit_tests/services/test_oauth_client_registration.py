@@ -5,8 +5,8 @@ from libs.oauth_bearer import sha256_hex
 from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
 from services.oauth_authorize_service import OAuthAuthorizeService
 from services.oauth_client_auth import authenticate_client
+from services.oauth_client_metadata import MAX_REDIRECT_URIS
 from services.oauth_client_registration import (
-    MAX_REDIRECT_URIS,
     OAuthClientRegistrationService,
     RegistrationError,
     RegistrationErrorCode,

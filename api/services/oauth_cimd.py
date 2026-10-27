@@ -21,11 +21,11 @@ from core.helper.ssrf_proxy import ResponseLimitError
 from core.tools.errors import ToolSSRFError
 from enums.oauth_client import OAuthClientKind, TokenEndpointAuthMethod
 from libs.oauth_bearer import sha256_hex
-from services.oauth_client_registration import (
+from services.oauth_client_metadata import (
     DEFAULT_GRANT_TYPES,
     MAX_CLIENT_NAME_LENGTH,
-    RegistrationError,
-    RegistrationErrorCode,
+    InvalidClientMetadataError,
+    MetadataErrorKind,
     optional_string,
     string_list,
     validated_logo_uri,
@@ -169,7 +169,7 @@ def _check_host_is_public(host: str, resolve_host: Callable[[str], Sequence[str]
 
 
 def _grant_types(document: Mapping[str, object]) -> frozenset[GrantType]:
-    values = string_list(document, "grant_types", error=RegistrationErrorCode.INVALID_CLIENT_METADATA)
+    values = string_list(document, "grant_types", kind=MetadataErrorKind.INVALID_CLIENT_METADATA)
     if values is None:
         return frozenset(DEFAULT_GRANT_TYPES)
     allowed = {grant.value: grant for grant in DEFAULT_GRANT_TYPES}
@@ -190,7 +190,7 @@ def _check_auth_method(document: Mapping[str, object]) -> None:
 def _logo_uri(document: Mapping[str, object]) -> str | None:
     try:
         return validated_logo_uri(document)
-    except RegistrationError:
+    except InvalidClientMetadataError:
         return None
 
 
@@ -210,7 +210,7 @@ def _parse_document(url: str, host: str, body: bytes) -> ResolvedClient:
         redirect_uris = validated_redirect_uris(document)
         client_name = optional_string(document, "client_name", max_length=MAX_CLIENT_NAME_LENGTH)
         grant_types = _grant_types(document)
-    except RegistrationError:
+    except InvalidClientMetadataError:
         raise CimdRejectedError from None
     return ResolvedClient(
         client_id=url,
