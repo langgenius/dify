@@ -630,7 +630,10 @@ export const get26Errors = {
 
 export const post18Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
-export const get27Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const get27Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+}
 
 export const delete6Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 
@@ -661,7 +664,10 @@ export const post23Errors = {
   message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
 }
 
-export const get32Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
+export const get32Errors = {
+  app_not_found: { status: 404, data: zAppNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+}
 
 export const post25Errors = { app_not_found: { status: 404, data: zAppNotFoundError } }
 

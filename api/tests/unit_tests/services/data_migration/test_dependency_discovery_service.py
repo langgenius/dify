@@ -2,7 +2,7 @@ from services.data_migration.dependency_discovery_service import DependencyDisco
 from services.data_migration.entities import DependencyKind
 
 
-def test_discovers_and_deduplicates_standalone_tool_nodes():
+def test_discovers_and_deduplicates_standalone_tool_nodes() -> None:
     graph = {
         "graph": {
             "nodes": [
@@ -23,7 +23,7 @@ def test_discovers_and_deduplicates_standalone_tool_nodes():
     ]
 
 
-def test_discovers_agent_node_tools():
+def test_discovers_agent_node_tools() -> None:
     graph = {
         "graph": {
             "nodes": [
@@ -48,7 +48,7 @@ def test_discovers_agent_node_tools():
     ]
 
 
-def test_discovers_tool_nodes_from_exported_workflow_dsl_shape():
+def test_discovers_tool_nodes_from_exported_workflow_dsl_shape() -> None:
     dsl = {
         "workflow": {
             "graph": {
@@ -82,7 +82,7 @@ def test_discovers_tool_nodes_from_exported_workflow_dsl_shape():
     ]
 
 
-def test_discovers_agent_tools_from_exported_agent_parameter_shape():
+def test_discovers_agent_tools_from_exported_agent_parameter_shape() -> None:
     dsl = {
         "workflow": {
             "graph": {
