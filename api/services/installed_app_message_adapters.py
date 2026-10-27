@@ -8,18 +8,22 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.installed_app_message_service import MessageFeedbackEvent
+from services.message_extra_content_service import load_message_extra_contents
 
 logger = logging.getLogger(__name__)
 
 
 class InstalledAppMessageRuntime:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
         self._extra_contents: SQLAlchemyExecutionExtraContentRepository = SQLAlchemyExecutionExtraContentRepository(
             session_maker=session_factory
         )
 
     def get_extra_contents(self, *, message_ids: Sequence[str]) -> Mapping[str, list[dict[str, JsonValue]]]:
-        contents = self._extra_contents.get_by_message_ids(message_ids)
+        contents = load_message_extra_contents(
+            repository=self._extra_contents, message_ids=message_ids, session_factory=self._session_factory
+        )
         return {
             message_id: [content.model_dump(mode="json", exclude_none=True) for content in items]
             for message_id, items in zip(message_ids, contents, strict=True)

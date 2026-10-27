@@ -45,6 +45,7 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
+from services.message_extra_content_service import load_message_extra_contents
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,11 @@ def attach_message_extra_contents(messages: Sequence[Message]) -> None:
         return
 
     repository = _create_execution_extra_content_repository()
-    extra_contents_lists = repository.get_by_message_ids([message.id for message in messages])
+    extra_contents_lists = load_message_extra_contents(
+        repository=repository,
+        message_ids=[message.id for message in messages],
+        session_factory=sessionmaker(bind=db.engine, expire_on_commit=False),
+    )
 
     for index, message in enumerate(messages):
         contents = extra_contents_lists[index] if index < len(extra_contents_lists) else []
