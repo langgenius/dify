@@ -16,7 +16,7 @@ from controllers.console.app import workflow as workflow_module
 from graphon.variables import StringVariable
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import App, AppMode
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from services.workflow_service import WorkflowService
 
 EMPTY_GRAPH: dict[str, object] = {"nodes": [], "edges": []}
@@ -56,20 +56,21 @@ def seed_owner(session: Session, *, graph: dict[str, object] | None) -> DraftOwn
     session.flush()
 
     def workflow(version: str, saved_graph: dict[str, object]) -> Workflow:
-        return Workflow(
+        result = Workflow(
             id=str(uuid4()),
             tenant_id=tenant.id,
             app_id=app.id,
-            type="workflow",
+            type=WorkflowType.WORKFLOW,
             version=version,
             graph=json.dumps(saved_graph),
-            features=json.dumps({"file_upload": {"enabled": False}}),
-            environment_variables=[StringVariable(id=str(uuid4()), name="SERVER_VALUE", value="keep-env")],
-            conversation_variables=[StringVariable(id=str(uuid4()), name="topic", value="keep-conversation")],
+            _features=json.dumps({"file_upload": {"enabled": False}}),
+            _environment_variables=[StringVariable(id=str(uuid4()), name="SERVER_VALUE", value="keep-env")],
+            _conversation_variables=[StringVariable(id=str(uuid4()), name="topic", value="keep-conversation")],
             created_by=account.id,
-            created_at=datetime(2024, 1, 1),
-            updated_at=datetime(2024, 1, 2),
         )
+        result.created_at = datetime(2024, 1, 1)
+        result.updated_at = datetime(2024, 1, 2)
+        return result
 
     published = workflow("2024-01-01 00:00:00", POPULATED_GRAPH)
     session.add(published)

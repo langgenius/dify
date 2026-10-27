@@ -105,6 +105,7 @@ from models.execution_extra_content import HumanInputContent
 from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_run_index import WorkflowRunIndex
 from services.workflow_runtime import response_converter as workflow_response_converter
@@ -1170,7 +1171,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
             tenant_id="tenant",
             app_id="app",
             id="workflow",
-            type="workflow",
+            type=ModelWorkflowType.WORKFLOW,
             version="v1",
             graph=json.dumps({"nodes": [], "edges": []}),
         )
@@ -1322,7 +1323,7 @@ class TestWorkflowAppRunnerSingleNodeCases:
             tenant_id="tenant",
             app_id="app",
             id="workflow",
-            type="workflow",
+            type=ModelWorkflowType.WORKFLOW,
             version="v1",
             graph=json.dumps({"nodes": [], "edges": []}),
             kind=WorkflowKind.SNIPPET,

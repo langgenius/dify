@@ -24,6 +24,7 @@ from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
 from factories.variable_factory import build_segment
 from graphon.enums import BuiltinNodeTypes as _workflow_draft_variable_service_BuiltinNodeTypes
+from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes import BuiltinNodeTypes as _workflow_draft_variable_service_sqlite_BuiltinNodeTypes
 from graphon.variables.segments import StringSegment
@@ -141,14 +142,18 @@ class TestDraftVarLoaderSimpleCases:
             )
             variable_file.upload_file = upload_file
 
-            draft_var = WorkflowDraftVariable(
-                id="draft-var-id",
+            draft_var = WorkflowDraftVariable.new_node_variable(
+                app_id="app-id",
+                user_id="user-id",
                 node_id="test-node-id",
                 name="test_object",
-                description="test description",
-                selector=json.dumps(["test-node-id", "test_object"]),
-                variable_file=variable_file,
+                value=StringSegment(value="truncated"),
+                node_execution_id="execution-id",
+                file_id=variable_file.id,
             )
+            draft_var.id = "draft-var-id"
+            draft_var.description = "test description"
+            draft_var.variable_file = variable_file
 
             test_object = {"key1": "value1", "key2": 42}
             test_json_content = json.dumps(test_object, ensure_ascii=False, separators=(",", ":"))
@@ -171,9 +176,15 @@ class TestDraftVarLoaderSimpleCases:
 
         def test_load_offloaded_variable_missing_variable_file_unit(self, draft_var_loader):
             """Test that assertion error is raised when variable_file is None."""
-            draft_var = WorkflowDraftVariable(
-                variable_file=None,
+            draft_var = WorkflowDraftVariable.new_node_variable(
+                app_id="app-id",
+                user_id="user-id",
+                node_id="test-node-id",
+                name="test_variable",
+                value=StringSegment(value="truncated"),
+                node_execution_id="execution-id",
             )
+            draft_var.variable_file = None
 
             with pytest.raises(AssertionError):
                 draft_var_loader._load_offloaded_variable(draft_var)
@@ -187,13 +198,20 @@ class TestDraftVarLoaderSimpleCases:
                 upload_file_id="upload-file-id",
                 size=0,
                 length=0,
-                value_type="file",
+                value_type=SegmentType.FILE,
             )
             variable_file.upload_file = None
 
-            draft_var = WorkflowDraftVariable(
-                variable_file=variable_file,
+            draft_var = WorkflowDraftVariable.new_node_variable(
+                app_id="app-id",
+                user_id="user-id",
+                node_id="test-node-id",
+                name="test_variable",
+                value=StringSegment(value="truncated"),
+                node_execution_id="execution-id",
+                file_id=variable_file.id,
             )
+            draft_var.variable_file = variable_file
 
             with pytest.raises(AssertionError):
                 draft_var_loader._load_offloaded_variable(draft_var)
@@ -237,14 +255,18 @@ class TestDraftVarLoaderSimpleCases:
             )
             variable_file.upload_file = upload_file
 
-            draft_var = WorkflowDraftVariable(
-                id="draft-var-id",
+            draft_var = WorkflowDraftVariable.new_node_variable(
+                app_id="app-id",
+                user_id="user-id",
                 node_id="test-node-id",
                 name="test_array",
-                description="test array description",
-                selector=json.dumps(["test-node-id", "test_array"]),
-                variable_file=variable_file,
+                value=StringSegment(value="truncated"),
+                node_execution_id="execution-id",
+                file_id=variable_file.id,
             )
+            draft_var.id = "draft-var-id"
+            draft_var.description = "test array description"
+            draft_var.variable_file = variable_file
 
             test_array = ["item1", 2, True]
             test_json_content = json.dumps(test_array)
@@ -289,13 +311,16 @@ class TestDraftVarLoaderSimpleCases:
             )
             variable_file.upload_file = upload_file
 
-            draft_var = WorkflowDraftVariable(
-                id="draft-var-id",
+            draft_var = WorkflowDraftVariable.new_node_variable(
                 app_id="app-1",
+                user_id="user-id",
                 node_id="test-node-id",
                 name="test_file",
-                description="test file description",
+                value=StringSegment(value="truncated"),
+                node_execution_id="execution-id",
             )
+            draft_var.id = "draft-var-id"
+            draft_var.description = "test file description"
             draft_var._set_selector(["test-node-id", "test_file"])
             draft_var.variable_file = variable_file
 
@@ -1736,7 +1761,7 @@ class TestWorkflowDraftVariableServiceSqliteCases:
                 inputs='{"input": "test input"}',
                 process_data='{"test_var": "process_value", "other_var": "other_process"}',
                 outputs='{"test_var": "output_value", "other_var": "other_output"}',
-                status="succeeded",
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 elapsed_time=1.5,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=str(uuid.uuid4()),

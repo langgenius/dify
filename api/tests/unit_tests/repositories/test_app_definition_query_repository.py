@@ -120,7 +120,7 @@ def test_parameter_config_readers_enforce_the_same_ownership(
                 type=WorkflowType.WORKFLOW if mode == AppMode.WORKFLOW else WorkflowType.CHAT,
                 version="1",
                 graph='{"nodes": []}',
-                features='{"opening_statement": "Owned config"}',
+                _features='{"opening_statement": "Owned config"}',
                 created_by=_ACCOUNT_ID,
             )
             app.workflow_id = config.id if ownership != "unset" else None
@@ -167,15 +167,15 @@ def test_get_published_parameter_config_returns_workflow_features_and_legacy_inp
             id="44444444-4444-4444-4444-444444444444",
             tenant_id=_TENANT_ID,
             app_id=app.id,
-            type=workflow_type,
+            type=WorkflowType(workflow_type),
             kind=WorkflowKind.STANDARD,
             version="1",
             graph=json.dumps({"nodes": [{"id": "start", "data": {"type": "start", "variables": [variable]}}]}),
-            features=json.dumps({"opening_statement": "Hello from workflow"}),
+            _features=json.dumps({"opening_statement": "Hello from workflow"}),
             created_by=_ACCOUNT_ID,
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         session.add(workflow)
         app.workflow_id = workflow.id
@@ -549,7 +549,7 @@ def test_get_tool_icon_sources_reads_workflow_tools(
             id=_WORKFLOW_ID,
             tenant_id=_TENANT_ID,
             app_id=app.id,
-            type=workflow_type,
+            type=WorkflowType(workflow_type),
             kind=WorkflowKind.STANDARD,
             version="1",
             graph=json.dumps(
@@ -560,11 +560,11 @@ def test_get_tool_icon_sources_reads_workflow_tools(
                     ]
                 }
             ),
-            features="{}",
+            _features="{}",
             created_by=_ACCOUNT_ID,
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         session.add(workflow)
         app.workflow_id = workflow.id
