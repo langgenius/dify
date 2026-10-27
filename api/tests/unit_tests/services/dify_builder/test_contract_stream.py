@@ -59,6 +59,7 @@ def test_canvas_stream_preserves_the_notification_contract(notification: Graph) 
             }
         ).encode()
     )
+    assert projected is not None
     assert projected == ("canvas", {**metadata, **notification})
     parsed = DifyBuilderStreamEventResponse.model_validate({"event": "canvas", "data": projected[1]})
     assert parsed.model_dump(mode="json")["data"] == {**metadata, **notification}
