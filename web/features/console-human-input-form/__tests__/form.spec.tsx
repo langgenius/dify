@@ -185,8 +185,6 @@ describe('ConsoleHumanInputForm', () => {
   it.each([
     [{ status: 404 }, 'share.humanInput.formNotFound'],
     [{ status: 410, data: { body: { code: 'expired' } } }, 'share.humanInput.expired'],
-    [{ status: 409, code: 'already_submitted' }, 'share.humanInput.completed'],
-    [new Response(null, { status: 409 }), 'share.humanInput.completed'],
   ])('shows a terminal state for a rejected definition: %j', async (error, expected) => {
     fetchForm.mockRejectedValue(error)
     renderForm()
@@ -199,20 +197,52 @@ describe('ConsoleHumanInputForm', () => {
     expect(submitLegacyForm).not.toHaveBeenCalled()
   })
 
-  it.each([
-    ['expired', 'share.humanInput.expired'],
-    ['already_submitted', 'share.humanInput.completed'],
-  ])('handles a form resolved elsewhere before submission: %s', async (code, expected) => {
+  it.each([{ status: 409, code: 'already_submitted' }, new Response(null, { status: 409 })])(
+    'shows the complete already-processed status when opening a resolved form: %j',
+    async (error) => {
+      fetchForm.mockRejectedValue(error)
+      renderForm()
+
+      expect(await screen.findByText('share.humanInput.completed')).toBeInTheDocument()
+      expect(screen.getByText('share.humanInput.sorry')).toBeInTheDocument()
+      expect(
+        screen.getByText('share.humanInput.submissionID:{"id":"console-token"}'),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.retry' }),
+      ).not.toBeInTheDocument()
+    },
+  )
+
+  it('blocks submission when the form expires before approval', async () => {
+    const user = userEvent.setup()
+    submitForm.mockRejectedValue(new Response(JSON.stringify({ code: 'expired' }), { status: 410 }))
+    renderForm()
+
+    await user.click(await screen.findByRole('button', { name: 'Approve' }))
+
+    expect(await screen.findByText('share.humanInput.expired')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+    expect(submitForm).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the complete already-processed status if another recipient approves before submission', async () => {
     const user = userEvent.setup()
     submitForm.mockRejectedValue(
-      new Response(JSON.stringify({ code }), { status: code === 'expired' ? 410 : 409 }),
+      new Response(JSON.stringify({ code: 'already_submitted' }), { status: 409 }),
     )
     renderForm()
 
     await user.click(await screen.findByRole('button', { name: 'Approve' }))
 
-    expect(await screen.findByText(expected)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
+    expect(await screen.findByText('share.humanInput.completed')).toBeInTheDocument()
+    expect(screen.getByText('share.humanInput.sorry')).toBeInTheDocument()
+    expect(
+      screen.getByText('share.humanInput.submissionID:{"id":"console-token"}'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'response' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
     expect(submitForm).toHaveBeenCalledTimes(1)
   })
 

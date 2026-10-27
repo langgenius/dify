@@ -89,6 +89,17 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
     )
   }
 
+  if (errorKind === 'submitted') {
+    return (
+      <FormStatusCard
+        iconClassName="i-ri-information-2-fill text-text-accent"
+        title={t(($) => $['humanInput.sorry'], { ns: 'share' })}
+        subtitle={errorText}
+        submissionID={formToken}
+      />
+    )
+  }
+
   if (form.isError || terminal) {
     return (
       <FormStatusCard

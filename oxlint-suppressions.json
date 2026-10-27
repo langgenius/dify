@@ -881,9 +881,6 @@
     }
   },
   "web/app/components/app/text-generate/item/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 7
-    },
     "dify/require-disable-directive-description": {
       "count": 4
     },
