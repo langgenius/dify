@@ -715,7 +715,7 @@ def test_console_package_import_forwards_archive_and_closes_it(
         return Import(id="import-1", status=status)
 
     monkeypatch.setattr(AppDslService, "import_app", import_app)
-    with AppPackageService().export(dsl=dsl, name="Example") as exported:
+    with AppPackageService().export(dsl=dsl, name="Example", workflow_tools=[]) as exported:
         result = app_services.console.import_app(context, AppImportParams(mode="yaml-content"), source=exported.archive)
     assert result.status == status
     assert len(archives) == 1
