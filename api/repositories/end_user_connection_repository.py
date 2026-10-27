@@ -16,21 +16,22 @@ from constants.end_user_connections import (
     OAuthClientSource,
 )
 from context.connection_execution import ConnectionExecutionContext
+from core.app.public_runtime import published_app_filter
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus
 from models.end_user_connection import (
     AppConnection,
     EndUserConnection,
-    EndUserConnectionClaim,
     EndUserConnectionRevision,
     EndUserConnectionRevisionAcceptance,
     SessionConnection,
 )
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
-from models.model import App, AppMode, Conversation, EndUser
+from models.model import App, AppMode, Conversation, EndUser, Site
 from models.provider_ids import ToolProviderID
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
+from services.end_user_connections.claim import ConnectionClaimSource
 from services.end_user_connections.contracts import ConnectionPage, ConnectionSummary, ListConnectionsInput
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
@@ -40,7 +41,6 @@ from services.end_user_connections.entities import (
     WebConnectionContext,
 )
 from services.end_user_connections.errors import (
-    ConnectionAccountRequiredError,
     ConnectionConfigurationError,
     ConnectionConflictError,
     ConnectionIdentityError,
@@ -226,9 +226,7 @@ class EndUserConnectionRepository:
         )
 
     @staticmethod
-    def _require_context(
-        session: Session, context: WebConnectionContext, *, lock: bool, allow_claimed_guest: bool = False
-    ) -> App:
+    def _require_context(session: Session, context: WebConnectionContext, *, lock: bool) -> App:
         stmt = (
             sa.select(App)
             .join(EndUser, sa.and_(EndUser.app_id == App.id, EndUser.tenant_id == App.tenant_id))
@@ -259,15 +257,46 @@ class EndUserConnectionRepository:
                 account = account.with_for_update()
             if session.scalar(account) is None:
                 raise ConnectionIdentityError()
-        elif not allow_claimed_guest and session.scalar(
-            sa.select(EndUserConnectionClaim.id).where(
-                EndUserConnectionClaim.tenant_id == context.tenant_id,
-                EndUserConnectionClaim.app_id == context.app_id,
-                EndUserConnectionClaim.end_user_id == context.end_user_id,
-            )
-        ):
-            raise ConnectionAccountRequiredError()
         return app
+
+    def get_claim_source(self, *, app_code: str, app_id: str, end_user_id: str) -> ConnectionClaimSource | None:
+        with self._sessions() as session:
+            row = session.execute(
+                sa.select(App.tenant_id, App.name, sa.func.count(EndUserConnection.id))
+                .select_from(App)
+                .join(Site, Site.app_id == App.id)
+                .join(EndUser, sa.and_(EndUser.app_id == App.id, EndUser.tenant_id == App.tenant_id))
+                .outerjoin(
+                    EndUserConnection,
+                    sa.and_(
+                        EndUserConnection.tenant_id == App.tenant_id,
+                        EndUserConnection.end_user_id == EndUser.id,
+                        EndUserConnection.account_id.is_(None),
+                    ),
+                )
+                .where(
+                    App.id == app_id,
+                    published_app_filter(),
+                    App.status == AppStatus.NORMAL,
+                    App.enable_site.is_(True),
+                    App.mode.in_((AppMode.WORKFLOW, AppMode.ADVANCED_CHAT)),
+                    Site.code == app_code,
+                    Site.status == AppStatus.NORMAL,
+                    EndUser.id == end_user_id,
+                    EndUser.type == EndUserType.BROWSER,
+                    EndUser.account_id.is_(None),
+                )
+                .group_by(App.id, App.tenant_id, App.name)
+            ).one_or_none()
+            if row is None:
+                return None
+            tenant_id, name, count = row
+            return ConnectionClaimSource(
+                context=WebConnectionContext(tenant_id, app_id, end_user_id, None),
+                app_code=app_code,
+                app_name=name,
+                connection_count=count,
+            )
 
     def claim_connections(self, guest: WebConnectionContext, *, account_end_user_id: str) -> int:
         if guest.account_id is not None:
@@ -275,7 +304,7 @@ class EndUserConnectionRepository:
         with self._sessions.begin() as session:
             # Use the same stable App/EndUser lock as credential mutations and
             # selection saves, including when either default set is empty.
-            self._require_context(session, guest, lock=True, allow_claimed_guest=True)
+            self._require_context(session, guest, lock=True)
             target = session.scalar(
                 sa.select(EndUser).where(
                     EndUser.id == account_end_user_id,
@@ -289,18 +318,6 @@ class EndUserConnectionRepository:
                 raise ConnectionIdentityError()
             account = WebConnectionContext(guest.tenant_id, guest.app_id, target.id, target.account_id)
             self._require_context(session, account, lock=True)
-            receipt = session.scalar(
-                sa.select(EndUserConnectionClaim).where(EndUserConnectionClaim.end_user_id == guest.end_user_id)
-            )
-            if receipt is not None:
-                if (
-                    receipt.tenant_id != guest.tenant_id
-                    or receipt.app_id != guest.app_id
-                    or receipt.account_id != target.account_id
-                    or receipt.account_end_user_id != target.id
-                ):
-                    raise ConnectionConflictError()
-                return receipt.connection_count
             transferred = cast(
                 CursorResult,
                 session.execute(
@@ -324,16 +341,6 @@ class EndUserConnectionRepository:
                 )
             # Session selections and immutable Run references keep their IDs.
             # Their authoritative Conversation owner migrates independently.
-            session.add(
-                EndUserConnectionClaim(
-                    tenant_id=guest.tenant_id,
-                    app_id=guest.app_id,
-                    end_user_id=guest.end_user_id,
-                    account_id=target.account_id,
-                    account_end_user_id=target.id,
-                    connection_count=transferred,
-                )
-            )
             return transferred
 
     def published_graph(self, context: WebConnectionContext) -> tuple[str, Mapping[str, Any]]:

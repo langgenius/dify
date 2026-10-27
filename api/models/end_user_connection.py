@@ -23,27 +23,6 @@ from .base import DefaultFieldsDCMixin, TypeBase
 from .types import EnumText, LongText, StringUUID
 
 
-class EndUserConnectionClaim(DefaultFieldsDCMixin, TypeBase):
-    """Bind a retired Guest credential identity to one Account for safe retries.
-
-    Conversations retain their original owner until their separate migration.
-    This receipt fences new Guest credentials without rewriting that identity.
-    """
-
-    __tablename__ = "end_user_connection_claims"
-    __table_args__ = (
-        sa.UniqueConstraint("end_user_id", name="end_user_connection_claim_guest_key"),
-        sa.CheckConstraint("connection_count >= 0", name=sa.schema.conv("end_user_connection_claim_count_check")),
-    )
-
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    account_end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    connection_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-
-
 class EndUserConnectionRevision(TypeBase):
     """Immutable authorization snapshots deduplicated within one Web App.
 

@@ -6,12 +6,11 @@ from threading import Barrier
 from uuid import uuid4
 
 import pytest
-import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from models.account import Account, AccountStatus
-from models.end_user_connection import EndUserConnection, EndUserConnectionClaim
+from models.end_user_connection import EndUserConnection
 from models.enums import EndUserType
 from models.model import EndUser
 from services.end_user_connections.errors import ConnectionConflictError
@@ -57,7 +56,7 @@ def test_concurrent_credential_replacements_have_one_winner(db_session_with_cont
 
 
 @pytest.mark.parametrize("same_account", [False, True])
-def test_concurrent_guest_claims_have_one_receipt_and_one_owner(
+def test_concurrent_guest_claims_transfer_connections_once(
     db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch, same_account: bool
 ) -> None:
     sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
@@ -95,25 +94,20 @@ def test_concurrent_guest_claims_have_one_receipt_and_one_owner(
     selected = harness.service.create_api_key(guest_context, harness.command())
     barrier = Barrier(2)
 
-    def claim(account_end_user_id: str) -> int | None:
+    def claim(account_end_user_id: str) -> int:
         barrier.wait(timeout=10)
-        try:
-            return harness.repository.claim_connections(guest_context, account_end_user_id=account_end_user_id)
-        except ConnectionConflictError:
-            return None
+        return harness.repository.claim_connections(guest_context, account_end_user_id=account_end_user_id)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = [executor.submit(claim, target) for target in (target_id, other_target_id)]
+        targets = (target_id, other_target_id)
+        futures = [executor.submit(claim, target) for target in targets]
         results = [future.result(timeout=20) for future in futures]
-    assert results.count(1) == (2 if same_account else 1)
-    assert results.count(None) == (0 if same_account else 1)
+    assert sorted(results) == [0, 1]
     with sessions() as session:
-        receipts = list(
-            session.scalars(sa.select(EndUserConnectionClaim).where(EndUserConnectionClaim.end_user_id == guest_id))
-        )
-        assert len(receipts) == 1
+        winner = session.get(EndUser, targets[results.index(1)])
+        assert winner is not None
         connection = session.get(EndUserConnection, selected.id)
         assert connection is not None
-        assert connection.account_id == receipts[0].account_id
+        assert connection.account_id == winner.account_id
         assert connection.end_user_id is None
         assert connection.revision == 2

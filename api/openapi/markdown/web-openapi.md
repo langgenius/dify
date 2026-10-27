@@ -149,14 +149,7 @@ Stop a running completion message task.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /connections/claim
-Explicitly claim the current Guest's Connections for the authenticated Account. Send the old Guest Passport in X-App-Passport, and an Account Web login proof in Authorization or a PKCE login_code/code_verifier pair in the JSON body. Returns a new Account-linked App Passport. Account App defaults take precedence over Guest defaults; Conversation choices and history are preserved.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| X-App-Code | header |  | Yes | string |
-| X-App-Passport | header |  | Yes | string |
+Claim up to 50 anonymous browser Passports across Web Apps for one authenticated Account. Submit Guest Passports in passports, with one Account Web login proof in Authorization. Alternatively, redeem app_code/login_code/code_verifier once for the whole batch. Account authentication and capability failures reject the batch before any transfer. Items run in input order with independent transactions; every item returns its index and success or failure. Success includes the App code, Account App Passport and this item's transferred Connection count. Duplicates and retries transfer remaining Guest Connections only; zero means none remain. Account defaults take precedence; Conversation choices and history are preserved. Retry failed items only; no cross-App atomicity is provided.
 
 #### Request Body
 
@@ -168,10 +161,25 @@ Explicitly claim the current Guest's Connections for the authenticated Account. 
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Guest Connections claimed | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
+| 200 | Guest Connection claim results | **application/json**: [ConnectionClaimResponse](#connectionclaimresponse)<br> |
 | 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /connections/claimable-passports
+Check anonymous Passports held by this browser across Web Apps without changing identity or data. Submit local candidates; return their request indices, App names/codes and current Connection counts. Invalid, expired, duplicate, Account, SSO and empty candidates are omitted. No Account login is required. This is advisory: actual Claim rechecks ownership and Account App admission.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ClaimablePassportsPayload](#claimablepassportspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Claimable browser Passports | **application/json**: [ClaimablePassportsResponse](#claimablepassportsresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /connections/configuration
@@ -189,7 +197,6 @@ Read saved App or Conversation choices without validating or refreshing credenti
 | ---- | ----------- | ------ |
 | 200 | Saved Connection configuration | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
 | 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [EndUserLoginRequiredError](#enduserloginrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /connections/oauth/authorization-url
@@ -1407,6 +1414,27 @@ Button styles for user actions.
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
+#### ClaimablePassportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_code | string |  | Yes |
+| app_name | string |  | Yes |
+| connection_count | integer |  | Yes |
+| index | integer | Index of the candidate in the request's passports list | Yes |
+
+#### ClaimablePassportsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| passports | [ string ] |  | Yes |
+
+#### ClaimablePassportsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ClaimablePassportResponse](#claimablepassportresponse) ] |  | Yes |
+
 #### CompletionMessagePayload
 
 | Name | Type | Description | Required |
@@ -1425,20 +1453,47 @@ Completion request failed.
 | ---- | ---- | ----------- | -------- |
 | CompletionRequestError |  | Completion request failed. |  |
 
+#### ConnectionClaimErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string, <br>**Available values:** "app_not_found", "connection_claim_unavailable", "connection_conflict", "end_user_login_required", "unauthorized", "web_app_access_denied" | *Enum:* `"app_not_found"`, `"connection_claim_unavailable"`, `"connection_conflict"`, `"end_user_login_required"`, `"unauthorized"`, `"web_app_access_denied"` | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### ConnectionClaimFailureResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | [ConnectionClaimErrorResponse](#connectionclaimerrorresponse) |  | Yes |
+| index | integer |  | Yes |
+| status | string |  | Yes |
+
 #### ConnectionClaimPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| app_code | string | Login handoff App code; required only with PKCE | No |
 | code_verifier | string |  | No |
 | login_code | string |  | No |
+| passports | [ string ] |  | Yes |
 
 #### ConnectionClaimResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| data | [ [ConnectionClaimSuccessResponse](#connectionclaimsuccessresponse)<br>[ConnectionClaimFailureResponse](#connectionclaimfailureresponse) ] |  | Yes |
+| webapp_access_token | string |  | Yes |
+
+#### ConnectionClaimSuccessResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
 | access_token | string |  | Yes |
-| claimed_connections | integer | Number transferred by the original claim; stable on retries | Yes |
-| webapp_access_token | string | Web-only login proof for subsequent login-status and Passport requests; never a Console token | Yes |
+| app_code | string |  | Yes |
+| claimed_connections | integer | Number transferred by this item; zero when no Guest Connections remain | Yes |
+| index | integer |  | Yes |
+| status | string |  | Yes |
 
 #### ConnectionConfigurationInvalidError
 

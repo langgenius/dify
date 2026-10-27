@@ -128,6 +128,30 @@ export const zChatMessagePayload = z.object({
 })
 
 /**
+ * ClaimablePassportResponse
+ */
+export const zClaimablePassportResponse = z.object({
+  app_code: z.string(),
+  app_name: z.string(),
+  connection_count: z.int().gte(1),
+  index: z.int().gte(0),
+})
+
+/**
+ * ClaimablePassportsPayload
+ */
+export const zClaimablePassportsPayload = z.object({
+  passports: z.array(z.string().min(1).max(8192)).max(50),
+})
+
+/**
+ * ClaimablePassportsResponse
+ */
+export const zClaimablePassportsResponse = z.object({
+  data: z.array(zClaimablePassportResponse),
+})
+
+/**
  * CompletionMessagePayload
  */
 export const zCompletionMessagePayload = z.object({
@@ -139,22 +163,59 @@ export const zCompletionMessagePayload = z.object({
 })
 
 /**
+ * ConnectionClaimErrorResponse
+ */
+export const zConnectionClaimErrorResponse = z.object({
+  code: z.enum([
+    'app_not_found',
+    'connection_claim_unavailable',
+    'connection_conflict',
+    'end_user_login_required',
+    'unauthorized',
+    'web_app_access_denied',
+  ]),
+  message: z.string(),
+  status: z.int(),
+})
+
+/**
+ * ConnectionClaimFailureResponse
+ */
+export const zConnectionClaimFailureResponse = z.object({
+  error: zConnectionClaimErrorResponse,
+  index: z.int().gte(0),
+  status: z.literal('failed'),
+})
+
+/**
  * ConnectionClaimPayload
  */
 export const zConnectionClaimPayload = z.object({
+  app_code: z.string().min(1).max(255).nullish(),
   code_verifier: z
     .string()
     .regex(/^[A-Za-z0-9._~-]{43,128}$/)
     .nullish(),
   login_code: z.string().min(1).max(256).nullish(),
+  passports: z.array(z.string().min(1).max(8192)).min(1).max(50),
+})
+
+/**
+ * ConnectionClaimSuccessResponse
+ */
+export const zConnectionClaimSuccessResponse = z.object({
+  access_token: z.string(),
+  app_code: z.string(),
+  claimed_connections: z.int().gte(0),
+  index: z.int().gte(0),
+  status: z.literal('success'),
 })
 
 /**
  * ConnectionClaimResponse
  */
 export const zConnectionClaimResponse = z.object({
-  access_token: z.string(),
-  claimed_connections: z.int().gte(0),
+  data: z.array(z.union([zConnectionClaimSuccessResponse, zConnectionClaimFailureResponse])),
   webapp_access_token: z.string(),
 })
 
@@ -2366,15 +2427,17 @@ export const zPostConnectionsResponse = zEndUserConnectionResponse
 
 export const zPostConnectionsClaimBody = zConnectionClaimPayload
 
-export const zPostConnectionsClaimHeaders = z.object({
-  'X-App-Code': z.string(),
-  'X-App-Passport': z.string(),
-})
-
 /**
- * Guest Connections claimed
+ * Guest Connection claim results
  */
 export const zPostConnectionsClaimResponse = zConnectionClaimResponse
+
+export const zPostConnectionsClaimablePassportsBody = zClaimablePassportsPayload
+
+/**
+ * Claimable browser Passports
+ */
+export const zPostConnectionsClaimablePassportsResponse = zClaimablePassportsResponse
 
 export const zGetConnectionsConfigurationQuery = z.object({
   conversation_id: z.uuid().optional(),

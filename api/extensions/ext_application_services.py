@@ -811,6 +811,7 @@ def build_application_services(
             store=EndUserConnectionRepository(session_factory=database_client),
             passports=web_passport,
             tokens=web_passport_tokens,
+            identities=web_identity,
         ),
         end_user_connections=end_user_connections,
         end_user_connection_preflight=end_user_connection_preflight,
