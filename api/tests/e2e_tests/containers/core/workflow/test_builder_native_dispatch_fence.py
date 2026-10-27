@@ -17,11 +17,11 @@ from runtime_contracts.builder.native.contracts import (
     EffectDecision,
     ResumeReceipt,
 )
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     NativeRuntimeWitness,
     require_instance,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ChildArguments
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import ChildArguments
 
 if TYPE_CHECKING:
     from runtime_contracts.builder.native.contracts import NativeTestContextRef
@@ -47,19 +47,19 @@ if TYPE_CHECKING:
         NativeTestContextRef,
     )
     from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
-    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
+    from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import ContinuationCase
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import (
+    from tests.e2e_tests.containers.core.workflow import (
         test_builder_native_continuation as _fixture_types_0,
     )
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import (
+    from tests.e2e_tests.containers.core.workflow import (
         test_builder_native_continuation as _fixture_types_0,
     )
 
@@ -91,34 +91,34 @@ from runtime_contracts.builder.native.contracts import (
 from services.dify_builder.native_testing.http_binding import NativeHttpDisclosure
 from services.dify_builder.native_testing.pending_actions import NativePendingActionService
 from services.dify_builder.native_testing.transitions import quarantine_unknown
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     ChildApprovalCase,
     require_present,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     ContinuationCase,
     _bind_child_effect,
     _child_case,
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     continuation_case as continuation_case,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_dispatch_claims import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_dispatch_claims import (
     migrated_dispatch_claims as migrated_dispatch_claims,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     ledger_case as ledger_case,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     native_owner as native_owner,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
     no_live as no_live,  # noqa: PLC0414
 )
 
@@ -424,7 +424,7 @@ def test_real_protected_child_approval_local_zero_shared_one_and_stale_local_rej
     fence_case: ContinuationCase, stale_local: bool
 ) -> None:
 
-    from tests.test_containers_integration_tests.core.workflow.test_builder_native_approval_scope import (
+    from tests.e2e_tests.containers.core.workflow.test_builder_native_approval_scope import (
         _decide,
         _prepare_pending,
     )
@@ -735,22 +735,18 @@ def test_real_existing_nested_child_lookup_revalidates_parent_app_and_protected_
     # Copy real owned app/workflow metadata to a distinct invocation app B.
     with c.factory.begin() as session:
         original = session.get(App, c.context.app_id)
-        app = App(
-            **{
-                a.key: require_instance(inspect_orm(original), InstanceState).attrs[a.key].value
-                for a in inspect(App).column_attrs
-                if a.key != "id"
-            }
-        )
+        app = App()
+        for a in inspect(App).column_attrs:
+            if a.key != "id":
+                setattr(app, a.key, require_instance(inspect_orm(original), InstanceState).attrs[a.key].value)
         app.id, app.maintainer = str(uuid4()), str(uuid4())
         original_workflow = session.get(Workflow, c.context.workflow_id)
-        workflow = Workflow(
-            **{
-                a.key: require_instance(inspect_orm(original_workflow), InstanceState).attrs[a.key].value
-                for a in inspect(Workflow).column_attrs
-                if a.key != "id"
-            }
-        )
+        workflow = Workflow()
+        for a in inspect(Workflow).column_attrs:
+            if a.key != "id":
+                setattr(
+                    workflow, a.key, require_instance(inspect_orm(original_workflow), InstanceState).attrs[a.key].value
+                )
         workflow.id, workflow.app_id = str(uuid4()), app.id
         app.workflow_id = workflow.id
         session.add_all((app, workflow))

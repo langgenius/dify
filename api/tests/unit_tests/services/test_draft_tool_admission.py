@@ -207,8 +207,7 @@ def native_draft(
         ],
         "edges": [{"id": "e1", "source": "s", "target": "t"}, {"id": "e2", "source": "t", "target": "e"}],
     }
-    workflow = Workflow(
-        id=DRAFT_ID,
+    workflow = Workflow.new(
         tenant_id=TENANT_ID,
         app_id=APP_ID,
         type=WorkflowType.WORKFLOW,
@@ -220,6 +219,7 @@ def native_draft(
         conversation_variables=[],
         rag_pipeline_variables=[],
     )
+    workflow.id = DRAFT_ID
     sqlite_session.add_all([app, workflow])
     sqlite_session.commit()
     return NativeDraftCase(app=app, user=user, workflow=workflow, tools=draft_tools)

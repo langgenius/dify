@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account
 from models.model import App, AppMode
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
 from tests.workflow_empty_draft_test_utils import POPULATED_GRAPH, seed_owner
@@ -137,10 +137,10 @@ def test_legacy_duplicate_drafts_are_rejected_without_writes(
         Workflow(
             tenant_id=owner.app.tenant_id,
             app_id=owner.app.id,
-            type="workflow",
+            type=WorkflowType.WORKFLOW,
             version="draft",
             graph=json.dumps(_graph("duplicate")),
-            features="{}",
+            _features="{}",
             created_by=owner.account.id,
         )
     )
@@ -433,10 +433,10 @@ def test_draft_conflicts_are_served_by_framework_without_writes(
             Workflow(
                 tenant_id=target.tenant_id,
                 app_id=target.id,
-                type="workflow",
+                type=WorkflowType.WORKFLOW,
                 version="draft",
                 graph=json.dumps(_graph("duplicate")),
-                features="{}",
+                _features="{}",
                 created_by=owner.account.id,
             )
         )
@@ -496,10 +496,10 @@ def test_duplicate_import_returns_failed_reason_before_metadata_changes(db_sessi
         Workflow(
             tenant_id=owner.app.tenant_id,
             app_id=owner.app.id,
-            type="workflow",
+            type=WorkflowType.WORKFLOW,
             version="draft",
             graph=json.dumps(_graph("duplicate")),
-            features="{}",
+            _features="{}",
             created_by=owner.account.id,
         )
     )
