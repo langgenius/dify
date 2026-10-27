@@ -13,13 +13,15 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
 from functools import wraps
-from typing import ParamSpec, TypeVar
+from typing import Final, ParamSpec, TypeVar
 
 from flask import request
 from werkzeug.exceptions import TooManyRequests, Unauthorized
 
 from configs import dify_config
 from libs.helper import RateLimiter, extract_remote_ip
+
+RATE_LIMIT_IDENTITY_MISSING: Final = "rate_limit_identity_missing"
 
 
 class RateLimitScope(StrEnum):
@@ -81,7 +83,7 @@ LIMIT_BEARER_PER_TOKEN = RateLimit(
 def _ip_key() -> str:
     ip = extract_remote_ip(request)
     if not ip:
-        raise Unauthorized("rate_limit_identity_missing")
+        raise Unauthorized(RATE_LIMIT_IDENTITY_MISSING)
     return f"ip:{ip}"
 
 
@@ -90,7 +92,7 @@ def _console_account_key() -> str:
 
     account, _ = current_account_with_tenant_optional()
     if not account:
-        raise Unauthorized("rate_limit_identity_missing")
+        raise Unauthorized(RATE_LIMIT_IDENTITY_MISSING)
     return f"console_account:{account.id}"
 
 
@@ -99,7 +101,7 @@ def _account_key() -> str:
 
     ctx = try_get_auth_ctx()
     if not ctx or not ctx.account_id:
-        raise Unauthorized("rate_limit_identity_missing")
+        raise Unauthorized(RATE_LIMIT_IDENTITY_MISSING)
     return f"account:{ctx.account_id}"
 
 
@@ -108,7 +110,7 @@ def _subject_email_key() -> str:
 
     ctx = try_get_auth_ctx()
     if not ctx or not ctx.subject_email:
-        raise Unauthorized("rate_limit_identity_missing")
+        raise Unauthorized(RATE_LIMIT_IDENTITY_MISSING)
     return f"subject:{ctx.subject_email}"
 
 
@@ -117,7 +119,7 @@ def _token_id_key() -> str:
 
     ctx = try_get_auth_ctx()
     if not ctx or not ctx.token_id:
-        raise Unauthorized("rate_limit_identity_missing")
+        raise Unauthorized(RATE_LIMIT_IDENTITY_MISSING)
     return f"token:{ctx.token_id}"
 
 
