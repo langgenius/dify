@@ -4,6 +4,7 @@ import json
 import time
 from collections.abc import Callable, Mapping
 from contextlib import closing
+from dataclasses import replace
 from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Any, Protocol
@@ -18,6 +19,7 @@ from werkzeug.test import EnvironBuilder
 from clients.plugin.auth import PluginCredentialAuthClient
 from clients.plugin.auth_entities import CredentialCheckResult, OAuthRevokeResult
 from clients.plugin.errors import PluginNotImplementedError
+from clients.plugin.identifiers import plugin_id_from_unique_identifier
 from configs import dify_config
 from constants.end_user_connections import END_USER_OAUTH_CONTEXT_PREFIX, OAuthClientSource
 from core.helper.provider_cache import NoOpProviderCredentialCache
@@ -25,7 +27,10 @@ from core.plugin.entities.plugin_daemon import CredentialType, PluginOAuthCreden
 from core.plugin.impl.base import use_plugin_daemon_request_timeout
 from core.plugin.impl.exc import PluginDaemonError
 from core.plugin.impl.oauth import OAuthHandler
+from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.plugin_service import PluginService
+from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_provider_encrypter
 from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_redis import RedisClientWrapper, redis_client
@@ -47,7 +52,6 @@ from services.end_user_connections.errors import (
 from services.end_user_connections.oauth import (
     ConnectionOAuthAttempt,
     ConnectionOAuthGrant,
-    OAuthClientSnapshot,
     ResolvedOAuthClient,
     StoredOAuthClientConfiguration,
 )
@@ -139,9 +143,26 @@ class PluginConnectionOAuthGateway:
     def resolve_grant_client(
         self, tenant_id: str, provider: str, reference: ConnectionOAuthClient
     ) -> ResolvedOAuthClient:
+        identifier = reference.plugin_unique_identifier
+        identity = ToolProviderID(provider)
+        if identifier is None or plugin_id_from_unique_identifier(identifier) != identity.plugin_id:
+            raise ConnectionReauthorizationRequiredError()
         stored = self._clients.oauth_grant_client_configuration(tenant_id, provider, reference)
-        client = self._resolve_client(tenant_id, provider, stored)
-        if client.snapshot.reference != reference:
+        if reference.fingerprint is None or stored.fingerprint != reference.fingerprint:
+            raise ConnectionReauthorizationRequiredError()
+        with use_plugin_daemon_request_timeout(10):
+            manifest = PluginInstaller().fetch_plugin_manifest(tenant_id, identifier)
+        if (
+            manifest.tool is None
+            or manifest.tool.oauth_schema is None
+            or manifest.tool.identity.name not in {identity.provider_name, str(identity)}
+        ):
+            raise ConnectionConfigurationError()
+        entity = ToolProviderEntityWithPlugin.model_validate(manifest.tool.model_dump())
+        entity.identity.name = str(identity)
+        controller = PluginToolProviderController(entity, identity.plugin_id, identifier, tenant_id)
+        client = self._decode_client(tenant_id, stored, controller)
+        if client.snapshot != reference:
             raise ConnectionReauthorizationRequiredError()
         return client
 
@@ -157,6 +178,15 @@ class PluginConnectionOAuthGateway:
             tenant_id, controller.plugin_unique_identifier
         ):
             raise ConnectionConfigurationError()
+        return replace(
+            self._decode_client(tenant_id, stored, controller),
+            plugin_is_trusted=self._providers.is_plugin_trusted(tenant_id, controller.plugin_unique_identifier),
+        )
+
+    @staticmethod
+    def _decode_client(
+        tenant_id: str, stored: StoredOAuthClientConfiguration, controller: PluginToolProviderController
+    ) -> ResolvedOAuthClient:
         try:
             if stored.source == OAuthClientSource.WORKSPACE:
                 encrypter, _ = create_provider_encrypter(
@@ -173,16 +203,22 @@ class PluginConnectionOAuthGateway:
             raise ConnectionConfigurationError()
         client_id = parameters.get("client_id")
         return ResolvedOAuthClient(
-            snapshot=OAuthClientSnapshot(
-                reference=ConnectionOAuthClient(
-                    source=stored.source,
-                    configuration_id=stored.configuration_id,
-                    client_id=client_id if isinstance(client_id, str) else None,
-                ),
+            snapshot=ConnectionOAuthClient(
+                source=stored.source,
+                configuration_id=stored.configuration_id,
+                client_id=client_id if isinstance(client_id, str) else None,
                 fingerprint=stored.fingerprint,
+                plugin_unique_identifier=controller.plugin_unique_identifier,
             ),
             parameters=parameters,
         )
+
+    @staticmethod
+    def _artifact(client: ResolvedOAuthClient) -> str:
+        identifier = client.snapshot.plugin_unique_identifier
+        if identifier is None:
+            raise ConnectionReauthorizationRequiredError()
+        return identifier
 
     @staticmethod
     def redirect_uri(provider: str) -> str:
@@ -199,6 +235,7 @@ class PluginConnectionOAuthGateway:
                 provider=identity.provider_name,
                 redirect_uri=self.redirect_uri(provider),
                 system_credentials=client.parameters,
+                plugin_unique_identifier=self._artifact(client),
             ).authorization_url
         except Exception:
             raise ConnectionOAuthError() from None
@@ -221,6 +258,7 @@ class PluginConnectionOAuthGateway:
                     provider=identity.provider_name,
                     redirect_uri=self.redirect_uri(provider),
                     system_credentials=client.parameters,
+                    plugin_unique_identifier=self._artifact(client),
                     request=callback,
                 )
             return self._grant(result)
@@ -261,6 +299,7 @@ class PluginConnectionOAuthGateway:
                     provider=identity.provider_name,
                     redirect_uri=self.redirect_uri(provider),
                     system_credentials=client.parameters,
+                    plugin_unique_identifier=self._artifact(client),
                     credentials=credentials,
                 )
             if not result.credentials:
@@ -289,7 +328,7 @@ class PluginConnectionOAuthGateway:
             )
 
     def check(
-        self, context: WebConnectionContext, provider: str, credentials: Mapping[str, Any]
+        self, context: WebConnectionContext, provider: str, client: ResolvedOAuthClient, credentials: Mapping[str, Any]
     ) -> CredentialCheckResult:
         try:
             return self._auth.check_provider_credentials(
@@ -298,6 +337,7 @@ class PluginConnectionOAuthGateway:
                 provider=provider,
                 credentials=credentials,
                 credential_type=CredentialType.OAUTH2,
+                plugin_unique_identifier=self._artifact(client),
             )
         except PluginNotImplementedError:
             return CredentialCheckResult(
@@ -320,6 +360,7 @@ class PluginConnectionOAuthGateway:
                 user_id=context.end_user_id,
                 provider=provider,
                 system_credentials=client.parameters,
+                plugin_unique_identifier=self._artifact(client),
                 credentials=credentials,
             )
         except PluginNotImplementedError:

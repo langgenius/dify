@@ -2046,7 +2046,7 @@ def test_account_passport_exchange_is_controlled_by_configuration_in_every_editi
     enabled: bool,
 ) -> None:
     from libs.passport import PassportService
-    from models.model import EndUser
+    from models.model import AppModelConfig, EndUser
     from services.enterprise.enterprise_service import WebAppSettings
     from services.web_passport_service import WebPassportAccountExchangeDisabledError
     from tests.helpers.unit.config_override import apply_config_overrides

@@ -1,5 +1,4 @@
 from datetime import datetime
-from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
@@ -15,12 +14,10 @@ from services.end_user_connections.contracts import (
     UpdateConnectionInput,
 )
 
-WORKFLOW_ID = "019a0000-0000-7000-8000-000000000001"
-
 
 def create_payload() -> dict[str, object]:
     return {
-        "workflow_id": WORKFLOW_ID,
+        "connection_revision": "00000000-0000-7000-8000-000000000002",
         "node_id": "1730000000000",
         "name": "My calendar",
         "credentials": {"api_key": "secret-sentinel"},
@@ -28,7 +25,18 @@ def create_payload() -> dict[str, object]:
 
 
 @pytest.mark.parametrize(
-    "field", ["tenant_id", "app_id", "account_id", "end_user_id", "owner", "provider", "oauth_client", "revision"]
+    "field",
+    [
+        "tenant_id",
+        "app_id",
+        "account_id",
+        "end_user_id",
+        "owner",
+        "provider",
+        "oauth_client",
+        "revision",
+        "workflow_id",
+    ],
 )
 def test_create_input_cannot_supply_authority_or_provider_configuration(field: str) -> None:
     with pytest.raises(ValidationError):
@@ -37,11 +45,12 @@ def test_create_input_cannot_supply_authority_or_provider_configuration(field: s
 
 def test_create_input_keeps_credentials_out_of_repr_and_validation_messages() -> None:
     command = CreateApiKeyConnectionInput.model_validate(create_payload())
-    assert command.workflow_id == UUID(WORKFLOW_ID)
+    assert command.connection_revision == "00000000-0000-7000-8000-000000000002"
+    assert "workflow_id" not in command.model_dump()
     assert command.credentials == {"api_key": "secret-sentinel"}
     assert "secret-sentinel" not in repr(command)
     with pytest.raises(ValidationError) as exc:
-        CreateApiKeyConnectionInput.model_validate({**create_payload(), "workflow_id": "invalid"})
+        CreateApiKeyConnectionInput.model_validate({**create_payload(), "connection_revision": "invalid"})
     assert "secret-sentinel" not in str(exc.value)
 
 
@@ -72,9 +81,11 @@ def test_update_distinguishes_omission_and_full_replacement() -> None:
     rename = UpdateConnectionInput(name="Renamed")
     assert rename.credentials is None
     assert rename.model_fields_set == {"name"}
-    replacement = UpdateConnectionInput(credentials={"api_key": "secret-sentinel"})
+    replacement = UpdateConnectionInput(
+        credentials={"api_key": "secret-sentinel"}, connection_revision="00000000-0000-7000-8000-000000000002"
+    )
     assert replacement.name is None
-    assert replacement.model_fields_set == {"credentials"}
+    assert replacement.model_fields_set == {"credentials", "connection_revision"}
     assert "secret-sentinel" not in repr(replacement)
 
 
@@ -88,7 +99,12 @@ def test_oauth_start_does_not_accept_browser_supplied_tokens_or_client() -> None
     for field in ("credentials", "oauth_client", "client_id", "client_secret", "redirect_uri", "context_id"):
         with pytest.raises(ValidationError):
             StartConnectionOAuthInput.model_validate(
-                {"workflow_id": WORKFLOW_ID, "node_id": "node", "name": "My account", field: "secret-sentinel"}
+                {
+                    "connection_revision": "00000000-0000-7000-8000-000000000002",
+                    "node_id": "node",
+                    "name": "My account",
+                    field: "secret-sentinel",
+                }
             )
 
 

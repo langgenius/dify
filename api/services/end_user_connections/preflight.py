@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import ConnectionCredentialType, NodeConnectionStatus
-from services.end_user_connections.contracts import ConnectionCredentialChecks, ConnectionInput
+from services.end_user_connections.contracts import ConnectionContractInput, ConnectionCredentialChecks
 from services.end_user_connections.entities import (
     ConnectionAccessRecord,
     ConnectionCheckSnapshot,
@@ -26,20 +26,14 @@ from services.end_user_connections.errors import (
     ConnectionReauthorizationRequiredError,
 )
 from services.end_user_connections.policy import require_applicable_connection, require_personal_connection_access
+from services.end_user_connections.revision import ConnectionRevisionAcceptance
 from services.end_user_connections.status import resolve_node_connection_state
 
 ConnectionId = Annotated[UUID, Field(strict=False)]
 NodeId = Annotated[str, Field(min_length=1, max_length=255)]
 
 
-class ConnectionPreflightInput(ConnectionInput):
-    workflow_id: UUID = Field(
-        strict=False,
-        description=(
-            "Expected connection contract revision from Web App parameters. "
-            "Must match the current published workflow; does not select an execution version."
-        ),
-    )
+class ConnectionPreflightInput(ConnectionContractInput):
     # Only existing Chatflow Conversations have an authoritative business Session.
     # None checks a new conversation or a plain Workflow's App/user context.
     conversation_id: UUID | None = Field(
@@ -81,7 +75,8 @@ class ConnectionPreflightStatus(BaseModel):
 class ConnectionPreflightView(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    workflow_id: str = Field(description="Connection contract revision evaluated by this preflight.")
+    workflow_id: str = Field(exclude=True)
+    connection_revision: str = Field(description="Connection contract revision evaluated by this preflight.")
     connections: tuple[ConnectionPreflightStatus, ...]
 
     @computed_field
@@ -94,11 +89,12 @@ class PreflightRequirements(Protocol):
     def resolve(
         self,
         context: WebConnectionContext,
-        workflow_id: str,
+        workflow_id: str | None,
         conversation_id: str | None,
         *,
         oauth_providers: frozenset[str],
-    ) -> tuple[ConnectionRequirement, ...]: ...
+        connection_revision: str,
+    ) -> tuple[str, str, tuple[ConnectionRequirement, ...]]: ...
 
 
 class PreflightConnections(Protocol):
@@ -106,8 +102,13 @@ class PreflightConnections(Protocol):
         self, context: WebConnectionContext, connection_ids: frozenset[str]
     ) -> Mapping[str, ConnectionAccessRecord]: ...
 
-    def validate_preflight_context(
-        self, context: WebConnectionContext, workflow_id: str, conversation_id: str | None
+    def complete_preflight(
+        self,
+        context: WebConnectionContext,
+        workflow_id: str,
+        conversation_id: str | None,
+        *,
+        revision_acceptance: ConnectionRevisionAcceptance | None,
     ) -> None: ...
 
 
@@ -123,10 +124,10 @@ class ConnectionPreflightService:
         self._connections = connections
         self._checks = checks
 
-    def check(self, context: WebConnectionContext, command: ConnectionPreflightInput) -> ConnectionPreflightView:
+    def check(
+        self, context: WebConnectionContext, command: ConnectionPreflightInput, *, workflow_id: str | None = None
+    ) -> ConnectionPreflightView:
         conversation_id = str(command.conversation_id) if command.conversation_id is not None else None
-        workflow_id = str(command.workflow_id)
-        self._connections.validate_preflight_context(context, workflow_id, conversation_id)
         selections = {key: str(value) if value is not None else None for key, value in command.connections.items()}
         ids = frozenset(value for value in selections.values() if value is not None)
         if ids:
@@ -135,8 +136,12 @@ class ConnectionPreflightService:
         oauth_providers = frozenset(
             record.provider for record in records.values() if record.credential_type == ConnectionCredentialType.OAUTH2
         )
-        requirements = self._requirements.resolve(
-            context, workflow_id, conversation_id, oauth_providers=oauth_providers
+        workflow_id, accepted_revision, requirements = self._requirements.resolve(
+            context,
+            workflow_id,
+            conversation_id,
+            oauth_providers=oauth_providers,
+            connection_revision=command.connection_revision,
         )
         if requirements:
             require_personal_connection_access(context)
@@ -163,7 +168,9 @@ class ConnectionPreflightService:
             if record.id in snapshots or record.id in unavailable:
                 continue
             try:
-                outcome = self._checks.check_connection_result(context, record.id)
+                outcome = self._checks.check_connection_result(
+                    context, record.id, connection_revision=accepted_revision
+                )
             except ConnectionNotFoundError:
                 raise ConnectionConflictError() from None
             except ConnectionCheckUnavailableError:
@@ -177,8 +184,12 @@ class ConnectionPreflightService:
 
         # Resolve again after external checks so Client changes cannot leave a
         # stale ready response. The final owner/revision read never loads secrets.
-        current_requirements = self._requirements.resolve(
-            context, workflow_id, conversation_id, oauth_providers=oauth_providers
+        _, revision, current_requirements = self._requirements.resolve(
+            context,
+            workflow_id,
+            conversation_id,
+            oauth_providers=oauth_providers,
+            connection_revision=command.connection_revision,
         )
         if current_requirements != requirements:
             raise ConnectionConflictError()
@@ -188,7 +199,6 @@ class ConnectionPreflightService:
             latest = current.get(connection_id)
             if latest is None or latest.revision != expected:
                 raise ConnectionConflictError()
-        self._connections.validate_preflight_context(context, workflow_id, conversation_id)
 
         views: list[ConnectionPreflightStatus] = []
         for requirement in requirements:
@@ -229,4 +239,17 @@ class ConnectionPreflightService:
                     check=check,
                 )
             )
-        return ConnectionPreflightView(workflow_id=workflow_id, connections=tuple(views))
+        result = ConnectionPreflightView(
+            workflow_id=workflow_id, connection_revision=revision, connections=tuple(views)
+        )
+        self._connections.complete_preflight(
+            context,
+            workflow_id,
+            conversation_id,
+            revision_acceptance=(
+                ConnectionRevisionAcceptance.from_revisions(command.connection_revision, revision)
+                if requirements
+                else None
+            ),
+        )
+        return result

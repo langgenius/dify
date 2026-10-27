@@ -36,7 +36,7 @@ export function selectWebAppParameters(parameters: WebAppParametersResponse): We
     account_login_enabled: parameters.account_login_enabled,
     account_login_url: parameters.account_login_url,
     allow_anonymous_end_user_auth: parameters.allow_anonymous_end_user_auth,
-    workflow_id: parameters.workflow_id,
+    connection_revision: parameters.connection_revision,
     requires_end_user_connections: parameters.requires_end_user_connections,
     connection_requirements: parameters.connection_requirements,
   }

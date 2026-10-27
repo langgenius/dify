@@ -219,6 +219,7 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                     workflow_id=workflow.id,
                     requires_end_user_connections=requires_end_user_connections(graph),
                     connection_requirements=requirements,
+                    graph=graph,
                 )
             config = (
                 _get_public_agent_parameter_config(app, session=session)
@@ -228,7 +229,11 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             if config is None:
                 return None
             return WebAppParameterConfig(
-                parameters=config, workflow_id=None, requires_end_user_connections=False, connection_requirements=()
+                parameters=config,
+                workflow_id=None,
+                requires_end_user_connections=False,
+                connection_requirements=(),
+                graph=None,
             )
 
     @override

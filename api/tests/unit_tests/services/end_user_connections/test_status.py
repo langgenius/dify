@@ -25,7 +25,7 @@ from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
     ConnectionConflictError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.status import resolve_node_connection_state
 
@@ -40,7 +40,10 @@ def context() -> WebConnectionContext:
 @pytest.fixture
 def client() -> ConnectionOAuthClient:
     return ConnectionOAuthClient(
-        source=OAuthClientSource.WORKSPACE, configuration_id="client-config", client_id="client"
+        source=OAuthClientSource.WORKSPACE,
+        configuration_id="client-config",
+        client_id="client",
+        fingerprint="fingerprint",
     )
 
 
@@ -240,7 +243,7 @@ def test_check_cannot_be_reused_after_another_connection_or_credential_revision(
 def test_stale_workflow_is_not_silently_disconnected(
     context: WebConnectionContext, target: ToolConnectionTarget, selection: NodeConnectionSelection
 ) -> None:
-    with pytest.raises(ConnectionWorkflowChangedError):
+    with pytest.raises(ConnectionRevisionChangedError):
         resolve_node_connection_state(
             context, selection=replace(selection, workflow_id="old-version"), target=target, record=None, check=None
         )

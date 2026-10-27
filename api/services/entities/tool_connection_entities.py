@@ -1,5 +1,8 @@
 """Framework-neutral values for published tool connection requirements."""
 
+from collections.abc import Mapping
+from typing import Any, NamedTuple, Protocol
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from constants.end_user_connections import ConnectionCredentialType
@@ -16,3 +19,16 @@ class ToolConnectionRequirement(BaseModel):
     purpose: str
     provider: str
     allowed_credential_types: tuple[ConnectionCredentialType, ...]
+
+
+class ConnectionProviderMetadata(NamedTuple):
+    provider: str
+    plugin_unique_identifier: str
+    icon: str
+    icon_dark: str | None
+
+
+class ConnectionRevisions(Protocol):
+    def resolve(
+        self, tenant_id: str, app_id: str, graph: Mapping[str, Any]
+    ) -> tuple[str, tuple[ConnectionProviderMetadata, ...]]: ...

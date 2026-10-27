@@ -1,7 +1,7 @@
 """Resolve a tool's fixed credential source without falling back to workspace credentials."""
 
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from clients.plugin.auth import PluginCredentialAuthClient
 from constants.end_user_connections import ConnectionCredentialType
@@ -19,6 +19,7 @@ from models.provider_ids import ToolProviderID
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.end_user_connection_adapters import PluginApiKeyCredentialGateway, validate_provider_authentication
 from services.end_user_connection_oauth_adapters import PluginConnectionOAuthGateway
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
@@ -27,7 +28,12 @@ from services.end_user_connections.errors import (
     ConnectionRequiredError,
 )
 from services.end_user_connections.policy import require_owned_connection
+from services.end_user_connections.revision import ConnectionRevisionAcceptance
 from services.workflow.tool_credentials import resolve_tool_credential_root
+
+if TYPE_CHECKING:
+    from core.app.apps.workflow_app_runner import WorkflowRunDriver
+    from core.tools.workflow_as_tool.tool import WorkflowTool
 
 
 def get_tool_runtime(
@@ -38,10 +44,17 @@ def get_tool_runtime(
     node_id: str,
     spec: WorkflowToolRuntimeSpec,
     variable_pool: VariablePool | None,
+    execution_driver: "WorkflowRunDriver | None" = None,
+    workflow_tool_definition: "WorkflowTool | None" = None,
 ) -> Tool:
     try:
         root_id, root = resolve_tool_credential_root(graph, node_id)
-        if root.tool_name != spec.tool_name or root.provider_type.value != spec.provider_type.value:
+        node_data = next(
+            node["data"]
+            for node in graph.get("nodes", [])
+            if node.get("type") != "custom-note" and node["id"] == node_id
+        )
+        if node_data["tool_name"] != spec.tool_name or root.provider_type.value != spec.provider_type.value:
             raise ConnectionConfigurationError()
         if spec.provider_id != root.provider_id and str(ToolProviderID(spec.provider_id)) != str(
             ToolProviderID(root.provider_id)
@@ -57,6 +70,7 @@ def get_tool_runtime(
                 invoke_from=run_context.invoke_from,
                 tool_invoke_from=ToolInvokeFrom.WORKFLOW,
                 credential_id=root.credential_id,
+                execution_driver=execution_driver,
             )
         else:
             context = run_context.connection_context
@@ -83,6 +97,8 @@ def get_tool_runtime(
                 identity, repository.access_records(identity, frozenset({connection_id})).get(connection_id)
             )
             auth = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
+            revisions = PluginConnectionRevisions(providers=auth, snapshots=repository)
+            revisions.require(identity.tenant_id, identity.app_id, graph, context.connection_revision)
             provider = auth.provider(identity.tenant_id, root.provider_id)
             canonical = str(ToolProviderID(provider.entity.identity.name))
             if selection.provider != canonical or root.end_user_auth is None:
@@ -99,7 +115,7 @@ def get_tool_runtime(
                 )
                 if source is None:
                     raise ConnectionConfigurationError()
-                oauth_client = gateway.resolve_client(identity.tenant_id, canonical, source).snapshot.reference
+                oauth_client = gateway.resolve_client(identity.tenant_id, canonical, source).snapshot
             target = ToolConnectionTarget(
                 tenant_id=identity.tenant_id,
                 app_id=identity.app_id,
@@ -120,7 +136,13 @@ def get_tool_runtime(
             from extensions.ext_application_services import application_services
 
             resolved = application_services().end_user_connection_runtime.resolve(
-                identity, connection=record, target=target
+                identity, connection=record, target=target, connection_revision=context.connection_revision
+            )
+            accepted_revision = revisions.require(
+                identity.tenant_id, identity.app_id, graph, context.connection_revision
+            )
+            repository.record_revision_acceptance(
+                identity, ConnectionRevisionAcceptance.from_revisions(context.connection_revision, accepted_revision)
             )
             tool = provider.get_tool(spec.tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
@@ -142,6 +164,8 @@ def get_tool_runtime(
             run_context.invoke_from,
             variable_pool,
             tool_runtime=tool,
+            execution_driver=execution_driver,
+            workflow_tool_definition=workflow_tool_definition,
         )
     except ConnectionError as exc:
         raise ToolRuntimeResolutionError(str(exc)) from None

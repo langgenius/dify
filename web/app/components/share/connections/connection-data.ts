@@ -1,7 +1,7 @@
 import type {
   ConnectionConfigurationResponse,
   EndUserConnectionResponse,
-  ToolConnectionRequirement,
+  WebAppConnectionRequirement,
 } from '@dify/contracts/api/web/types.gen'
 import type { RequiredConnectionService } from './required-services'
 
@@ -13,7 +13,7 @@ const statuses = {
 } as const
 
 type ConnectionDataInput = {
-  requirements: readonly ToolConnectionRequirement[]
+  requirements: readonly WebAppConnectionRequirement[]
   connections: readonly EndUserConnectionResponse[]
   configuration?: ConnectionConfigurationResponse
   selectionOverrides?: Readonly<Record<string, string | null>>

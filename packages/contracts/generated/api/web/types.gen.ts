@@ -118,6 +118,7 @@ export type BrandingModel = {
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type ChatMessagePayload = {
+  connection_revision?: string | null
   connections?: {
     [key: string]: string | null
   } | null
@@ -132,7 +133,6 @@ export type ChatMessagePayload = {
   query: string
   response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
-  workflow_id?: string | null
 }
 
 export type CompletionMessagePayload = {
@@ -207,6 +207,16 @@ export type ConnectionReauthorizationRequiredError = ErrorResponse & {
 export type ConnectionRequiredError = ErrorResponse & {
   code: 'connection_required'
   status: 400
+}
+
+export type ConnectionRevisionChangeDetails = {
+  connection_revision: string | null
+}
+
+export type ConnectionRevisionChangedError = ErrorResponse & {
+  code: 'connection_revision_changed'
+  details?: ConnectionRevisionChangeDetails
+  status: 409
 }
 
 export type ConversationInfiniteScrollPagination = {
@@ -285,12 +295,12 @@ export type EmailSendIpLimitError = ErrorResponse & {
 }
 
 export type EndUserConnectionCreatePayload = {
+  connection_revision: string
   credentials: {
     [key: string]: JsonValue
   }
   name: string
   node_id: string
-  workflow_id: string
 }
 
 export type EndUserConnectionListQuery = {
@@ -306,9 +316,9 @@ export type EndUserConnectionListResponse = {
 }
 
 export type EndUserConnectionOAuthPayload = {
+  connection_revision: string
   name: string
   node_id: string
-  workflow_id: string
 }
 
 export type EndUserConnectionOAuthResponse = {
@@ -316,17 +326,21 @@ export type EndUserConnectionOAuthResponse = {
 }
 
 export type EndUserConnectionPreflightPayload = {
+  connection_revision: string
   connections: {
     [key: string]: string | null
   }
   conversation_id?: string | null
-  workflow_id: string
 }
 
 export type EndUserConnectionPreflightResponse = {
+  connection_revision: string
   connections: Array<ConnectionPreflightStatus>
   readonly ready: boolean
-  workflow_id: string
+}
+
+export type EndUserConnectionReauthorizePayload = {
+  connection_revision: string
 }
 
 export type EndUserConnectionResponse = {
@@ -342,7 +356,12 @@ export type EndUserConnectionResponse = {
   updated_at: number
 }
 
+export type EndUserConnectionRevisionResponse = {
+  connection_revision: string
+}
+
 export type EndUserConnectionUpdatePayload = {
+  connection_revision?: string
   credentials?: {
     [key: string]: JsonValue
   }
@@ -958,15 +977,6 @@ export type TooManyFilesError = ErrorResponse & {
   status: 400
 }
 
-export type ToolConnectionRequirement = {
-  allowed_credential_types: Array<ConnectionCredentialType>
-  node_id: string
-  node_ids: Array<string>
-  provider: string
-  purpose: string
-  title: string
-}
-
 export type TriggerWorkflowServiceModeUnavailableError = ErrorResponse & {
   code: 'trigger_workflow_service_mode_unavailable'
   status: 403
@@ -1014,6 +1024,18 @@ export type WebAppAuthSsoModel = {
   protocol: SsoProtocol | null
 }
 
+export type WebAppConnectionRequirement = {
+  allowed_credential_types: Array<ConnectionCredentialType>
+  icon: string
+  icon_dark: string | null
+  node_id: string
+  node_ids: Array<string>
+  plugin_unique_identifier: string
+  provider: string
+  purpose: string
+  title: string
+}
+
 export type WebAppCustomConfigResponse = {
   remove_webapp_brand: boolean
   replace_webapp_logo?: string | null
@@ -1026,7 +1048,8 @@ export type WebAppParametersResponse = {
   annotation_reply: {
     enabled?: boolean
   }
-  connection_requirements: Array<ToolConnectionRequirement>
+  connection_requirements: Array<WebAppConnectionRequirement>
+  connection_revision: string | null
   file_upload: {
     allowed_file_extensions?: Array<string>
     allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
@@ -1346,7 +1369,6 @@ export type WebAppParametersResponse = {
         }
       }
   >
-  workflow_id: string | null
 }
 
 export type WebAppSiteResponse = {
@@ -1432,12 +1454,8 @@ export type WebSiteResponse = {
   use_icon_as_answer_icon?: boolean | null
 }
 
-export type WorkflowChangedError = ErrorResponse & {
-  code: 'workflow_changed'
-  status: 409
-}
-
 export type WorkflowRunPayload = {
+  connection_revision?: string | null
   connections?: {
     [key: string]: string | null
   } | null
@@ -1474,12 +1492,11 @@ export type WorkflowRunPayload = {
   inputs: {
     [key: string]: unknown
   }
-  workflow_id?: string | null
 }
 
 export type EndUserConnectionPreflightResponseWritable = {
+  connection_revision: string
   connections: Array<ConnectionPreflightStatus>
-  workflow_id: string
 }
 
 export type GeneratedAppResponseWritable = ShallowJsonValue
@@ -1577,7 +1594,7 @@ export type PostChatMessagesErrors = {
   409:
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
-    | WorkflowChangedError
+    | ConnectionRevisionChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse
@@ -1714,7 +1731,7 @@ export type PostConnectionsData = {
 export type PostConnectionsErrors = {
   400: ConnectionConfigurationInvalidError | ConnectionCredentialsInvalidError | ErrorResponse
   401: EndUserLoginRequiredError | ErrorResponse
-  409: WorkflowChangedError | ErrorResponse
+  409: ConnectionRevisionChangedError | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1761,7 +1778,7 @@ export type PostConnectionsOauthAuthorizationUrlData = {
 export type PostConnectionsOauthAuthorizationUrlErrors = {
   400: ConnectionConfigurationInvalidError | ConnectionOauthFailedError | ErrorResponse
   401: EndUserLoginRequiredError | ErrorResponse
-  409: ConnectionReauthorizationRequiredError | WorkflowChangedError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | ConnectionRevisionChangedError | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1789,7 +1806,7 @@ export type PostConnectionsPreflightErrors = {
   409:
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
-    | WorkflowChangedError
+    | ConnectionRevisionChangedError
     | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
@@ -1871,7 +1888,7 @@ export type PatchConnectionsByConnectionIdErrors = {
   400: ConnectionConfigurationInvalidError | ConnectionCredentialsInvalidError | ErrorResponse
   401: EndUserLoginRequiredError | ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionConflictError | ErrorResponse
+  409: ConnectionConflictError | ConnectionRevisionChangedError | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1887,7 +1904,7 @@ export type PatchConnectionsByConnectionIdResponse =
   PatchConnectionsByConnectionIdResponses[keyof PatchConnectionsByConnectionIdResponses]
 
 export type PostConnectionsByConnectionIdReauthorizeData = {
-  body?: never
+  body: EndUserConnectionReauthorizePayload
   path: {
     connection_id: string
   }
@@ -1899,7 +1916,7 @@ export type PostConnectionsByConnectionIdReauthorizeErrors = {
   400: ConnectionConfigurationInvalidError | ConnectionOauthFailedError | ErrorResponse
   401: EndUserLoginRequiredError | ErrorResponse
   404: ConnectionNotFoundError | ErrorResponse
-  409: ConnectionReauthorizationRequiredError | ErrorResponse
+  409: ConnectionReauthorizationRequiredError | ConnectionRevisionChangedError | ErrorResponse
   503: ConnectionCredentialsUnavailableError | CredentialCheckUnavailableError | ErrorResponse
   default: ErrorResponse
 }
@@ -1913,6 +1930,33 @@ export type PostConnectionsByConnectionIdReauthorizeResponses = {
 
 export type PostConnectionsByConnectionIdReauthorizeResponse =
   PostConnectionsByConnectionIdReauthorizeResponses[keyof PostConnectionsByConnectionIdReauthorizeResponses]
+
+export type GetConnectionsByConnectionIdRevisionData = {
+  body?: never
+  path: {
+    connection_id: string
+  }
+  query?: never
+  url: '/connections/{connection_id}/revision'
+}
+
+export type GetConnectionsByConnectionIdRevisionErrors = {
+  400: ConnectionConfigurationInvalidError | ErrorResponse
+  401: EndUserLoginRequiredError | ErrorResponse
+  404: ConnectionNotFoundError | ErrorResponse
+  503: CredentialCheckUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetConnectionsByConnectionIdRevisionError =
+  GetConnectionsByConnectionIdRevisionErrors[keyof GetConnectionsByConnectionIdRevisionErrors]
+
+export type GetConnectionsByConnectionIdRevisionResponses = {
+  200: EndUserConnectionRevisionResponse
+}
+
+export type GetConnectionsByConnectionIdRevisionResponse =
+  GetConnectionsByConnectionIdRevisionResponses[keyof GetConnectionsByConnectionIdRevisionResponses]
 
 export type GetConversationsData = {
   body?: never
@@ -2924,7 +2968,7 @@ export type PostWorkflowsRunErrors = {
   409:
     | ConnectionConflictError
     | ConnectionReauthorizationRequiredError
-    | WorkflowChangedError
+    | ConnectionRevisionChangedError
     | ErrorResponse
   429: RateLimitError | ErrorResponse
   500: ErrorResponse

@@ -5,17 +5,22 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from clients.plugin.auth import PluginCredentialAuthClient
 from context.connection_execution import ConnectionExecutionContext
+from core.db.session_factory import get_session_maker
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from repositories.end_user_connection_repository import EndUserConnectionRepository
+from services.end_user_connection_adapters import PluginApiKeyCredentialGateway
 from services.end_user_connection_identity import connection_context_from_web_passport
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.errors import (
     ConnectionConfigurationError,
     ConnectionIdentityError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from services.end_user_connections.execution import ConnectionRunInput
+from services.end_user_connections.revision import ConnectionContractSnapshot
 from services.workflow.tool_credentials import requires_end_user_connections
 
 
@@ -25,12 +30,15 @@ def prepare_web_connection_execution(
     required = requires_end_user_connections(workflow.graph_dict)
     try:
         command = ConnectionRunInput.model_validate(
-            {"workflow_id": args.get("workflow_id"), "connections": args.get("connections")}
+            {"connection_revision": args.get("connection_revision"), "connections": args.get("connections")}
         )
     except ValidationError:
         raise ValueError("Invalid connection execution payload.") from None
-    if command.workflow_id is not None and str(command.workflow_id) != workflow.id:
-        raise ConnectionWorkflowChangedError()
+    repository = EndUserConnectionRepository(session_factory=get_session_maker())
+    if not required and command.connection_revision is not None:
+        PluginConnectionRevisions(
+            providers=PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient()), snapshots=repository
+        ).require(app.tenant_id, app.id, workflow.graph_dict, command.connection_revision)
     if not required and command.connections:
         raise ConnectionConfigurationError()
     if not isinstance(user, EndUser):
@@ -47,12 +55,18 @@ def prepare_web_connection_execution(
     conversation_id = args.get("conversation_id")
     has_explicit_connections = "connections" in args
     if not required:
+        empty_revision = repository.save_revision(
+            ConnectionContractSnapshot(
+                tenant_id=identity.tenant_id, app_id=identity.app_id, providers=(), requirements=()
+            )
+        )
         empty = ConnectionExecutionContext(
             tenant_id=identity.tenant_id,
             app_id=identity.app_id,
             end_user_id=identity.end_user_id,
             account_id=identity.account_id,
             workflow_id=workflow.id,
+            connection_revision=empty_revision,
             selections=(),
         )
         services.connection_selections.save_run(empty, workflow_run_id, conversation_id, update_conversation=True)
@@ -97,5 +111,5 @@ def validate_connection_execution(
     ):
         raise ConnectionIdentityError()
     if workflow.version == Workflow.VERSION_DRAFT:
-        raise ConnectionWorkflowChangedError()
+        raise ConnectionRevisionChangedError()
     repository.validate_execution_identity(identity, conversation_id)

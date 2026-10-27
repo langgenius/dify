@@ -12,11 +12,14 @@ const parameters: WebAppParametersResponse = {
   account_login_enabled: true,
   account_login_url: '/signin',
   allow_anonymous_end_user_auth: false,
-  workflow_id: 'published-workflow',
+  connection_revision: 'published-workflow',
   requires_end_user_connections: true,
   connection_requirements: [
     {
       node_id: 'gmail-node',
+      icon: '/provider-icon.svg',
+      icon_dark: null,
+      plugin_unique_identifier: 'langgenius/gmail:1.0.0@digest',
       node_ids: ['gmail-node', 'reuse-node'],
       title: 'Read email',
       purpose: 'Find messages for this conversation',
@@ -92,7 +95,7 @@ describe('Web App entry queries', () => {
       account_login_enabled: true,
       account_login_url: '/signin',
       allow_anonymous_end_user_auth: false,
-      workflow_id: 'published-workflow',
+      connection_revision: 'published-workflow',
       requires_end_user_connections: true,
       connection_requirements: parameters.connection_requirements,
       opening_statement: 'Welcome',
@@ -135,24 +138,24 @@ describe('Web App entry queries', () => {
   })
 
   it('does not expose the previous App parameters or account while switching App scopes', async () => {
-    const scopes: { path: string; address: WebAppAddress; workflow: string; loggedIn: boolean }[] =
+    const scopes: { path: string; address: WebAppAddress; revision: string; loggedIn: boolean }[] =
       [
         {
           path: '/chat/app-code',
           address: { kind: 'default', code: 'app-code' },
-          workflow: 'default-workflow',
+          revision: 'default-workflow',
           loggedIn: false,
         },
         {
           path: '/environment/chat/app-code',
           address: { kind: 'environment', code: 'app-code' },
-          workflow: 'environment-workflow',
+          revision: 'environment-workflow',
           loggedIn: true,
         },
         {
           path: '/environment/chat/another-code',
           address: { kind: 'environment', code: 'another-code' },
-          workflow: 'another-workflow',
+          revision: 'another-workflow',
           loggedIn: false,
         },
       ]
@@ -161,7 +164,7 @@ describe('Web App entry queries', () => {
       const url = new URL(input instanceof Request ? input.url : String(input))
       return Response.json(
         url.pathname.endsWith('/parameters')
-          ? { ...parameters, workflow_id: scope.workflow }
+          ? { ...parameters, connection_revision: scope.revision }
           : { logged_in: scope.loggedIn, app_logged_in: true },
       )
     })
@@ -181,7 +184,7 @@ describe('Web App entry queries', () => {
         expect(result.current.account.data).toBeUndefined()
       }
       await waitFor(() => {
-        expect(result.current.parameters.data?.workflow_id).toBe(scope.workflow)
+        expect(result.current.parameters.data?.connection_revision).toBe(scope.revision)
         expect(result.current.account.data?.logged_in).toBe(scope.loggedIn)
       })
     }

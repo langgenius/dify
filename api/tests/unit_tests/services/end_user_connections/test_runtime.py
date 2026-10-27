@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import datetime
 from types import SimpleNamespace
@@ -26,6 +27,7 @@ from models.model import App, EndUser
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
 from services import end_user_connection_runtime_adapters as adapters
+from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.end_user_connections.contracts import UpdateConnectionInput
 from services.end_user_connections.runtime import ConnectionRuntimeService
 from tests.helpers.end_user_api_key import PROVIDER
@@ -40,6 +42,7 @@ def harness(sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.M
     )
     monkeypatch.setattr(adapters.session_factory, "get_session_maker", lambda: harness.base.sessions)
     monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: harness.providers.controller)
+    monkeypatch.setattr(adapters, "PluginApiKeyCredentialGateway", lambda **_kwargs: harness.providers)
     monkeypatch.setattr(
         ext_application_services, "application_services", lambda: SimpleNamespace(end_user_connection_runtime=service)
     )
@@ -67,8 +70,15 @@ def node_data(**updates: object) -> dict[str, object]:
     }
 
 
-def context(harness: OAuthHarness, selections: dict[str, str]) -> DifyRunContext:
+def context(
+    harness: OAuthHarness, selections: dict[str, str], graph: Mapping[str, object] | None = None
+) -> DifyRunContext:
     identity = harness.base.context
+    revision = harness.base.connection_revision
+    if graph is not None:
+        revision, _ = PluginConnectionRevisions(providers=harness.providers, snapshots=harness.base.repository).resolve(
+            identity.tenant_id, identity.app_id, graph
+        )
     return DifyRunContext(
         tenant_id=identity.tenant_id,
         app_id=identity.app_id,
@@ -81,6 +91,7 @@ def context(harness: OAuthHarness, selections: dict[str, str]) -> DifyRunContext
             end_user_id=identity.end_user_id,
             account_id=identity.account_id,
             workflow_id=harness.base.workflow_id,
+            connection_revision=revision,
             selections=tuple(
                 ExecutionConnectionSelection(node_id=key, provider=PROVIDER, connection_id=value)
                 for key, value in selections.items()
@@ -111,7 +122,11 @@ def test_personal_tool_injects_selected_current_credentials_without_workspace_fa
     assert "selected-secret" not in repr(tool.runtime)
     assert "connection_id" not in tool.runtime.model_dump()
     harness.base.service.update_connection(
-        harness.base.context, selected.id, UpdateConnectionInput(credentials={"api_key": "replacement-secret"})
+        harness.base.context,
+        selected.id,
+        UpdateConnectionInput(
+            credentials={"api_key": "replacement-secret"}, connection_revision=harness.base.connection_revision
+        ),
     )
     second = loader.get_runtime(
         node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None
@@ -146,18 +161,23 @@ def test_unusable_personal_connection_fails_without_fallback(
     workspace.assert_not_called()
 
 
-def test_reuse_inherits_only_credentials_and_uses_the_run_graph(harness: OAuthHarness) -> None:
+@pytest.mark.parametrize("tool_name", ["read", "send"])
+def test_reuse_inherits_only_credentials_and_uses_the_run_graph(harness: OAuthHarness, tool_name: str) -> None:
     selected = harness.base.service.create_api_key(harness.base.context, harness.base.command())
     root = node_data(tool_configurations={"mode": {"type": "constant", "value": "root"}})
     child = node_data(
         credential_source="reuse_node",
         reuse_node_id="tool-1",
+        tool_name=tool_name,
         tool_configurations={"mode": {"type": "constant", "value": "child"}},
     )
     child.pop("end_user_auth")
     graph = {"nodes": [{"id": "tool-1", "data": root}, {"id": "child", "data": child}]}
     assert harness.providers.controller.entity.tools is not None
-    harness.providers.controller.entity.tools[0].parameters = [
+    child_tool = harness.providers.controller.entity.tools[0].model_copy(deep=True)
+    child_tool.identity.name = "send"
+    harness.providers.controller.entity.tools.append(child_tool)
+    harness.providers.controller.get_tool(tool_name).entity.parameters = [
         ToolParameter.model_validate(
             {
                 "name": "mode",
@@ -169,7 +189,7 @@ def test_reuse_inherits_only_credentials_and_uses_the_run_graph(harness: OAuthHa
         )
     ]
     loader = DifyToolNodeRuntime(
-        context(harness, {"tool-1": selected.id}), workflow_id=harness.base.workflow_id, graph=graph
+        context(harness, {"tool-1": selected.id}, graph), workflow_id=harness.base.workflow_id, graph=graph
     )
     with harness.base.sessions.begin() as session:
         app = session.get(App, harness.base.context.app_id)
@@ -180,6 +200,7 @@ def test_reuse_inherits_only_credentials_and_uses_the_run_graph(harness: OAuthHa
         node_id="child", node_data=ToolNodeData.model_validate(child), variable_pool=VariablePool()
     )
     tool = loader._tool_from_handle(handle)
+    assert tool.entity.identity.name == tool_name
     assert tool.runtime.credentials == {"api_key": "original-secret"}
     assert tool.runtime.runtime_parameters == {"mode": "child"}
 
@@ -188,7 +209,11 @@ def test_independent_nodes_for_same_provider_keep_distinct_choices(harness: OAut
     first = harness.base.service.create_api_key(harness.base.context, harness.base.command("first-secret"))
     second = harness.base.service.create_api_key(harness.base.context, harness.base.command("second-secret"))
     loader = DifyToolNodeRuntime(
-        context(harness, {"tool-1": first.id, "tool-2": second.id}),
+        context(
+            harness,
+            {"tool-1": first.id, "tool-2": second.id},
+            {"nodes": [{"id": key, "data": node_data()} for key in ("tool-1", "tool-2")]},
+        ),
         workflow_id=harness.base.workflow_id,
         graph={"nodes": [{"id": key, "data": node_data()} for key in ("tool-1", "tool-2")]},
     )
@@ -240,7 +265,7 @@ def test_oauth_refresh_preserves_connection_id_and_checks_current_client(harness
             .where(ToolOAuthTenantClient.id == harness.client_id)
             .values(encrypted_oauth_params=json.dumps({"client_id": "new-client"}))
         )
-    with pytest.raises(ToolRuntimeResolutionError, match="OAuth client"):
+    with pytest.raises(ToolRuntimeResolutionError, match="connection requirements changed"):
         loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
 
 
@@ -266,7 +291,7 @@ def test_runtime_respects_fixed_graph_client_selection(harness: OAuthHarness, mo
     )
     for selected in (default, custom):
         loader = DifyToolNodeRuntime(
-            context(harness, {"tool-1": selected.id}),
+            context(harness, {"tool-1": selected.id}, {"nodes": [{"id": "tool-1", "data": data}]}),
             workflow_id=harness.base.workflow_id,
             graph={"nodes": [{"id": "tool-1", "data": data}]},
         )
@@ -296,12 +321,15 @@ def test_runtime_context_cannot_be_used_under_another_execution(harness: OAuthHa
         loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
 
 
-def test_reuse_of_workspace_source_keeps_existing_resolution(harness: OAuthHarness, mocker: MockerFixture) -> None:
+@pytest.mark.parametrize("tool_name", ["read", "send"])
+def test_reuse_of_workspace_source_keeps_existing_resolution(
+    harness: OAuthHarness, mocker: MockerFixture, tool_name: str
+) -> None:
     from core.tools.__base.tool_runtime import ToolRuntime
 
     root = node_data(credential_source="workspace", credential_id="workspace-credential")
     root.pop("end_user_auth")
-    child = node_data(credential_source="reuse_node", reuse_node_id="root")
+    child = node_data(credential_source="reuse_node", reuse_node_id="root", tool_name=tool_name)
     child.pop("end_user_auth")
     outer = context(harness, {}).model_copy(
         update={"connection_context": None, "invoke_from": InvokeFrom.DEBUGGER, "user_from": UserFrom.ACCOUNT}
@@ -323,6 +351,7 @@ def test_reuse_of_workspace_source_keeps_existing_resolution(harness: OAuthHarne
         loader.get_runtime(node_id="child", node_data=ToolNodeData.model_validate(child), variable_pool=None)
     )
     workspace.assert_called_once()
+    assert workspace.call_args.kwargs["tool_name"] == tool_name
     assert workspace.call_args.kwargs["credential_id"] == "workspace-credential"
     assert result.runtime.credentials == {"api_key": "workspace-secret"}
     assert result.runtime.connection_id is None
@@ -375,13 +404,25 @@ def test_replacement_during_decryption_is_not_injected(harness: OAuthHarness, mo
         loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
 
 
-def test_actual_tool_cannot_differ_from_the_pinned_graph(harness: OAuthHarness) -> None:
+@pytest.mark.parametrize("reuse", [False, True])
+def test_actual_tool_cannot_differ_from_the_pinned_graph(harness: OAuthHarness, reuse: bool) -> None:
     selected = harness.base.service.create_api_key(harness.base.context, harness.base.command())
-    loader = runtime(harness, selected.id)
+    graph = {"nodes": [{"id": "tool-1", "data": node_data()}]}
+    if reuse:
+        child = node_data(credential_source="reuse_node", reuse_node_id="tool-1", tool_name="send")
+        child.pop("end_user_auth")
+        graph["nodes"].append({"id": "child", "data": child})
+    loader = DifyToolNodeRuntime(
+        context(harness, {"tool-1": selected.id}), workflow_id=harness.base.workflow_id, graph=graph
+    )
     with pytest.raises(ToolRuntimeResolutionError, match="compatible"):
         loader.get_runtime(
-            node_id="tool-1",
-            node_data=ToolNodeData.model_validate(node_data(tool_name="different-action")),
+            node_id="child" if reuse else "tool-1",
+            node_data=ToolNodeData.model_validate(
+                node_data(credential_source="reuse_node", reuse_node_id="tool-1")
+                if reuse
+                else node_data(tool_name="different-action")
+            ),
             variable_pool=None,
         )
 
@@ -411,3 +452,58 @@ def test_deleted_connection_uses_normal_tool_node_failure(harness: OAuthHarness)
     assert events[0].node_run_result.status == "failed"
     assert events[0].node_run_result.error_type == "ToolRuntimeResolutionError"
     assert "original-secret" not in repr(events)
+
+
+@pytest.mark.parametrize("phase", ["queued", "check"])
+def test_plugin_upgrade_invalidates_the_fixed_execution_contract(harness: OAuthHarness, phase: str) -> None:
+    selected = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    loader = runtime(harness, selected.id)
+    harness.base.auth.calls.clear()
+
+    def upgrade() -> None:
+        harness.providers.controller.plugin_unique_identifier = "vendor/calendar:1.0@rebuilt"
+
+    if phase == "queued":
+        upgrade()
+    else:
+        harness.base.auth.on_check = upgrade
+    with pytest.raises(ToolRuntimeResolutionError, match="requirements changed"):
+        loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
+    assert len(harness.base.auth.calls) == (0 if phase == "queued" else 1)
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+
+    with harness.base.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 1
+
+
+@pytest.mark.parametrize("oauth", [False, True])
+def test_verified_plugin_upgrade_can_resume_a_fixed_execution(harness: OAuthHarness, oauth: bool) -> None:
+    connection = (
+        harness.finish(harness.start())
+        if oauth
+        else harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    )
+    loader = runtime(harness, connection.id)
+    upgraded = "vendor/calendar:2.0.0@" + "b" * 64
+    harness.providers.controller.plugin_unique_identifier = upgraded
+    harness.providers.trusted_artifacts.add(upgraded)
+    handle = loader.get_runtime(
+        node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None
+    )
+    tool = loader._tool_from_handle(handle)
+    assert tool.runtime.connection_id == connection.id
+    from core.tools.plugin_tool.tool import PluginTool
+
+    assert isinstance(tool, PluginTool)
+    assert tool.plugin_unique_identifier == upgraded
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+
+    with harness.base.sessions() as session:
+        inherited = session.scalars(
+            sa.select(EndUserConnectionRevisionAcceptance).where(
+                EndUserConnectionRevisionAcceptance.reason == "inherited"
+            )
+        ).all()
+        assert len(inherited) == 1
+        assert inherited[0].source_revision_id == harness.base.connection_revision
+        assert inherited[0].end_user_id == harness.base.context.end_user_id

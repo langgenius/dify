@@ -2,7 +2,7 @@ import type {
   ConnectionConfigurationResponse,
   EndUserConnectionListResponse,
   EndUserConnectionResponse,
-  ToolConnectionRequirement,
+  WebAppConnectionRequirement,
 } from '@dify/contracts/api/web/types.gen'
 import type { WebAppEntryState } from '../../webapp-entry'
 import type { WebAppAddress } from '@/service/webapp-address'
@@ -30,11 +30,14 @@ const address = { kind: 'default', code: 'shared-app' } as const
 const firstId = '11111111-1111-4111-8111-111111111111'
 const secondId = '22222222-2222-4222-8222-222222222222'
 const conversationId = '33333333-3333-4333-8333-333333333333'
-const workflowId = '44444444-4444-4444-8444-444444444444'
+const connectionRevision = '44444444-4444-4444-8444-444444444444'
 const provider = 'langgenius/github/github'
-const requirements: ToolConnectionRequirement[] = [
+const requirements: WebAppConnectionRequirement[] = [
   {
     node_id: 'source-a',
+    icon: '/provider-icon.svg',
+    icon_dark: null,
+    plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
     node_ids: ['source-a', 'reuse-a'],
     title: 'Find repositories',
     purpose: 'Read repositories for the research brief.',
@@ -43,6 +46,9 @@ const requirements: ToolConnectionRequirement[] = [
   },
   {
     node_id: 'source-b',
+    icon: '/provider-icon.svg',
+    icon_dark: null,
+    plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
     node_ids: ['source-b'],
     title: 'Read README',
     purpose: 'Read documentation for the answer.',
@@ -78,7 +84,7 @@ function entry(overrides: Partial<ReadyEntry> = {}): ReadyEntry {
       account_login_enabled: true,
       account_login_url: 'https://account.example/signin',
       allow_anonymous_end_user_auth: false,
-      workflow_id: workflowId,
+      connection_revision: connectionRevision,
       requires_end_user_connections: true,
       connection_requirements: requirements,
     },
@@ -435,7 +441,7 @@ describe('WebAppConnectionsProvider', () => {
     expect(selections()['source-a']).toBe(secondId)
   })
 
-  it.each(['conversation', 'App', 'account', 'workflow'] as const)(
+  it.each(['conversation', 'App', 'account', 'revision'] as const)(
     'resets local choices after changing %s and ignores the previous scope response',
     async (changedScope) => {
       const user = userEvent.setup()
@@ -479,7 +485,7 @@ describe('WebAppConnectionsProvider', () => {
       } else {
         nextScope.entry.parameters = {
           ...nextScope.entry.parameters,
-          workflow_id: '66666666-6666-4666-8666-666666666666',
+          connection_revision: '66666666-6666-4666-8666-666666666666',
         }
       }
       rerender(tree(nextScope))

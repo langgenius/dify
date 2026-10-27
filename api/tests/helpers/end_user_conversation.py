@@ -8,8 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
 from context.connection_execution import ConnectionExecutionContext
-from core.app.entities.app_invoke_entities import InvokeFrom
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser
 from models.workflow import Workflow
 from services.end_user_connection_execution_adapters import prepare_web_connection_execution
@@ -56,7 +55,7 @@ class ConversationHarness:
             assert app is not None
             assert user is not None
             assert workflow is not None
-        args: dict[str, Any] = {"workflow_id": base.workflow_id}
+        args: dict[str, Any] = {"connection_revision": base.connection_revision}
         if conversation_id is not None:
             args["conversation_id"] = conversation_id
         if connections is not None:
@@ -79,7 +78,7 @@ def make_conversation_harness(oauth: OAuthHarness) -> ConversationHarness:
     with oauth.base.sessions.begin() as session:
         session.execute(sa.update(App).where(App.id == oauth.base.context.app_id).values(mode=AppMode.ADVANCED_CHAT))
     requirements = PublishedPreflightRequirements(
-        workflows=oauth.base.repository, providers=oauth.providers, oauth=oauth.gateway
+        workflows=oauth.base.repository, snapshots=oauth.base.repository, providers=oauth.providers, oauth=oauth.gateway
     )
     return ConversationHarness(
         oauth=oauth,

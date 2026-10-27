@@ -29,7 +29,7 @@ type EntryParameters = Pick<
   | 'account_login_enabled'
   | 'account_login_url'
   | 'allow_anonymous_end_user_auth'
-  | 'workflow_id'
+  | 'connection_revision'
   | 'requires_end_user_connections'
   | 'connection_requirements'
 >
@@ -39,7 +39,7 @@ const makeParameters = (): EntryParameters => ({
   account_login_enabled: true,
   account_login_url: '/signin',
   allow_anonymous_end_user_auth: true,
-  workflow_id: 'workflow-id',
+  connection_revision: 'workflow-id',
   requires_end_user_connections: false,
   connection_requirements: [],
 })
@@ -306,6 +306,9 @@ describe('AuthenticatedLayout', () => {
             title: 'Search',
             purpose: 'Search documents',
             node_id: 'search-node',
+            icon: '/provider-icon.svg',
+            icon_dark: null,
+            plugin_unique_identifier: 'langgenius/google:1.0.0@digest',
             node_ids: ['search-node', 'follow-up-node'],
             allowed_credential_types: ['api-key'],
           },

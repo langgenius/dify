@@ -34,6 +34,7 @@ from libs.passport import PassportService
 from machinery.context import RequestContext
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppModelConfig, EndUser, Site
+from services.entities.account_login_entities import LoginMode
 from services.entities.authentication_entities import WebLoginStatus
 from services.web_authentication_service import (
     WebAccountBannedError,
@@ -143,7 +144,7 @@ def test_login_status_passes_transport_tokens_to_service(monkeypatch: pytest.Mon
 
     assert result == {"logged_in": True, "app_logged_in": False}
     assert service.call == {
-        "mode": "console",
+        "mode": LoginMode.CONSOLE,
         "app_code": "site-code",
         "user_id": "session-1",
         "access_token": "account-token",

@@ -47,7 +47,7 @@ const parameters: WebAppParametersResponse = {
   },
   text_to_speech: {},
   user_input_form: [],
-  workflow_id: 'published-workflow',
+  connection_revision: 'published-workflow',
 }
 
 describe('generated Web App client', () => {
@@ -255,7 +255,7 @@ describe('generated Web App client', () => {
 
     for (const [index, scope] of scopes.entries()) {
       window.history.replaceState({}, '', scope.path)
-      const response = { ...parameters, workflow_id: `workflow-${index}` }
+      const response = { ...parameters, connection_revision: `workflow-${index}` }
       fetch.mockResolvedValueOnce(Response.json(response))
 
       await expect(webAppClient.parameters.get()).resolves.toEqual(response)

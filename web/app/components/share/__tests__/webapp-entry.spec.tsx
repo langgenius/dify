@@ -1,6 +1,6 @@
 import type {
   LoginStatusResponse,
-  ToolConnectionRequirement,
+  WebAppConnectionRequirement,
 } from '@dify/contracts/api/web/types.gen'
 import { render, screen } from '@testing-library/react'
 import SignIn from '../sign-in'
@@ -15,7 +15,10 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-const requirement: ToolConnectionRequirement = {
+const requirement: WebAppConnectionRequirement = {
+  icon: '/provider-icon.svg',
+  icon_dark: null,
+  plugin_unique_identifier: 'langgenius/google:1.0.0@digest',
   provider: 'langgenius/google/google',
   title: 'Google Search',
   purpose: 'Search documents',
@@ -28,7 +31,7 @@ const makeParameters = (overrides: Partial<EntryParameters> = {}): EntryParamete
   account_login_enabled: true,
   account_login_url: '/signin',
   allow_anonymous_end_user_auth: true,
-  workflow_id: null,
+  connection_revision: null,
   requires_end_user_connections: false,
   connection_requirements: [],
   ...overrides,
@@ -185,7 +188,7 @@ describe('Web App entry policy', () => {
     (allowAnonymous) => {
       const parameters = makeParameters({
         allow_anonymous_end_user_auth: allowAnonymous,
-        workflow_id: 'published-workflow',
+        connection_revision: 'published-workflow',
         requires_end_user_connections: true,
         connection_requirements: [requirement],
       })
@@ -195,7 +198,7 @@ describe('Web App entry policy', () => {
         status: 'connections-pending',
         canRun: false,
         parameters: {
-          workflow_id: 'published-workflow',
+          connection_revision: 'published-workflow',
           connection_requirements: [requirement],
         },
       })

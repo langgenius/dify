@@ -14,26 +14,31 @@ this Web Passport and published-workflow contract.
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol, Self
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, computed_field, field_validator, model_validator
 
 from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, NodeConnectionStatus
 from services.end_user_connections.entities import ToolConnectionTarget, WebConnectionContext
+from services.end_user_connections.revision import ConnectionRevision
 
 
 class ConnectionInput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True, hide_input_in_errors=True)
 
 
-class ConnectionTargetInput(ConnectionInput):
+class ConnectionContractInput(ConnectionInput):
+    connection_revision: ConnectionRevision = Field(
+        description=(
+            "Opaque revision issued for the current Web App. Use App parameters for tool-node operations "
+            "or the owned Connection revision endpoint for Provider management."
+        ),
+    )
+
+
+class ConnectionTargetInput(ConnectionContractInput):
     """Client connection contract references, checked against the current published graph."""
 
-    workflow_id: UUID = Field(
-        strict=False,
-        description="Expected connection contract revision from Web App parameters.",
-    )
     node_id: str = Field(min_length=1, max_length=255)
 
 
@@ -50,10 +55,13 @@ class UpdateConnectionInput(ConnectionInput):
     placeholders. OAuth credentials can change only through the OAuth lifecycle.
     """
 
+    connection_revision: ConnectionRevision | None = Field(
+        default=None, description="Provider revision required when replacing credentials."
+    )
     name: str | None = Field(default=None, min_length=1, max_length=100)
     credentials: dict[str, JsonValue] | None = Field(default=None, min_length=1, repr=False)
 
-    @field_validator("name", "credentials", mode="before")
+    @field_validator("name", "credentials", "connection_revision", mode="before")
     @classmethod
     def reject_explicit_null(cls, value: Any) -> Any:
         if value is None:
@@ -62,9 +70,19 @@ class UpdateConnectionInput(ConnectionInput):
 
     @model_validator(mode="after")
     def require_change(self) -> Self:
-        if not self.model_fields_set:
+        if not self.model_fields_set.intersection({"name", "credentials"}):
             raise ValueError("At least one change is required.")
+        if self.credentials is not None and self.connection_revision is None:
+            raise ValueError("Connection revision is required when replacing credentials.")
         return self
+
+
+class ConnectionRevisionView(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    connection_revision: ConnectionRevision = Field(
+        description="Provider revision scoped to this Web App, for operations on the owned Connection."
+    )
 
 
 class StartConnectionOAuthInput(ConnectionTargetInput):
@@ -130,7 +148,9 @@ class ConnectionCheckOutcome:
 
 
 class ConnectionCredentialChecks(Protocol):
-    def check_connection_result(self, context: WebConnectionContext, connection_id: str) -> ConnectionCheckOutcome: ...
+    def check_connection_result(
+        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
+    ) -> ConnectionCheckOutcome: ...
 
 
 class NodeConnectionState(BaseModel):
@@ -198,6 +218,8 @@ class ConnectionManagement(Protocol):
 
     def get_connection(self, context: WebConnectionContext, connection_id: str) -> ConnectionSummary: ...
 
+    def get_connection_revision(self, context: WebConnectionContext, connection_id: str) -> ConnectionRevisionView: ...
+
     def create_api_key(self, context: WebConnectionContext, command: CreateApiKeyConnectionInput) -> ConnectionSummary:
         """Validate schema and target, check credentials, encrypt, then persist.
 
@@ -222,12 +244,14 @@ class ConnectionManagement(Protocol):
     def delete_connection(self, context: WebConnectionContext, connection_id: str) -> None:
         """Remove the resource and live selections; retain historical Run references.
 
-        OAuth revocation is best effort outside a write transaction. Failure or
-        lack of revoke support must not restore the deleted Connection.
+        Best-effort OAuth revocation uses only the artifact recorded for the grant.
+        Remote failures never undo local Disconnect.
         """
         ...
 
-    def check_connection(self, context: WebConnectionContext, connection_id: str) -> ConnectionCheckView:
+    def check_connection(
+        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
+    ) -> ConnectionCheckView:
         """Refresh expired OAuth server-side before checking when possible.
 
         Unsupported and temporarily unavailable checks never persist invalidity.
@@ -241,7 +265,9 @@ class ConnectionManagement(Protocol):
         """Use the resolved workspace/platform Client and existing short-lived context."""
         ...
 
-    def reauthorize_oauth(self, context: WebConnectionContext, connection_id: str) -> ConnectionOAuthStart:
+    def reauthorize_oauth(
+        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
+    ) -> ConnectionOAuthStart:
         """Keep the Connection ID; pin owner/revision/Provider/Client in server context.
 
         A callback revalidates these references before writing. Failed authorization

@@ -11,7 +11,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.end_user_connections import ConnectionCredentialStatus, OAuthClientSource
 from core.tools.utils.system_encryption import encrypt_system_params
 from models.account import Account, AccountStatus
-from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
+from models.end_user_connection import (
+    AppConnection,
+    EndUserConnection,
+    EndUserConnectionRevisionAcceptance,
+    SessionConnection,
+)
 from models.model import App, EndUser, Site
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from models.workflow import Workflow
@@ -23,7 +28,7 @@ from services.end_user_connections.errors import (
     ConnectionNotFoundError,
     ConnectionOAuthError,
     ConnectionReauthorizationRequiredError,
-    ConnectionWorkflowChangedError,
+    ConnectionRevisionChangedError,
 )
 from tests.helpers.end_user_api_key import PROVIDER
 from tests.helpers.end_user_oauth import OAuthHarness, make_oauth_harness
@@ -57,6 +62,11 @@ def test_authorization_persists_encrypted_grant_and_masked_identity_only(harness
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(AppConnection)) == 0
         assert session.scalar(sa.select(sa.func.count()).select_from(SessionConnection)) == 0
+        acceptance = session.scalar(sa.select(EndUserConnectionRevisionAcceptance))
+        assert acceptance is not None
+        assert acceptance.reason == "approved"
+        assert acceptance.source_revision_id is None
+        assert acceptance.end_user_id == harness.base.context.end_user_id
     with pytest.raises(ConnectionOAuthError):
         harness.finish(started)
     assert harness.handler.exchanges == 1
@@ -71,6 +81,8 @@ def test_state_and_denial_fail_before_exchange(harness: OAuthHarness, query: byt
     with pytest.raises(ConnectionOAuthError):
         harness.service.complete_oauth(attempt, query_string=query)
     assert harness.handler.exchanges == 0
+    with harness.base.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 0
 
 
 def test_wrong_provider_cannot_route_or_consume_attempt(harness: OAuthHarness) -> None:
@@ -119,13 +131,14 @@ def test_callback_revalidates_context_after_redirect_and_external_io(
         mutate()
     else:
         harness.handler.on_exchange = mutate
-    error = {"client": ConnectionReauthorizationRequiredError, "workflow": ConnectionWorkflowChangedError}.get(
+    error = {"client": ConnectionRevisionChangedError, "workflow": ConnectionRevisionChangedError}.get(
         change, ConnectionIdentityError
     )
     with pytest.raises(error):
         harness.finish(started)
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 0
+        assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 0
 
 
 @pytest.mark.parametrize("operation", ["create", "reauthorize"])
@@ -137,7 +150,10 @@ def test_oauth_does_not_depend_on_site_after_authenticated_start(
     original = harness.finish(harness.start()) if operation == "reauthorize" else None
     started = (
         harness.service.reauthorize_oauth(
-            harness.base.context, original.id, callback_url="http://web-api.example/api/connections/oauth"
+            harness.base.context,
+            original.id,
+            callback_url="http://web-api.example/api/connections/oauth",
+            connection_revision=harness.base.connection_revision,
         )
         if original is not None
         else harness.start()
@@ -185,6 +201,7 @@ def test_reauthorization_preserves_id_and_name_and_replaces_grant(harness: OAuth
         harness.base.context,
         connection.id,
         callback_url="http://web-api.example/api/connections/oauth",
+        connection_revision=harness.base.connection_revision,
     )
     harness.handler.result = harness.handler.result.model_copy(
         update={"credentials": {"access_token": "new-secret"}, "metadata": {"name": "xy"}, "expires_at": -1}
@@ -210,6 +227,7 @@ def test_reauthorization_never_overwrites_concurrent_changes(harness: OAuthHarne
         harness.base.context,
         connection.id,
         callback_url="http://web-api.example/api/connections/oauth",
+        connection_revision=harness.base.connection_revision,
     )
 
     def mutate() -> None:
@@ -239,6 +257,7 @@ def test_failed_reauthorization_keeps_working_credentials(harness: OAuthHarness)
         harness.base.context,
         connection.id,
         callback_url="http://web-api.example/api/connections/oauth",
+        connection_revision=harness.base.connection_revision,
     )
     harness.handler.result = harness.handler.result.model_copy(update={"credentials": {}})
     with pytest.raises(ConnectionOAuthError):
@@ -285,10 +304,18 @@ def test_platform_client_requires_verified_provider_and_tracks_source(
             .where(EndUserConnection.id == connection.id)
             .values(expires_at=datetime(2000, 1, 1))
         )
-    assert harness.base.service.check_connection(harness.base.context, connection.id).check.status == "valid"
+    assert (
+        harness.base.service.check_connection(
+            harness.base.context, connection.id, connection_revision=harness.base.connection_revision
+        ).check.status
+        == "valid"
+    )
     assert len(harness.handler.refreshes) == 1
     started = harness.service.reauthorize_oauth(
-        harness.base.context, connection.id, callback_url="http://web-api.example/api/connections/oauth"
+        harness.base.context,
+        connection.id,
+        callback_url="http://web-api.example/api/connections/oauth",
+        connection_revision=harness.base.connection_revision,
     )
     assert harness.finish(started).id == connection.id
     stored = harness.base.repository.find(harness.base.context, connection.id)
@@ -305,6 +332,7 @@ def test_foreign_owner_cannot_reauthorize(harness: OAuthHarness) -> None:
             foreign,
             connection.id,
             callback_url="http://web-api.example/api/connections/oauth",
+            connection_revision=harness.base.connection_revision,
         )
 
 
@@ -384,7 +412,7 @@ def test_callback_rejects_changed_graph_client_selection_before_exchange(harness
         graph["nodes"][0]["data"]["end_user_auth"]["oauth_client_type"] = "default"
         workflow.graph = json.dumps(graph)
 
-    with pytest.raises(ConnectionConfigurationError):
+    with pytest.raises(ConnectionRevisionChangedError):
         harness.finish(started)
     assert harness.handler.exchanges == 0
 
@@ -411,3 +439,45 @@ def test_missing_metadata_does_not_copy_credentials_into_label(harness: OAuthHar
     harness.handler.result = harness.handler.result.model_copy(update={"metadata": {"account": "unapproved-identity"}})
     connection = harness.finish(harness.start())
     assert connection.account_label is None
+
+
+def test_oauth_operations_use_the_resolved_plugin_declaration(harness: OAuthHarness) -> None:
+    identifier = harness.providers.controller.plugin_unique_identifier
+    connection = harness.finish(harness.start())
+    assert harness.handler.requested_artifacts == [identifier, identifier]
+    harness.base.service.check_connection(
+        harness.base.context, connection.id, connection_revision=harness.base.connection_revision
+    )
+    assert harness.base.auth.check_artifacts[-1] == identifier
+    harness.base.service.delete_connection(harness.base.context, connection.id)
+    assert harness.base.auth.revocation_artifacts == [identifier]
+
+
+@pytest.mark.parametrize("phase", ["redirect", "exchange"])
+def test_reauthorization_callback_rechecks_the_provider_revision(harness: OAuthHarness, phase: str) -> None:
+    from services.end_user_connections.errors import ConnectionRevisionChangedError
+
+    connection = harness.finish(harness.start())
+    original = harness.base.repository.find(harness.base.context, connection.id)
+    assert original is not None
+    revision = harness.base.service.get_connection_revision(harness.base.context, connection.id).connection_revision
+    started = harness.service.reauthorize_oauth(
+        harness.base.context,
+        connection.id,
+        connection_revision=revision,
+        callback_url="https://web-api.example/api/connections/oauth",
+    )
+
+    def upgrade() -> None:
+        harness.providers.controller.plugin_unique_identifier = "vendor/calendar:2.0.0@" + "b" * 64
+
+    if phase == "redirect":
+        upgrade()
+    else:
+        harness.handler.on_exchange = upgrade
+    with pytest.raises(ConnectionRevisionChangedError):
+        harness.finish(started)
+    assert harness.handler.exchanges == (1 if phase == "redirect" else 2)
+    latest = harness.base.repository.find(harness.base.context, connection.id)
+    assert latest is not None
+    assert latest.encrypted_credentials == original.encrypted_credentials

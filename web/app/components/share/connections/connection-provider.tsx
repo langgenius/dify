@@ -67,7 +67,7 @@ function ConnectionSession({
     ...webAppQuery.connections.configuration.get.queryKey({ input: configurationInput }),
     address,
     authSession,
-    parameters?.workflow_id,
+    parameters?.connection_revision,
   ]
   const list = useInfiniteQuery(
     webAppQuery.connections.get.infiniteOptions({
@@ -183,7 +183,7 @@ function ConnectionSession({
   const actions = useConnectionActions({
     address,
     authSession,
-    workflowId: parameters?.workflow_id,
+    connectionRevision: parameters?.connection_revision,
     requirements,
     services,
     disabled: status !== 'ready',
@@ -303,12 +303,13 @@ export function WebAppConnectionsProvider({
     getWebAppAuthSessionSnapshot,
     () => 0,
   )
-  const workflowId = entry && 'parameters' in entry ? entry.parameters.workflow_id : null
+  const connectionRevision =
+    entry && 'parameters' in entry ? entry.parameters.connection_revision : null
   const sessionKey = JSON.stringify([
     address.kind,
     address.code,
     authSession,
-    workflowId,
+    connectionRevision,
     conversationId,
   ])
 

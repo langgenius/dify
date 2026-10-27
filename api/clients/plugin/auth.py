@@ -22,10 +22,12 @@ from clients.plugin.auth_entities import (
     CredentialCheckResult,
     OAuthRevokeResult,
 )
+from clients.plugin.identifiers import plugin_id_from_unique_identifier
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.base import BasePluginClient, use_plugin_daemon_request_timeout
 from core.plugin.impl.exc import PluginDaemonInternalServerError
 from models.provider_ids import ToolProviderID
+from services.plugin.dispatch_identity import plugin_dispatch_headers
 
 
 class PluginCredentialAuthClient(BasePluginClient):
@@ -37,6 +39,7 @@ class PluginCredentialAuthClient(BasePluginClient):
         provider: str,
         credentials: Mapping[str, Any],
         credential_type: CredentialType,
+        plugin_unique_identifier: str | None = None,
     ) -> CredentialCheckResult:
         """Accept legacy success without interpreting legacy failure as invalid."""
         match credential_type:
@@ -53,6 +56,7 @@ class PluginCredentialAuthClient(BasePluginClient):
             user_id=user_id,
             provider_id=provider_id,
             operation="tool/validate_credentials",
+            plugin_unique_identifier=plugin_unique_identifier,
             data={
                 "credentials": dict(credentials),
                 "credential_type": wire_credential_type,
@@ -73,6 +77,7 @@ class PluginCredentialAuthClient(BasePluginClient):
         tenant_id: str,
         user_id: str,
         provider: str,
+        plugin_unique_identifier: str,
         system_credentials: Mapping[str, Any],
         credentials: Mapping[str, Any],
     ) -> OAuthRevokeResult:
@@ -82,11 +87,14 @@ class PluginCredentialAuthClient(BasePluginClient):
         grant. App unbinding must not call this operation.
         """
         provider_id = ToolProviderID(provider)
+        if plugin_id_from_unique_identifier(plugin_unique_identifier) != provider_id.plugin_id:
+            raise ValueError("OAuth revocation artifact does not match the Provider.")
         return self._dispatch(
             tenant_id=tenant_id,
             user_id=user_id,
             provider_id=provider_id,
             operation="oauth/revoke_credentials",
+            plugin_unique_identifier=plugin_unique_identifier,
             data={"system_credentials": dict(system_credentials), "credentials": dict(credentials)},
             response_type=OAuthRevokeResult,
         )
@@ -98,18 +106,25 @@ class PluginCredentialAuthClient(BasePluginClient):
         user_id: str,
         provider_id: ToolProviderID,
         operation: str,
+        plugin_unique_identifier: str | None,
         data: dict[str, Any],
         response_type: type[T],
     ) -> T:
+        path = f"plugin/{tenant_id}/dispatch/{operation}"
+        headers = plugin_dispatch_headers(provider_id.plugin_id, plugin_unique_identifier)
+        payload = {"user_id": user_id, "data": {"provider": provider_id.provider_name, **data}}
+        if plugin_unique_identifier is not None:
+            if plugin_id_from_unique_identifier(plugin_unique_identifier) != provider_id.plugin_id:
+                raise ValueError("Authentication artifact does not match the Provider.")
         with (
             use_plugin_daemon_request_timeout(10),
             closing(
                 self._request_with_plugin_daemon_response_stream(
                     "POST",
-                    f"plugin/{tenant_id}/dispatch/{operation}",
+                    path,
                     dict[str, object],
-                    headers={"X-Plugin-ID": provider_id.plugin_id, "Content-Type": "application/json"},
-                    data={"user_id": user_id, "data": {"provider": provider_id.provider_name, **data}},
+                    headers=headers,
+                    data=payload,
                 )
             ) as response,
         ):

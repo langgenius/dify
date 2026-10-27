@@ -599,7 +599,14 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 node_id=node_id,
                 spec=self._build_tool_runtime_spec(node_data),
                 variable_pool=variable_pool,
+                execution_driver=self._execution_driver,
+                workflow_tool_definition=(
+                    self._workflow_tools.get(node_data.provider_id)
+                    if self._is_workflow_tool_provider(node_data)
+                    else None
+                ),
             )
+
         tool_runtime.runtime.dify_run_context = self._run_context
 
         conversation_id = (

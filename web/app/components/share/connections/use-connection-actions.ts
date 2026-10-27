@@ -2,7 +2,7 @@
 
 import type {
   EndUserConnectionResponse,
-  ToolConnectionRequirement,
+  WebAppConnectionRequirement,
 } from '@dify/contracts/api/web/types.gen'
 import type { ApiKeyValues } from './api-key-dialog'
 import type { ConnectionMethod, RequiredConnectionService } from './required-services'
@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { isAbortError } from '@/service/client-error'
-import { webAppQuery } from '@/service/webapp'
+import { webAppClient, webAppQuery } from '@/service/webapp'
 import { getWebAppScopeKey, resolveWebAppAddress } from '@/service/webapp-address'
 import { captureWebAppAuthSession } from '@/service/webapp-auth'
 import { authorizeConnection } from './oauth-popup'
@@ -20,8 +20,8 @@ import { authorizeConnection } from './oauth-popup'
 type Props = {
   address: WebAppAddress
   authSession: number
-  workflowId: string | null | undefined
-  requirements: readonly ToolConnectionRequirement[]
+  connectionRevision: string | null | undefined
+  requirements: readonly WebAppConnectionRequirement[]
   services: readonly RequiredConnectionService[]
   disabled: boolean
   oauthCallbackOrigin?: string
@@ -48,7 +48,7 @@ export function connectionDetailQueryKey(
 export default function useConnectionActions({
   address,
   authSession,
-  workflowId,
+  connectionRevision,
   requirements,
   services,
   disabled,
@@ -137,7 +137,7 @@ export default function useConnectionActions({
     return source
   }
   const saveResult = async (
-    source: ToolConnectionRequirement,
+    source: WebAppConnectionRequirement,
     connection: EndUserConnectionResponse,
     assertCurrent: () => void,
   ) => {
@@ -170,10 +170,11 @@ export default function useConnectionActions({
     if (method === 'api-key') {
       await execute(async (_signal, assertCurrent) => {
         const source = requireApiKeySchema(nodeId)
-        if (!workflowId || !values) throw new Error('Connection configuration is incomplete.')
+        if (!connectionRevision || !values)
+          throw new Error('Connection configuration is incomplete.')
         const connection = await create.mutateAsync({
           body: {
-            workflow_id: workflowId,
+            connection_revision: connectionRevision,
             node_id: source.node_id,
             name: values.name,
             credentials: values.credentials,
@@ -185,13 +186,13 @@ export default function useConnectionActions({
     }
     await execute(async (signal, assertCurrent) => {
       const source = findSource(nodeId)
-      if (!workflowId || !source.allowed_credential_types.includes('oauth2'))
+      if (!connectionRevision || !source.allowed_credential_types.includes('oauth2'))
         throw new Error('OAuth is unavailable for this source.')
       const connectionId = await authorizeConnection(
         () =>
           startOAuth.mutateAsync({
             body: {
-              workflow_id: workflowId,
+              connection_revision: connectionRevision,
               node_id: source.node_id,
               name: (source.title.trim() || source.provider).slice(0, 100),
             },
@@ -211,9 +212,18 @@ export default function useConnectionActions({
     execute(async (_signal, assertCurrent) => {
       const source = requireApiKeySchema(nodeId)
       requireConnection(nodeId, connectionId, 'api-key')
+      const revision = await webAppClient.connections.byConnectionId.revision.get(
+        { params: { connection_id: connectionId } },
+        { context },
+      )
+      assertCurrent()
       const connection = await update.mutateAsync({
         params: { connection_id: connectionId },
-        body: { name: values.name, credentials: values.credentials },
+        body: {
+          connection_revision: revision.connection_revision,
+          name: values.name,
+          credentials: values.credentials,
+        },
       })
       if (connection.id !== connectionId)
         throw new Error('The update returned a different connection.')
@@ -233,7 +243,17 @@ export default function useConnectionActions({
     await execute(async (signal, assertCurrent) => {
       const source = requireConnection(nodeId, connectionId, 'oauth')
       const returnedId = await authorizeConnection(
-        () => reauthorize.mutateAsync({ params: { connection_id: connectionId } }),
+        async () => {
+          const revision = await webAppClient.connections.byConnectionId.revision.get(
+            { params: { connection_id: connectionId } },
+            { context },
+          )
+          assertCurrent()
+          return reauthorize.mutateAsync({
+            params: { connection_id: connectionId },
+            body: { connection_revision: revision.connection_revision },
+          })
+        },
         { signal, callbackOrigin: oauthCallbackOrigin },
       )
       if (!returnedId) return

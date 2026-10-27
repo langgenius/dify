@@ -14,6 +14,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppToolIconSource,
 )
+from services.end_user_connections.revision import ConnectionProviderMetadata
 from services.entities.tool_connection_entities import ToolConnectionRequirement
 
 _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/current/tool-provider/builtin/"
@@ -21,9 +22,12 @@ _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/curre
 
 def _service() -> tuple[AppDefinitionQueryService, MagicMock]:
     definitions: MagicMock = create_autospec(AppDefinitionQuery, instance=True, spec_set=True)
+    revisions = create_autospec(module.ConnectionRevisions, instance=True, spec_set=True)
+    revisions.resolve.return_value = ("connection-revision", ())
     return (
         AppDefinitionQueryService(
             definitions=definitions,
+            connection_revisions=revisions,
             builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
         ),
         definitions,
@@ -190,15 +194,46 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
                 allowed_credential_types=(ConnectionCredentialType.API_KEY,),
             ),
         ),
+        graph={
+            "nodes": [
+                {
+                    "id": "tool-1",
+                    "data": {
+                        "type": "tool",
+                        "credential_source": "end_user",
+                        "provider_id": "vendor/calendar/calendar",
+                        "tool_name": "read",
+                        "end_user_auth": {"allowed_credential_types": ["api-key"], "purpose": "Read events"},
+                    },
+                },
+                {
+                    "id": "tool-2",
+                    "data": {"type": "tool", "credential_source": "reuse_node", "reuse_node_id": "tool-1"},
+                },
+            ]
+        },
     )
     definitions.get_published_parameter_config.return_value = parameters
-    result = service.get_web_parameters("app-1", "tenant-1")
-    assert result["workflow_id"] == "published-version"
+    providers = (
+        ConnectionProviderMetadata(
+            provider="vendor/calendar/calendar",
+            plugin_unique_identifier="vendor/calendar:1.0.0@" + "a" * 64,
+            icon="https://console.example/plugin/icon.svg",
+            icon_dark="https://console.example/plugin/icon-dark.svg",
+        ),
+    )
+    with patch.object(service._connection_revisions, "resolve", return_value=("connection-revision", providers)):
+        result = service.get_web_parameters("app-1", "tenant-1")
+    assert result["connection_revision"] == "connection-revision"
+    assert "workflow_id" not in result
     assert result["requires_end_user_connections"] is True
     requirement = result["connection_requirements"][0]
     assert requirement.node_id == "tool-1"
     assert requirement.node_ids == ("tool-1", "tool-2")
     assert requirement.provider == "vendor/calendar/calendar"
+    assert requirement.plugin_unique_identifier == providers[0].plugin_unique_identifier
+    assert requirement.icon == providers[0].icon
+    assert requirement.icon_dark == providers[0].icon_dark
     assert requirement.title == "tool-1"
     assert requirement.purpose == "Read events"
     assert result["opening_statement"] == "Hello"
@@ -233,9 +268,11 @@ def test_web_parameters_without_personal_tools_have_empty_requirements(workflow_
         workflow_id=workflow_id,
         requires_end_user_connections=False,
         connection_requirements=(),
+        graph={"nodes": []} if workflow_id is not None else None,
     )
 
-    assert service.get_web_parameters("app-1", "tenant-1")["connection_requirements"] == ()
+    result = service.get_web_parameters("app-1", "tenant-1")
+    assert result["connection_requirements"] == ()
 
 
 def test_unavailable_web_parameter_config_is_not_reported_as_connection_free() -> None:

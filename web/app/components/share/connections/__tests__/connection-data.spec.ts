@@ -1,16 +1,19 @@
 import type {
   ConnectionConfigurationResponse,
   EndUserConnectionResponse,
-  ToolConnectionRequirement,
+  WebAppConnectionRequirement,
 } from '@dify/contracts/api/web/types.gen'
 import { describe, expect, it } from 'vite-plus/test'
 import { getConnectionData } from '../connection-data'
 
 function requirement(
-  overrides: Partial<ToolConnectionRequirement> = {},
-): ToolConnectionRequirement {
+  overrides: Partial<WebAppConnectionRequirement> = {},
+): WebAppConnectionRequirement {
   return {
     node_id: 'source-one',
+    icon: '/provider-icon.svg',
+    icon_dark: null,
+    plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
     node_ids: ['source-one'],
     provider: 'langgenius/github/github',
     title: 'Repository connection',

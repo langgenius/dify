@@ -10,6 +10,7 @@ from constants.end_user_connections import ConnectionCredentialType, OAuthClient
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from models.provider_ids import ToolProviderID
+from services.end_user_connections.revision import AuthorizationRequirementSnapshot
 from services.entities.tool_connection_entities import ToolConnectionRequirement
 
 
@@ -43,6 +44,7 @@ class ToolCredentialConfig(BaseModel):
 
     Independent nodes can select different Connections for the same provider. Only an explicit
     reuse reference shares another node's authentication; personal Connection IDs stay out of the graph.
+    Nodes using different tools from the same provider can share authentication.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -100,6 +102,34 @@ def get_tool_connection_requirements(graph: Mapping[str, Any]) -> tuple[ToolConn
     return tuple(requirements)
 
 
+def get_tool_authorization_requirements(graph: Mapping[str, Any]) -> tuple[AuthorizationRequirementSnapshot, ...]:
+    nodes = {
+        node["id"]: node["data"]
+        for node in graph.get("nodes", [])
+        if isinstance(node, Mapping)
+        and isinstance(node.get("id"), str)
+        and isinstance(node.get("data"), Mapping)
+        and node.get("type") != "custom-note"
+    }
+    requirements: list[AuthorizationRequirementSnapshot] = []
+    for item in get_tool_connection_requirements(graph):
+        data = nodes[item.node_id]
+        config = ToolCredentialConfig.model_validate(data)
+        assert config.end_user_auth is not None
+        requirements.append(
+            AuthorizationRequirementSnapshot(
+                node_id=item.node_id,
+                node_ids=tuple(sorted(item.node_ids)),
+                provider=item.provider,
+                tool_name=data["tool_name"],
+                purpose=item.purpose,
+                allowed_credential_types=tuple(sorted(value.value for value in item.allowed_credential_types)),
+                oauth_client_type=config.end_user_auth.oauth_client_type,
+            )
+        )
+    return tuple(sorted(requirements, key=lambda item: item.node_id))
+
+
 @dataclass(frozen=True)
 class ToolCredentialIssue:
     node_id: str
@@ -123,8 +153,8 @@ def requires_end_user_connections(graph: Mapping[str, Any]) -> bool:
     )
 
 
-def _same_tool(data: Mapping[str, Any], target_data: Mapping[str, Any]) -> bool:
-    if any(data.get(field) != target_data.get(field) for field in ("provider_type", "tool_name")):
+def _same_provider(data: Mapping[str, Any], target_data: Mapping[str, Any]) -> bool:
+    if data.get("provider_type") != target_data.get("provider_type"):
         return False
     provider = data.get("provider_id")
     target_provider = target_data.get("provider_id")
@@ -272,8 +302,8 @@ def check_tool_credentials(graph: Mapping[str, Any], *, complete: bool) -> list[
             message = f"Reuse target {target_id!r} must configure authentication directly."
         elif target_id in invalid_nodes:
             message = f"Reuse target {target_id!r} has incomplete authentication settings."
-        elif not _same_tool(data, target_data):
-            message = f"Reuse target {target_id!r} must use the same plugin, provider, and tool."
+        elif not _same_provider(data, target_data):
+            message = f"Reuse target {target_id!r} must use the same provider type, plugin, and provider."
         else:
             continue
         issues.append(ToolCredentialIssue(node_id, ("reuse_node_id",), message))

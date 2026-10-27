@@ -2,7 +2,7 @@ import type {
   ConnectionConfigurationResponse,
   EndUserConnectionListResponse,
   EndUserConnectionResponse,
-  ToolConnectionRequirement,
+  WebAppConnectionRequirement,
   WebAppParametersResponse,
 } from '@dify/contracts/api/web/types.gen'
 import type { WebAppEntryState } from '../../webapp-entry'
@@ -33,8 +33,9 @@ const existingId = '11111111-1111-4111-8111-111111111111'
 const backupId = '22222222-2222-4222-8222-222222222222'
 const createdId = '33333333-3333-4333-8333-333333333333'
 const conversationId = '44444444-4444-4444-8444-444444444444'
-const workflowId = '55555555-5555-4555-8555-555555555555'
-const nextWorkflowId = '66666666-6666-4666-8666-666666666666'
+const connectionRevision = '55555555-5555-4555-8555-555555555555'
+const providerRevision = '77777777-7777-4777-8777-777777777777'
+const nextConnectionRevision = '66666666-6666-4666-8666-666666666666'
 const draft = { name: 'New research key', credentials: { access_token: 'a-valid-provider-secret' } }
 const replacement = {
   name: 'Updated research key',
@@ -45,9 +46,12 @@ const schemas: Record<string, FormSchema[]> = {
     { type: FormTypeEnum.secretInput, name: 'access_token', label: 'Access token', required: true },
   ],
 }
-const requirements: ToolConnectionRequirement[] = [
+const requirements: WebAppConnectionRequirement[] = [
   {
     node_id: 'source-a',
+    icon: '/provider-icon.svg',
+    icon_dark: null,
+    plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
     node_ids: ['source-a', 'reuse-a'],
     title: 'Research repositories',
     purpose: 'Read repository documentation.',
@@ -56,6 +60,9 @@ const requirements: ToolConnectionRequirement[] = [
   },
   {
     node_id: 'source-b',
+    icon: '/provider-icon.svg',
+    icon_dark: null,
+    plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
     node_ids: ['source-b'],
     title: 'Read README',
     purpose: 'Read the project README.',
@@ -97,7 +104,7 @@ function entry(): ReadyEntry {
       account_login_enabled: true,
       account_login_url: 'https://account.example/signin',
       allow_anonymous_end_user_auth: false,
-      workflow_id: workflowId,
+      connection_revision: connectionRevision,
       requires_end_user_connections: true,
       connection_requirements: requirements,
     },
@@ -106,10 +113,10 @@ function entry(): ReadyEntry {
   }
 }
 
-function parameters(currentWorkflowId: string): WebAppParametersResponse {
+function parameters(currentConnectionRevision: string): WebAppParametersResponse {
   return {
     ...entry().parameters,
-    workflow_id: currentWorkflowId,
+    connection_revision: currentConnectionRevision,
     annotation_reply: {},
     file_upload: {},
     more_like_this: {},
@@ -148,7 +155,7 @@ function deferred<T>() {
 type Backend = {
   records: EndUserConnectionResponse[]
   configuration: ConnectionConfigurationResponse
-  workflowId: string
+  connectionRevision: string
   list?: (request: Request) => EndUserConnectionListResponse
   write: (request: Request) => Response | Promise<Response>
 }
@@ -157,7 +164,7 @@ function installBackend(overrides: Partial<Backend> = {}) {
   const backend: Backend = {
     records: [existing, backup],
     configuration: { connections: { 'source-a': existing, 'source-b': existing } },
-    workflowId,
+    connectionRevision,
     write: () => {
       throw new Error('Unexpected connection write.')
     },
@@ -169,11 +176,14 @@ function installBackend(overrides: Partial<Backend> = {}) {
     requests.push(request)
     const url = new URL(request.url)
     if (request.method !== 'GET') return backend.write(request)
-    if (url.pathname.endsWith('/parameters')) return Response.json(parameters(backend.workflowId))
+    if (url.pathname.endsWith('/parameters'))
+      return Response.json(parameters(backend.connectionRevision))
     if (url.pathname.endsWith('/connections/configuration'))
       return Response.json(backend.configuration)
     if (url.pathname.endsWith('/connections'))
       return Response.json(backend.list?.(request) ?? page(backend.records))
+    if (url.pathname.endsWith('/revision'))
+      return Response.json({ connection_revision: providerRevision })
     const id = url.pathname.split('/').at(-1)
     const record = backend.records.find((item) => item.id === id)
     if (record) return Response.json(record)
@@ -245,7 +255,7 @@ function Consumer() {
 
 function ParameterProbe({ currentAddress }: { currentAddress: WebAppAddress }) {
   const { data } = useGetWebAppParams(currentAddress)
-  return <output aria-label="Published workflow">{data?.workflow_id ?? ''}</output>
+  return <output aria-label="Connection revision">{data?.connection_revision ?? ''}</output>
 }
 
 function selections() {
@@ -327,7 +337,11 @@ describe('Webapp connection actions', () => {
     await user.click(screen.getByRole('button', { name: 'Add connection' }))
 
     await waitFor(() => expect(screen.getByLabelText('Action result')).toHaveTextContent('saved'))
-    expect(submitted).toEqual({ ...draft, workflow_id: workflowId, node_id: 'source-a' })
+    expect(submitted).toEqual({
+      ...draft,
+      connection_revision: connectionRevision,
+      node_id: 'source-a',
+    })
     expect(requests.filter((request) => request.method === 'POST')).toHaveLength(1)
     expect(selections()).toEqual({ 'source-a': createdId, 'source-b': existingId })
     expect(available()).toContainEqual(expect.objectContaining({ id: createdId, name: draft.name }))
@@ -351,7 +365,16 @@ describe('Webapp connection actions', () => {
 
     await user.click(screen.getByRole('button', { name: 'Replace connection' }))
 
-    await waitFor(() => expect(submitted).toEqual(replacement))
+    await waitFor(() =>
+      expect(submitted).toEqual({ ...replacement, connection_revision: providerRevision }),
+    )
+    expect(
+      requests
+        .filter(
+          (item) => item.method === 'PATCH' || new URL(item.url).pathname.endsWith('/revision'),
+        )
+        .map((item) => item.method),
+    ).toEqual(['GET', 'PATCH'])
     expect(selections()['source-a']).toBe(existingId)
     expect(available()).toContainEqual(
       expect.objectContaining({ id: existingId, name: existing.name, status: 'invalid' }),
@@ -448,7 +471,7 @@ describe('Webapp connection actions', () => {
     let attempts = 0
     backend.write = () => {
       attempts++
-      backend.workflowId = nextWorkflowId
+      backend.connectionRevision = nextConnectionRevision
       if (attempts === 1)
         return Response.json(
           {
@@ -464,13 +487,13 @@ describe('Webapp connection actions', () => {
     render(tree({ address, conversationId, credentialSchemas: schemas, probeParameters: true }))
     await ready()
     await waitFor(() =>
-      expect(screen.getByLabelText('Published workflow')).toHaveTextContent(workflowId),
+      expect(screen.getByLabelText('Connection revision')).toHaveTextContent(connectionRevision),
     )
 
     await user.click(screen.getByRole('button', { name: 'Add connection' }))
 
     await waitFor(() => expect(screen.getByLabelText('Action result')).toHaveTextContent('failed'))
-    expect(screen.getByLabelText('Published workflow')).toHaveTextContent(workflowId)
+    expect(screen.getByLabelText('Connection revision')).toHaveTextContent(connectionRevision)
     expect(
       requests.filter((request) => new URL(request.url).pathname.endsWith('/parameters')),
     ).toHaveLength(1)
@@ -546,7 +569,7 @@ describe('Webapp connection actions', () => {
     const value = entry()
     value.parameters = {
       ...value.parameters,
-      connection_requirements: requirements.map((requirement): ToolConnectionRequirement => ({
+      connection_requirements: requirements.map((requirement): WebAppConnectionRequirement => ({
         ...requirement,
         allowed_credential_types: ['oauth2'],
       })),
@@ -614,7 +637,7 @@ describe('Webapp connection actions', () => {
       ),
     )
     expect(submitted).toEqual({
-      workflow_id: workflowId,
+      connection_revision: connectionRevision,
       node_id: 'source-a',
       name: 'Research repositories',
     })
@@ -703,7 +726,11 @@ describe('Webapp connection actions', () => {
       records: [expired],
       configuration: { connections: { 'source-a': expired } },
     })
-    backend.write = () => Response.json({ authorization_url: 'https://github.example/reauthorize' })
+    let submitted: unknown
+    backend.write = async (request) => {
+      submitted = await request.json()
+      return Response.json({ authorization_url: 'https://github.example/reauthorize' })
+    }
     const popup = openAuthorizationPopup()
     render(tree({ address, conversationId, entry: oauthEntry() }))
     await ready()
@@ -714,6 +741,14 @@ describe('Webapp connection actions', () => {
         'https://github.example/reauthorize',
       ),
     )
+    expect(submitted).toEqual({ connection_revision: providerRevision })
+    expect(
+      requests
+        .filter(
+          (item) => item.method === 'POST' || new URL(item.url).pathname.endsWith('/revision'),
+        )
+        .map((item) => item.method),
+    ).toEqual(['GET', 'POST'])
     backend.records = [refreshed]
     await act(async () => {
       popup.complete(existingId)

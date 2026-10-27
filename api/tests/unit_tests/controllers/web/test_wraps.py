@@ -46,31 +46,6 @@ from tests.helpers.unit.web_identity_fakes import web_identities
 """Public bootstrap admission with real SQL repositories and the canonical hook."""
 
 
-@pytest.mark.parametrize("edition", list(DeploymentEdition))
-@pytest.mark.parametrize("enabled", [True, False])
-def test_login_status_cookie_selection_uses_feature_configuration(
-    monkeypatch: pytest.MonkeyPatch,
-    edition: DeploymentEdition,
-    enabled: bool,
-) -> None:
-    from controllers.web.wraps import extract_web_login_token
-
-    apply_config_overrides(
-        monkeypatch,
-        DEPLOYMENT_EDITION=edition,
-        WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled,
-        CONSOLE_WEB_URL="http://localhost",
-        CONSOLE_API_URL="http://localhost",
-    )
-    with Flask(__name__).test_request_context(
-        "/login/status",
-        headers={
-            "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}=account-login; {COOKIE_NAME_WEBAPP_ACCESS_TOKEN}=web-login",
-        },
-    ):
-        assert extract_web_login_token() == ("account-login" if enabled else "web-login")
-
-
 @dataclass
 class AdmissionHarness:
     app: _public_app_admission_App
@@ -193,7 +168,11 @@ def _harness(
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=60,
         ),
-        app_definitions=AppDefinitionQueryService(definitions=definitions, builtin_icon_url_prefix=""),
+        app_definitions=AppDefinitionQueryService(
+            definitions=definitions,
+            builtin_icon_url_prefix="",
+            connection_revisions=base_services.app_definitions._connection_revisions,
+        ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=definitions,
             file_service=FileService(session_factory=factory),
@@ -639,3 +618,28 @@ class TestWrapsCases:
         response = app.test_client().get("/protected", headers={"X-App-Code": "does-not-exist"})
         assert response.status_code == 404
         assert response.get_json()["code"] == "app_not_found"
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [True, False])
+def test_login_status_cookie_selection_uses_feature_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    enabled: bool,
+) -> None:
+    from controllers.web.wraps import extract_web_login_token
+
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=edition,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled,
+        CONSOLE_WEB_URL="http://localhost",
+        CONSOLE_API_URL="http://localhost",
+    )
+    with Flask(__name__).test_request_context(
+        "/login/status",
+        headers={
+            "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}=account-login; {COOKIE_NAME_WEBAPP_ACCESS_TOKEN}=web-login",
+        },
+    ):
+        assert extract_web_login_token() == ("account-login" if enabled else "web-login")

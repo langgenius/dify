@@ -41,7 +41,7 @@ export type WebAppParameters = ChatConfig &
     | 'account_login_enabled'
     | 'account_login_url'
     | 'allow_anonymous_end_user_auth'
-    | 'workflow_id'
+    | 'connection_revision'
     | 'requires_end_user_connections'
     | 'connection_requirements'
   >
