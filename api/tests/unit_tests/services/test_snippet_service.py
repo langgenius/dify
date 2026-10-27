@@ -217,7 +217,7 @@ def test_get_snippets_keyword_treats_like_wildcards_literally(
             )
         )
     sqlite_session.flush()
-    service = SnippetService.__new__(SnippetService)
+    service = SnippetService(session=sqlite_session)
 
     result, total, has_more = service.get_snippets(
         tenant_id="tenant-1", session=sqlite_session, keyword=keyword, tags=application_tags
