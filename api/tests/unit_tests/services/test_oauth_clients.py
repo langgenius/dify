@@ -1,53 +1,34 @@
-from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
+from collections.abc import Sequence
 from typing import cast
 
 import pytest
-from sqlalchemy import Engine, Table, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums.oauth_client import OAuthClientKind
 from libs.oauth_bearer import sha256_hex
-from models.oauth import OpenAPIOAuthClient
 from repositories.oauth_client_repository import SQLAlchemyOAuthClientRepository
 from services.oauth_clients import OAuthClientRegistry, ResolvedClient
 from services.oauth_token_contracts import GrantType
 
 
-@dataclass
-class _FixedSource:
-    client: ResolvedClient
-
-    def resolve(self, client_id: str) -> ResolvedClient | None:  # noqa: ARG002
-        return self.client
-
-
 @pytest.fixture
-def engine() -> Iterator[Engine]:
-    engine = create_engine("sqlite://")
-    cast(Table, OpenAPIOAuthClient.__table__).create(engine)
-    yield engine
-    engine.dispose()
-
-
-@pytest.fixture
-def repository(engine: Engine) -> SQLAlchemyOAuthClientRepository:
-    return SQLAlchemyOAuthClientRepository(session_factory=sessionmaker(engine, class_=Session))
+def repository(sqlite_session_factory: sessionmaker[Session]) -> SQLAlchemyOAuthClientRepository:
+    return SQLAlchemyOAuthClientRepository(session_factory=sqlite_session_factory)
 
 
 def _create(
     repository: SQLAlchemyOAuthClientRepository,
+    client_id: str = "claude-desktop",
     *,
     kind: OAuthClientKind = OAuthClientKind.CONFIDENTIAL,
-    display_name: str = "Claude Desktop",
     grant_types: Sequence[str] = (GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN),
     client_secret_hash: str | None = sha256_hex("s3cret"),
     logo_uri: str | None = None,
 ) -> None:
     repository.create(
-        client_id="claude-desktop",
+        client_id=client_id,
         kind=kind,
-        display_name=display_name,
+        display_name="Claude Desktop",
         redirect_uris=["https://example.com/cb"],
         grant_types=cast("Sequence[GrantType]", grant_types),
         client_secret_hash=client_secret_hash,
@@ -68,62 +49,29 @@ def test_table_row_resolves(repository: SQLAlchemyOAuthClientRepository) -> None
         grant_types=frozenset({GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN}),
         secret_hash=sha256_hex("s3cret"),
     )
-
-
-def test_unknown_client_resolves_to_none(repository: SQLAlchemyOAuthClientRepository) -> None:
-    assert OAuthClientRegistry([repository]).resolve("nope") is None
-
-
-def test_device_flow_client_id_not_in_table_resolves_to_none(repository: SQLAlchemyOAuthClientRepository) -> None:
     assert OAuthClientRegistry([repository]).resolve("difyctl") is None
 
 
 def test_unknown_grant_types_in_row_are_ignored(repository: SQLAlchemyOAuthClientRepository) -> None:
-    _create(repository, grant_types=[GrantType.AUTHORIZATION_CODE, "urn:future:grant"])
+    _create(repository, grant_types=[GrantType.AUTHORIZATION_CODE, GrantType.DEVICE_CODE, "urn:future:grant"])
     client = OAuthClientRegistry([repository]).resolve("claude-desktop")
     assert client is not None
-    assert client.grant_types == frozenset({GrantType.AUTHORIZATION_CODE})
+    assert client.grant_types == frozenset({GrantType.AUTHORIZATION_CODE, GrantType.DEVICE_CODE})
 
 
-def test_verify_secret_confidential(repository: SQLAlchemyOAuthClientRepository) -> None:
+def test_verify_secret(repository: SQLAlchemyOAuthClientRepository) -> None:
     _create(repository)
+    _create(repository, "no-hash", client_secret_hash=None)
+    _create(repository, "public", kind=OAuthClientKind.PUBLIC, client_secret_hash=None)
     registry = OAuthClientRegistry([repository])
-    client = registry.resolve("claude-desktop")
-    assert client is not None
-    assert registry.verify_secret(client, "s3cret") is True
-    assert registry.verify_secret(client, "wrong") is False
-    assert registry.verify_secret(client, None) is False
+    confidential, no_hash, public = (registry.resolve(i) for i in ("claude-desktop", "no-hash", "public"))
+    assert confidential is not None
+    assert no_hash is not None
+    assert public is not None
 
-
-def test_verify_secret_confidential_without_stored_hash(repository: SQLAlchemyOAuthClientRepository) -> None:
-    _create(repository, client_secret_hash=None)
-    registry = OAuthClientRegistry([repository])
-    client = registry.resolve("claude-desktop")
-    assert client is not None
-    assert registry.verify_secret(client, "anything") is False
-
-
-def test_verify_secret_public(repository: SQLAlchemyOAuthClientRepository) -> None:
-    _create(repository, kind=OAuthClientKind.PUBLIC, client_secret_hash=None)
-    registry = OAuthClientRegistry([repository])
-    client = registry.resolve("claude-desktop")
-    assert client is not None
-    assert registry.verify_secret(client, None) is True
-    assert registry.verify_secret(client, "s3cret") is False
-
-
-def test_first_source_hit_wins(repository: SQLAlchemyOAuthClientRepository) -> None:
-    _create(repository, display_name="First")
-    second = ResolvedClient(
-        client_id="claude-desktop",
-        storage_client_id="claude-desktop",
-        kind=OAuthClientKind.PUBLIC,
-        display_name="Second",
-        logo_uri=None,
-        redirect_uris=(),
-        grant_types=frozenset(),
-        secret_hash=None,
-    )
-    client = OAuthClientRegistry([repository, _FixedSource(second)]).resolve("claude-desktop")
-    assert client is not None
-    assert client.display_name == "First"
+    assert registry.verify_secret(confidential, "s3cret") is True
+    assert registry.verify_secret(confidential, "wrong") is False
+    assert registry.verify_secret(confidential, None) is False
+    assert registry.verify_secret(no_hash, "anything") is False
+    assert registry.verify_secret(public, None) is True
+    assert registry.verify_secret(public, "s3cret") is False

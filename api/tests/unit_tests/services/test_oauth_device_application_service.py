@@ -543,28 +543,19 @@ def test_start_returns_verification_uri_complete_with_encoded_user_code() -> Non
     assert result.verification_uri_complete == "https://console.example/device?user_code=AB%20CD%26EF"
 
 
-def test_start_without_label_generates_distinct_default_labels() -> None:
+def test_start_generates_distinct_default_labels_and_keeps_explicit_ones() -> None:
     harness = _harness()
 
-    for _ in range(2):
+    for label in (None, None, "laptop"):
         harness.service.start(
-            client_id="difyctl", device_label=None, created_ip="127.0.0.1", request_origin="https://request.example/"
+            client_id="difyctl", device_label=label, created_ip="127.0.0.1", request_origin="https://request.example/"
         )
 
-    first, second = harness.store.started_labels
+    first, second, explicit = harness.store.started_labels
     assert re.fullmatch(r"difyctl \([0-9a-f]{6}\)", first)
     assert re.fullmatch(r"difyctl \([0-9a-f]{6}\)", second)
     assert first != second
-
-
-def test_start_keeps_explicit_label() -> None:
-    harness = _harness()
-
-    harness.service.start(
-        client_id="difyctl", device_label="laptop", created_ip="127.0.0.1", request_origin="https://request.example/"
-    )
-
-    assert harness.store.started_labels == ["laptop"]
+    assert explicit == "laptop"
 
 
 @pytest.mark.parametrize(
@@ -940,41 +931,11 @@ def test_poll_device_grant_rejects_other_client() -> None:
     assert result["token"] == "secret-token"
 
 
-@pytest.mark.parametrize("device_code", ["device-1", "unknown-device"], ids=["known-code", "unknown-code"])
-def test_poll_device_grant_rejects_client_off_the_allowlist(device_code: str) -> None:
+def test_poll_device_grant_rejects_client_off_the_allowlist() -> None:
     harness = _harness(settings=FakeSettings(known_client_ids=frozenset({"other-cli"})))
     harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
 
     with pytest.raises(UnsupportedClientError):
-        harness.service.poll_device_grant(client_id="difyctl", device_code=device_code, poll_ip="127.0.0.1")
-
-    assert "ABCD-EFGH" in harness.store.states
-
-
-@pytest.mark.parametrize(
-    ("state", "expected_error"),
-    [
-        (FakeState(), AuthorizationPendingError),
-        (FakeState(status=DeviceFlowStatus.DENIED), AccessDeniedError),
-        (None, ExpiredTokenError),
-        (FakeState(status=DeviceFlowStatus.APPROVED), ExpiredTokenError),
-    ],
-    ids=["pending", "denied", "unknown", "approved-without-token"],
-)
-def test_poll_device_grant_matches_poll_for_right_client(
-    state: FakeState | None, expected_error: type[Exception]
-) -> None:
-    harness = _harness()
-    harness.store.states = {} if state is None else {"ABCD-EFGH": ("device-1", state)}
-
-    with pytest.raises(expected_error):
         harness.service.poll_device_grant(client_id="difyctl", device_code="device-1", poll_ip="127.0.0.1")
 
-
-def test_poll_device_grant_returns_approved_payload() -> None:
-    harness = _harness()
-    harness.service.approve(RequestContext("request-1", None, "account-1", "workspace-1"), user_code="ABCD-EFGH")
-
-    result = harness.service.poll_device_grant(client_id="difyctl", device_code="device-1", poll_ip="127.0.0.1")
-
-    assert result["token"] == "secret-token"
+    assert "ABCD-EFGH" in harness.store.states

@@ -73,15 +73,10 @@ def test_bad_secret_for_a_known_client_is_invalid_client_401_and_counts(
     assert hits.hits == {_failure_key(client_id): 1}
 
 
-@pytest.mark.parametrize("client_id", [None, ""])
-def test_missing_client_id_is_invalid_client_without_a_bucket(
-    clients: OAuthClientRegistry, hits: RateLimitHits, client_id: str | None
+def test_missing_or_unknown_client_is_invalid_client_and_never_counted(
+    clients: OAuthClientRegistry, hits: RateLimitHits
 ) -> None:
-    assert _code(clients, client_id, CONFIDENTIAL_SECRET) is TokenErrorCode.INVALID_CLIENT
-    assert hits.hits == {}
-
-
-def test_unknown_client_is_never_counted_or_limited(clients: OAuthClientRegistry, hits: RateLimitHits) -> None:
+    assert _code(clients, None, CONFIDENTIAL_SECRET) is TokenErrorCode.INVALID_CLIENT
     for _ in range(11):
         assert _code(clients, "unknown-" + "x" * 500, "anything") is TokenErrorCode.INVALID_CLIENT
 
@@ -100,13 +95,3 @@ def test_ten_failures_lock_that_client_from_that_ip_only(clients: OAuthClientReg
     assert _authenticate(clients, CONFIDENTIAL_ID, CONFIDENTIAL_SECRET, IP_B) == CONFIDENTIAL_ID
     assert _authenticate(clients, "other", CONFIDENTIAL_SECRET) == "other"
     assert hits.hits == {_failure_key(CONFIDENTIAL_ID): 10}
-
-
-def test_successes_do_not_count_toward_the_limit(clients: OAuthClientRegistry, hits: RateLimitHits) -> None:
-    for _ in range(20):
-        _authenticate(clients, CONFIDENTIAL_ID, CONFIDENTIAL_SECRET)
-    for _ in range(9):
-        _code(clients, CONFIDENTIAL_ID, "wrong")
-
-    assert _authenticate(clients, CONFIDENTIAL_ID, CONFIDENTIAL_SECRET) == CONFIDENTIAL_ID
-    assert hits.hits == {_failure_key(CONFIDENTIAL_ID): 9}

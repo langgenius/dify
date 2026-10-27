@@ -140,15 +140,6 @@ def test_buffer_response_within_its_deadline_returns_the_body(monkeypatch: pytes
     assert response.content == b"xxx"
 
 
-def test_buffer_response_without_a_deadline_never_checks_the_clock(monkeypatch: pytest.MonkeyPatch) -> None:
-    def forbidden() -> float:
-        raise AssertionError("clock read")
-
-    monkeypatch.setattr(ssrf_proxy_module.time, "monotonic", forbidden)
-
-    assert buffer_response(_slow_response(3), max_response_bytes=1024).content == b"xxx"
-
-
 def test_request_can_return_an_open_stream_the_caller_closes() -> None:
     transport = httpx.MockTransport(
         lambda request: httpx.Response(

@@ -388,13 +388,12 @@ describe('OAuthAuthorize', () => {
   })
 })
 
-describe('OAuthAuthorize OpenAPI client lookup', () => {
+describe('OAuthAuthorize OpenAPI consent', () => {
   const openApiParams = {
     client_id: 'openapi-client',
     redirect_uri: 'http://127.0.0.1:8123/callback',
     code_challenge: 'challenge-1',
     code_challenge_method: 'S256',
-    resource: 'https://dify.test/openapi/v1',
     state: 'state-1',
   }
   const clientView = {
@@ -406,12 +405,13 @@ describe('OAuthAuthorize OpenAPI client lookup', () => {
   }
   const fetchMock = vi.fn()
 
-  function stubLookup(status: number, body: unknown) {
+  function stubFetch(lookupStatus: number, lookupBody: unknown, decisionStatus = 200) {
     fetchMock.mockImplementation(async (url: string) => {
-      if (String(url).startsWith('/openapi/v1/oauth/authorize/client')) {
-        return new Response(JSON.stringify(body), { status })
-      }
-      throw new Error(`Unexpected fetch: ${url}`)
+      const path = String(url).split('?')[0]!
+      if (path.endsWith('/client'))
+        return new Response(JSON.stringify(lookupBody), { status: lookupStatus })
+      const redirect_to = `${openApiParams.redirect_uri}?result=${path.split('/').pop()}`
+      return new Response(JSON.stringify({ redirect_to }), { status: decisionStatus })
     })
   }
 
@@ -419,18 +419,16 @@ describe('OAuthAuthorize OpenAPI client lookup', () => {
     vi.clearAllMocks()
     mocks.profileLoggedIn = true
     mocks.searchParams = new URLSearchParams(openApiParams)
-    mockProviderResponses({ autoAuthorize: true })
+    mockProviderResponses({ autoAuthorize: false })
     vi.stubGlobal('fetch', fetchMock)
     vi.stubGlobal('location', {
       href: 'https://dify.test/account/oauth/authorize',
       origin: 'https://dify.test',
-      replace: mocks.replaceDocument,
     })
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
-    vi.restoreAllMocks()
   })
 
   it('does not look up a request without PKCE', async () => {
@@ -438,86 +436,89 @@ describe('OAuthAuthorize OpenAPI client lookup', () => {
       client_id: 'client-1',
       redirect_uri: 'https://client.example.com/callback',
     })
-    mockProviderResponses({ autoAuthorize: false })
     renderPage()
 
     expect(await screen.findByRole('button', { name: /continue/i })).toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('renders the OpenAPI consent and never auto-authorizes', async () => {
-    stubLookup(200, clientView)
+  it('renders the consent for a PKCE request instead of the creators-platform flow', async () => {
+    stubFetch(200, clientView)
     renderPage()
 
     expect(await screen.findByText('Local CLI')).toBeInTheDocument()
-    expect(screen.getByText(/127\.0\.0\.1/)).toBeInTheDocument()
+    expect(screen.getByText('oauth.openapi.unverified')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('oauth.openapi.localhostWarning')
     expect(findRequest('/oauth/provider')).toBeUndefined()
-    expect(findRequest('/oauth/provider/authorize')).toBeUndefined()
-    const lookupUrl = String(fetchMock.mock.calls[0]![0])
-    expect(new URL(lookupUrl, 'https://dify.test').searchParams.get('redirect_uri')).toBe(
-      openApiParams.redirect_uri,
-    )
-  })
-
-  it('still sends redirect_uri on the lookup when it is empty', async () => {
-    mocks.searchParams = new URLSearchParams({
-      client_id: 'openapi-client',
-      code_challenge: 'challenge-1',
-    })
-    stubLookup(400, { error: 'invalid_redirect_uri' })
-    renderPage()
-
-    await screen.findByText('oauth.openapi.error.invalidRequest')
     const lookupUrl = new URL(String(fetchMock.mock.calls[0]![0]), 'https://dify.test')
-    expect(lookupUrl.searchParams.get('redirect_uri')).toBe('')
+    expect(lookupUrl.searchParams.get('redirect_uri')).toBe(openApiParams.redirect_uri)
   })
 
   it.each([
-    ['unknown client', 400, { error: 'invalid_client' }],
-    ['feature off', 404, { error: 'not_found' }],
-    ['rate limited', 429, { error: 'rate_limited' }],
-    ['server error', 500, {}],
-  ])('falls through to the creators-platform flow on %s', async (_name, status, body) => {
-    stubLookup(status, body)
-    mockProviderResponses({ autoAuthorize: false })
+    ['https://app.example.com/client.json', true],
+    ['http://app.example.com/client.json', false],
+  ])('names the metadata host only for an https client id: %s', async (clientId, shown) => {
+    stubFetch(200, { ...clientView, client_id: clientId })
+    renderPage()
+
+    await screen.findByText('Local CLI')
+    const details = screen.queryByText(/oauth\.openapi\.detailsFrom.*app\.example\.com/)
+    expect(details !== null).toBe(shown)
+  })
+
+  it.each([
+    ['oauth.openapi.authorize', 'approve'],
+    ['common.operation.cancel', 'deny'],
+  ])('%s posts the request to %s and follows redirect_to', async (name, decision) => {
+    const user = userEvent.setup()
+    stubFetch(200, clientView)
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name }))
+
+    await waitFor(() =>
+      expect(globalThis.location.href).toBe(`${openApiParams.redirect_uri}?result=${decision}`),
+    )
+    const [url, init] = fetchMock.mock.calls[1]!
+    expect(url).toBe(`/openapi/v1/oauth/authorize/${decision}`)
+    expect(JSON.parse(init.body)).toEqual({ ...openApiParams, resource: null, scope: null })
+  })
+
+  it('stays on the page when approve fails', async () => {
+    const user = userEvent.setup()
+    stubFetch(200, clientView, 400)
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'oauth.openapi.authorize' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(globalThis.location.href).toBe('https://dify.test/account/oauth/authorize')
+  })
+
+  it('falls through to the creators-platform flow when the lookup route is off', async () => {
+    stubFetch(404, { error: 'not_found' })
     renderPage()
 
     expect(await screen.findByRole('button', { name: /continue/i })).toBeInTheDocument()
-    expect(findRequest('/oauth/provider')).toBeDefined()
   })
 
-  it('falls through to the creators-platform flow on a network error', async () => {
-    fetchMock.mockRejectedValue(new TypeError('network down'))
-    mockProviderResponses({ autoAuthorize: false })
+  it('shows the OpenAPI error view for an invalid request and never navigates', async () => {
+    stubFetch(400, { error: 'invalid_redirect_uri' })
     renderPage()
 
-    expect(await screen.findByRole('button', { name: /continue/i })).toBeInTheDocument()
+    expect(await screen.findByText('oauth.openapi.error.invalidRequest')).toBeInTheDocument()
+    expect(findRequest('/oauth/provider')).toBeUndefined()
+    expect(mocks.push).not.toHaveBeenCalled()
   })
-
-  it.each(['invalid_redirect_uri', 'invalid_request'])(
-    'shows the OpenAPI error view for %s and never navigates',
-    async (code) => {
-      stubLookup(400, { error: code })
-      renderPage()
-
-      expect(await screen.findByText('oauth.openapi.error.invalidRequest')).toBeInTheDocument()
-      expect(findRequest('/oauth/provider')).toBeUndefined()
-      expect(globalThis.location.href).toBe('https://dify.test/account/oauth/authorize')
-      expect(mocks.push).not.toHaveBeenCalled()
-      expect(mocks.replace).not.toHaveBeenCalled()
-    },
-  )
 
   it('keeps the PKCE parameters on the sign-in link when logged out', async () => {
     mocks.profileLoggedIn = false
-    stubLookup(200, clientView)
+    stubFetch(200, clientView)
     renderPage()
 
     const link = await screen.findByRole('link', { name: 'oauth.login' })
     const signIn = new URL(link.getAttribute('href')!, 'https://dify.test')
     const returnUrl = new URL(signIn.searchParams.get('redirect_url')!)
-    expect(returnUrl.pathname).toBe('/account/oauth/authorize')
     for (const [key, value] of Object.entries(openApiParams))
       expect(returnUrl.searchParams.get(key)).toBe(value)
   })

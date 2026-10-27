@@ -40,39 +40,13 @@ def test_documents_are_json_cached_and_cors_open(client: FlaskClient, path: str)
 def test_authorization_server_uses_console_api_url(client: FlaskClient) -> None:
     body = client.get(AS_PATH, base_url="http://dify.test").get_json()
     assert body["issuer"] == f"{API_ORIGIN}/openapi/v1"
-    assert body["registration_endpoint"] == f"{API_ORIGIN}/openapi/v1/oauth/register"
     assert body["authorization_endpoint"] == "http://dify.test/account/oauth/authorize"
 
 
-def test_protected_resource_document(client: FlaskClient) -> None:
-    body = client.get(PR_PATH, base_url="http://dify.test").get_json()
-    assert body == {
-        "resource": f"{API_ORIGIN}/openapi/v1",
-        "authorization_servers": [f"{API_ORIGIN}/openapi/v1"],
-        "bearer_methods_supported": ["header"],
-    }
-
-
+@pytest.mark.parametrize("override", [{"ENABLE_OAUTH_BEARER": False}, {"CONSOLE_API_URL": ""}])
 @pytest.mark.parametrize("path", [AS_PATH, PR_PATH])
-def test_bearer_off_is_404(client: FlaskClient, config_overrides: ConfigOverrides, path: str) -> None:
-    config_overrides(ENABLE_OAUTH_BEARER=False)
-    assert client.get(path, base_url="http://dify.test").status_code == 404
-
-
-@pytest.mark.parametrize("path", [AS_PATH, PR_PATH])
-def test_no_console_api_url_is_404(client: FlaskClient, config_overrides: ConfigOverrides, path: str) -> None:
-    config_overrides(CONSOLE_API_URL="")
-    assert client.get(path, base_url="http://dify.test").status_code == 404
-
-
-@pytest.mark.parametrize(
-    "path",
-    [
-        "/.well-known/openid-configuration",
-        "/.well-known/oauth-authorization-server",
-        "/.well-known/oauth-authorization-server/openapi/v2",
-        "/.well-known/oauth-protected-resource",
-    ],
-)
-def test_other_well_known_paths_are_not_served(client: FlaskClient, path: str) -> None:
+def test_documents_are_404_when_discovery_is_off(
+    client: FlaskClient, config_overrides: ConfigOverrides, path: str, override: dict[str, object]
+) -> None:
+    config_overrides(**override)
     assert client.get(path, base_url="http://dify.test").status_code == 404

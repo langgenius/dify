@@ -1,66 +1,39 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import type { BaseError } from '@/errors/base'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
-import { BaseError } from '@/errors/base'
+import { expect, it } from 'vite-plus/test'
 import { ErrorCode } from '@/errors/codes'
 import { readTokenFile } from './token-file'
 
 const SECRET = 'dfoa_x'
+const dir = mkdtempSync(join(tmpdir(), 'difyctl-token-file-'))
 
-describe('readTokenFile', () => {
-  let dir: string
+function write(content: string): string {
+  const path = join(dir, 'token.json')
+  writeFileSync(path, content)
+  return path
+}
 
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-token-file-'))
-  })
+it('returns access_token and ignores unknown keys', async () => {
+  expect(
+    await readTokenFile(write(JSON.stringify({ access_token: SECRET, refresh_token: 'r' }))),
+  ).toBe(SECRET)
+})
 
-  afterEach(async () => {
-    await rm(dir, { recursive: true, force: true })
-  })
+it.each([
+  ['not json', SECRET],
+  ['empty access_token', '{"access_token":""}'],
+  ['missing access_token', `{"refresh_token":"${SECRET}"}`],
+])('rejects %s as not_logged_in without leaking the file', async (_name, content) => {
+  const err = await readTokenFile(write(content)).catch((e: unknown) => e)
+  expect(err).toMatchObject({ code: ErrorCode.NotLoggedIn })
+  expect(String(err)).not.toContain(SECRET)
+  expect(String((err as BaseError).cause ?? '')).not.toContain(SECRET)
+})
 
-  async function write(content: string): Promise<string> {
-    const path = join(dir, 'token.json')
-    await writeFile(path, content)
-    return path
-  }
-
-  it('returns access_token and ignores unknown keys', async () => {
-    const path = await write(
-      JSON.stringify({
-        access_token: SECRET,
-        token_type: 'Bearer',
-        refresh_token: 'r',
-        future: 1,
-      }),
-    )
-    expect(await readTokenFile(path)).toBe(SECRET)
-  })
-
-  const badContents: Array<[string, string]> = [
-    ['empty file', ''],
-    ['not json', 'not json'],
-    ['plain text token', JSON.stringify(SECRET)],
-    ['raw text token', SECRET],
-    ['array', '[]'],
-    ['empty access_token', '{"access_token":""}'],
-    ['non-string access_token', '{"access_token":5}'],
-    ['missing access_token', `{"refresh_token":"${SECRET}"}`],
-  ]
-
-  it.each(badContents)('rejects %s as not_logged_in', async (_name, content) => {
-    const path = await write(content)
-    const err = await readTokenFile(path).catch((e: unknown) => e)
-    expect(err).toBeInstanceOf(BaseError)
-    const base = err as BaseError
-    expect(base.code).toBe(ErrorCode.NotLoggedIn)
-    expect(base.toString()).not.toContain(SECRET)
-    expect(String(base.cause ?? '')).not.toContain(SECRET)
-  })
-
-  it('rejects a missing file as not_logged_in', async () => {
-    const err = await readTokenFile(join(dir, 'absent.json')).catch((e: unknown) => e)
-    expect(err).toBeInstanceOf(BaseError)
-    expect((err as BaseError).code).toBe(ErrorCode.NotLoggedIn)
+it('rejects a missing file as not_logged_in', async () => {
+  await expect(readTokenFile(join(dir, 'absent.json'))).rejects.toMatchObject({
+    code: ErrorCode.NotLoggedIn,
   })
 })

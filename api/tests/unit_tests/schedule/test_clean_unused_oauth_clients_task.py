@@ -1,8 +1,4 @@
-import importlib.util
-import sys
-from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from types import ModuleType
 
 import pytest
@@ -11,36 +7,15 @@ from sqlalchemy.orm import ORMExecuteState, Session
 
 from enums.oauth_client import OAuthClientKind
 from models.oauth import OpenAPIOAuthClient
+from tests.helpers.unit.schedule.task_module_loader import load_schedule_module
 
 NOW = datetime(2026, 10, 26, 12, tzinfo=UTC)
 CUTOFF = NOW - timedelta(days=7)
 
 
-class _CeleryStub:
-    def task(self, *_args: object, **_kwargs: object) -> Callable[[Callable[..., object]], Callable[..., object]]:
-        def decorator(func: Callable[..., object]) -> Callable[..., object]:
-            return func
-
-        return decorator
-
-
-class _AppStub(ModuleType):
-    celery = _CeleryStub()
-
-
 @pytest.fixture
 def cleanup_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
-    # Importing the task module for real runs ``import app``, which builds the Flask app.
-    path = Path(__file__).resolve().parents[3] / "schedule" / "clean_unused_oauth_clients_task.py"
-    spec = importlib.util.spec_from_file_location("_test_clean_unused_oauth_clients_task", path)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    with monkeypatch.context() as patch:
-        patch.setitem(sys.modules, "app", _AppStub("app"))
-        patch.setitem(sys.modules, spec.name, module)
-        spec.loader.exec_module(module)
-    return module
+    return load_schedule_module(monkeypatch, "clean_unused_oauth_clients_task")
 
 
 def _client(client_id: str) -> OpenAPIOAuthClient:
@@ -77,18 +52,6 @@ def test_deletes_old_never_used_clients_and_keeps_the_rest(sqlite_session: Sessi
 
     assert deleted == 1
     assert _remaining(sqlite_session) == {"dcr_old_used", "dcr_new_unused"}
-
-
-def test_returns_the_number_of_deleted_clients(sqlite_session: Session, cleanup_module: ModuleType) -> None:
-    old = CUTOFF - timedelta(days=1)
-    for index in range(5):
-        _add(sqlite_session, f"dcr_{index}", created_at=old)
-    _add(sqlite_session, "dcr_used", created_at=old, last_token_at=old)
-
-    deleted = cleanup_module.clean_unused_oauth_clients(sqlite_session, cutoff=CUTOFF)
-
-    assert deleted == 5
-    assert _remaining(sqlite_session) == {"dcr_used"}
 
 
 def test_a_client_marked_between_the_select_and_the_delete_is_kept(

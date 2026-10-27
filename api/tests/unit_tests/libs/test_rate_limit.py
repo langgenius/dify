@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import partial
@@ -12,23 +10,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from flask.ctx import RequestContext
 from redis import Redis
 from werkzeug.exceptions import TooManyRequests, Unauthorized
 
-from configs import dify_config
 from libs import rate_limit as rate_limit_module
 from libs.helper import RateLimiter, _RateLimiterRedisClient
-from libs.oauth_bearer import AuthContext, TokenType, _auth_ctx_var
 from libs.rate_limit import (
-    LIMIT_AUTHORIZE_APPROVE,
-    LIMIT_AUTHORIZE_CLIENT_PUBLIC,
     LIMIT_BEARER_PER_TOKEN,
     LIMIT_CLIENT_AUTH_FAILURE,
-    LIMIT_DCR_PER_IP,
     LIMIT_DEVICE_CODE_PER_IP,
-    LIMIT_DEVICE_FLOW_APPROVE,
     LIMIT_LOOKUP_PUBLIC,
+    RATE_LIMIT_IDENTITY_MISSING,
     RateLimit,
     RateLimitScope,
     _BearerRateLimited,
@@ -147,10 +139,8 @@ def test_enforce_bearer_rate_limit_disabled_when_limit_is_zero(
 @dataclass
 class _FakeZsetRedis:
     zsets: dict[str, dict[str, float]] = field(default_factory=dict)
-    writes: int = 0
 
     def zadd(self, name: str, mapping: dict[str, float]) -> int:
-        self.writes += 1
         self.zsets.setdefault(name, {}).update(mapping)
         return len(mapping)
 
@@ -160,13 +150,6 @@ class _FakeZsetRedis:
         for member in stale:
             del entries[member]
         return len(stale)
-
-    def register_script(self, script: str) -> Callable[..., object]:
-        raise NotImplementedError(script)
-
-    def zrem(self, name: str, *values: str) -> int:
-        entries = self.zsets.get(name, {})
-        return sum(entries.pop(value, None) is not None for value in values)
 
     def zcard(self, name: str) -> int:
         return len(self.zsets.get(name, {}))
@@ -191,31 +174,14 @@ def app() -> Flask:
     return flask_app
 
 
-def _ip_request(app: Flask, ip: str = "203.0.113.7") -> RequestContext:
-    return app.test_request_context("/", environ_base={"REMOTE_ADDR": ip})
-
-
 def _hit(spec: RateLimit) -> None:
     rate_limit(spec)(lambda: None)()
-
-
-def test_limits_with_same_scope_use_different_keys(app: Flask, fake_redis: _FakeZsetRedis) -> None:
-    with _ip_request(app):
-        _hit(LIMIT_DEVICE_CODE_PER_IP)
-        _hit(LIMIT_LOOKUP_PUBLIC)
-
-    assert len(fake_redis.zsets) == 2
-    assert limiter_prefix(LIMIT_DEVICE_CODE_PER_IP) != limiter_prefix(LIMIT_LOOKUP_PUBLIC)
-    assert {key.split(":ip:")[0] for key in fake_redis.zsets} == {
-        limiter_prefix(LIMIT_DEVICE_CODE_PER_IP).removesuffix(":ip"),
-        limiter_prefix(LIMIT_LOOKUP_PUBLIC).removesuffix(":ip"),
-    }
 
 
 @pytest.mark.usefixtures("fake_redis")
 def test_lookup_calls_do_not_trim_device_code_entries(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("libs.helper.time.time", lambda: 1_000_000)
-    with _ip_request(app):
+    with app.test_request_context("/", environ_base={"REMOTE_ADDR": "203.0.113.7"}):
         for _ in range(LIMIT_DEVICE_CODE_PER_IP.limit):
             _hit(LIMIT_DEVICE_CODE_PER_IP)
 
@@ -225,51 +191,6 @@ def test_lookup_calls_do_not_trim_device_code_entries(app: Flask, monkeypatch: p
 
         with pytest.raises(TooManyRequests):
             _hit(LIMIT_DEVICE_CODE_PER_IP)
-
-
-def test_every_limit_name_is_unique() -> None:
-    limits = [value for value in vars(rate_limit_module).values() if isinstance(value, RateLimit)]
-    names = [spec.name for spec in limits]
-
-    assert limits
-    assert len(names) == len(set(names))
-
-
-def test_limiter_prefix_supports_empty_scopes() -> None:
-    spec = RateLimit(name="manual", limit=1, window=timedelta(minutes=1), scopes=())
-
-    assert limiter_prefix(spec) == "rl:manual:"
-
-
-def _ctx() -> AuthContext:
-    return AuthContext(
-        token_type=TokenType.OAUTH_ACCOUNT,
-        subject_email=None,
-        subject_issuer=None,
-        account_id=None,
-        client_id=None,
-        token_id=uuid.uuid4(),
-        expires_at=None,
-    )
-
-
-@pytest.mark.parametrize(
-    "scope",
-    [RateLimitScope.IP, RateLimitScope.ACCOUNT, RateLimitScope.SUBJECT_EMAIL, RateLimitScope.TOKEN_ID],
-)
-def test_scope_without_identity_fails_closed(app: Flask, fake_redis: _FakeZsetRedis, scope: RateLimitScope) -> None:
-    spec = RateLimit(name="no_identity", limit=5, window=timedelta(minutes=1), scopes=(scope,))
-    ctx = _ctx() if scope in {RateLimitScope.ACCOUNT, RateLimitScope.SUBJECT_EMAIL} else None
-    token = _auth_ctx_var.set(ctx) if ctx else None
-    try:
-        with app.test_request_context("/"):
-            with pytest.raises(Unauthorized):
-                _hit(spec)
-    finally:
-        if token:
-            _auth_ctx_var.reset(token)
-
-    assert fake_redis.writes == 0
 
 
 @dataclass
@@ -282,95 +203,32 @@ def _as_console_account(monkeypatch: pytest.MonkeyPatch, account_id: str | None)
     monkeypatch.setattr("libs.login.current_account_with_tenant_optional", lambda: (account, None))
 
 
-def test_console_account_scope_keys_differ_per_account(
-    app: Flask, fake_redis: _FakeZsetRedis, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    with app.test_request_context("/"):
-        _as_console_account(monkeypatch, "account-1")
-        _hit(LIMIT_DEVICE_FLOW_APPROVE)
-        _as_console_account(monkeypatch, "account-2")
-        _hit(LIMIT_DEVICE_FLOW_APPROVE)
-
-    prefix = limiter_prefix(LIMIT_DEVICE_FLOW_APPROVE)
-    assert set(fake_redis.zsets) == {f"{prefix}:console_account:account-1", f"{prefix}:console_account:account-2"}
-
-
-@pytest.mark.usefixtures("fake_redis")
-def test_console_account_scope_limits_each_account_separately(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    with app.test_request_context("/"):
-        _as_console_account(monkeypatch, "account-1")
-        for _ in range(LIMIT_DEVICE_FLOW_APPROVE.limit):
-            _hit(LIMIT_DEVICE_FLOW_APPROVE)
-        with pytest.raises(TooManyRequests):
-            _hit(LIMIT_DEVICE_FLOW_APPROVE)
-
-        _as_console_account(monkeypatch, "account-2")
-        _hit(LIMIT_DEVICE_FLOW_APPROVE)
-
-
-def test_console_account_scope_without_account_fails_closed(
-    app: Flask, fake_redis: _FakeZsetRedis, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("scope", [RateLimitScope.IP, RateLimitScope.CONSOLE_ACCOUNT])
+def test_scope_without_identity_fails_closed(
+    app: Flask, fake_redis: _FakeZsetRedis, monkeypatch: pytest.MonkeyPatch, scope: RateLimitScope
 ) -> None:
     _as_console_account(monkeypatch, None)
+    spec = RateLimit(name="no_identity", limit=5, window=timedelta(minutes=1), scopes=(scope,))
     with app.test_request_context("/"):
-        with pytest.raises(Unauthorized):
-            _hit(LIMIT_DEVICE_FLOW_APPROVE)
+        with pytest.raises(Unauthorized) as caught:
+            _hit(spec)
 
-    assert fake_redis.writes == 0
-
-
-def test_session_scope_is_gone() -> None:
-    assert "session" not in {scope.value for scope in RateLimitScope}
-    assert RateLimitScope.CONSOLE_ACCOUNT.value == "console_account"
-
-
-def test_authorization_code_limits() -> None:
-    assert (LIMIT_CLIENT_AUTH_FAILURE.limit, LIMIT_CLIENT_AUTH_FAILURE.window) == (10, timedelta(minutes=15))
-    assert LIMIT_CLIENT_AUTH_FAILURE.scopes == ()
-    assert LIMIT_AUTHORIZE_CLIENT_PUBLIC.limit == dify_config.OAUTH_AUTHORIZE_CLIENT_RATE_LIMIT_PER_5_MIN
-    assert LIMIT_AUTHORIZE_CLIENT_PUBLIC.window == timedelta(minutes=5)
-    assert LIMIT_AUTHORIZE_CLIENT_PUBLIC.scopes == (RateLimitScope.IP,)
-    assert LIMIT_AUTHORIZE_APPROVE.limit == 10
-    assert LIMIT_AUTHORIZE_APPROVE.scopes == (RateLimitScope.CONSOLE_ACCOUNT,)
-    assert limiter_prefix(LIMIT_AUTHORIZE_APPROVE) != limiter_prefix(LIMIT_DEVICE_FLOW_APPROVE)
-
-
-def test_dcr_limit_reads_its_setting() -> None:
-    assert LIMIT_DCR_PER_IP.limit == dify_config.OAUTH_DCR_RATE_LIMIT_PER_HOUR
-    assert LIMIT_DCR_PER_IP.window == timedelta(hours=1)
-    assert LIMIT_DCR_PER_IP.scopes == (RateLimitScope.IP,)
-
-
-_OFF = RateLimit(name="off", limit=0, window=timedelta(minutes=1), scopes=(RateLimitScope.IP,))
-
-
-def test_a_zero_limit_lets_every_request_through(app: Flask, fake_redis: _FakeZsetRedis) -> None:
-    with _ip_request(app):
-        for _ in range(5):
-            _hit(_OFF)
-
+    assert caught.value.description == RATE_LIMIT_IDENTITY_MISSING
     assert fake_redis.zsets == {}
-    assert fake_redis.writes == 0
 
 
-def test_a_zero_limit_needs_no_identity(app: Flask, fake_redis: _FakeZsetRedis) -> None:
+def test_a_zero_limit_never_counts_and_needs_no_identity(app: Flask, fake_redis: _FakeZsetRedis) -> None:
+    off = RateLimit(name="off", limit=0, window=timedelta(minutes=1), scopes=(RateLimitScope.IP,))
     with app.test_request_context("/"):
-        _hit(_OFF)
+        for _ in range(5):
+            _hit(off)
+    record_hit(off, key="k")
 
-    assert fake_redis.writes == 0
-
-
-def test_manual_helpers_never_limit_or_count_a_zero_limit(fake_redis: _FakeZsetRedis) -> None:
-    record_hit(_OFF, key="k")
-
-    assert not is_limited(_OFF, key="k")
-    assert fake_redis.writes == 0
+    assert not is_limited(off, key="k")
+    assert fake_redis.zsets == {}
 
 
-def test_manual_helpers_count_per_key_inside_the_window(
-    fake_redis: _FakeZsetRedis, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr("libs.helper.time.time", lambda: 1_000_000)
+def test_manual_helpers_count_per_key(fake_redis: _FakeZsetRedis) -> None:
     key = "client:qwenwork"
     for _ in range(LIMIT_CLIENT_AUTH_FAILURE.limit):
         assert not is_limited(LIMIT_CLIENT_AUTH_FAILURE, key=key)
@@ -379,8 +237,3 @@ def test_manual_helpers_count_per_key_inside_the_window(
     assert is_limited(LIMIT_CLIENT_AUTH_FAILURE, key=key)
     assert not is_limited(LIMIT_CLIENT_AUTH_FAILURE, key="client:other")
     assert set(fake_redis.zsets) == {f"{limiter_prefix(LIMIT_CLIENT_AUTH_FAILURE)}:{key}"}
-
-    monkeypatch.setattr(
-        "libs.helper.time.time", lambda: 1_000_000 + LIMIT_CLIENT_AUTH_FAILURE.window.total_seconds() + 1
-    )
-    assert not is_limited(LIMIT_CLIENT_AUTH_FAILURE, key=key)

@@ -65,9 +65,7 @@ it('a DIFY_TOKEN_FILE login is an env login with no account', async () => {
   process.env.DIFY_TOKEN_FILE = '/run/dify/token.json'
   const s = await new Context().get(session)
   expect(s.fromEnv).toBe(true)
-  const login = await s.require()
-  expect(login.server).toBe('https://env.example')
-  expect(login.account).toBeNull()
+  expect(await s.require()).toMatchObject({ server: 'https://env.example', account: null })
   await expect(s.save(LOGIN)).rejects.toMatchObject({ code: 'usage_invalid_flag' })
 })
 

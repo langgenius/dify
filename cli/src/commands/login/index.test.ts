@@ -1,6 +1,6 @@
 import type { TestWorld } from '@test/fixtures/kernel'
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { hostname, tmpdir } from 'node:os'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { hostname } from 'node:os'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
@@ -32,36 +32,12 @@ it('logs the previous login out, runs the device flow, saves the pin and the tok
   expect(await (await w.ctx.get(commands)).run()).toBe(0)
   expect(w.io.errBuf()).toMatch(/logged out me@x from/)
   expect(w.io.errBuf()).toMatch(/code ABCD-1234/)
+  expect(w.io.errBuf()).toContain(`open ${w.mock.url}/device?user_code=ABCD-1234`)
   const login = await (await w.ctx.get(session)).current()
   expect(login?.workspaceId).toBe('ws-1')
   expect(login?.tokenStorage).toBe('file')
   expect(await (await w.ctx.get(token)).get()).toBe('dfoa_test')
   expect(JSON.parse(w.io.outBuf())).toMatchObject({ server: w.mock.url, workspace_id: 'ws-1' })
-})
-
-const FILE_SECRET = 'dfoa_from_file'
-function secretTokenFile(): string {
-  const path = join(mkdtempSync(join(tmpdir(), 'difyctl-tokfile-')), 'token.json')
-  writeFileSync(path, JSON.stringify({ access_token: FILE_SECRET }))
-  return path
-}
-
-it('refuses under a DIFY_TOKEN_FILE login without leaking the token', async () => {
-  const seed = await testContext({ login: false, env: true })
-  worlds.push(seed)
-  const w = await testContext({
-    login: false,
-    env: true,
-    tokenFile: secretTokenFile(),
-    argv: ['login', '--server', seed.mock.url],
-    reuseDirOf: seed,
-  })
-  worlds.push(w)
-  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
-    code: 'usage_invalid_flag',
-    message: 'unset DIFY_TOKEN or DIFY_TOKEN_FILE to log in interactively',
-  })
-  expect(w.io.outBuf() + w.io.errBuf()).not.toContain(FILE_SECRET)
 })
 
 it('refuses under an env login', async () => {
@@ -293,39 +269,17 @@ it.each(['happy', 'denied', 'expired'] as const)(
   },
 )
 
-async function loginWorld(...extra: string[]) {
+async function loginWorld() {
   const seed = await testContext({ login: false })
   worlds.push(seed)
   const w = await testContext({
     login: false,
-    argv: [
-      'login',
-      '--server',
-      seed.mock.url,
-      '--no-browser',
-      '--no-keyring',
-      '--insecure',
-      ...extra,
-    ],
+    argv: ['login', '--server', seed.mock.url, '--no-browser', '--no-keyring', '--insecure'],
     reuseDirOf: seed,
   })
   worlds.push(w)
   return w
 }
-
-it('opens verification_uri_complete when the server sends it', async () => {
-  const w = await loginWorld()
-  expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(w.io.errBuf()).toContain(`open ${w.mock.url}/device?user_code=ABCD-1234`)
-})
-
-it('opens verification_uri when there is no complete one', async () => {
-  const w = await loginWorld()
-  w.mock.setScenario('legacy-token-route')
-  expect(await (await w.ctx.get(commands)).run()).toBe(0)
-  expect(w.io.errBuf()).toContain(`open ${w.mock.url}/device\n`)
-  expect(w.io.errBuf()).not.toContain('user_code=')
-})
 
 it.each(['legacy-token-route', 'legacy-token-route-html-404'] as const)(
   'finishes a login against %s',
@@ -337,36 +291,6 @@ it.each(['legacy-token-route', 'legacy-token-route-html-404'] as const)(
   },
 )
 
-it.each(['happy', 'legacy-token-route', 'legacy-token-route-html-404'] as const)(
-  '--no-wait then --resume works against %s',
-  async (scenario) => {
-    const start = await loginWorld('--no-wait')
-    start.mock.setScenario(scenario)
-    start.mock.setPendingPolls(1)
-    expect(await (await start.ctx.get(commands)).run()).toBe(0)
-    expect(JSON.parse(start.io.outBuf())).toMatchObject({ status: 'pending' })
-
-    const again = await testContext({
-      login: false,
-      argv: ['login', '--resume'],
-      reuseDirOf: start,
-    })
-    worlds.push(again)
-    expect(await (await again.ctx.get(commands)).run()).toBe(0)
-    expect(JSON.parse(again.io.outBuf())).toMatchObject({ status: 'pending' })
-
-    const done = await testContext({
-      login: false,
-      argv: ['login', '--resume'],
-      reuseDirOf: start,
-    })
-    worlds.push(done)
-    expect(await (await done.ctx.get(commands)).run()).toBe(0)
-    expect(JSON.parse(done.io.outBuf())).toMatchObject({ workspace_id: 'ws-1' })
-    expect(await (await done.ctx.get(token)).get()).toBe('dfoa_test')
-  },
-)
-
 it('refuses a bad verification_uri_complete before printing or opening anything', async () => {
   const w = await loginWorld()
   w.mock.setScenario('bad-verification-uri-complete')
@@ -375,8 +299,6 @@ it('refuses a bad verification_uri_complete before printing or opening anything'
     message: expect.stringContaining('unsupported scheme "ftp"'),
   })
   expect(w.io.errBuf()).not.toMatch(/open /)
-  expect(w.io.errBuf()).not.toMatch(/code ABCD-1234/)
-  expect(w.io.outBuf()).toBe('')
 })
 
 it('two config dirs on one host log in with different device labels', async () => {

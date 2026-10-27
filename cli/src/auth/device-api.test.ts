@@ -122,23 +122,30 @@ it('rejects a non-JSON code response without leaking a raw SyntaxError', async (
 
 const STANDARD_PATH = '/openapi/v1/oauth/token'
 const LEGACY_PATH = '/openapi/v1/oauth/device/token'
+const PENDING = { status: 400, body: JSON.stringify({ error: 'authorization_pending' }) }
 
-// Answers every request and records the paths it was asked for, in order.
+// Answers every request and records the paths and bodies it was sent, in order.
 async function recordingServer<T>(
   answer: (path: string) => { status: number; type?: string; body: string },
-  fn: (baseUrl: string, paths: string[]) => Promise<T>,
+  fn: (baseUrl: string, paths: string[], bodies: string[]) => Promise<T>,
 ): Promise<T> {
   const paths: string[] = []
+  const bodies: string[] = []
   const server = createServer((req, res) => {
-    paths.push(req.url ?? '')
-    const { status, type = 'application/json', body } = answer(req.url ?? '')
-    res.writeHead(status, { 'content-type': type })
-    res.end(body)
+    let raw = ''
+    req.on('data', (chunk) => (raw += chunk))
+    req.on('end', () => {
+      paths.push(req.url ?? '')
+      bodies.push(`${req.headers['content-type']}|${raw}`)
+      const { status, type = 'application/json', body } = answer(req.url ?? '')
+      res.writeHead(status, { 'content-type': type })
+      res.end(body)
+    })
   })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()))
   const { port } = server.address() as AddressInfo
   try {
-    return await fn(`http://127.0.0.1:${port}`, paths)
+    return await fn(`http://127.0.0.1:${port}`, paths, bodies)
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close((err) => (err ? reject(err) : resolve())),
@@ -146,43 +153,33 @@ async function recordingServer<T>(
   }
 }
 
-it('polls the standard route and maps access_token and expires_in', async () => {
-  const mock = await startMock({ pendingPolls: 1 })
-  mocks.push(mock)
-  const api = deviceApi(mock.url, { insecure: true })
-  await expect(api.pollOnce({ device_code: 'dc' })).resolves.toEqual({ status: 'pending' })
-
-  const before = Date.now()
-  const result = await api.pollOnce({ device_code: 'dc' })
-  if (result.status !== 'approved') throw new Error(`expected approved, got ${result.status}`)
-  expect(result.success.token).toBe('dfoa_test')
-  expect(result.success).not.toHaveProperty('access_token')
-  expect(result.success.account?.email).toBe('tester@dify.ai')
-  const expiresAt = Date.parse(result.success.expires_at ?? '')
-  expect(expiresAt).toBeGreaterThan(before + 7_000_000_000)
+it('polls the standard route with a form body and maps access_token and expires_in', async () => {
+  const approved = { access_token: 'dfoa_x', token_type: 'Bearer', expires_in: 3600 }
+  await recordingServer(
+    () => ({ status: 200, body: JSON.stringify(approved) }),
+    async (baseUrl, paths, bodies) => {
+      const before = Date.now()
+      const result = await deviceApi(baseUrl, { insecure: true }).pollOnce({ device_code: 'dc 1' })
+      if (result.status !== 'approved') throw new Error(`expected approved, got ${result.status}`)
+      expect(result.success.token).toBe('dfoa_x')
+      expect(Date.parse(result.success.expires_at ?? '')).toBeGreaterThanOrEqual(before + 3_600_000)
+      expect(paths).toEqual([STANDARD_PATH])
+      expect(bodies).toEqual([
+        'application/x-www-form-urlencoded|grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=dc+1&client_id=difyctl',
+      ])
+    },
+  )
 })
 
-it.each(['legacy-token-route', 'legacy-token-route-html-404'] as const)(
-  '%s: the first poll falls back to the legacy route and finishes',
-  async (scenario) => {
-    const mock = await startMock({ scenario })
-    mocks.push(mock)
-    const api = deviceApi(mock.url, { insecure: true })
-    const result = await api.pollOnce({ device_code: 'dc' })
-    if (result.status !== 'approved') throw new Error(`expected approved, got ${result.status}`)
-    expect(result.success.token).toBe('dfoa_test')
-  },
-)
-
-it('stays on the legacy route after one fallback', async () => {
+it.each([
+  ['JSON', 'application/json', '{}'],
+  ['HTML', 'text/html', '<html>404 Not Found</html>'],
+])('falls back to the legacy route on a %s 404 and stays there', async (_kind, type, body) => {
   await recordingServer(
-    (path) =>
-      path === STANDARD_PATH
-        ? { status: 404, body: '{}' }
-        : { status: 400, body: JSON.stringify({ error: 'authorization_pending' }) },
+    (path) => (path === STANDARD_PATH ? { status: 404, type, body } : PENDING),
     async (baseUrl, paths) => {
       const api = deviceApi(baseUrl, { insecure: true })
-      await api.pollOnce({ device_code: 'dc' })
+      await expect(api.pollOnce({ device_code: 'dc' })).resolves.toEqual({ status: 'pending' })
       await api.pollOnce({ device_code: 'dc' })
       expect(paths).toEqual([STANDARD_PATH, LEGACY_PATH, LEGACY_PATH])
     },
@@ -190,13 +187,11 @@ it('stays on the legacy route after one fallback', async () => {
 })
 
 it.each([
-  ['authorization_pending', 'pending'],
-  ['slow_down', 'slow_down'],
-  ['access_denied', 'denied'],
-  ['expired_token', 'expired'],
-])('a 400 %s never switches routes', async (error, status) => {
+  [PENDING, 'pending'],
+  [{ status: 502, type: 'text/html', body: '<html>bad gateway</html>' }, 'retry_5xx'],
+])('a non-404 answer never switches routes (%o)', async (answer, status) => {
   await recordingServer(
-    () => ({ status: 400, body: JSON.stringify({ error }) }),
+    () => answer,
     async (baseUrl, paths) => {
       const api = deviceApi(baseUrl, { insecure: true })
       await expect(api.pollOnce({ device_code: 'dc' })).resolves.toEqual({ status })
@@ -205,36 +200,18 @@ it.each([
   )
 })
 
-it.each([500, 502, 503])('a %s never switches routes', async (status) => {
+it.each([
+  [401, 'invalid_client', 'this Dify host does not accept the difyctl client'],
+  [400, 'unsupported_client', 'this Dify host does not accept the difyctl client'],
+  [400, 'urn:x:future_error', 'unknown poll error "urn:x:future_error"'],
+])('a %s %s fails without switching routes', async (status, error, message) => {
   await recordingServer(
-    () => ({ status, type: 'text/html', body: '<html>bad gateway</html>' }),
-    async (baseUrl, paths) => {
-      const api = deviceApi(baseUrl, { insecure: true })
-      await expect(api.pollOnce({ device_code: 'dc' })).resolves.toEqual({ status: 'retry_5xx' })
-      expect(paths).toEqual([STANDARD_PATH])
-    },
-  )
-})
-
-it('a network error never switches routes', async () => {
-  const mock = await startMock()
-  const { port } = mock
-  await mock.stop()
-  const api = deviceApi(`http://127.0.0.1:${port}`, { insecure: true })
-  await expect(api.pollOnce({ device_code: 'dc' })).rejects.toMatchObject({
-    code: 'network_connection',
-    message: expect.stringContaining(STANDARD_PATH),
-  })
-})
-
-it('throws on an unknown future poll error without switching routes or looping', async () => {
-  await recordingServer(
-    () => ({ status: 400, body: JSON.stringify({ error: 'urn:x:future_error' }) }),
+    () => ({ status, body: JSON.stringify({ error }) }),
     async (baseUrl, paths) => {
       const api = deviceApi(baseUrl, { insecure: true })
       await expect(api.pollOnce({ device_code: 'dc' })).rejects.toMatchObject({
         code: 'unknown',
-        message: 'unknown poll error "urn:x:future_error"',
+        message,
       })
       expect(paths).toEqual([STANDARD_PATH])
     },
@@ -255,74 +232,20 @@ it('a 404 on the legacy route is an unsupported device flow', async () => {
   )
 })
 
-it('sends the standard poll as a form body', async () => {
-  const bodies: string[] = []
-  const server = createServer((req, res) => {
-    let raw = ''
-    req.on('data', (chunk) => (raw += chunk))
-    req.on('end', () => {
-      bodies.push(`${req.headers['content-type']}|${raw}`)
-      res.writeHead(400, { 'content-type': 'application/json' })
-      res.end(JSON.stringify({ error: 'authorization_pending' }))
-    })
-  })
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()))
-  const { port } = server.address() as AddressInfo
-  try {
-    const api = deviceApi(`http://127.0.0.1:${port}`, { insecure: true })
-    await api.pollOnce({ device_code: 'dc 1' })
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()))
-  }
-  expect(bodies).toEqual([
-    'application/x-www-form-urlencoded|grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=dc+1&client_id=difyctl',
-  ])
-})
-
-it('gives invalid_client (401) and unsupported_client the same error', async () => {
-  const mock = await startMock()
-  mocks.push(mock)
-  const api = deviceApi(mock.url, { insecure: true })
-  const expected = { code: 'unknown', message: 'this Dify host does not accept the difyctl client' }
-  await expect(api.pollOnce({ client_id: 'other', device_code: 'dc' })).rejects.toMatchObject(
-    expected,
-  )
-
-  await recordingServer(
-    () => ({ status: 400, body: JSON.stringify({ error: 'unsupported_client' }) }),
-    async (baseUrl) => {
-      await expect(
-        deviceApi(baseUrl, { insecure: true }).pollOnce({ device_code: 'dc' }),
-      ).rejects.toMatchObject(expected)
-    },
-  )
-})
-
-it('keeps verification_uri_complete only when it is a non-empty string', async () => {
-  const code = (extra: Record<string, unknown>) => ({
+it.each(['', 42])('drops a verification_uri_complete of %o', async (complete) => {
+  const code = {
     device_code: 'dc',
     user_code: 'UC',
     verification_uri: 'https://x/device',
+    verification_uri_complete: complete,
     expires_in: 600,
     interval: 1,
-    ...extra,
-  })
-  const cases: [Record<string, unknown>, string | undefined][] = [
-    [
-      { verification_uri_complete: 'https://x/device?user_code=UC' },
-      'https://x/device?user_code=UC',
-    ],
-    [{ verification_uri_complete: '' }, undefined],
-    [{ verification_uri_complete: 42 }, undefined],
-    [{}, undefined],
-  ]
-  for (const [extra, expected] of cases) {
-    await recordingServer(
-      () => ({ status: 200, body: JSON.stringify(code(extra)) }),
-      async (baseUrl) => {
-        const got = await deviceApi(baseUrl, { insecure: true }).requestCode({ device_label: 't' })
-        expect(got.verification_uri_complete).toBe(expected)
-      },
-    )
   }
+  await recordingServer(
+    () => ({ status: 200, body: JSON.stringify(code) }),
+    async (baseUrl) => {
+      const got = await deviceApi(baseUrl, { insecure: true }).requestCode({ device_label: 't' })
+      expect(got).not.toHaveProperty('verification_uri_complete')
+    },
+  )
 })

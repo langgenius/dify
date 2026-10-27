@@ -24,7 +24,6 @@ export type Scenario =
   | 'no-device-flow'
   | 'bad-verification-uri'
   | 'bad-verification-uri-complete'
-  | 'device-pending'
   | 'legacy-token-route'
   | 'legacy-token-route-html-404'
 

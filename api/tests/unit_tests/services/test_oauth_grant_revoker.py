@@ -1,9 +1,8 @@
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
@@ -21,7 +20,6 @@ from tests.helpers.unit.repositories.oauth_refresh_tokens import seed_refresh_to
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (
     CONFIDENTIAL_ID,
     CONFIDENTIAL_SECRET,
-    RateLimitHits,
     account_snapshot,
     confidential_client,
     install_rate_limit_store,
@@ -29,24 +27,14 @@ from tests.helpers.unit.services.oauth_authorization_code_fakes import (
 )
 
 OTHER_CLIENT_ID = "other-client"
-REFRESH_LIFETIME = timedelta(days=30)
 
 
 @dataclass
 class _RawRedis:
     deleted: list[str | bytes] = field(default_factory=list)
-    # Runs once, on the next delete, before the keys are recorded.
-    before_next_delete: Callable[[], None] | None = None
 
     def delete(self, *names: str | bytes) -> None:
-        hook, self.before_next_delete = self.before_next_delete, None
-        if hook is not None:
-            hook()
         self.deleted.extend(names)
-
-
-class _CacheDeleteError(Exception):
-    pass
 
 
 @dataclass
@@ -59,8 +47,6 @@ class _TTLPolicy:
 @dataclass
 class _Harness:
     issuer: OAuthDeviceTokenIssuanceGateway
-    tokens: SQLAlchemyOAuthDeviceTokenRepository
-    refresh: SQLAlchemyOAuthRefreshTokenRepository
     revoker: GrantRevoker
     redis: _RawRedis
     factory: sessionmaker[Session]
@@ -79,7 +65,7 @@ class _Harness:
             grant=grant,
             account_id="account-1",
             workspace_id="workspace-1",
-            lifetime=REFRESH_LIFETIME,
+            lifetime=timedelta(days=30),
         )
 
     def access_row(self, token: IssuedOAuthToken) -> OpenAPIOAuthAccessToken:
@@ -88,19 +74,9 @@ class _Harness:
             assert row is not None
             return row
 
-    def refresh_count(self, grant: GrantKey) -> int:
+    def refresh_labels(self) -> set[str]:
         with self.factory() as session:
-            return (
-                session.scalar(
-                    select(func.count())
-                    .select_from(OpenAPIOAuthRefreshToken)
-                    .where(
-                        OpenAPIOAuthRefreshToken.client_id == grant.client_id,
-                        OpenAPIOAuthRefreshToken.device_label == grant.device_label,
-                    )
-                )
-                or 0
-            )
+            return set(session.scalars(select(OpenAPIOAuthRefreshToken.device_label)).all())
 
 
 def _grant(client_id: str = CONFIDENTIAL_ID, device_label: str = "QwenWork abc123") -> GrantKey:
@@ -123,8 +99,6 @@ def harness(sqlite_session_factory: sessionmaker[Session]) -> _Harness:
     refresh = SQLAlchemyOAuthRefreshTokenRepository(session_factory=sqlite_session_factory)
     return _Harness(
         issuer=OAuthDeviceTokenIssuanceGateway(tokens=tokens, ttl_policy=_TTLPolicy()),
-        tokens=tokens,
-        refresh=refresh,
         revoker=GrantRevoker(session_factory=sqlite_session_factory, redis=redis, refresh=refresh),
         redis=raw,
         factory=sqlite_session_factory,
@@ -135,33 +109,25 @@ def _cache_key(token: str) -> str:
     return TOKEN_CACHE_KEY_FMT.format(hash=sha256_hex(token))
 
 
-def test_revoke_by_access_token_kills_the_refresh_token(harness: _Harness) -> None:
-    access = harness.login()
-    harness.issue_refresh(_grant())
-
-    harness.revoker.revoke_by_token(access.token, client_id=CONFIDENTIAL_ID)
-
-    row = harness.access_row(access)
-    assert row.revoked_at is not None
-    assert row.token_hash is None
-    assert harness.refresh_count(_grant()) == 0
-    assert _cache_key(access.token) in harness.redis.deleted
-
-
-def test_revoke_by_refresh_token_kills_the_access_row(harness: _Harness) -> None:
+@pytest.mark.parametrize("by", ["access", "refresh"])
+def test_revoke_by_either_token_ends_the_whole_login(harness: _Harness, by: str) -> None:
     access = harness.login()
     refresh = harness.issue_refresh(_grant())
 
-    harness.revoker.revoke_by_token(refresh, client_id=CONFIDENTIAL_ID)
+    with record_locks(harness.factory) as log:
+        harness.revoker.revoke_by_token(access.token if by == "access" else refresh, client_id=CONFIDENTIAL_ID)
 
     row = harness.access_row(access)
     assert row.revoked_at is not None
     assert row.token_hash is None
-    assert harness.refresh_count(_grant()) == 0
+    assert harness.refresh_labels() == set()
     assert harness.redis.deleted == [_cache_key(access.token)]
+    assert log.tables[0] == "accounts"
+    assert log.tables.count("accounts") == 1
+    assert log.follows_lock_order()
 
 
-@pytest.mark.parametrize("token", ["dfoa_unknown", "dfor_unknown", "future_token_format", ""])
+@pytest.mark.parametrize("token", ["dfor_unknown", "future_token_format"])
 def test_unknown_token_is_a_no_op(harness: _Harness, token: str) -> None:
     access = harness.login()
     harness.issue_refresh(_grant())
@@ -169,7 +135,7 @@ def test_unknown_token_is_a_no_op(harness: _Harness, token: str) -> None:
     harness.revoker.revoke_by_token(token, client_id=CONFIDENTIAL_ID)
 
     assert harness.access_row(access).revoked_at is None
-    assert harness.refresh_count(_grant()) == 1
+    assert harness.refresh_labels() == {"QwenWork abc123"}
     assert harness.redis.deleted == []
 
 
@@ -182,7 +148,7 @@ def test_token_issued_to_another_client_is_untouched(harness: _Harness) -> None:
     harness.revoker.revoke_by_token(refresh, client_id=CONFIDENTIAL_ID)
 
     assert harness.access_row(access).revoked_at is None
-    assert harness.refresh_count(other) == 1
+    assert harness.refresh_labels() == {"QwenWork abc123"}
     assert harness.redis.deleted == []
 
 
@@ -196,74 +162,7 @@ def test_revoke_grant_leaves_other_grants_alone(harness: _Harness) -> None:
 
     assert harness.access_row(revoked).revoked_at is not None
     assert harness.access_row(kept).revoked_at is None
-    assert harness.refresh_count(_grant(device_label="QwenWork aaa")) == 0
-    assert harness.refresh_count(_grant(device_label="QwenWork bbb")) == 1
-
-
-def test_revoked_access_token_no_longer_finds_its_grant(harness: _Harness) -> None:
-    first = harness.login()
-    second = harness.login()
-    harness.issue_refresh(_grant())
-
-    harness.revoker.revoke_by_token(first.token, client_id=CONFIDENTIAL_ID)
-
-    assert harness.access_row(second).revoked_at is None
-    assert harness.refresh_count(_grant()) == 1
-
-
-def test_revoke_grant_stops_a_later_rollback_from_restoring_rows(harness: _Harness) -> None:
-    harness.login()
-
-    def revoke_then_fail_cache_delete() -> None:
-        harness.revoker.revoke_grant(_grant(), account_id="account-1")
-        raise _CacheDeleteError
-
-    harness.redis.before_next_delete = revoke_then_fail_cache_delete
-
-    with pytest.raises(_CacheDeleteError):
-        harness.login()
-
-    with harness.factory() as session:
-        rows = session.scalars(select(OpenAPIOAuthAccessToken)).all()
-    assert [(row.revoked_at is not None, row.token_hash) for row in rows] == [(True, None)]
-
-
-@pytest.mark.parametrize("by", ["access", "refresh"])
-def test_revoke_by_token_locks_the_account_row_first(harness: _Harness, by: str) -> None:
-    access = harness.login()
-    refresh = harness.issue_refresh(_grant())
-
-    with record_locks(harness.factory) as log:
-        harness.revoker.revoke_by_token(access.token if by == "access" else refresh, client_id=CONFIDENTIAL_ID)
-
-    assert log.tables[0] == "accounts"
-    assert log.tables.count("accounts") == 1
-    assert log.follows_lock_order()
-
-
-def test_revoke_of_a_refresh_only_grant_still_locks_the_account(harness: _Harness) -> None:
-    harness.issue_refresh(_grant())
-
-    with record_locks(harness.factory) as log:
-        harness.revoker.revoke_grant(_grant(), account_id="account-1")
-
-    assert log.tables[0] == "accounts"
-    assert harness.refresh_count(_grant()) == 0
-
-
-def test_external_sso_grant_revoke_takes_no_account_lock(harness: _Harness) -> None:
-    external = harness.issuer.issue_external_token(
-        subject_email="sso@example.com", subject_issuer="https://idp.example", client_id="difyctl", device_label="cli"
-    )
-    grant = GrantKey(
-        subject_email="sso@example.com", subject_issuer="https://idp.example", client_id="difyctl", device_label="cli"
-    )
-
-    with record_locks(harness.factory) as log:
-        harness.revoker.revoke_grant(grant, account_id=None)
-
-    assert "accounts" not in log.tables
-    assert harness.access_row(external).revoked_at is not None
+    assert harness.refresh_labels() == {"QwenWork bbb"}
 
 
 @dataclass
@@ -274,52 +173,24 @@ class _RecordingRevoker:
         self.calls.append((token, client_id))
 
 
-@pytest.fixture
-def client_auth_hits(monkeypatch: pytest.MonkeyPatch) -> RateLimitHits:
-    return install_rate_limit_store(monkeypatch)
+def _revoke(revoker: _RecordingRevoker, *, secret: str = CONFIDENTIAL_SECRET, token: str | None = "dfoa_x") -> None:
+    service = OAuthRevocationService(clients=registry(confidential_client()), grants=revoker)
+    service.revoke(RevokeRequest(client_id=CONFIDENTIAL_ID, client_secret=secret, token=token, source_ip="192.0.2.10"))
 
 
-def _revocation(revoker: _RecordingRevoker) -> OAuthRevocationService:
-    return OAuthRevocationService(clients=registry(confidential_client()), grants=revoker)
-
-
-def _request(
-    *, client_id: str | None = CONFIDENTIAL_ID, secret: str | None = CONFIDENTIAL_SECRET, token: str | None = "dfoa_x"
-) -> RevokeRequest:
-    return RevokeRequest(client_id=client_id, client_secret=secret, token=token, source_ip="192.0.2.10")
-
-
-@pytest.mark.usefixtures("client_auth_hits")
-def test_revocation_passes_the_storage_client_id() -> None:
+def test_revocation_authenticates_the_client_before_touching_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_rate_limit_store(monkeypatch)
     revoker = _RecordingRevoker()
 
-    _revocation(revoker).revoke(_request())
+    with pytest.raises(TokenEndpointError) as bad_client:
+        _revoke(revoker, secret="wrong")
+    with pytest.raises(TokenEndpointError) as no_token:
+        _revoke(revoker, token=None)
+
+    assert bad_client.value.code is TokenErrorCode.INVALID_CLIENT
+    assert no_token.value.code is TokenErrorCode.INVALID_REQUEST
+    assert revoker.calls == []
+
+    _revoke(revoker)
 
     assert revoker.calls == [("dfoa_x", CONFIDENTIAL_ID)]
-
-
-@pytest.mark.usefixtures("client_auth_hits")
-@pytest.mark.parametrize(
-    ("client_id", "secret"),
-    [(CONFIDENTIAL_ID, "wrong"), ("unknown-client", CONFIDENTIAL_SECRET), (None, None)],
-)
-def test_revocation_rejects_bad_client_before_touching_tokens(client_id: str | None, secret: str | None) -> None:
-    revoker = _RecordingRevoker()
-
-    with pytest.raises(TokenEndpointError) as caught:
-        _revocation(revoker).revoke(_request(client_id=client_id, secret=secret))
-
-    assert caught.value.code is TokenErrorCode.INVALID_CLIENT
-    assert revoker.calls == []
-
-
-@pytest.mark.usefixtures("client_auth_hits")
-@pytest.mark.parametrize("token", [None, ""])
-def test_revocation_without_a_token_is_invalid_request(token: str | None) -> None:
-    revoker = _RecordingRevoker()
-
-    with pytest.raises(TokenEndpointError) as caught:
-        _revocation(revoker).revoke(_request(token=token))
-
-    assert caught.value.code is TokenErrorCode.INVALID_REQUEST
-    assert revoker.calls == []

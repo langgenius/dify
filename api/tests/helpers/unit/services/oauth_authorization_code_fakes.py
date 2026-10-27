@@ -14,9 +14,6 @@ from services.entities.account_entities import AccountSnapshot
 from services.oauth_clients import ClientSource, OAuthClientRegistry, ResolvedClient
 from services.oauth_device_contracts import (
     DeviceWorkspace,
-    IssuedOAuthToken,
-    OAuthDeviceTokenRotation,
-    RefreshTokenIssue,
 )
 from services.oauth_token_contracts import GrantType
 
@@ -208,61 +205,6 @@ class FakeWorkspaces:
     def list_for_device_flow(self, account_id: str) -> tuple[DeviceWorkspace, ...]:
         _ = account_id
         return self.rows
-
-
-@dataclass(frozen=True)
-class IssueCall:
-    account_id: str
-    workspace_id: str
-    client_id: str
-    device_label: str
-    lifetime: timedelta | None
-    refresh: RefreshTokenIssue | None
-
-
-@dataclass
-class FakeTokenIssuer:
-    calls: list[IssueCall] = field(default_factory=list)
-
-    def issue_account_token(
-        self,
-        *,
-        account: AccountSnapshot,
-        workspace_id: str,
-        client_id: str,
-        device_label: str,
-        lifetime: timedelta | None = None,
-        refresh: RefreshTokenIssue | None = None,
-    ) -> IssuedOAuthToken:
-        self.calls.append(
-            IssueCall(
-                account_id=account.id,
-                workspace_id=workspace_id,
-                client_id=client_id,
-                device_label=device_label,
-                lifetime=lifetime,
-                refresh=refresh,
-            )
-        )
-        number = len(self.calls)
-        return IssuedOAuthToken(
-            token=f"dfoa_token-{number}",
-            expires_at=(datetime.now(UTC) + (lifetime or timedelta(days=14))).isoformat(),
-            rotation=OAuthDeviceTokenRotation(
-                token_id=f"token-{number}", replaced_token_id=None, replaced_token_hash=None
-            ),
-            refresh_token=None if refresh is None else f"dfor_refresh-{number}",
-        )
-
-    def issue_external_token(
-        self,
-        *,
-        subject_email: str,
-        subject_issuer: str,
-        client_id: str,
-        device_label: str,
-    ) -> IssuedOAuthToken:
-        raise AssertionError("external tokens are not issued by the authorization-code grant")
 
 
 @dataclass

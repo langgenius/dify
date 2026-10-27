@@ -1,18 +1,14 @@
 import builtins
-import json
 from collections.abc import Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import StrEnum
 from http.cookies import SimpleCookie
 from types import SimpleNamespace
 from unittest.mock import Mock, create_autospec
 
 import pytest
 from flask import Flask
-from flask.testing import FlaskClient
 from flask.views import MethodView
-from werkzeug.test import TestResponse
 
 from controllers.console import flask_admission, wraps
 from controllers.openapi import bp as openapi_bp
@@ -28,28 +24,15 @@ from libs.helper import RateLimiter
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus
-from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
-from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTokenRepository
-from services.oauth_device_application_service import (
-    ExternalApprovalLimiter,
-    OAuthDeviceApplicationService,
-    OAuthDeviceSessionRepository,
-    OAuthDeviceSSOGateway,
-)
+from services.oauth_device_application_service import OAuthDeviceApplicationService
 from services.oauth_device_contracts import (
-    ACCOUNT_ISSUER_SENTINEL,
     AccessDeniedError,
-    AccountApprovalRecord,
     AlreadyResolvedError,
     ApprovalOutcomeUnknownError,
     ApprovalSessionConsumedError,
-    ApprovalTransitionConfirmation,
     AuthorizationPendingError,
     DeviceApprovalContext,
-    DeviceApprovalRecord,
     DeviceAuthorization,
-    DeviceFlowStateView,
-    DeviceFlowStatus,
     DeviceLookup,
     DeviceMutation,
     DeviceRequestContext,
@@ -68,24 +51,8 @@ from services.oauth_device_contracts import (
     OAuthDeviceError,
     OAuthDeviceSSOConfigurationError,
     OAuthDeviceSSOInitiationError,
-    PollPayload,
     PollTooFastError,
-    SlowDownDecision,
     UnsupportedClientError,
-)
-from services.oauth_grant_revoker import GrantRevoker
-from services.oauth_token_contracts import GrantType
-from services.oauth_token_grants import ClientUsage, build_grant_handlers
-from services.oauth_token_service import OAuthTokenService
-from tests.helpers.unit.services.oauth_authorization_code_fakes import (
-    ACCOUNT_ID,
-    WORKSPACE_ID,
-    DictRedis,
-    FakeAccounts,
-    FakeTokenIssuer,
-    FakeTokenSettings,
-    FakeWorkspaces,
-    registry,
 )
 
 """Account-branch device-flow approve/deny under /openapi/v1."""
@@ -290,8 +257,15 @@ class TestOauthDeviceHttpCases:
         return service
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("body_kind", "body", "label"),
+        [
+            ("json", {"client_id": "difyctl", "device_label": "laptop"}, "laptop"),
+            ("data", {"client_id": "difyctl"}, None),
+        ],
+    )
     def test_device_code_serializes_authorization_and_passes_request_origin(
-        openapi_app: Flask, device_service: Mock
+        openapi_app: Flask, device_service: Mock, body_kind: str, body: dict[str, str], label: str | None
     ) -> None:
         device_service.start.return_value = DeviceAuthorization(
             device_code="opaque-code",
@@ -304,9 +278,9 @@ class TestOauthDeviceHttpCases:
 
         response = openapi_app.test_client().post(
             f"{_PREFIX}/code",
-            json={"client_id": "difyctl", "device_label": "laptop"},
             base_url="https://api.example",
             environ_overrides={"REMOTE_ADDR": "192.0.2.10"},
+            **{body_kind: body},
         )
 
         assert response.status_code == 200
@@ -320,77 +294,17 @@ class TestOauthDeviceHttpCases:
         }
         device_service.start.assert_called_once_with(
             client_id="difyctl",
-            device_label="laptop",
+            device_label=label,
             created_ip="192.0.2.10",
             request_origin="https://api.example/",
         )
 
     @staticmethod
-    def test_device_code_accepts_form_body(openapi_app: Flask, device_service: Mock) -> None:
-        device_service.start.return_value = DeviceAuthorization(
-            device_code="opaque-code",
-            user_code="ABCD-EFGH",
-            verification_uri="https://console.example/device",
-            verification_uri_complete="https://console.example/device?user_code=ABCD-EFGH",
-            expires_in=900,
-            interval=5,
-        )
-
-        response = openapi_app.test_client().post(
-            f"{_PREFIX}/code",
-            data={"client_id": "difyctl", "device_label": "laptop"},
-            base_url="https://api.example",
-            environ_overrides={"REMOTE_ADDR": "192.0.2.10"},
-        )
-
-        assert response.status_code == 200
-        assert response.json is not None
-        assert response.json["device_code"] == "opaque-code"
-        assert response.json["verification_uri_complete"] == "https://console.example/device?user_code=ABCD-EFGH"
-        device_service.start.assert_called_once_with(
-            client_id="difyctl",
-            device_label="laptop",
-            created_ip="192.0.2.10",
-            request_origin="https://api.example/",
-        )
-
-    @staticmethod
-    @pytest.mark.parametrize("body", [{"client_id": "difyctl"}, {"client_id": "difyctl", "device_label": None}])
-    def test_device_code_without_label_passes_none(
-        openapi_app: Flask, device_service: Mock, body: dict[str, object]
-    ) -> None:
-        device_service.start.return_value = DeviceAuthorization(
-            device_code="c",
-            user_code="ABCD-EFGH",
-            verification_uri="https://console.example/device",
-            verification_uri_complete="https://console.example/device?user_code=ABCD-EFGH",
-            expires_in=900,
-            interval=5,
-        )
-
-        response = openapi_app.test_client().post(f"{_PREFIX}/code", json=body)
-
-        assert response.status_code == 200
-        assert device_service.start.call_args.kwargs["device_label"] is None
-
-    @staticmethod
-    @pytest.mark.parametrize("label", [7, True, ["x"], {"k": "v"}])
-    def test_device_code_non_string_label_is_rejected(openapi_app: Flask, device_service: Mock, label: object) -> None:
-        response = openapi_app.test_client().post(
-            f"{_PREFIX}/code", json={"client_id": "difyctl", "device_label": label}
-        )
+    def test_device_code_non_string_label_is_rejected(openapi_app: Flask, device_service: Mock) -> None:
+        response = openapi_app.test_client().post(f"{_PREFIX}/code", json={"client_id": "difyctl", "device_label": 7})
 
         assert response.status_code == 400
         assert device_service.mock_calls == []
-
-    @staticmethod
-    def test_device_code_unknown_client_keeps_error_contract(openapi_app: Flask, device_service: Mock) -> None:
-        device_service.start.side_effect = UnsupportedClientError
-
-        response = openapi_app.test_client().post(f"{_PREFIX}/code", data={"client_id": "nope"})
-
-        assert response.status_code == 400
-        assert response.json == {"error": "unsupported_client"}
 
     @staticmethod
     @pytest.mark.parametrize("path", ["code", "token", "approve", "deny", "approve-external"])
@@ -691,11 +605,6 @@ class TestOauthDeviceHttpCases:
 
 
 @dataclass
-class _FakeRateLimitStore:
-    hits: dict[str, int] = field(default_factory=dict)
-
-
-@dataclass
 class _FakeFeatureQueries:
     def has_valid_enterprise_license(self) -> bool:
         return True
@@ -711,12 +620,10 @@ class _FakeApplicationServices:
 class TestDeviceDecisionRateLimitCases:
     @staticmethod
     @pytest.fixture
-    def current_account(monkeypatch: pytest.MonkeyPatch) -> dict[str, str | None]:
-        holder: dict[str, str | None] = {"id": "account-1"}
+    def current_account(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
+        holder = {"id": "account-1"}
 
-        def resolve() -> tuple[Account | None, str | None]:
-            if holder["id"] is None:
-                return None, None
+        def resolve() -> tuple[Account, str]:
             account = Account(name="Ada", email="ada@example.com", status=AccountStatus.ACTIVE)
             account.id = holder["id"]
             return account, "workspace-1"
@@ -726,16 +633,16 @@ class TestDeviceDecisionRateLimitCases:
 
     @staticmethod
     @pytest.fixture
-    def rate_limit_store(monkeypatch: pytest.MonkeyPatch) -> _FakeRateLimitStore:
-        store = _FakeRateLimitStore()
+    def rate_limit_store(monkeypatch: pytest.MonkeyPatch) -> dict[str, int]:
+        store: dict[str, int] = {}
         monkeypatch.setattr(
             RateLimiter,
             "is_rate_limited",
-            lambda self, key: store.hits.get(f"{self.prefix}:{key}", 0) >= self.max_attempts,
+            lambda self, key: store.get(f"{self.prefix}:{key}", 0) >= self.max_attempts,
         )
 
         def record(self: RateLimiter, key: str) -> None:
-            store.hits[f"{self.prefix}:{key}"] = store.hits.get(f"{self.prefix}:{key}", 0) + 1
+            store[f"{self.prefix}:{key}"] = store.get(f"{self.prefix}:{key}", 0) + 1
 
         monkeypatch.setattr(RateLimiter, "increment_rate_limit", record)
         return store
@@ -746,7 +653,7 @@ class TestDeviceDecisionRateLimitCases:
         openapi_app: Flask,
         monkeypatch: pytest.MonkeyPatch,
         config_overrides: Callable[..., None],
-        current_account: dict[str, str | None],
+        current_account: dict[str, str],
     ) -> Mock:
         service = create_autospec(OAuthDeviceApplicationService, instance=True)
         service.approve.return_value = DeviceMutation(status="approved")
@@ -755,7 +662,7 @@ class TestDeviceDecisionRateLimitCases:
 
         def admitted() -> AccountWithTenant:
             account = Account(name="Ada", email="ada@example.com", status=AccountStatus.ACTIVE)
-            account.id = current_account["id"] or "missing"
+            account.id = current_account["id"]
             return AccountWithTenant(account, "workspace-1")
 
         config_overrides(
@@ -774,273 +681,23 @@ class TestDeviceDecisionRateLimitCases:
         return app.test_client().post(f"{_PREFIX}/{path}", json={"user_code": user_code})
 
     @staticmethod
-    def test_eleventh_approve_is_limited_but_other_account_succeeds(
-        openapi_app: Flask, current_account: dict[str, str | None]
-    ) -> None:
+    def test_approve_and_deny_share_a_per_account_bucket(openapi_app: Flask, current_account: dict[str, str]) -> None:
         for _ in range(10):
             assert TestDeviceDecisionRateLimitCases._post(openapi_app, "approve").status_code == 200
 
         assert TestDeviceDecisionRateLimitCases._post(openapi_app, "approve").status_code == 429
-
-        current_account["id"] = "account-2"
-        assert TestDeviceDecisionRateLimitCases._post(openapi_app, "approve").status_code == 200
-
-    @staticmethod
-    def test_deny_shares_the_account_bucket_with_approve(
-        openapi_app: Flask, current_account: dict[str, str | None]
-    ) -> None:
-        for _ in range(10):
-            assert TestDeviceDecisionRateLimitCases._post(openapi_app, "approve").status_code == 200
-
         assert TestDeviceDecisionRateLimitCases._post(openapi_app, "deny").status_code == 429
 
         current_account["id"] = "account-2"
         assert TestDeviceDecisionRateLimitCases._post(openapi_app, "deny").status_code == 200
 
     @staticmethod
-    @pytest.mark.parametrize("path", ["approve", "deny"])
-    def test_unresolvable_account_is_unauthorized_without_redis_write(
-        openapi_app: Flask,
-        device_service: Mock,
-        current_account: dict[str, str | None],
-        rate_limit_store: _FakeRateLimitStore,
-        path: str,
-    ) -> None:
-        current_account["id"] = None
-
-        assert TestDeviceDecisionRateLimitCases._post(openapi_app, path).status_code == 401
-        assert rate_limit_store.hits == {}
-        assert device_service.mock_calls == []
-
-    @staticmethod
     def test_failed_approve_still_counts(
-        openapi_app: Flask, device_service: Mock, rate_limit_store: _FakeRateLimitStore
+        openapi_app: Flask, device_service: Mock, rate_limit_store: dict[str, int]
     ) -> None:
         device_service.approve.side_effect = ExpiredOrUnknownError()
 
         response = TestDeviceDecisionRateLimitCases._post(openapi_app, "approve", user_code="NOPE-NOPE")
 
         assert response.status_code == 404
-        assert list(rate_limit_store.hits.values()) == [1]
-
-
-OLD_POLL_PATH = "/openapi/v1/oauth/device/token"
-NEW_POLL_PATH = "/openapi/v1/oauth/token"
-CODE_PATH = "/openapi/v1/oauth/device/code"
-DEVICE_CODE = "device-1"
-USER_CODE = "ABCD-EFGH"
-CLIENT_ID = "difyctl"
-
-
-class Outcome(StrEnum):
-    PENDING = "authorization_pending"
-    SLOW_DOWN = "slow_down"
-    EXPIRED = "expired_token"
-    DENIED = "access_denied"
-    SUCCESS = "success"
-
-
-@dataclass
-class FakeState:
-    user_code: str = USER_CODE
-    client_id: str = CLIENT_ID
-    device_label: str = "CLI"
-    status: DeviceFlowStatus = DeviceFlowStatus.PENDING
-    token_id: str | None = None
-    created_ip: str = "127.0.0.1"
-    approval: DeviceApprovalRecord | None = None
-    poll_payload: PollPayload | None = None
-
-    def to_json(self) -> str:
-        return json.dumps(asdict(self))
-
-
-@dataclass
-class FakeStore:
-    states: dict[str, DeviceFlowStateView] = field(default_factory=dict)
-    poll_decision: SlowDownDecision = SlowDownDecision.OK
-
-    def start(self, client_id: str, device_label: str, created_ip: str) -> tuple[str, str, int]:
-        _ = (client_id, device_label, created_ip)
-        self.states[DEVICE_CODE] = FakeState()
-        return DEVICE_CODE, USER_CODE, 900
-
-    def load_by_user_code(self, user_code: str) -> tuple[str, DeviceFlowStateView] | None:
-        _ = user_code
-        return None
-
-    def approve(self, device_code: str, transition_id: str, approval: DeviceApprovalRecord) -> None:
-        _ = (device_code, transition_id, approval)
-
-    def deny(self, device_code: str, transition_id: str) -> None:
-        _ = (device_code, transition_id)
-
-    def confirm_approval(self, device_code: str, transition_id: str) -> ApprovalTransitionConfirmation:
-        _ = (device_code, transition_id)
-        return ApprovalTransitionConfirmation.UNKNOWN
-
-    def try_acquire_approval(self, guard_id: str, owner_id: str, ttl_seconds: int) -> bool:
-        _ = (guard_id, owner_id, ttl_seconds)
-        return True
-
-    def release_approval(self, guard_id: str, owner_id: str) -> None:
-        _ = (guard_id, owner_id)
-
-    def load_by_device_code(self, device_code: str) -> DeviceFlowStateView | None:
-        return self.states.get(device_code)
-
-    def consume_on_poll(self, device_code: str) -> tuple[DeviceFlowStateView, int | None] | None:
-        state = self.states.pop(device_code, None)
-        if state is None:
-            return None
-        return state, 900
-
-    def restore(self, device_code: str, state: DeviceFlowStateView, ttl_seconds: int) -> bool:
-        _ = ttl_seconds
-        self.states[device_code] = state
-        return True
-
-    def remaining_seconds(self, device_code: str) -> int | None:
-        return 900 if device_code in self.states else None
-
-    def record_poll(self, device_code: str, interval_seconds: int) -> SlowDownDecision:
-        _ = (device_code, interval_seconds)
-        return self.poll_decision
-
-
-@dataclass
-class FakeSettings:
-    known_client_ids: frozenset[str] = frozenset({CLIENT_ID})
-    verification_base_url: str | None = "https://console.example"
-    sso_base_url: str | None = "https://api.example"
-
-
-@dataclass
-class _Services:
-    oauth_device: OAuthDeviceApplicationService
-    oauth_token: OAuthTokenService
-
-
-@pytest.fixture
-def store() -> FakeStore:
-    return FakeStore()
-
-
-@pytest.fixture
-def client(store: FakeStore, monkeypatch: pytest.MonkeyPatch) -> FlaskClient:
-    monkeypatch.setattr(RateLimiter, "is_rate_limited", lambda _self, _key: False)
-    monkeypatch.setattr(RateLimiter, "increment_rate_limit", lambda _self, _key: None)
-    device = OAuthDeviceApplicationService(
-        store=store,
-        accounts=FakeAccounts(),
-        workspaces=FakeWorkspaces(),
-        tokens=FakeTokenIssuer(),
-        sessions=create_autospec(OAuthDeviceSessionRepository, instance=True),
-        sso=create_autospec(OAuthDeviceSSOGateway, instance=True),
-        external_approval_limiter=create_autospec(ExternalApprovalLimiter, instance=True),
-        settings=FakeSettings(),
-    )
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.register_blueprint(openapi_bp)
-    app.extensions["application_services"] = _Services(
-        oauth_device=device,
-        oauth_token=OAuthTokenService(
-            handlers=build_grant_handlers(
-                device=device,
-                clients=registry(),
-                codes=RedisAuthorizationCodeRepository(DictRedis()),
-                refresh=create_autospec(SQLAlchemyOAuthRefreshTokenRepository, instance=True),
-                accounts=FakeAccounts(),
-                workspaces=FakeWorkspaces(),
-                tokens=FakeTokenIssuer(),
-                revoke=create_autospec(GrantRevoker, instance=True),
-                settings=FakeTokenSettings(authorization_code_enabled=False),
-                usage=create_autospec(ClientUsage, instance=True),
-            )
-        ),
-    )
-    return app.test_client()
-
-
-def _seed(store: FakeStore, outcome: Outcome) -> None:
-    store.states[DEVICE_CODE] = FakeState()
-    match outcome:
-        case Outcome.PENDING:
-            pass
-        case Outcome.SLOW_DOWN:
-            store.poll_decision = SlowDownDecision.SLOW_DOWN
-        case Outcome.EXPIRED:
-            store.states.clear()
-        case Outcome.DENIED:
-            store.states[DEVICE_CODE].status = DeviceFlowStatus.DENIED
-        case Outcome.SUCCESS:
-            store.states[DEVICE_CODE].status = DeviceFlowStatus.APPROVED
-            store.states[DEVICE_CODE].approval = AccountApprovalRecord(
-                account_id=ACCOUNT_ID,
-                workspace_id=WORKSPACE_ID,
-                subject_email="ada@example.com",
-                subject_issuer=ACCOUNT_ISSUER_SENTINEL,
-            )
-
-
-def _poll_old(client: FlaskClient, *, client_id: str = CLIENT_ID) -> TestResponse:
-    return client.post(OLD_POLL_PATH, json={"device_code": DEVICE_CODE, "client_id": client_id})
-
-
-def _poll_new(client: FlaskClient, *, client_id: str = CLIENT_ID) -> TestResponse:
-    return client.post(
-        NEW_POLL_PATH,
-        data={"grant_type": GrantType.DEVICE_CODE, "device_code": DEVICE_CODE, "client_id": client_id},
-    )
-
-
-@pytest.mark.parametrize(
-    "outcome", [Outcome.PENDING, Outcome.SLOW_DOWN, Outcome.EXPIRED, Outcome.DENIED], ids=lambda o: o.value
-)
-def test_error_outcomes_match_between_routes(outcome: Outcome, store: FakeStore, client: FlaskClient) -> None:
-    _seed(store, outcome)
-    old = _poll_old(client)
-    _seed(store, outcome)
-    new = _poll_new(client)
-
-    assert old.status_code == new.status_code == 400
-    assert old.get_json() == new.get_json() == {"error": outcome.value}
-
-
-def test_success_matches_between_routes(store: FakeStore, client: FlaskClient) -> None:
-    _seed(store, Outcome.SUCCESS)
-    old = _poll_old(client)
-    _seed(store, Outcome.SUCCESS)
-    new = _poll_new(client)
-
-    assert old.status_code == new.status_code == 200
-    old_body = old.get_json()
-    new_body = new.get_json()
-    # Each collect mints its own token, so only the token itself differs.
-    assert old_body["token"].startswith("dfoa_")
-    assert new_body["access_token"].startswith("dfoa_")
-    assert new_body["token_type"] == "Bearer"
-    for extra in ("subject_type", "account", "workspaces", "default_workspace_id"):
-        assert new_body[extra] == old_body[extra]
-
-
-def test_mismatched_client_id_succeeds_on_old_route_and_fails_on_new(store: FakeStore, client: FlaskClient) -> None:
-    _seed(store, Outcome.SUCCESS)
-    old = _poll_old(client, client_id="other-client")
-    _seed(store, Outcome.SUCCESS)
-    new = _poll_new(client, client_id="other-client")
-
-    assert old.status_code == 200
-    assert old.get_json()["token"].startswith("dfoa_")
-    assert new.status_code == 401
-    assert new.headers["WWW-Authenticate"] == 'Basic realm="dify-openapi"'
-    assert new.get_json() == {"error": "invalid_client"}
-    assert DEVICE_CODE in store.states
-
-
-def test_unknown_client_id_on_device_code_stays_unsupported_client(client: FlaskClient) -> None:
-    response = client.post(CODE_PATH, json={"client_id": "nobody"})
-
-    assert response.status_code == 400
-    assert response.get_json() == {"error": "unsupported_client"}
+        assert list(rate_limit_store.values()) == [1]

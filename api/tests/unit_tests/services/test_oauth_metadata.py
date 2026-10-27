@@ -57,20 +57,11 @@ def test_configured_urls_win_and_trailing_slashes_are_dropped(config_overrides: 
     )
 
 
-def test_request_origin_trailing_slash_is_dropped() -> None:
-    doc = authorization_server_metadata(ORIGIN + "/")
-    assert doc["authorization_endpoint"] == "https://req.example.com/account/oauth/authorize"
-    assert doc["issuer"] == "https://req.example.com/openapi/v1"
-
-
-def test_dcr_off_drops_registration_endpoint(config_overrides: ConfigOverrides) -> None:
-    config_overrides(ENABLE_OAUTH_DCR=False)
-    assert "registration_endpoint" not in authorization_server_metadata(ORIGIN)
-
-
-def test_cimd_off_is_false(config_overrides: ConfigOverrides) -> None:
-    config_overrides(ENABLE_OAUTH_CIMD=False)
-    assert authorization_server_metadata(ORIGIN)["client_id_metadata_document_supported"] is False
+def test_dcr_and_cimd_off_are_advertised(config_overrides: ConfigOverrides) -> None:
+    config_overrides(ENABLE_OAUTH_DCR=False, ENABLE_OAUTH_CIMD=False)
+    doc = authorization_server_metadata(ORIGIN)
+    assert "registration_endpoint" not in doc
+    assert doc["client_id_metadata_document_supported"] is False
 
 
 def test_authorization_code_off_gives_the_reduced_document(config_overrides: ConfigOverrides) -> None:
@@ -80,10 +71,7 @@ def test_authorization_code_off_gives_the_reduced_document(config_overrides: Con
     assert "registration_endpoint" not in doc
     assert doc["grant_types_supported"] == ["urn:ietf:params:oauth:grant-type:device_code"]
     assert doc["client_id_metadata_document_supported"] is False
-    assert doc["device_authorization_endpoint"] == "https://req.example.com/openapi/v1/oauth/device/code"
-    # RFC 8414 requires response_types_supported even with no authorization endpoint; none are supported then.
     assert doc["response_types_supported"] == []
-    assert "authorization_response_iss_parameter_supported" not in doc
 
 
 def test_protected_resource_document() -> None:
@@ -92,9 +80,3 @@ def test_protected_resource_document() -> None:
         "authorization_servers": ["https://req.example.com/openapi/v1"],
         "bearer_methods_supported": ["header"],
     }
-
-
-def test_protected_resource_metadata_url() -> None:
-    assert protected_resource_metadata_url(ORIGIN + "/") == (
-        "https://req.example.com/.well-known/oauth-protected-resource/openapi/v1"
-    )

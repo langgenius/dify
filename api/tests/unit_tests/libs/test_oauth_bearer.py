@@ -118,21 +118,12 @@ class _FakeRedis:
 class _FakeTokenRow:
     expires_at: datetime
     id: uuid.UUID = field(default_factory=uuid.uuid4)
-    account_id: uuid.UUID = field(default_factory=uuid.uuid4)
-    prefix: str = TokenType.OAUTH_ACCOUNT.prefix
-    subject_email: str = "who@example.com"
-    subject_issuer: str = "issuer"
-    client_id: str = "client"
-
-
-@dataclass
-class _FakeResult:
-    rowcount: int = 1
 
 
 @dataclass
 class _FakeSession:
     row: _FakeTokenRow
+    rowcount: int = 1
 
     def query(self, *_args: object) -> _FakeSession:
         return self
@@ -143,8 +134,8 @@ class _FakeSession:
     def one_or_none(self) -> _FakeTokenRow:
         return self.row
 
-    def execute(self, _stmt: object) -> _FakeResult:
-        return _FakeResult()
+    def execute(self, _stmt: object) -> _FakeSession:
+        return self
 
     def commit(self) -> None:
         pass
@@ -152,24 +143,14 @@ class _FakeSession:
 
 def test_cached_row_past_expiry_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("libs.oauth_bearer.enforce_bearer_rate_limit", lambda _h: None)
-    expired_at = datetime.now(UTC) - timedelta(seconds=1)
-    db_row = _FakeTokenRow(expires_at=expired_at)
+    db_row = _FakeTokenRow(expires_at=datetime.now(UTC) - timedelta(seconds=1))
     redis = _FakeRedis()
     oauth = OAuthAccessTokenResolver(lambda: _FakeSession(db_row), redis)
-    token = "dfoa_stale"
-    token_hash = sha256_hex(token)
-    cached = ResolvedRow(
-        subject_email=db_row.subject_email,
-        subject_issuer=db_row.subject_issuer,
-        account_id=db_row.account_id,
-        client_id=db_row.client_id,
-        token_id=db_row.id,
-        expires_at=expired_at,
-    )
-    oauth.cache_set_positive(token_hash, cached)
+    token_hash = sha256_hex("dfoa_stale")
+    oauth.cache_set_positive(token_hash, _row(uuid.uuid4()))
     auth = _authenticator_with(oauth.for_token_type(TokenType.OAUTH_ACCOUNT))
 
     with pytest.raises(InvalidBearerError):
-        auth.authenticate(token)
+        auth.authenticate("dfoa_stale")
 
     assert redis.store[TOKEN_CACHE_KEY_FMT.format(hash=token_hash)] == "invalid"

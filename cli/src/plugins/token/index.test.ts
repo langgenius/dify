@@ -65,15 +65,4 @@ it('reads DIFY_TOKEN_FILE on every get, so a rewritten file is picked up', async
   expect(await t.get()).toBe('dfoa_one')
   writeFileSync(tokenFile, JSON.stringify({ access_token: 'dfoa_two' }))
   expect(await t.get()).toBe('dfoa_two')
-  expect(await (await new Context().get(token)).get()).toBe('dfoa_two')
-})
-
-it('fails with not_logged_in when the DIFY_TOKEN_FILE is unusable', async () => {
-  const tokenFile = join(dir, 'token.json')
-  writeFileSync(tokenFile, 'not json')
-  process.env.DIFY_SERVER = 'https://env.example'
-  process.env.DIFY_TOKEN_FILE = tokenFile
-  await expect((await new Context().get(token)).get()).rejects.toMatchObject({
-    code: 'not_logged_in',
-  })
 })

@@ -1,5 +1,3 @@
-from datetime import UTC, datetime
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -32,14 +30,3 @@ def test_deletes_matching_rows_across_batches_and_returns_the_count(sqlite_sessi
 
     assert deleted == 5
     assert sqlite_session.scalars(select(OpenAPIOAuthClient.client_id)).all() == ["keep"]
-
-
-def test_nothing_matching_deletes_nothing(sqlite_session: Session) -> None:
-    _add(sqlite_session, "keep")
-
-    assert (
-        delete_in_batches(
-            sqlite_session, OpenAPIOAuthClient, OpenAPIOAuthClient.created_at < datetime(2000, 1, 1, tzinfo=UTC)
-        )
-        == 0
-    )

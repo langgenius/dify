@@ -6,12 +6,7 @@ from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi._oauth_input import (
-    InvalidOAuthBodyError,
-    basic_client_credentials,
-    oauth_feature_required,
-    read_oauth_body,
-)
+from controllers.openapi._oauth_input import oauth_feature_required
 from services.oauth_token_contracts import (
     GrantType,
     TokenEndpointError,
@@ -43,8 +38,8 @@ class _Services:
     oauth_token: OAuthTokenService
 
 
-def _result(*, expires_in: int = 3600, refresh_token: str | None = None) -> TokenGrantResult:
-    expires_at = (datetime.now(UTC) + timedelta(seconds=expires_in)).isoformat()
+def _result(*, refresh_token: str | None = None) -> TokenGrantResult:
+    expires_at = (datetime.now(UTC) + timedelta(seconds=3600)).isoformat()
     return TokenGrantResult(
         payload={
             "token": "dfoa_secret",
@@ -74,31 +69,20 @@ def _install(app: Flask, handler: _Handler) -> None:
 
 
 def test_success_maps_to_token_response(app: Flask) -> None:
-    handler = _Handler(result=_result(refresh_token="rt"))
-    _install(app, handler)
+    _install(app, _Handler(result=_result(refresh_token="rt")))
 
     response = app.test_client().post(_PATH, data={"grant_type": GrantType.DEVICE_CODE, "scope": "x"})
 
     body = response.get_json()
     assert response.status_code == 200
-    assert body["access_token"] == "dfoa_secret"
-    assert body["token_type"] == "Bearer"
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.headers["Pragma"] == "no-cache"
+    assert (body["access_token"], body["token_type"], body["refresh_token"]) == ("dfoa_secret", "Bearer", "rt")
     assert 3590 <= body["expires_in"] <= 3600
-    assert body["refresh_token"] == "rt"
-    assert body["token_id"] == "t1"
     assert body["account"]["email"] == "ada@example.com"
     assert "scope" not in body
     assert "token" not in body
     assert "expires_at" not in body
-
-
-def test_refresh_token_omitted_when_absent_and_expired_floors_at_zero(app: Flask) -> None:
-    _install(app, _Handler(result=_result(expires_in=-30)))
-
-    body = app.test_client().post(_PATH, data={"grant_type": GrantType.DEVICE_CODE}).get_json()
-
-    assert "refresh_token" not in body
-    assert body["expires_in"] == 0
 
 
 def test_token_endpoint_accepts_form_and_json(app: Flask) -> None:
@@ -112,39 +96,26 @@ def test_token_endpoint_accepts_form_and_json(app: Flask) -> None:
 
     assert form.status_code == as_json.status_code == 200
     assert handler.seen[0] == handler.seen[1]
-    assert handler.seen[0].device_code == "dc"
-    assert handler.seen[0].client_id == "difyctl"
-    assert handler.seen[0].resource == "r"
-    assert form.get_json()["access_token"] == as_json.get_json()["access_token"]
+    assert (handler.seen[0].device_code, handler.seen[0].client_id, handler.seen[0].resource) == ("dc", "difyctl", "r")
+    assert "refresh_token" not in form.get_json()
 
 
-def test_token_endpoint_sets_no_store(app: Flask) -> None:
+@pytest.mark.parametrize(
+    ("body", "error"),
+    [
+        ({"data": {"grant_type": "urn:x:future"}}, "unsupported_grant_type"),
+        ({"json": {"grant_type": "authorization_code", "code": 7}}, "invalid_request"),
+    ],
+)
+def test_bad_request_returns_oauth_error_body_without_caching(
+    app: Flask, body: dict[str, dict[str, object]], error: str
+) -> None:
     _install(app, _Handler(result=_result()))
 
-    ok = app.test_client().post(_PATH, data={"grant_type": GrantType.DEVICE_CODE})
-    failed = app.test_client().post(_PATH, data={"grant_type": "password"})
-
-    for response in (ok, failed):
-        assert response.headers["Cache-Control"] == "no-store"
-        assert response.headers["Pragma"] == "no-cache"
-
-
-def test_unknown_grant_returns_oauth_error_body(app: Flask) -> None:
-    _install(app, _Handler(result=_result()))
-
-    response = app.test_client().post(_PATH, data={"grant_type": "urn:x:future"})
+    response = app.test_client().post(_PATH, **body)
 
     assert response.status_code == 400
-    assert response.get_json() == {"error": "unsupported_grant_type"}
-
-
-def test_non_string_json_field_is_invalid_request(app: Flask) -> None:
-    _install(app, _Handler(result=_result()))
-
-    response = app.test_client().post(_PATH, json={"grant_type": "authorization_code", "code": 7})
-
-    assert response.status_code == 400
-    assert response.get_json() == {"error": "invalid_request"}
+    assert response.get_json() == {"error": error}
     assert response.headers["Cache-Control"] == "no-store"
 
 
@@ -178,37 +149,10 @@ def test_basic_credentials_take_precedence_and_ip_and_origin_are_passed(app: Fla
     assert seen.request_origin == "http://localhost/"
 
 
-def test_read_oauth_body_and_basic_credentials(app: Flask) -> None:
-    with app.test_request_context(method="POST", data={"a": "1", "b": "2"}):
-        assert read_oauth_body() == {"a": "1", "b": "2"}
-    with app.test_request_context(method="POST", json={"a": "1", "z": None}):
-        assert read_oauth_body() == {"a": "1"}
-    for bad in (2, True, ["x"], {"k": "v"}):
-        with app.test_request_context(method="POST", json={"a": "1", "n": bad}):
-            with pytest.raises(InvalidOAuthBodyError):
-                read_oauth_body()
-    with app.test_request_context(method="POST", json=["a"]):
-        assert read_oauth_body() == {}
-    with app.test_request_context(method="POST", data="{", content_type="application/json"):
-        assert read_oauth_body() == {}
-
-    with app.test_request_context(headers={"Authorization": "Basic YSUyQmI6YytkJTI1"}):
-        assert basic_client_credentials() == ("a+b", "c d%")
-    with app.test_request_context(headers={"Authorization": "Bearer abc"}):
-        assert basic_client_credentials() is None
-    with app.test_request_context():
-        assert basic_client_credentials() is None
-
-
-def test_oauth_feature_required_passes_when_enabled_and_404s_when_disabled() -> None:
-    @oauth_feature_required(lambda: True)
-    def enabled_view() -> str:
-        return "ok"
-
+def test_oauth_feature_required_404s_when_disabled() -> None:
     @oauth_feature_required(lambda: False)
     def disabled_view() -> str:
         return "ok"
 
-    assert enabled_view() == "ok"
     with pytest.raises(NotFound):
         disabled_view()

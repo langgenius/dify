@@ -8,7 +8,6 @@ import pytest
 from extensions.ext_redis import RedisClientWrapper
 from libs import jws
 from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL, limiter_prefix
-from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import (
     DifyConfigOAuthDeviceSettings,
     EnterpriseDeviceSSOService,
@@ -22,6 +21,7 @@ from services.oauth_device_contracts import (
     OAuthDeviceTokenRotation,
     OAuthDeviceTokenWrite,
 )
+from tests.helpers.unit.model_factories import make_account_snapshot
 
 
 @dataclass
@@ -40,19 +40,6 @@ class _FailingEnterpriseService(EnterpriseDeviceSSOService):
     def initiate_device_flow_sso(self, signed_state: str) -> Mapping[str, object] | None:
         _ = signed_state
         raise RuntimeError("enterprise unavailable")
-
-
-@dataclass
-class _ZsetRedis:
-    zsets: dict[str, dict[object, object]] = field(default_factory=dict)
-
-    def zadd(self, name: str, mapping: dict[object, object]) -> int:
-        self.zsets.setdefault(name, {}).update(mapping)
-        return len(mapping)
-
-    def expire(self, name: str, time: int) -> bool:
-        _ = (name, time)
-        return True
 
 
 @dataclass
@@ -171,16 +158,6 @@ def test_external_approval_limiter_owns_rate_limit_policy() -> None:
     assert limiter._rate_limiter.time_window == int(LIMIT_APPROVE_EXT_PER_EMAIL.window.total_seconds())
 
 
-def test_external_approval_limiter_uses_named_prefix() -> None:
-    redis = _ZsetRedis()
-    limiter = RedisExternalApprovalLimiter(redis=redis)  # type: ignore[arg-type]
-
-    limiter.record("alice@example.com")
-
-    assert redis.zsets
-    assert all(key.startswith("rl:approve_ext_per_email:") for key in redis.zsets)
-
-
 def test_approval_nonce_release_only_removes_matching_reservation(config_overrides: Callable[..., None]) -> None:
     config_overrides(REDIS_KEY_PREFIX="")
     raw_redis = _NonceRedis()
@@ -217,56 +194,29 @@ class _RecordingTokenPersistence:
         return OAuthDeviceTokenRotation(token_id="token-1", replaced_token_id=None, replaced_token_hash=None)
 
 
-@dataclass(frozen=True)
-class _FixedTTLPolicy:
-    days: int
-
-    def ttl_days(self, workspace_id: str | None) -> int:
-        _ = workspace_id
-        return self.days
-
-
-_ACCOUNT = AccountSnapshot(
-    id="account-1",
-    name="Account",
-    email="a@example.com",
-    avatar=None,
-    is_password_set=True,
-    interface_language=None,
-    interface_theme=None,
-    timezone=None,
-    last_login_at=None,
-    last_login_ip=None,
-    status="active",
-    initialized_at=None,
-    created_at=datetime(2026, 1, 1, tzinfo=UTC),
+@pytest.mark.parametrize(
+    ("ttl_days", "lifetime", "expected"),
+    [
+        (14, None, timedelta(days=14)),
+        (14, timedelta(hours=24), timedelta(hours=24)),
+        (1, timedelta(days=30), timedelta(days=1)),
+    ],
+    ids=["default", "shorter", "capped"],
 )
-
-
-def _issue_expiry(ttl_days: int, lifetime: timedelta | None) -> timedelta:
+def test_issue_account_token_lifetime_never_exceeds_ttl_days(
+    config_overrides: Callable[..., None], ttl_days: int, lifetime: timedelta | None, expected: timedelta
+) -> None:
+    config_overrides(OAUTH_TTL_DAYS=ttl_days)
     persistence = _RecordingTokenPersistence()
-    gateway = OAuthDeviceTokenIssuanceGateway(tokens=persistence, ttl_policy=_FixedTTLPolicy(days=ttl_days))
+    gateway = OAuthDeviceTokenIssuanceGateway(tokens=persistence, ttl_policy=EnvironmentOAuthDeviceTokenTTLPolicy())
     before = datetime.now(UTC)
-    if lifetime is None:
-        gateway.issue_account_token(account=_ACCOUNT, workspace_id="ws-1", client_id="difyctl", device_label="laptop")
-    else:
-        gateway.issue_account_token(
-            account=_ACCOUNT,
-            workspace_id="ws-1",
-            client_id="difyctl",
-            device_label="laptop",
-            lifetime=lifetime,
-        )
-    return persistence.writes[0].expires_at - before
 
+    gateway.issue_account_token(
+        account=make_account_snapshot(),
+        workspace_id="ws-1",
+        client_id="difyctl",
+        device_label="laptop",
+        lifetime=lifetime,
+    )
 
-def test_issue_account_token_defaults_to_ttl_days() -> None:
-    assert abs(_issue_expiry(14, None) - timedelta(days=14)) < timedelta(seconds=5)
-
-
-def test_issue_account_token_uses_shorter_lifetime() -> None:
-    assert abs(_issue_expiry(14, timedelta(hours=24)) - timedelta(hours=24)) < timedelta(seconds=5)
-
-
-def test_issue_account_token_caps_lifetime_at_ttl_days() -> None:
-    assert abs(_issue_expiry(1, timedelta(days=30)) - timedelta(days=1)) < timedelta(seconds=5)
+    assert abs(persistence.writes[0].expires_at - before - expected) < timedelta(seconds=5)
