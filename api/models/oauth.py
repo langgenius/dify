@@ -149,3 +149,38 @@ class OAuthClient(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False
     )
+
+
+class OAuthRefreshToken(TypeBase):
+    __tablename__ = "oauth_refresh_tokens"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="oauth_refresh_tokens_pkey"),
+        sa.Index("uq_oauth_refresh_tokens_token_hash", "token_hash", unique=True),
+        sa.Index(
+            "idx_oauth_refresh_tokens_grant",
+            "subject_email",
+            "subject_issuer",
+            "client_id",
+            "device_label",
+        ),
+        sa.Index("idx_oauth_refresh_tokens_account_id", "account_id"),
+        sa.Index("idx_oauth_refresh_tokens_family_id", "family_id"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
+    )
+    family_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    token_hash: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    subject_email: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    subject_issuer: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    client_id: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    device_label: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    workspace_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    rotated_at: Mapped[datetime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True, default=None)
+
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False
+    )

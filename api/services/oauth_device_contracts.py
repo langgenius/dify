@@ -23,6 +23,14 @@ def default_device_label(client_name: str) -> str:
     return f"{client_name} ({secrets.token_hex(DEFAULT_LABEL_SUFFIX_BYTES)})"[:DEVICE_LABEL_MAX_LENGTH]
 
 
+@dataclass(frozen=True, slots=True)
+class GrantKey:
+    subject_email: str
+    subject_issuer: str
+    client_id: str
+    device_label: str
+
+
 class DeviceFlowStatus(StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
