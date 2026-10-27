@@ -4,10 +4,17 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
   zAgentNotPublishedError,
+  zAgentVersionNotFoundError,
+  zAppAbnormalStatusError,
+  zAppApiDisabledError,
+  zAppNotFoundError,
+  zAppSuggestedQuestionsAfterAnswerDisabledError,
   zAppUnavailableError,
   zArchivedDocumentImmutableError,
   zAudioTooLargeError,
   zCompletionRequestError,
+  zConversationFirstMessageNotFoundError,
+  zConversationNotFoundError,
   zDatasetNameDuplicateError,
   zEndUserNotFoundError,
   zFileAccessDeniedError,
@@ -15,6 +22,7 @@ import {
   zFileNotFoundError,
   zFileTooLargeError,
   zFilenameNotExistsError,
+  zForbiddenError,
   zHumanInputFormExpiredError,
   zHumanInputFormSubmittedError,
   zInvalidActionError,
@@ -30,6 +38,7 @@ import {
   zKnowledgeFsRequestTooLargeError,
   zKnowledgeFsResourceNotFoundError,
   zKnowledgeFsUpstreamUnavailableError,
+  zMessageFeedbackRatingRequiredError,
   zModelCurrentlyNotSupportError,
   zNoAudioUploadedError,
   zNoFileUploadedError,
@@ -46,6 +55,8 @@ import {
   zUnsupportedAudioTypeError,
   zUnsupportedFileTypeError,
   zWorkflowVersionExecutionNotAllowedError,
+  zWorkspaceArchivedError,
+  zWorkspaceNotFoundError,
 } from './zod.gen.ts'
 import {
   zDeleteAppsAnnotationsByAnnotationIdPath,
@@ -490,6 +501,15 @@ export const get2 = oc
   })
   .input(z.object({ query: zGetAppFeedbacksQuery.optional() }).optional())
   .output(zGetAppFeedbacksResponse)
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    forbidden: { status: 403, data: zForbiddenError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const feedbacks = {
   get: get2,
@@ -517,6 +537,14 @@ export const get3 = oc
   })
   .input(z.object({ params: zGetAppsAnnotationReplyByActionStatusByJobIdPath }))
   .output(zGetAppsAnnotationReplyByActionStatusByJobIdResponse)
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const byJobId = {
   get: get3,
@@ -549,6 +577,14 @@ export const post = oc
     }),
   )
   .output(zPostAppsAnnotationReplyByActionResponse)
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const byAction = {
   post,
@@ -577,6 +613,14 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteAppsAnnotationsByAnnotationIdPath }))
   .output(zDeleteAppsAnnotationsByAnnotationIdResponse)
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 /**
  * Update Annotation
@@ -600,6 +644,14 @@ export const put = oc
     }),
   )
   .output(zPutAppsAnnotationsByAnnotationIdResponse)
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const byAnnotationId = {
   delete: delete_,
@@ -624,6 +676,14 @@ export const get4 = oc
   })
   .input(z.object({ query: zGetAppsAnnotationsQuery.optional() }).optional())
   .output(zGetAppsAnnotationsResponse)
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 /**
  * Create Annotation
@@ -644,6 +704,14 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostAppsAnnotationsBody }))
   .output(zPostAppsAnnotationsResponse)
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const annotations = {
   get: get4,
@@ -848,7 +916,20 @@ export const post8 = oc
     }),
   )
   .output(zPostConversationsByConversationIdNameResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const name = {
   post: post8,
@@ -4721,6 +4802,16 @@ export const post58 = oc
     }),
   )
   .output(zPostMessagesByMessageIdFeedbacksResponse)
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    forbidden: { status: 403, data: zForbiddenError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const feedbacks2 = {
   post: post58,
@@ -4729,11 +4820,12 @@ export const feedbacks2 = {
 /**
  * Get Next Suggested Questions
  *
- * Get next questions suggestions for the current message.
+ * Get next question suggestions for the current message. If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
  */
 export const get61 = oc
   .route({
-    description: 'Get next questions suggestions for the current message.',
+    description:
+      'Get next question suggestions for the current message. If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggested',
@@ -4748,7 +4840,25 @@ export const get61 = oc
     }),
   )
   .output(zGetMessagesByMessageIdSuggestedResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    forbidden: { status: 403, data: zForbiddenError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const suggested = {
   get: get61,
@@ -4777,7 +4887,16 @@ export const get62 = oc
   })
   .input(z.object({ query: zGetMessagesQuery }))
   .output(zGetMessagesResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    forbidden: { status: 403, data: zForbiddenError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const messages = {
   get: get62,

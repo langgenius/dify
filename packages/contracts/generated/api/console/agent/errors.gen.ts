@@ -194,6 +194,14 @@ const zAppSuggestedQuestionsAfterAnswerDisabledError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zMessageFeedbackRatingRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('message_feedback_rating_required'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zAgentModelNotConfiguredError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -446,7 +454,10 @@ export const get5Errors = {
 
 export const post7Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const get6Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const get6Errors = {
+  agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+}
 
 export const get7Errors = {
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
@@ -514,7 +525,11 @@ export const post12Errors = {
 
 export const post13Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const post14Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const post14Errors = {
+  agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+  message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+}
 
 export const get19Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
@@ -522,7 +537,10 @@ export const get20Errors = { agent_not_found_error: { status: 404, data: zAgentN
 
 export const get21Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const get22Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const get22Errors = {
+  agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+}
 
 export const post15Errors = {
   agent_model_not_configured: { status: 400, data: zAgentModelNotConfiguredError },

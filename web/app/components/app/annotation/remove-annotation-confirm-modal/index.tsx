@@ -9,17 +9,20 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
 
-type Props = Readonly<{
+type RemoveAnnotationConfirmContentProps = {
   isPending: boolean
   onRemove: () => void
-}>
+}
 
-export function RemoveAnnotationConfirmContent({ isPending, onRemove }: Props) {
+export function RemoveAnnotationConfirmContent({
+  isPending,
+  onRemove,
+}: RemoveAnnotationConfirmContentProps) {
   const { t } = useTranslation(['appDebug', 'common'])
   const title = t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })
 
   return (
-    <AlertDialogContent>
+    <AlertDialogContent backdropProps={{ forceRender: true }}>
       <AlertDialogHeader>
         <AlertDialogTitle>{title}</AlertDialogTitle>
       </AlertDialogHeader>

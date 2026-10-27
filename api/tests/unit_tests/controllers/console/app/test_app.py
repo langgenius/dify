@@ -910,21 +910,22 @@ def _app(
 def _workflow(
     *, app_id: str = _APP_RESPONSE_MODELS_APP_ID, tenant_id: str = _APP_RESPONSE_MODELS_TENANT_ID
 ) -> Workflow:
-    return Workflow(
+    workflow_record = Workflow(
         id=WORKFLOW_ID,
         tenant_id=tenant_id,
         app_id=app_id,
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph=json.dumps({"nodes": [], "edges": []}),
-        features=json.dumps({}),
+        _features=json.dumps({}),
         created_by=ACCOUNT_ID,
-        created_at=_ts(8),
         updated_by=ACCOUNT_ID,
-        updated_at=_ts(9),
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
+    workflow_record.updated_at = _ts(9)
+    workflow_record.created_at = _ts(8)
+    return workflow_record
 
 
 def _persist_response_graph(session: Session) -> _app_response_models_App:
