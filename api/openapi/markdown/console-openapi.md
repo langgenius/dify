@@ -9210,6 +9210,8 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 50 |
+| query | query |  | No | string |
+| status | query |  | No | string, <br>**Available values:** "disabled", "failed", "processing", "queued", "ready" |
 | control_space_id | path |  | Yes | string |
 
 #### Responses

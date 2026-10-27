@@ -6774,11 +6774,6 @@
       "count": 6
     }
   },
-  "web/features/new-rag/documents/list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 18
-    }
-  },
   "web/features/new-rag/documents/metadata/drawer.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3

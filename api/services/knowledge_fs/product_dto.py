@@ -532,6 +532,19 @@ class KnowledgeFSCursorQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+type KnowledgeFSDocumentDisplayStatus = Literal["ready", "queued", "processing", "failed", "disabled"]
+
+
+class KnowledgeFSLogicalDocumentListQuery(KnowledgeFSCursorQuery):
+    query: str | None = Field(default=None, max_length=200)
+    status: KnowledgeFSDocumentDisplayStatus | None = None
+
+    @field_validator("query")
+    @classmethod
+    def normalize_query(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+
 # Who produced a retrieval trace: the console retrieval test, a KnowledgeFS workflow node, the
 # service API, an agent, or an MCP client. Mirrors KnowledgeFS `AnswerTraceSourceSchema`.
 type KnowledgeFSTraceSource = Literal["retrieval_test", "workflow", "service_api", "agent", "mcp"]
