@@ -1199,6 +1199,12 @@ class AuthConfig(BaseSettings):
         default=True,
     )
 
+    ENABLE_OAUTH_CIMD: bool = Field(
+        description="Accept https:// client_id values whose metadata document Dify fetches "
+        "(OAuth Client ID Metadata Document). Off: such client ids are unknown.",
+        default=True,
+    )
+
     OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS: int = Field(
         description="Lifetime in hours of access tokens issued by the authorization code flow. "
         f"Values outside {MIN_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS}-{MAX_OAUTH_AUTH_CODE_ACCESS_TOKEN_TTL_HOURS} "

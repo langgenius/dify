@@ -71,7 +71,7 @@ def _invalid_redirect_uri() -> RegistrationError:
     return RegistrationError(RegistrationErrorCode.INVALID_REDIRECT_URI, "redirect_uris holds an invalid URI")
 
 
-def _optional_string(metadata: Mapping[str, object], field: str, *, max_length: int) -> str | None:
+def optional_string(metadata: Mapping[str, object], field: str, *, max_length: int) -> str | None:
     value = metadata.get(field)
     if value is None:
         return None
@@ -82,7 +82,7 @@ def _optional_string(metadata: Mapping[str, object], field: str, *, max_length: 
     return value
 
 
-def _string_list(metadata: Mapping[str, object], field: str, *, error: RegistrationErrorCode) -> list[str] | None:
+def string_list(metadata: Mapping[str, object], field: str, *, error: RegistrationErrorCode) -> list[str] | None:
     value = metadata.get(field)
     if value is None:
         return None
@@ -93,8 +93,8 @@ def _string_list(metadata: Mapping[str, object], field: str, *, error: Registrat
     return value
 
 
-def _redirect_uris(metadata: Mapping[str, object]) -> tuple[str, ...]:
-    uris = _string_list(metadata, "redirect_uris", error=RegistrationErrorCode.INVALID_REDIRECT_URI)
+def validated_redirect_uris(metadata: Mapping[str, object]) -> tuple[str, ...]:
+    uris = string_list(metadata, "redirect_uris", error=RegistrationErrorCode.INVALID_REDIRECT_URI)
     if not uris:
         raise RegistrationError(RegistrationErrorCode.INVALID_REDIRECT_URI, "redirect_uris is required")
     if len(uris) > MAX_REDIRECT_URIS:
@@ -110,7 +110,7 @@ def _redirect_uris(metadata: Mapping[str, object]) -> tuple[str, ...]:
 
 
 def _grant_types(metadata: Mapping[str, object]) -> tuple[GrantType, ...]:
-    values = _string_list(metadata, "grant_types", error=RegistrationErrorCode.INVALID_CLIENT_METADATA)
+    values = string_list(metadata, "grant_types", error=RegistrationErrorCode.INVALID_CLIENT_METADATA)
     if values is None:
         return DEFAULT_GRANT_TYPES
     allowed = {grant.value: grant for grant in DEFAULT_GRANT_TYPES}
@@ -123,7 +123,7 @@ def _grant_types(metadata: Mapping[str, object]) -> tuple[GrantType, ...]:
 
 
 def _check_response_types(metadata: Mapping[str, object]) -> None:
-    values = _string_list(metadata, "response_types", error=RegistrationErrorCode.INVALID_CLIENT_METADATA)
+    values = string_list(metadata, "response_types", error=RegistrationErrorCode.INVALID_CLIENT_METADATA)
     if values is None:
         return
     if values != [CODE_RESPONSE_TYPE]:
@@ -140,8 +140,8 @@ def _auth_method(metadata: Mapping[str, object]) -> TokenEndpointAuthMethod:
         raise _invalid_metadata("token_endpoint_auth_method is not supported") from None
 
 
-def _logo_uri(metadata: Mapping[str, object]) -> str | None:
-    logo_uri = _optional_string(metadata, "logo_uri", max_length=MAX_LOGO_URI_LENGTH)
+def validated_logo_uri(metadata: Mapping[str, object]) -> str | None:
+    logo_uri = optional_string(metadata, "logo_uri", max_length=MAX_LOGO_URI_LENGTH)
     if logo_uri is None:
         return None
     if not is_valid_logo_uri(logo_uri):
@@ -154,9 +154,9 @@ class OAuthClientRegistrationService:
         self._clients = clients
 
     def register(self, metadata: Mapping[str, object]) -> RegisteredClient:
-        redirect_uris = _redirect_uris(metadata)
-        client_name = _optional_string(metadata, "client_name", max_length=MAX_CLIENT_NAME_LENGTH)
-        logo_uri = _logo_uri(metadata)
+        redirect_uris = validated_redirect_uris(metadata)
+        client_name = optional_string(metadata, "client_name", max_length=MAX_CLIENT_NAME_LENGTH)
+        logo_uri = validated_logo_uri(metadata)
         grant_types = _grant_types(metadata)
         _check_response_types(metadata)
         auth_method = _auth_method(metadata)

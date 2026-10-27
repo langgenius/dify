@@ -11,7 +11,7 @@ from libs.helper import RateLimiter
 from libs.oauth_bearer import sha256_hex
 from models.oauth import OpenAPIOAuthClient
 from services.entities.account_entities import AccountSnapshot
-from services.oauth_clients import OAuthClientRegistry, ResolvedClient
+from services.oauth_clients import ClientSource, OAuthClientRegistry, ResolvedClient
 from services.oauth_device_contracts import (
     DeviceWorkspace,
     IssuedOAuthToken,
@@ -121,8 +121,8 @@ class FakeClientRepository:
         )
 
 
-def registry(*clients: ResolvedClient) -> OAuthClientRegistry:
-    return OAuthClientRegistry([FakeClientSource({client.client_id: client for client in clients})])
+def registry(*clients: ResolvedClient, extra_sources: Sequence[ClientSource] = ()) -> OAuthClientRegistry:
+    return OAuthClientRegistry([FakeClientSource({client.client_id: client for client in clients}), *extra_sources])
 
 
 @dataclass

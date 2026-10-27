@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
@@ -28,6 +29,8 @@ from services.account_access_service import AccountAccessService
 from services.entities.account_access_entities import AccountWorkspaceSnapshot
 from services.entities.oauth_server_entities import OAuthProviderAccountRecord, OAuthProviderAppRecord
 from services.oauth_authorize_service import AuthorizeRequest, OAuthAuthorizeService
+from services.oauth_cimd import CimdClientSource, CimdResponse, cimd_storage_id
+from services.oauth_clients import ClientSource, OAuthClientRegistry
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
 from services.oauth_device_application_service import OAuthDeviceTokenIssuer
 from services.oauth_device_contracts import (
@@ -41,7 +44,7 @@ from services.oauth_device_contracts import (
     RefreshTokenIssue,
     UnsupportedClientError,
 )
-from services.oauth_grant_revoker import GrantRevoker
+from services.oauth_grant_revoker import GrantRevoker, OAuthRevocationService, RevokeRequest
 from services.oauth_server_service import OAuthServerRequestError, OAuthServerService
 from services.oauth_token_contracts import (
     GrantType,
@@ -717,6 +720,7 @@ class _RefreshWorld:
     usage: _RecordingClientUsage
     handler: RefreshTokenGrantHandler
     authorize: OAuthAuthorizeService
+    clients: OAuthClientRegistry
     accounts: FakeAccounts
     revoker: GrantRevoker
     factory: sessionmaker[Session]
@@ -797,6 +801,7 @@ def _refresh_world(
     settings: FakeTokenSettings | None = None,
     after_find: Callable[[RefreshTokenRecord], None] | None = None,
     max_sessions_per_account: int = 15,
+    extra_sources: Sequence[ClientSource] = (),
 ) -> _RefreshWorld:
     settings = settings or FakeTokenSettings()
     cache = _cache_wrapper()
@@ -804,6 +809,7 @@ def _refresh_world(
         confidential_client(),
         confidential_client(client_id=OTHER_ID),
         confidential_client(client_id=NO_REFRESH_ID, grant_types=frozenset({GrantType.AUTHORIZATION_CODE})),
+        extra_sources=extra_sources,
     )
     codes = RedisAuthorizationCodeRepository(DictRedis())
     refresh = (
@@ -841,6 +847,7 @@ def _refresh_world(
             settings=settings,
         ),
         authorize=OAuthAuthorizeService(clients=clients, codes=codes, settings=settings),
+        clients=clients,
         accounts=accounts,
         revoker=revoker,
         factory=factory,
@@ -1394,3 +1401,52 @@ class TestGrantRevokeStaysInsideTheAccount:
         assert collision.world.access_row(collision.taker).revoked_at is not None
         assert collision.world.refresh_row(collision.taker.refresh_token) is None
         collision.assert_moved_untouched()
+
+
+CIMD_URL = "https://agent.example/oauth/client.json"
+CIMD_REDIRECT = "https://agent.example/cb"
+
+
+def _cimd_source() -> CimdClientSource:
+    document = {"client_id": CIMD_URL, "client_name": "CIMD Agent", "redirect_uris": [CIMD_REDIRECT]}
+    response = CimdResponse(body=json.dumps(document).encode(), max_age=None)
+
+    def fetch(url: str) -> CimdResponse:
+        _ = url
+        return response
+
+    def resolve_host(host: str) -> Sequence[str]:
+        _ = host
+        return ["93.184.216.34"]
+
+    return CimdClientSource(cache=DictRedis(), fetch=fetch, resolve_host=resolve_host, enabled=True)
+
+
+@pytest.mark.usefixtures("client_auth_hits", "issuer_from_origin")
+class TestCimdClientEndToEnd:
+    @staticmethod
+    def test_cimd_client_logs_in_refreshes_and_revokes(sqlite_session_factory: sessionmaker[Session]) -> None:
+        world = _refresh_world(sqlite_session_factory, extra_sources=[_cimd_source()])
+        storage_id = cimd_storage_id(CIMD_URL)
+
+        view = world.authorize.describe_client(CIMD_URL, CIMD_REDIRECT)
+        code = _approve(world, client_id=CIMD_URL, redirect_uri=CIMD_REDIRECT)
+        login = world.login_handler(
+            _code_request(code, client_id=CIMD_URL, client_secret=None, redirect_uri=CIMD_REDIRECT)
+        )
+
+        assert view.display_name == "CIMD Agent"
+        assert world.access_row(login).client_id == storage_id
+        refreshed = world.handler(_refresh_request(login.refresh_token, client_id=CIMD_URL, client_secret=None))
+        assert world.access_row(refreshed).client_id == storage_id
+        assert refreshed.refresh_token not in (None, login.refresh_token)
+
+        revocation = OAuthRevocationService(clients=world.clients, grants=world.revoker)
+        revocation.revoke(
+            RevokeRequest(
+                client_id=CIMD_URL, client_secret=None, token=refreshed.payload["token"], source_ip="127.0.0.1"
+            )
+        )
+
+        assert world.access_row(refreshed).revoked_at is not None
+        assert world.refresh_row(refreshed.refresh_token) is None

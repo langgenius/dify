@@ -180,8 +180,9 @@ from services.network_access_group_service import NetworkAccessGroupService
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
 from services.oauth_authorize_service import OAuthAuthorizeService
+from services.oauth_cimd import CimdClientSource, fetch_client_metadata, resolve_host_addresses
 from services.oauth_client_registration import OAuthClientRegistrationService
-from services.oauth_clients import OAuthClientRegistry
+from services.oauth_clients import ClientSource, OAuthClientRegistry
 from services.oauth_device_adapters import (
     DifyConfigOAuthDeviceSettings,
     EnterpriseOAuthDeviceSSOGateway,
@@ -433,7 +434,17 @@ def _build_oauth_services(
         settings=DifyConfigOAuthDeviceSettings(),
     )
     client_repository = SQLAlchemyOAuthClientRepository(session_factory=database_client)
-    clients = OAuthClientRegistry(sources=[client_repository])
+    client_sources: list[ClientSource] = [client_repository]
+    if dify_config.ENABLE_OAUTH_CIMD:
+        client_sources.append(
+            CimdClientSource(
+                cache=redis,
+                fetch=fetch_client_metadata,
+                resolve_host=resolve_host_addresses,
+                enabled=True,
+            )
+        )
+    clients = OAuthClientRegistry(sources=client_sources)
     codes = RedisAuthorizationCodeRepository(redis)
     settings = DifyConfigOAuthTokenSettings()
     refresh = SQLAlchemyOAuthRefreshTokenRepository(session_factory=database_client)
