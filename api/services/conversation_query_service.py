@@ -51,7 +51,7 @@ class ConversationQueryService:
             scope=scope, invoke_from=invoke_from, last_id=last_id, limit=limit, pinned=pinned, sort_by=sort_by
         )
         # Legacy file reconstruction may query metadata. Keep that compatibility
-        # outside the repository transaction and reuse the model's shared helper.
+        # outside the repository transaction.
         return replace(
             page,
             data=tuple(
