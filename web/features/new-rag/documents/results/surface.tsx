@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { KnowledgeModelReadinessBanner } from '../../components/knowledge-model-readiness-banner'
-import { DocumentsEmpty, DocumentsList } from '../list'
+import { DocumentsEmpty, DocumentsList, DocumentsToolbar } from '../list'
 import {
   DocumentPermissionRecoveryBoundary,
   DocumentReadPermissionRecovery,
@@ -26,6 +26,7 @@ import {
   resultsAutoPaginationFactsAtom,
   retryDocumentDependenciesAtom,
 } from '../state/recovery'
+import { filterActiveAtom } from '../state/results'
 import { documentCanReadAtom } from '../state/runtime'
 import { DocumentUploadSurface } from '../upload/surface'
 
@@ -217,6 +218,7 @@ function DocumentCollectionState() {
   const { t: tCommon } = useTranslation(['common'])
   const canRead = useAtomValueRawSync(documentCanReadAtom)
   const documents = useAtomValueRawSync(documentsAtom)
+  const filterActive = useAtomValueRawSync(filterActiveAtom)
   const recovery = useAtomValueRawSync(documentCollectionFactsAtom)
   const refetchDocuments = useAtomValueRawSync(documentsQueryRefetchAtom)
   const retryFocusRequestedRef = useRef(false)
@@ -270,21 +272,35 @@ function DocumentCollectionState() {
         </Button>
       </div>
     )
-  return documents.length ? <DocumentsList /> : <DocumentsEmpty />
+  return documents.length || filterActive ? <DocumentsList /> : <DocumentsEmpty />
+}
+
+function DocumentSearchToolbar() {
+  const canRead = useAtomValueRawSync(documentCanReadAtom)
+  return canRead ? <DocumentsToolbar /> : null
 }
 
 export function DocumentResultsSurface() {
+  const { t } = useTranslation(['knowledgeSpace'])
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   return (
-    <DocumentPermissionRecoveryBoundary>
-      <DocumentUploadSurface>
-        <KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId={knowledgeSpaceId} />
-        <ResultsAutoPagination />
-        <DocumentQueryRecoveryNotice />
-        <DependencyRecoveryBoundary>
-          <DocumentCollectionState />
-        </DependencyRecoveryBoundary>
-      </DocumentUploadSurface>
-    </DocumentPermissionRecoveryBoundary>
+    <div
+      tabIndex={-1}
+      role="region"
+      aria-label={t(($) => $.documents)}
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto focus-visible:outline-2 focus-visible:outline-state-accent-solid"
+    >
+      <DocumentPermissionRecoveryBoundary>
+        <DocumentUploadSurface>
+          <KnowledgeModelReadinessBanner capability="index" knowledgeSpaceId={knowledgeSpaceId} />
+          <ResultsAutoPagination />
+          <DocumentQueryRecoveryNotice />
+          <DocumentSearchToolbar />
+          <DependencyRecoveryBoundary>
+            <DocumentCollectionState />
+          </DependencyRecoveryBoundary>
+        </DocumentUploadSurface>
+      </DocumentPermissionRecoveryBoundary>
+    </div>
   )
 }
