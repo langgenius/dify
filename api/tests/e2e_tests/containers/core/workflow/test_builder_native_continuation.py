@@ -2041,13 +2041,14 @@ def test_actual_child_app_permission_checked_before_decrypt(
                 setattr(app, attr.key, require_instance(inspect_orm(original), InstanceState).attrs[attr.key].value)
         app.id, app.maintainer = str(uuid4()), str(uuid4())
         original_workflow = session.get(Workflow, c.context.workflow_id)
-        workflow = Workflow(
-            **{
-                attr.key: require_instance(inspect_orm(original_workflow), InstanceState).attrs[attr.key].value
-                for attr in inspect(Workflow).column_attrs
-                if attr.key != "id"
-            }
-        )
+        workflow = Workflow()
+        for attr in inspect(Workflow).column_attrs:
+            if attr.key != "id":
+                setattr(
+                    workflow,
+                    attr.key,
+                    require_instance(inspect_orm(original_workflow), InstanceState).attrs[attr.key].value,
+                )
         workflow.id, workflow.app_id = str(uuid4()), app.id
         app.workflow_id = workflow.id
         session.add_all((app, workflow))

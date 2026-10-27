@@ -161,7 +161,7 @@ def test_native_draft_cache_receiver_deletes_exact_key_without_resolving_runtime
         enable_api=False,
         max_active_requests=0,
     )
-    workflow = Workflow(
+    workflow = Workflow.new(
         tenant_id=app.tenant_id,
         app_id=app.id,
         type="workflow",
@@ -192,6 +192,7 @@ def test_native_draft_cache_receiver_deletes_exact_key_without_resolving_runtime
         created_by="account-id",
         environment_variables=[],
         conversation_variables=[],
+        rag_pipeline_variables=[],
     )
     handler_module.handle(app, synced_draft_workflow=workflow)
     assert forbidden == [], "cache receiver attempted sensitive native runtime resolution during normal save"

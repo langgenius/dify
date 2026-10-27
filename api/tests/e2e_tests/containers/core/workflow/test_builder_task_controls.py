@@ -221,7 +221,7 @@ def task_world(task_postgres_engine: Engine, task_flask_app: Flask, monkeypatch:
         app = App(tenant_id=tenant_id, name="Task fence", mode=AppMode.WORKFLOW, enable_site=False, enable_api=False)
         sql.add(app)
         sql.flush()
-        workflow = Workflow(
+        workflow = Workflow.new(
             tenant_id=tenant_id,
             app_id=app.id,
             type="workflow",
@@ -231,6 +231,7 @@ def task_world(task_postgres_engine: Engine, task_flask_app: Flask, monkeypatch:
             created_by=account.id,
             environment_variables=[],
             conversation_variables=[],
+            rag_pipeline_variables=[],
         )
         sql.add(workflow)
         sql.flush()

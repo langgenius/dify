@@ -163,13 +163,14 @@ def _peer(
             for key, value in app_values.items():
                 setattr(app, key, value)
             app.id, app.tenant_id = str(uuid4()), actor.tenant_id
-            workflow = Workflow(
-                **{
-                    a.key: require_instance(inspect_orm(workflow), InstanceState).attrs[a.key].value
-                    for a in inspect(Workflow).column_attrs
-                    if a.key != "id"
-                }
-            )
+            workflow_values = {
+                a.key: require_instance(inspect_orm(workflow), InstanceState).attrs[a.key].value
+                for a in inspect(Workflow).column_attrs
+                if a.key != "id"
+            }
+            workflow = Workflow()
+            for key, value in workflow_values.items():
+                setattr(workflow, key, value)
             workflow.id, workflow.app_id, workflow.tenant_id = str(uuid4()), app.id, actor.tenant_id
             app.workflow_id = workflow.id
             session.add_all((app, workflow))

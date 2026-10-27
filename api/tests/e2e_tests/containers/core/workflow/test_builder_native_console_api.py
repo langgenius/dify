@@ -524,13 +524,10 @@ def test_actual_child_permission_revocation_blocks_root_public_receipt(
                 setattr(app, col.key, require_instance(inspect_orm(original), InstanceState).attrs[col.key].value)
         app.id, app.maintainer = str(uuid4()), str(uuid4())
         source = session.get(Workflow, c.context.workflow_id)
-        workflow = Workflow(
-            **{
-                col.key: require_instance(inspect_orm(source), InstanceState).attrs[col.key].value
-                for col in inspect(Workflow).column_attrs
-                if col.key != "id"
-            }
-        )
+        workflow = Workflow()
+        for col in inspect(Workflow).column_attrs:
+            if col.key != "id":
+                setattr(workflow, col.key, require_instance(inspect_orm(source), InstanceState).attrs[col.key].value)
         workflow.id, workflow.app_id = str(uuid4()), app.id
         app.workflow_id = workflow.id
         session.add_all((app, workflow))
@@ -894,13 +891,12 @@ def test_final_child_authority_refresh_precedes_decision_write(
                 setattr(child_app, col.key, require_instance(inspect_orm(original), InstanceState).attrs[col.key].value)
         child_app.id, child_app.maintainer = str(uuid4()), str(uuid4())
         source = session.get(Workflow, c.context.workflow_id)
-        child_workflow = Workflow(
-            **{
-                col.key: require_instance(inspect_orm(source), InstanceState).attrs[col.key].value
-                for col in inspect(Workflow).column_attrs
-                if col.key != "id"
-            }
-        )
+        child_workflow = Workflow()
+        for col in inspect(Workflow).column_attrs:
+            if col.key != "id":
+                setattr(
+                    child_workflow, col.key, require_instance(inspect_orm(source), InstanceState).attrs[col.key].value
+                )
         child_workflow.id, child_workflow.app_id = str(uuid4()), child_app.id
         child_app.workflow_id = child_workflow.id
         session.add_all((child_app, child_workflow))
