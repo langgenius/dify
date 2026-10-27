@@ -15,14 +15,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
 from models.account import Account
-from models.oauth import OAuthAccessToken, OAuthRefreshToken
+from models.oauth import OAuthAccessToken
 from repositories.oauth_refresh_token_repository import (
     REFRESH_TOKEN_PREFIX,
     LiveRefreshToken,
     delete_refresh_grants,
     insert_refresh_token,
     live_refresh_tokens,
-    refresh_grant_filter,
     refresh_token_grant,
     spend_refresh_token,
 )
@@ -90,28 +89,32 @@ def lock_account(session: Session, account_id: str) -> None:
     session.execute(select(Account.id).where(Account.id == account_id).with_for_update())
 
 
-def grant_account_id(session: Session, grant: GrantKey) -> str | None:
-    """The account behind a grant, or None for an external-SSO grant. Read without a lock: it never changes."""
-    account_id = session.scalar(
-        select(OAuthAccessToken.account_id)
-        .where(_grant_filter(grant), OAuthAccessToken.account_id.is_not(None))
-        .limit(1)
-    )
-    if account_id is not None:
-        return account_id
-    return session.scalar(select(OAuthRefreshToken.account_id).where(refresh_grant_filter(grant)).limit(1))
+def _owned_by(account_id: str | None) -> ColumnElement[bool]:
+    if account_id is None:
+        return OAuthAccessToken.account_id.is_(None)
+    return OAuthAccessToken.account_id == account_id
 
 
-def find_live_access_grant(session: Session, token_hash: str) -> GrantKey | None:
+@dataclass(frozen=True)
+class OwnedGrant:
+    grant: GrantKey
+    # None for an external-SSO grant.
+    account_id: str | None
+
+
+def find_live_access_grant(session: Session, token_hash: str) -> OwnedGrant | None:
     row = session.execute(
-        select(*_GRANT_COLUMNS).where(
+        select(OAuthAccessToken.account_id, *_GRANT_COLUMNS).where(
             OAuthAccessToken.token_hash == token_hash,
             OAuthAccessToken.revoked_at.is_(None),
         )
     ).first()
     if row is None:
         return None
-    return _grant_of(row)
+    grant = _grant_of(row)
+    if grant is None:
+        return None
+    return OwnedGrant(grant=grant, account_id=row.account_id)
 
 
 def _revoke_access_rows(session: Session, rows_filter: ColumnElement[bool], *, now: datetime) -> list[str]:
@@ -134,13 +137,16 @@ def _revoke_access_rows(session: Session, rows_filter: ColumnElement[bool], *, n
     return [row.token_hash for row in rows]
 
 
-def revoke_grant_rows(session: Session, grant: GrantKey, *, now: datetime) -> list[str]:
-    """Revoke the grant's access rows and delete its refresh tokens in the caller's transaction.
+def revoke_grant_rows(session: Session, grant: GrantKey, *, account_id: str | None, now: datetime) -> list[str]:
+    """Revoke the account's access rows of the grant and delete its refresh tokens in the caller's transaction.
 
-    Returns the hashes to drop from the bearer cache.
+    ``account_id`` is None for an external-SSO grant, which has no refresh tokens.
+    Scoped to the account because two accounts share a grant key when one reuses
+    the other's old email. Returns the hashes to drop from the bearer cache.
     """
-    hashes = _revoke_access_rows(session, _grant_filter(grant), now=now)
-    delete_refresh_grants(session, (grant,))
+    hashes = _revoke_access_rows(session, and_(_grant_filter(grant), _owned_by(account_id)), now=now)
+    if account_id is not None:
+        delete_refresh_grants(session, (grant,), account_id=account_id)
     return hashes
 
 
@@ -159,11 +165,11 @@ def revoke_session_grant(session: Session, *, account_id: str, session_id: str, 
         grant = _grant_of(access)
         if grant is None:
             return _revoke_access_rows(session, OAuthAccessToken.id == session_id, now=now)
-        return revoke_grant_rows(session, grant, now=now)
+        return revoke_grant_rows(session, grant, account_id=account_id, now=now)
     grant = refresh_token_grant(session, account_id=account_id, token_id=session_id)
     if grant is None:
         return None
-    return revoke_grant_rows(session, grant, now=now)
+    return revoke_grant_rows(session, grant, account_id=account_id, now=now)
 
 
 def _write_refresh(
@@ -413,7 +419,8 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             # Refresh rows go last, in lock order. The evicted grants' refresh tokens
             # are deleted in this transaction, so a refresh waiting on the account
             # lock can never revive them; rollback_rotation cannot bring them back.
-            delete_refresh_grants(session, eviction.grants)
+            if token.account_id is not None:
+                delete_refresh_grants(session, eviction.grants, account_id=token.account_id)
             if token.refresh is not None:
                 _write_refresh(session, token, token.refresh, now=now)
             session.commit()

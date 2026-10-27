@@ -682,8 +682,8 @@ def test_refresh_delete_failure_rolls_back_the_login(
     first = _issue_sessions(issuer, ["a"])[0]
     _issue_refresh(sqlite_session_factory, _grant("a"))
 
-    def fail(session: Session, grants: Collection[GrantKey]) -> None:
-        _ = session, grants
+    def fail(session: Session, grants: Collection[GrantKey], *, account_id: str) -> None:
+        _ = session, grants, account_id
         raise ConnectionError("database unavailable")
 
     monkeypatch.setattr(device_token_repository_module, "delete_refresh_grants", fail)

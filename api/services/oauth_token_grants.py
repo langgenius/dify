@@ -244,13 +244,13 @@ class RefreshTokenGrantHandler:
                 refresh=RefreshTokenIssue(lifetime=self._settings.refresh_token_lifetime, presented=presented),
             )
         except RefreshTokenReusedError:
-            self._revoke.revoke_grant(record.grant_key)
+            self._revoke.revoke_grant(record.grant_key, account_id=record.account_id)
             raise TokenEndpointError(TokenErrorCode.INVALID_GRANT) from None
         except RefreshTokenRejectedError:
             raise TokenEndpointError(TokenErrorCode.INVALID_GRANT) from None
 
     def _end_dead_grant(self, record: RefreshTokenRecord) -> NoReturn:
-        self._revoke.revoke_grant(record.grant_key)
+        self._revoke.revoke_grant(record.grant_key, account_id=record.account_id)
         raise TokenEndpointError(TokenErrorCode.INVALID_GRANT)
 
     def _find(self, client: ResolvedClient, request: TokenRequest) -> RefreshTokenRecord:

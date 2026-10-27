@@ -14,8 +14,8 @@ from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import sha256_hex
 from repositories.oauth_device_token_repository import (
+    OwnedGrant,
     find_live_access_grant,
-    grant_account_id,
     lock_account,
     revoke_grant_rows,
 )
@@ -38,14 +38,14 @@ class GrantRevoker:
         self._redis = redis
         self._refresh = refresh
 
-    def revoke_grant(self, grant: GrantKey) -> None:
+    def revoke_grant(self, grant: GrantKey, *, account_id: str | None) -> None:
+        """Revoke the grant ``account_id`` holds; None for an external-SSO grant."""
         with self._session_factory() as session, session.begin():
             # The account lock orders this after any refresh of the grant already
             # under way, and makes later ones see the refresh tokens gone.
-            account_id = grant_account_id(session, grant)
             if account_id is not None:
                 lock_account(session, account_id)
-            hashes = revoke_grant_rows(session, grant, now=datetime.now(UTC))
+            hashes = revoke_grant_rows(session, grant, account_id=account_id, now=datetime.now(UTC))
         if hashes:
             self._redis.delete(*(TOKEN_CACHE_KEY_FMT.format(hash=token_hash) for token_hash in hashes))
 
@@ -54,24 +54,24 @@ class GrantRevoker:
 
         An unknown token, or one issued to another client, is ignored (RFC 7009 §2.1, §2.2).
         """
-        grant = self._grant_for(token)
-        if grant is None:
+        owned = self._grant_for(token)
+        if owned is None:
             return
-        if grant.client_id != client_id:
+        if owned.grant.client_id != client_id:
             return
-        self.revoke_grant(grant)
+        self.revoke_grant(owned.grant, account_id=owned.account_id)
 
-    def _grant_for(self, token: str) -> GrantKey | None:
+    def _grant_for(self, token: str) -> OwnedGrant | None:
         with self._session_factory() as session:
-            grant = find_live_access_grant(session, sha256_hex(token))
-        if grant is not None:
-            return grant
+            owned = find_live_access_grant(session, sha256_hex(token))
+        if owned is not None:
+            return owned
         # Any refresh token of the grant ends it, rotated or not: refresh
         # grants are per login, so an old one names no other session.
         record = self._refresh.find(token)
         if record is None:
             return None
-        return record.grant_key
+        return OwnedGrant(grant=record.grant_key, account_id=record.account_id)
 
 
 class TokenRevoker(Protocol):

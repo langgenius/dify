@@ -181,7 +181,7 @@ def test_revoke_grant_leaves_other_grants_alone(harness: _Harness) -> None:
     harness.issue_refresh(_grant(device_label="QwenWork aaa"))
     harness.issue_refresh(_grant(device_label="QwenWork bbb"))
 
-    harness.revoker.revoke_grant(_grant(device_label="QwenWork aaa"))
+    harness.revoker.revoke_grant(_grant(device_label="QwenWork aaa"), account_id="account-1")
 
     assert harness.access_row(revoked).revoked_at is not None
     assert harness.access_row(kept).revoked_at is None
@@ -204,7 +204,7 @@ def test_revoke_grant_stops_a_later_rollback_from_restoring_rows(harness: _Harne
     first = harness.login()
     second = harness.login()
 
-    harness.revoker.revoke_grant(_grant())
+    harness.revoker.revoke_grant(_grant(), account_id="account-1")
 
     assert harness.tokens.rollback_rotation(second.rotation) is False
     assert harness.access_row(first).revoked_at is not None
@@ -229,7 +229,7 @@ def test_revoke_of_a_refresh_only_grant_still_locks_the_account(harness: _Harnes
     harness.issue_refresh(_grant())
 
     with record_locks(harness.factory) as log:
-        harness.revoker.revoke_grant(_grant())
+        harness.revoker.revoke_grant(_grant(), account_id="account-1")
 
     assert log.tables[0] == "accounts"
     assert harness.refresh_count(_grant()) == 0
@@ -244,7 +244,7 @@ def test_external_sso_grant_revoke_takes_no_account_lock(harness: _Harness) -> N
     )
 
     with record_locks(harness.factory) as log:
-        harness.revoker.revoke_grant(grant)
+        harness.revoker.revoke_grant(grant, account_id=None)
 
     assert "accounts" not in log.tables
     assert harness.access_row(external).revoked_at is not None

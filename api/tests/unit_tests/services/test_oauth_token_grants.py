@@ -1,7 +1,7 @@
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
-from enum import StrEnum
+from enum import Enum, StrEnum
 from http import HTTPStatus
 from typing import override
 from urllib.parse import parse_qs, urlsplit
@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+import services.oauth_token_grants as token_grants_module
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import OAuthAccessTokenResolver, sha256_hex
 from machinery.context import AccountRequestContext, RequestContext
@@ -234,9 +235,10 @@ def _approve(
     *,
     client_id: str = CONFIDENTIAL_ID,
     redirect_uri: str = CONFIDENTIAL_REDIRECT,
+    context: RequestContext | None = None,
 ) -> str:
     url = world.authorize.approve(
-        AUTH_CONTEXT,
+        context or AUTH_CONTEXT,
         AuthorizeRequest(
             client_id=client_id,
             redirect_uri=redirect_uri,
@@ -629,8 +631,8 @@ class _RefreshWorld:
     account_access: AccountAccessService
     token_cache: _RecordingTokenCache
 
-    def login(self) -> TokenGrantResult:
-        return self.login_handler(_code_request(_approve(self)))
+    def login(self, *, context: RequestContext | None = None) -> TokenGrantResult:
+        return self.login_handler(_code_request(_approve(self, context=context)))
 
     def refresh(self, token: str | None, *, client_id: str = CONFIDENTIAL_ID) -> TokenGrantResult:
         return self.handler(_refresh_request(token, client_id=client_id))
@@ -971,7 +973,7 @@ class TestRefreshTokenGrantCases:
 
         def revoke_concurrently(record: RefreshTokenRecord) -> None:
             revoked.append(record)
-            world.revoker.revoke_grant(record.grant_key)
+            world.revoker.revoke_grant(record.grant_key, account_id=record.account_id)
 
         world = _refresh_world(sqlite_session_factory, after_find=revoke_concurrently)
         login = world.login()
@@ -1019,15 +1021,6 @@ class TestRefreshTokenGrantCases:
         assert LockLog(tables=log.tables[second:]).follows_lock_order()
 
 
-class _SessionRevokePath(StrEnum):
-    OPENAPI_SELF = "openapi-self"
-    OPENAPI_BY_ID = "openapi-by-id"
-    CONSOLE = "console"
-
-    def revoke(self, world: _RefreshWorld, session_id: str) -> None:
-        _REVOKERS[self](world, session_id)
-
-
 def _revoke_openapi_self(world: _RefreshWorld, session_id: str) -> None:
     world.account_access.revoke_current_session(world.account_context(session_id))
 
@@ -1040,11 +1033,21 @@ def _revoke_in_console(world: _RefreshWorld, session_id: str) -> None:
     assert world.console_sessions.revoke_account_session(account_id=ACCOUNT_ID, token_id=session_id) is True
 
 
-_REVOKERS: Mapping[_SessionRevokePath, Callable[[_RefreshWorld, str], None]] = {
-    _SessionRevokePath.OPENAPI_SELF: _revoke_openapi_self,
-    _SessionRevokePath.OPENAPI_BY_ID: _revoke_openapi_by_id,
-    _SessionRevokePath.CONSOLE: _revoke_in_console,
-}
+class _SessionRevokePath(Enum):
+    OPENAPI_SELF = ("openapi-self", _revoke_openapi_self)
+    OPENAPI_BY_ID = ("openapi-by-id", _revoke_openapi_by_id)
+    CONSOLE = ("console", _revoke_in_console)
+
+    def __init__(self, label: str, revoker: Callable[[_RefreshWorld, str], None]) -> None:
+        self.label = label
+        self.revoker = revoker
+
+    def __str__(self) -> str:
+        return self.label
+
+    def revoke(self, world: _RefreshWorld, session_id: str) -> None:
+        self.revoker(world, session_id)
+
 
 # A session whose access token is gone can no longer call /account/sessions/self.
 _REVOKE_BY_ID_PATHS = (_SessionRevokePath.OPENAPI_BY_ID, _SessionRevokePath.CONSOLE)
@@ -1147,3 +1150,89 @@ class TestSessionPathsKnowRefreshGrants:
 
         assert refresh_world.openapi_session_ids() == [rotated.payload["token_id"]]
         assert refresh_world.console_session_ids() == [rotated.payload["token_id"]]
+
+
+OTHER_ACCOUNT_ID = "account-2"
+OTHER_CONTEXT = RequestContext(
+    request_id="r2", trace_id=None, account_id=OTHER_ACCOUNT_ID, active_workspace_id=WORKSPACE_ID
+)
+
+
+@dataclass
+class _Collision:
+    """Two accounts holding one grant key: the first moved off an email the second then took."""
+
+    world: _RefreshWorld
+    moved: TokenGrantResult
+    taker: TokenGrantResult
+
+    def assert_taker_untouched(self) -> None:
+        assert self.world.access_row(self.taker).revoked_at is None
+        assert self.world.refresh_row(self.taker.refresh_token) is not None
+
+    def assert_moved_untouched(self) -> None:
+        assert self.world.refresh_row(self.moved.refresh_token) is not None
+
+
+def _fixed_device_label(client_name: str) -> str:
+    return f"{client_name} (fixed)"
+
+
+@pytest.fixture
+def collision(refresh_world: _RefreshWorld, monkeypatch: pytest.MonkeyPatch) -> _Collision:
+    monkeypatch.setattr(token_grants_module, "default_device_label", _fixed_device_label)
+    moved = refresh_world.login()
+    refresh_world.accounts.accounts[ACCOUNT_ID] = replace(account_snapshot(), email="moved@example.com")
+    refresh_world.accounts.accounts[OTHER_ACCOUNT_ID] = account_snapshot(OTHER_ACCOUNT_ID)
+    taker = refresh_world.login(context=OTHER_CONTEXT)
+    assert refresh_world.access_row(moved).device_label == refresh_world.access_row(taker).device_label
+    return _Collision(world=refresh_world, moved=moved, taker=taker)
+
+
+@pytest.mark.usefixtures("client_auth_hits", "issuer_from_origin")
+class TestGrantRevokeStaysInsideTheAccount:
+    @staticmethod
+    @pytest.mark.parametrize("path", _REVOKE_BY_ID_PATHS)
+    def test_session_revoke_by_an_old_id_spares_the_other_account(
+        collision: _Collision, path: _SessionRevokePath
+    ) -> None:
+        path.revoke(collision.world, collision.moved.payload["token_id"])
+
+        assert collision.world.refresh_row(collision.moved.refresh_token) is None
+        collision.assert_taker_untouched()
+
+    @staticmethod
+    def test_email_change_guard_spares_the_other_account(collision: _Collision) -> None:
+        error = collision.world.refresh_error(collision.moved.refresh_token)
+
+        assert error.code is TokenErrorCode.INVALID_GRANT
+        assert collision.world.refresh_row(collision.moved.refresh_token) is None
+        collision.assert_taker_untouched()
+
+    @staticmethod
+    def test_reuse_after_the_grace_spares_the_other_account(collision: _Collision) -> None:
+        world = collision.world
+        rotated = world.refresh(collision.taker.refresh_token)
+        world.set_refresh(collision.taker.refresh_token, rotated_at=datetime.now(UTC) - timedelta(minutes=31))
+
+        assert world.refresh_error(collision.taker.refresh_token).code is TokenErrorCode.INVALID_GRANT
+
+        assert world.refresh_row(rotated.refresh_token) is None
+        collision.assert_moved_untouched()
+
+    @staticmethod
+    def test_rfc7009_revoke_of_a_refresh_token_spares_the_other_account(collision: _Collision) -> None:
+        assert collision.moved.refresh_token is not None
+
+        collision.world.revoker.revoke_by_token(collision.moved.refresh_token, client_id=CONFIDENTIAL_ID)
+
+        assert collision.world.refresh_row(collision.moved.refresh_token) is None
+        collision.assert_taker_untouched()
+
+    @staticmethod
+    def test_rfc7009_revoke_of_an_access_token_spares_the_other_account(collision: _Collision) -> None:
+        collision.world.revoker.revoke_by_token(collision.taker.payload["token"], client_id=CONFIDENTIAL_ID)
+
+        assert collision.world.access_row(collision.taker).revoked_at is not None
+        assert collision.world.refresh_row(collision.taker.refresh_token) is None
+        collision.assert_moved_untouched()

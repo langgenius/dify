@@ -66,7 +66,7 @@ _GRANT_COLUMNS = (
 )
 
 
-def refresh_grant_filter(grant: GrantKey) -> ColumnElement[bool]:
+def _refresh_grant_filter(grant: GrantKey) -> ColumnElement[bool]:
     return and_(
         OAuthRefreshToken.subject_email == grant.subject_email,
         OAuthRefreshToken.subject_issuer == grant.subject_issuer,
@@ -132,11 +132,20 @@ def within_replay_grace(*, rotated_at: datetime, now: datetime, grace: timedelta
     return ensure_naive_utc(now) - ensure_naive_utc(rotated_at) <= grace
 
 
-def delete_refresh_grants(session: Session, grants: Collection[GrantKey]) -> None:
-    """Delete every refresh token of these grants inside the caller's transaction."""
+def delete_refresh_grants(session: Session, grants: Collection[GrantKey], *, account_id: str) -> None:
+    """Delete every refresh token the account holds for these grants, inside the caller's transaction.
+
+    Scoped to the account: two accounts share a grant key when one reuses the
+    other's old email.
+    """
     if not grants:
         return
-    session.execute(delete(OAuthRefreshToken).where(or_(*(refresh_grant_filter(grant) for grant in grants))))
+    session.execute(
+        delete(OAuthRefreshToken).where(
+            OAuthRefreshToken.account_id == account_id,
+            or_(*(_refresh_grant_filter(grant) for grant in grants)),
+        )
+    )
 
 
 def live_refresh_tokens(session: Session, *, account_id: str, now: datetime) -> dict[GrantKey, LiveRefreshToken]:
@@ -150,13 +159,12 @@ def live_refresh_tokens(session: Session, *, account_id: str, now: datetime) -> 
         )
         .order_by(OAuthRefreshToken.created_at.asc(), OAuthRefreshToken.id.asc())
     )
-    # Ascending order, so each grant keeps its newest token.
-    return {
-        _grant_of(row): LiveRefreshToken(
-            id=row.id, grant=_grant_of(row), created_at=row.created_at, expires_at=row.expires_at
-        )
+    tokens = (
+        LiveRefreshToken(id=row.id, grant=_grant_of(row), created_at=row.created_at, expires_at=row.expires_at)
         for row in rows
-    }
+    )
+    # Ascending order, so each grant keeps its newest token.
+    return {token.grant: token for token in tokens}
 
 
 def refresh_token_grant(session: Session, *, account_id: str, token_id: str) -> GrantKey | None:
