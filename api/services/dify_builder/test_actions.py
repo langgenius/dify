@@ -186,39 +186,48 @@ class BuilderTestActions:
                 or (scope.expires_at.replace(tzinfo=UTC) if scope.expires_at.tzinfo is None else scope.expires_at)
                 <= datetime.now(UTC)
                 or canonical_digest(request.context) != request.context_digest
-                or len(request.observations) != 1
             ):
                 return False
-            record = request.observations[0]
-            if (
-                not isinstance(record, dict)
-                or not record.get("native_command_key")
-                or not record.get("body_digest")
-                or record.get("admission_launched") is not None
-            ):
-                return False
-            try:
-                receipt = NativeTestPublicReceipt.model_validate(record.get("receipt"))
-            except ValidationError:
-                return False
-            if (receipt.request_id, receipt.generation, receipt.version, receipt.status, receipt.native_run_id) != (
-                request_id,
-                0,
-                1,
-                "prepared",
-                None,
-            ):
-                return False
-            if (
-                receipt.wait_reason,
-                receipt.native_status,
-                receipt.pending,
-                receipt.outcome,
-                receipt.evidence_refs,
-                receipt.cancellation,
-                receipt.can_resume,
-            ) != (None, None, (), None, (), None, False):
-                return False
+            # Ordinary confirmed Run admission has no command receipt yet; its
+            # first context ACK and root state are written atomically by admission initialization.
+            ordinary_initial = (
+                request.observations == []
+                and request.context.get("profile", {}).get("profile_id") == "builder-agent-confirmed-v1"
+                and request.context.get("revision_basis") == "confirmed-canvas-v1"
+            )
+            if not ordinary_initial:
+                if len(request.observations) != 1:
+                    return False
+                record = request.observations[0]
+                if (
+                    not isinstance(record, dict)
+                    or not record.get("native_command_key")
+                    or not record.get("body_digest")
+                    or record.get("admission_launched") is not None
+                ):
+                    return False
+                try:
+                    receipt = NativeTestPublicReceipt.model_validate(record.get("receipt"))
+                except ValidationError:
+                    return False
+                if (receipt.request_id, receipt.generation, receipt.version, receipt.status, receipt.native_run_id) != (
+                    request_id,
+                    0,
+                    1,
+                    "prepared",
+                    None,
+                ):
+                    return False
+                if (
+                    receipt.wait_reason,
+                    receipt.native_status,
+                    receipt.pending,
+                    receipt.outcome,
+                    receipt.evidence_refs,
+                    receipt.cancellation,
+                    receipt.can_resume,
+                ) != (None, None, (), None, (), None, False):
+                    return False
             invocations = list(
                 sql.scalars(select(NativeTestInvocation).where(NativeTestInvocation.request_id == request_id))
             )

@@ -953,3 +953,167 @@ class AgentWaitArguments(TypedDict, closed=True):
     agent_generation: int
     checkpoint: JsonValue
     backend_wait_event_id: str
+
+
+def test_actual_confirmed_admission_stream_defers_before_context_ack(
+    association_case: AgentAssociationCase,
+    native_owner: NativeOwner,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Observe the real ordinary admission during storage readback, before SQL ACK."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import text
+
+    from extensions.ext_storage import storage
+    from models.dify_builder import DifyBuilderSession
+    from models.dify_builder_native_tests import (
+        NativeEffectOperation,
+        NativeInvocationState,
+        NativeTestInvocation,
+        NativeTestScope,
+    )
+    from models.workflow import WorkflowRun
+    from services.dify_builder.native_testing.agent_operations import admit_confirmed_agent_execution
+    from services.dify_builder.native_testing.api_service import NativeTestApiService
+    from services.dify_builder.test_actions import BuilderTestActions
+
+    factory, actor, _app, _workflow, session_id, test_input_id = native_owner
+    assert association_case.workspace.pinned_snapshot_id
+    with factory() as sql:
+        version = require_instance(sql.get(DifyBuilderSession, session_id), DifyBuilderSession).version
+    api = NativeTestApiService(
+        session_factory=factory,
+        actor=actor,
+        resolver=None,
+        admission=None,
+        resolution=None,
+        runtime=None,
+        disclosure=None,
+    )
+    reader = BuilderTestActions(factory, lambda **_: pytest.fail("observer dispatched"))
+    load = storage.load
+    observed = []
+
+    def readback(filename: str, /, *, stream: bool = False) -> bytes | Generator[bytes]:
+        value = load(filename, stream=stream)
+        if not filename.startswith("builder-native/"):
+            return value
+        with factory() as sql:
+            request = sql.scalar(
+                select(DifyBuilderExecutionRequest)
+                .where(DifyBuilderExecutionRequest.session_id == session_id)
+                .order_by(DifyBuilderExecutionRequest.created_at.desc())
+                .limit(1)
+            )
+            request = require_instance(request, DifyBuilderExecutionRequest)
+            request_id = request.id
+            assert request.observations == []
+            original_context = request.context
+            original_digest = request.context_digest
+        assert reader.observation_initializing(actor=actor, session_id=session_id, test_input_id=test_input_id)
+        with pytest.raises(BuilderExecutionPolicyError, match="native_state_unavailable"):
+            api.get(actor=actor, session_id=session_id, request_id=request_id)
+        for boundary in (
+            "profile",
+            "revision",
+            "owner",
+            "cancelled",
+            "expired",
+            "generation",
+            "inactive",
+            "binding",
+            "malformed_observations",
+        ):
+            with factory.begin() as sql:
+                request = require_instance(
+                    sql.get(DifyBuilderExecutionRequest, request_id), DifyBuilderExecutionRequest
+                )
+                scope = require_instance(sql.get(NativeTestScope, request_id), NativeTestScope)
+                invocation = require_instance(
+                    sql.scalar(select(NativeTestInvocation).where(NativeTestInvocation.request_id == request_id)),
+                    NativeTestInvocation,
+                )
+                expiry = scope.expires_at
+                if boundary == "profile":
+                    request.context = {**original_context, "profile": {"profile_id": "unrecognized"}}
+                    request.context_digest = canonical_digest(request.context)
+                elif boundary == "revision":
+                    request.context = {**original_context, "revision_basis": "unrecognized"}
+                    request.context_digest = canonical_digest(request.context)
+                elif boundary == "owner":
+                    request.actor_id = str(uuid4())
+                elif boundary == "cancelled":
+                    scope.cancelled = True
+                elif boundary == "expired":
+                    scope.expires_at = datetime(2000, 1, 1, tzinfo=UTC)
+                elif boundary == "generation":
+                    scope.generation = 1
+                elif boundary == "inactive":
+                    invocation.active = False
+                elif boundary == "binding":
+                    invocation.bindings = {"unexpected": {}}
+                else:
+                    sql.execute(
+                        text(
+                            "UPDATE dify_builder_execution_requests "
+                            "SET observations = CAST(:value AS json) WHERE id=:id"
+                        ),
+                        {"value": "{}", "id": request_id},
+                    )
+            try:
+                assert not reader.observation_initializing(
+                    actor=actor, session_id=session_id, test_input_id=test_input_id
+                ), boundary
+            finally:
+                with factory.begin() as sql:
+                    request = require_instance(
+                        sql.get(DifyBuilderExecutionRequest, request_id), DifyBuilderExecutionRequest
+                    )
+                    request.context, request.context_digest, request.actor_id = (
+                        original_context,
+                        original_digest,
+                        actor.account_id,
+                    )
+                    request.observations = []
+                    scope = require_instance(sql.get(NativeTestScope, request_id), NativeTestScope)
+                    scope.cancelled, scope.expires_at, scope.generation = False, expiry, 0
+                    invocation = require_instance(
+                        sql.scalar(select(NativeTestInvocation).where(NativeTestInvocation.request_id == request_id)),
+                        NativeTestInvocation,
+                    )
+                    invocation.active = True
+                    invocation.bindings = {}
+        observed.append(request_id)
+        return value
+
+    monkeypatch.setattr(storage, "load", readback)
+    context = admit_confirmed_agent_execution(
+        actor=actor,
+        session_id=session_id,
+        test_input_id=test_input_id,
+        expected_version=version,
+        native_run_id=str(uuid4()),
+        idempotency_key="startup-observation",
+        limits={"calls": 4, "dispatches": 4, "cost_units": 4},
+    )
+    assert observed == [context.ref.request_id]
+    assert not reader.observation_initializing(actor=actor, session_id=session_id, test_input_id=test_input_id)
+    receipt = api.get(actor=actor, session_id=session_id, request_id=context.ref.request_id)
+    assert (receipt.status, receipt.generation, receipt.native_run_id) == ("prepared", 0, None)
+    with factory.begin() as sql:
+        root = sql.scalar(
+            select(NativeInvocationState).where(NativeInvocationState.request_id == context.ref.request_id)
+        )
+        sql.delete(require_instance(root, NativeInvocationState))
+    assert not reader.observation_initializing(actor=actor, session_id=session_id, test_input_id=test_input_id)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_state_unavailable"):
+        api.get(actor=actor, session_id=session_id, request_id=context.ref.request_id)
+    with factory() as sql:
+        assert sql.scalar(select(WorkflowRun.id).where(WorkflowRun.id == context.native_run_id)) is None
+        assert (
+            sql.scalar(
+                select(NativeEffectOperation.id).where(NativeEffectOperation.request_id == context.ref.request_id)
+            )
+            is None
+        )
