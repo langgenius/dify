@@ -1303,6 +1303,44 @@ def test_export_bundles_the_pinned_workflow_and_its_tool_definition(
             assert yaml.safe_load(nested.read("app.yaml"))["app"]["name"] == "Summarizer"
 
 
+@pytest.mark.parametrize(
+    ("maintained_by_caller", "allowed", "bundled"),
+    [(False, False, False), (False, True, True), (True, False, True)],
+    ids=["denied", "allowed", "maintainer"],
+)
+def test_export_bundles_only_workflows_the_caller_may_export(
+    app_services: AppServices,
+    workspaces: Workspaces,
+    sqlite_session_factory: sessionmaker[Session],
+    rbac_domain: RBACDomain,
+    config_overrides: Callable[..., None],
+    maintained_by_caller: bool,
+    allowed: bool,
+    bundled: bool,
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    rbac_domain.transport.response = {"allowed": allowed}
+    if maintained_by_caller:
+        with sqlite_session_factory.begin() as session:
+            tool_app = session.get(App, workspaces.tool_app_id)
+            assert tool_app is not None
+            tool_app.maintainer = workspaces.source.account_id
+
+    exported = app_services.console.export(workspaces.source, workspaces.caller_app_id, AppExportOptions())
+
+    assert not isinstance(exported, str)
+    with exported, ZipFile(exported.archive) as archive:
+        manifest = yaml.safe_load(archive.read("manifest.yaml"))
+        dsl = yaml.safe_load(archive.read("app.yaml"))
+    assert [tool["provider_id"] for tool in manifest.get("workflow_tools", [])] == (
+        [workspaces.provider_id] if bundled else []
+    )
+    # A workflow that is not bundled stays a plain reference, as exports were before packages carried workflows.
+    assert dsl["workflow"]["graph"]["nodes"][0]["data"]["provider_id"] == workspaces.provider_id
+    checked_apps = [request.json["resource_id"] for request in rbac_domain.transport.requests if request.json]
+    assert checked_apps == ([] if maintained_by_caller else [workspaces.tool_app_id])
+
+
 def test_import_into_another_workspace_recreates_the_called_workflow_as_a_tool(
     app_services: AppServices, workspaces: Workspaces, sqlite_session_factory: sessionmaker[Session]
 ) -> None:

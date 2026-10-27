@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.rbac import RBACPermission
+from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
 from events.app_event import app_was_updated
 from graphon.enums import BuiltinNodeTypes
@@ -24,7 +24,7 @@ from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account
 from models.agent import AgentIconType
-from models.model import AppMode
+from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from repositories.app.console_repository import ConsoleAppRepository, console_app_actor, require_console_app
 from repositories.app.response import app_record
@@ -514,6 +514,21 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
             include_secret=options.include_secret,
             workflow_id=options.workflow_id,
             preserve_agent_bindings=options.preserve_agent_bindings,
+            may_bundle=lambda called_app: self._may_export_app(context, called_app),
+        )
+
+    @staticmethod
+    def _may_export_app(context: RequestContext, app: App) -> bool:
+        """Apply the export endpoint's App check to a workflow the exported App calls."""
+        # Without RBAC, the workspace role the endpoint admitted covers every App in the workspace.
+        if not dify_config.RBAC_ENABLED or app.maintainer == context.account_id:
+            return True
+        return rbac_service.RBACService.CheckAccess.check(
+            context.active_workspace_id,
+            context.account_id,
+            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+            resource_type=RBACResourceScope.APP,
+            resource_id=app.id,
         )
 
     @override

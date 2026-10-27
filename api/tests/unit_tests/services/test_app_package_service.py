@@ -52,6 +52,11 @@ from tests.helpers.unit.model_factories import make_account, make_app, make_tena
 """Workflow packages restore node-owned Agents and assets across workspaces."""
 
 
+def _bundle_any_app(app: App) -> bool:
+    del app
+    return True
+
+
 class _MemoryStorage:
     def __init__(self) -> None:
         self.files: dict[str, bytes] = {}
@@ -319,7 +324,9 @@ def _node_data(data: dict[str, object], node_id: str = "node-3") -> dict[str, ob
 def _roster_export(session: Session, storage: _MemoryStorage) -> bytes:
     app = _source(session, storage)
     _add_roster_node(session, app)
-    with AppPackageService().export_app(app_model=app, preserve_agent_bindings=True) as exported:
+    with AppPackageService().export_app(
+        may_bundle=_bundle_any_app, app_model=app, preserve_agent_bindings=True
+    ) as exported:
         return exported.archive.read()
 
 
@@ -355,7 +362,9 @@ class TestWorkflowPackageServiceCases:
         published: bool,
     ) -> None:
         app = _source(sqlite_session, storage, mode=mode, published=published)
-        with AppPackageService().export_app(app_model=app, workflow_id="workflow-1" if published else None) as exported:
+        with AppPackageService().export_app(
+            may_bundle=_bundle_any_app, app_model=app, workflow_id="workflow-1" if published else None
+        ) as exported:
             content = exported.archive.read()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             manifest = yaml.safe_load(archive.read("manifest.yaml"))
@@ -441,7 +450,7 @@ class TestWorkflowPackageServiceCases:
         row.tenant_id = "tenant-elsewhere"
         sqlite_session.commit()
         with pytest.raises(RosterAgentPackageExportFailedError, match="payload is unavailable"):
-            AppPackageService().export_app(app_model=app)
+            AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app)
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -453,7 +462,7 @@ class TestWorkflowPackageServiceCases:
         mutation: str,
     ) -> None:
         app = _source(sqlite_session, storage)
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
 
         def mutate(manifest: AppPackageManifest, data: dict[str, object], members: dict[str, bytes]) -> None:
@@ -485,7 +494,7 @@ class TestWorkflowPackageServiceCases:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         app = _source(sqlite_session, storage)
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
 
         def mutate(manifest: AppPackageManifest, data: dict[str, object], members: dict[str, bytes]) -> None:
@@ -519,7 +528,7 @@ class TestWorkflowPackageServiceCases:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         app = _source(sqlite_session, storage)
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
         monkeypatch.setattr(AppDslService, "_load_app_for_overwrite", Mock(side_effect=NoPermissionError("Denied")))
         with pytest.raises(NoPermissionError):
@@ -533,7 +542,7 @@ class TestWorkflowPackageServiceCases:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         app = _source(sqlite_session, storage)
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
         original = _import(sqlite_session, content)
         assert original.status == ImportStatus.COMPLETED, original.error
@@ -603,7 +612,7 @@ class TestWorkflowPackageServiceCases:
 
         monkeypatch.setattr(storage, "load_stream", checked_load)
         monkeypatch.setattr(storage, "save", checked_save)
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
         result = _import(sqlite_session, content)
         assert result.status == ImportStatus.COMPLETED, result.error
@@ -618,7 +627,7 @@ class TestWorkflowPackageServiceCases:
         soul.config_files[0].file_id = ""
         snapshot.config_snapshot = soul
         sqlite_session.commit()
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             result = _import(sqlite_session, exported.archive.read())
         assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS, result.error
         assert any(warning.code == "agent_file_omitted" for warning in result.warnings)
@@ -626,7 +635,7 @@ class TestWorkflowPackageServiceCases:
     @staticmethod
     def test_reader_keeps_legacy_packaged_roster_nodes(sqlite_session: Session, storage: _MemoryStorage) -> None:
         app = _source(sqlite_session, storage)
-        with AppPackageService().export_app(app_model=app) as exported:
+        with AppPackageService().export_app(may_bundle=_bundle_any_app, app_model=app) as exported:
             content = exported.archive.read()
 
         def mutate(_manifest: AppPackageManifest, data: dict[str, object], _members: dict[str, bytes]) -> None:
@@ -641,7 +650,9 @@ class TestWorkflowPackageServiceCases:
     def test_package_export_keeps_roster_references(sqlite_session: Session, storage: _MemoryStorage) -> None:
         app = _source(sqlite_session, storage)
         _add_roster_node(sqlite_session, app)
-        with AppPackageService().export_app(app_model=app, preserve_agent_bindings=True) as exported:
+        with AppPackageService().export_app(
+            may_bundle=_bundle_any_app, app_model=app, preserve_agent_bindings=True
+        ) as exported:
             data, manifest = _read_export(exported.archive.read())
         node = _node_data(data)
         assert node["agent_binding"] == {
@@ -670,7 +681,9 @@ class TestWorkflowPackageServiceCases:
         sqlite_session.add_all([app, workflow])
         sqlite_session.commit()
         _add_roster_node(sqlite_session, app)
-        with AppPackageService().export_app(app_model=app, preserve_agent_bindings=True) as exported:
+        with AppPackageService().export_app(
+            may_bundle=_bundle_any_app, app_model=app, preserve_agent_bindings=True
+        ) as exported:
             data, manifest = _read_export(exported.archive.read())
         assert not manifest.get("agent_resources")
         assert cast(dict[str, object], _node_data(data)["agent_binding"])["agent_id"] == "roster-agent-1"
@@ -682,7 +695,7 @@ class TestWorkflowPackageServiceCases:
         app = _source(sqlite_session, storage, published=True)
         _add_roster_node(sqlite_session, app, graph_binding={"binding_type": "roster_agent", "agent_id": "stale-agent"})
         with AppPackageService().export_app(
-            app_model=app, workflow_id="workflow-1", preserve_agent_bindings=True
+            may_bundle=_bundle_any_app, app_model=app, workflow_id="workflow-1", preserve_agent_bindings=True
         ) as exported:
             content = exported.archive.read()
         data, _manifest = _read_export(content)

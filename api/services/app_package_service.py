@@ -7,7 +7,7 @@ import re
 import tempfile
 import zipfile
 import zlib
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, BinaryIO, Literal, Self, cast
 
@@ -369,7 +369,9 @@ class AppPackageService(RosterAgentPackageReader):
         include_secret: bool = False,
         workflow_id: str | None = None,
         preserve_agent_bindings: bool = False,
+        may_bundle: Callable[[App], bool],
     ) -> RosterAgentPackageExport:
+        """Export an App with the workflows it calls; ``may_bundle`` admits each called workflow's App."""
         prepared, resources = self._prepare_export(
             app_model=app_model,
             include_secret=include_secret,
@@ -377,7 +379,7 @@ class AppPackageService(RosterAgentPackageReader):
             preserve_agent_bindings=preserve_agent_bindings,
         )
         workflow_tools = self._export_workflow_tools(
-            app_model=app_model, data=prepared.data, include_secret=include_secret
+            app_model=app_model, data=prepared.data, include_secret=include_secret, may_bundle=may_bundle
         )
         try:
             return self.export(
@@ -416,9 +418,12 @@ class AppPackageService(RosterAgentPackageReader):
         return prepared, resources
 
     def _export_workflow_tools(
-        self, *, app_model: App, data: dict[str, Any], include_secret: bool
+        self, *, app_model: App, data: dict[str, Any], include_secret: bool, may_bundle: Callable[[App], bool]
     ) -> list[_WorkflowToolExport]:
-        """Package every workflow reachable through Workflow Tools, at the version each tool runs."""
+        """Package every workflow reachable through Workflow Tools, at the version each tool runs.
+
+        Workflows whose App the caller may not export stay plain references, and so do the workflows they call.
+        """
         exports: list[_WorkflowToolExport] = []
         exported_size = 0
         visited: set[str] = set()
@@ -433,6 +438,8 @@ class AppPackageService(RosterAgentPackageReader):
                 for provider, app, workflow, labels in self._load_workflow_tools(
                     tenant_id=app_model.tenant_id, provider_ids=provider_ids
                 ):
+                    if not may_bundle(app):
+                        continue
                     if len(exports) >= dify_config.APP_PACKAGE_MAX_WORKFLOW_TOOLS:
                         raise RosterAgentPackageTooLargeError("App package calls too many workflow tools")
                     prepared, resources = self._prepare_export(
