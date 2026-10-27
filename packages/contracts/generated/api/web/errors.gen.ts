@@ -561,7 +561,10 @@ export const get5Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const get6Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const get6Errors = {
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
 export const get7Errors = { app_unavailable: { status: 400, data: zAppUnavailableError } }
 
