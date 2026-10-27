@@ -1419,7 +1419,7 @@ def _cimd_source() -> CimdClientSource:
         _ = host
         return ["93.184.216.34"]
 
-    return CimdClientSource(cache=DictRedis(), fetch=fetch, resolve_host=resolve_host, enabled=True)
+    return CimdClientSource(cache=DictRedis(), fetch=fetch, resolve_host=resolve_host)
 
 
 @pytest.mark.usefixtures("client_auth_hits", "issuer_from_origin")

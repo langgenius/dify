@@ -1,5 +1,6 @@
+import gzip
 import json
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import timedelta
 
@@ -7,7 +8,7 @@ import httpx
 import pytest
 
 import services.oauth_cimd as cimd_module
-from core.helper.ssrf_proxy import ResponseLimitError
+from core.helper.ssrf_proxy import ResponseDeadlineError, ResponseLimitError
 from enums.oauth_client import OAuthClientKind
 from libs.oauth_bearer import sha256_hex
 from services.oauth_cimd import (
@@ -15,12 +16,15 @@ from services.oauth_cimd import (
     CIMD_CACHE_MIN_SECONDS,
     CIMD_FETCH_INTERVAL_SECONDS,
     CIMD_MAX_BYTES,
+    CIMD_STALE_SECONDS,
     CIMD_TIMEOUT_SECONDS,
+    CIMD_TOTAL_DEADLINE_SECONDS,
     CimdClientSource,
     CimdFetchError,
     CimdResponse,
     cimd_storage_id,
     fetch_client_metadata,
+    resolve_host_addresses,
 )
 from services.oauth_token_contracts import GrantType
 
@@ -94,19 +98,32 @@ class _Resolver:
 
 
 @dataclass
+class _Clock:
+    seconds: float = 1_000_000.0
+
+    def __call__(self) -> float:
+        return self.seconds
+
+    def advance(self, seconds: float) -> None:
+        self.seconds += seconds
+
+
+@dataclass
 class _World:
     source: CimdClientSource
     cache: _Cache
     fetcher: _Fetcher
     resolver: _Resolver
+    clock: _Clock
 
 
-def _world(*responses: CimdResponse | Exception, enabled: bool = True, resolver: _Resolver | None = None) -> _World:
+def _world(*responses: CimdResponse | Exception, resolver: _Resolver | None = None) -> _World:
+    clock = _Clock()
     cache = _Cache()
     fetcher = _Fetcher(list(responses))
     the_resolver = resolver or _Resolver()
-    source = CimdClientSource(cache=cache, fetch=fetcher, resolve_host=the_resolver, enabled=enabled)
-    return _World(source=source, cache=cache, fetcher=fetcher, resolver=the_resolver)
+    source = CimdClientSource(cache=cache, fetch=fetcher, resolve_host=the_resolver, now=clock)
+    return _World(source=source, cache=cache, fetcher=fetcher, resolver=the_resolver, clock=clock)
 
 
 def test_valid_document_resolves_to_a_public_client() -> None:
@@ -237,6 +254,9 @@ def test_a_fetch_error_resolves_to_none() -> None:
         "https://agent.example/c json",
         "https://agent.example/c.json\n",
         "https://agent.example/" + "a" * 2100,
+        "https://\u2603.ws/x",
+        "https://agent.example/caf\u00e9",
+        "https://\uff10\uff11\uff12.example/x",
     ],
 )
 def test_client_id_rules_reject_without_a_fetch_or_a_lookup(client_id: str) -> None:
@@ -274,6 +294,7 @@ def test_port_query_and_bare_slash_path_are_allowed(client_id: str) -> None:
         "https://[fe80::1]/x",
         "https://[fc00::1]/x",
         "https://[ff02::1]/x",
+        "https://[fec0::1]/x",
         "https://[::ffff:10.0.0.1]/x",
         "https://[::ffff:127.0.0.1]/x",
         "https://localhost/x",
@@ -338,19 +359,10 @@ def test_an_unresolvable_host_fails_without_a_fetch() -> None:
 
     cache = _Cache()
     fetcher = _Fetcher([_response(_document())])
-    source = CimdClientSource(cache=cache, fetch=fetcher, resolve_host=failing_resolver, enabled=True)
+    source = CimdClientSource(cache=cache, fetch=fetcher, resolve_host=failing_resolver)
 
     assert source.resolve(URL) is None
     assert fetcher.urls == []
-
-
-def test_disabled_source_resolves_nothing_and_never_fetches_or_looks_up() -> None:
-    world = _world(_response(_document()), enabled=False)
-
-    assert world.source.resolve(URL) is None
-    assert world.fetcher.urls == []
-    assert world.resolver.hosts == []
-    assert world.cache.data == {}
 
 
 @pytest.mark.parametrize("client_id", ["native-app", "dcr_abc", "cimd:abc", "", "http://agent.example/c.json"])
@@ -363,23 +375,78 @@ def test_ids_that_are_not_https_urls_are_not_ours(client_id: str) -> None:
     assert world.cache.fetch_slots == set()
 
 
-def test_a_cached_client_skips_the_fetch_until_it_expires() -> None:
-    world = _world(_response(_document(), max_age=300), _response(_document(client_name="Renamed")))
+def test_a_fresh_cached_client_skips_the_fetch_and_the_throttle() -> None:
+    world = _world(_response(_document(), max_age=300))
     first = world.source.resolve(URL)
     world.cache.expire_throttle()
+    world.clock.advance(299)
 
-    again = world.source.resolve(URL)
-
-    assert again == first
+    assert world.source.resolve(URL) == first
     assert world.fetcher.urls == [URL]
+    assert world.cache.fetch_slots == set()
 
-    world.cache.expire_cache()
+
+def test_a_stale_client_is_refetched_and_replaced_when_the_throttle_is_free() -> None:
+    world = _world(_response(_document(), max_age=300), _response(_document(client_name="Renamed")))
+    world.source.resolve(URL)
     world.cache.expire_throttle()
+    world.clock.advance(301)
+
     refreshed = world.source.resolve(URL)
 
     assert refreshed is not None
     assert refreshed.display_name == "Renamed"
     assert world.fetcher.urls == [URL, URL]
+    world.clock.advance(10)
+    assert world.source.resolve(URL) == refreshed
+    assert world.fetcher.urls == [URL, URL]
+
+
+def test_a_stale_client_is_served_while_another_request_holds_the_throttle() -> None:
+    world = _world(_response(_document(), max_age=300))
+    first = world.source.resolve(URL)
+    world.clock.advance(301)
+
+    assert world.source.resolve(URL) == first
+    assert world.fetcher.urls == [URL]
+
+
+def test_a_stale_client_whose_refetch_fails_resolves_to_none_and_is_not_overwritten() -> None:
+    world = _world(_response(_document(), max_age=300), CimdFetchError("down"))
+    first = world.source.resolve(URL)
+    world.cache.expire_throttle()
+    world.clock.advance(301)
+    cache_key = f"openapi_oauth:cimd:{sha256_hex(URL)}"
+    before = world.cache.data[cache_key]
+
+    assert world.source.resolve(URL) is None
+    assert world.cache.data[cache_key] == before
+    assert first is not None
+
+
+def test_a_stale_client_whose_refetch_is_invalid_resolves_to_none() -> None:
+    world = _world(_response(_document(), max_age=300), _response(_document(redirect_uris=[])))
+    world.source.resolve(URL)
+    world.cache.expire_throttle()
+    world.clock.advance(301)
+
+    assert world.source.resolve(URL) is None
+
+
+def test_the_redis_entry_outlives_its_soft_expiry_by_the_stale_window() -> None:
+    world = _world(_response(_document(), max_age=300))
+
+    world.source.resolve(URL)
+
+    assert world.cache.ttls[f"openapi_oauth:cimd:{sha256_hex(URL)}"] == 300 + CIMD_STALE_SECONDS
+
+
+def test_with_no_entry_and_the_throttle_held_by_another_request_the_client_is_unknown() -> None:
+    world = _world(_response(_document()))
+    world.cache.fetch_slots.add(f"openapi_oauth:cimd_fetch:{sha256_hex(URL)}")
+
+    assert world.source.resolve(URL) is None
+    assert world.fetcher.urls == []
 
 
 @pytest.mark.parametrize(
@@ -398,7 +465,7 @@ def test_cache_lifetime_follows_max_age_clamped(max_age: int | None, expected: i
     world.source.resolve(URL)
 
     cache_key = f"openapi_oauth:cimd:{sha256_hex(URL)}"
-    assert world.cache.ttls[cache_key] == expected
+    assert world.cache.ttls[cache_key] == expected + CIMD_STALE_SECONDS
 
 
 def test_defaults_are_the_documented_values() -> None:
@@ -407,6 +474,8 @@ def test_defaults_are_the_documented_values() -> None:
     assert CIMD_FETCH_INTERVAL_SECONDS == 10
     assert CIMD_MAX_BYTES == 5 * 1024
     assert CIMD_TIMEOUT_SECONDS == 5
+    assert CIMD_TOTAL_DEADLINE_SECONDS == 10
+    assert CIMD_STALE_SECONDS == 300
 
 
 def test_an_invalid_document_is_never_cached_and_is_fetched_again_after_the_interval() -> None:
@@ -497,6 +566,8 @@ def test_fetch_uses_the_ssrf_proxy_without_redirects_or_retries(monkeypatch: pyt
     assert call["follow_redirects"] is False
     assert call["timeout"] == CIMD_TIMEOUT_SECONDS
     assert call["stream_response"] is True
+    assert call["ssl_verify"] is True
+    assert call["headers"] == {"Accept-Encoding": "identity", "Accept": "application/json"}
 
 
 @pytest.mark.parametrize(
@@ -563,3 +634,72 @@ def test_the_default_resolver_returns_ip_strings(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(cimd_module.socket, "getaddrinfo", fake_getaddrinfo)
 
     assert cimd_module.resolve_host_addresses("agent.example") == ["93.184.216.34", "2606:2800::1"]
+
+
+def test_a_gzip_response_is_a_fetch_error_not_an_exception(monkeypatch: pytest.MonkeyPatch) -> None:
+    gzipped = _http_response(body=gzip.compress(b"{}"), headers={"Content-Encoding": "gzip"})
+    _transport(monkeypatch, gzipped)
+
+    with pytest.raises(CimdFetchError):
+        fetch_client_metadata(URL)
+
+
+def test_fetch_passes_the_total_deadline_to_the_buffer(monkeypatch: pytest.MonkeyPatch) -> None:
+    _transport(monkeypatch, _http_response())
+    seen: list[float | None] = []
+    real = cimd_module.ssrf_proxy.buffer_response
+
+    def spy(
+        response: httpx.Response, *, max_response_bytes: int, deadline_seconds: float | None = None
+    ) -> httpx.Response:
+        seen.append(deadline_seconds)
+        return real(response, max_response_bytes=max_response_bytes, deadline_seconds=deadline_seconds)
+
+    monkeypatch.setattr(cimd_module.ssrf_proxy, "buffer_response", spy)
+
+    fetch_client_metadata(URL)
+
+    assert seen == [CIMD_TOTAL_DEADLINE_SECONDS]
+
+
+def test_a_slow_drip_response_is_a_fetch_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    ticks = iter(float(second) for second in range(1000))
+    monkeypatch.setattr(cimd_module.ssrf_proxy.time, "monotonic", lambda: next(ticks))
+
+    def body() -> Iterator[bytes]:
+        for _ in range(100):
+            yield b" "
+
+    streamed = httpx.Response(200, content=body(), request=httpx.Request("GET", URL))
+    _transport(monkeypatch, streamed)
+
+    with pytest.raises(CimdFetchError):
+        fetch_client_metadata(URL)
+
+
+def test_an_invalid_url_error_from_the_http_client_is_a_fetch_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    _transport(monkeypatch, httpx.InvalidURL("bad host"))
+
+    with pytest.raises(CimdFetchError):
+        fetch_client_metadata(URL)
+
+
+def test_a_deadline_error_resolves_to_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    _transport(monkeypatch, ResponseDeadlineError("too slow"))
+    cache = _Cache()
+    source = CimdClientSource(cache=cache, fetch=fetch_client_metadata, resolve_host=_Resolver())
+
+    assert source.resolve(URL) is None
+    assert cache.data == {}
+
+
+@pytest.mark.parametrize(
+    "client_id",
+    ["https://2130706433/x", "https://0x7f.1/x", "https://127.0.0.1./x", "https://0177.0.0.1/x", "https://127.1/x"],
+)
+def test_numeric_spellings_of_loopback_are_rejected_through_the_real_resolver(client_id: str) -> None:
+    fetcher = _Fetcher([_response(_document(client_id=client_id))])
+    source = CimdClientSource(cache=_Cache(), fetch=fetcher, resolve_host=resolve_host_addresses)
+
+    assert source.resolve(client_id) is None
+    assert fetcher.urls == []
