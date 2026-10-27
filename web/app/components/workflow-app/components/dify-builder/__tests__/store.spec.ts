@@ -85,6 +85,8 @@ const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
       getTrace: vi.fn(() => ({ entries: [], truncated: false })),
       loadOlderConversation: vi.fn(async () => true),
       restore: vi.fn(async () => true),
+      stopTask: vi.fn(async () => true),
+      resumeTask: vi.fn(async () => true),
       reset: vi.fn(),
       runAction,
       sendMessage: vi.fn(async () => true),
