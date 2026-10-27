@@ -1,6 +1,6 @@
 import type { TestWorld } from '@test/fixtures/kernel'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { hostname } from 'node:os'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
@@ -39,6 +39,31 @@ it('logs the previous login out, runs the device flow, saves the pin and the tok
   expect(JSON.parse(w.io.outBuf())).toMatchObject({ server: w.mock.url, workspace_id: 'ws-1' })
 })
 
+const FILE_SECRET = 'dfoa_from_file'
+function secretTokenFile(): string {
+  const path = join(mkdtempSync(join(tmpdir(), 'difyctl-tokfile-')), 'token.json')
+  writeFileSync(path, JSON.stringify({ access_token: FILE_SECRET }))
+  return path
+}
+
+it('refuses under a DIFY_TOKEN_FILE login without leaking the token', async () => {
+  const seed = await testContext({ login: false, env: true })
+  worlds.push(seed)
+  const w = await testContext({
+    login: false,
+    env: true,
+    tokenFile: secretTokenFile(),
+    argv: ['login', '--server', seed.mock.url],
+    reuseDirOf: seed,
+  })
+  worlds.push(w)
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+    message: 'unset DIFY_TOKEN or DIFY_TOKEN_FILE to log in interactively',
+  })
+  expect(w.io.outBuf() + w.io.errBuf()).not.toContain(FILE_SECRET)
+})
+
 it('refuses under an env login', async () => {
   const seed = await testContext({ login: false, env: true })
   worlds.push(seed)
@@ -51,7 +76,7 @@ it('refuses under an env login', async () => {
   worlds.push(w)
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
-    message: 'unset DIFY_TOKEN to log in interactively',
+    message: 'unset DIFY_TOKEN or DIFY_TOKEN_FILE to log in interactively',
   })
 })
 
@@ -223,7 +248,7 @@ it('resume under an env login refuses a pending login before polling', async () 
   worlds.push(w)
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
-    message: 'unset DIFY_TOKEN to log in interactively',
+    message: 'unset DIFY_TOKEN or DIFY_TOKEN_FILE to log in interactively',
   })
   expect(existsSync(pendingPath)).toBe(true)
 })

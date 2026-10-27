@@ -1,5 +1,6 @@
 import type { TestWorld } from '@test/fixtures/kernel'
-import { existsSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
@@ -92,12 +93,34 @@ it('still clears local state and reports a failed server revoke', async () => {
   })
 })
 
+const FILE_SECRET = 'dfoa_from_file'
+function secretTokenFile(): string {
+  const path = join(mkdtempSync(join(tmpdir(), 'difyctl-tokfile-')), 'token.json')
+  writeFileSync(path, JSON.stringify({ access_token: FILE_SECRET }))
+  return path
+}
+
+it('refuses under a DIFY_TOKEN_FILE login without leaking the token', async () => {
+  const w = await testContext({
+    login: false,
+    env: true,
+    tokenFile: secretTokenFile(),
+    argv: ['logout'],
+  })
+  worlds.push(w)
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+    message: 'nothing to log out: the login comes from DIFY_TOKEN or DIFY_TOKEN_FILE',
+  })
+  expect(w.io.outBuf() + w.io.errBuf()).not.toContain(FILE_SECRET)
+})
+
 it('refuses under an env login', async () => {
   const w = await testContext({ login: false, env: true, argv: ['logout'] })
   worlds.push(w)
   await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
-    message: 'nothing to log out: the login comes from DIFY_TOKEN',
+    message: 'nothing to log out: the login comes from DIFY_TOKEN or DIFY_TOKEN_FILE',
   })
 })
 

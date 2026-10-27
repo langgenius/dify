@@ -7,7 +7,7 @@ import { session } from '@/plugins/session'
 
 const INPUT = z.object({})
 
-const ENV_LOGOUT_MESSAGE = 'nothing to log out: the login comes from DIFY_TOKEN'
+const ENV_LOGOUT_MESSAGE = 'nothing to log out: the login comes from DIFY_TOKEN or DIFY_TOKEN_FILE'
 
 export default class Logout extends Command<typeof INPUT> {
   static override summary = 'Log out of the current Dify session'

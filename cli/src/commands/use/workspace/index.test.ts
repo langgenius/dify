@@ -1,5 +1,8 @@
 import type { TestWorld } from '@test/fixtures/kernel'
 import type { BaseError } from '@/errors/base'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { testContext } from '@test/fixtures/kernel'
 import { afterEach, expect, it } from 'vite-plus/test'
 import { ExitCode } from '@/errors/codes'
@@ -36,12 +39,34 @@ it('refuses a workspace the account does not belong to and keeps the old pin', a
   expect(await (await w.ctx.get(session)).workspaceId()).toBe('ws-1')
 })
 
+const FILE_SECRET = 'dfoa_from_file'
+function secretTokenFile(): string {
+  const path = join(mkdtempSync(join(tmpdir(), 'difyctl-tokfile-')), 'token.json')
+  writeFileSync(path, JSON.stringify({ access_token: FILE_SECRET }))
+  return path
+}
+
+it('refuses under a DIFY_TOKEN_FILE login without leaking the token', async () => {
+  const w = await testContext({
+    login: false,
+    env: true,
+    tokenFile: secretTokenFile(),
+    argv: ['use', 'workspace', 'ws-9'],
+  })
+  worlds.push(w)
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'usage_invalid_flag',
+    message: 'the login comes from DIFY_TOKEN or DIFY_TOKEN_FILE; set DIFY_WORKSPACE_ID instead',
+  })
+  expect(w.io.outBuf() + w.io.errBuf()).not.toContain(FILE_SECRET)
+})
+
 it('refuses under an env login and without a login', async () => {
   const a = await testContext({ login: false, env: true, argv: ['use', 'workspace', 'ws-9'] })
   worlds.push(a)
   await expect((await a.ctx.get(commands)).run()).rejects.toMatchObject({
     code: 'usage_invalid_flag',
-    message: 'the login comes from DIFY_TOKEN; set DIFY_WORKSPACE_ID instead',
+    message: 'the login comes from DIFY_TOKEN or DIFY_TOKEN_FILE; set DIFY_WORKSPACE_ID instead',
   })
   const b = await testContext({ login: false, argv: ['use', 'workspace', 'ws-9'] })
   worlds.push(b)

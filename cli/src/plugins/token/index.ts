@@ -2,6 +2,7 @@ import type { Login } from '@/plugins/session'
 import type { StorageMode } from '@/store/store'
 import type { TokenStore } from '@/store/token-store'
 import { join } from 'node:path'
+import { readTokenFile } from '@/auth/token-file'
 import { notLoggedIn } from '@/errors/base'
 import { definePlugin } from '@/kernel/plugin'
 import { env } from '@/plugins/env'
@@ -28,7 +29,7 @@ export const token = definePlugin({
   name: 'token',
   needs: [env, session, io],
   build: async (ctx): Promise<TokenService> => {
-    const { token: envToken, configDir } = await ctx.get(env)
+    const { token: envToken, tokenFile, configDir } = await ctx.get(env)
     const sessionService = await ctx.get(session)
     const file = localFile(
       join(configDir, TOKENS_FILE_NAME),
@@ -48,6 +49,7 @@ export const token = definePlugin({
     return {
       get: async () => {
         if (envToken !== undefined) return envToken
+        if (tokenFile !== undefined) return readTokenFile(tokenFile)
         if (cached === undefined) cached = await readFromStore()
         if (cached === '') throw notLoggedIn()
         return cached

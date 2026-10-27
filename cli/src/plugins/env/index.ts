@@ -7,6 +7,7 @@ import { getEnv } from '@/sys'
 export const ENV = {
   Server: 'DIFY_SERVER',
   Token: 'DIFY_TOKEN',
+  TokenFile: 'DIFY_TOKEN_FILE',
   WorkspaceId: 'DIFY_WORKSPACE_ID',
   ConfigDir: 'DIFY_CONFIG_DIR',
   Output: 'DIFY_OUTPUT',
@@ -19,6 +20,7 @@ export const ENV = {
 export type EnvService = Readonly<{
   server?: string
   token?: string
+  tokenFile?: string
   workspaceId?: string
   configDir: string
   cacheDirSet: boolean
@@ -52,11 +54,19 @@ export const env = definePlugin({
   build: (): EnvService => {
     const server = getEnv(ENV.Server)
     const token = getEnv(ENV.Token)
+    const tokenFile = getEnv(ENV.TokenFile)
     validateServer(server)
-    if (server === undefined && token !== undefined) {
+    if (token !== undefined && tokenFile !== undefined) {
       throw new BaseError({
         code: ErrorCode.UsageInvalidFlag,
-        message: `${ENV.Token} requires ${ENV.Server} to be set`,
+        message: `${ENV.Token} and ${ENV.TokenFile} cannot both be set`,
+      })
+    }
+    const credentialVar = token !== undefined ? ENV.Token : ENV.TokenFile
+    if (server === undefined && (token !== undefined || tokenFile !== undefined)) {
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: `${credentialVar} requires ${ENV.Server} to be set`,
         hint:
           getEnv(ENV.V1Host) === undefined
             ? undefined
@@ -66,6 +76,7 @@ export const env = definePlugin({
     return Object.freeze({
       server,
       token,
+      tokenFile,
       workspaceId: getEnv(ENV.WorkspaceId),
       configDir: resolveConfigDir(),
       cacheDirSet: getEnv(ENV.CacheDir) !== undefined,

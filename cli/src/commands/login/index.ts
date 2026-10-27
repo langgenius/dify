@@ -53,7 +53,7 @@ const INPUT = z.object({
 const PENDING_STATUS = 'pending'
 const FINAL_POLL_ERRORS: readonly string[] = [ErrorCode.AuthExpired, ErrorCode.AccessDenied]
 
-const ENV_LOGIN_MESSAGE = 'unset DIFY_TOKEN to log in interactively'
+const ENV_LOGIN_MESSAGE = 'unset DIFY_TOKEN or DIFY_TOKEN_FILE to log in interactively'
 const NO_EMAIL_MESSAGE = 'login response carries no account or subject email'
 const NO_SERVER_MESSAGE = 'pass --server <url>: the Dify server to log in to'
 const NO_SERVER_HINT = 'ask the user which server; Dify Cloud is https://cloud.dify.ai'
