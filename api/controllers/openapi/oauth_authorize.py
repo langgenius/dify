@@ -14,7 +14,6 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ValidationError
 
-from configs import dify_config
 from controllers.common.schema import query_params_from_model
 from controllers.console.flask_admission import console_account_admission
 from controllers.openapi import openapi_ns
@@ -25,17 +24,13 @@ from controllers.openapi._models import (
     OAuthAuthorizeRedirectResponse,
     OAuthAuthorizeRequest,
 )
-from controllers.openapi._oauth_input import NO_STORE_HEADERS, oauth_feature_required
+from controllers.openapi._oauth_input import NO_STORE_HEADERS, authorization_code_enabled, oauth_feature_required
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response
 from libs.rate_limit import LIMIT_AUTHORIZE_APPROVE, LIMIT_AUTHORIZE_CLIENT_PUBLIC, rate_limit
 from machinery.context import RequestContext
 from services.oauth_authorize_service import AuthorizeErrorCode, AuthorizeRequest, AuthorizeRequestError
 from services.oauth_resource import openapi_issuer_url
-
-
-def _authorization_code_enabled() -> bool:
-    return dify_config.ENABLE_OAUTH_AUTHORIZATION_CODE
 
 
 def _validated[M: BaseModel](model: type[M], data: object) -> M:
@@ -71,7 +66,7 @@ class OAuthAuthorizeClientApi(Resource):
         "Unknown client, bad redirect URI or missing parameter",
         openapi_ns.models[OAuthAuthorizeErrorResponse.__name__],
     )
-    @oauth_feature_required(_authorization_code_enabled)
+    @oauth_feature_required(authorization_code_enabled)
     @rate_limit(LIMIT_AUTHORIZE_CLIENT_PUBLIC)
     def get(self):
         try:
@@ -93,7 +88,7 @@ class OAuthAuthorizeApproveApi(Resource):
     @openapi_ns.response(
         HTTPStatus.BAD_REQUEST, "Request rejected", openapi_ns.models[OAuthAuthorizeErrorResponse.__name__]
     )
-    @oauth_feature_required(_authorization_code_enabled)
+    @oauth_feature_required(authorization_code_enabled)
     @console_account_admission(require_oauth_bearer_enabled=True)
     @rate_limit(LIMIT_AUTHORIZE_APPROVE)
     def post(self, request_context: RequestContext):
@@ -117,7 +112,7 @@ class OAuthAuthorizeDenyApi(Resource):
     @openapi_ns.response(
         HTTPStatus.BAD_REQUEST, "Request rejected", openapi_ns.models[OAuthAuthorizeErrorResponse.__name__]
     )
-    @oauth_feature_required(_authorization_code_enabled)
+    @oauth_feature_required(authorization_code_enabled)
     @console_account_admission(require_oauth_bearer_enabled=True)
     @rate_limit(LIMIT_AUTHORIZE_APPROVE)
     def post(self, _request_context: RequestContext):

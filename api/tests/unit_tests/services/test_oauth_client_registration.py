@@ -155,6 +155,7 @@ class TestRedirectUriCases:
             ["http://example.com/cb"],
             ["https://agent.example/cb#frag"],
             [7],
+            ["https://" + "a" * 300 + "/cb"],
             ["https://agent.example/" + "a" * 2048],
             [f"https://agent.example/{index}" for index in range(MAX_REDIRECT_URIS + 1)],
         ],

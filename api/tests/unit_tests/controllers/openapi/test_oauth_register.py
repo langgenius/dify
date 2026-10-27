@@ -146,6 +146,13 @@ class TestRegisterRouteCases:
         assert response.get_json()["error"] == "invalid_redirect_uri"
 
     @staticmethod
+    def test_redirect_host_longer_than_dns_limit_is_rejected_without_a_name(world: _World) -> None:
+        response = world.app.test_client().post(_URL, json={"redirect_uris": ["https://" + "a" * 300 + "/cb"]})
+
+        assert response.status_code == 400
+        assert response.get_json()["error"] == "invalid_redirect_uri"
+
+    @staticmethod
     def test_loopback_redirect_with_a_port_is_accepted(world: _World) -> None:
         assert _register(world, redirect_uris=["http://127.0.0.1:8123/cb"]).status_code == 201
 

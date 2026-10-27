@@ -20,6 +20,8 @@ from services.oauth_device_contracts import (
 )
 from services.oauth_token_contracts import GrantType
 
+MAX_DISPLAY_NAME_LENGTH = 255
+MAX_LOGO_URI_COLUMN_LENGTH = 1024
 CONFIDENTIAL_ID = "qwenwork"
 CONFIDENTIAL_SECRET = "s3cret"
 CONFIDENTIAL_REDIRECT = "https://nango-qwenwork.cn/oauth/callback"
@@ -89,6 +91,8 @@ class FakeClientRepository:
         client_secret_hash: str | None = None,
         logo_uri: str | None = None,
     ) -> OpenAPIOAuthClient:
+        assert len(display_name) <= MAX_DISPLAY_NAME_LENGTH
+        assert logo_uri is None or len(logo_uri) <= MAX_LOGO_URI_COLUMN_LENGTH
         row = OpenAPIOAuthClient(
             client_id=client_id,
             kind=kind,
@@ -112,7 +116,7 @@ class FakeClientRepository:
             display_name=row.display_name,
             logo_uri=row.logo_uri,
             redirect_uris=tuple(row.redirect_uris),
-            grant_types=frozenset(GrantType(value) for value in row.grant_types),
+            grant_types=frozenset(grant for grant in GrantType if grant.value in row.grant_types),
             secret_hash=row.client_secret_hash,
         )
 

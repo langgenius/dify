@@ -7,10 +7,14 @@ from http import HTTPStatus
 from flask import request
 from flask_restx import Resource
 
-from configs import dify_config
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import OAuthRegisterErrorResponse, OAuthRegisterRequest, OAuthRegisterResponse
-from controllers.openapi._oauth_input import NO_STORE_HEADERS, oauth_feature_required
+from controllers.openapi._oauth_input import (
+    NO_STORE_HEADERS,
+    authorization_code_enabled,
+    dcr_enabled,
+    oauth_feature_required,
+)
 from enums.oauth_client import OAuthClientKind
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response
@@ -23,14 +27,6 @@ from services.oauth_client_registration import (
 )
 
 NEVER_EXPIRES = 0
-
-
-def _authorization_code_enabled() -> bool:
-    return dify_config.ENABLE_OAUTH_AUTHORIZATION_CODE
-
-
-def _dcr_enabled() -> bool:
-    return dify_config.ENABLE_OAUTH_DCR
 
 
 def _error(code: RegistrationErrorCode, description: str) -> tuple[dict[str, str], HTTPStatus, dict[str, str]]:
@@ -65,8 +61,8 @@ class OAuthRegisterApi(Resource):
     @openapi_ns.response(
         HTTPStatus.BAD_REQUEST, "Invalid client metadata", openapi_ns.models[OAuthRegisterErrorResponse.__name__]
     )
-    @oauth_feature_required(_authorization_code_enabled)
-    @oauth_feature_required(_dcr_enabled)
+    @oauth_feature_required(authorization_code_enabled)
+    @oauth_feature_required(dcr_enabled)
     @rate_limit(LIMIT_DCR_PER_IP)
     def post(self):
         metadata = request.get_json(silent=True)

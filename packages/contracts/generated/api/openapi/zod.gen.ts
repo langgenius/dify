@@ -678,15 +678,6 @@ export const zFileUploadPayload = z.object({
 })
 
 /**
- * GrantType
- */
-export const zGrantType = z.enum([
-  'authorization_code',
-  'refresh_token',
-  'urn:ietf:params:oauth:grant-type:device_code',
-])
-
-/**
  * HealthResponse
  *
  * Liveness payload for `GET /openapi/v1/_health` — no auth required.
@@ -2008,11 +1999,11 @@ export const zTokenEndpointAuthMethod = z.enum([
  * RFC 7591 client metadata; unknown fields are ignored.
  */
 export const zOAuthRegisterRequest = z.object({
-  client_name: z.string().nullish(),
-  grant_types: z.array(zGrantType).nullish(),
-  logo_uri: z.string().nullish(),
-  redirect_uris: z.array(z.string()),
-  response_types: z.array(z.string()).nullish(),
+  client_name: z.string().max(255).nullish(),
+  grant_types: z.array(z.enum(['authorization_code', 'refresh_token'])).nullish(),
+  logo_uri: z.string().max(1024).nullish(),
+  redirect_uris: z.array(z.string().max(2048)).max(10),
+  response_types: z.array(z.literal('code')).nullish(),
   token_endpoint_auth_method: zTokenEndpointAuthMethod.nullish(),
 })
 
@@ -2025,10 +2016,10 @@ export const zOAuthRegisterResponse = z.object({
   client_name: z.string(),
   client_secret: z.string().nullish(),
   client_secret_expires_at: z.int().nullish(),
-  grant_types: z.array(zGrantType),
+  grant_types: z.array(z.enum(['authorization_code', 'refresh_token'])),
   logo_uri: z.string().nullish(),
   redirect_uris: z.array(z.string()),
-  response_types: z.array(z.string()),
+  response_types: z.array(z.literal('code')),
   token_endpoint_auth_method: zTokenEndpointAuthMethod,
 })
 

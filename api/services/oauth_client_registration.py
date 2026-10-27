@@ -16,6 +16,7 @@ from services.oauth_token_contracts import GrantType
 MAX_REDIRECT_URIS = 10
 MAX_REDIRECT_URI_LENGTH = 2048
 MAX_CLIENT_NAME_LENGTH = 255
+MAX_REDIRECT_HOST_LENGTH = 253
 MAX_LOGO_URI_LENGTH = 1024
 CLIENT_ID_PREFIX = "dcr_"
 CLIENT_ID_BYTES = 16
@@ -66,6 +67,10 @@ def _invalid_metadata(description: str) -> RegistrationError:
     return RegistrationError(RegistrationErrorCode.INVALID_CLIENT_METADATA, description)
 
 
+def _invalid_redirect_uri() -> RegistrationError:
+    return RegistrationError(RegistrationErrorCode.INVALID_REDIRECT_URI, "redirect_uris holds an invalid URI")
+
+
 def _optional_string(metadata: Mapping[str, object], field: str, *, max_length: int) -> str | None:
     value = metadata.get(field)
     if value is None:
@@ -95,8 +100,12 @@ def _redirect_uris(metadata: Mapping[str, object]) -> tuple[str, ...]:
     if len(uris) > MAX_REDIRECT_URIS:
         raise RegistrationError(RegistrationErrorCode.INVALID_REDIRECT_URI, "too many redirect_uris")
     for uri in uris:
-        if len(uri) > MAX_REDIRECT_URI_LENGTH or not is_valid_redirect_uri(uri):
-            raise RegistrationError(RegistrationErrorCode.INVALID_REDIRECT_URI, "redirect_uris holds an invalid URI")
+        if len(uri) > MAX_REDIRECT_URI_LENGTH:
+            raise _invalid_redirect_uri()
+        if not is_valid_redirect_uri(uri):
+            raise _invalid_redirect_uri()
+        if len(redirect_host(uri)) > MAX_REDIRECT_HOST_LENGTH:
+            raise _invalid_redirect_uri()
     return tuple(uris)
 
 
@@ -115,7 +124,9 @@ def _grant_types(metadata: Mapping[str, object]) -> tuple[GrantType, ...]:
 
 def _check_response_types(metadata: Mapping[str, object]) -> None:
     values = _string_list(metadata, "response_types", error=RegistrationErrorCode.INVALID_CLIENT_METADATA)
-    if values is not None and values != [CODE_RESPONSE_TYPE]:
+    if values is None:
+        return
+    if values != [CODE_RESPONSE_TYPE]:
         raise _invalid_metadata("response_types must be [code]")
 
 
@@ -131,7 +142,9 @@ def _auth_method(metadata: Mapping[str, object]) -> TokenEndpointAuthMethod:
 
 def _logo_uri(metadata: Mapping[str, object]) -> str | None:
     logo_uri = _optional_string(metadata, "logo_uri", max_length=MAX_LOGO_URI_LENGTH)
-    if logo_uri is not None and not is_valid_logo_uri(logo_uri):
+    if logo_uri is None:
+        return None
+    if not is_valid_logo_uri(logo_uri):
         raise _invalid_metadata("logo_uri must be an https URL")
     return logo_uri
 

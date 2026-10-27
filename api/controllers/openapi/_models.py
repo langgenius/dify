@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Final, Literal, Protocol, Self
+from typing import Annotated, Any, Final, Literal, Protocol, Self
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
 
@@ -204,14 +204,17 @@ class OAuthAuthorizeErrorResponse(BaseModel):
     error: AuthorizeErrorCode
 
 
+RegistrableGrantType = Literal[GrantType.AUTHORIZATION_CODE, GrantType.REFRESH_TOKEN]
+
+
 class OAuthRegisterRequest(BaseModel):
     """RFC 7591 client metadata; unknown fields are ignored."""
 
-    redirect_uris: list[str]
-    client_name: str | None = None
-    logo_uri: str | None = None
-    grant_types: list[GrantType] | None = None
-    response_types: list[str] | None = None
+    redirect_uris: list[Annotated[str, Field(max_length=2048)]] = Field(max_length=10)
+    client_name: str | None = Field(default=None, max_length=255)
+    logo_uri: str | None = Field(default=None, max_length=1024)
+    grant_types: list[RegistrableGrantType] | None = None
+    response_types: list[Literal["code"]] | None = None
     token_endpoint_auth_method: TokenEndpointAuthMethod | None = None
 
 
@@ -220,8 +223,8 @@ class OAuthRegisterResponse(BaseModel):
     client_id_issued_at: int
     client_name: str
     redirect_uris: list[str]
-    grant_types: list[GrantType]
-    response_types: list[str]
+    grant_types: list[RegistrableGrantType]
+    response_types: list[Literal["code"]]
     token_endpoint_auth_method: TokenEndpointAuthMethod
     logo_uri: str | None = None
     client_secret: str | None = None
