@@ -452,7 +452,8 @@ jobs:
               # Candidate 3: actual PostgreSQL collection adds cases without dropping old guards.
               EXPECTED.setdefault('tests.e2e_tests.containers.core.workflow.test_builder_agent_operations', {}).update({'test_confirmed_deferred_calls_have_distinct_pending_and_one_c03_snapshot': 2})
               EXPECTED.setdefault('tests.e2e_tests.containers.core.workflow.test_builder_native_agent_associations', {}).update({'test_real_normal_blank_home_prepare_and_generation_one_checkpoint_read': 14,
-               'test_real_unmarked_profiles_keep_raw_revision_and_immutable_private_scope': 2})
+               'test_real_unmarked_profiles_keep_raw_revision_and_immutable_private_scope': 2,
+               'test_actual_confirmed_admission_stream_defers_before_context_ack': 1})
               # Async config receipts: source-audited exact PostgreSQL case inventory.
               for module, functions in {'tests.e2e_tests.containers.core.workflow.test_builder_agent_operations': {'test_actual_sql_approval_dispatch_and_result_replay_once': 1,
                                                                                           'test_cancellation_during_final_ack_decryption_refuses_url_admission': 1,
