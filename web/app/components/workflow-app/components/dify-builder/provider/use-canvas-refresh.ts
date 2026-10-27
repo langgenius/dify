@@ -8,6 +8,7 @@ import {
   difyBuilderActiveCommandAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionViewAtom,
+  difyBuilderTaskControlAtom,
 } from '../session/state'
 import {
   DIFY_BUILDER_CANVAS_REFRESH_PHASES,
@@ -38,6 +39,7 @@ export const useDifyBuilderCanvasRefresh = (
   const syncCanvasLock = useCallback(() => {
     const locked =
       sessionStore.get(difyBuilderSessionBusyAtom) ||
+      sessionStore.get(difyBuilderTaskControlAtom) !== null ||
       !sessionStore.get(difyBuilderCanvasReadyAtom) ||
       !!sessionStore.get(difyBuilderSessionViewAtom)?.canvas_read_only
     const { canvasReadOnly, setCanvasReadOnly } = workflowStore.getState()
