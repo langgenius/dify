@@ -458,18 +458,20 @@ def test_api_key_cache_hit_avoids_token_query_and_revocation_invalidates_cache(h
 
 
 @pytest.mark.parametrize(
-    ("state", "status"),
+    ("state", "status", "code"),
     [
-        ("app_missing", 403),
-        ("api_disabled", 403),
-        ("app_abnormal", 403),
-        ("tenant_missing", 400),
-        ("tenant_archived", 403),
-        ("owner_role", 401),
-        ("owner_missing", 401),
+        ("app_missing", 403, "app_not_found"),
+        ("api_disabled", 403, "app_api_disabled"),
+        ("app_abnormal", 403, "app_abnormal_status"),
+        ("tenant_missing", 403, "workspace_not_found"),
+        ("tenant_archived", 403, "workspace_archived"),
+        ("owner_role", 401, "unauthorized"),
+        ("owner_missing", 401, "unauthorized"),
     ],
 )
-def test_cached_key_rechecks_application_workspace_and_owner(harness: _Harness, state: str, status: int) -> None:
+def test_cached_key_rechecks_application_workspace_and_owner(
+    harness: _Harness, state: str, status: int, code: str
+) -> None:
     assert harness.request("GET", "/annotations").status_code == 200
     with harness.factory.begin() as session:
         match state:
@@ -497,6 +499,34 @@ def test_cached_key_rechecks_application_workspace_and_owner(harness: _Harness, 
     response = harness.request("GET", "/annotations")
 
     assert response.status_code == status
+    assert response.get_json()["code"] == code
+    assert harness.publications == []
+
+
+@pytest.mark.parametrize("token_scope", ["matching", "legacy_missing", "foreign"])
+def test_api_key_admission_checks_token_workspace_and_preserves_legacy_keys(
+    harness: _Harness, token_scope: str
+) -> None:
+    tenant_id = {
+        "matching": harness.target.tenant_id,
+        "legacy_missing": None,
+        "foreign": harness.foreign.tenant_id,
+    }[token_scope]
+    with harness.factory.begin() as session:
+        session.execute(update(ApiToken).where(ApiToken.id == harness.api_key.id).values(tenant_id=tenant_id))
+
+    for _ in range(2):
+        response = harness.request("POST", "/annotations", payload=_ANNOTATION_PAYLOAD)
+        if token_scope == "foreign":
+            assert response.status_code == 403
+            assert response.get_json()["code"] == "app_not_found"
+        else:
+            assert response.status_code == 201
+            with harness.factory() as session:
+                annotation = session.get(MessageAnnotation, response.get_json()["id"])
+                assert annotation is not None
+                assert (annotation.app_id, annotation.account_id) == (harness.target.id, harness.account.id)
+    assert len(harness.token_reads) == 1
     assert harness.publications == []
 
 
@@ -515,8 +545,12 @@ def test_api_key_admission_does_not_require_console_account_login_state(harness:
 
 def test_resource_token_selection_and_revocation(harness: _Harness) -> None:
     resource = harness.resource_token(harness.target.id, harness.other.id)
-    assert harness.request("GET", "/annotations", token=resource.token).status_code == 400
-    assert harness.request("GET", "/annotations", token=resource.token, app_id=harness.foreign.id).status_code == 403
+    missing_selection = harness.request("GET", "/annotations", token=resource.token)
+    assert missing_selection.status_code == 400
+    assert missing_selection.get_json()["code"] == "invalid_param"
+    forbidden = harness.request("GET", "/annotations", token=resource.token, app_id=harness.foreign.id)
+    assert forbidden.status_code == 403
+    assert forbidden.get_json()["code"] == "forbidden"
     created = harness.request(
         "POST", "/annotations", token=resource.token, app_id=harness.other.id, payload=_ANNOTATION_PAYLOAD
     )

@@ -8,7 +8,6 @@ from flask import request
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common.errors import ForbiddenError, InvalidArgumentError, NotFoundError, UnauthorizedError
-from controllers.common.resource_access_token_errors import resource_access_token_errors
 from controllers.service_api.app import error as http_errors
 from controllers.service_api.wraps import (
     FetchUserArg,
@@ -22,11 +21,6 @@ from extensions.ext_application_services import application_services
 from extensions.otel.runtime import set_identity_span_attributes
 from libs.external_api import document_errors
 from machinery.context import AppRequestContext, ServiceApiAccountRequestContext, ServiceApiEndUserContext
-from services.app.service_api_access_service import (
-    ServiceApiAppAccessDeniedError,
-    ServiceApiOwnerNotFoundError,
-    ServiceApiWorkspaceNotFoundError,
-)
 from services.app_definition_query_service import AppDefinitionUnavailableError, ServiceApiAppRecord
 from services.auth.resource_access_token_contracts import (
     ResourceAccessTokenForbiddenError,
@@ -37,6 +31,15 @@ from services.auth.resource_access_token_contracts import (
 )
 from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
 from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
+
+_APP_ADMISSION_ERRORS = (
+    ForbiddenError,
+    http_errors.AppNotFoundError,
+    http_errors.AppAbnormalStatusError,
+    http_errors.AppApiDisabledError,
+    http_errors.WorkspaceNotFoundError,
+    http_errors.WorkspaceArchivedError,
+)
 
 
 def service_api_end_user_admission[T, **P, R](
@@ -72,14 +75,7 @@ def service_api_end_user_admission[T, **P, R](
             return view(self, context, *args, **kwargs)
 
         document_app_token_contract(admitted, fetch_user_arg)
-        document_errors(
-            admitted,
-            http_errors.AppNotFoundError,
-            http_errors.AppAbnormalStatusError,
-            http_errors.AppApiDisabledError,
-            http_errors.WorkspaceNotFoundError,
-            http_errors.WorkspaceArchivedError,
-        )
+        document_errors(admitted, *_APP_ADMISSION_ERRORS)
         return admitted
 
     return decorator
@@ -97,85 +93,71 @@ def service_api_app_admission[T, **P, R](
     @wraps(view)
     def admitted(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
         app = _admit_service_api_app()
-        if not application_services().app_definitions.has_service_api_owner(app.tenant_id):
-            raise UnauthorizedError("Tenant owner account not found or tenant is not active.")
+        _require_service_api_owner(app.tenant_id)
         return view(self, AppRequestContext(tenant_id=app.tenant_id, app_id=app.app_id), *args, **kwargs)
 
     document_app_token_contract(admitted, None)
-    document_errors(
-        admitted,
-        http_errors.AppNotFoundError,
-        http_errors.AppAbnormalStatusError,
-        http_errors.AppApiDisabledError,
-        http_errors.WorkspaceNotFoundError,
-        http_errors.WorkspaceArchivedError,
-    )
+    document_errors(admitted, *_APP_ADMISSION_ERRORS)
     return admitted
 
 
 def service_api_account_admission[T, **P, R](
     view: Callable[Concatenate[T, ServiceApiAccountRequestContext, P], R],
 ) -> Callable[Concatenate[T, P], R]:
-    """Authenticate an app credential and inject its app scope and workspace owner."""
+    """Admit app access and use its workspace owner for account-backed operations.
+
+    This owner is the legacy attribution identity, not a user authenticated by the token.
+    """
 
     @wraps(view)
     def admitted(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
-        auth_token = peek_service_api_bearer_token()
-        if auth_token and is_resource_access_token(auth_token):
-            try:
-                grant = application_services().resource_access_tokens.resolve_app_for_service_api(
-                    token=auth_token,
-                    requested_app_id=request.headers.get("X-Dify-App-ID"),
-                )
-            except ResourceAccessTokenInputError as error:
-                raise InvalidArgumentError(str(error)) from error
-            except ResourceAccessTokenForbiddenError as error:
-                raise ForbiddenError(str(error)) from error
-            except ResourceAccessTokenNotFoundError as error:
-                raise NotFoundError(str(error)) from error
-            except ResourceAccessTokenInvalidError as error:
-                raise UnauthorizedError(str(error)) from error
-            app_id = next(iter(grant.app_ids))
-            tenant_id = grant.tenant_id
-        else:
-            try:
-                api_token = validate_and_get_api_token("app")
-            except Unauthorized as error:
-                raise UnauthorizedError(error.description) from error
-            app_id = api_token.app_id
-            tenant_id = api_token.tenant_id
-
-        try:
-            context = application_services().service_api_app_access.resolve_account(app_id=app_id, tenant_id=tenant_id)
-        except ServiceApiAppAccessDeniedError as error:
-            raise ForbiddenError(str(error)) from error
-        except ServiceApiWorkspaceNotFoundError as error:
-            raise InvalidArgumentError(str(error)) from error
-        except ServiceApiOwnerNotFoundError as error:
-            raise UnauthorizedError(str(error)) from error
+        app = _admit_service_api_app()
+        context = ServiceApiAccountRequestContext(
+            tenant_id=app.tenant_id,
+            app_id=app.app_id,
+            account_id=_require_service_api_owner(app.tenant_id),
+        )
         set_identity_context(tenant_id=context.tenant_id, user_id=context.account_id, user_type="account")
         set_identity_span_attributes(tenant_id=context.tenant_id, user_id=context.account_id)
         return view(self, context, *args, **kwargs)
 
     document_app_token_contract(admitted, None)
-    document_errors(admitted, ForbiddenError)
+    document_errors(admitted, *_APP_ADMISSION_ERRORS)
     return admitted
+
+
+def _require_service_api_owner(tenant_id: str) -> str:
+    account_id = application_services().app_definitions.get_service_api_owner_id(tenant_id)
+    if account_id is None:
+        raise UnauthorizedError("Tenant owner account not found or tenant is not active.")
+    return account_id
 
 
 def _admit_service_api_app() -> ServiceApiAppRecord:
     auth_token = peek_service_api_bearer_token()
-    tenant_id = None
     if auth_token and is_resource_access_token(auth_token):
-        with resource_access_token_errors():
+        try:
             grant = application_services().resource_access_tokens.resolve_app_for_service_api(
                 token=auth_token,
                 requested_app_id=request.headers.get("X-Dify-App-ID"),
             )
+        except ResourceAccessTokenInputError as error:
+            raise InvalidArgumentError(str(error)) from error
+        except ResourceAccessTokenForbiddenError as error:
+            raise ForbiddenError(str(error)) from error
+        except ResourceAccessTokenNotFoundError as error:
+            raise NotFoundError(str(error)) from error
+        except ResourceAccessTokenInvalidError as error:
+            raise UnauthorizedError(str(error)) from error
         app_id = next(iter(grant.app_ids))
         tenant_id = grant.tenant_id
     else:
-        token = validate_and_get_api_token("app")
+        try:
+            token = validate_and_get_api_token("app")
+        except Unauthorized as error:
+            raise UnauthorizedError(error.description) from error
         app_id = token.app_id
+        tenant_id = token.tenant_id
     try:
         return application_services().app_definitions.get_service_api_app(app_id, tenant_id=tenant_id)
     except AppDefinitionUnavailableError as error:

@@ -651,12 +651,26 @@ def test_annotation_schemas_document_admission_and_validation_errors(
 ) -> None:
     from controllers.service_api import bp as service_api_bp
 
-    paths = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", False))["paths"]
-    responses = paths[path][method]["responses"]
+    payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", False))
+    responses = payload["paths"][path][method]["responses"]
+    schemas = payload["components"]["schemas"]
 
     assert {"400", "401", "403", "404"} <= responses.keys()
     assert "invalid_param" in responses["400"]["description"]
-    assert "workspace" in responses["403"]["description"]
+    assert "missing workspace" not in responses["400"]["description"]
+    documented = _schema_refs(responses["403"])
+    for name, code in {
+        "AppNotFoundError": "app_not_found",
+        "AppAbnormalStatusError": "app_abnormal_status",
+        "AppApiDisabledError": "app_api_disabled",
+        "WorkspaceNotFoundError": "workspace_not_found",
+        "WorkspaceArchivedError": "workspace_archived",
+        "ForbiddenError": "forbidden",
+    }.items():
+        assert name in documented
+        properties = schemas[name]["allOf"][1]["properties"]
+        assert properties["code"]["const"] == code
+        assert properties["status"]["const"] == 403
     assert ("422" in responses) == validates_payload
     if validates_payload:
         assert "unprocessable_entity" in responses["422"]["description"]

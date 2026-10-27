@@ -87,7 +87,7 @@ class AnnotationReplyActionApi(Resource):
     @service_api_ns.doc(
         responses={
             HTTPStatus.OK: "Action completed successfully",
-            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid action, app selection, or missing workspace.",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid action or app selection.",
             HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
             HTTPStatus.NOT_FOUND: "`not_found` : App no longer exists.",
             HTTPStatus.UNPROCESSABLE_ENTITY: "`unprocessable_entity` : Invalid annotation reply payload.",
@@ -134,7 +134,7 @@ class AnnotationReplyActionStatusApi(Resource):
         tags=["Annotations"],
         responses={
             HTTPStatus.OK: "Successfully retrieved task status.",
-            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid action, app selection, or missing workspace.",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid action or app selection.",
             HTTPStatus.NOT_FOUND: "`not_found` : The specified job does not belong to this app or no longer exists.",
         },
     )
@@ -193,7 +193,7 @@ class AnnotationListApi(Resource):
     @service_api_ns.doc(
         responses={
             HTTPStatus.OK: "Annotations retrieved successfully",
-            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection or missing workspace.",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection.",
             HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
             HTTPStatus.NOT_FOUND: "`not_found` : App no longer exists.",
             HTTPStatus.UNPROCESSABLE_ENTITY: "`unprocessable_entity` : Invalid pagination query.",
@@ -237,7 +237,7 @@ class AnnotationListApi(Resource):
     @service_api_ns.doc(
         responses={
             HTTPStatus.CREATED: "Annotation created successfully",
-            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection or missing workspace.",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection.",
             HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
             HTTPStatus.NOT_FOUND: "`not_found` : App no longer exists.",
             HTTPStatus.UNPROCESSABLE_ENTITY: "`unprocessable_entity` : Invalid annotation payload.",
@@ -286,7 +286,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @service_api_ns.doc(
         responses={
             HTTPStatus.OK: "Annotation updated successfully",
-            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection or missing workspace.",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection.",
             HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
             HTTPStatus.FORBIDDEN: "`forbidden` : API credential scope, app, or workspace access denied.",
             HTTPStatus.NOT_FOUND: "Annotation not found",
@@ -334,7 +334,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @service_api_ns.doc(
         responses={
             HTTPStatus.NO_CONTENT: "Annotation deleted successfully",
-            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection or missing workspace.",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection.",
             HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
             HTTPStatus.FORBIDDEN: "`forbidden` : API credential scope, app, or workspace access denied.",
             HTTPStatus.NOT_FOUND: "Annotation not found",

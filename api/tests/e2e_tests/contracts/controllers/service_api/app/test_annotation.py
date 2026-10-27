@@ -397,21 +397,21 @@ def test_account_admission_preserves_bearer_separator_rules(harness: _Harness, s
 
 @pytest.mark.parametrize("operation", _OPERATIONS)
 @pytest.mark.parametrize(
-    ("gate", "status", "message"),
+    ("gate", "status", "code", "message"),
     [
-        ("missing_app", 403, "The app no longer exists."),
-        ("foreign_tenant", 403, "The app no longer exists."),
-        ("api_disabled", 403, "The app's API service has been disabled."),
-        ("missing_tenant", 400, "Tenant does not exist."),
-        ("archived_tenant", 403, "The workspace's status is archived."),
-        ("missing_owner", 401, "Tenant owner account not found or tenant is not active."),
-        ("admin_owner", 401, "Tenant owner account not found or tenant is not active."),
-        ("editor_owner", 401, "Tenant owner account not found or tenant is not active."),
-        ("missing_account", 401, "Tenant owner account not found or tenant is not active."),
+        ("missing_app", 403, "forbidden", "The app no longer exists."),
+        ("foreign_tenant", 403, "forbidden", "The app no longer exists."),
+        ("api_disabled", 403, "app_api_disabled", "The app's API service has been disabled."),
+        ("missing_tenant", 403, "workspace_not_found", "Tenant does not exist."),
+        ("archived_tenant", 403, "workspace_archived", "The workspace's status is archived."),
+        ("missing_owner", 401, "unauthorized", "Tenant owner account not found or tenant is not active."),
+        ("admin_owner", 401, "unauthorized", "Tenant owner account not found or tenant is not active."),
+        ("editor_owner", 401, "unauthorized", "Tenant owner account not found or tenant is not active."),
+        ("missing_account", 401, "unauthorized", "Tenant owner account not found or tenant is not active."),
     ],
 )
 def test_every_handler_checks_app_workspace_and_owner(
-    harness: _Harness, operation: _Operation, gate: str, status: int, message: str
+    harness: _Harness, operation: _Operation, gate: str, status: int, code: str, message: str
 ) -> None:
     with harness.factory.begin() as session:
         if gate == "missing_app":
@@ -439,9 +439,31 @@ def test_every_handler_checks_app_workspace_and_owner(
     _error(
         harness.request(operation, payload=_REPLY_PAYLOAD),
         status=status,
-        code={400: "invalid_param", 401: "unauthorized", 403: "forbidden"}[status],
+        code=code,
         message=message,
     )
+
+
+def test_owner_from_another_workspace_cannot_authorize_annotation_access(harness: _Harness) -> None:
+    foreign_tenant = Tenant(name="Other workspace")
+    foreign_owner = make_account(account_id=str(uuid4()), email="other-owner@example.com")
+    with harness.factory.begin() as session:
+        session.execute(delete(TenantAccountJoin).where(TenantAccountJoin.tenant_id == harness.target.tenant_id))
+        session.add_all(
+            [
+                foreign_tenant,
+                foreign_owner,
+                TenantAccountJoin(
+                    tenant_id=foreign_tenant.id,
+                    account_id=foreign_owner.id,
+                    role=TenantAccountRole.OWNER,
+                ),
+            ]
+        )
+
+    _error(harness.request("create", payload={"question": "Q", "answer": "A"}), status=401, code="unauthorized")
+    with harness.factory() as session:
+        assert list(session.scalars(select(MessageAnnotation.id))) == [harness.annotation.id]
 
 
 @pytest.mark.parametrize("account_status", list(AccountStatus))

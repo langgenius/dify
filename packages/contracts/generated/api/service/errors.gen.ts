@@ -431,21 +431,64 @@ export const get2Errors = {
   app_api_disabled: { status: 403, data: zAppApiDisabledError },
   app_not_found: { status: 403, data: zAppNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
+  forbidden: { status: 403, data: zForbiddenError },
   workspace_archived: { status: 403, data: zWorkspaceArchivedError },
   workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
 }
 
-export const get3Errors = { forbidden: { status: 403, data: zForbiddenError } }
+export const get3Errors = {
+  app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+  app_api_disabled: { status: 403, data: zAppApiDisabledError },
+  app_not_found: { status: 403, data: zAppNotFoundError },
+  forbidden: { status: 403, data: zForbiddenError },
+  workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+  workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+}
 
-export const postErrors = { forbidden: { status: 403, data: zForbiddenError } }
+export const postErrors = {
+  app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+  app_api_disabled: { status: 403, data: zAppApiDisabledError },
+  app_not_found: { status: 403, data: zAppNotFoundError },
+  forbidden: { status: 403, data: zForbiddenError },
+  workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+  workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+}
 
-export const delete_Errors = { forbidden: { status: 403, data: zForbiddenError } }
+export const delete_Errors = {
+  app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+  app_api_disabled: { status: 403, data: zAppApiDisabledError },
+  app_not_found: { status: 403, data: zAppNotFoundError },
+  forbidden: { status: 403, data: zForbiddenError },
+  workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+  workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+}
 
-export const putErrors = { forbidden: { status: 403, data: zForbiddenError } }
+export const putErrors = {
+  app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+  app_api_disabled: { status: 403, data: zAppApiDisabledError },
+  app_not_found: { status: 403, data: zAppNotFoundError },
+  forbidden: { status: 403, data: zForbiddenError },
+  workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+  workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+}
 
-export const get4Errors = { forbidden: { status: 403, data: zForbiddenError } }
+export const get4Errors = {
+  app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+  app_api_disabled: { status: 403, data: zAppApiDisabledError },
+  app_not_found: { status: 403, data: zAppNotFoundError },
+  forbidden: { status: 403, data: zForbiddenError },
+  workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+  workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+}
 
-export const post2Errors = { forbidden: { status: 403, data: zForbiddenError } }
+export const post2Errors = {
+  app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+  app_api_disabled: { status: 403, data: zAppApiDisabledError },
+  app_not_found: { status: 403, data: zAppNotFoundError },
+  forbidden: { status: 403, data: zForbiddenError },
+  workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+  workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+}
 
 export const post3Errors = {
   app_unavailable: { status: 400, data: zAppUnavailableError },
@@ -1283,6 +1326,7 @@ export const post58Errors = {
   app_api_disabled: { status: 403, data: zAppApiDisabledError },
   app_not_found: { status: 403, data: zAppNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
+  forbidden: { status: 403, data: zForbiddenError },
   message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
   workspace_archived: { status: 403, data: zWorkspaceArchivedError },
   workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
@@ -1299,6 +1343,7 @@ export const get61Errors = {
   },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
+  forbidden: { status: 403, data: zForbiddenError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   not_chat_app: { status: 400, data: zNotChatAppError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
@@ -1312,6 +1357,7 @@ export const get62Errors = {
   app_api_disabled: { status: 403, data: zAppApiDisabledError },
   app_not_found: { status: 403, data: zAppNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
+  forbidden: { status: 403, data: zForbiddenError },
   not_chat_app: { status: 400, data: zNotChatAppError },
   workspace_archived: { status: 403, data: zWorkspaceArchivedError },
   workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
