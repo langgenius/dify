@@ -27,6 +27,7 @@ import type {
   TestContactImConnectionCommand,
 } from './types'
 import { zChannelConflictResponse } from '@dify/contracts/api/console/workspace/zod.gen'
+import { ORPCError } from '@orpc/client'
 import { z } from 'zod'
 import { consoleClient } from '@/service/console'
 import {
@@ -459,17 +460,19 @@ async function channelRequest<T>(request: () => Promise<T>): Promise<T> {
     if (status === 403)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.NoPermission)
     if (status === 409) {
-      let replacementRequired = false
-      if (error instanceof Response) {
+      let conflictBody: unknown
+      if (error instanceof ORPCError) {
+        conflictBody = error.data
+      } else if (error instanceof Response) {
         try {
-          const conflict = zChannelConflictResponse.safeParse(await error.clone().json())
-          replacementRequired = conflict.success && conflict.data.code === 'replacement_required'
+          conflictBody = await error.clone().json()
         } catch {
           // Missing or malformed conflict details still require refreshing the saved configuration.
         }
       }
+      const conflict = zChannelConflictResponse.safeParse(conflictBody)
       throw new ContactImRepositoryError(
-        replacementRequired
+        conflict.success && conflict.data.code === 'replacement_required'
           ? ContactImRepositoryErrorCode.ReplacementRequired
           : ContactImRepositoryErrorCode.ConfigurationUpdated,
       )

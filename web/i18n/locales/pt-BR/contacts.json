@@ -1,7 +1,7 @@
 {
   "imPlatform.bindingDialog.clearSavedCredential": "Limpar valor salvo",
   "imPlatform.bindingDialog.credentialWillBeCleared": "Este valor salvo será apagado ao salvar.",
-  "imPlatform.bindingDialog.replacementRequired": "Estas credenciais pertencem a outra organização. Volte para Canais e use Substituir para conectá-la.",
+  "imPlatform.bindingDialog.replacementRequired": "Estas credenciais pertencem a outro locatário de IM e não podem ser salvas diretamente. Para mudar de locatário, é necessário substituir o canal de IM atual, o que remove todos os vínculos de IM automáticos e manuais. Sincronize os contatos novamente após a substituição.",
   "imPlatform.bindingDialog.savedDetailsUnavailable": "A configuração foi salva, mas não foi possível carregar seus detalhes. Feche esta janela e abra-a novamente.",
   "imPlatform.bindingDialog.undoClearCredential": "Desfazer limpeza"
 }

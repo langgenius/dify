@@ -179,7 +179,7 @@
   "imPlatform.bindingDialog.freshCredentials": "无法读取已保存的密钥。测试或保存配置前，请重新填写所有必填凭证。",
   "imPlatform.bindingDialog.openProviderConsole": "打开 {{provider}} 开发者后台",
   "imPlatform.bindingDialog.openSetupGuide": "打开设置指南",
-  "imPlatform.bindingDialog.replacementRequired": "此凭据属于另一个组织。请返回渠道列表，使用“替换”连接。",
+  "imPlatform.bindingDialog.replacementRequired": "此凭据属于另一个 IM 租户，不能直接保存。切换租户需要替换当前 IM 渠道，将清除所有自动和手动 IM 绑定；替换后请重新同步联系人。",
   "imPlatform.bindingDialog.required": "此字段为必填项。",
   "imPlatform.bindingDialog.saveAndContinue": "保存并继续",
   "imPlatform.bindingDialog.saveFailed": "无法保存配置，请检查字段后重试。",

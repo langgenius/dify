@@ -179,7 +179,7 @@
   "imPlatform.bindingDialog.freshCredentials": "Saved secrets cannot be retrieved. Re-enter all required credentials to test or save this configuration.",
   "imPlatform.bindingDialog.openProviderConsole": "Open {{provider}} developer console",
   "imPlatform.bindingDialog.openSetupGuide": "Open setup guide",
-  "imPlatform.bindingDialog.replacementRequired": "These credentials belong to a different organization. Return to Channels and use Replace to connect it.",
+  "imPlatform.bindingDialog.replacementRequired": "These credentials belong to a different IM tenant and cannot be saved directly. Switching tenants requires replacing the current IM channel, which clears all automatic and manual IM bindings. Sync contacts again after replacement.",
   "imPlatform.bindingDialog.required": "This field is required.",
   "imPlatform.bindingDialog.saveAndContinue": "Save and continue",
   "imPlatform.bindingDialog.saveFailed": "Configuration couldn't be saved. Check the fields and try again.",

@@ -4,6 +4,7 @@ import type {
   ImProviderCredentialsInputWritable,
 } from '@dify/contracts/api/console/workspace/types.gen'
 import type { TestContactImConnectionCommand } from '../types'
+import { httpErrorFromResponse } from '@/service/http-error'
 import {
   createContactImMockRepository,
   createContactImMockRepositoryFromSeed,
@@ -1159,6 +1160,44 @@ describe('Contact IM channel API repository', () => {
 
       expect(error).toMatchObject({ code: expected })
       expect(JSON.stringify(error)).not.toContain('unsafe-secret-provider-message')
+      expect(client.channels.im.byChannelId.get).not.toHaveBeenCalled()
+      expect(client.channels.im.byChannelId.replacement.post).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    { code: 'replacement_required', expected: 'replacement_required' },
+    { code: 'provider_configuration_updated', expected: 'configuration_updated' },
+    { code: 'unknown_conflict', expected: 'configuration_updated' },
+  ])(
+    'maps the browser transport 409 reason $code without replacing the channel or retaining the response',
+    async ({ code, expected }) => {
+      const client = createChannelClient()
+      const transportError = await httpErrorFromResponse(
+        Response.json(
+          { code, message: 'unsafe-secret-provider-message', status: 409 },
+          { status: 409 },
+        ),
+      )
+      client.channels.im.byChannelId.put.mockRejectedValue(transportError)
+
+      const error = await createContactImApiRepository(organization, client)
+        .saveCredentials({
+          ...slackCommand,
+          channelId: 'channel-1',
+          expectedConfigVersion: 'snapshot-version',
+          replaceActiveProvider: false,
+        })
+        .catch((caught: unknown) => caught)
+
+      expect(error).toBeInstanceOf(ContactImRepositoryError)
+      expect(error).toMatchObject({ code: expected })
+      expect(String(error)).not.toContain('unsafe-secret-provider-message')
+      expect(JSON.stringify(error)).not.toContain('unsafe-secret-provider-message')
+      expect(client.channels.im.byChannelId.put).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ params: { channel_id: 'channel-1' } }),
+        { context: { silent: true } },
+      )
       expect(client.channels.im.byChannelId.get).not.toHaveBeenCalled()
       expect(client.channels.im.byChannelId.replacement.post).not.toHaveBeenCalled()
     },

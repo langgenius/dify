@@ -1,7 +1,7 @@
 {
   "imPlatform.bindingDialog.clearSavedCredential": "Borrar valor guardado",
   "imPlatform.bindingDialog.credentialWillBeCleared": "Este valor guardado se borrará al guardar.",
-  "imPlatform.bindingDialog.replacementRequired": "Estas credenciales pertenecen a otra organización. Vuelve a Canales y usa Reemplazar para conectarla.",
+  "imPlatform.bindingDialog.replacementRequired": "Estas credenciales pertenecen a otro tenant de IM y no se pueden guardar directamente. Para cambiar de tenant, debes reemplazar el canal de IM actual, lo que elimina todas las vinculaciones de IM automáticas y manuales. Vuelve a sincronizar los contactos después del reemplazo.",
   "imPlatform.bindingDialog.savedDetailsUnavailable": "La configuración se ha guardado, pero no se han podido cargar sus detalles. Cierra este diálogo y vuelve a abrirlo.",
   "imPlatform.bindingDialog.undoClearCredential": "Deshacer borrado"
 }
