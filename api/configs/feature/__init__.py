@@ -453,7 +453,8 @@ class EndpointConfig(BaseSettings):
 
     CONSOLE_API_URL: str = Field(
         description="Base URL for the console API,"
-        "used for login authentication callback or notion integration callbacks",
+        "used for login authentication callback or notion integration callbacks, "
+        "and as the OAuth issuer of /openapi/v1. OAuth discovery is off when it is empty.",
         default="",
     )
 

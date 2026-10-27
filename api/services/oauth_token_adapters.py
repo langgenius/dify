@@ -14,6 +14,13 @@ def authorization_code_enabled() -> bool:
     return dify_config.ENABLE_OAUTH_AUTHORIZATION_CODE
 
 
+def discovery_enabled() -> bool:
+    """Discovery needs CONSOLE_API_URL: a request host is often an internal or http:// origin."""
+    if not dify_config.ENABLE_OAUTH_BEARER:
+        return False
+    return bool(dify_config.CONSOLE_API_URL)
+
+
 def dcr_enabled() -> bool:
     if not authorization_code_enabled():
         return False

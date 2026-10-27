@@ -8,13 +8,14 @@ from controllers.well_known import bp as well_known_bp
 
 AS_PATH = "/.well-known/oauth-authorization-server/openapi/v1"
 PR_PATH = "/.well-known/oauth-protected-resource/openapi/v1"
+API_ORIGIN = "https://api.dify.test"
 ConfigOverrides = Callable[..., None]
 
 
 @pytest.fixture
 def client(config_overrides: ConfigOverrides) -> FlaskClient:
     config_overrides(
-        CONSOLE_API_URL=None,
+        CONSOLE_API_URL=API_ORIGIN,
         CONSOLE_WEB_URL=None,
         ENABLE_OAUTH_BEARER=True,
         ENABLE_OAUTH_AUTHORIZATION_CODE=True,
@@ -36,18 +37,18 @@ def test_documents_are_json_cached_and_cors_open(client: FlaskClient, path: str)
     assert resp.headers["Access-Control-Allow-Origin"] == "*"
 
 
-def test_authorization_server_uses_request_origin(client: FlaskClient) -> None:
+def test_authorization_server_uses_console_api_url(client: FlaskClient) -> None:
     body = client.get(AS_PATH, base_url="http://dify.test").get_json()
-    assert body["issuer"] == "http://dify.test/openapi/v1"
-    assert body["registration_endpoint"] == "http://dify.test/openapi/v1/oauth/register"
+    assert body["issuer"] == f"{API_ORIGIN}/openapi/v1"
+    assert body["registration_endpoint"] == f"{API_ORIGIN}/openapi/v1/oauth/register"
     assert body["authorization_endpoint"] == "http://dify.test/account/oauth/authorize"
 
 
 def test_protected_resource_document(client: FlaskClient) -> None:
     body = client.get(PR_PATH, base_url="http://dify.test").get_json()
     assert body == {
-        "resource": "http://dify.test/openapi/v1",
-        "authorization_servers": ["http://dify.test/openapi/v1"],
+        "resource": f"{API_ORIGIN}/openapi/v1",
+        "authorization_servers": [f"{API_ORIGIN}/openapi/v1"],
         "bearer_methods_supported": ["header"],
     }
 
@@ -55,6 +56,12 @@ def test_protected_resource_document(client: FlaskClient) -> None:
 @pytest.mark.parametrize("path", [AS_PATH, PR_PATH])
 def test_bearer_off_is_404(client: FlaskClient, config_overrides: ConfigOverrides, path: str) -> None:
     config_overrides(ENABLE_OAUTH_BEARER=False)
+    assert client.get(path, base_url="http://dify.test").status_code == 404
+
+
+@pytest.mark.parametrize("path", [AS_PATH, PR_PATH])
+def test_no_console_api_url_is_404(client: FlaskClient, config_overrides: ConfigOverrides, path: str) -> None:
+    config_overrides(CONSOLE_API_URL="")
     assert client.get(path, base_url="http://dify.test").status_code == 404
 
 

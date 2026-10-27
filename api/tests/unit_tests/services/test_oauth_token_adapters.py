@@ -9,6 +9,7 @@ from services.oauth_token_adapters import (
     authorization_code_enabled,
     cimd_enabled,
     dcr_enabled,
+    discovery_enabled,
 )
 
 
@@ -66,3 +67,22 @@ def test_self_registration_needs_the_browser_flow(
     monkeypatch.setattr(dify_config, "ENABLE_OAUTH_CIMD", own_flag)
 
     assert enabled() is expected
+
+
+# Without CONSOLE_API_URL the issuer would come from the request host, often an internal http:// one.
+@pytest.mark.parametrize(
+    ("bearer", "console_api_url", "expected"),
+    [
+        (True, "https://api.example.com", True),
+        (True, "", False),
+        (False, "https://api.example.com", False),
+        (False, "", False),
+    ],
+)
+def test_discovery_needs_bearer_and_console_api_url(
+    monkeypatch: pytest.MonkeyPatch, bearer: bool, console_api_url: str, expected: bool
+) -> None:
+    monkeypatch.setattr(dify_config, "ENABLE_OAUTH_BEARER", bearer)
+    monkeypatch.setattr(dify_config, "CONSOLE_API_URL", console_api_url)
+
+    assert discovery_enabled() is expected

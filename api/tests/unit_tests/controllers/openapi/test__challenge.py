@@ -7,7 +7,8 @@ from flask.testing import FlaskClient
 from controllers.openapi._challenge import attach_resource_metadata_challenge
 
 ORIGIN = "http://dify.test"
-METADATA = f"{ORIGIN}/.well-known/oauth-protected-resource/openapi/v1"
+API_ORIGIN = "https://api.dify.test"
+METADATA = f"{API_ORIGIN}/.well-known/oauth-protected-resource/openapi/v1"
 ConfigOverrides = Callable[..., None]
 
 
@@ -21,7 +22,7 @@ def _reply(status: int, challenge: str | None = None) -> Response:
 
 @pytest.fixture
 def client(config_overrides: ConfigOverrides) -> FlaskClient:
-    config_overrides(CONSOLE_API_URL=None, ENABLE_OAUTH_BEARER=True)
+    config_overrides(CONSOLE_API_URL=API_ORIGIN, ENABLE_OAUTH_BEARER=True)
     bp = Blueprint("challenge_test", __name__, url_prefix="/openapi/v1")
     attach_resource_metadata_challenge(bp)
 
@@ -113,6 +114,12 @@ def test_console_api_url_is_used(client: FlaskClient, config_overrides: ConfigOv
     )
 
 
+def test_no_console_api_url_advertises_nothing(client: FlaskClient, config_overrides: ConfigOverrides) -> None:
+    config_overrides(CONSOLE_API_URL="")
+    assert _challenge(client, "/bare") is None
+    assert _challenge(client, "/realm") == 'Bearer realm="api"'
+
+
 def test_bearer_off_advertises_nothing(client: FlaskClient, config_overrides: ConfigOverrides) -> None:
     config_overrides(ENABLE_OAUTH_BEARER=False)
     assert _challenge(client, "/bare") is None
@@ -120,7 +127,7 @@ def test_bearer_off_advertises_nothing(client: FlaskClient, config_overrides: Co
 
 
 def test_real_blueprint_401_carries_the_challenge(openapi_app: Flask, config_overrides: ConfigOverrides) -> None:
-    config_overrides(CONSOLE_API_URL=None, ENABLE_OAUTH_BEARER=True)
+    config_overrides(CONSOLE_API_URL=API_ORIGIN, ENABLE_OAUTH_BEARER=True)
     response = openapi_app.test_client().get("/openapi/v1/account", base_url=ORIGIN)
     assert response.status_code == 401
     assert response.headers["WWW-Authenticate"].endswith(f'resource_metadata="{METADATA}"')

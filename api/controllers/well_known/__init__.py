@@ -7,13 +7,13 @@ from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
 from werkzeug.exceptions import NotFound
 
-from configs import dify_config
 from services.oauth_metadata import (
     AUTHORIZATION_SERVER_PATH,
     PROTECTED_RESOURCE_PATH,
     authorization_server_metadata,
     protected_resource_metadata,
 )
+from services.oauth_token_adapters import discovery_enabled
 
 DISCOVERY_CACHE_CONTROL = "public, max-age=3600"
 
@@ -21,7 +21,7 @@ bp = Blueprint("well_known", __name__)
 
 
 def _serve(builder: Callable[[str], dict[str, Any]]) -> ResponseReturnValue:
-    if not dify_config.ENABLE_OAUTH_BEARER:
+    if not discovery_enabled():
         raise NotFound()
     response = jsonify(builder(request.host_url))
     response.headers["Cache-Control"] = DISCOVERY_CACHE_CONTROL

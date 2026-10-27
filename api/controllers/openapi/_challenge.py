@@ -5,8 +5,8 @@ from typing import Final
 
 from flask import Blueprint, Response, request
 
-from configs import dify_config
 from services.oauth_metadata import protected_resource_metadata_url
+from services.oauth_token_adapters import discovery_enabled
 
 OAUTH_PATH_PREFIX: Final = "/openapi/v1/oauth/"
 BEARER_SCHEME: Final = "bearer"
@@ -20,7 +20,7 @@ def attach_resource_metadata_challenge(bp: Blueprint) -> None:
             return response
         if request.path.startswith(OAUTH_PATH_PREFIX):
             return response
-        if not dify_config.ENABLE_OAUTH_BEARER:
+        if not discovery_enabled():
             return response
         param = f'{RESOURCE_METADATA_PARAM}="{protected_resource_metadata_url(request.host_url)}"'
         existing = response.headers.get("WWW-Authenticate")
