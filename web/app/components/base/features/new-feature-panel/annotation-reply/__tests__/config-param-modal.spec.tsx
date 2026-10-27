@@ -192,6 +192,7 @@ describe('ConfigParamModal', () => {
     const save = screen.getByRole('button', { name: /initSetup\.configConfirmBtn/ })
     await user.click(save)
     await waitFor(() => expect(save).not.toHaveAttribute('aria-disabled', 'true'))
+    expect(toastErrorSpy).toHaveBeenCalledExactlyOnceWith('save failed')
     await user.click(save)
     expect(onSave).toHaveBeenCalledTimes(2)
     await user.click(screen.getByRole('button', { name: /operation\.cancel/ }))

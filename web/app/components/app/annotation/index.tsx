@@ -23,6 +23,7 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { updateAnnotationStatus } from '@/service/annotation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { sleep } from '@/utils'
+import { getErrorMessage } from '@/utils/error-message'
 import PageTitle from '../log-annotation/page-title'
 import Filter from './filter'
 import HeaderOpts from './header-opts'
@@ -67,10 +68,11 @@ function Annotation({ appDetail }: AnnotationProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
-  const fetchAnnotationConfig = async () => {
-    const res = await consoleClient.apps.byAppId.annotationSetting.get({
-      params: { app_id: appDetail.id },
-    })
+  const fetchAnnotationConfig = async (silent = false) => {
+    const res = await consoleClient.apps.byAppId.annotationSetting.get(
+      { params: { app_id: appDetail.id } },
+      { context: { silent } },
+    )
     setAnnotationConfig(res as AnnotationReplyConfig)
     return (res as AnnotationReplyConfig).id
   }
@@ -81,14 +83,13 @@ function Annotation({ appDetail }: AnnotationProps) {
 
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     while (true) {
-      const res = await consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get({
-        params: { app_id: appDetail.id, action: status, job_id: jobId },
-      })
+      const res = await consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get(
+        { params: { app_id: appDetail.id, action: status, job_id: jobId } },
+        { context: { silent: true } },
+      )
       if (res.job_status === JobStatus.completed) break
       if (res.job_status === JobStatus.error) {
-        const error = new Error(res.error_msg || t(($) => $['api.actionFailed'], { ns: 'common' }))
-        toast.error(error.message)
-        throw error
+        throw new Error(res.error_msg || t(($) => $['api.actionFailed'], { ns: 'common' }))
       }
       await sleep(2000)
     }
@@ -180,9 +181,12 @@ function Annotation({ appDetail }: AnnotationProps) {
                             annotationConfig?.score_threshold,
                           )
                           await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
-                          await fetchAnnotationConfig()
-                        } catch {
-                          // Request and job failures already have error feedback; keep the current state.
+                          await fetchAnnotationConfig(true)
+                        } catch (error) {
+                          toast.error(
+                            getErrorMessage(error) ||
+                              t(($) => $['api.actionFailed'], { ns: 'common' }),
+                          )
                         }
                       }
                     }}
@@ -279,14 +283,17 @@ function Annotation({ appDetail }: AnnotationProps) {
                 )
                 await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)
               }
-              const annotationId = await fetchAnnotationConfig()
+              const annotationId = await fetchAnnotationConfig(true)
               if (score !== annotationConfig?.score_threshold)
-                await consoleClient.apps.byAppId.annotationSettings.byAnnotationSettingId.post({
-                  params: { app_id: appDetail.id, annotation_setting_id: annotationId! },
-                  body: { score_threshold: score },
-                })
+                await consoleClient.apps.byAppId.annotationSettings.byAnnotationSettingId.post(
+                  {
+                    params: { app_id: appDetail.id, annotation_setting_id: annotationId! },
+                    body: { score_threshold: score },
+                  },
+                  { context: { silent: true } },
+                )
 
-              await fetchAnnotationConfig()
+              await fetchAnnotationConfig(true)
               toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
               setIsShowEdit(false)
             }}

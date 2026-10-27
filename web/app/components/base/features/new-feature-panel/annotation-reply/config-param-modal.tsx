@@ -18,6 +18,7 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { toast } from '@/app/notifications'
 import { ANNOTATION_DEFAULT } from '@/config'
+import { getErrorMessage } from '@/utils/error-message'
 import { Item } from './config-param'
 import ScoreSlider from './score-slider'
 
@@ -87,8 +88,8 @@ const ConfigParamModal: FC<Props> = ({
         },
         annotationConfig.score_threshold,
       )
-    } catch {
-      // Request and job failures already have error feedback; leave the dialog open for retry.
+    } catch (error) {
+      toast.error(getErrorMessage(error) || t(($) => $['api.actionFailed'], { ns: 'common' }))
     } finally {
       setLoading(false)
     }

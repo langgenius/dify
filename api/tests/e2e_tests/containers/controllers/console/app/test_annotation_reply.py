@@ -19,7 +19,7 @@ from celery.signals import before_task_publish
 from flask import Flask
 from kombu.exceptions import SerializerNotInstalled
 from kombu.simple import SimpleQueue
-from sqlalchemy import Connection, event, update
+from sqlalchemy import Connection, delete, event, select, update
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from werkzeug.test import TestResponse
 
@@ -389,39 +389,64 @@ def test_concurrent_requests_publish_only_one_reply_task(harness: _Harness, acti
     _consume_task(harness, action, job_ids[0])
 
 
-def test_finished_worker_releases_its_reservation(harness: _Harness) -> None:
-    with harness.factory.begin() as session:
-        session.add(
-            AppAnnotationSetting(
-                app_id=harness.target.id,
-                score_threshold=0.75,
-                collection_binding_id=str(uuid4()),
-                created_user_id=harness.account.id,
-                updated_user_id=harness.account.id,
+def _run_worker(harness: _Harness, action: AnnotationReplyAction, job_id: str) -> None:
+    with harness.app.app_context():
+        if action == "enable":
+            enable_annotation_reply_task.run(
+                job_id,
+                harness.target.id,
+                harness.account.id,
+                harness.target.tenant_id,
+                0.75,
+                "openai",
+                "text-embedding-3-small",
             )
-        )
-    started = harness.request("disable").get_json()
+        else:
+            disable_annotation_reply_task.run(job_id, harness.target.id, harness.target.tenant_id)
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+def test_finished_worker_releases_its_reservation(harness: _Harness, action: AnnotationReplyAction) -> None:
+    if action == "disable":
+        with harness.factory.begin() as session:
+            session.add(
+                AppAnnotationSetting(
+                    app_id=harness.target.id,
+                    score_threshold=0.75,
+                    collection_binding_id=str(uuid4()),
+                    created_user_id=harness.account.id,
+                    updated_user_id=harness.account.id,
+                )
+            )
+    started = harness.request(action).get_json()
     job_id = started["job_id"]
-    _consume_task(harness, "disable", job_id)
+    _consume_task(harness, action, job_id)
 
-    with harness.app.app_context():
-        disable_annotation_reply_task.run(job_id, harness.target.id, harness.target.tenant_id)
+    _run_worker(harness, action, job_id)
 
-    assert harness.redis.get(f"disable_app_annotation_{harness.target.id}") is None
-    response = harness.request("disable", job_id=job_id)
+    assert harness.redis.get(f"{action}_app_annotation_{harness.target.id}") is None
+    response = harness.request(action, job_id=job_id)
     assert response.get_json() == {"job_id": job_id, "job_status": "completed", "error_msg": ""}
-    assert 0 < harness.redis.ttl(annotation_reply_job_owner_key(action="disable", job_id=job_id)) <= 600
+    assert 0 < harness.redis.ttl(annotation_reply_job_owner_key(action=action, job_id=job_id)) <= 600
+    with harness.factory() as session:
+        setting = session.scalar(select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == harness.target.id))
+        assert (setting is not None) == (action == "enable")
 
 
-def test_early_returning_old_worker_does_not_release_new_reservation(harness: _Harness) -> None:
-    started = harness.request("disable").get_json()
+@pytest.mark.parametrize("action", ["enable", "disable"])
+def test_early_returning_old_worker_does_not_release_new_reservation(
+    harness: _Harness, action: AnnotationReplyAction
+) -> None:
+    started = harness.request(action).get_json()
     old_job_id = started["job_id"]
-    _consume_task(harness, "disable", old_job_id)
-    harness.redis.expire(f"disable_app_annotation_{harness.target.id}", 0)
-    current = harness.request("disable").get_json()
-    _consume_task(harness, "disable", current["job_id"])
+    _consume_task(harness, action, old_job_id)
+    harness.redis.expire(f"{action}_app_annotation_{harness.target.id}", 0)
+    current = harness.request(action).get_json()
+    _consume_task(harness, action, current["job_id"])
+    if action == "enable":
+        with harness.factory.begin() as session:
+            session.execute(delete(App).where(App.id == harness.target.id))
 
-    with harness.app.app_context():
-        disable_annotation_reply_task.run(old_job_id, harness.target.id, harness.target.tenant_id)
+    _run_worker(harness, action, old_job_id)
 
-    assert harness.redis.get(f"disable_app_annotation_{harness.target.id}") == current["job_id"].encode()
+    assert harness.redis.get(f"{action}_app_annotation_{harness.target.id}") == current["job_id"].encode()
