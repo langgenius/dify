@@ -92,8 +92,9 @@ type CheckboxTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
   default?: string | boolean
 }
 
-type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length'> &
+type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length' | 'default'> &
   Partial<UploadFileSetting> & {
+    default?: unknown
     max_length?: number
   }
 
@@ -104,7 +105,8 @@ type ExternalDataToolFormItem = ExternalDataTool & {
   hide?: boolean
 }
 
-type JsonObjectFormItem = Omit<TextTypeFormItem, 'max_length'> & {
+type JsonObjectFormItem = Omit<TextTypeFormItem, 'max_length' | 'default'> & {
+  default?: unknown
   json_schema?: string | Record<string, unknown>
 }
 

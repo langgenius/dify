@@ -7,7 +7,6 @@ import {
   AppSourceType,
   fetchAppInfo,
   fetchAppMeta,
-  fetchAppParams,
   fetchChatList,
   fetchConversations,
   generationConversationName,
@@ -16,7 +15,9 @@ import {
   submitHumanInputForm,
 } from './share'
 import { useInvalid } from './use-base'
+import { webAppQuery } from './webapp'
 import { resolveWebAppAddress } from './webapp-address'
+import { selectWebAppParameters } from './webapp-parameters'
 
 const NAME_SPACE = 'webapp'
 
@@ -57,7 +58,6 @@ export const shareQueryKeys = {
   appAccessMode: (address: WebAppAddress | null, code: string | null) =>
     [NAME_SPACE, 'appAccessMode', address, code] as const,
   appInfo: (address: WebAppAddress | null) => [NAME_SPACE, address, 'appInfo'] as const,
-  appParams: (address: WebAppAddress | null) => [NAME_SPACE, address, 'appParams'] as const,
   appMeta: (address: WebAppAddress | null) => [NAME_SPACE, address, 'appMeta'] as const,
   conversations: [NAME_SPACE, 'conversations'] as const,
   conversationList: (address: WebAppAddress | null, params: ShareConversationsParams) =>
@@ -90,14 +90,36 @@ export const useGetWebAppInfo = () => {
   })
 }
 
-export const useGetWebAppParams = () => {
-  const address = resolveWebAppAddress()
-  return useQuery({
-    queryKey: shareQueryKeys.appParams(address),
-    queryFn: () => {
-      return fetchAppParams(AppSourceType.webApp)
+export const useGetWebAppParams = (address: WebAppAddress) => {
+  return useQuery(
+    webAppQuery.parameters.get.queryOptions({
+      queryKey: [...webAppQuery.parameters.get.queryKey(), address],
+      context: { address },
+      select: selectWebAppParameters,
+      staleTime: 0,
+      gcTime: 0,
+    }),
+  )
+}
+
+/** Account identity is independent of the legacy public-App access check in Splash. */
+export const useGetWebAppAccountStatus = (address: WebAppAddress) => {
+  const input = {
+    query: {
+      mode: 'end_user' as const,
+      ...(address.kind === 'default' ? { app_code: address.code } : {}),
     },
-  })
+  }
+  return useQuery(
+    webAppQuery.login.status.get.queryOptions({
+      input,
+      queryKey: [...webAppQuery.login.status.get.queryKey({ input }), address],
+      context: { address, silent: true },
+      staleTime: 0,
+      gcTime: 0,
+      retry: false,
+    }),
+  )
 }
 
 export const useGetWebAppMeta = () => {

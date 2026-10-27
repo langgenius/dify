@@ -7438,7 +7438,7 @@
   },
   "web/service/use-share.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 8
+      "count": 7
     },
     "typescript/no-deprecated": {
       "count": 1

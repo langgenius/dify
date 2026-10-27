@@ -6,10 +6,14 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import useSignInUrl from './use-sign-in-url'
+import { useWebAppEntry } from './webapp-entry'
 
 export default function SignIn({ className }: { className?: string }) {
   const { t } = useTranslation(['share'])
   const signInUrl = useSignInUrl()
+  const entry = useWebAppEntry()
+
+  if (entry && !entry.showSignIn) return null
 
   return (
     <Link
