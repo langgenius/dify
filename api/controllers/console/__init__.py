@@ -234,6 +234,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         trial,
     )
     from .human_input_v2 import channel as human_input_channel
+    from .human_input_v2 import contact as human_input_contact
     from .human_input_v2 import form as human_input_v2_form
     from .knowledge_fs import features as knowledge_fs_features
     from .knowledge_fs import resources as knowledge_fs_resources
@@ -248,7 +249,6 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         account,
         agent_providers,
         endpoint,
-        human_input,
         load_balancing_config,
         members,
         model_providers,
@@ -350,7 +350,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         account,
         agent_providers,
         endpoint,
-        human_input,
+        human_input_contact,
         load_balancing_config,
         members,
         model_providers,
@@ -453,7 +453,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     account,
     agent_providers,
     endpoint,
-    human_input,
+    human_input_contact,
     load_balancing_config,
     members,
     model_providers,
@@ -513,8 +513,8 @@ __all__ = [
     "forgot_password",
     "generator",
     "hit_testing",
-    "human_input",
     "human_input_channel",
+    "human_input_contact",
     "human_input_form",
     "human_input_v2_form",
     "init_validate",

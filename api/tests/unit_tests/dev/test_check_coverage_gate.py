@@ -12,7 +12,7 @@ from dev.check_coverage_gate import REPOSITORY_ROOT, CoverageGateError, enforce_
 _PLANNER_MODULE = "api/core/human_input_v2/im_integration/sync_reconciliation.py"
 _PROJECT_MODULES = (
     "api/controllers/common/human_input_v2_contracts.py",
-    "api/controllers/console/workspace/human_input.py",
+    "api/controllers/console/human_input_v2/contact.py",
     "api/core/human_input_v2/im_integration/__init__.py",
     "api/core/human_input_v2/im_integration/binding_commands.py",
     "api/core/human_input_v2/im_integration/ports.py",

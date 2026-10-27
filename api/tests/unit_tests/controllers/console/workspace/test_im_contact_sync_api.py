@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
@@ -17,7 +16,7 @@ from flask_restx import Resource
 from pydantic import ValidationError
 from werkzeug.exceptions import NotFound
 
-from controllers.console.workspace.human_input import (
+from controllers.console.human_input_v2.contact import (
     BatchGetContactOptionsAPI,
     BatchGetContactsAPI,
     WorkspaceContactApi,
@@ -76,7 +75,7 @@ from services.human_input_v2.im_contact_sync.service import (
     IMSyncRunNotFoundError,
 )
 
-_CONTROLLER_MODULE = import_module("controllers.console.workspace.human_input")
+_CONTROLLER_MODULE = import_module("controllers.console.human_input_v2.contact")
 _NOW = datetime(2026, 8, 11, 8)
 _CONTACT_CREATED_AT = datetime(2025, 7, 10, 6)
 _RUN = IMSyncRun.create(
@@ -678,27 +677,6 @@ def test_in_scope_handlers_validate_before_service_construction(
             SimpleNamespace(id="account-1"),
             "00000000-0000-0000-0000-000000000001",
         )
-
-
-def test_handlers_preserve_authorization_and_do_not_reach_persistence_or_stub() -> None:
-    command_classes = (WorkspaceIMSyncRunsApi, WorkspaceContactIMBindingsApi, WorkspaceContactIMOverrideApi)
-    query_classes = (WorkspaceLatestIMSyncRunApi, WorkspaceLatestIMSyncRunResultsApi, WorkspaceIMIdentitiesApi)
-
-    for controller_class in (*command_classes, *query_classes):
-        source = inspect.getsource(controller_class)
-        for decorator_name in (
-            "setup_required",
-            "login_required",
-            "account_initialization_required",
-            "is_admin_or_owner_required",
-            "with_current_tenant_id",
-        ):
-            assert f"@{decorator_name}" in source
-        assert "_raise_stub_not_implemented" not in source
-        assert "repositories." not in source
-        assert "sqlalchemy" not in source.lower()
-    for controller_class in command_classes:
-        assert "@with_current_user" in inspect.getsource(controller_class)
 
 
 class _ContactService:

@@ -20,8 +20,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from controllers.console.workspace import human_input
-from controllers.console.workspace.human_input import WorkspaceContactIMBindingsApi
+from controllers.console.human_input_v2 import contact as human_input
+from controllers.console.human_input_v2.contact import WorkspaceContactIMBindingsApi
 from core.human_input_v2.entities import HumanInputContactType, IMBindingScope, IMProvider
 from core.human_input_v2.im_integration import IMBindingCommandError, IMBindingCommandErrorCode
 from core.human_input_v2.shared import (
@@ -441,7 +441,7 @@ def test_put_replaces_default_binding_and_retries_are_idempotent(
     with_override: bool,
 ) -> None:
     monkeypatch.setattr(
-        import_module("controllers.console.workspace.human_input"),
+        import_module("controllers.console.human_input_v2.contact"),
         "build_im_contact_sync_application",
         lambda: SimpleNamespace(binding_service=binding_context.service),
     )

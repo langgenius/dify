@@ -11,7 +11,7 @@ from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden
 
-from controllers.console.workspace.human_input import NodeDataMigrationAPI
+from controllers.console.human_input_v2.contact import NodeDataMigrationAPI
 from core.human_input_v2.shared.values import NormalizedEmail, TenantId
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.migration import (
@@ -31,7 +31,7 @@ from services.human_input_v2.node_data_migration import (
     NodeDataMigrationSuccess,
 )
 
-_CONTROLLER_MODULE = import_module("controllers.console.workspace.human_input")
+_CONTROLLER_MODULE = import_module("controllers.console.human_input_v2.contact")
 _OMITTED_METHOD_ID = object()
 
 

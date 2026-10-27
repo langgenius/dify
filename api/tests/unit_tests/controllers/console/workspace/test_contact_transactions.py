@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from controllers.console.workspace.human_input import (
+from controllers.console.human_input_v2.contact import (
     WorkspaceContactsRemoveApi,
     WorkspaceExternalContactApi,
     WorkspaceExternalContactsApi,
