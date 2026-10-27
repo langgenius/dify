@@ -298,10 +298,6 @@ export type EndUserConnectionCreatePayload = {
   node_id: string
 }
 
-export type EndUserConnectionDisconnectPayload = {
-  connection_revision?: string | null
-}
-
 export type EndUserConnectionListQuery = {
   cursor?: string | null
   limit?: number
@@ -1814,7 +1810,7 @@ export type PostConnectionsPreflightResponse =
   PostConnectionsPreflightResponses[keyof PostConnectionsPreflightResponses]
 
 export type DeleteConnectionsByConnectionIdData = {
-  body?: EndUserConnectionDisconnectPayload
+  body?: never
   path: {
     connection_id: string
   }

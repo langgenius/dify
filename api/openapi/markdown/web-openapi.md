@@ -221,19 +221,13 @@ Read saved App or Conversation choices without validating or refreshing credenti
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /connections/{connection_id}
-Disconnect locally and remove live selections. Supply connection_revision to enable best-effort OAuth revocation against the original plugin artifact and Client; omit it for local-only Disconnect. Invalid consent or unavailable artifacts never undo local deletion or fall back to installed versions.
+Disconnect locally and remove live selections, then attempt OAuth revocation against the original plugin artifact and Client. Remote failures never undo local deletion or fall back to installed versions.
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | connection_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  No | **application/json**: [EndUserConnectionDisconnectPayload](#enduserconnectiondisconnectpayload)<br> |
 
 #### Responses
 
@@ -1610,12 +1604,6 @@ Too many emails have been sent from this IP address recently. Please try again l
 | credentials | object |  | Yes |
 | name | string |  | Yes |
 | node_id | string |  | Yes |
-
-#### EndUserConnectionDisconnectPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| connection_revision | string | Signed Provider revision for best-effort OAuth revocation. Omit for local-only Disconnect. | No |
 
 #### EndUserConnectionListQuery
 

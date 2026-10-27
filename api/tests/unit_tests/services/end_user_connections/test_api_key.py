@@ -54,7 +54,7 @@ def test_api_key_crud_and_metadata_queries_never_expose_or_decrypt_secrets(harne
     checked = service.check_connection(context, connection.id, connection_revision=harness.connection_revision)
     assert checked.check.status == "valid"
     assert harness.auth.calls[-1][3] == {"api_key": "replacement"}
-    service.delete_connection(context, connection.id, connection_revision=harness.connection_revision)
+    service.delete_connection(context, connection.id)
     with pytest.raises(ConnectionNotFoundError):
         service.get_connection(context, connection.id)
 
@@ -218,7 +218,7 @@ def test_deleting_api_key_cascades_live_selections_only(harness: ConnectionHarne
                 connection_id=connection.id,
             )
         )
-    harness.service.delete_connection(harness.context, connection.id, connection_revision=harness.connection_revision)
+    harness.service.delete_connection(harness.context, connection.id)
     with harness.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(AppConnection)) == 0
         assert session.scalar(sa.select(sa.func.count()).select_from(SessionConnection)) == 0

@@ -54,7 +54,6 @@ class EndUserConnectionRevisionAcceptance(TypeBase):
     """First acceptance of an authorization contract by one App-scoped EndUser.
 
     Preserve the original reason when a later request resubmits an inherited ID.
-    Account identity is captured at first acceptance; EndUser identity owns the record.
     """
 
     __tablename__ = "end_user_connection_revision_acceptances"
@@ -90,8 +89,6 @@ class EndUserConnectionRevisionAcceptance(TypeBase):
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    # Account association at first acceptance, independent of current login state.
-    account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     revision_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     reason: Mapped[ConnectionRevisionAcceptanceReason] = mapped_column(

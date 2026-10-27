@@ -60,20 +60,17 @@ class ConnectionContractSnapshot(BaseModel):
 @dataclass(frozen=True, slots=True)
 class ConnectionRevisionAcceptance:
     revision_id: str
-    reason: ConnectionRevisionAcceptanceReason
-    # Only inherited acceptance has a source contract.
     source_revision_id: str | None
 
-    def __post_init__(self) -> None:
-        inherited = self.reason == ConnectionRevisionAcceptanceReason.INHERITED
-        if inherited != (self.source_revision_id is not None) or self.source_revision_id == self.revision_id:
-            raise ValueError("Invalid revision acceptance provenance.")
+    @property
+    def reason(self) -> ConnectionRevisionAcceptanceReason:
+        if self.source_revision_id is None:
+            return ConnectionRevisionAcceptanceReason.APPROVED
+        return ConnectionRevisionAcceptanceReason.INHERITED
 
     @classmethod
     def from_revisions(cls, submitted: str, accepted: str) -> "ConnectionRevisionAcceptance":
-        if submitted == accepted:
-            return cls(accepted, ConnectionRevisionAcceptanceReason.APPROVED, None)
-        return cls(accepted, ConnectionRevisionAcceptanceReason.INHERITED, submitted)
+        return cls(accepted, submitted if submitted != accepted else None)
 
 
 class ConnectionRevisionSnapshots(Protocol):
@@ -94,7 +91,3 @@ class ConnectionProviderRevisions(Protocol):
     def acceptance(
         self, context: WebConnectionContext, provider: str, revision: str, admitted: ProviderContractSnapshot
     ) -> ConnectionRevisionAcceptance: ...
-
-    def reference(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
-        """Validate a persisted Provider reference without requiring its current installation."""
-        ...

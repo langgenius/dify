@@ -62,22 +62,4 @@ def test_provider_revision_cannot_cross_its_persisted_scope(
     else:
         revision = "00000000-0000-7000-8000-000000000000"
     with pytest.raises(ConnectionRevisionChangedError):
-        revisions.reference(context, PROVIDER, revision)
-
-
-def test_revocation_reference_does_not_consult_the_current_installation(
-    monkeypatch: pytest.MonkeyPatch, snapshots: EndUserConnectionRepository
-) -> None:
-    context = WebConnectionContext("tenant", "app", "user", "account")
-    providers = TestProviders(ScriptedAuth(), plugin_provider(context.tenant_id))
-    revisions = PluginConnectionProviderRevisions(providers=providers, snapshots=snapshots)
-    revision = revisions.resolve(context, PROVIDER)
-
-    def unavailable(_tenant_id: str, _provider: str) -> str:
-        pytest.fail("Revocation consent must remain usable after uninstall or replacement.")
-
-    monkeypatch.setattr(providers, "plugin_unique_identifier", unavailable)
-    assert (
-        revisions.reference(context, PROVIDER, revision).plugin_unique_identifier
-        == providers.controller.plugin_unique_identifier
-    )
+        revisions.require(context, PROVIDER, revision)

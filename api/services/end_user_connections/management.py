@@ -1,6 +1,5 @@
 """Personal Connection management with owner-scoped persistence and bounded writes."""
 
-import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -23,7 +22,6 @@ from services.end_user_connections.entities import ConnectionAccessRecord, Conne
 from services.end_user_connections.errors import (
     ConnectionCheckUnavailableError,
     ConnectionConfigurationError,
-    ConnectionError,
     ConnectionInvalidCredentialsError,
     ConnectionNotFoundError,
 )
@@ -34,8 +32,6 @@ from services.end_user_connections.policy import (
     require_personal_connection_access,
 )
 from services.end_user_connections.revision import ConnectionProviderRevisions, ConnectionRevisionAcceptance
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -232,19 +228,11 @@ class ConnectionService:
         )
         return updated.summary
 
-    def delete_connection(
-        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str | None = None
-    ) -> None:
+    def delete_connection(self, context: WebConnectionContext, connection_id: str) -> None:
         record = self._load(context, connection_id)
         self._store.delete(context, connection_mutation_guard(context, record.access))
-        if record.access.credential_type == ConnectionCredentialType.OAUTH2 and connection_revision is not None:
-            try:
-                # The original grant remains the revocation authority even after installation changes.
-                self._revisions.reference(context, record.access.provider, connection_revision)
-            except ConnectionError:
-                logger.info("Skipped unconfirmed OAuth revocation for deleted Connection %s", connection_id)
-            else:
-                self._oauth.revoke_deleted(context, record)
+        if record.access.credential_type == ConnectionCredentialType.OAUTH2:
+            self._oauth.revoke_deleted(context, record)
 
     def check_connection(
         self, context: WebConnectionContext, connection_id: str, *, connection_revision: str

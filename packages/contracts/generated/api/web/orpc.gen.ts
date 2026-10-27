@@ -64,7 +64,6 @@ import {
   zWebLoginUnavailableError,
 } from './zod.gen.ts'
 import {
-  zDeleteConnectionsByConnectionIdBody,
   zDeleteConnectionsByConnectionIdPath,
   zDeleteConnectionsByConnectionIdResponse,
   zDeleteConversationsByCIdPath,
@@ -485,12 +484,12 @@ export const revision = {
 }
 
 /**
- * Disconnect locally and remove live selections. Supply connection_revision to enable best-effort OAuth revocation against the original plugin artifact and Client; omit it for local-only Disconnect. Invalid consent or unavailable artifacts never undo local deletion or fall back to installed versions.
+ * Disconnect locally and remove live selections, then attempt OAuth revocation against the original plugin artifact and Client. Remote failures never undo local deletion or fall back to installed versions.
  */
 export const delete_ = oc
   .route({
     description:
-      'Disconnect locally and remove live selections. Supply connection_revision to enable best-effort OAuth revocation against the original plugin artifact and Client; omit it for local-only Disconnect. Invalid consent or unavailable artifacts never undo local deletion or fall back to installed versions.',
+      'Disconnect locally and remove live selections, then attempt OAuth revocation against the original plugin artifact and Client. Remote failures never undo local deletion or fall back to installed versions.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteConnectionsByConnectionId',
@@ -498,12 +497,7 @@ export const delete_ = oc
     successStatus: 204,
     tags: ['web'],
   })
-  .input(
-    z.object({
-      body: zDeleteConnectionsByConnectionIdBody.optional(),
-      params: zDeleteConnectionsByConnectionIdPath,
-    }),
-  )
+  .input(z.object({ params: zDeleteConnectionsByConnectionIdPath }))
   .output(zDeleteConnectionsByConnectionIdResponse)
   .errors({
     connection_configuration_invalid: { status: 400, data: zConnectionConfigurationInvalidError },

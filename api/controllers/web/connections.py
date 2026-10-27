@@ -33,7 +33,6 @@ from libs.helper import dump_response
 from models.model import App, EndUser
 from services.end_user_connection_identity import connection_context_from_web_passport
 from services.end_user_connections.contracts import (
-    ConnectionDisconnectInput,
     ConnectionInput,
     ConnectionRevisionView,
     ConnectionSummary,
@@ -128,10 +127,6 @@ class EndUserConnectionUpdatePayload(UpdateConnectionInput):
     )
 
 
-class EndUserConnectionDisconnectPayload(ConnectionDisconnectInput):
-    pass
-
-
 class EndUserConnectionRevisionResponse(ConnectionRevisionView, ResponseModel):
     pass
 
@@ -151,7 +146,6 @@ register_schema_models(
     EndUserConnectionCreatePayload,
     EndUserConnectionUpdatePayload,
     EndUserConnectionListQuery,
-    EndUserConnectionDisconnectPayload,
 )
 register_response_schema_models(
     web_ns, EndUserConnectionResponse, EndUserConnectionListResponse, EndUserConnectionRevisionResponse
@@ -233,13 +227,10 @@ class EndUserConnectionApi(WebApiResource):
 
     @web_ns.doc(
         description=(
-            "Disconnect locally and remove live selections. Supply connection_revision to enable best-effort OAuth "
-            "revocation against the original plugin artifact and Client; omit it for local-only Disconnect. "
-            "Invalid consent or unavailable artifacts never undo local deletion or fall back to installed versions."
+            "Disconnect locally and remove live selections, then attempt OAuth revocation against the original "
+            "plugin artifact and Client. Remote failures never undo local deletion or fall back to installed versions."
         )
     )
-    @web_ns.expect(web_ns.models[EndUserConnectionDisconnectPayload.__name__])
-    @web_ns.doc(params={"payload": {"required": False}})
     @web_ns.response(204, "Connection deleted")
     @error_responses(
         ConnectionLoginRequiredError,
@@ -250,14 +241,7 @@ class EndUserConnectionApi(WebApiResource):
     def delete(self, app_model: App, end_user: EndUser, connection_id: UUID):
         try:
             context = connection_context_from_web_passport(app=app_model, end_user=end_user)
-            payload = EndUserConnectionDisconnectPayload.model_validate(
-                (web_ns.payload if request.get_data() else None) or {}
-            )
-            application_services().end_user_connections.delete_connection(
-                context, str(connection_id), connection_revision=payload.connection_revision
-            )
-        except ValidationError:
-            raise ValueError("Invalid connection disconnect payload.") from None
+            application_services().end_user_connections.delete_connection(context, str(connection_id))
         except ConnectionError as error:
             _raise_error(error)
         return "", 204

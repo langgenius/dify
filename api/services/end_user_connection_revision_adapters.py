@@ -50,15 +50,12 @@ class PluginConnectionRevisions:
             raise ConnectionRevisionChangedError()
         current = self.snapshot(tenant_id, app_id, graph)
         canonical = self._snapshots.save_revision(current)
-        if previous.fingerprint == current.fingerprint:
+        if revision == canonical:
             return canonical
         old_providers = {item.provider: item.plugin_unique_identifier for item in previous.providers}
         new_providers = {item.provider: item.plugin_unique_identifier for item in current.providers}
         # Compare normalized requirements independently of plugin artifacts.
-        requirements_unchanged = (
-            previous.model_copy(update={"providers": ()}).fingerprint
-            == current.model_copy(update={"providers": ()}).fingerprint
-        )
+        requirements_unchanged = previous.requirements == current.requirements
         if (
             requirements_unchanged
             and old_providers.keys() == new_providers.keys()
@@ -94,7 +91,7 @@ class PluginConnectionProviderRevisions:
     def resolve(self, context: WebConnectionContext, provider: str) -> str:
         return self._snapshots.save_revision(self._snapshot(context, self._current(context, provider)))
 
-    def reference(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
+    def _reference(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
         snapshot = self._snapshots.get_revision(context.tenant_id, context.app_id, revision)
         if snapshot is None:
             raise ConnectionRevisionChangedError()
@@ -106,7 +103,7 @@ class PluginConnectionProviderRevisions:
     def acceptance(
         self, context: WebConnectionContext, provider: str, revision: str, admitted: ProviderContractSnapshot
     ) -> ConnectionRevisionAcceptance:
-        previous = self.reference(context, provider, revision)
+        previous = self._reference(context, provider, revision)
         if admitted.provider != provider:
             raise ConnectionRevisionChangedError()
         # A Provider mutation approves only its projection of an App contract.
@@ -115,7 +112,7 @@ class PluginConnectionProviderRevisions:
         return ConnectionRevisionAcceptance.from_revisions(source, current)
 
     def require(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
-        previous = self.reference(context, provider, revision)
+        previous = self._reference(context, provider, revision)
         current = self._current(context, provider)
         if previous == current or self._providers.is_plugin_trusted(
             context.tenant_id, current.plugin_unique_identifier

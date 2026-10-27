@@ -77,13 +77,6 @@ class UpdateConnectionInput(ConnectionInput):
         return self
 
 
-class ConnectionDisconnectInput(ConnectionInput):
-    connection_revision: ConnectionRevision | None = Field(
-        default=None,
-        description="Signed Provider revision for best-effort OAuth revocation. Omit for local-only Disconnect.",
-    )
-
-
 class ConnectionRevisionView(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -248,14 +241,11 @@ class ConnectionManagement(Protocol):
         """
         ...
 
-    def delete_connection(
-        self, context: WebConnectionContext, connection_id: str, *, connection_revision: str | None = None
-    ) -> None:
+    def delete_connection(self, context: WebConnectionContext, connection_id: str) -> None:
         """Remove the resource and live selections; retain historical Run references.
 
         Best-effort OAuth revocation uses only the artifact recorded for the grant.
-        A valid persisted Provider revision enables best-effort revocation. Without
-        one, deletion is local-only. Remote failures never undo local Disconnect.
+        Remote failures never undo local Disconnect.
         """
         ...
 

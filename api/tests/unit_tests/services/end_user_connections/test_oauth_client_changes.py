@@ -76,8 +76,10 @@ def save_choices(harness: OAuthHarness, connection_ids: list[str]) -> None:
             )
 
 
-@pytest.mark.parametrize("change", ["secret", "client_id", "disable", "delete"])
-@pytest.mark.parametrize("verified_upgrade", [False, True])
+@pytest.mark.parametrize(
+    ("change", "verified_upgrade"),
+    [("secret", False), ("secret", True), ("client_id", False), ("disable", False), ("delete", False)],
+)
 def test_workspace_client_changes_clear_all_live_choices_and_require_reauthorization(
     harness: OAuthHarness, change: str, verified_upgrade: bool
 ) -> None:

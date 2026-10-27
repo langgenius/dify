@@ -334,9 +334,7 @@ def test_delete_never_dispatches_secrets_to_an_unpinned_plugin(
 
     monkeypatch.setattr(harness.providers, "provider", unavailable_provider)
     harness.base.auth.on_revoke = assert_deleted
-    harness.base.service.delete_connection(
-        harness.base.context, connection_id, connection_revision=harness.base.connection_revision
-    )
+    harness.base.service.delete_connection(harness.base.context, connection_id)
     assert harness.base.repository.find(harness.base.context, connection_id) is None
     assert harness.base.auth.revocation_artifacts == [original.access.oauth_client.plugin_unique_identifier]
     assert len(harness.base.auth.revocations) == 1
@@ -364,9 +362,7 @@ def test_configuration_and_provider_failures_do_not_prevent_local_delete(
             )
     if change == "secret_error":
         harness.base.cipher.values.clear()
-    harness.base.service.delete_connection(
-        harness.base.context, connection_id, connection_revision=harness.base.connection_revision
-    )
+    harness.base.service.delete_connection(harness.base.context, connection_id)
     assert harness.base.repository.find(harness.base.context, connection_id) is None
     assert len(harness.base.auth.revocations) == (1 if change == "disabled_client" else 0)
     assert "private-access-token" not in caplog.text
@@ -374,9 +370,7 @@ def test_configuration_and_provider_failures_do_not_prevent_local_delete(
 
 def test_missing_connection_has_no_remote_side_effect(harness: OAuthHarness) -> None:
     with pytest.raises(ConnectionNotFoundError):
-        harness.base.service.delete_connection(
-            harness.base.context, str(uuid4()), connection_revision=harness.base.connection_revision
-        )
+        harness.base.service.delete_connection(harness.base.context, str(uuid4()))
     assert harness.base.auth.revocations == []
 
 
@@ -431,9 +425,7 @@ def test_revocation_never_resolves_another_tenants_client(harness: OAuthHarness)
             .where(EndUserConnection.id == connection_id)
             .values(oauth_client_configuration_id=other.id)
         )
-    harness.base.service.delete_connection(
-        harness.base.context, connection_id, connection_revision=harness.base.connection_revision
-    )
+    harness.base.service.delete_connection(harness.base.context, connection_id)
     assert harness.base.repository.find(harness.base.context, connection_id) is None
     assert harness.base.auth.revocations == []
 
@@ -595,8 +587,6 @@ def test_original_artifact_revoke_is_best_effort_without_fallback(
 
         harness.base.auth.on_revoke = fail
     harness.providers.controller.plugin_unique_identifier = "vendor/calendar:9.0.0@" + "f" * 64
-    harness.base.service.delete_connection(
-        harness.base.context, connection_id, connection_revision=harness.base.connection_revision
-    )
+    harness.base.service.delete_connection(harness.base.context, connection_id)
     assert harness.base.repository.find(harness.base.context, connection_id) is None
     assert len(harness.base.auth.revocations) == (1 if failure in {"unsupported", "transport_error"} else 0)

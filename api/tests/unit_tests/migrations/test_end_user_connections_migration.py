@@ -10,10 +10,23 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy.orm import Session
 
-from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
+from models.end_user_connection import (
+    AppConnection,
+    EndUserConnection,
+    EndUserConnectionRevision,
+    EndUserConnectionRevisionAcceptance,
+    SessionConnection,
+)
 from tests.helpers.end_user_connection_contract import ConnectionPersistenceTests, new_app_selection, new_connection
 
-TABLE_NAMES = {"end_user_connections", "app_connections", "session_connections"}
+FEATURE_MIGRATION = "2026_10_26_1300-f3a6b9c2d108_add_connection_revision_contracts.py"
+TABLE_NAMES = {
+    "end_user_connections",
+    "app_connections",
+    "session_connections",
+    "end_user_connection_revisions",
+    "end_user_connection_revision_acceptances",
+}
 
 
 class ConnectionMigration(Protocol):
@@ -24,42 +37,11 @@ class ConnectionMigration(Protocol):
     def downgrade(self) -> None: ...
 
 
-def load_migration(connection: sa.Connection) -> ConnectionMigration:
-    path = (
-        Path(__file__).resolve().parents[3]
-        / "migrations/versions/2026_10_21_1000-c91e4a7b2d60_add_end_user_connections.py"
-    )
+def load_migration(
+    connection: sa.Connection, filename: str = "2026_10_21_1000-c91e4a7b2d60_add_end_user_connections.py"
+) -> ConnectionMigration:
+    path = Path(__file__).resolve().parents[3] / "migrations/versions" / filename
     spec = importlib.util.spec_from_file_location("end_user_connections_migration", path)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    migration = cast(ConnectionMigration, module)
-    migration.op = Operations(MigrationContext.configure(connection))
-    return migration
-
-
-def load_client_fingerprint_migration(connection: sa.Connection) -> ConnectionMigration:
-    path = (
-        Path(__file__).resolve().parents[3]
-        / "migrations/versions/2026_10_26_1300-f3a6b9c2d108_pin_connection_oauth_client_credentials.py"
-    )
-    spec = importlib.util.spec_from_file_location("connection_oauth_client_fingerprint_migration", path)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    migration = cast(ConnectionMigration, module)
-    migration.op = Operations(MigrationContext.configure(connection))
-    return migration
-
-
-def load_plugin_artifact_migration(connection: sa.Connection) -> ConnectionMigration:
-    path = (
-        Path(__file__).resolve().parents[3]
-        / "migrations/versions/2026_10_26_1600-a57d8c91e024_pin_oauth_grant_plugin_artifacts.py"
-    )
-    spec = importlib.util.spec_from_file_location("oauth_grant_plugin_artifact_migration", path)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -75,8 +57,7 @@ def connection_session() -> Iterator[Session]:
     with engine.connect() as connection:
         connection.exec_driver_sql("PRAGMA foreign_keys=ON")
         load_migration(connection).upgrade()
-        load_client_fingerprint_migration(connection).upgrade()
-        load_plugin_artifact_migration(connection).upgrade()
+        load_migration(connection, FEATURE_MIGRATION).upgrade()
         connection.commit()
         with Session(connection) as session:
             yield session
@@ -89,7 +70,13 @@ class TestMigratedConnections(ConnectionPersistenceTests):
 
 def test_migration_schema_matches_models(connection_session: Session) -> None:
     metadata = sa.MetaData()
-    for model in (EndUserConnection, AppConnection, SessionConnection):
+    for model in (
+        EndUserConnection,
+        AppConnection,
+        SessionConnection,
+        EndUserConnectionRevision,
+        EndUserConnectionRevisionAcceptance,
+    ):
         model.metadata.tables[model.__tablename__].to_metadata(metadata)
     connection = connection_session.connection()
     assert set(sa.inspect(connection).get_table_names()) == TABLE_NAMES
@@ -122,10 +109,8 @@ def test_upgrade_downgrade_preserves_workspace_credentials() -> None:
         connection.exec_driver_sql("INSERT INTO builtin_tool_providers VALUES ('workspace-credential', 'ciphertext')")
         migration = load_migration(connection)
         migration.upgrade()
-        provenance = load_client_fingerprint_migration(connection)
+        provenance = load_migration(connection, FEATURE_MIGRATION)
         provenance.upgrade()
-        artifact = load_plugin_artifact_migration(connection)
-        artifact.upgrade()
         with Session(connection) as session:
             credential = new_connection()
             session.add(credential)
@@ -133,7 +118,6 @@ def test_upgrade_downgrade_preserves_workspace_credentials() -> None:
             session.add(new_app_selection(credential))
             session.flush()
             session.commit()
-        artifact.downgrade()
         provenance.downgrade()
         migration.downgrade()
         assert sa.inspect(connection).get_table_names() == ["builtin_tool_providers"]
@@ -141,11 +125,12 @@ def test_upgrade_downgrade_preserves_workspace_credentials() -> None:
             ("workspace-credential", "ciphertext")
         ]
         migration.upgrade()
+        provenance.upgrade()
         assert set(sa.inspect(connection).get_table_names()) == TABLE_NAMES | {"builtin_tool_providers"}
     engine.dispose()
 
 
-def test_client_fingerprint_migration_preserves_legacy_connection_data() -> None:
+def test_revision_migration_preserves_legacy_connection_data() -> None:
     engine = sa.create_engine("sqlite://")
     with engine.begin() as connection:
         load_migration(connection).upgrade()
@@ -155,11 +140,12 @@ def test_client_fingerprint_migration_preserves_legacy_connection_data() -> None
             sa.insert(table).values({column.name: getattr(record, column.name) for column in table.columns})
         )
         before = connection.execute(sa.select(table)).mappings().one()
-        migration = load_client_fingerprint_migration(connection)
+        migration = load_migration(connection, FEATURE_MIGRATION)
         migration.upgrade()
         migrated = sa.Table("end_user_connections", sa.MetaData(), autoload_with=connection)
         after = connection.execute(sa.select(migrated)).mappings().one()
         assert after["oauth_client_fingerprint"] is None
+        assert after["oauth_plugin_unique_identifier"] is None
         assert {key: after[key] for key in before} == before
         migration.downgrade()
         assert connection.execute(sa.select(table)).mappings().one() == before

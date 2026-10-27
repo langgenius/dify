@@ -66,7 +66,6 @@ def test_authorization_persists_encrypted_grant_and_masked_identity_only(harness
         assert acceptance is not None
         assert acceptance.reason == "approved"
         assert acceptance.source_revision_id is None
-        assert acceptance.account_id == harness.base.context.account_id
         assert acceptance.end_user_id == harness.base.context.end_user_id
     with pytest.raises(ConnectionOAuthError):
         harness.finish(started)
@@ -450,9 +449,7 @@ def test_oauth_operations_use_the_resolved_plugin_declaration(harness: OAuthHarn
         harness.base.context, connection.id, connection_revision=harness.base.connection_revision
     )
     assert harness.base.auth.check_artifacts[-1] == identifier
-    harness.base.service.delete_connection(
-        harness.base.context, connection.id, connection_revision=harness.base.connection_revision
-    )
+    harness.base.service.delete_connection(harness.base.context, connection.id)
     assert harness.base.auth.revocation_artifacts == [identifier]
 
 

@@ -310,19 +310,13 @@ def test_reauthorization_requires_revision_before_plugin_dispatch(
     assert harness.handler.exchanges == 1
 
 
-@pytest.mark.parametrize("revision", [None, "forged", "original"])
-def test_disconnect_requires_persisted_provider_consent_only_for_remote_revoke(
-    client: FlaskClient, harness: OAuthHarness, revision: str | None
+def test_disconnect_revokes_the_original_grant_after_an_unverified_replacement(
+    client: FlaskClient, harness: OAuthHarness
 ) -> None:
     connection = harness.finish(harness.start())
     original = harness.providers.controller.plugin_unique_identifier
-    payload = {}
-    if revision is not None:
-        payload["connection_revision"] = (
-            harness.base.connection_revision if revision == "original" else "00000000-0000-7000-8000-000000000001"
-        )
     harness.providers.controller.plugin_unique_identifier = "vendor/calendar:9.0.0@" + "f" * 64
-    response = client.delete(f"/api/connections/{connection.id}", json=payload)
+    response = client.delete(f"/api/connections/{connection.id}")
     assert response.status_code == 204
     assert harness.base.repository.find(harness.base.context, connection.id) is None
-    assert harness.base.auth.revocation_artifacts == ([original] if revision == "original" else [])
+    assert harness.base.auth.revocation_artifacts == [original]

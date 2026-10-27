@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session, load_only, sessionmaker
 from constants.end_user_connections import (
     ConnectionCredentialStatus,
     ConnectionCredentialType,
-    ConnectionRevisionAcceptanceReason,
     OAuthClientSource,
 )
 from context.connection_execution import ConnectionExecutionContext
@@ -74,11 +73,9 @@ class EndUserConnectionRepository:
             EndUserConnectionRevision.fingerprint == snapshot.fingerprint,
         )
         with self._sessions.begin() as session:
-            existing = session.scalar(sa.select(EndUserConnectionRevision).where(*scope))
+            existing = session.scalar(sa.select(EndUserConnectionRevision.id).where(*scope))
             if existing is not None:
-                if existing.snapshot != canonical:
-                    raise ConnectionRevisionChangedError()
-                return existing.id
+                return existing
             row = EndUserConnectionRevision(
                 fingerprint=snapshot.fingerprint,
                 tenant_id=snapshot.tenant_id,
@@ -91,42 +88,46 @@ class EndUserConnectionRepository:
                     session.flush()
             except IntegrityError:
                 # Concurrent discovery must reuse the winner's ID, not the losing UUID.
-                existing = session.scalar(sa.select(EndUserConnectionRevision).where(*scope).with_for_update())
-                if existing is None or existing.snapshot != canonical:
+                existing = session.scalar(sa.select(EndUserConnectionRevision.id).where(*scope).with_for_update())
+                if existing is None:
                     raise
-                return existing.id
+                return existing
             return row.id
 
     def get_revision(self, tenant_id: str, app_id: str, revision: str) -> ConnectionContractSnapshot | None:
         with self._sessions() as session:
-            row = session.scalar(
-                sa.select(EndUserConnectionRevision).where(
+            payload = session.scalar(
+                sa.select(EndUserConnectionRevision.snapshot).where(
                     EndUserConnectionRevision.id == revision,
                     EndUserConnectionRevision.tenant_id == tenant_id,
                     EndUserConnectionRevision.app_id == app_id,
                 )
             )
-            if row is None:
-                return None
-            snapshot = ConnectionContractSnapshot.model_validate_json(row.snapshot)
-            if snapshot.tenant_id != tenant_id or snapshot.app_id != app_id or snapshot.fingerprint != row.fingerprint:
-                raise ConnectionRevisionChangedError()
-            return snapshot
+        return ConnectionContractSnapshot.model_validate_json(payload) if payload is not None else None
 
-    def record_revision_acceptances(
-        self, context: WebConnectionContext, acceptances: tuple[ConnectionRevisionAcceptance, ...]
+    def record_revision_acceptance(
+        self, context: WebConnectionContext, acceptance: ConnectionRevisionAcceptance
     ) -> None:
         """Continue a validated execution's consent without consulting a newer publication."""
         with self._sessions.begin() as session:
             self._require_context(session, context, lock=True)
-            for acceptance in acceptances:
-                self._record_revision_acceptance(session, context, acceptance)
+            self._record_revision_acceptance(session, context, acceptance)
 
     @staticmethod
     def _record_revision_acceptance(
         session: Session, context: WebConnectionContext, acceptance: ConnectionRevisionAcceptance
     ) -> None:
         """Write under the caller's EndUser lock and transaction, preserving first provenance."""
+        existing = session.scalar(
+            sa.select(EndUserConnectionRevisionAcceptance.id).where(
+                EndUserConnectionRevisionAcceptance.tenant_id == context.tenant_id,
+                EndUserConnectionRevisionAcceptance.app_id == context.app_id,
+                EndUserConnectionRevisionAcceptance.end_user_id == context.end_user_id,
+                EndUserConnectionRevisionAcceptance.revision_id == acceptance.revision_id,
+            )
+        )
+        if existing is not None:
+            return
         revisions = {acceptance.revision_id}
         if acceptance.source_revision_id is not None:
             revisions.add(acceptance.source_revision_id)
@@ -141,38 +142,10 @@ class EndUserConnectionRepository:
         )
         if scoped != revisions:
             raise ConnectionRevisionChangedError()
-        scope = (
-            EndUserConnectionRevisionAcceptance.tenant_id == context.tenant_id,
-            EndUserConnectionRevisionAcceptance.app_id == context.app_id,
-            EndUserConnectionRevisionAcceptance.end_user_id == context.end_user_id,
-        )
-        existing = set(
-            session.scalars(
-                sa.select(EndUserConnectionRevisionAcceptance.revision_id).where(
-                    *scope, EndUserConnectionRevisionAcceptance.revision_id.in_(revisions)
-                )
-            )
-        )
-        if acceptance.revision_id in existing:
-            return
-        if acceptance.source_revision_id is not None and acceptance.source_revision_id not in existing:
-            # Submitting the older contract supplies the explicit basis for inheritance.
-            session.add(
-                EndUserConnectionRevisionAcceptance(
-                    tenant_id=context.tenant_id,
-                    app_id=context.app_id,
-                    account_id=context.account_id,
-                    end_user_id=context.end_user_id,
-                    revision_id=acceptance.source_revision_id,
-                    reason=ConnectionRevisionAcceptanceReason.APPROVED,
-                    source_revision_id=None,
-                )
-            )
         session.add(
             EndUserConnectionRevisionAcceptance(
                 tenant_id=context.tenant_id,
                 app_id=context.app_id,
-                account_id=context.account_id,
                 end_user_id=context.end_user_id,
                 revision_id=acceptance.revision_id,
                 reason=acceptance.reason,

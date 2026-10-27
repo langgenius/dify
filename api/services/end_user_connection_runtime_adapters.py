@@ -98,9 +98,7 @@ def get_tool_runtime(
             )
             auth = PluginApiKeyCredentialGateway(auth=PluginCredentialAuthClient())
             revisions = PluginConnectionRevisions(providers=auth, snapshots=repository)
-            admitted_revision = revisions.require(
-                identity.tenant_id, identity.app_id, graph, context.connection_revision
-            )
+            revisions.require(identity.tenant_id, identity.app_id, graph, context.connection_revision)
             provider = auth.provider(identity.tenant_id, root.provider_id)
             canonical = str(ToolProviderID(provider.entity.identity.name))
             if selection.provider != canonical or root.end_user_auth is None:
@@ -143,13 +141,8 @@ def get_tool_runtime(
             accepted_revision = revisions.require(
                 identity.tenant_id, identity.app_id, graph, context.connection_revision
             )
-            # Capture upgrades admitted while queued or during credential checks.
-            repository.record_revision_acceptances(
-                identity,
-                tuple(
-                    ConnectionRevisionAcceptance.from_revisions(context.connection_revision, revision)
-                    for revision in dict.fromkeys((admitted_revision, accepted_revision))
-                ),
+            repository.record_revision_acceptance(
+                identity, ConnectionRevisionAcceptance.from_revisions(context.connection_revision, accepted_revision)
             )
             tool = provider.get_tool(spec.tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(

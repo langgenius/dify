@@ -235,13 +235,6 @@ export const zEmailCodeLoginVerifyPayload = z.object({
 })
 
 /**
- * EndUserConnectionDisconnectPayload
- */
-export const zEndUserConnectionDisconnectPayload = z.object({
-  connection_revision: z.uuid().nullish(),
-})
-
-/**
  * EndUserConnectionListQuery
  */
 export const zEndUserConnectionListQuery = z.object({
@@ -2372,8 +2365,6 @@ export const zPostConnectionsPreflightBody = zEndUserConnectionPreflightPayload
  * Connection statuses and preflight readiness
  */
 export const zPostConnectionsPreflightResponse = zEndUserConnectionPreflightResponse
-
-export const zDeleteConnectionsByConnectionIdBody = zEndUserConnectionDisconnectPayload
 
 export const zDeleteConnectionsByConnectionIdPath = z.object({
   connection_id: z.uuid(),
