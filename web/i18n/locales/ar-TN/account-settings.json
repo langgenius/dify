@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "نطاق الوصول",
   "personalAccessToken.searchResources": "البحث بالاسم أو مساحة العمل أو المعرّف",
   "personalAccessToken.searchWorkspaces": "البحث باسم مساحة العمل أو معرّفها",
-  "personalAccessToken.secretUnavailable": "تم حفظ الرمز، لكن تعذّر استرداد قيمته السرية. أعد المحاولة لاسترداد الرمز نفسه.",
+  "personalAccessToken.secretUnavailable": "تُعرض القيمة السرية مرة واحدة فقط. إذا لم تحفظها، فألغِ هذا الرمز وأنشئ رمزًا جديدًا.",
   "personalAccessToken.selected": "المحدد",
   "personalAccessToken.status": "الحالة",
   "personalAccessToken.title": "رموز الوصول الشخصية",

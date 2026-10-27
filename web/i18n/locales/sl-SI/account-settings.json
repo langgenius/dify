@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Obseg dostopa",
   "personalAccessToken.searchResources": "Poišči ime, delovni prostor ali ID",
   "personalAccessToken.searchWorkspaces": "Poišči ime ali ID delovnega prostora",
-  "personalAccessToken.secretUnavailable": "Žeton je shranjen, vendar njegove skrivnosti ni bilo mogoče pridobiti. Poskusite znova pridobiti isti žeton.",
+  "personalAccessToken.secretUnavailable": "Skrivnost je prikazana samo enkrat. Če je niste shranili, prekličite ta žeton in ustvarite novega.",
   "personalAccessToken.selected": "Izbrani",
   "personalAccessToken.status": "Stanje",
   "personalAccessToken.title": "Osebni dostopni žetoni",

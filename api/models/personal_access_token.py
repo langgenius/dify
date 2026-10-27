@@ -23,6 +23,7 @@ class PersonalAccessToken(DefaultFieldsDCMixin, TypeBase):
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     secret_digest: Mapped[str] = mapped_column(sa.String(64), nullable=False, repr=False)
+    # Legacy storage column retained for existing databases; new PAT secrets are never persisted.
     secret_ciphertext: Mapped[bytes] = mapped_column(sa.LargeBinary, nullable=False, repr=False)
     secret_last_four: Mapped[str] = mapped_column(sa.String(4), nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)

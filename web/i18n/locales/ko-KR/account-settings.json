@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "액세스 범위",
   "personalAccessToken.searchResources": "이름, 워크스페이스 또는 ID 검색",
   "personalAccessToken.searchWorkspaces": "워크스페이스 이름 또는 ID 검색",
-  "personalAccessToken.secretUnavailable": "토큰은 저장되었지만 비밀 값을 가져오지 못했습니다. 다시 시도하면 같은 토큰을 가져옵니다.",
+  "personalAccessToken.secretUnavailable": "비밀 값은 한 번만 표시됩니다. 저장하지 않았다면 이 토큰을 폐기하고 새로 만드세요.",
   "personalAccessToken.selected": "선택 항목",
   "personalAccessToken.status": "상태",
   "personalAccessToken.title": "개인 액세스 토큰",

@@ -2392,21 +2392,6 @@ export const switch_ = {
 }
 
 export const get54 = oc
-
-export const post31 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesByWorkspaceIdSwitch',
-    path: '/workspaces/{workspace_id}:switch',
-    tags: ['openapi'],
-  })
-  .input(z.object({ params: zPostWorkspacesByWorkspaceIdSwitchPath }))
-  .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
-
-export const switch_ = {
-  post: post31,
-}
   .route({
     inputStructure: 'detailed',
     method: 'GET',

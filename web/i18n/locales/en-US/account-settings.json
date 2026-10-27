@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Access scope",
   "personalAccessToken.searchResources": "Search name, workspace or ID",
   "personalAccessToken.searchWorkspaces": "Search workspace name or ID",
-  "personalAccessToken.secretUnavailable": "The token was saved, but its secret could not be retrieved. Retry to retrieve the same token.",
+  "personalAccessToken.secretUnavailable": "The secret is shown only once. If you didn't save it, revoke this token and create a new one.",
   "personalAccessToken.selected": "Selected",
   "personalAccessToken.status": "Status",
   "personalAccessToken.title": "Personal access tokens",

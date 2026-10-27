@@ -75,8 +75,6 @@ import {
   zPostAccountPasswordBody,
   zPostAccountPasswordResponse,
   zPostAccountPersonalAccessTokensBody,
-  zPostAccountPersonalAccessTokensByTokenIdSecretPath,
-  zPostAccountPersonalAccessTokensByTokenIdSecretResponse,
   zPostAccountPersonalAccessTokensHeaders,
   zPostAccountPersonalAccessTokensResponse,
   zPostAccountTimezoneBody,
@@ -485,21 +483,6 @@ export const personalAccessTokenWorkspaces = {
   get: get8,
 }
 
-export const post14 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountPersonalAccessTokensByTokenIdSecret',
-    path: '/account/personal-access-tokens/{token_id}/secret',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zPostAccountPersonalAccessTokensByTokenIdSecretPath }))
-  .output(zPostAccountPersonalAccessTokensByTokenIdSecretResponse)
-
-export const secret = {
-  post: post14,
-}
-
 export const delete2 = oc
   .route({
     inputStructure: 'detailed',
@@ -543,7 +526,6 @@ export const byTokenId = {
   delete: delete2,
   get: get9,
   patch,
-  secret,
 }
 
 export const get10 = oc
@@ -557,7 +539,7 @@ export const get10 = oc
   .input(z.object({ query: zGetAccountPersonalAccessTokensQuery.optional() }).optional())
   .output(zGetAccountPersonalAccessTokensResponse)
 
-export const post15 = oc
+export const post14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -576,7 +558,7 @@ export const post15 = oc
 
 export const personalAccessTokens = {
   get: get10,
-  post: post15,
+  post: post14,
   byTokenId,
 }
 
@@ -613,7 +595,7 @@ export const profile = {
  *
  * @deprecated
  */
-export const post16 = oc
+export const post15 = oc
   .route({
     deprecated: true,
     description: 'Deprecated. Use PATCH /account/profile instead.',
@@ -628,7 +610,7 @@ export const post16 = oc
   .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const timezone = {
-  post: post16,
+  post: post15,
 }
 
 export const account = {

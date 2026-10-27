@@ -66,7 +66,7 @@ class PersonalAccessTokenRepository:
                 account_id=record.account_id,
                 name=summary.name,
                 secret_digest=record.secret_digest,
-                secret_ciphertext=record.secret_ciphertext,
+                secret_ciphertext=b"",
                 secret_last_four=summary.secret_last_four,
                 expires_at=summary.expires_at,
                 creation_key=record.creation_key,
@@ -199,7 +199,6 @@ class PersonalAccessTokenRepository:
             summary=self._summary(token),
             account_id=token.account_id,
             secret_digest=token.secret_digest,
-            secret_ciphertext=token.secret_ciphertext,
             creation_key=token.creation_key,
             creation_fingerprint=token.creation_fingerprint,
             scopes=PersonalAccessTokenScopes(

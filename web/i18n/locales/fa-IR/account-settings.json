@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "محدوده دسترسی",
   "personalAccessToken.searchResources": "جستجوی نام، فضای کاری یا شناسه",
   "personalAccessToken.searchWorkspaces": "جستجوی نام یا شناسه فضای کاری",
-  "personalAccessToken.secretUnavailable": "توکن ذخیره شد، اما مقدار محرمانه آن قابل بازیابی نبود. برای بازیابی همان توکن دوباره تلاش کنید.",
+  "personalAccessToken.secretUnavailable": "مقدار محرمانه فقط یک‌بار نمایش داده می‌شود. اگر آن را ذخیره نکردید، این توکن را لغو و توکن جدیدی ایجاد کنید.",
   "personalAccessToken.selected": "انتخاب‌شده",
   "personalAccessToken.status": "وضعیت",
   "personalAccessToken.title": "توکن‌های دسترسی شخصی",

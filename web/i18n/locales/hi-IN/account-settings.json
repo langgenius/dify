@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "एक्सेस का दायरा",
   "personalAccessToken.searchResources": "नाम, कार्यस्थान या ID खोजें",
   "personalAccessToken.searchWorkspaces": "कार्यस्थान का नाम या ID खोजें",
-  "personalAccessToken.secretUnavailable": "टोकन सहेजा गया, लेकिन उसका गुप्त मान प्राप्त नहीं हुआ। उसी टोकन को प्राप्त करने के लिए पुनः प्रयास करें।",
+  "personalAccessToken.secretUnavailable": "गुप्त मान केवल एक बार दिखाया जाता है। यदि आपने इसे सहेजा नहीं है, तो इस टोकन को रद्द करके नया बनाएँ।",
   "personalAccessToken.selected": "चयनित",
   "personalAccessToken.status": "स्थिति",
   "personalAccessToken.title": "व्यक्तिगत एक्सेस टोकन",

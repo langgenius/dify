@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Cakupan akses",
   "personalAccessToken.searchResources": "Cari nama, ruang kerja, atau ID",
   "personalAccessToken.searchWorkspaces": "Cari nama atau ID ruang kerja",
-  "personalAccessToken.secretUnavailable": "Token telah disimpan, tetapi rahasianya tidak dapat diambil. Coba lagi untuk mengambil token yang sama.",
+  "personalAccessToken.secretUnavailable": "Rahasia hanya ditampilkan sekali. Jika belum menyimpannya, cabut token ini lalu buat token baru.",
   "personalAccessToken.selected": "Dipilih",
   "personalAccessToken.status": "Status",
   "personalAccessToken.title": "Token akses pribadi",

@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Phạm vi truy cập",
   "personalAccessToken.searchResources": "Tìm tên, không gian làm việc hoặc ID",
   "personalAccessToken.searchWorkspaces": "Tìm tên hoặc ID không gian làm việc",
-  "personalAccessToken.secretUnavailable": "Đã lưu token nhưng không thể lấy giá trị bí mật. Hãy thử lại để lấy cùng token đó.",
+  "personalAccessToken.secretUnavailable": "Mã bí mật chỉ hiển thị một lần. Nếu chưa lưu, hãy thu hồi token này và tạo token mới.",
   "personalAccessToken.selected": "Đã chọn",
   "personalAccessToken.status": "Trạng thái",
   "personalAccessToken.title": "Token truy cập cá nhân",

@@ -261,7 +261,7 @@ export type PersonalAccessTokenCreatePayload = {
   workspace_scope?: PersonalAccessTokenWorkspaceScopePayload
 }
 
-export type PersonalAccessTokenResponse = {
+export type PersonalAccessTokenCreatedResponse = {
   created_at: string
   expires_at: string | null
   id: string
@@ -269,6 +269,7 @@ export type PersonalAccessTokenResponse = {
   name: string
   resource_count: number
   resource_scope_mode: 'all' | 'none' | 'selected'
+  secret: string | null
   secret_last_four: string
   status: 'access_issue' | 'active' | 'expired'
   unavailable_count: number
@@ -288,10 +289,6 @@ export type PersonalAccessTokenUpdatePayload = {
   resource_scope?: PersonalAccessTokenResourceScopePayload | null
   version: number
   workspace_scope?: PersonalAccessTokenWorkspaceScopePayload | null
-}
-
-export type PersonalAccessTokenSecretResponse = {
-  secret: string
 }
 
 export type AccountProfilePatchPayload = {
@@ -331,6 +328,22 @@ export type PersonalAccessTokenWorkspaceResponse = {
   reason: string | null
   role: string | null
   workspace_id: string
+}
+
+export type PersonalAccessTokenResponse = {
+  created_at: string
+  expires_at: string | null
+  id: string
+  last_used_at: string | null
+  name: string
+  resource_count: number
+  resource_scope_mode: 'all' | 'none' | 'selected'
+  secret_last_four: string
+  status: 'access_issue' | 'active' | 'expired'
+  unavailable_count: number
+  version: number
+  workspace_count: number
+  workspace_scope_mode: 'all' | 'none' | 'selected'
 }
 
 export type PersonalAccessTokenResourceScopePayload = {
@@ -879,7 +892,7 @@ export type PostAccountPersonalAccessTokensError =
   PostAccountPersonalAccessTokensErrors[keyof PostAccountPersonalAccessTokensErrors]
 
 export type PostAccountPersonalAccessTokensResponses = {
-  201: PersonalAccessTokenResponse
+  201: PersonalAccessTokenCreatedResponse
 }
 
 export type PostAccountPersonalAccessTokensResponse =
@@ -953,29 +966,6 @@ export type PatchAccountPersonalAccessTokensByTokenIdResponses = {
 
 export type PatchAccountPersonalAccessTokensByTokenIdResponse =
   PatchAccountPersonalAccessTokensByTokenIdResponses[keyof PatchAccountPersonalAccessTokensByTokenIdResponses]
-
-export type PostAccountPersonalAccessTokensByTokenIdSecretData = {
-  body?: never
-  path: {
-    token_id: string
-  }
-  query?: never
-  url: '/account/personal-access-tokens/{token_id}/secret'
-}
-
-export type PostAccountPersonalAccessTokensByTokenIdSecretErrors = {
-  default: ErrorResponse
-}
-
-export type PostAccountPersonalAccessTokensByTokenIdSecretError =
-  PostAccountPersonalAccessTokensByTokenIdSecretErrors[keyof PostAccountPersonalAccessTokensByTokenIdSecretErrors]
-
-export type PostAccountPersonalAccessTokensByTokenIdSecretResponses = {
-  200: PersonalAccessTokenSecretResponse
-}
-
-export type PostAccountPersonalAccessTokensByTokenIdSecretResponse =
-  PostAccountPersonalAccessTokensByTokenIdSecretResponses[keyof PostAccountPersonalAccessTokensByTokenIdSecretResponses]
 
 export type GetAccountProfileData = {
   body?: never

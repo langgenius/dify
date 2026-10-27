@@ -14,7 +14,6 @@ import { parseAsInteger, useQueryState } from 'nuqs'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import CopyToken from './copy-token'
 import DeleteToken from './delete-token'
 import ScopeDetails from './scope-details'
 import TokenActions from './token-actions'
@@ -83,7 +82,7 @@ export default function PersonalAccessTokens() {
               </div>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-divider-regular bg-components-panel-bg">
-                <table className="w-full min-w-200 table-fixed text-left system-xs-regular text-text-secondary">
+                <table className="w-full min-w-200 table-fixed text-start system-xs-regular text-text-secondary">
                   <caption className="sr-only">{t(($) => $['personalAccessToken.title'])}</caption>
                   <thead className="h-9 system-xs-medium text-text-tertiary">
                     <tr>
@@ -102,7 +101,7 @@ export default function PersonalAccessTokens() {
                       <th className="px-3 font-medium">
                         {t(($) => $['personalAccessToken.lastUsed'])}
                       </th>
-                      <th className="w-24 px-3 text-right font-medium">
+                      <th className="w-24 px-3 text-end font-medium">
                         {t(($) => $['resourceAccessToken.actions'])}
                       </th>
                     </tr>
@@ -127,7 +126,9 @@ export default function PersonalAccessTokens() {
                                 <ScopeDetails tokenId={token.id} />
                               </DialogContent>
                             </Dialog>
-                            <CopyToken token={token} />
+                            <span className="font-mono system-xs-regular text-text-tertiary">
+                              ••••{token.secret_last_four}
+                            </span>
                           </div>
                         </td>
                         <td className="px-3">

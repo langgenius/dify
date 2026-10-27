@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID
 
-from flask import make_response, request
+from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from werkzeug.exceptions import Conflict, Forbidden, NotFound, ServiceUnavailable
@@ -19,7 +19,6 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from machinery.context import AccountRequestContext
-from services.personal_access_token_cipher import PersonalAccessTokenKeyUnavailableError
 from services.personal_access_token_service import (
     PersonalAccessTokenAccessDeniedError,
     PersonalAccessTokenCatalogUnavailableError,
@@ -139,8 +138,8 @@ class PersonalAccessTokenListResponse(ResponseModel):
     has_more: bool
 
 
-class PersonalAccessTokenSecretResponse(ResponseModel):
-    secret: str
+class PersonalAccessTokenCreatedResponse(PersonalAccessTokenResponse):
+    secret: str | None
 
 
 class PersonalAccessTokenResourceCandidateResponse(ResponseModel):
@@ -166,7 +165,7 @@ register_response_schema_models(
     console_ns,
     PersonalAccessTokenResponse,
     PersonalAccessTokenListResponse,
-    PersonalAccessTokenSecretResponse,
+    PersonalAccessTokenCreatedResponse,
     PersonalAccessTokenDetailResponse,
     PersonalAccessTokenResourceCandidateResponse,
     PersonalAccessTokenWorkspaceCandidateResponse,
@@ -179,8 +178,6 @@ def _token_errors() -> Generator[None]:
         yield
     except PersonalAccessTokenCatalogUnavailableError:
         raise ServiceUnavailable("App Runner configuration is temporarily unavailable.") from None
-    except PersonalAccessTokenKeyUnavailableError:
-        raise ServiceUnavailable("Personal access token encryption is unavailable.") from None
     except PersonalAccessTokenNotFoundError:
         raise NotFound("Personal access token not found.") from None
     except PersonalAccessTokenExpiredError:
@@ -244,7 +241,9 @@ class PersonalAccessTokenListApi(Resource):
         }
     )
     @console_ns.expect(console_ns.models[PersonalAccessTokenCreatePayload.__name__])
-    @console_ns.response(201, "Personal access token created", console_ns.models[PersonalAccessTokenResponse.__name__])
+    @console_ns.response(
+        201, "Personal access token created", console_ns.models[PersonalAccessTokenCreatedResponse.__name__]
+    )
     @console_personal_account_admission
     @model_validate(PersonalAccessTokenCreatePayload)
     def post(self, payload: PersonalAccessTokenCreatePayload, context: AccountRequestContext):
@@ -257,22 +256,14 @@ class PersonalAccessTokenListApi(Resource):
                 creation_key=request.headers.get("Idempotency-Key"),
                 scopes=_scopes(payload.resource_scope, payload.workspace_scope),
             )
-        return dump_response(PersonalAccessTokenResponse, token), 201
-
-
-@console_ns.route("/account/personal-access-tokens/<uuid:token_id>/secret")
-class PersonalAccessTokenSecretApi(Resource):
-    @console_ns.doc("copy_personal_access_token")
-    @console_ns.response(
-        200, "Complete personal access token", console_ns.models[PersonalAccessTokenSecretResponse.__name__]
-    )
-    @console_personal_account_admission
-    def post(self, context: AccountRequestContext, token_id: UUID):
-        with _token_errors():
-            secret = application_services().personal_access_tokens.copy_secret(context, token_id=str(token_id))
-        response = make_response(dump_response(PersonalAccessTokenSecretResponse, {"secret": secret}))
-        response.headers["Cache-Control"] = "no-store"
-        return response
+        return (
+            dump_response(
+                PersonalAccessTokenCreatedResponse,
+                {**dump_response(PersonalAccessTokenResponse, token.token), "secret": token.secret},
+            ),
+            201,
+            {"Cache-Control": "no-store"},
+        )
 
 
 @console_ns.route("/account/personal-access-tokens/<uuid:token_id>")

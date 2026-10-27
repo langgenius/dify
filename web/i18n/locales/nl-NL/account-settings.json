@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "Toegangsbereik",
   "personalAccessToken.searchResources": "Zoek op naam, werkruimte of ID",
   "personalAccessToken.searchWorkspaces": "Zoek op naam of ID van de werkruimte",
-  "personalAccessToken.secretUnavailable": "Het token is opgeslagen, maar het geheim kon niet worden opgehaald. Probeer het opnieuw om hetzelfde token op te halen.",
+  "personalAccessToken.secretUnavailable": "Het geheim wordt maar één keer getoond. Heb je het niet opgeslagen, trek dit token dan in en maak een nieuw token aan.",
   "personalAccessToken.selected": "Geselecteerde",
   "personalAccessToken.status": "Status",
   "personalAccessToken.title": "Persoonlijke toegangstokens",

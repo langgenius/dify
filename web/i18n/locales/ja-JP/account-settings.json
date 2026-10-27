@@ -110,7 +110,7 @@
   "personalAccessToken.scopeTitle": "アクセス範囲",
   "personalAccessToken.searchResources": "名前、ワークスペース、IDで検索",
   "personalAccessToken.searchWorkspaces": "ワークスペース名またはIDで検索",
-  "personalAccessToken.secretUnavailable": "トークンは保存されましたが、秘密情報を取得できませんでした。再試行すると同じトークンを取得できます。",
+  "personalAccessToken.secretUnavailable": "シークレットは一度だけ表示されます。保存していない場合は、このトークンを失効させて新しく作成してください。",
   "personalAccessToken.selected": "選択した項目",
   "personalAccessToken.status": "状態",
   "personalAccessToken.title": "個人アクセストークン",
