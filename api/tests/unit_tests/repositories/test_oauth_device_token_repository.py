@@ -364,24 +364,22 @@ def test_never_used_row_ranks_by_created_at(
 ) -> None:
     issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=3)
     now = datetime.now(UTC)
-    used_recently, never_used, used_long_ago_created_first = _issue_sessions(issuer, ["a", "b", "c"])
+    used_recently, never_used, used_long_ago = _issue_sessions(issuer, ["a", "b", "c"])
     _set_usage(
-        sqlite_session, used_recently, created_at=now - timedelta(hours=3), last_used_at=now - timedelta(hours=1)
+        sqlite_session, used_recently, created_at=now - timedelta(hours=5), last_used_at=now - timedelta(minutes=10)
     )
-    _set_usage(sqlite_session, never_used, created_at=now - timedelta(hours=2))
+    # Created after the other row was last used, so it must outrank that row.
+    _set_usage(sqlite_session, never_used, created_at=now - timedelta(hours=1))
     _set_usage(
-        sqlite_session,
-        used_long_ago_created_first,
-        created_at=now - timedelta(hours=4),
-        last_used_at=now - timedelta(minutes=10),
+        sqlite_session, used_long_ago, created_at=now - timedelta(hours=4), last_used_at=now - timedelta(hours=3)
     )
 
     newest = _issue_sessions(issuer, ["d"])[0]
 
-    assert newest.rotation.evicted_token_ids == (never_used.token_id,)
+    assert newest.rotation.evicted_token_ids == (used_long_ago.token_id,)
     assert _live_token_ids(sqlite_session) == {
         used_recently.token_id,
-        used_long_ago_created_first.token_id,
+        never_used.token_id,
         newest.token_id,
     }
 
