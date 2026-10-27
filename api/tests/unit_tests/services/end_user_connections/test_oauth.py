@@ -131,7 +131,7 @@ def test_callback_revalidates_context_after_redirect_and_external_io(
         mutate()
     else:
         harness.handler.on_exchange = mutate
-    error = {"client": ConnectionReauthorizationRequiredError, "workflow": ConnectionRevisionChangedError}.get(
+    error = {"client": ConnectionRevisionChangedError, "workflow": ConnectionRevisionChangedError}.get(
         change, ConnectionIdentityError
     )
     with pytest.raises(error):

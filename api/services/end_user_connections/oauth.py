@@ -32,7 +32,11 @@ from services.end_user_connections.policy import (
     require_owned_connection,
     require_personal_connection_access,
 )
-from services.end_user_connections.revision import ConnectionProviderRevisions, ConnectionRevisionAcceptance
+from services.end_user_connections.revision import (
+    ConnectionProviderRevisions,
+    ConnectionRevisionAcceptance,
+    OAuthClientContractSnapshot,
+)
 
 
 @dataclass(frozen=True)
@@ -169,7 +173,9 @@ class OAuthConnectionService:
         record = self._load(context, connection_id)
         reference = record.access.oauth_client
         assert reference is not None
-        self._revisions.require(context, record.access.provider, connection_revision)
+        self._revisions.require(
+            context, record.access.provider, connection_revision, oauth_client_source=reference.source
+        )
         client = self._gateway.resolve_client(context.tenant_id, record.access.provider, reference.source)
         return self._start(
             context,
@@ -196,11 +202,21 @@ class OAuthConnectionService:
         guard: ConnectionMutationGuard | None,
         connection_revision: str,
     ) -> ConnectionOAuthStart:
-        admitted = self._revisions.require(context, provider, connection_revision)
-        if client.snapshot.plugin_unique_identifier != admitted.plugin_unique_identifier:
+        admitted = self._revisions.require(
+            context, provider, connection_revision, oauth_client_source=client.snapshot.source
+        )
+        configuration = OAuthClientContractSnapshot(
+            source=client.snapshot.source,
+            configuration_id=client.snapshot.configuration_id,
+            fingerprint=client.snapshot.fingerprint,
+        )
+        if (
+            client.snapshot.plugin_unique_identifier != admitted.plugin_unique_identifier
+            or configuration not in admitted.oauth_clients
+        ):
             raise ConnectionRevisionChangedError()
         url = self._gateway.authorization_url(context, provider, client)
-        self._revisions.require(context, provider, connection_revision)
+        self._revisions.require(context, provider, connection_revision, oauth_client_source=client.snapshot.source)
         parsed = urlsplit(url)
         states = parse_qs(parsed.query).get("state", [])
         if parsed.scheme not in {"https", "http"} or not parsed.netloc or len(states) != 1 or not states[0]:
@@ -263,7 +279,9 @@ class OAuthConnectionService:
                 target=replace(target, oauth_client=attempt.client),
             )
         revision = attempt.connection_revision
-        admitted = self._revisions.require(context, attempt.provider, revision)
+        admitted = self._revisions.require(
+            context, attempt.provider, revision, oauth_client_source=attempt.client.source
+        )
         client = self._gateway.resolve_client(context.tenant_id, attempt.provider, attempt.client.source)
         if client.snapshot.plugin_unique_identifier != admitted.plugin_unique_identifier:
             raise ConnectionRevisionChangedError()
@@ -276,7 +294,9 @@ class OAuthConnectionService:
         grant = self._gateway.exchange(context, attempt.provider, client, query_string)
         if not grant.credentials:
             raise ConnectionOAuthError()
-        admitted = self._revisions.require(context, attempt.provider, revision)
+        admitted = self._revisions.require(
+            context, attempt.provider, revision, oauth_client_source=attempt.client.source
+        )
         if attempt.target is not None:
             target = self._targets.resolve(context, attempt.target)
             attempt = replace(attempt, target_workflow_id=target.workflow_id)

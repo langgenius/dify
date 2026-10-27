@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from typing import Any, Protocol
 
+from constants.end_user_connections import OAuthClientSource
 from services.end_user_connections.entities import WebConnectionContext
 from services.end_user_connections.errors import ConnectionRevisionChangedError
 from services.end_user_connections.revision import (
@@ -27,7 +28,13 @@ class PluginConnectionRevisions:
 
     def snapshot(self, tenant_id: str, app_id: str, graph: Mapping[str, Any]) -> ConnectionContractSnapshot:
         requirements = get_tool_authorization_requirements(graph)
-        providers = sorted({item.provider for item in requirements})
+        providers: dict[str, set[OAuthClientSource]] = {}
+        for item in requirements:
+            sources = providers.setdefault(item.provider, set())
+            if "oauth2" in item.allowed_credential_types and item.oauth_client_type is not None:
+                sources.add(
+                    OAuthClientSource.WORKSPACE if item.oauth_client_type == "custom" else OAuthClientSource.PLATFORM
+                )
         return ConnectionContractSnapshot(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -35,8 +42,11 @@ class PluginConnectionRevisions:
                 ProviderContractSnapshot(
                     provider=provider,
                     plugin_unique_identifier=self._providers.plugin_unique_identifier(tenant_id, provider),
+                    oauth_clients=tuple(
+                        self._snapshots.oauth_client_snapshot(tenant_id, provider, source) for source in sorted(sources)
+                    ),
                 )
-                for provider in providers
+                for provider, sources in sorted(providers.items())
             ),
             requirements=tuple(requirements),
         )
@@ -55,17 +65,20 @@ class PluginConnectionRevisions:
         canonical = self._snapshots.save_revision(current)
         if revision == canonical:
             return canonical
-        old_providers = {item.provider: item.plugin_unique_identifier for item in previous.providers}
-        new_providers = {item.provider: item.plugin_unique_identifier for item in current.providers}
+        old_providers = {item.provider: item for item in previous.providers}
+        new_providers = {item.provider: item for item in current.providers}
         # Compare normalized requirements independently of plugin artifacts.
         requirements_unchanged = previous.requirements == current.requirements
         if (
             requirements_unchanged
             and old_providers.keys() == new_providers.keys()
             and all(
-                self._providers.is_plugin_trusted(tenant_id, identifier)
-                for provider, identifier in new_providers.items()
-                if identifier != old_providers[provider]
+                item.oauth_clients == old_providers[provider].oauth_clients
+                and (
+                    item.plugin_unique_identifier == old_providers[provider].plugin_unique_identifier
+                    or self._providers.is_plugin_trusted(tenant_id, item.plugin_unique_identifier)
+                )
+                for provider, item in new_providers.items()
             )
         ):
             return canonical
@@ -85,14 +98,22 @@ class PluginConnectionProviderRevisions:
             tenant_id=context.tenant_id, app_id=context.app_id, providers=(provider,), requirements=()
         )
 
-    def _current(self, context: WebConnectionContext, provider: str) -> ProviderContractSnapshot:
+    def _current(
+        self, context: WebConnectionContext, provider: str, sources: set[OAuthClientSource]
+    ) -> ProviderContractSnapshot:
         return ProviderContractSnapshot(
             provider=provider,
             plugin_unique_identifier=self._providers.plugin_unique_identifier(context.tenant_id, provider),
+            oauth_clients=tuple(
+                self._snapshots.oauth_client_snapshot(context.tenant_id, provider, source) for source in sorted(sources)
+            ),
         )
 
-    def resolve(self, context: WebConnectionContext, provider: str) -> str:
-        return self._snapshots.save_revision(self._snapshot(context, self._current(context, provider)))
+    def resolve(
+        self, context: WebConnectionContext, provider: str, *, oauth_client_source: OAuthClientSource | None = None
+    ) -> str:
+        sources = {oauth_client_source} if oauth_client_source is not None else set()
+        return self._snapshots.save_revision(self._snapshot(context, self._current(context, provider, sources)))
 
     def _reference(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
         snapshot = self._snapshots.get_revision(context.tenant_id, context.app_id, revision)
@@ -114,11 +135,23 @@ class PluginConnectionProviderRevisions:
         current = self._snapshots.save_revision(self._snapshot(context, admitted))
         return ConnectionRevisionAcceptance.from_revisions(source, current)
 
-    def require(self, context: WebConnectionContext, provider: str, revision: str) -> ProviderContractSnapshot:
+    def require(
+        self,
+        context: WebConnectionContext,
+        provider: str,
+        revision: str,
+        *,
+        oauth_client_source: OAuthClientSource | None = None,
+    ) -> ProviderContractSnapshot:
         previous = self._reference(context, provider, revision)
-        current = self._current(context, provider)
-        if previous == current or self._providers.is_plugin_trusted(
-            context.tenant_id, current.plugin_unique_identifier
+        sources = {client.source for client in previous.oauth_clients}
+        # A plugin-only API-key revision cannot approve an OAuth Client.
+        if oauth_client_source is not None:
+            sources.add(oauth_client_source)
+        current = self._current(context, provider, sources)
+        if previous.oauth_clients == current.oauth_clients and (
+            previous.plugin_unique_identifier == current.plugin_unique_identifier
+            or self._providers.is_plugin_trusted(context.tenant_id, current.plugin_unique_identifier)
         ):
             return current
         current_snapshot = self._snapshot(context, current)

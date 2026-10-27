@@ -2613,7 +2613,7 @@ in form definition, or a variable while the workflow is running.
 | allow_anonymous_end_user_auth | boolean | Whether Guest identities may manage and use personal Connections; does not control App entry. | Yes |
 | annotation_reply | { **"enabled"**: boolean } |  | Yes |
 | connection_requirements | [ [WebAppConnectionRequirement](#webappconnectionrequirement) ] | Authorization requirements and exact plugin artifacts in connection_revision, without personal state. | Yes |
-| connection_revision | string | Opaque revision of the connection requirements and installed plugin artifacts; null for other app modes. Return it unchanged in connection requests and runs. | Yes |
+| connection_revision | string | Opaque revision of connection requirements, plugin artifacts and OAuth Client configurations; null for other app modes. Return it unchanged in connection requests and runs. | Yes |
 | file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
 | more_like_this | { **"enabled"**: boolean } |  | Yes |
 | opening_statement | string |  | No |

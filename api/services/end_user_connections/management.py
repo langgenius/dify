@@ -145,7 +145,14 @@ class ConnectionService:
 
     def get_connection_revision(self, context: WebConnectionContext, connection_id: str) -> ConnectionRevisionView:
         record = self._load(context, connection_id)
-        return ConnectionRevisionView(connection_revision=self._revisions.resolve(context, record.access.provider))
+        source = record.access.oauth_client.source if record.access.oauth_client is not None else None
+        return ConnectionRevisionView(
+            connection_revision=self._revisions.resolve(
+                context,
+                record.access.provider,
+                oauth_client_source=source,
+            )
+        )
 
     def create_api_key(self, context: WebConnectionContext, command: CreateApiKeyConnectionInput) -> ConnectionSummary:
         require_personal_connection_access(context)
@@ -243,10 +250,21 @@ class ConnectionService:
         self, context: WebConnectionContext, connection_id: str, *, connection_revision: str
     ) -> ConnectionCheckOutcome:
         record = self._load(context, connection_id)
-        admitted = self._revisions.require(context, record.access.provider, connection_revision)
+        source = record.access.oauth_client.source if record.access.oauth_client is not None else None
+        admitted = self._revisions.require(
+            context,
+            record.access.provider,
+            connection_revision,
+            oauth_client_source=source,
+        )
         if record.access.credential_type == ConnectionCredentialType.OAUTH2:
             outcome = self._oauth.check(context, record, plugin_unique_identifier=admitted.plugin_unique_identifier)
-            self._revisions.require(context, record.access.provider, connection_revision)
+            self._revisions.require(
+                context,
+                record.access.provider,
+                connection_revision,
+                oauth_client_source=source,
+            )
             return outcome
         guard = connection_mutation_guard(context, record.access)
         credentials = self._cipher.decrypt(context.tenant_id, record.encrypted_credentials)

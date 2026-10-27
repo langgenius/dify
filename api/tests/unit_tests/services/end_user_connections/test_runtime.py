@@ -265,7 +265,7 @@ def test_oauth_refresh_preserves_connection_id_and_checks_current_client(harness
             .where(ToolOAuthTenantClient.id == harness.client_id)
             .values(encrypted_oauth_params=json.dumps({"client_id": "new-client"}))
         )
-    with pytest.raises(ToolRuntimeResolutionError, match="OAuth client"):
+    with pytest.raises(ToolRuntimeResolutionError, match="connection requirements changed"):
         loader.get_runtime(node_id="tool-1", node_data=ToolNodeData.model_validate(node_data()), variable_pool=None)
 
 

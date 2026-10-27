@@ -55,6 +55,7 @@ from services.end_user_connections.revision import (
     AuthorizationRequirementSnapshot,
     ConnectionContractSnapshot,
     ConnectionRevisionAcceptance,
+    OAuthClientContractSnapshot,
 )
 from services.end_user_connections.selections import SavedConnectionSelection
 from services.errors.conversation import ConversationNotExistsError
@@ -679,6 +680,17 @@ class EndUserConnectionRepository:
     ) -> StoredOAuthClientConfiguration:
         with self._sessions() as session:
             return self._oauth_client_configuration(session, tenant_id, provider, source, lock=False)
+
+    def oauth_client_snapshot(
+        self, tenant_id: str, provider: str, source: OAuthClientSource
+    ) -> OAuthClientContractSnapshot:
+        try:
+            client = self.oauth_client_configuration(tenant_id, provider, source)
+        except ConnectionReauthorizationRequiredError:
+            return OAuthClientContractSnapshot(source=source, configuration_id=None, fingerprint=None)
+        return OAuthClientContractSnapshot(
+            source=source, configuration_id=client.configuration_id, fingerprint=client.fingerprint
+        )
 
     def oauth_grant_client_configuration(
         self, tenant_id: str, provider: str, reference: ConnectionOAuthClient

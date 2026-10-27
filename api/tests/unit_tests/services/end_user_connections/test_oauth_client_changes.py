@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Mapping
+from dataclasses import replace
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -12,11 +13,17 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from commands import plugin as plugin_commands
 from constants.end_user_connections import ConnectionCredentialStatus, OAuthClientSource
-from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
+from models.end_user_connection import (
+    AppConnection,
+    EndUserConnection,
+    EndUserConnectionRevisionAcceptance,
+    SessionConnection,
+)
 from models.tools import ToolOAuthSystemClient, ToolOAuthTenantClient
 from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services import end_user_connection_oauth_adapters
-from services.end_user_connections.errors import ConnectionReauthorizationRequiredError
+from services.end_user_connections.errors import ConnectionReauthorizationRequiredError, ConnectionRevisionChangedError
+from services.end_user_connections.oauth import ResolvedOAuthClient
 from services.tools import builtin_tools_manage_service
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from tests.helpers.end_user_api_key import PROVIDER
@@ -86,6 +93,10 @@ def test_workspace_client_changes_clear_all_live_choices_and_require_reauthoriza
     one = harness.finish(harness.start())
     two = harness.finish(harness.start())
     api_key = harness.base.service.create_api_key(harness.base.context, harness.base.command())
+    identity = harness.base.context
+    app_revision = harness.base.connection_revision
+    original_revision = harness.base.service.get_connection_revision(identity, one.id).connection_revision
+    api_key_revision = harness.base.service.get_connection_revision(identity, api_key.id).connection_revision
     save_choices(harness, [one.id, two.id])
     if verified_upgrade:
         upgraded = "vendor/calendar:2.0.0@" + "b" * 64
@@ -117,21 +128,54 @@ def test_workspace_client_changes_clear_all_live_choices_and_require_reauthoriza
         for selection in (AppConnection, SessionConnection):
             assert session.scalar(sa.select(sa.func.count()).select_from(selection)) == 0
     assert harness.base.auth.revocations == []
+    current_revision = harness.base.service.get_connection_revision(identity, one.id).connection_revision
+    assert current_revision != original_revision
+    assert harness.base.connection_revision != app_revision
+    if not verified_upgrade:
+        assert (
+            harness.base.service.get_connection_revision(identity, api_key.id).connection_revision == api_key_revision
+        )
+    with pytest.raises(ConnectionRevisionChangedError):
+        harness.base.service.create_api_key(
+            identity, harness.base.command().model_copy(update={"connection_revision": app_revision})
+        )
+    with pytest.raises(ConnectionRevisionChangedError) as caught:
+        harness.service.reauthorize_oauth(
+            identity,
+            one.id,
+            callback_url="https://web.example/callback",
+            connection_revision=original_revision,
+        )
+    assert caught.value.current_revision == current_revision
+    with harness.base.sessions() as session:
+        assert set(session.scalars(sa.select(EndUserConnectionRevisionAcceptance.revision_id))) == {original_revision}
     if change == "secret":
+        with pytest.raises(ConnectionRevisionChangedError):
+            harness.service.reauthorize_oauth(
+                identity,
+                one.id,
+                callback_url="https://web.example/callback",
+                connection_revision=api_key_revision,
+            )
         started = harness.service.reauthorize_oauth(
             harness.base.context,
             one.id,
             callback_url="https://web.example/callback",
-            connection_revision=harness.base.connection_revision,
+            connection_revision=current_revision,
         )
         assert harness.finish(started).id == one.id
         current = harness.base.repository.find(harness.base.context, one.id)
         assert current is not None
         assert current.access.credential_status == ConnectionCredentialStatus.CONNECTED
+        with harness.base.sessions() as session:
+            rows = session.scalars(sa.select(EndUserConnectionRevisionAcceptance)).all()
+            assert {row.revision_id for row in rows} == {original_revision, current_revision}
+            assert all(row.reason == "approved" and row.source_revision_id is None for row in rows)
 
 
 def test_saving_unchanged_client_values_preserves_grants(harness: OAuthHarness) -> None:
     connection = harness.finish(harness.start())
+    revision = harness.base.connection_revision
     BuiltinToolManageService.save_custom_oauth_client_params(
         harness.base.context.tenant_id, PROVIDER, client_params={"client_id": "public-client"}
     )
@@ -139,6 +183,7 @@ def test_saving_unchanged_client_values_preserves_grants(harness: OAuthHarness) 
     assert record is not None
     assert record.access.credential_status == ConnectionCredentialStatus.CONNECTED
     assert record.access.revision == 1
+    assert harness.base.connection_revision == revision
 
 
 @pytest.mark.parametrize("legacy", [False, True])
@@ -199,8 +244,6 @@ def test_invalidation_is_scoped_to_the_client_tenant_and_source(harness: OAuthHa
 def test_platform_client_rotation_disconnects_associated_grants_across_tenants(
     harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from dataclasses import replace
-
     workspace = harness.finish(harness.start())
     with harness.base.sessions.begin() as session:
         client = ToolOAuthSystemClient(
@@ -221,6 +264,8 @@ def test_platform_client_rotation_disconnects_associated_grants_across_tenants(
         ids = [first.id, second.id]
         client_id = client.id
     save_choices(harness, [first.id])
+    workspace_revision = harness.base.connection_revision
+    platform_revision = harness.base.service.get_connection_revision(harness.base.context, first.id).connection_revision
     monkeypatch.setattr(plugin_commands, "db", SimpleNamespace(engine=harness.base.sessions.kw["bind"]))
     monkeypatch.setattr(plugin_commands, "encrypt_system_params", json.dumps)
     monkeypatch.setattr(plugin_commands, "decrypt_system_params", json.loads)
@@ -235,6 +280,11 @@ def test_platform_client_rotation_disconnects_associated_grants_across_tenants(
     )
     assert result.exit_code == 0, result.output
     assert "private-sentinel" not in result.output
+    assert harness.base.connection_revision == workspace_revision
+    assert (
+        harness.base.service.get_connection_revision(harness.base.context, first.id).connection_revision
+        != platform_revision
+    )
     with harness.base.sessions() as session:
         current = session.get(ToolOAuthSystemClient, client_id)
         assert current is not None
@@ -257,11 +307,26 @@ def test_client_rotation_invalidates_a_pending_oauth_attempt(harness: OAuthHarne
         PROVIDER,
         client_params={"client_id": "public-client", "client_secret": "rotated-secret"},
     )
-    with pytest.raises(ConnectionReauthorizationRequiredError):
+    with pytest.raises(ConnectionRevisionChangedError):
         harness.finish(started)
     assert harness.handler.exchanges == 0
     with harness.base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnection)) == 0
+
+
+def test_oauth_start_rejects_client_material_outside_the_confirmed_snapshot(
+    harness: OAuthHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    resolve = harness.gateway.resolve_client
+
+    def changed_client(tenant_id: str, provider: str, source: OAuthClientSource) -> ResolvedOAuthClient:
+        client = resolve(tenant_id, provider, source)
+        return replace(client, snapshot=replace(client.snapshot, fingerprint="different-configuration"))
+
+    monkeypatch.setattr(harness.gateway, "resolve_client", changed_client)
+    with pytest.raises(ConnectionRevisionChangedError):
+        harness.start()
+    assert harness.handler.requested_artifacts == []
 
 
 def test_stale_run_acceptance_cannot_restore_disconnected_choices(harness: OAuthHarness) -> None:
