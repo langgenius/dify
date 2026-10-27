@@ -28,7 +28,9 @@ def _validate_client_id(repository: SQLAlchemyOAuthClientRepository, client_id: 
     for prefix in RESERVED_CLIENT_ID_PREFIXES:
         if client_id.startswith(prefix):
             raise click.UsageError(f"client id must not start with the reserved prefix {prefix!r}")
-    if repository.provider_app_exists(client_id) or repository.resolve(client_id) is not None:
+    if repository.provider_app_exists(client_id):
+        raise click.UsageError(f"client id {client_id!r} already exists")
+    if repository.resolve(client_id) is not None:
         raise click.UsageError(f"client id {client_id!r} already exists")
 
 

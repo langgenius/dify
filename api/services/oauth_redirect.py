@@ -62,7 +62,11 @@ def _loopback_ip_port_stripped(uri: str) -> tuple[str, str, str, str] | None:
         return None
     if host not in LOOPBACK_IP_LITERALS:
         return None
-    if parts.fragment or "#" in uri or "@" in parts.netloc:
+    if parts.fragment:
+        return None
+    if "#" in uri:
+        return None
+    if "@" in parts.netloc:
         return None
     if "?" in uri and not parts.query:
         return None

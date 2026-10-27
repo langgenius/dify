@@ -76,7 +76,7 @@ def clean_oauth_access_tokens_task():
     click.echo(
         click.style(
             f"Cleaned {cleaned.access_tokens} openapi_oauth_access_tokens rows older than {retention_days}d and "
-            f"{cleaned.refresh_tokens} expired oauth_refresh_tokens rows in {end_at - start_at:.2f}s",
+            f"{cleaned.refresh_tokens} expired openapi_oauth_refresh_tokens rows in {end_at - start_at:.2f}s",
             fg="green",
         )
     )

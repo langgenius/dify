@@ -164,8 +164,10 @@ class _TokenCacheClient(Protocol):
     def delete(self, *names: str | bytes) -> object: ...
 
 
-def invalidate_oauth_token_cache(client: _TokenCacheClient, token_hash: str) -> None:
-    client.delete(TOKEN_CACHE_KEY_FMT.format(hash=token_hash))
+def invalidate_oauth_token_cache(client: _TokenCacheClient, *token_hashes: str | None) -> None:
+    keys = [TOKEN_CACHE_KEY_FMT.format(hash=token_hash) for token_hash in token_hashes if token_hash]
+    if keys:
+        client.delete(*keys)
 
 
 class OAuthAccessTokenResolver:
@@ -246,7 +248,9 @@ class _TokenTypeResolver:
         if cached is not None and not isinstance(cached, str):
             if not self._matches_subject(cached):
                 return None
-            if cached.expires_at is None or cached.expires_at > datetime.now(UTC):
+            if cached.expires_at is None:
+                return cached
+            if cached.expires_at > datetime.now(UTC):
                 return cached
 
         # Flask-SQLAlchemy's scoped_session is request-bound and not a

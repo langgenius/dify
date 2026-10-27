@@ -12,8 +12,8 @@ from typing import Any
 from sqlalchemy import ColumnElement, Row, and_, func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
+from libs.oauth_bearer import invalidate_oauth_token_cache
 from models.account import Account
 from models.oauth import OpenAPIOAuthAccessToken
 from repositories.oauth_refresh_token_repository import (
@@ -448,17 +448,11 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             evicted_token_ids=tuple(str(row.id) for row in eviction.access_rows),
             evicted_token_hashes=tuple(row.token_hash for row in eviction.access_rows if row.token_hash),
         )
-        cache_keys = [
-            TOKEN_CACHE_KEY_FMT.format(hash=token_hash)
-            for token_hash in (rotation.replaced_token_hash, *rotation.evicted_token_hashes)
-            if token_hash
-        ]
-        if cache_keys:
-            try:
-                self._redis.delete(*cache_keys)
-            except Exception:
-                self.rollback_rotation(rotation)
-                raise
+        try:
+            invalidate_oauth_token_cache(self._redis, rotation.replaced_token_hash, *rotation.evicted_token_hashes)
+        except Exception:
+            self.rollback_rotation(rotation)
+            raise
         return rotation
 
     def _evict_over_cap(
@@ -535,15 +529,13 @@ class SQLAlchemyOAuthDeviceTokenRepository:
                 )
             session.commit()
 
-        cache_keys = [
-            TOKEN_CACHE_KEY_FMT.format(hash=token_hash)
-            for token_hash in (new_hash, rotation.replaced_token_hash, *rotation.evicted_token_hashes)
-            if token_hash
-        ]
         try:
-            self._redis.delete(*cache_keys)
+            invalidate_oauth_token_cache(
+                self._redis, new_hash, rotation.replaced_token_hash, *rotation.evicted_token_hashes
+            )
         except Exception:
             logger.exception("failed to invalidate rolled-back OAuth token caches")
+        return True
 
     def list_account_sessions(
         self,
@@ -567,6 +559,5 @@ class SQLAlchemyOAuthDeviceTokenRepository:
         with self._session_factory() as session:
             hashes = revoke_session_grant(session, account_id=account_id, session_id=token_id, now=datetime.now(UTC))
             session.commit()
-        if hashes:
-            self._redis.delete(*(TOKEN_CACHE_KEY_FMT.format(hash=token_hash) for token_hash in hashes))
+        invalidate_oauth_token_cache(self._redis, *(hashes or ()))
         return hashes is not None

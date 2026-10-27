@@ -1278,8 +1278,7 @@ class AuthConfig(BaseSettings):
     )
 
     DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
-        description="Max approve and deny requests per console account per hour, on the device-flow page and on "
-        "the browser consent page (each has its own bucket).",
+        description="Max device-flow approve and deny requests per console account per hour.",
         default=10,
     )
 

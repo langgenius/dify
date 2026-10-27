@@ -10,9 +10,8 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
-from libs.oauth_bearer import sha256_hex
+from libs.oauth_bearer import invalidate_oauth_token_cache, sha256_hex
 from repositories.oauth_device_token_repository import (
     OwnedGrant,
     find_live_access_grant,
@@ -46,8 +45,7 @@ class GrantRevoker:
             if account_id is not None:
                 lock_account(session, account_id)
             hashes = revoke_grant_rows(session, grant, account_id=account_id, now=datetime.now(UTC))
-        if hashes:
-            self._redis.delete(*(TOKEN_CACHE_KEY_FMT.format(hash=token_hash) for token_hash in hashes))
+        invalidate_oauth_token_cache(self._redis, *hashes)
 
     def revoke_by_token(self, token: str, *, client_id: str) -> None:
         """Revoke the grant behind an access or refresh token issued to ``client_id``.

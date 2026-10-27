@@ -327,7 +327,7 @@ def test_authorization_code_limits() -> None:
     assert LIMIT_CLIENT_AUTH_FAILURE.scopes == ()
     assert (LIMIT_AUTHORIZE_CLIENT_PUBLIC.limit, LIMIT_AUTHORIZE_CLIENT_PUBLIC.window) == (60, timedelta(minutes=5))
     assert LIMIT_AUTHORIZE_CLIENT_PUBLIC.scopes == (RateLimitScope.IP,)
-    assert LIMIT_AUTHORIZE_APPROVE.limit == LIMIT_DEVICE_FLOW_APPROVE.limit
+    assert LIMIT_AUTHORIZE_APPROVE.limit == 10
     assert LIMIT_AUTHORIZE_APPROVE.scopes == (RateLimitScope.CONSOLE_ACCOUNT,)
     assert limiter_prefix(LIMIT_AUTHORIZE_APPROVE) != limiter_prefix(LIMIT_DEVICE_FLOW_APPROVE)
 
