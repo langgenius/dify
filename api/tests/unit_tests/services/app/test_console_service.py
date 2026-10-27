@@ -1162,7 +1162,7 @@ def workspaces(
     # Plugin metadata is resolved by the plugin daemon; these Apps use no plugins.
     monkeypatch.setattr(DependenciesAnalysisService, "generate_dependencies", _no_plugin_dependencies)
     # Workflow event handlers reach the Flask-bound database; these tests check the imported records.
-    monkeypatch.setattr("services.workflow_service.app_draft_workflow_was_synced", Signal())
+    monkeypatch.setattr("services.workflow.draft_coordination_service.app_draft_workflow_was_synced", Signal())
     monkeypatch.setattr("services.workflow_service.app_published_workflow_was_updated", Signal())
     actor, source_id, target_id = str(uuid4()), str(uuid4()), str(uuid4())
     caller_app_id, tool_app_id, provider_id = str(uuid4()), str(uuid4()), str(uuid4())
