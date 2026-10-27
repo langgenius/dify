@@ -1,6 +1,7 @@
 """Redirect URI rules for OAuth clients."""
 
 from collections.abc import Sequence
+from typing import NamedTuple
 from urllib.parse import urlsplit
 
 HTTPS_SCHEME = "https"
@@ -9,36 +10,41 @@ LOOPBACK_IP_LITERALS = frozenset({"127.0.0.1", "::1"})
 LOOPBACK_HOSTS = LOOPBACK_IP_LITERALS | {"localhost"}
 
 
-def is_valid_redirect_uri(uri: str) -> bool:
+class _SchemeHost(NamedTuple):
+    scheme: str
+    host: str
+
+
+def _scheme_host(uri: str) -> _SchemeHost | None:
+    """Scheme and host of a URI that parses, has a host, and has no fragment or whitespace, else None."""
     try:
         parts = urlsplit(uri)
         host = parts.hostname
     except ValueError:
-        return False
-    if parts.fragment or "#" in uri:
-        return False
+        return None
     if not host:
-        return False
+        return None
+    if parts.fragment or "#" in uri:
+        return None
     if any(char.isspace() for char in uri):
+        return None
+    return _SchemeHost(scheme=parts.scheme, host=host)
+
+
+def is_valid_redirect_uri(uri: str) -> bool:
+    checked = _scheme_host(uri)
+    if checked is None:
         return False
-    if parts.scheme == HTTPS_SCHEME:
+    if checked.scheme == HTTPS_SCHEME:
         return True
-    return parts.scheme == HTTP_SCHEME and host in LOOPBACK_HOSTS
+    return checked.scheme == HTTP_SCHEME and checked.host in LOOPBACK_HOSTS
 
 
 def is_valid_logo_uri(uri: str) -> bool:
-    try:
-        parts = urlsplit(uri)
-        host = parts.hostname
-    except ValueError:
+    checked = _scheme_host(uri)
+    if checked is None:
         return False
-    if parts.scheme != HTTPS_SCHEME:
-        return False
-    if not host:
-        return False
-    if parts.fragment or "#" in uri:
-        return False
-    return not any(char.isspace() for char in uri)
+    return checked.scheme == HTTPS_SCHEME
 
 
 def _loopback_ip_port_stripped(uri: str) -> tuple[str, str, str, str] | None:
