@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
 import pytest
+from pydantic import JsonValue, TypeAdapter
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
@@ -84,6 +87,15 @@ def _input_blocks(callback: dict[str, object]) -> list[dict[str, object]]:
     return [block for block in _message_blocks(callback) if block.get("type") == "input"]
 
 
+def _encoded_blocks(encoded: Mapping[str, JsonValue]) -> list[dict[str, JsonValue]]:
+    return TypeAdapter(list[dict[str, JsonValue]]).validate_python(encoded["blocks"], strict=True)
+
+
+def _json_object(value: JsonValue) -> dict[str, JsonValue]:
+    assert isinstance(value, dict)
+    return value
+
+
 def _state_values(callback: dict[str, object]) -> dict[str, object]:
     state = callback["state"]
     assert isinstance(state, dict)
@@ -114,12 +126,11 @@ def test_sender_renders_dify_namespaced_form_structure() -> None:
     repeated = codec.encode(_form(), CorrelationToken("关联令牌-🌍"))
 
     assert set(encoded) == {"blocks"}
-    blocks = encoded["blocks"]
-    assert isinstance(blocks, list)
+    blocks = _encoded_blocks(encoded)
     input_blocks = [block for block in blocks if block["type"] == "input"]
     assert len(input_blocks) == 2
     assert [block["block_id"] for block in input_blocks] == ["__dify.input.0", "__dify.input.1"]
-    assert [block["element"]["action_id"] for block in input_blocks] == ["说明📝", "选择🌐"]
+    assert [_json_object(block["element"])["action_id"] for block in input_blocks] == ["说明📝", "选择🌐"]
     assert input_blocks[0]["element"] == {
         "action_id": "说明📝",
         "type": "plain_text_input",
@@ -139,9 +150,13 @@ def test_sender_renders_dify_namespaced_form_structure() -> None:
 
     actions_block = next(block for block in blocks if block["type"] == "actions")
     assert actions_block["block_id"] == "__dify.actions"
-    action = actions_block["elements"][0]
+    elements = actions_block["elements"]
+    assert isinstance(elements, list)
+    action = _json_object(elements[0])
     assert action["action_id"] == "批准✅"
-    assert json.loads(action["value"]) == {
+    serialized_metadata = action["value"]
+    assert isinstance(serialized_metadata, str)
+    assert json.loads(serialized_metadata) == {
         "version": 1,
         "action_id": "批准✅",
         "correlation_token": "关联令牌-🌍",
@@ -151,16 +166,19 @@ def test_sender_renders_dify_namespaced_form_structure() -> None:
 
 def test_sender_static_select_has_provider_owned_placeholder() -> None:
     encoded = _SlackCardCodec().encode(_form(), CorrelationToken("token"))
-    blocks = encoded["blocks"]
-    assert isinstance(blocks, list)
+    blocks = _encoded_blocks(encoded)
     selection_element = next(
-        block["element"] for block in blocks if block["type"] == "input" and block["element"]["action_id"] == "选择🌐"
+        _json_object(block["element"])
+        for block in blocks
+        if block["type"] == "input" and _json_object(block["element"])["action_id"] == "选择🌐"
     )
 
     placeholder = selection_element.get("placeholder")
     assert isinstance(placeholder, dict)
     assert placeholder == {"type": "plain_text", "text": "Select an option"}
-    assert len(placeholder["text"]) <= 150
+    placeholder_text = placeholder["text"]
+    assert isinstance(placeholder_text, str)
+    assert len(placeholder_text) <= 150
 
 
 def test_encode_relies_on_the_callers_representability_precondition() -> None:
@@ -190,6 +208,53 @@ def test_webhook_and_socket_mode_callbacks_converge_with_exact_unicode_round_tri
     )
     assert webhook_result == expected
     assert socket_result == expected
+
+
+@pytest.mark.timeout(60)
+def test_decoder_remains_usable_after_garbage_collection() -> None:
+    # A fresh process prevents earlier callbacks from resolving the lazy model annotations before GC.
+    script = """
+import gc
+import sys
+from datetime import datetime
+from pathlib import Path
+
+from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters import (
+    AuthenticatedIMEvent, CorrelationToken, IMCardEvent, IMEventIngressKind, ProviderUserId,
+)
+from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
+
+gc.collect()
+event = AuthenticatedIMEvent(
+    provider=IMProvider.SLACK,
+    provider_tenant_id="T012SANITIZED",
+    event_id=None,
+    event_type="block_actions",
+    occurred_at=None,
+    received_at=datetime(2026, 8, 11, 12),
+    ingress_kind=IMEventIngressKind.WEBHOOK,
+    payload=Path(sys.argv[1]).read_text(encoding="utf-8"),
+)
+assert SlackIMProviderAdapter.card_event_decoder().decode(event) == IMCardEvent(
+    provider_user_id=ProviderUserId("U012SANITIZED"),
+    action_id="批准✅",
+    inputs={"说明📝": "你好，世界 🌍", "选择🌐": "选项 β"},
+    correlation_token=CorrelationToken("关联令牌-🌍"),
+)
+"""
+    api_root = Path(__file__).resolve().parents[5]
+    completed = subprocess.run(
+        [sys.executable, "-c", script, str(_WEBHOOK_FIXTURE)],
+        cwd=api_root,
+        env={**os.environ, "PYTHONPATH": str(api_root)},
+        capture_output=True,
+        text=True,
+        timeout=45,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
 
 
 @pytest.mark.parametrize(
@@ -263,7 +328,7 @@ def test_selection_change_block_actions_are_unrecognized(
 
 
 def test_non_dify_button_block_actions_is_unrecognized_without_full_dify_schema() -> None:
-    callback = {
+    callback: dict[str, object] = {
         "type": "block_actions",
         "actions": [
             {
@@ -349,7 +414,7 @@ def test_zero_input_callback_may_have_empty_state() -> None:
     callback = _fixture(_WEBHOOK_FIXTURE)
     message_blocks = _message_blocks(callback)
     message_blocks[:] = [block for block in message_blocks if block.get("type") != "input"]
-    callback["state"] = {"values": {}}
+    callback["state"] = {"values": dict[str, object]()}
 
     decoded = SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))
 
@@ -764,7 +829,7 @@ def _set_unsupported_state_type(callback: dict[str, object]) -> None:
     assert isinstance(state, dict)
     values = state["values"]
     assert isinstance(values, dict)
-    values["__dify.input.0"] = {"说明📝": {"type": "checkboxes", "selected_options": []}}
+    values["__dify.input.0"] = {"说明📝": {"type": "checkboxes", "selected_options": list[object]()}}
 
 
 def _set_wrong_static_select_option_value_type(callback: dict[str, object]) -> None:

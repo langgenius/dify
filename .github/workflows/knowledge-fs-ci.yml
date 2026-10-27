@@ -83,7 +83,6 @@ jobs:
               - 'api/services/knowledge_fs_capability.py'
               - 'api/tests/unit_tests/dev/test_generate_knowledge_fs_contract.py'
               - 'api/tests/unit_tests/extensions/test_ext_celery.py'
-              - 'api/tests/unit_tests/migrations/versions/test_2026_10_21_1500-b9d3f7a5c102_add_upgrade_reconciliation_lease.py'
               - 'api/tests/unit_tests/models/test_agent_config_entities.py'
               - 'api/tests/unit_tests/controllers/console/workspace/rbac/test_roles.py'
               - 'api/tests/unit_tests/core/agent/test_base_agent_runner.py'
@@ -257,7 +256,6 @@ jobs:
 
           test_touchpoints=(
             api/tests/unit_tests/extensions/test_ext_celery.py
-            api/tests/unit_tests/migrations/versions/test_2026_10_21_1500-b9d3f7a5c102_add_upgrade_reconciliation_lease.py
             api/tests/unit_tests/models/test_agent_config_entities.py
             api/tests/unit_tests/controllers/console/datasets/test_datasets.py
             api/tests/unit_tests/controllers/console/test_wraps.py
@@ -285,7 +283,6 @@ jobs:
             /core/workflow/
             /dev/
             /extensions/
-            /migrations/
             /models/
             /repositories/
             /services/

@@ -13,7 +13,6 @@ from typing import Annotated, NoReturn
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import ConfigDict, WithJsonSchema
-from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
@@ -22,6 +21,7 @@ from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from core.db.session_factory import session_factory
 from core.human_input_v2.shared.values import TenantId
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
@@ -169,7 +169,7 @@ class WorkflowHumanInputFormApi(Resource):
         service = ServiceAPIHumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:
-            v2_service = HumanInputSubmissionService(session_factory=sessionmaker(db.engine, expire_on_commit=False))
+            v2_service = HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
             try:
                 v2_form = v2_service.get_service_api_form(
                     actor=ServiceAPIFormActor(tenant_id=TenantId(app_model.tenant_id), app_id=app_model.id),
@@ -233,7 +233,7 @@ class WorkflowHumanInputFormApi(Resource):
         service = ServiceAPIHumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:
-            v2_service = HumanInputSubmissionService(session_factory=sessionmaker(db.engine, expire_on_commit=False))
+            v2_service = HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
             try:
                 v2_service.submit_service_api_form(
                     actor=ServiceAPIFormActor(tenant_id=TenantId(app_model.tenant_id), app_id=app_model.id),

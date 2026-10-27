@@ -2956,7 +2956,7 @@ def web_app_approval(context: Context, monkeypatch):
                     type="workflow",
                     version="published",
                     graph="{}",
-                    features="{}",
+                    _features="{}",
                     created_by=str(_ACCOUNT),
                 ),
                 Site(

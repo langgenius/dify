@@ -131,7 +131,8 @@ class _SlackLocatorPayload(_Base64JSONLocatorPayload):
         return value
 
 
-@dataclass(frozen=True, slots=True)
+# A slots dataclass replaces the class and can orphan namespaces used by lazy nested Pydantic annotations.
+@dataclass(frozen=True)
 class _SlackCardCodec(IMCardEventDecoder):
     """Own the complete sender-owned Slack card wire contract without I/O."""
 

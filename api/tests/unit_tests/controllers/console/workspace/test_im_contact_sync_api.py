@@ -457,7 +457,7 @@ def test_latest_results_map_every_discriminated_bucket(
     if sync_result.result_type in (IMSyncResultType.ADDED, IMSyncResultType.SKIPPED, IMSyncResultType.REMOVED):
         assert "type" not in result_payload["contact"]
     if sync_result.result_type is IMSyncResultType.ADDED:
-        assert result_payload["contact"]["created_at"] == int(_CONTACT_CREATED_AT.timestamp())
+        assert result_payload["contact"]["created_at"] == 1752127200
     if sync_result.result_type is IMSyncResultType.REMOVED:
         assert result_payload["reason"] == "not_present_in_directory"
         assert result_payload["last_known_identity"]["identity_id"] == "identity-1"
