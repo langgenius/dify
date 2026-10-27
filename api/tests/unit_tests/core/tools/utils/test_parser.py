@@ -272,8 +272,11 @@ def test_parse_openapi_to_tool_bundle_server_env_and_refs(app):
     assert extra_info["description"] == "API description"
 
 
-def test_parse_openapi_to_tool_bundle_no_server_raises(app):
-    openapi = {"info": {"title": "x"}, "servers": [], "paths": {}}
+@pytest.mark.parametrize("servers", [None, []], ids=["missing", "empty"])
+def test_parse_openapi_to_tool_bundle_no_server_raises(app, servers):
+    openapi: dict[str, Any] = {"info": {"title": "x"}, "paths": {}}
+    if servers is not None:
+        openapi["servers"] = servers
     with app.test_request_context():
         with pytest.raises(ToolProviderNotFoundError, match="No server found"):
             ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
