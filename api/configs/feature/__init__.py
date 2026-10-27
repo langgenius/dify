@@ -540,6 +540,11 @@ class FileUploadConfig(BaseSettings):
         default=5000,
     )
 
+    APP_PACKAGE_MAX_WORKFLOW_TOOLS: PositiveInt = Field(
+        description="Maximum number of Workflow Tool workflows bundled into one App package",
+        default=20,
+    )
+
     BATCH_UPLOAD_LIMIT: NonNegativeInt = Field(
         description="Maximum number of files allowed in a batch upload operation",
         default=20,

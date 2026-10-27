@@ -2,14 +2,13 @@
 
 from dataclasses import dataclass
 
-from flask import current_app
 from sqlalchemy.orm import Session, sessionmaker
 
-from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
-from services.conversation_service import ConversationService
+from services.conversation_command_service import ConversationCommandService
+from services.conversation_name_service import ConversationNameService
 from services.installed_app_access_service import InstalledAppAccessService
-from services.installed_app_conversation_service import InstalledAppConversationService
+from services.installed_app_conversation_service import InstalledAppConversationService, InstalledAppConversationStore
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
 from services.installed_app_service import InstalledAppService, WorkspaceRoleLookup
@@ -24,21 +23,12 @@ class InstalledAppServices:
     conversations: InstalledAppConversationService
 
 
-def _generate_installed_app_conversation_name(
-    *, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str
-) -> str:
-    # Legacy provider and tracing lookups use db.session. Give them their own
-    # scope so teardown releases it before the conversation write transaction,
-    # without removing a session owned by the surrounding request.
-    with current_app.app_context():
-        return ConversationService.generate_name(
-            tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id, query=query, app_mode=app_mode
-        )
-
-
 def build_installed_app_services(
     *,
     database_client: sessionmaker[Session],
+    conversations: InstalledAppConversationStore,
+    conversation_names: ConversationNameService,
+    conversation_commands: ConversationCommandService,
     webapp_access: WebAppAccessQueryService,
     get_workspace_role: WorkspaceRoleLookup,
     webapp_auth_enabled: bool,
@@ -62,8 +52,8 @@ def build_installed_app_services(
             runtime=AppGenerateServiceRuntime(session_factory=database_client),
         ),
         conversations=InstalledAppConversationService(
-            conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=database_client),
-            generate_name=_generate_installed_app_conversation_name,
-            enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
+            conversations=conversations,
+            names=conversation_names,
+            commands=conversation_commands,
         ),
     )

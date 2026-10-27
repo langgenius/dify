@@ -395,7 +395,7 @@ forbidden_modules =
 name = Conversation persistence does not call legacy conversation or workspace services
 type = forbidden
 source_modules =
-    repositories.installed_app_conversation_repository
+    repositories.conversation_repository
     repositories.conversation_lifecycle
     repositories.agent_workspace_repository
 forbidden_modules =
@@ -1015,6 +1015,22 @@ forbidden_modules =
     flask
     models
     repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:conversation-name-boundary]
+name = Conversation naming and commands are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.conversation_name_service
+    services.conversation_command_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.conversation_service
     sqlalchemy
     werkzeug
 

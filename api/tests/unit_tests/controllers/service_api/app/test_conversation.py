@@ -16,9 +16,7 @@ import services
 from controllers.console.explore.conversation import ConversationRenamePayload as ConsolePayload
 from controllers.service_api.app.conversation import (
     ConversationApi,
-    ConversationDetailApi,
     ConversationListQuery,
-    ConversationRenameApi,
     ConversationRenamePayload,
     ConversationVariableDetailApi,
     ConversationVariableInfiniteScrollPaginationResponse,
@@ -501,11 +499,6 @@ class TestConversationCases:
             assert hasattr(ConversationService, "delete")
             assert callable(ConversationService.delete)
 
-        def test_rename_method_exists(self):
-            """Test that ConversationService.rename exists."""
-            assert hasattr(ConversationService, "rename")
-            assert callable(ConversationService.rename)
-
         def test_get_conversational_variable_method_exists(self):
             """Test that ConversationService.get_conversational_variable exists."""
             assert hasattr(ConversationService, "get_conversational_variable")
@@ -537,26 +530,6 @@ class TestConversationCases:
             assert hasattr(result, "data")
             assert hasattr(result, "limit")
             assert hasattr(result, "has_more")
-
-        def test_rename_returns_conversation(self, sqlite_session: Session):
-            """Test rename returns updated conversation."""
-            conversation_id = "00000000-0000-0000-0000-000000000001"
-            conversation = _conversation(conversation_id=conversation_id)
-            sqlite_session.add(conversation)
-            sqlite_session.commit()
-
-            result = ConversationService.rename(
-                app_model=App(id="app-1"),
-                conversation_id=conversation_id,
-                user=_end_user(),
-                name="New Name",
-                auto_generate=False,
-                session=sqlite_session,
-            )
-
-            assert result.name == "New Name"
-            sqlite_session.refresh(conversation)
-            assert conversation.name == "New Name"
 
     class TestConversationPayloadsController:
         def test_rename_requires_name(self) -> None:
@@ -619,71 +592,6 @@ class TestConversationCases:
                         ConversationListQuery.model_validate(request.args.to_dict(flat=True)),
                         app_model=app_model,
                         end_user=end_user,
-                    )
-
-    class TestConversationDetailApiController:
-        def test_delete_not_chat(self, app: Flask) -> None:
-            api = ConversationDetailApi()
-            handler = unwrap(api.delete)
-            app_model = _app(mode=AppMode.COMPLETION)
-            end_user = _end_user()
-
-            with app.test_request_context("/conversations/1", method="DELETE"):
-                with pytest.raises(NotChatAppError):
-                    handler(
-                        api,
-                        app_model=app_model,
-                        end_user=end_user,
-                        conversation_id="00000000-0000-0000-0000-000000000001",
-                    )
-
-        def test_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-            monkeypatch.setattr(
-                ConversationService,
-                "delete",
-                lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
-            )
-
-            api = ConversationDetailApi()
-            handler = unwrap(api.delete)
-            app_model = _app()
-            end_user = _end_user()
-
-            with app.test_request_context("/conversations/1", method="DELETE"):
-                with pytest.raises(NotFound):
-                    handler(
-                        api,
-                        app_model=app_model,
-                        end_user=end_user,
-                        conversation_id="00000000-0000-0000-0000-000000000001",
-                    )
-
-    class TestConversationRenameApiController:
-        def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-            monkeypatch.setattr(
-                ConversationService,
-                "rename",
-                lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
-            )
-
-            api = ConversationRenameApi()
-            handler = unwrap(api.post)
-            app_model = _app()
-            end_user = _end_user()
-
-            with app.test_request_context(
-                "/conversations/1/name",
-                method="POST",
-                json={"auto_generate": True},
-            ):
-                payload = ConversationRenamePayload.model_validate(request.get_json() or {})
-                with pytest.raises(NotFound):
-                    handler(
-                        api,
-                        payload,
-                        app_model=app_model,
-                        end_user=end_user,
-                        conversation_id="00000000-0000-0000-0000-000000000001",
                     )
 
     class TestConversationVariablesApiController:

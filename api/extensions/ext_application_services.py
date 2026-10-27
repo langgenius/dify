@@ -67,6 +67,7 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
+from repositories.conversation_repository import ConversationRepository
 from repositories.conversation_variable_query_repository import ConversationVariableQueryRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
@@ -135,6 +136,10 @@ from services.app_tracing_config_service import AppTracingConfigService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.conversation_command_service import ConversationCommandService
+from services.conversation_name_generator import generate_conversation_name
+from services.conversation_name_service import ConversationNameService
+from services.conversation_service import ConversationService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
@@ -310,6 +315,8 @@ class ApplicationServices:
     agent_tracing_configs: AgentTracingConfigService
     billing_portal: BillingPortalService
     compliance_downloads: ComplianceDownloadService
+    conversation_names: ConversationNameService
+    conversation_commands: ConversationCommandService
     data_sources: DataSourceServices
     knowledge: KnowledgeServices
     app_scoped_end_users: AppScopedEndUserServices
@@ -571,6 +578,11 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
     )
+    conversations = ConversationRepository(session_factory=database_client)
+    conversation_names = ConversationNameService(conversations=conversations, generate_name=generate_conversation_name)
+    conversation_commands = ConversationCommandService(
+        conversations=conversations, enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup
+    )
     annotations = AnnotationRepository(session_factory=database_client)
     messages = MessageRepository(session_factory=database_client)
     suggested_questions = SuggestedQuestionsQuery(
@@ -606,6 +618,8 @@ def build_application_services(
             disable_task=disable_annotation_reply_task.delay,
         ),
         rbac=rbac,
+        conversation_names=conversation_names,
+        conversation_commands=conversation_commands,
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
@@ -679,6 +693,9 @@ def build_application_services(
             private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
         ),
         installed_apps=build_installed_app_services(
+            conversations=conversations,
+            conversation_names=conversation_names,
+            conversation_commands=conversation_commands,
             database_client=database_client,
             webapp_access=webapp_access,
             get_workspace_role=workspace_repository.get_account_role,
