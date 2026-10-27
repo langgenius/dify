@@ -1162,7 +1162,7 @@ def test_current_published_binding_must_match_graph_outputs_and_routes(
     monkeypatch.setattr(
         config_module,
         "validate_invocation_workflow",
-        lambda *_args, **_kwargs: Workflow(version="draft", environment_variables=[]),
+        lambda *_args, **_kwargs: Workflow(version="draft", _environment_variables="{}"),
     )
     from models.workflow import Workflow
 
@@ -1534,7 +1534,7 @@ def test_composed_definition_receipt_survives_initial_claim_io(
     monkeypatch.setattr(store, "_agent_refresh_access", refresh)
     from models.workflow import Workflow
 
-    workflow = Workflow(version="published", environment_variables=[])
+    workflow = Workflow(version="published", _environment_variables="{}")
     monkeypatch.setattr(state, "validate_invocation_workflow", lambda *_args, **_kwargs: workflow)
     monkeypatch.setattr(
         config_module,

@@ -27,10 +27,11 @@ from httpx import Request, Response
 from sqlalchemy import select
 
 from clients.agent_backend import DifyAgentBackendRunClient
-from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.node_events import StreamCompletedEvent
 from models.dify_builder import DifyBuilderRun
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder import dify_port
@@ -167,14 +168,14 @@ def test_agent_acknowledged_attempt_recovers_parent_without_second_child(
                         tenant_id=harness.ids["tenant"],
                         app_id=harness.ids["app"],
                         workflow_id=workflow_id,
-                        type="workflow",
-                        triggered_from="debugging",
+                        type=WorkflowType.WORKFLOW,
+                        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
                         version="draft",
                         graph=json.dumps(AGENT_GRAPH),
                         inputs=json.dumps({"topic": "x"}),
-                        status=status,
+                        status=WorkflowExecutionStatus(status),
                         error=result.error,
-                        created_by_role="account",
+                        created_by_role=CreatorUserRole.ACCOUNT,
                         created_by=harness.ids["account"],
                         outputs=json.dumps(result.outputs),
                     )
@@ -196,7 +197,7 @@ def test_agent_acknowledged_attempt_recovers_parent_without_second_child(
                         outputs=json.dumps(result.outputs),
                         process_data=json.dumps(result.process_data),
                         execution_metadata=json.dumps(result.metadata),
-                        created_by_role="account",
+                        created_by_role=CreatorUserRole.ACCOUNT,
                         created_by=harness.ids["account"],
                     )
                 )

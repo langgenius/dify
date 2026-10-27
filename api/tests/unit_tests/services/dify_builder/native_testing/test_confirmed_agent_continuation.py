@@ -161,28 +161,33 @@ def test_actual_sql_parent_pause_requires_complete_owned_run_chain(
                 observations=[],
             )
         )
-        run_values = {
-            "id": ids["run"],
-            "tenant_id": ids["tenant"],
-            "app_id": ids["app"],
-            "workflow_id": ids["workflow"],
-            "created_by": ids["actor"],
-            "created_by_role": "account",
-            "status": "paused",
-            "type": "workflow",
-            "triggered_from": "debugging",
-            "version": "draft",
-        }
-        field = (
-            None
-            if drift is None
-            else {"actor": "created_by", "tenant": "tenant_id", "app": "app_id", "workflow": "workflow_id"}.get(drift)
+        from graphon.enums import WorkflowExecutionStatus
+        from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+        from models.workflow import WorkflowType
+
+        run = WorkflowRun(
+            id=ids["run"],
+            tenant_id=ids["tenant"],
+            app_id=ids["app"],
+            workflow_id=ids["workflow"],
+            created_by=ids["actor"],
+            created_by_role=CreatorUserRole.ACCOUNT,
+            status=WorkflowExecutionStatus.PAUSED,
+            type=WorkflowType.WORKFLOW,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+            version="draft",
         )
-        if field:
-            run_values[field] = str(uuid4())
-        if drift == "running":
-            run_values["status"] = "running"
-        sql.add(WorkflowRun(**run_values))
+        if drift == "actor":
+            run.created_by = str(uuid4())
+        elif drift == "tenant":
+            run.tenant_id = str(uuid4())
+        elif drift == "app":
+            run.app_id = str(uuid4())
+        elif drift == "workflow":
+            run.workflow_id = str(uuid4())
+        elif drift == "running":
+            run.status = WorkflowExecutionStatus.RUNNING
+        sql.add(run)
         if drift != "missing_pause":
             sql.add(
                 WorkflowPause(

@@ -19,6 +19,7 @@ from typing_extensions import TypedDict
 
 from core.dify_builder.models import Actor
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from enums import WorkflowKind
 from graphon.engine.command import Command
 from graphon.engine_events import EngineEvent
 from graphon.entities.base_node_data import BaseNodeData
@@ -29,7 +30,7 @@ from models.dify_builder import DifyBuilderExecutionRequest
 from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativePayloadObject
 from models.enums import AppStatus, WorkflowRunTriggeredFrom
 from models.model import AppMode
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
 from runtime_contracts.builder.native.contracts import (
     CheckpointRef,
     DispatchPermit,
@@ -722,9 +723,9 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(
         id=context.workflow_id,
         tenant_id=context.tenant_id,
         app_id=context.app_id,
-        type="workflow",
+        type=WorkflowType("workflow"),
         version="draft",
-        kind="standard",
+        kind=WorkflowKind("standard"),
         graph=json.dumps(context.graph),
         _features="{}",
         _environment_variables="{}",
@@ -1587,9 +1588,9 @@ def cancel_composition(case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPat
         id=original.workflow_id,
         tenant_id=original.tenant_id,
         app_id=original.app_id,
-        type="workflow",
+        type=WorkflowType("workflow"),
         version="draft",
-        kind="standard",
+        kind=WorkflowKind("standard"),
         graph=json.dumps(original.graph),
         _features="{}",
         _environment_variables="{}",
@@ -2206,6 +2207,7 @@ def _cancel_projection_post_wait(
     dispatch = cast(NativeDispatch, c.rows[NativeDispatch][0])
     assert isinstance(dispatch, NativeDispatch)
     dispatch.state = dispatch_state
+    assert context.native_run_id is not None
     run = WorkflowRun(
         id=context.native_run_id,
         tenant_id=context.tenant_id,
@@ -2217,15 +2219,15 @@ def _cancel_projection_post_wait(
         graph="{}",
         inputs="null",
         outputs="null",
-        status="paused",
+        status=WorkflowExecutionStatus("paused"),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=context.actor_id,
-        created_at=datetime(2026, 10, 16),
         elapsed_time=0.0,
         total_tokens=0,
         total_steps=0,
         exceptions_count=0,
     )
+    run.created_at = datetime(2026, 10, 16)
     c.sql.add(run)
     return ref, context, state, dispatch, run
 

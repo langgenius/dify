@@ -46,16 +46,17 @@ def _node_exec(
     outputs_dict: dict[str, object] | None = None,
     inputs_dict: dict[str, object] | None = None,
 ) -> WorkflowNodeExecutionModel:
-    return WorkflowNodeExecutionModel(
+    row = WorkflowNodeExecutionModel(
         node_id=node_id,
         node_type=node_type,
         title=title,
-        status=status,
+        status=WorkflowNodeExecutionStatus(status),
         error=error,
         outputs=json.dumps(outputs_dict or {}),
         inputs=json.dumps(inputs_dict or {}),
-        offload_data=[],
     )
+    row.offload_data = []
+    return row
 
 
 def _succeeded_data() -> Graph:
@@ -393,6 +394,7 @@ def test_run_row_maps_to_the_shape_map_run_result_expects() -> None:
         error=None,
         elapsed_time=361.0,
         total_tokens=99,
+        outputs=None,
     )
 
     data = run_result_data_from_run_row(row)
@@ -572,7 +574,7 @@ def test_result_mapping_cannot_promote_untrusted_safety_claims(source: str, stat
         projected = run_result_data_from_run_row(
             WorkflowRun(
                 id=data["id"],
-                status=data["status"],
+                status=WorkflowExecutionStatus(data["status"]),
                 outputs=json.dumps(data["outputs"]),
                 error=data["error"],
                 elapsed_time=data["elapsed_time"],

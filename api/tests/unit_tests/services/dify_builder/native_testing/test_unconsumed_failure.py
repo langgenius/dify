@@ -804,22 +804,33 @@ class _MemoryChannel(Protocol):
     def queue_purge(self, queue: str) -> int: ...
 
 
-def test_periodic_worker_beat_routes_registered_task_to_builder_consumer_queue() -> None:
+def test_periodic_worker_beat_routes_registered_task_to_builder_consumer_queue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Beat must publish to the existing worker queue, not an unconsumed default."""
     from celery import Celery
     from celery.beat import ScheduleEntry, Scheduler
     from celery.signals import before_task_publish
+    from kombu.transport.memory import Channel as MemoryTransportChannel
 
     from schedule.dify_builder_reconcile_task import reconcile_interrupted_sessions
 
     published: list[str | None] = []
     task_name = reconcile_interrupted_sessions.name
 
+    # Celery's environment URLs override even an explicit constructor broker.
+    # Keep this real in-memory publication fixture isolated from loaded app config.
+    for name in ("CELERY_BROKER_URL", "CELERY_BROKER_READ_URL", "CELERY_BROKER_WRITE_URL"):
+        monkeypatch.delenv(name, raising=False)
+
     def capture_route(sender: str | None = None, routing_key: str | None = None, **_kwargs: object) -> None:
         if sender == task_name:
             published.append(routing_key)
 
     with Celery("builder-reconcile-route", broker="memory://", set_as_current=False) as app:
+        assert app.tasks[task_name].app is app
+        with app.connection_for_write() as connection:
+            assert isinstance(connection.channel(), MemoryTransportChannel)
         queues = cast(_RoutingAMQP, app.amqp).queues
         queues.select(["dify_builder"])
         entry = cast(Callable[..., object], ScheduleEntry)(name="dify_builder_reconcile", task=task_name, app=app)

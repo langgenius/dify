@@ -21,6 +21,7 @@ from typing_extensions import TypedDict
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from enums import WorkflowKind
 from graphon.engine.command import CommandChannel, InMemoryChannel
 from graphon.engine.filter import ResponseStreamFilter
 from graphon.engine.layer import Layer
@@ -32,7 +33,7 @@ from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
 from models.account import Account
 from models.model import App, AppMode
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
@@ -107,7 +108,7 @@ def generate_fixture(
     monkeypatch.setattr(module.WorkflowAppGenerateResponseConverter, "convert", lambda **kwargs: kwargs["response"])
     arguments: _GenerateArguments = {
         "app_model": App(mode=AppMode.WORKFLOW, tenant_id=case.state.context.tenant_id),
-        "workflow": Workflow(features="{}"),
+        "workflow": Workflow(_features="{}"),
         "user": Account(name="Native actor", email="native@example.test"),
         "application_generate_entity": entity,
         "invoke_from": InvokeFrom.DEBUGGER,
@@ -534,10 +535,10 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
         tenant_id=context.tenant_id,
         app_id=context.app_id,
         graph=json.dumps(config),
-        type="workflow",
+        type=WorkflowType("workflow"),
         version="draft",
-        kind="standard",
-        environment_variables=[],
+        kind=WorkflowKind("standard"),
+        _environment_variables="{}",
     )
     entered, release = Event(), Event()
     factories = []

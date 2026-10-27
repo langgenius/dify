@@ -24,6 +24,7 @@ from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
 from core.dify_builder.input_schema import schema_hash, start_schema
 from core.dify_builder.models import Actor, DifyBuilderContext, Graph, Inputs, Run
+from enums import WorkflowKind
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dify_builder import (
@@ -33,7 +34,7 @@ from models.dify_builder import (
     DifyBuilderTestInput,
 )
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 from runtime_contracts.builder.execution import BuilderExecutionRecorder
 from services.dify_builder.application.execution_policy import (
     BuilderExecutionContext,
@@ -84,8 +85,8 @@ def native_owner(flask_req_ctx_with_containers: None, db_session_with_containers
     workflow = Workflow(
         tenant_id=tenant.id,
         app_id=app.id,
-        type="workflow",
-        kind="standard",
+        type=WorkflowType.WORKFLOW,
+        kind=WorkflowKind.STANDARD,
         version="draft",
         graph=json.dumps(yaml.safe_load((FIXTURES / "scalar.yml").read_text())),
         _features="{}",
@@ -104,8 +105,8 @@ def native_owner(flask_req_ctx_with_containers: None, db_session_with_containers
     published = Workflow(
         tenant_id=tenant.id,
         app_id=app.id,
-        type="workflow",
-        kind="standard",
+        type=WorkflowType.WORKFLOW,
+        kind=WorkflowKind.STANDARD,
         version="2026-10-09 00:00:00",
         graph=workflow.graph,
         _features="{}",
