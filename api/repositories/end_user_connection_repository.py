@@ -126,7 +126,7 @@ class EndUserConnectionRepository:
     def _record_revision_acceptance(
         session: Session, context: WebConnectionContext, acceptance: ConnectionRevisionAcceptance
     ) -> None:
-        """Write under the caller's owner lock and transaction, preserving first provenance."""
+        """Write under the caller's EndUser lock and transaction, preserving first provenance."""
         revisions = {acceptance.revision_id}
         if acceptance.source_revision_id is not None:
             revisions.add(acceptance.source_revision_id)
@@ -141,12 +141,10 @@ class EndUserConnectionRepository:
         )
         if scoped != revisions:
             raise ConnectionRevisionChangedError()
-        owner = context.owner
         scope = (
             EndUserConnectionRevisionAcceptance.tenant_id == context.tenant_id,
             EndUserConnectionRevisionAcceptance.app_id == context.app_id,
-            EndUserConnectionRevisionAcceptance.account_id == owner.account_id,
-            EndUserConnectionRevisionAcceptance.end_user_id == owner.end_user_id,
+            EndUserConnectionRevisionAcceptance.end_user_id == context.end_user_id,
         )
         existing = set(
             session.scalars(
@@ -163,8 +161,8 @@ class EndUserConnectionRepository:
                 EndUserConnectionRevisionAcceptance(
                     tenant_id=context.tenant_id,
                     app_id=context.app_id,
-                    account_id=owner.account_id,
-                    end_user_id=owner.end_user_id,
+                    account_id=context.account_id,
+                    end_user_id=context.end_user_id,
                     revision_id=acceptance.source_revision_id,
                     reason=ConnectionRevisionAcceptanceReason.APPROVED,
                     source_revision_id=None,
@@ -174,8 +172,8 @@ class EndUserConnectionRepository:
             EndUserConnectionRevisionAcceptance(
                 tenant_id=context.tenant_id,
                 app_id=context.app_id,
-                account_id=owner.account_id,
-                end_user_id=owner.end_user_id,
+                account_id=context.account_id,
+                end_user_id=context.end_user_id,
                 revision_id=acceptance.revision_id,
                 reason=acceptance.reason,
                 source_revision_id=acceptance.source_revision_id,

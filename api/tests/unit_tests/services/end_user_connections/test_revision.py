@@ -393,7 +393,7 @@ def test_reading_contracts_and_starting_oauth_do_not_record_acceptance(harness: 
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 0
 
 
-def test_ready_preflight_records_the_owners_first_approved_revision(harness: OAuthHarness) -> None:
+def test_ready_preflight_records_the_end_users_first_approved_revision(harness: OAuthHarness) -> None:
     from constants.end_user_connections import ConnectionRevisionAcceptanceReason
     from models.end_user_connection import EndUserConnectionRevisionAcceptance
 
@@ -413,7 +413,7 @@ def test_ready_preflight_records_the_owners_first_approved_revision(harness: OAu
         assert acceptance.reason == ConnectionRevisionAcceptanceReason.APPROVED
         assert acceptance.source_revision_id is None
         assert acceptance.account_id == harness.base.context.account_id
-        assert acceptance.end_user_id is None
+        assert acceptance.end_user_id == harness.base.context.end_user_id
         assert acceptance.app_id == harness.base.context.app_id
         assert acceptance.tenant_id == harness.base.context.tenant_id
 

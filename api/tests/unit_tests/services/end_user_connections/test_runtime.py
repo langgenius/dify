@@ -509,6 +509,7 @@ def test_verified_plugin_upgrade_can_resume_a_fixed_execution(harness: OAuthHarn
         assert len(inherited) == 1
         assert inherited[0].source_revision_id == harness.base.connection_revision
         assert inherited[0].account_id == harness.base.context.account_id
+        assert inherited[0].end_user_id == harness.base.context.end_user_id
 
 
 def test_queued_and_inflight_verified_upgrades_record_both_admitted_revisions(harness: OAuthHarness) -> None:

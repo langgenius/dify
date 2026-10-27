@@ -1,4 +1,4 @@
-"""Record each owner's first acceptance of an authorization revision.
+"""Record each EndUser's first acceptance of an authorization revision.
 
 Revision ID: e6a4c93b821d
 Revises: d92e7a1b604f
@@ -25,23 +25,16 @@ def upgrade() -> None:
         sa.Column("tenant_id", StringUUID(), nullable=False),
         sa.Column("app_id", StringUUID(), nullable=False),
         sa.Column("account_id", StringUUID(), nullable=True),
-        sa.Column("end_user_id", StringUUID(), nullable=True),
+        sa.Column("end_user_id", StringUUID(), nullable=False),
         sa.Column("revision_id", StringUUID(), nullable=False),
         sa.Column("reason", sa.String(20), nullable=False),
         sa.Column("source_revision_id", StringUUID(), nullable=True),
         sa.Column("created_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.PrimaryKeyConstraint("id", name="end_user_connection_revision_acceptances_pkey"),
         sa.CheckConstraint(
-            "(account_id IS NOT NULL AND end_user_id IS NULL) OR (account_id IS NULL AND end_user_id IS NOT NULL)",
-            name=sa.schema.conv("end_user_revision_acceptance_owner_check"),
-        ),
-        sa.CheckConstraint(
             "(reason = 'approved' AND source_revision_id IS NULL) OR "
             "(reason = 'inherited' AND source_revision_id IS NOT NULL AND source_revision_id <> revision_id)",
             name=sa.schema.conv("end_user_revision_acceptance_reason_check"),
-        ),
-        sa.UniqueConstraint(
-            "tenant_id", "app_id", "account_id", "revision_id", name="end_user_revision_acceptance_account_key"
         ),
         sa.UniqueConstraint(
             "tenant_id", "app_id", "end_user_id", "revision_id", name="end_user_revision_acceptance_end_user_key"

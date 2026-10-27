@@ -114,7 +114,9 @@ def test_foreign_revision_acceptance_rolls_back_connection_creation(
         assert session.scalar(sa.select(sa.func.count()).select_from(EndUserConnectionRevisionAcceptance)) == 0
 
 
-def test_acceptance_is_separate_for_anonymous_and_account_owners(sqlite_session_factory: sessionmaker[Session]) -> None:
+def test_acceptance_always_belongs_to_the_end_user_for_guests_and_accounts(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     from constants.end_user_connections import ConnectionRevisionAcceptanceReason
     from models.end_user_connection import EndUserConnectionRevisionAcceptance
     from models.enums import EndUserType
@@ -160,8 +162,77 @@ def test_acceptance_is_separate_for_anonymous_and_account_owners(sqlite_session_
     with sqlite_session_factory() as session:
         rows = session.scalars(sa.select(EndUserConnectionRevisionAcceptance)).all()
         assert len(rows) == 4
-        for owner_id in (account.account_id, anonymous.end_user_id):
-            owned = {row.revision_id: row for row in rows if (row.account_id or row.end_user_id) == owner_id}
+        for context in (account, anonymous):
+            owned = {row.revision_id: row for row in rows if row.end_user_id == context.end_user_id}
+            assert all(row.account_id == context.account_id for row in owned.values())
             assert owned[original].reason == ConnectionRevisionAcceptanceReason.APPROVED
             assert owned[current].reason == ConnectionRevisionAcceptanceReason.INHERITED
             assert owned[current].source_revision_id == original
+
+
+def test_recreated_end_user_records_its_own_acceptance_for_the_same_account(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from dataclasses import replace
+
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+    from models.model import EndUser
+    from services.end_user_connections.revision import ConnectionRevisionAcceptance
+    from tests.helpers.end_user_api_key import make_harness
+
+    harness = make_harness(sqlite_session_factory)
+    context = harness.context
+    revision = harness.connection_revision
+    acceptance = ConnectionRevisionAcceptance.from_revisions(revision, revision)
+    harness.repository.record_revision_acceptances(context, (acceptance,))
+    with sqlite_session_factory.begin() as session:
+        original = session.get(EndUser, context.end_user_id)
+        assert original is not None
+        replacement = EndUser(
+            tenant_id=original.tenant_id,
+            app_id=original.app_id,
+            type=original.type,
+            account_id=original.account_id,
+            session_id=str(uuid4()),
+            _is_anonymous=False,
+        )
+        session.delete(original)
+        session.flush()
+        session.add(replacement)
+        session.flush()
+        replacement_context = replace(context, end_user_id=replacement.id)
+    harness.repository.record_revision_acceptances(replacement_context, (acceptance,))
+    with sqlite_session_factory() as session:
+        rows = session.scalars(sa.select(EndUserConnectionRevisionAcceptance)).all()
+        assert len(rows) == 2
+        assert {row.end_user_id for row in rows} == {context.end_user_id, replacement_context.end_user_id}
+        assert {row.account_id for row in rows} == {context.account_id}
+
+
+def test_account_association_is_a_first_acceptance_snapshot_not_a_deduplication_key(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    from dataclasses import replace
+
+    from models.end_user_connection import EndUserConnectionRevisionAcceptance
+    from models.model import EndUser
+    from services.end_user_connections.revision import ConnectionRevisionAcceptance
+    from tests.helpers.end_user_api_key import make_harness
+
+    harness = make_harness(sqlite_session_factory)
+    context = harness.context
+    revision = harness.connection_revision
+    acceptance = ConnectionRevisionAcceptance.from_revisions(revision, revision)
+    with sqlite_session_factory.begin() as session:
+        session.execute(sa.update(EndUser).where(EndUser.id == context.end_user_id).values(account_id=None))
+    harness.repository.record_revision_acceptances(replace(context, account_id=None), (acceptance,))
+    with sqlite_session_factory.begin() as session:
+        session.execute(
+            sa.update(EndUser).where(EndUser.id == context.end_user_id).values(account_id=context.account_id)
+        )
+    harness.repository.record_revision_acceptances(context, (acceptance,))
+    with sqlite_session_factory() as session:
+        rows = session.scalars(sa.select(EndUserConnectionRevisionAcceptance)).all()
+        assert len(rows) == 1
+        assert rows[0].end_user_id == context.end_user_id
+        assert rows[0].account_id is None

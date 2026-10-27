@@ -37,7 +37,7 @@ class OAuthClientSource(StrEnum):
 
 
 class ConnectionRevisionAcceptanceReason(StrEnum):
-    """Why an owner first accepted an authorization snapshot."""
+    """Why an EndUser first accepted an authorization snapshot."""
 
     APPROVED = "approved"
     INHERITED = "inherited"
