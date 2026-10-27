@@ -1,4 +1,5 @@
 import importlib
+from types import ModuleType
 
 import pytest
 
@@ -7,7 +8,7 @@ from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
 from repositories.human_input_v2.im_channel_repository import IMChannelId
 
 
-def _config_version_module():
+def _config_version_module() -> ModuleType:
     return importlib.import_module("controllers.console.human_input_v2.config_version")
 
 

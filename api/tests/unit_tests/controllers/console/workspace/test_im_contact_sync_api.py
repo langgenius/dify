@@ -7,13 +7,13 @@ from dataclasses import replace
 from datetime import datetime
 from importlib import import_module
 from inspect import unwrap
-from types import SimpleNamespace
-from typing import Never
+from typing import Never, override
 
 import pytest
 from flask import Flask
 from flask_restx import Resource
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.console.human_input_v2.contact import (
@@ -67,6 +67,10 @@ from repositories.human_input_v2.contact import Contact, ContactQuery, ContactTy
 from repositories.human_input_v2.im_channel_repository import IMChannelId
 from repositories.human_input_v2.im_identity_repository import IMIdentity
 from services.human_input_v2.contact_service import ContactDetails, ContactWithIMBindings, IMBindingDetail
+from services.human_input_v2.im_contact_sync.composition import (
+    IMContactSyncApplication,
+    build_im_contact_sync_application,
+)
 from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
 from services.human_input_v2.im_contact_sync.service import (
     IMChannelNotConfiguredError,
@@ -74,6 +78,7 @@ from services.human_input_v2.im_contact_sync.service import (
     IMSyncRevisionChangedError,
     IMSyncRunNotFoundError,
 )
+from tests.helpers.unit.model_factories import make_account
 
 _CONTROLLER_MODULE = import_module("controllers.console.human_input_v2.contact")
 _NOW = datetime(2026, 8, 11, 8)
@@ -207,23 +212,28 @@ class _BindingService:
 
 
 @pytest.fixture
-def application(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
-    application = SimpleNamespace(sync_service=_SyncService(), binding_service=_BindingService())
-    monkeypatch.setattr(
-        _CONTROLLER_MODULE,
-        "build_im_contact_sync_application",
-        lambda: application,
-        raising=False,
-    )
+def application(monkeypatch: pytest.MonkeyPatch) -> IMContactSyncApplication:
+    application = build_im_contact_sync_application(session_maker=sessionmaker())
+    sync = _SyncService()
+    binding = _BindingService()
+    monkeypatch.setattr(application.sync_service, "create_or_get_active_run", sync.create_or_get_active_run)
+    monkeypatch.setattr(application.sync_service, "get_latest_run", sync.get_latest_run)
+    monkeypatch.setattr(application.sync_service, "list_latest_results", sync.list_latest_results)
+    monkeypatch.setattr(application.sync_service, "search_identities", sync.search_identities)
+    monkeypatch.setattr(application.binding_service, "set_organization_binding", binding.set_organization_binding)
+    monkeypatch.setattr(application.binding_service, "delete_organization_binding", binding.delete_organization_binding)
+    monkeypatch.setattr(application.binding_service, "set_workspace_override", binding.set_workspace_override)
+    monkeypatch.setattr(application.binding_service, "reset_workspace_override", binding.reset_workspace_override)
+    monkeypatch.setattr(_CONTROLLER_MODULE, "build_im_contact_sync_application", lambda: application)
     return application
 
 
 def test_sync_command_and_queries_map_transport_neutral_results(
     app: Flask,
-    application: SimpleNamespace,
+    application: IMContactSyncApplication,
 ) -> None:
     assert application.sync_service is not None
-    account = SimpleNamespace(id="account-1")
+    account = make_account(account_id="account-1", name="Editor", email="editor@example.com")
     with app.test_request_context(method="POST"):
         created = unwrap(WorkspaceIMSyncRunsApi.post)(WorkspaceIMSyncRunsApi(), "workspace-1", account)
     with app.test_request_context(method="GET"):
@@ -294,6 +304,7 @@ def test_sync_command_and_queries_map_transport_neutral_results(
 
 
 def test_sync_dispatch_unavailable_has_stable_retryable_http_mapping(
+    application: IMContactSyncApplication,
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -303,17 +314,13 @@ def test_sync_dispatch_unavailable_has_stable_retryable_http_mapping(
         def create_or_get_active_run(self, _scope: object, _account_id: object) -> Never:
             raise error
 
-    monkeypatch.setattr(
-        _CONTROLLER_MODULE,
-        "build_im_contact_sync_application",
-        lambda: SimpleNamespace(sync_service=SyncService()),
-    )
+    monkeypatch.setattr(application.sync_service, "create_or_get_active_run", SyncService().create_or_get_active_run)
 
     with app.test_request_context(method="POST"):
         response, status = unwrap(WorkspaceIMSyncRunsApi.post)(
             WorkspaceIMSyncRunsApi(),
             "workspace-1",
-            SimpleNamespace(id="account-1"),
+            make_account(account_id="account-1", name="Editor", email="editor@example.com"),
         )
 
     assert status == 503
@@ -326,6 +333,7 @@ def test_sync_dispatch_unavailable_has_stable_retryable_http_mapping(
 
 @pytest.mark.parametrize("command", ["sync_create", "organization_binding", "workspace_override"])
 def test_write_unavailable_has_stable_retryable_http_mapping(
+    application: IMContactSyncApplication,
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
@@ -349,12 +357,12 @@ def test_write_unavailable_has_stable_retryable_http_mapping(
         def set_workspace_override(self, **_kwargs: object) -> Never:
             raise error
 
+    monkeypatch.setattr(application.sync_service, "create_or_get_active_run", SyncService().create_or_get_active_run)
     monkeypatch.setattr(
-        _CONTROLLER_MODULE,
-        "build_im_contact_sync_application",
-        lambda: SimpleNamespace(sync_service=SyncService(), binding_service=BindingService()),
+        application.binding_service, "set_organization_binding", BindingService().set_organization_binding
     )
-    account = SimpleNamespace(id="account-1")
+    monkeypatch.setattr(application.binding_service, "set_workspace_override", BindingService().set_workspace_override)
+    account = make_account(account_id="account-1", name="Editor", email="editor@example.com")
     contact_id = "00000000-0000-0000-0000-000000000001"
     if command == "sync_create":
         handler = unwrap(WorkspaceIMSyncRunsApi.post)
@@ -422,6 +430,7 @@ def test_write_unavailable_has_stable_retryable_http_mapping(
     ],
 )
 def test_latest_results_map_every_discriminated_bucket(
+    application: IMContactSyncApplication,
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     sync_result: SyncResultFact,
@@ -438,11 +447,7 @@ def test_latest_results_map_every_discriminated_bucket(
             assert result_type is sync_result.result_type
             return SyncResultPage((sync_result,), page=page, limit=limit, total=1)
 
-    monkeypatch.setattr(
-        _CONTROLLER_MODULE,
-        "build_im_contact_sync_application",
-        lambda: SimpleNamespace(sync_service=SyncService()),
-    )
+    monkeypatch.setattr(application.sync_service, "list_latest_results", SyncService().list_latest_results)
     with app.test_request_context(
         method="GET",
         query_string={"result": sync_result.result_type.value, "page": "1", "limit": "20"},
@@ -467,11 +472,11 @@ def test_latest_results_map_every_discriminated_bucket(
 
 def test_binding_and_override_handlers_return_current_contact_projection(
     app: Flask,
-    application: SimpleNamespace,
+    application: IMContactSyncApplication,
     config_overrides: Callable[..., None],
 ) -> None:
     assert application.binding_service is not None
-    account = SimpleNamespace(id="account-1")
+    account = make_account(account_id="account-1", name="Editor", email="editor@example.com")
     contact_id = "00000000-0000-0000-0000-000000000001"
     with app.test_request_context(method="PUT", json={"identity_id": "identity-1"}):
         organization = unwrap(WorkspaceContactIMBindingsApi.put)(
@@ -525,10 +530,15 @@ def test_binding_writes_follow_the_deployment_management_mode(
     contact_id = "00000000-0000-0000-0000-000000000001"
 
     class BindingResource(Resource):
-        def put(self):
-            return unwrap(resource.put)(resource, "workspace-1", SimpleNamespace(id="account-1"), contact_id)
+        def put(self) -> dict[str, JsonValue]:
+            return unwrap(resource.put)(
+                resource,
+                "workspace-1",
+                make_account(account_id="account-1", name="Editor", email="editor@example.com"),
+                contact_id,
+            )
 
-        def delete(self):
+        def delete(self) -> dict[str, JsonValue]:
             return unwrap(resource.delete)(resource, "workspace-1", contact_id)
 
     transport = Flask(__name__)
@@ -553,33 +563,45 @@ def test_binding_writes_follow_the_deployment_management_mode(
 
 
 def test_enterprise_override_and_identity_search_use_the_deployment_directory(
+    monkeypatch: pytest.MonkeyPatch,
     app: Flask,
-    application: SimpleNamespace,
+    application: IMContactSyncApplication,
     config_overrides: Callable[..., None],
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     scopes = []
 
     class BindingService(_BindingService):
+        @override
         def set_workspace_override(self, **kwargs: object) -> ContactIMBindingView:
             scopes.append(kwargs["organization_scope"])
             return super().set_workspace_override(**kwargs)
 
+        @override
         def reset_workspace_override(self, **kwargs: object) -> ContactIMBindingView:
             scopes.append(kwargs["organization_scope"])
             return super().reset_workspace_override(**kwargs)
 
     class SyncService(_SyncService):
-        def search_identities(self, organization_scope, **_kwargs):
+        @override
+        def search_identities(
+            self, organization_scope: WorkspaceScope, **_kwargs: object
+        ) -> SynchronizedIMIdentityPage:
             scopes.append(organization_scope)
             return SynchronizedIMIdentityPage((), page=1, limit=20, total=0)
 
-    application.binding_service = BindingService()
-    application.sync_service = SyncService()
+    monkeypatch.setattr(application.binding_service, "set_workspace_override", BindingService().set_workspace_override)
+    monkeypatch.setattr(
+        application.binding_service, "reset_workspace_override", BindingService().reset_workspace_override
+    )
+    monkeypatch.setattr(application.sync_service, "search_identities", SyncService().search_identities)
     contact_id = "00000000-0000-0000-0000-000000000001"
     with app.test_request_context(method="PUT", json={"identity_id": "identity-1"}):
         unwrap(WorkspaceContactIMOverrideApi.put)(
-            WorkspaceContactIMOverrideApi(), "workspace-1", SimpleNamespace(id="account-1"), contact_id
+            WorkspaceContactIMOverrideApi(),
+            "workspace-1",
+            make_account(account_id="account-1", name="Editor", email="editor@example.com"),
+            contact_id,
         )
     with app.test_request_context(method="DELETE"):
         unwrap(WorkspaceContactIMOverrideApi.delete)(WorkspaceContactIMOverrideApi(), "workspace-1", contact_id)
@@ -608,6 +630,7 @@ def test_enterprise_override_and_identity_search_use_the_deployment_directory(
     ],
 )
 def test_expected_application_errors_have_stable_http_mapping(
+    application: IMContactSyncApplication,
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     error: Exception,
@@ -620,13 +643,15 @@ def test_expected_application_errors_have_stable_http_mapping(
             def set_organization_binding(self, **_kwargs: object) -> Never:
                 raise error
 
-        application = SimpleNamespace(binding_service=BindingService())
+        monkeypatch.setattr(
+            application.binding_service, "set_organization_binding", BindingService().set_organization_binding
+        )
         handler = unwrap(WorkspaceContactIMBindingsApi.put)
         request_context = app.test_request_context(method="PUT", json={"identity_id": "identity-1"})
         handler_args = (
             WorkspaceContactIMBindingsApi(),
             "workspace-1",
-            SimpleNamespace(id="account-1"),
+            make_account(account_id="account-1", name="Editor", email="editor@example.com"),
             "00000000-0000-0000-0000-000000000001",
         )
     elif isinstance(error, IMSyncRevisionChangedError):
@@ -635,17 +660,23 @@ def test_expected_application_errors_have_stable_http_mapping(
             def create_or_get_active_run(self, _scope: object, _account_id: object) -> Never:
                 raise error
 
-        application = SimpleNamespace(sync_service=SyncService())
+        monkeypatch.setattr(
+            application.sync_service, "create_or_get_active_run", SyncService().create_or_get_active_run
+        )
         handler = unwrap(WorkspaceIMSyncRunsApi.post)
         request_context = app.test_request_context(method="POST")
-        handler_args = (WorkspaceIMSyncRunsApi(), "workspace-1", SimpleNamespace(id="account-1"))
+        handler_args = (
+            WorkspaceIMSyncRunsApi(),
+            "workspace-1",
+            make_account(account_id="account-1", name="Editor", email="editor@example.com"),
+        )
     else:
 
         class SyncService:
             def get_latest_run(self, _scope: object) -> Never:
                 raise error
 
-        application = SimpleNamespace(sync_service=SyncService())
+        monkeypatch.setattr(application.sync_service, "get_latest_run", SyncService().get_latest_run)
         handler = unwrap(WorkspaceLatestIMSyncRunApi.get)
         request_context = app.test_request_context(method="GET")
         handler_args = (WorkspaceLatestIMSyncRunApi(), "workspace-1")
@@ -674,7 +705,7 @@ def test_in_scope_handlers_validate_before_service_construction(
         unwrap(WorkspaceContactIMBindingsApi.put)(
             WorkspaceContactIMBindingsApi(),
             "workspace-1",
-            SimpleNamespace(id="account-1"),
+            make_account(account_id="account-1", name="Editor", email="editor@example.com"),
             "00000000-0000-0000-0000-000000000001",
         )
 

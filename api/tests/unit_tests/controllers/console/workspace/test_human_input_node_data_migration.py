@@ -3,13 +3,13 @@ from collections.abc import Sequence
 from http import HTTPStatus
 from importlib import import_module
 from inspect import unwrap
-from types import SimpleNamespace
 from typing import Never
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden
+from werkzeug.local import LocalProxy
 
 from controllers.console.human_input_v2.contact import NodeDataMigrationAPI
 from core.human_input_v2.shared.values import NormalizedEmail, TenantId
@@ -467,7 +467,7 @@ def test_endpoint_preserves_auth_scope_decorators_and_rejects_before_service(
     monkeypatch.setattr(
         login_module,
         "current_user",
-        SimpleNamespace(_get_current_object=lambda: account, has_edit_permission=False),
+        LocalProxy(lambda: account),
     )
     monkeypatch.setattr(wraps_module.dify_config, "RBAC_ENABLED", False)
 

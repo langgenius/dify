@@ -7,7 +7,6 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import timedelta
 from threading import Barrier
-from types import SimpleNamespace
 from typing import NoReturn
 from uuid import uuid4
 
@@ -17,6 +16,7 @@ from flask import Flask
 from flask import request as flask_request
 from flask.testing import FlaskClient
 from flask_login import LoginManager
+from flask_sqlalchemy import SQLAlchemy
 from kombu.exceptions import OperationalError
 from pydantic import JsonValue
 from sqlalchemy.engine import Engine
@@ -39,8 +39,9 @@ from core.human_input_v2.shared.values import TenantId
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import Initiator
+from extensions.ext_application_services import ApplicationServices
 from extensions.storage.storage_type import StorageType
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.enums import WorkflowExecutionStatus
 from graphon.file.enums import FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
 from libs.datetime_utils import naive_utc_now
@@ -53,8 +54,8 @@ from models.human_input import RecipientType
 from models.human_input_v2 import FormViewEvent, HumanInputAuditEvent, HumanInputDelivery, RecipientSubjectType
 from models.human_input_v2 import HumanInputForm as V2Form
 from models.human_input_v2 import HumanInputRecipient as V2Recipient
-from models.model import ApiToken, AppMode, EndUser, UploadFile
-from models.workflow import WorkflowPause, WorkflowRun
+from models.model import ApiToken, ApiTokenType, AppMode, EndUser, UploadFile
+from models.workflow import WorkflowPause, WorkflowRun, WorkflowType
 from repositories.human_input_v2.delivery_repository import DeliveryCreateParams, InitiatorSnapshot, SubmissionAuthType
 from repositories.human_input_v2.form_repository import FormCreateParams
 from repositories.human_input_v2.recipient_repository import EndUserRecipientSubject, RecipientCreateParams
@@ -105,6 +106,7 @@ def approval(
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
+    account_application_services: ApplicationServices,
 ) -> Iterator[Approval]:
     version = request.param
     tenant = make_tenant(tenant_id=str(uuid4()))
@@ -225,14 +227,15 @@ def approval(
             form_id, recipient_id = form.id, str(v2_recipient.id)
 
     database_sessions = scoped_session(sqlite_session_factory)
-    database = SimpleNamespace(engine=sqlite_engine, session=database_sessions)
+    database = SQLAlchemy()
+    monkeypatch.setattr(database, "session", database_sessions)
     monkeypatch.setattr(wraps, "db", database)
     monkeypatch.setattr(controller, "db", database)
 
     def authenticate(_token_type: str) -> ApiToken:
         if flask_request.headers.get("Authorization") != _HEADERS["Authorization"]:
             raise Unauthorized("Invalid API token")
-        return ApiToken(app_id=application.id, type="app", token="test-app-key")
+        return ApiToken(app_id=application.id, type=ApiTokenType.APP, token="test-app-key")
 
     def get_end_user(tenant_id: str, app_id: str, external_user_id: str | None) -> EndUser:
         with sqlite_session_factory() as session:
@@ -248,11 +251,12 @@ def approval(
 
     monkeypatch.setattr(wraps, "validate_and_get_api_token", authenticate)
     monkeypatch.setattr(
+        account_application_services.app_scoped_end_users.commands, "get_or_create_end_user", get_end_user
+    )
+    monkeypatch.setattr(
         wraps,
         "application_services",
-        lambda: SimpleNamespace(
-            app_scoped_end_users=SimpleNamespace(commands=SimpleNamespace(get_or_create_end_user=get_end_user)),
-        ),
+        lambda: account_application_services,
     )
     monkeypatch.setattr("services.human_input_service.naive_utc_now", lambda: _NOW)
     monkeypatch.setattr("services.human_input_v2.submission_service.naive_utc_now", lambda: _NOW)
@@ -267,6 +271,7 @@ def approval(
 
     monkeypatch.setattr(resume_app_execution, "apply_async", publish)
     application_http = Flask(__name__)
+    database._app_engines[application_http] = {None: sqlite_engine}
     LoginManager().init_app(application_http)
     ExternalApi(application_http, register_default_root=False).add_namespace(controller.service_api_ns, path="/v1")
     yield Approval(
@@ -396,7 +401,9 @@ def test_v1_json_paragraph_submission_resumes_the_node(approval: Approval, note:
     from core.workflow.nodes.human_input.callback import DifyHITLCallback
     from core.workflow.nodes.human_input.constants import OUTPUT_FIELD_RENDERED_CONTENT
     from core.workflow.nodes.human_input.entities import HumanInputNodeData
+    from graphon.engine_events import NodeRunSucceededEvent
     from graphon.enums import WorkflowNodeExecutionStatus
+    from graphon.nodes.human_input.entities import HumanInputNodeData as GraphHumanInputNodeData
     from graphon.nodes.human_input.human_input_node import HumanInputNode
     from graphon.runtime import RuntimeState, VariablePool
     from graphon.runtime.init_params import InitParams
@@ -418,7 +425,7 @@ def test_v1_json_paragraph_submission_resumes_the_node(approval: Approval, note:
     )
     node = HumanInputNode(
         node_id="approval",
-        data=node_data,
+        data=GraphHumanInputNodeData.model_validate(node_data.model_dump()),
         init_params=InitParams(
             workflow_id="workflow-1", graph_config={}, run_context={"workflow_run_id": approval.run_id}, call_depth=0
         ),
@@ -428,7 +435,9 @@ def test_v1_json_paragraph_submission_resumes_the_node(approval: Approval, note:
         ),
     )
     node.bind_execution_id(approval.form_id)
-    completed = list(node.run())[-1].node_run_result
+    event = list(node.run())[-1]
+    assert isinstance(event, NodeRunSucceededEvent)
+    completed = event.node_run_result
     assert completed.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert completed.edge_source_handle == "approve"
     assert completed.outputs["note"].to_object() == note
