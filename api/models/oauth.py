@@ -150,6 +150,9 @@ class OpenAPIOAuthClient(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False
     )
+    last_token_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True, default=None, init=False
+    )
 
 
 class OpenAPIOAuthRefreshToken(TypeBase):

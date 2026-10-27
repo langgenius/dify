@@ -217,8 +217,17 @@ class _FixedTTLPolicy:
 
 
 @dataclass
+class _RecordingClientUsage:
+    marked: list[str] = field(default_factory=list)
+
+    def mark_token_issued(self, client_id: str) -> None:
+        self.marked.append(client_id)
+
+
+@dataclass
 class _AuthCodeWorld:
     handler: AuthorizationCodeGrantHandler
+    usage: _RecordingClientUsage
     authorize: OAuthAuthorizeService
     codes: RedisAuthorizationCodeRepository
     tokens: FakeTokenIssuer
@@ -236,6 +245,7 @@ def _auth_code_world(*, tokens: OAuthDeviceTokenIssuer | None = None, redis: Dic
     fake_tokens = FakeTokenIssuer()
     accounts = FakeAccounts()
     settings = FakeTokenSettings()
+    usage = _RecordingClientUsage()
     handler = AuthorizationCodeGrantHandler(
         clients=clients,
         codes=codes,
@@ -243,9 +253,12 @@ def _auth_code_world(*, tokens: OAuthDeviceTokenIssuer | None = None, redis: Dic
         workspaces=FakeWorkspaces(),
         tokens=tokens or fake_tokens,
         settings=settings,
+        usage=usage,
     )
     authorize = OAuthAuthorizeService(clients=clients, codes=codes, settings=settings)
-    return _AuthCodeWorld(handler=handler, authorize=authorize, codes=codes, tokens=fake_tokens, accounts=accounts)
+    return _AuthCodeWorld(
+        handler=handler, usage=usage, authorize=authorize, codes=codes, tokens=fake_tokens, accounts=accounts
+    )
 
 
 def _approve(
@@ -336,6 +349,22 @@ class TestAuthorizationCodeGrantCases:
         assert call.lifetime == timedelta(hours=24)
         assert call.refresh == RefreshTokenIssue(lifetime=timedelta(days=30))
         assert call.device_label.startswith("QwenWork (")
+
+    @staticmethod
+    def test_redeeming_a_code_marks_the_client_as_used() -> None:
+        world = _auth_code_world()
+
+        world.handler(_code_request(_approve(world)))
+
+        assert world.usage.marked == [CONFIDENTIAL_ID]
+
+    @staticmethod
+    def test_failed_redemption_does_not_mark_the_client() -> None:
+        world = _auth_code_world()
+
+        _token_error(world, _code_request(_approve(world), code_verifier="w" * 43))
+
+        assert world.usage.marked == []
 
     @staticmethod
     def test_public_loopback_client_redeems_on_the_port_it_used() -> None:
@@ -585,6 +614,7 @@ def test_build_grant_handlers_registers_browser_grants_only_when_enabled(
             tokens=FakeTokenIssuer(),
             revoke=GrantRevoker(session_factory=sqlite_session_factory, redis=_cache_wrapper(), refresh=refresh),
             settings=FakeTokenSettings(authorization_code_enabled=enabled),
+            usage=_RecordingClientUsage(),
         )
 
     enabled = handlers(True)
@@ -671,6 +701,7 @@ class _NoAccessWorkspaces:
 @dataclass
 class _RefreshWorld:
     login_handler: AuthorizationCodeGrantHandler
+    usage: _RecordingClientUsage
     handler: RefreshTokenGrantHandler
     authorize: OAuthAuthorizeService
     accounts: FakeAccounts
@@ -775,10 +806,18 @@ def _refresh_world(
     workspaces = FakeWorkspaces()
     revoker = GrantRevoker(session_factory=factory, redis=cache, refresh=refresh)
     token_cache = _RecordingTokenCache()
+    usage = _RecordingClientUsage()
     return _RefreshWorld(
         login_handler=AuthorizationCodeGrantHandler(
-            clients=clients, codes=codes, accounts=accounts, workspaces=workspaces, tokens=tokens, settings=settings
+            clients=clients,
+            codes=codes,
+            accounts=accounts,
+            workspaces=workspaces,
+            tokens=tokens,
+            settings=settings,
+            usage=usage,
         ),
+        usage=usage,
         handler=RefreshTokenGrantHandler(
             clients=clients,
             refresh=refresh,
@@ -862,6 +901,14 @@ class TestRefreshTokenGrantCases:
         refresh_world.login()
 
         assert len({row.family_id for row in refresh_world.refresh_rows()}) == 2
+
+    @staticmethod
+    def test_refresh_does_not_mark_the_client_again(refresh_world: _RefreshWorld) -> None:
+        login = refresh_world.login()
+
+        refresh_world.refresh(login.refresh_token)
+
+        assert refresh_world.usage.marked == [CONFIDENTIAL_ID]
 
     @staticmethod
     def test_rotation_returns_a_new_pair_and_spends_the_old_refresh(refresh_world: _RefreshWorld) -> None:

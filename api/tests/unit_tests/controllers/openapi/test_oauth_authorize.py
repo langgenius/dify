@@ -29,7 +29,7 @@ from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTo
 from services.oauth_authorize_service import OAuthAuthorizeService
 from services.oauth_device_contracts import PollPayload
 from services.oauth_grant_revoker import GrantRevoker
-from services.oauth_token_grants import build_grant_handlers
+from services.oauth_token_grants import ClientUsage, build_grant_handlers
 from services.oauth_token_service import OAuthTokenService
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (
     ACCOUNT_ID,
@@ -119,6 +119,7 @@ def _build_services(*, authorization_code_enabled: bool = True) -> tuple[_Servic
         tokens=tokens,
         revoke=create_autospec(GrantRevoker, instance=True),
         settings=settings,
+        usage=create_autospec(ClientUsage, instance=True),
     )
     services = _Services(
         oauth_authorize=OAuthAuthorizeService(clients=clients, codes=codes, settings=settings),

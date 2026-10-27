@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums.oauth_client import OAuthClientKind
@@ -57,6 +57,14 @@ class SQLAlchemyOAuthClientRepository:
             session.refresh(row)
             session.expunge(row)
         return row
+
+    def mark_token_issued(self, client_id: str) -> None:
+        with self._session_factory() as session, session.begin():
+            session.execute(
+                update(OpenAPIOAuthClient)
+                .where(OpenAPIOAuthClient.client_id == client_id, OpenAPIOAuthClient.last_token_at.is_(None))
+                .values(last_token_at=func.now())
+            )
 
 
 def _known_grant_types(raw: Sequence[str]) -> frozenset[GrantType]:

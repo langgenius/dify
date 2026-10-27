@@ -448,6 +448,7 @@ def _build_oauth_services(
         tokens=tokens,
         revoke=grants,
         settings=settings,
+        usage=client_repository,
     )
     return _OAuthServices(
         device=device,

@@ -45,6 +45,10 @@ DEFAULT_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES: Final = 30
 MIN_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES: Final = 0
 MAX_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES: Final = 1440
 
+DEFAULT_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 7
+MIN_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 1
+MAX_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: Final = 365
+
 
 def _clamp_int_setting(name: str, value: object, *, default: int, minimum: int, maximum: int) -> int:
     # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
@@ -1276,6 +1280,26 @@ class AuthConfig(BaseSettings):
             maximum=MAX_OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES,
         )
 
+    OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS: int = Field(
+        description="Days a dynamically registered OAuth client may stay without ever getting a token before the "
+        f"cleanup task deletes it. Values outside {MIN_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS}-"
+        f"{MAX_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS} are clamped; a non-integer falls back to the default.",
+        ge=MIN_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
+        le=MAX_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
+        default=DEFAULT_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
+    )
+
+    @field_validator("OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS", mode="before")
+    @classmethod
+    def _clamp_oauth_unused_dcr_client_retention_days(cls, v: object) -> int:
+        return _clamp_int_setting(
+            "OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS",
+            v,
+            default=DEFAULT_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
+            minimum=MIN_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
+            maximum=MAX_OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS,
+        )
+
     OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(
         description="Per-token rate limit on /openapi/v1/* (requests per minute). "
         "Bucket keyed on sha256(token), shared across api replicas via Redis. "
@@ -1671,6 +1695,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
     OAUTH_ACCESS_TOKEN_RETENTION_DAYS: PositiveInt = Field(
         description="Days to retain revoked OAuth access-token rows before deletion.",
         default=30,
+    )
+    ENABLE_CLEAN_UNUSED_OAUTH_CLIENTS_TASK: bool = Field(
+        description="Enable scheduled deletion of dynamically registered OAuth clients that never got a token.",
+        default=True,
     )
     ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
         description="Enable mail clean document notify task",

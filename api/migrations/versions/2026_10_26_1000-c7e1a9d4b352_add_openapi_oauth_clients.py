@@ -49,6 +49,7 @@ def upgrade():
             server_default=sa.func.current_timestamp(),
             nullable=False,
         ),
+        sa.Column("last_token_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id", name="openapi_oauth_clients_pkey"),
     )
     op.create_index("uq_openapi_oauth_clients_client_id", "openapi_oauth_clients", ["client_id"], unique=True)

@@ -73,7 +73,7 @@ from services.oauth_device_contracts import (
 )
 from services.oauth_grant_revoker import GrantRevoker
 from services.oauth_token_contracts import GrantType
-from services.oauth_token_grants import build_grant_handlers
+from services.oauth_token_grants import ClientUsage, build_grant_handlers
 from services.oauth_token_service import OAuthTokenService
 from tests.helpers.unit.services.oauth_authorization_code_fakes import (
     DictRedis,
@@ -948,6 +948,7 @@ def client(store: FakeStore, monkeypatch: pytest.MonkeyPatch) -> FlaskClient:
                 tokens=FakeTokenIssuer(),
                 revoke=create_autospec(GrantRevoker, instance=True),
                 settings=FakeTokenSettings(authorization_code_enabled=False),
+                usage=create_autospec(ClientUsage, instance=True),
             )
         ),
     )

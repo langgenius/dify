@@ -90,6 +90,22 @@ def test_oauth_refresh_token_reuse_grace_minutes_clamps_or_falls_back(configured
     assert expected == config.OAUTH_REFRESH_TOKEN_REUSE_GRACE_MINUTES
 
 
+def test_unused_oauth_client_cleanup_settings_default() -> None:
+    config = _IsolatedAuthConfig()
+
+    assert config.OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS == 7
+
+
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [("14", 14), ("1", 1), ("365", 365), ("0", 1), ("-5", 1), ("1000", 365), ("abc", 7), ("", 7)],
+)
+def test_oauth_unused_dcr_client_retention_days_clamps_or_falls_back(configured: str, expected: int) -> None:
+    config = _IsolatedAuthConfig(OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS=configured)
+
+    assert expected == config.OAUTH_UNUSED_DCR_CLIENT_RETENTION_DAYS
+
+
 class _IsolatedFileUploadConfig(InitSettingsOnly, FileUploadConfig):
     pass
 

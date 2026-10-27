@@ -131,6 +131,10 @@ class _BrowserLoginMinter:
         )
 
 
+class ClientUsage(Protocol):
+    def mark_token_issued(self, client_id: str) -> None: ...
+
+
 class AuthorizationCodeGrantHandler:
     """Client authentication runs first, so a request that fails it never burns the code."""
 
@@ -143,11 +147,13 @@ class AuthorizationCodeGrantHandler:
         workspaces: DeviceWorkspaceQuery,
         tokens: OAuthDeviceTokenIssuer,
         settings: OAuthTokenSettings,
+        usage: ClientUsage,
     ) -> None:
         self._clients = clients
         self._codes = codes
         self._accounts = accounts
         self._settings = settings
+        self._usage = usage
         self._minter = _BrowserLoginMinter(workspaces=workspaces, tokens=tokens, settings=settings)
 
     def __call__(self, request: TokenRequest) -> TokenGrantResult:
@@ -168,13 +174,15 @@ class AuthorizationCodeGrantHandler:
             if GrantType.REFRESH_TOKEN in client.grant_types
             else None
         )
-        return self._minter.mint(
+        result = self._minter.mint(
             account,
             workspace_id=record.workspace_id,
             client_id=client.storage_client_id,
             device_label=default_device_label(client.display_name),
             refresh=refresh,
         )
+        self._usage.mark_token_issued(client.storage_client_id)
+        return result
 
     def _redeem(self, client: ResolvedClient, request: TokenRequest) -> AuthorizationCodeRecord:
         if not request.code:
@@ -298,6 +306,7 @@ def build_grant_handlers(
     tokens: OAuthDeviceTokenIssuer,
     revoke: GrantRevoker,
     settings: OAuthTokenSettings,
+    usage: ClientUsage,
 ) -> Mapping[GrantType, GrantHandler]:
     handlers: dict[GrantType, GrantHandler] = {GrantType.DEVICE_CODE: DeviceCodeGrantHandler(device)}
     if settings.authorization_code_enabled:
@@ -308,6 +317,7 @@ def build_grant_handlers(
             workspaces=workspaces,
             tokens=tokens,
             settings=settings,
+            usage=usage,
         )
         handlers[GrantType.REFRESH_TOKEN] = RefreshTokenGrantHandler(
             clients=clients,
