@@ -173,28 +173,6 @@
       "count": 5
     }
   },
-  "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/annotation/add-annotation-modal/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/app/annotation/batch-action.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -225,28 +203,8 @@
     }
   },
   "web/app/components/app/annotation/edit-annotation-modal/edit-item/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    },
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "react/only-export-components": {
       "count": 1
-    }
-  },
-  "web/app/components/app/annotation/edit-annotation-modal/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/app/components/app/annotation/empty-element.tsx": {
@@ -259,33 +217,12 @@
       "count": 2
     }
   },
-  "web/app/components/app/annotation/header-opts/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/app/annotation/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/app/annotation/list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 20
-    }
-  },
-  "web/app/components/app/annotation/view-annotation-modal/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 27
-    },
-    "eslint-react/set-state-in-effect": {
-      "count": 5
     }
   },
   "web/app/components/app/app-access-control/access-control-dialog.tsx": {
@@ -804,11 +741,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/log/conversation-detail.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/app/log/empty-element.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -1147,11 +1079,6 @@
   "web/app/components/base/chat/chat/answer/more.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
-    }
-  },
-  "web/app/components/base/chat/chat/answer/operation.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 5
     }
   },
   "web/app/components/base/chat/chat/answer/suggested-questions.tsx": {
@@ -1733,17 +1660,6 @@
     }
   },
   "web/app/components/base/prompt-editor/plugins/component-picker-block/prompt-option.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/prompt-editor/plugins/component-picker-block/variable-option.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     },
@@ -6570,11 +6486,6 @@
       "count": 2
     }
   },
-  "web/features/agent-v2/agent-detail/configure/components/orchestrate/common/configurable-item.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/features/agent-v2/agent-detail/configure/components/orchestrate/common/section.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -6806,11 +6717,6 @@
   "web/features/new-rag/create/components/dialog-parts.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
-    }
-  },
-  "web/features/new-rag/create/page.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/features/new-rag/create/source-setup.tsx": {
@@ -7132,9 +7038,6 @@
     }
   },
   "web/features/tag-management/components/tag-item-editor.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    },
     "jsx-a11y/no-autofocus": {
       "count": 1
     }

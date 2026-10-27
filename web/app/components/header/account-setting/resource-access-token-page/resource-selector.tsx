@@ -206,7 +206,7 @@ export default function ResourceSelector({
                 value="all"
                 className="rounded-lg border-b-0 px-3 py-1.5 system-sm-medium data-active:bg-state-base-active"
               >
-                {t(($) => $['resourceAccessToken.tabAll'], { ns: 'accountSettings' })}
+                {t(($) => $['resourceAccessToken.tabAllTypes'], { ns: 'accountSettings' })}
               </TabsTab>
               <TabsTab
                 value="app"

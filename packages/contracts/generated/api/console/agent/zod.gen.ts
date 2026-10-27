@@ -448,6 +448,18 @@ export const zAppMessageFeedbackPayload = z.object({
 })
 
 /**
+ * MessageFeedbackRatingRequiredError
+ *
+ * A rating is required when there is no existing feedback to remove.
+ */
+export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_feedback_rating_required'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AgentPublishPayload
  */
 export const zAgentPublishPayload = z.object({

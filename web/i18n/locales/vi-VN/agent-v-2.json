@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Đang tải cơ sở tri thức Agent…",
   "agentDetail.configure.knowledgeFs.rebind": "Liên kết được nhập: chọn lại cơ sở tri thức Agent này hoặc thay bằng cơ sở tri thức Agent khả dụng.",
   "agentDetail.configure.knowledgeFs.retry": "Thử lại",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "Truy xuất từ cơ sở tri thức Agent không khả dụng trong triển khai này. Hãy yêu cầu quản trị viên bật tính năng này.",
   "agentDetail.configure.knowledgeFs.select": "Chọn tối đa 10 cơ sở tri thức Agent",
   "agentDetail.configure.knowledgeFs.title": "Cơ sở tri thức Agent",
   "agentDetail.configure.knowledgeFs.unavailable": "Cơ sở tri thức Agent này không khả dụng hoặc bạn không có quyền sử dụng trong Agent này.",

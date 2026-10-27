@@ -40,7 +40,6 @@ dependencies = [
     "opentelemetry-instrumentation-redis==0.65b0",
     "opentelemetry-instrumentation-sqlalchemy==0.65b0",
     "opentelemetry-propagator-b3>=1.45.0,<2.0.0",
-    "pypandoc==1.17",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
     "zstandard==0.25.0",

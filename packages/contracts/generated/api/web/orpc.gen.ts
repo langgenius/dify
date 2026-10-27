@@ -5,6 +5,7 @@ import * as z from 'zod'
 import {
   zAccountBannedError,
   zAgentNotPublishedError,
+  zAgentVersionNotFoundError,
   zAppMoreLikeThisDisabledError,
   zAppSuggestedQuestionsAfterAnswerDisabledError,
   zAppUnavailableError,
@@ -35,6 +36,7 @@ import {
   zInvalidParamError,
   zInvalidUploadTokenError,
   zMalformedUploadTokenError,
+  zMessageFeedbackRatingRequiredError,
   zModelCurrentlyNotSupportError,
   zNoAudioUploadedError,
   zNoFileUploadedError,
@@ -1086,6 +1088,10 @@ export const post22 = oc
     }),
   )
   .output(zPostMessagesByMessageIdFeedbacksResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+  })
 
 export const feedbacks = {
   post: post22,
@@ -1112,6 +1118,7 @@ export const get7 = oc
   .output(zGetMessagesByMessageIdMoreLikeThisResponse)
   .errors({
     app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_completion_app: { status: 400, data: zNotCompletionAppError },
@@ -1124,11 +1131,12 @@ export const moreLikeThis = {
 }
 
 /**
- * Get suggested follow-up questions after a message (chat apps only).
+ * Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.
  */
 export const get8 = oc
   .route({
-    description: 'Get suggested follow-up questions after a message (chat apps only).',
+    description:
+      'Get suggested follow-up questions after a message (chat apps only). If no usable model can be resolved or the model call to generate questions fails, the response is HTTP 200 with an empty data list. Model invocation failures during history token counting instead return HTTP 400 with `completion_request_error`.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getMessagesByMessageIdSuggestedQuestions',
@@ -1138,10 +1146,12 @@ export const get8 = oc
   .input(z.object({ params: zGetMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetMessagesByMessageIdSuggestedQuestionsResponse)
   .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_suggested_questions_after_answer_disabled: {
       status: 403,
       data: zAppSuggestedQuestionsAfterAnswerDisabledError,
     },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
@@ -1173,7 +1183,10 @@ export const get9 = oc
   })
   .input(z.object({ query: zGetMessagesQuery }))
   .output(zGetMessagesResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const messages = {
   get: get9,

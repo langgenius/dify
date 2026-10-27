@@ -94,7 +94,7 @@
   "resourceAccessToken.resources": "ทรัพยากร",
   "resourceAccessToken.searchPlaceholder": "ค้นหาโทเค็น…",
   "resourceAccessToken.searchResourcesPlaceholder": "ค้นหาแอปหรือฐานความรู้…",
-  "resourceAccessToken.tabAll": "ทั้งหมด",
+  "resourceAccessToken.tabAllTypes": "ทุกประเภท",
   "resourceAccessToken.tabApps": "แอป",
   "resourceAccessToken.tabKnowledgeBases": "ฐานความรู้",
   "resourceAccessToken.token": "โทเค็น",

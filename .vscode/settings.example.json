@@ -1,4 +1,8 @@
 {
+  "js/ts.experimental.useTsgo": true,
+  "js/ts.tsdk.path": "./packages/openapi-content-mapper/node_modules/typescript",
+  "js/ts.contentMappers.enabled": true,
+
   "cucumber.features": ["e2e/features/**/*.feature"],
   "cucumber.glue": ["e2e/features/**/*.ts"],
 

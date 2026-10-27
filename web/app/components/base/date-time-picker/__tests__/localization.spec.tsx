@@ -160,3 +160,22 @@ it.each([
     vi.useRealTimers()
   }
 })
+
+it('localizes the picker close action and dismisses without changing its value', async () => {
+  const user = userEvent.setup()
+  const i18n = await createI18n('zh-Hans')
+  const changed = vi.fn()
+  render(
+    <I18nextProvider i18n={i18n}>
+      <TimePicker defaultValue="13:30" onValueChange={changed}>
+        <TimePickerLabel>Time</TimePickerLabel>
+        <TimePickerTrigger />
+        <TimePickerContent />
+      </TimePicker>
+    </I18nextProvider>,
+  )
+  await user.click(screen.getByRole('button', { name: /^Time / }))
+  act(() => screen.getByRole('button', { name: zh['operation.close'] }).click())
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(changed).not.toHaveBeenCalled()
+})

@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Nalaganje zbirk znanja Agent…",
   "agentDetail.configure.knowledgeFs.rebind": "Uvožena povezava: znova izrecno izberite to zbirko znanja Agent ali jo zamenjajte z razpoložljivo zbirko znanja Agent.",
   "agentDetail.configure.knowledgeFs.retry": "Poskusi znova",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "Iskanje po zbirkah znanja Agent v tej namestitvi ni na voljo. Prosite skrbnika, naj ga omogoči.",
   "agentDetail.configure.knowledgeFs.select": "Izberite do 10 zbirk znanja Agent",
   "agentDetail.configure.knowledgeFs.title": "Zbirka znanja Agent",
   "agentDetail.configure.knowledgeFs.unavailable": "Ta zbirka znanja Agent ni na voljo ali nimate dovoljenja za njeno uporabo v tem agentu.",

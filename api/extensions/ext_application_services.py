@@ -79,6 +79,7 @@ from repositories.file_grant_repository import FileGrantRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
+from repositories.message_repository import MessageRepository
 from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
@@ -86,6 +87,7 @@ from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploa
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_repository import TrialAppRepository
@@ -156,9 +158,15 @@ from services.inner_mail_service import InnerMailService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
 from services.knowledge_fs.workflow_runtime import build_knowledge_fs_node_dependencies
+from services.message_feedback_service import MessageFeedbackService
 from services.message_file_preview_service import MessageFilePreviewService
-from services.message_suggested_questions_adapters import MessageSuggestedQuestionsRuntime
-from services.message_suggested_questions_service import MessageSuggestedQuestions
+from services.message_more_like_this_generator import MessageMoreLikeThisGenerator
+from services.message_more_like_this_service import MessageMoreLikeThisService
+from services.message_query_adapters import ExecutionExtraContentReader, MessageFileResolver
+from services.message_query_service import MessageQueryService
+from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
+from services.message_suggested_questions_queries import SuggestedQuestionsQuery
+from services.message_suggested_questions_service import MessageSuggestedQuestions, MessageSuggestedQuestionsService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
@@ -313,8 +321,11 @@ class ApplicationServices:
     file_grants: FileGrantService
     files: FileService
     human_input_file_uploads: HumanInputFileUploadService
+    message_feedbacks: MessageFeedbackService
+    message_queries: MessageQueryService
     message_file_previews: MessageFilePreviewService
     message_suggested_questions: MessageSuggestedQuestions
+    message_more_like_this: MessageMoreLikeThisService
     plugin_file_uploads: PluginFileUploadService
     tool_file_downloads: ToolFileDownloadService
     upload_file_delivery: UploadFileDeliveryService
@@ -578,6 +589,12 @@ def build_application_services(
     end_user_connection_preflight = build_end_user_connection_preflight(
         database_client=database_client, connections=end_user_connections
     )
+    messages = MessageRepository(session_factory=database_client)
+    suggested_questions = SuggestedQuestionsQuery(
+        session_factory=database_client,
+        repository=messages,
+    )
+
     return ApplicationServices(
         rbac=rbac,
         accounts=account_services,
@@ -692,11 +709,26 @@ def build_application_services(
             files=file_service,
             remote_files=remote_file_service,
         ),
+        message_feedbacks=MessageFeedbackService(repository=messages),
+        message_queries=MessageQueryService(
+            messages=messages,
+            files=MessageFileResolver(),
+            extra_contents=ExecutionExtraContentReader(
+                repository=SQLAlchemyExecutionExtraContentRepository(session_maker=database_client)
+            ),
+        ),
         message_file_previews=MessageFilePreviewService(
             files=MessageFilePreviewQueryRepository(session_factory=database_client),
             storage=storage,
         ),
-        message_suggested_questions=MessageSuggestedQuestionsRuntime(session_factory=database_client),
+        message_more_like_this=MessageMoreLikeThisService(
+            repository=messages,
+            generator=MessageMoreLikeThisGenerator(session_factory=database_client),
+        ),
+        message_suggested_questions=MessageSuggestedQuestionsService(
+            queries=suggested_questions,
+            generator=SuggestedQuestionsGenerator(),
+        ),
         plugin_file_uploads=PluginFileUploadService(
             owners=SQLAlchemyPluginFileUploadOwnerRepository(session_factory=database_client),
             files=ToolFilePluginUploadGateway(tool_files=ToolFileManager()),
