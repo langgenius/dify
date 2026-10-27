@@ -82,6 +82,7 @@ from repositories.network_access_group_repository import SQLAlchemyNetworkAccess
 from repositories.oauth_authorization_code_repository import RedisAuthorizationCodeRepository
 from repositories.oauth_client_repository import SQLAlchemyOAuthClientRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
+from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
@@ -193,6 +194,7 @@ from services.oauth_device_application_service import (
     OAuthDeviceApplicationService,
 )
 from services.oauth_device_flow import DeviceFlowRedis
+from services.oauth_grant_revoker import GrantRevoker, OAuthRevocationService
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
 from services.oauth_token_adapters import DifyConfigOAuthTokenSettings
 from services.oauth_token_grants import build_grant_handlers
@@ -353,6 +355,7 @@ class ApplicationServices:
     oauth_clients: OAuthClientRegistry
     oauth_token: OAuthTokenService
     oauth_authorize: OAuthAuthorizeService
+    oauth_revocation: OAuthRevocationService
     init_validation: InitValidationService
     installed_apps: InstalledAppServices
     notifications: NotificationService
@@ -394,6 +397,7 @@ class _OAuthServices:
     clients: OAuthClientRegistry
     token: OAuthTokenService
     authorize: OAuthAuthorizeService
+    revocation: OAuthRevocationService
 
 
 def _build_oauth_services(
@@ -437,11 +441,17 @@ def _build_oauth_services(
         tokens=tokens,
         settings=settings,
     )
+    grants = GrantRevoker(
+        session_factory=database_client,
+        redis=redis,
+        refresh=SQLAlchemyOAuthRefreshTokenRepository(session_factory=database_client),
+    )
     return _OAuthServices(
         device=device,
         clients=clients,
         token=OAuthTokenService(handlers=handlers),
         authorize=OAuthAuthorizeService(clients=clients, codes=codes, settings=settings),
+        revocation=OAuthRevocationService(clients=clients, grants=grants),
     )
 
 
@@ -824,6 +834,7 @@ def build_application_services(
         oauth_clients=oauth.clients,
         oauth_token=oauth.token,
         oauth_authorize=oauth.authorize,
+        oauth_revocation=oauth.revocation,
         init_validation=InitValidationService(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),

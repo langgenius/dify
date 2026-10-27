@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import partial
@@ -7,15 +7,17 @@ import pytest
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+import repositories.oauth_device_token_repository as device_token_repository_module
 from configs.feature import DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth_bearer import sha256_hex
-from models.oauth import OAuthAccessToken
+from models.oauth import OAuthAccessToken, OAuthRefreshToken
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
+from repositories.oauth_refresh_token_repository import SQLAlchemyOAuthRefreshTokenRepository
 from services.entities.account_entities import AccountSnapshot
 from services.oauth_device_adapters import OAuthDeviceTokenIssuanceGateway
-from services.oauth_device_contracts import IssuedOAuthToken
+from services.oauth_device_contracts import GrantKey, IssuedOAuthToken
 
 
 @dataclass
@@ -511,3 +513,168 @@ def test_evicted_hashes_removed_from_cache(
     assert newest.rotation.evicted_token_ids == (oldest.token_id,)
     assert redis.deleted == []
     assert lowered_redis.deleted == [_cache_key(relogged), _cache_key(oldest)]
+
+
+def _grant(device_label: str) -> GrantKey:
+    return GrantKey(
+        subject_email="ada@example.com",
+        subject_issuer="dify:account",
+        client_id="difyctl",
+        device_label=device_label,
+    )
+
+
+def _issue_refresh(factory: sessionmaker[Session], grant: GrantKey) -> str:
+    return SQLAlchemyOAuthRefreshTokenRepository(session_factory=factory).issue(
+        grant=grant,
+        account_id="account-1",
+        workspace_id="workspace-1",
+        family_id=None,
+        lifetime=timedelta(days=30),
+    )
+
+
+def _refresh_labels(session: Session) -> set[str]:
+    session.expire_all()
+    return set(session.scalars(select(OAuthRefreshToken.device_label)).all())
+
+
+def _set_refresh_issued_at(session: Session, issued_at: datetime) -> None:
+    session.execute(update(OAuthRefreshToken).values(created_at=issued_at))
+    session.commit()
+
+
+def _expire(session: Session, token: IssuedOAuthToken) -> None:
+    session.execute(
+        update(OAuthAccessToken)
+        .where(OAuthAccessToken.id == token.token_id)
+        .values(expires_at=datetime.now(UTC) - timedelta(minutes=1))
+    )
+    session.commit()
+
+
+def test_console_session_revoke_also_deletes_the_refresh_token(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, repository, _redis, _ttl_policy = _repository(sqlite_session_factory)
+    revoked, kept = _issue_sessions(issuer, ["a", "b"])
+    _issue_refresh(sqlite_session_factory, _grant("a"))
+    _issue_refresh(sqlite_session_factory, _grant("b"))
+
+    assert repository.revoke_account_session(account_id="account-1", token_id=revoked.token_id) is True
+
+    assert _refresh_labels(sqlite_session) == {"b"}
+    assert _live_token_ids(sqlite_session) == {kept.token_id}
+
+
+def test_expired_access_with_live_refresh_counts_toward_the_cap(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=2)
+    now = datetime.now(UTC)
+    refresh_only, live = _issue_sessions(issuer, ["a", "b"])
+    _issue_refresh(sqlite_session_factory, _grant("a"))
+    _set_refresh_issued_at(sqlite_session, now - timedelta(hours=1))
+    _expire(sqlite_session, refresh_only)
+    _set_usage(sqlite_session, live, created_at=now - timedelta(hours=2), last_used_at=now - timedelta(minutes=5))
+
+    newest = _issue_sessions(issuer, ["c"])[0]
+
+    assert newest.rotation.evicted_token_ids == ()
+    assert _refresh_labels(sqlite_session) == set()
+    assert _live_token_ids(sqlite_session) == {refresh_only.token_id, live.token_id, newest.token_id}
+
+
+def test_sixteenth_login_evicts_that_grants_refresh_too(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, _repository_, redis, _ttl_policy = _repository(sqlite_session_factory)
+    base = datetime.now(UTC) - timedelta(days=1)
+    labels = [f"device-{index}" for index in range(DEFAULT_OAUTH_MAX_TOKENS_PER_ACCOUNT)]
+    sessions = _issue_sessions(issuer, labels)
+    for index, token in enumerate(sessions):
+        _set_usage(sqlite_session, token, created_at=base, last_used_at=base + timedelta(minutes=index + 1))
+    least_recently_used = sessions[0]
+    _issue_refresh(sqlite_session_factory, _grant("device-0"))
+    _issue_refresh(sqlite_session_factory, _grant("device-1"))
+    _set_refresh_issued_at(sqlite_session, base)
+
+    newest = _issue_sessions(issuer, ["device-new"])[0]
+
+    assert newest.rotation.evicted_token_ids == (least_recently_used.token_id,)
+    assert _refresh_labels(sqlite_session) == {"device-1"}
+    assert redis.deleted == [_cache_key(least_recently_used)]
+    assert least_recently_used.token_id not in _live_token_ids(sqlite_session)
+
+
+def test_older_access_session_goes_before_a_fresher_refresh_only_one(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=2)
+    now = datetime.now(UTC)
+    refresh_only, idle = _issue_sessions(issuer, ["a", "b"])
+    _issue_refresh(sqlite_session_factory, _grant("a"))
+    _expire(sqlite_session, refresh_only)
+    _set_usage(sqlite_session, idle, created_at=now - timedelta(days=2))
+
+    newest = _issue_sessions(issuer, ["c"])[0]
+
+    assert newest.rotation.evicted_token_ids == (idle.token_id,)
+    assert _refresh_labels(sqlite_session) == {"a"}
+
+
+def test_refresh_rotation_at_the_cap_evicts_nothing(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=2)
+    first, second = _issue_sessions(issuer, ["a", "b"])
+    _issue_refresh(sqlite_session_factory, _grant("a"))
+    _expire(sqlite_session, first)
+
+    rotated = _issue_sessions(issuer, ["a"])[0]
+
+    assert rotated.rotation.evicted_token_ids == ()
+    assert _refresh_labels(sqlite_session) == {"a"}
+    assert _live_token_ids(sqlite_session) == {second.token_id, rotated.token_id}
+
+
+def test_refresh_delete_failure_rolls_back_the_login(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=1)
+    first = _issue_sessions(issuer, ["a"])[0]
+    _issue_refresh(sqlite_session_factory, _grant("a"))
+
+    def fail(session: Session, grants: Collection[GrantKey]) -> None:
+        _ = session, grants
+        raise ConnectionError("database unavailable")
+
+    monkeypatch.setattr(device_token_repository_module, "delete_refresh_grants", fail)
+
+    with pytest.raises(ConnectionError):
+        _issue_sessions(issuer, ["b"])
+
+    assert _live_token_ids(sqlite_session) == {first.token_id}
+    assert _refresh_labels(sqlite_session) == {"a"}
+
+
+def test_rollback_after_eviction_restores_the_access_row_but_not_the_refresh(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    issuer, _repository_, _redis, _ttl_policy = _repository(sqlite_session_factory, max_sessions_per_account=1)
+    first = _issue_sessions(issuer, ["a"])[0]
+    _issue_refresh(sqlite_session_factory, _grant("a"))
+    newest = _issue_sessions(issuer, ["b"])[0]
+
+    assert issuer.rollback_token(newest) is True
+
+    assert _live_token_ids(sqlite_session) == {first.token_id}
+    assert _refresh_labels(sqlite_session) == set()

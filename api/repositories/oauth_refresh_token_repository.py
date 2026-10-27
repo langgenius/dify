@@ -2,12 +2,12 @@
 
 import secrets
 import uuid
+from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from itertools import starmap
 from typing import cast
 
-from sqlalchemy import CursorResult, delete, select, update
+from sqlalchemy import CursorResult, and_, delete, func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.oauth_bearer import sha256_hex
@@ -39,6 +39,57 @@ class RefreshTokenRecord:
             client_id=self.client_id,
             device_label=self.device_label,
         )
+
+
+_GRANT_COLUMNS = (
+    OAuthRefreshToken.subject_email,
+    OAuthRefreshToken.subject_issuer,
+    OAuthRefreshToken.client_id,
+    OAuthRefreshToken.device_label,
+)
+
+
+def delete_refresh_grants(session: Session, grants: Collection[GrantKey]) -> None:
+    """Delete every refresh token of these grants inside the caller's transaction."""
+    if not grants:
+        return
+    session.execute(
+        delete(OAuthRefreshToken).where(
+            or_(
+                *(
+                    and_(
+                        OAuthRefreshToken.subject_email == grant.subject_email,
+                        OAuthRefreshToken.subject_issuer == grant.subject_issuer,
+                        OAuthRefreshToken.client_id == grant.client_id,
+                        OAuthRefreshToken.device_label == grant.device_label,
+                    )
+                    for grant in grants
+                )
+            )
+        )
+    )
+
+
+def live_refresh_grants(session: Session, *, account_id: str, now: datetime) -> dict[GrantKey, datetime]:
+    """The account's grants holding a usable refresh token, each with its newest token's issue time."""
+    stmt = (
+        select(*_GRANT_COLUMNS, func.max(OAuthRefreshToken.created_at).label("issued_at"))
+        .where(
+            OAuthRefreshToken.account_id == account_id,
+            OAuthRefreshToken.rotated_at.is_(None),
+            OAuthRefreshToken.expires_at > now,
+        )
+        .group_by(*_GRANT_COLUMNS)
+    )
+    return {
+        GrantKey(
+            subject_email=row.subject_email,
+            subject_issuer=row.subject_issuer,
+            client_id=row.client_id,
+            device_label=row.device_label,
+        ): row.issued_at
+        for row in session.execute(stmt)
+    }
 
 
 class SQLAlchemyOAuthRefreshTokenRepository:
@@ -103,29 +154,8 @@ class SQLAlchemyOAuthRefreshTokenRepository:
 
     def revoke_grant(self, grant: GrantKey) -> None:
         with self._session_factory() as session, session.begin():
-            session.execute(
-                delete(OAuthRefreshToken).where(
-                    OAuthRefreshToken.subject_email == grant.subject_email,
-                    OAuthRefreshToken.subject_issuer == grant.subject_issuer,
-                    OAuthRefreshToken.client_id == grant.client_id,
-                    OAuthRefreshToken.device_label == grant.device_label,
-                )
-            )
+            delete_refresh_grants(session, (grant,))
 
     def live_grant_keys(self, account_id: str) -> list[GrantKey]:
-        stmt = (
-            select(
-                OAuthRefreshToken.subject_email,
-                OAuthRefreshToken.subject_issuer,
-                OAuthRefreshToken.client_id,
-                OAuthRefreshToken.device_label,
-            )
-            .where(
-                OAuthRefreshToken.account_id == account_id,
-                OAuthRefreshToken.rotated_at.is_(None),
-                OAuthRefreshToken.expires_at > datetime.now(UTC),
-            )
-            .distinct()
-        )
         with self._session_factory() as session:
-            return list(starmap(GrantKey, session.execute(stmt)))
+            return list(live_refresh_grants(session, account_id=account_id, now=datetime.now(UTC)))

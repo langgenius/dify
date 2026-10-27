@@ -2,12 +2,16 @@
 
 from collections.abc import Callable
 from functools import wraps
+from http import HTTPStatus
 from urllib.parse import unquote_plus
 
 from flask import request
 from werkzeug.exceptions import NotFound
 
+from services.oauth_token_contracts import TokenEndpointError
+
 NO_STORE_HEADERS = {"Cache-Control": "no-store", "Pragma": "no-cache"}
+BASIC_CHALLENGE = 'Basic realm="dify-openapi"'
 
 
 class InvalidOAuthBodyError(Exception):
@@ -35,6 +39,21 @@ def basic_client_credentials() -> tuple[str, str] | None:
     if authorization.username is None or authorization.password is None:
         return None
     return unquote_plus(authorization.username), unquote_plus(authorization.password)
+
+
+def client_credentials(body: dict[str, str]) -> tuple[str | None, str | None]:
+    """``client_secret_basic`` wins over ``client_secret_post``."""
+    client_id, client_secret = basic_client_credentials() or (body.get("client_id"), body.get("client_secret"))
+    # An empty secret (form `client_secret=` or Basic `id:`) means none was sent.
+    return client_id, client_secret or None
+
+
+def token_error_response(error: TokenEndpointError) -> tuple[dict[str, str], HTTPStatus, dict[str, str]]:
+    """RFC 6749 §5.2 error body; a 401 carries the Basic challenge."""
+    headers = dict(NO_STORE_HEADERS)
+    if error.status == HTTPStatus.UNAUTHORIZED:
+        headers["WWW-Authenticate"] = BASIC_CHALLENGE
+    return {"error": error.code.value}, error.status, headers
 
 
 def oauth_feature_required[**P, R](flag: Callable[[], bool]) -> Callable[[Callable[P, R]], Callable[P, R]]:

@@ -3615,6 +3615,30 @@ export type PostOauthDeviceTokenResponses = {
 export type PostOauthDeviceTokenResponse =
   PostOauthDeviceTokenResponses[keyof PostOauthDeviceTokenResponses]
 
+export type PostOauthRevokeData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/oauth/revoke'
+}
+
+export type PostOauthRevokeErrors = {
+  400: OAuthTokenErrorResponse | ErrorBody
+  401: OAuthTokenErrorResponse | ErrorBody
+  429: OAuthTokenErrorResponse | ErrorBody
+  default: ErrorBody
+}
+
+export type PostOauthRevokeError = PostOauthRevokeErrors[keyof PostOauthRevokeErrors]
+
+export type PostOauthRevokeResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostOauthRevokeResponse = PostOauthRevokeResponses[keyof PostOauthRevokeResponses]
+
 export type PostOauthTokenData = {
   body?: never
   path?: never

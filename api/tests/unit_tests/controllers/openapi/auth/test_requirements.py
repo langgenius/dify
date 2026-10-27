@@ -2206,6 +2206,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/oauth/device/lookup"): frozenset({"200", "default"}),
     ("post", "/oauth/device/token"): frozenset({"200", "400", "default"}),
     ("post", "/oauth/token"): frozenset({"200", "400", "401", "429", "default"}),
+    ("post", "/oauth/revoke"): frozenset({"200", "400", "401", "429", "default"}),
     # The consent-page backend: a public client lookup and two Console-session decisions,
     # all with the OAuth-style `OAuthAuthorizeErrorResponse` for their 400s.
     ("get", "/oauth/authorize/client"): frozenset({"200", "400", "default"}),
@@ -2464,10 +2465,10 @@ class TestAuthMatrixCases:
 
         expected = {(route.method, _rule_path(route)) for route in ROUTES}
         assert guarded == expected
-        # The remainder is the device-flow, token, authorize, documentation and catalog surface. Its size is
+        # The remainder is the device-flow, token, revoke, authorize, documentation and catalog surface. Its size is
         # pinned rather than enumerated: a list of exemptions rots silently — the one this
         # replaced still named `swagger.json`, a route that is not registered at all.
-        assert len(unguarded) == 18
+        assert len(unguarded) == 19
 
     @staticmethod
     @pytest.mark.parametrize("route", ROUTES, ids=[route.id for route in ROUTES])

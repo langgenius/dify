@@ -13,22 +13,19 @@ from controllers.openapi._models import OAuthTokenErrorResponse, OAuthTokenRespo
 from controllers.openapi._oauth_input import (
     NO_STORE_HEADERS,
     InvalidOAuthBodyError,
-    basic_client_credentials,
+    client_credentials,
     read_oauth_body,
+    token_error_response,
 )
 from extensions.ext_application_services import application_services
 from libs.helper import dump_response, extract_remote_ip
 from services.oauth_token_contracts import TokenEndpointError, TokenErrorCode, TokenGrantResult, TokenRequest
 
-BASIC_CHALLENGE = 'Basic realm="dify-openapi"'
 BEARER = "Bearer"
 
 
 def _token_request(body: dict[str, str]) -> TokenRequest:
-    basic = basic_client_credentials()
-    client_id, client_secret = basic or (body.get("client_id"), body.get("client_secret"))
-    # An empty secret (form `client_secret=` or Basic `id:`) means none was sent.
-    client_secret = client_secret or None
+    client_id, client_secret = client_credentials(body)
     return TokenRequest(
         grant_type=body.get("grant_type", ""),
         client_id=client_id,
@@ -84,10 +81,7 @@ class OAuthTokenApi(Resource):
         try:
             result = application_services().oauth_token.exchange(_token_request(read_oauth_body()))
         except InvalidOAuthBodyError:
-            return {"error": TokenErrorCode.INVALID_REQUEST.value}, HTTPStatus.BAD_REQUEST, NO_STORE_HEADERS
+            return token_error_response(TokenEndpointError(TokenErrorCode.INVALID_REQUEST))
         except TokenEndpointError as error:
-            headers = dict(NO_STORE_HEADERS)
-            if error.status == HTTPStatus.UNAUTHORIZED:
-                headers["WWW-Authenticate"] = BASIC_CHALLENGE
-            return {"error": error.code.value}, error.status, headers
+            return token_error_response(error)
         return _token_response(result), HTTPStatus.OK, NO_STORE_HEADERS

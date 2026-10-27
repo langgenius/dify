@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Any
 
-from sqlalchemy import Row, func, select, update
+from sqlalchemy import ColumnElement, Row, and_, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import TOKEN_CACHE_KEY_FMT
 from extensions.ext_redis import RedisClientWrapper
 from models.account import Account
 from models.oauth import OAuthAccessToken
+from repositories.oauth_refresh_token_repository import delete_refresh_grants, live_refresh_grants
 from services.oauth_device_contracts import (
+    GrantKey,
     OAuthDeviceSession,
     OAuthDeviceSessionPage,
     OAuthDeviceTokenRotation,
@@ -21,6 +26,90 @@ from services.oauth_device_contracts import (
 )
 
 logger = logging.getLogger(__name__)
+
+_GRANT_COLUMNS = (
+    OAuthAccessToken.subject_email,
+    OAuthAccessToken.subject_issuer,
+    OAuthAccessToken.client_id,
+    OAuthAccessToken.device_label,
+)
+
+# (subject_email, subject_issuer, client_id, device_label). The raw columns, not
+# GrantKey, because subject_issuer is nullable on the table.
+type _SessionKey = tuple[str, str | None, str, str]
+
+
+def _grant_of(row: Row[Any]) -> GrantKey | None:
+    # The app writes subject_issuer on every row; a row without one names no grant.
+    if row.subject_issuer is None:
+        return None
+    return GrantKey(
+        subject_email=row.subject_email,
+        subject_issuer=row.subject_issuer,
+        client_id=row.client_id,
+        device_label=row.device_label,
+    )
+
+
+def _grant_filter(grant: GrantKey) -> ColumnElement[bool]:
+    return and_(
+        OAuthAccessToken.subject_email == grant.subject_email,
+        OAuthAccessToken.subject_issuer == grant.subject_issuer,
+        OAuthAccessToken.client_id == grant.client_id,
+        OAuthAccessToken.device_label == grant.device_label,
+    )
+
+
+def find_live_access_grant(session: Session, token_hash: str) -> GrantKey | None:
+    row = session.execute(
+        select(*_GRANT_COLUMNS).where(
+            OAuthAccessToken.token_hash == token_hash,
+            OAuthAccessToken.revoked_at.is_(None),
+        )
+    ).first()
+    if row is None:
+        return None
+    return _grant_of(row)
+
+
+def revoke_grant_rows(session: Session, grant: GrantKey, *, now: datetime) -> list[str]:
+    """Revoke the grant's access rows and delete its refresh tokens in the caller's transaction.
+
+    Returns the hashes to drop from the bearer cache. Rows revoked earlier lose
+    their hash too, so ``rollback_rotation`` can never bring them back.
+    """
+    rows = session.execute(
+        select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
+        .where(_grant_filter(grant), OAuthAccessToken.token_hash.is_not(None))
+        .with_for_update()
+    ).all()
+    if rows:
+        ids = [row.id for row in rows]
+        session.execute(
+            update(OAuthAccessToken)
+            .where(OAuthAccessToken.id.in_(ids), OAuthAccessToken.revoked_at.is_(None))
+            .values(revoked_at=now)
+        )
+        session.execute(update(OAuthAccessToken).where(OAuthAccessToken.id.in_(ids)).values(token_hash=None))
+    delete_refresh_grants(session, (grant,))
+    return [row.token_hash for row in rows]
+
+
+@dataclass
+class _LiveSession:
+    last_used: datetime
+    grant: GrantKey | None
+    access_rows: list[Row[Any]] = field(default_factory=list)
+
+    @property
+    def eviction_order(self) -> tuple[datetime, str]:
+        return self.last_used, min((str(row.id) for row in self.access_rows), default="")
+
+
+@dataclass(frozen=True)
+class _Eviction:
+    access_rows: Sequence[Row[Any]] = ()
+    grants: tuple[GrantKey, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,7 +168,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
 
     def rotate_token(self, token: OAuthDeviceTokenWrite) -> OAuthDeviceTokenRotation:
         now = datetime.now(UTC)
-        evicted: Sequence[Row[tuple[str, str | None]]] = ()
+        eviction = _Eviction()
         with self._session_factory() as session:
             if token.account_id is not None:
                 # Row locks on token rows cannot stop a concurrent insert, so the
@@ -102,7 +191,7 @@ class SQLAlchemyOAuthDeviceTokenRepository:
                 session.execute(update(OAuthAccessToken).where(OAuthAccessToken.id == prior.id).values(revoked_at=now))
 
             if token.account_id is not None:
-                evicted = self._evict_over_cap(session, account_id=token.account_id, now=now)
+                eviction = self._evict_over_cap(session, token=token, account_id=token.account_id, now=now)
 
             record = OAuthAccessToken(
                 subject_email=token.subject_email,
@@ -147,8 +236,8 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             token_id=token_id,
             replaced_token_id=str(prior.id) if prior is not None else None,
             replaced_token_hash=prior.token_hash if prior is not None else None,
-            evicted_token_ids=tuple(str(row.id) for row in evicted),
-            evicted_token_hashes=tuple(row.token_hash for row in evicted if row.token_hash),
+            evicted_token_ids=tuple(str(row.id) for row in eviction.access_rows),
+            evicted_token_hashes=tuple(row.token_hash for row in eviction.access_rows if row.token_hash),
         )
         cache_keys = [
             TOKEN_CACHE_KEY_FMT.format(hash=token_hash)
@@ -156,42 +245,81 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             if token_hash
         ]
         if cache_keys:
-            try:
+            with self._undone_on_failure(rotation):
                 self._redis.delete(*cache_keys)
-            except Exception:
-                self._rollback_rotation(rotation, new_hash=token.token_hash, previous=previous)
-                raise
+        # Refresh rows are deleted, not flagged, so rollback_rotation cannot bring
+        # them back. They go last, once the new row is committed and nothing else can fail.
+        if eviction.grants:
+            with self._undone_on_failure(rotation), self._session_factory() as session, session.begin():
+                delete_refresh_grants(session, eviction.grants)
         return rotation
+
+    @contextmanager
+    def _undone_on_failure(self, rotation: OAuthDeviceTokenRotation) -> Generator[None]:
+        try:
+            yield
+        except Exception:
+            self.rollback_rotation(rotation)
+            raise
 
     def _evict_over_cap(
         self,
         session: Session,
         *,
+        token: OAuthDeviceTokenWrite,
         account_id: str,
         now: datetime,
-    ) -> Sequence[Row[tuple[str, str | None]]]:
-        live = session.execute(
-            select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
+    ) -> _Eviction:
+        sessions = self._live_sessions(session, account_id=account_id, now=now)
+        # A refresh of an existing grant reuses its slot.
+        sessions.pop((token.subject_email, token.subject_issuer, token.client_id, token.device_label), None)
+        # The row about to be inserted takes one of the slots.
+        overflow = len(sessions) + 1 - self._max_sessions_per_account
+        if overflow <= 0:
+            return _Eviction()
+
+        evicted = sorted(sessions.values(), key=lambda live: live.eviction_order)[:overflow]
+        access_rows = [row for live in evicted for row in live.access_rows]
+        if access_rows:
+            # The hash stays so rollback_rotation can restore the row.
+            session.execute(
+                update(OAuthAccessToken)
+                .where(OAuthAccessToken.id.in_([row.id for row in access_rows]))
+                .values(revoked_at=now)
+            )
+        return _Eviction(
+            access_rows=access_rows,
+            grants=tuple(live.grant for live in evicted if live.grant is not None),
+        )
+
+    @staticmethod
+    def _live_sessions(session: Session, *, account_id: str, now: datetime) -> dict[_SessionKey, _LiveSession]:
+        """A session is a live access row or a live refresh token, one per grant.
+
+        Its last use is the latest of its access row's last use (or creation) and
+        its newest refresh token's issue time.
+        """
+        last_used = func.coalesce(OAuthAccessToken.last_used_at, OAuthAccessToken.created_at).label("last_used")
+        access_rows = session.execute(
+            select(OAuthAccessToken.id, OAuthAccessToken.token_hash, *_GRANT_COLUMNS, last_used)
             .where(
                 OAuthAccessToken.account_id == account_id,
                 OAuthAccessToken.revoked_at.is_(None),
                 OAuthAccessToken.expires_at > now,
             )
-            .order_by(
-                func.coalesce(OAuthAccessToken.last_used_at, OAuthAccessToken.created_at).asc(),
-                OAuthAccessToken.id.asc(),
-            )
+            .order_by(last_used.asc(), OAuthAccessToken.id.asc())
         ).all()
-        # The row about to be inserted takes one of the slots.
-        overflow = len(live) + 1 - self._max_sessions_per_account
-        if overflow <= 0:
-            return ()
-
-        evicted = live[:overflow]
-        session.execute(
-            update(OAuthAccessToken).where(OAuthAccessToken.id.in_([row.id for row in evicted])).values(revoked_at=now)
-        )
-        return evicted
+        sessions: dict[_SessionKey, _LiveSession] = {}
+        for row in access_rows:
+            key = (row.subject_email, row.subject_issuer, row.client_id, row.device_label)
+            live = sessions.setdefault(key, _LiveSession(last_used=row.last_used, grant=_grant_of(row)))
+            live.access_rows.append(row)
+            live.last_used = max(live.last_used, row.last_used)
+        for grant, issued_at in live_refresh_grants(session, account_id=account_id, now=now).items():
+            key = (grant.subject_email, grant.subject_issuer, grant.client_id, grant.device_label)
+            live = sessions.setdefault(key, _LiveSession(last_used=issued_at, grant=grant))
+            live.last_used = max(live.last_used, issued_at)
+        return sessions
 
     def rollback_rotation(self, rotation: OAuthDeviceTokenRotation) -> bool:
         new_hash: str | None = None
@@ -290,10 +418,11 @@ class SQLAlchemyOAuthDeviceTokenRepository:
         )
 
     def revoke_account_session(self, *, account_id: str, token_id: str) -> bool:
-        old_hash: str | None
+        """Revoke the session's whole grant: its access row and its refresh tokens."""
+        now = datetime.now(UTC)
         with self._session_factory() as session:
             prior = session.execute(
-                select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
+                select(OAuthAccessToken.id, OAuthAccessToken.token_hash, *_GRANT_COLUMNS)
                 .where(
                     OAuthAccessToken.id == token_id,
                     OAuthAccessToken.account_id == account_id,
@@ -304,17 +433,20 @@ class SQLAlchemyOAuthDeviceTokenRepository:
             if prior is None:
                 return False
 
-            old_hash = prior.token_hash
+            old_hashes = [prior.token_hash] if prior.token_hash else []
             session.execute(
                 update(OAuthAccessToken)
                 .where(
                     OAuthAccessToken.id == prior.id,
                     OAuthAccessToken.revoked_at.is_(None),
                 )
-                .values(revoked_at=datetime.now(UTC), token_hash=None)
+                .values(revoked_at=now, token_hash=None)
             )
+            grant = _grant_of(prior)
+            if grant is not None:
+                old_hashes.extend(revoke_grant_rows(session, grant, now=now))
             session.commit()
 
-        if old_hash:
-            self._redis.delete(TOKEN_CACHE_KEY_FMT.format(hash=old_hash))
+        if old_hashes:
+            self._redis.delete(*(TOKEN_CACHE_KEY_FMT.format(hash=token_hash) for token_hash in old_hashes))
         return True
