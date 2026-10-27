@@ -10,7 +10,7 @@ from socketio.exceptions import TimeoutError as SocketIOTimeoutError
 from sqlalchemy import delete, event
 from sqlalchemy.orm import Session, SessionTransaction
 
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from repositories.workflow_draft_sync_repository import ServerDraftChange, WorkflowDraftSyncRepository
 from services.workflow_collaboration_service import WorkflowCollaborationService
@@ -21,16 +21,17 @@ from tests.unit_tests.installed_spies import installed_mock
 
 @pytest.fixture
 def workflow() -> Workflow:
-    return Workflow(
+    row = Workflow(
         app_id="app-1",
         tenant_id="tenant-1",
         version=Workflow.VERSION_DRAFT,
-        type="workflow",
+        type=WorkflowType.WORKFLOW,
         created_by="u-1",
         graph=json.dumps({"nodes": [{"id": "new"}], "edges": []}),
-        features="{}",
-        updated_at=datetime(2026, 9, 20, 12, 0, 0),
+        _features="{}",
     )
+    row.updated_at = datetime(2026, 9, 20, 12, 0, 0)
+    return row
 
 
 @pytest.fixture

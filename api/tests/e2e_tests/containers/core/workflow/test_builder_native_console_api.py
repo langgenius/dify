@@ -16,7 +16,7 @@ from models.workflow import Workflow
 from runtime_contracts.builder.native.contracts import ApprovalWait, DispatchPermit
 from services.dify_builder.native_testing.pending_intents import PendingDecisionGuard
 from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
-from tests.test_containers_integration_tests.core.workflow.builder_native_fixture_records import (
+from tests.e2e_tests.containers.core.workflow.builder_native_fixture_records import (
     advance_builder_context,
     require_instance,
 )
@@ -54,20 +54,20 @@ if TYPE_CHECKING:
         NativeTestContextRef,
     )
     from services.dify_builder.native_testing.api_service import NativeTestApiService
-    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
+    from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import ContinuationCase
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.public_contracts import PendingActionDisclosure
-    from tests.test_containers_integration_tests.core.workflow import (
+    from tests.e2e_tests.containers.core.workflow import (
         test_builder_native_continuation as _fixture_types_0,
     )
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tests.test_containers_integration_tests.core.workflow import (
+    from tests.e2e_tests.containers.core.workflow import (
         test_builder_native_continuation as _fixture_types_0,
     )
 
@@ -89,23 +89,23 @@ from services.dify_builder.native_testing.http_binding import NativeHttpDisclosu
 from services.dify_builder.native_testing.pending_intents import ResolvedPendingIntent
 from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
 from services.entities.feature_entities import FeatureModel
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import ContinuationCase
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import ContinuationCase
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     continuation_case as continuation_case,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     ledger_case as ledger_case,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     native_owner as native_owner,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
+from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import (
     no_live as no_live,  # noqa: PLC0414
 )
 
@@ -513,27 +513,21 @@ def test_actual_child_permission_revocation_blocks_root_public_receipt(
     from configs import dify_config
     from models.model import App
     from services.enterprise.rbac_service import RBACService
-    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import _child_case
+    from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import _child_case
 
     c = console_case
     with c.factory.begin() as session:
         original = session.get(App, c.context.app_id)
-        app = App(
-            **{
-                col.key: require_instance(inspect_orm(original), InstanceState).attrs[col.key].value
-                for col in inspect(App).column_attrs
-                if col.key != "id"
-            }
-        )
+        app = App()
+        for col in inspect(App).column_attrs:
+            if col.key != "id":
+                setattr(app, col.key, require_instance(inspect_orm(original), InstanceState).attrs[col.key].value)
         app.id, app.maintainer = str(uuid4()), str(uuid4())
         source = session.get(Workflow, c.context.workflow_id)
-        workflow = Workflow(
-            **{
-                col.key: require_instance(inspect_orm(source), InstanceState).attrs[col.key].value
-                for col in inspect(Workflow).column_attrs
-                if col.key != "id"
-            }
-        )
+        workflow = Workflow()
+        for col in inspect(Workflow).column_attrs:
+            if col.key != "id":
+                setattr(workflow, col.key, require_instance(inspect_orm(source), InstanceState).attrs[col.key].value)
         workflow.id, workflow.app_id = str(uuid4()), app.id
         app.workflow_id = workflow.id
         session.add_all((app, workflow))
@@ -886,27 +880,23 @@ def test_final_child_authority_refresh_precedes_decision_write(
     from models.dify_builder_native_tests import NativeEffectGrant
     from models.model import App
     from services.enterprise.rbac_service import RBACService
-    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import _child_case
+    from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import _child_case
 
     c = console_case
     with c.factory.begin() as session:
         original = session.get(App, c.context.app_id)
-        child_app = App(
-            **{
-                col.key: require_instance(inspect_orm(original), InstanceState).attrs[col.key].value
-                for col in inspect(App).column_attrs
-                if col.key != "id"
-            }
-        )
+        child_app = App()
+        for col in inspect(App).column_attrs:
+            if col.key != "id":
+                setattr(child_app, col.key, require_instance(inspect_orm(original), InstanceState).attrs[col.key].value)
         child_app.id, child_app.maintainer = str(uuid4()), str(uuid4())
         source = session.get(Workflow, c.context.workflow_id)
-        child_workflow = Workflow(
-            **{
-                col.key: require_instance(inspect_orm(source), InstanceState).attrs[col.key].value
-                for col in inspect(Workflow).column_attrs
-                if col.key != "id"
-            }
-        )
+        child_workflow = Workflow()
+        for col in inspect(Workflow).column_attrs:
+            if col.key != "id":
+                setattr(
+                    child_workflow, col.key, require_instance(inspect_orm(source), InstanceState).attrs[col.key].value
+                )
         child_workflow.id, child_workflow.app_id = str(uuid4()), child_app.id
         child_app.workflow_id = child_workflow.id
         session.add_all((child_app, child_workflow))
@@ -987,7 +977,7 @@ def _decision_process(
         from runtime_contracts.builder.native.runtime_contracts import NativeCheckpointPayload
         from services.dify_builder.native_testing.api_service import NativeTestApiService
         from services.dify_builder.native_testing.pending_actions import NativePendingActionService
-        from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+        from tests.e2e_tests.containers.core.workflow.test_builder_native_effect_ledger import (
             MetadataOwner,
         )
 
@@ -1076,7 +1066,7 @@ def test_concurrent_decisions_return_canonical_saved_receipt(console_case: Conso
 
     from models.dify_builder import DifyBuilderExecutionRequest
     from models.dify_builder_native_tests import NativeEffectGrant
-    from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import _child_case
+    from tests.e2e_tests.containers.core.workflow.test_builder_native_continuation import _child_case
 
     c = console_case
     _, approval_child = _child_case(c)
