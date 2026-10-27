@@ -67,6 +67,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const { nodePanelPresence } = useCollaboration(appId, canEdit)
   const controlMode = useStore((s) => s.controlMode)
+  const isBuilderEditTarget = useStore((s) => s.builderEditTargetNodeIds.includes(id))
   const isContextMenuTarget = useStore(
     (s) => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id,
   )
@@ -137,6 +138,8 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
     <div
       className={cn(
         'relative flex rounded-2xl border',
+        isBuilderEditTarget &&
+          'outline-2 outline-offset-4 outline-state-accent-solid outline-dashed',
         showSelectedBorder
           ? 'border-components-option-card-option-selected-border'
           : 'border-transparent',

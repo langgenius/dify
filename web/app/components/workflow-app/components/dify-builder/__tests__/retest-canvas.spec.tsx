@@ -6,14 +6,16 @@ import { act, render, renderHook, screen, waitFor } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider, useAtomValue, useStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
-import { useCallback } from 'react'
+import { useHydrateAtoms } from 'jotai/utils'
+import { useCallback, useMemo } from 'react'
 import ReactFlow, { ReactFlowProvider, useStoreApi } from 'reactflow'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createConsoleQueryClient } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { DifyBuilderCanvasRefreshSync } from '../provider/canvas-sync'
+import { createDifyBuilderRuntime } from '@/test/fixtures/dify-builder'
+import { useDifyBuilderCanvasRefresh } from '../provider/use-canvas-refresh'
 import { useDifyBuilderRunEvents } from '../provider/use-run-events'
 import {
   commandStartedEvent,
@@ -28,6 +30,7 @@ import {
   difyBuilderCanvasReadyAtom,
   difyBuilderCanvasRefreshFailedAtom,
   difyBuilderRetryCanvasRefreshAtom,
+  difyBuilderRuntimeAtom,
 } from '../store'
 import {
   nodeFinished,
@@ -64,7 +67,6 @@ const Harness = ({
   const store = useStore()
   const canvas = useStoreApi()
   const events = useDifyBuilderRunEvents('app-1')
-  const session = useDifyBuilderSessionController(undefined, events)
   const ready = useAtomValue(difyBuilderCanvasReadyAtom)
   const refresh = useCallback(
     async (shouldApply: () => boolean) => {
@@ -87,6 +89,39 @@ const Harness = ({
     },
     [canvas, repairRefresh, store],
   )
+  const onRefreshed = useCallback(
+    () => store.get(difyBuilderRuntimeAtom)?.session.onCanvasRefreshed(),
+    [store],
+  )
+  const canvasRefresh = useDifyBuilderCanvasRefresh(refresh, onRefreshed)
+  const sessionEvents = useMemo(
+    () => ({
+      ...events,
+      onCommandStarted: canvasRefresh.cancel,
+      onSessionStateChanged: () => {
+        void canvasRefresh.refresh()
+      },
+      finishCommand: () => {
+        events.finishCommand()
+        canvasRefresh.finishCommand()
+      },
+      reset: () => {
+        events.reset()
+        canvasRefresh.reset()
+      },
+    }),
+    [events, canvasRefresh],
+  )
+  const session = useDifyBuilderSessionController(undefined, sessionEvents)
+  useHydrateAtoms(
+    [
+      [
+        difyBuilderRuntimeAtom,
+        createDifyBuilderRuntime({ session, retryCanvasRefresh: canvasRefresh.retry }),
+      ],
+    ],
+    { dangerouslyForceHydrate: true },
+  )
   return (
     <>
       <button
@@ -102,10 +137,9 @@ const Harness = ({
       <button type="button" onClick={session.onCanvasRefreshed}>
         Canvas refreshed
       </button>
-      <DifyBuilderCanvasRefreshSync
-        onRefreshCanvas={refresh}
-        onCanvasRefreshed={session.onCanvasRefreshed}
-      />
+      <button type="button" onClick={() => void canvasRefresh.refresh()}>
+        Initialize canvas
+      </button>
     </>
   )
 }
@@ -226,6 +260,7 @@ describe('Builder repair graph and test run', () => {
         </QueryClientProvider>,
       )
       const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Initialize canvas' }))
       const approve = screen.getByRole('button', { name: 'Apply repair' })
       await waitFor(() => expect(approve).toBeEnabled())
       await user.click(approve)

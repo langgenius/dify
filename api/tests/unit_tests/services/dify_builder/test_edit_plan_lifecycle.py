@@ -130,7 +130,7 @@ def test_failed_replanning_preserves_snapshot_and_recovers_on_retry(
             assert form.payload["frozen"] is False
             assert form.payload["fields"][0]["required"] is True
             assert form.payload["fields"][0]["max_length"] == 30
-        assert not any(event.get("event") == "apply_edit_plan" for event in canvas)
+        assert not any(event.get("event") == "graph_changed" for event in canvas)
 
         recovered = runner.advance(session.id, Turn(actor=actor, action=Action(kind=kind, base_version=failed.version)))
         assert recovered.current_state == PcState.EDIT_PLAN_APPROVAL

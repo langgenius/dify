@@ -1,5 +1,6 @@
 import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { SessionRunEvents } from '../session/types'
+import type { CanvasEventData } from '../types'
 import { act, waitFor } from '@testing-library/react'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { createWorkflowStore } from '@/app/components/workflow/store'
@@ -36,8 +37,16 @@ vi.mock('../session/use-session-controller', () => ({
 }))
 
 vi.mock('../provider/canvas-sync', () => ({
-  DifyBuilderCanvasLockSync: () => null,
-  DifyBuilderCanvasRefreshSync: () => null,
+  DifyBuilderCanvasLockCleanup: () => null,
+}))
+vi.mock('../provider/use-canvas-refresh', () => ({
+  useDifyBuilderCanvasRefresh: () => ({
+    refresh: vi.fn(),
+    retry: vi.fn(),
+    cancel: vi.fn(),
+    reset: vi.fn(),
+    finishCommand: vi.fn(),
+  }),
 }))
 vi.mock('../provider/creation-start', () => ({ DifyBuilderCreationStart: () => null }))
 vi.mock('../provider/session-persistence', () => ({ DifyBuilderSessionPersistence: () => null }))
@@ -64,9 +73,9 @@ const publishedWorkflow: WorkflowResponse = {
   version: '2026-10-09.1',
 }
 
-const canvasEvent = (event: 'publish_workflow' | 'apply_edit_plan') => ({
+const canvasEvent = (event: 'publish_workflow' | 'graph_changed'): CanvasEventData => ({
   at_version: 2,
-  event,
+  ...(event === 'graph_changed' ? { event, cause: 'apply' as const } : { event }),
   operation_id: 'operation-1',
   revision: 1,
   session_id: 'session-1',
@@ -140,7 +149,7 @@ describe('Builder publication badge', () => {
   it('leaves the published query and badge alone for unrelated canvas events', async () => {
     const { queryClient, workflowStore, publishedQuery } = setup()
 
-    await act(async () => mocks.sessionEvents!.onCanvasEvent(canvasEvent('apply_edit_plan')))
+    await act(async () => mocks.sessionEvents!.onCanvasEvent(canvasEvent('graph_changed')))
 
     expect(mocks.fetchPublished).not.toHaveBeenCalled()
     expect(queryClient.getQueryData(publishedQuery.queryKey)).toBeNull()

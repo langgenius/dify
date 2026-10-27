@@ -93,6 +93,7 @@ const runtime: DifyBuilderRuntime = {
   canEdit: true,
   enabled: true,
   getCanvasSnapshot: () => ({ nodes: [], edges: [], isChatflow: false }),
+  retryCanvasRefresh: vi.fn(),
   setShowPanel: vi.fn(),
   session: {
     startFix: vi.fn(),
