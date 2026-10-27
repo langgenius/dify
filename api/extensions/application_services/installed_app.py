@@ -6,15 +6,12 @@ from flask import current_app
 from sqlalchemy.orm import Session, sessionmaker
 
 from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
-from repositories.installed_app_message_repository import SQLAlchemyInstalledAppMessageRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
 from services.conversation_service import ConversationService
 from services.installed_app_access_service import InstalledAppAccessService
 from services.installed_app_conversation_service import InstalledAppConversationService
 from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
-from services.installed_app_message_adapters import InstalledAppMessageRuntime
-from services.installed_app_message_service import InstalledAppMessageService
 from services.installed_app_service import InstalledAppService, WorkspaceRoleLookup
 from services.webapp_access_query_service import WebAppAccessQueryService
 
@@ -25,7 +22,6 @@ class InstalledAppServices:
     management: InstalledAppService
     generation: InstalledAppGenerationService
     conversations: InstalledAppConversationService
-    messages: InstalledAppMessageService
 
 
 def _generate_installed_app_conversation_name(
@@ -54,7 +50,6 @@ def build_installed_app_services(
         get_access_modes=webapp_access.batch_get_access_modes,
         get_user_permissions=webapp_access.batch_get_user_permissions,
     )
-    message_runtime = InstalledAppMessageRuntime(session_factory=database_client)
     return InstalledAppServices(
         access=access,
         management=InstalledAppService(
@@ -70,9 +65,5 @@ def build_installed_app_services(
             conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=database_client),
             generate_name=_generate_installed_app_conversation_name,
             enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
-        ),
-        messages=InstalledAppMessageService(
-            messages=SQLAlchemyInstalledAppMessageRepository(session_factory=database_client),
-            get_extra_contents=message_runtime.get_extra_contents,
         ),
     )

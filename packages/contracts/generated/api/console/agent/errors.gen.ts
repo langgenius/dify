@@ -454,7 +454,10 @@ export const get5Errors = {
 
 export const post7Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const get6Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const get6Errors = {
+  agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+}
 
 export const get7Errors = {
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
@@ -534,7 +537,10 @@ export const get20Errors = { agent_not_found_error: { status: 404, data: zAgentN
 
 export const get21Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const get22Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const get22Errors = {
+  agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  app_unavailable: { status: 400, data: zAppUnavailableError },
+}
 
 export const post15Errors = {
   agent_model_not_configured: { status: 400, data: zAgentModelNotConfiguredError },
