@@ -866,6 +866,15 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         interval: 1,
       })
     const verificationUri = `${new URL(c.req.url).origin}/device`
+    if (scenario === 'bad-verification-uri-complete')
+      return c.json({
+        device_code: 'devcode-1',
+        user_code: 'ABCD-1234',
+        verification_uri: verificationUri,
+        verification_uri_complete: BAD_VERIFICATION_URI,
+        expires_in: 600,
+        interval: 1,
+      })
     const body = {
       device_code: 'devcode-1',
       user_code: 'ABCD-1234',

@@ -223,7 +223,22 @@ it('a network error never switches routes', async () => {
   const api = deviceApi(`http://127.0.0.1:${port}`, { insecure: true })
   await expect(api.pollOnce({ device_code: 'dc' })).rejects.toMatchObject({
     code: 'network_connection',
+    message: expect.stringContaining(STANDARD_PATH),
   })
+})
+
+it('throws on an unknown future poll error without switching routes or looping', async () => {
+  await recordingServer(
+    () => ({ status: 400, body: JSON.stringify({ error: 'urn:x:future_error' }) }),
+    async (baseUrl, paths) => {
+      const api = deviceApi(baseUrl, { insecure: true })
+      await expect(api.pollOnce({ device_code: 'dc' })).rejects.toMatchObject({
+        code: 'unknown',
+        message: 'unknown poll error "urn:x:future_error"',
+      })
+      expect(paths).toEqual([STANDARD_PATH])
+    },
+  )
 })
 
 it('a 404 on the legacy route is an unsupported device flow', async () => {

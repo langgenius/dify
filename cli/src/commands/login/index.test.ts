@@ -366,3 +366,15 @@ it.each(['happy', 'legacy-token-route', 'legacy-token-route-html-404'] as const)
     expect(await (await done.ctx.get(token)).get()).toBe('dfoa_test')
   },
 )
+
+it('refuses a bad verification_uri_complete before printing or opening anything', async () => {
+  const w = await loginWorld()
+  w.mock.setScenario('bad-verification-uri-complete')
+  await expect((await w.ctx.get(commands)).run()).rejects.toMatchObject({
+    code: 'unknown',
+    message: expect.stringContaining('unsupported scheme "ftp"'),
+  })
+  expect(w.io.errBuf()).not.toMatch(/open /)
+  expect(w.io.errBuf()).not.toMatch(/code ABCD-1234/)
+  expect(w.io.outBuf()).toBe('')
+})
