@@ -4,32 +4,28 @@ from importlib.metadata import EntryPoint
 import pytest
 
 from services.tracing import registry
-from services.tracing.registry import (
-    ENTRY_POINT_GROUP,
-    SUPPORTED_PROVIDERS,
-    TraceProviderUnavailableError,
-    UnknownTraceProviderError,
-    installed_providers,
-    provider_class,
-)
+from services.tracing.errors import TraceProviderUnavailableError, UnknownTraceProviderError
+from services.tracing.providers import SUPPORTED_PROVIDERS
+from services.tracing.registry import ENTRY_POINT_GROUP, EntryPointTraceProviderCatalog
 
 
 @pytest.fixture(autouse=True)
 def fresh_registry() -> Iterator[None]:
-    provider_class.cache_clear()
+    registry._load.cache_clear()
     yield
-    provider_class.cache_clear()
+    registry._load.cache_clear()
 
 
 def test_every_supported_provider_is_installed_under_its_own_id() -> None:
-    assert installed_providers() == SUPPORTED_PROVIDERS
+    catalog = EntryPointTraceProviderCatalog()
+
     for provider_id in SUPPORTED_PROVIDERS:
-        assert provider_class(provider_id).id == provider_id
+        assert catalog.resolve(provider_id).id == provider_id
 
 
 def test_unknown_providers_are_client_errors() -> None:
     with pytest.raises(UnknownTraceProviderError):
-        provider_class("datadog")
+        EntryPointTraceProviderCatalog().resolve("datadog")
 
 
 @pytest.mark.parametrize(
@@ -52,5 +48,4 @@ def test_supported_providers_that_do_not_load_are_unavailable(
     monkeypatch.setattr(registry, "_entry_points", lambda: entry_points)
 
     with pytest.raises(TraceProviderUnavailableError):
-        provider_class("langfuse")
-    assert "langfuse" not in installed_providers()
+        EntryPointTraceProviderCatalog().resolve("langfuse")

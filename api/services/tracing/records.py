@@ -1,26 +1,59 @@
 """Assembled trace records: one Dify operation with the data its sinks need.
 
-Records live only inside the delivery worker. They may reference ORM rows
-because they never cross a process or storage boundary; the canonical trace
-built from them is what gets persisted for retries.
+Records are plain values copied from committed rows before their session
+closes. They live only inside the delivery worker; the canonical trace built
+from them is what gets persisted for retries.
 """
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, StrictStr, ValidationError
 
-from core.helper.trace_id_helper import ParentTraceContext
 from graphon.entities import WorkflowNodeExecution
-from models.model import Message
-from models.workflow import WorkflowRun
+
+
+class TraceParentContext(BaseModel):
+    """The outer workflow run and node execution that started a nested workflow run."""
+
+    parent_workflow_run_id: StrictStr
+    parent_node_execution_id: StrictStr | None = None
+    """``None`` when the outer node execution is unknown."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class TraceMessage(BaseModel):
+    """The facts of one message that trace sinks read."""
+
+    id: str
+    app_id: str
+    conversation_id: str
+    workflow_run_id: str | None
+    """The chatflow run that produced the message; ``None`` for other app modes."""
+    query: str
+    answer: str
+    error: str | None
+    """``None`` when the message recorded no error."""
+    created_at: datetime
+    model_provider: str | None
+    """``None`` when no model answered, such as an annotation reply."""
+    model_id: str | None
+    """``None`` when no model answered, such as an annotation reply."""
+    total_price: Decimal | None
+    """``None`` when the price was not recorded."""
+    currency: str
+
+    model_config = ConfigDict(frozen=True)
 
 
 class BaseTraceInfo(BaseModel):
     message_id: str | None = None
-    message_data: Message | None = None
+    message_data: TraceMessage | None = None
+    """The message the operation belongs to; ``None`` for operations outside a conversation."""
     inputs: str | dict[str, Any] | list[Any] | None = None
     outputs: str | dict[str, Any] | list[Any] | None = None
     start_time: datetime | None = None
@@ -29,7 +62,7 @@ class BaseTraceInfo(BaseModel):
     trace_id: str | None = None
     """The caller-supplied trace ID, if any."""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=(), frozen=True)
+    model_config = ConfigDict(protected_namespaces=(), frozen=True)
 
     @property
     def resolved_trace_id(self) -> str | None:
@@ -46,21 +79,21 @@ class BaseTraceInfo(BaseModel):
     @property
     def resolved_parent_context(self) -> tuple[str | None, str | None]:
         """(outer workflow_run_id, outer node_execution_id) of a nested workflow."""
-        match self.metadata.get("parent_trace_context"):
-            case ParentTraceContext() as context:
-                pass
-            case Mapping() as raw:
-                try:
-                    context = ParentTraceContext.model_validate(raw)
-                except ValueError:
-                    return None, None
-            case _:
-                return None, None
+        raw = self.metadata.get("parent_trace_context")
+        if not isinstance(raw, Mapping):
+            return None, None
+        try:
+            context = TraceParentContext.model_validate(raw)
+        except ValidationError:
+            return None, None
         return context.parent_workflow_run_id, context.parent_node_execution_id
 
 
 class WorkflowTraceInfo(BaseTraceInfo):
-    workflow_data: WorkflowRun
+    start_time: datetime
+    """When the run was created."""
+    end_time: datetime
+    """When the run finished; only finished runs are traced."""
     node_executions: Sequence[WorkflowNodeExecution]
     conversation_id: str | None
     message_started_at: datetime | None
@@ -84,7 +117,7 @@ class WorkflowTraceInfo(BaseTraceInfo):
 
 
 class MessageTraceInfo(BaseTraceInfo):
-    message_data: Message
+    message_data: TraceMessage
     conversation_model: str
     message_tokens: int
     answer_tokens: int

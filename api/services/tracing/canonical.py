@@ -220,11 +220,10 @@ class CanonicalTraceBuilder:
         )
 
     def _workflow(self, record: WorkflowTraceInfo) -> Trace:
-        run = record.workflow_data
         executions = record.node_executions
         hierarchy = build_workflow_hierarchy(executions)
-        workflow_start = run.created_at
-        workflow_end = max(run.finished_at or record.end_time or workflow_start, workflow_start)
+        workflow_start = record.start_time
+        workflow_end = max(record.end_time, workflow_start)
         workflow_span_id = span_id_for(record.workflow_run_id)
         workflow_status = _status(record.error, record.workflow_run_status)
         spans: list[Span] = []
@@ -243,7 +242,7 @@ class CanonicalTraceBuilder:
                     name="message",
                     kind=SpanKind.CHAIN,
                     start_time=message_start,
-                    end_time=max(record.end_time or workflow_end, message_start),
+                    end_time=max(record.end_time, message_start),
                     status=workflow_status,
                     error=record.error or None,
                     inputs=json_safe(record.query or dict(record.workflow_run_inputs)),

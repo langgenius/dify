@@ -24,7 +24,7 @@ from models.workflow import (
     WorkflowNodeExecutionStatus,
     WorkflowNodeExecutionTriggeredFrom,
 )
-from services.tracing.assembly import TraceAssembler
+from repositories.trace_record_repository import TraceRecordRepository
 from services.tracing.records import DraftNodeExecutionTrace
 
 # ---------------------------------------------------------------------------
@@ -315,7 +315,7 @@ class TestEnqueueDraftNodeExecutionTrace:
 
 # ---------------------------------------------------------------------------
 # End-to-end token/model data flow: _build_node_execution_data →
-# DraftNodeExecuted trace event → TraceAssembler → DraftNodeExecutionTrace
+# DraftNodeExecuted trace event → TraceRecordRepository → DraftNodeExecutionTrace
 # ---------------------------------------------------------------------------
 
 
@@ -526,7 +526,7 @@ class TestDraftTraceTokenDataFlow:
 
         (event,) = pipeline.events
         assert (event.tenant_id, event.app_id, event.user_id) == ("tenant-flow", "app-flow", "user-1")
-        trace_info = TraceAssembler(
+        trace_info = TraceRecordRepository(
             sqlite_session_factory, files_url="https://files.example.com", enterprise_details=False
         ).assemble(event)
 

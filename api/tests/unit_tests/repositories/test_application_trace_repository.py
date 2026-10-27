@@ -1,14 +1,18 @@
 import json
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Literal
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import pytest
 from aliyun.log.logclient import LogClient
+from dify_agent.protocol.tracing import AgentTraceBatch, AgentTraceSpan
 from dify_trace_sdk.events import WorkflowRunCompleted
+from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
 from dify_trace_sdk.provider import SendResult
+from dify_trace_sdk.testing import RecordingEgress
 from sqlalchemy import Connection, Engine, delete, event, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -18,27 +22,198 @@ from extensions.logstore.repositories.logstore_api_workflow_run_repository impor
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.application_trace import ApplicationTraceBatch, ApplicationTraceInvocation, ApplicationTraceRun
-from models.model import App, AppMode, Message
+from models.enums import ConversationFromSource
+from models.model import App, AppMode, Message, TraceAppConfig
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from repositories import application_trace_repository as repository_module
-from repositories.application_trace_repository import TraceCollectionError
-from services.tracing.records import ModerationTraceInfo
-from services.tracing.recovery import _workflow_task
+from repositories.application_trace_repository import ApplicationTraceRepository
+from repositories.trace_record_repository import TraceRecordRepository
+from services.tracing.canonical import CanonicalTraceBuilder
+from services.tracing.collection import TraceInvocation, TraceRun, TraceRunState, TraceRunStatus
+from services.tracing.errors import (
+    TraceCollectionConflictError,
+    TraceCollectionError,
+    TraceCollectionNotFoundError,
+    TracingStoreUnavailableError,
+)
+from services.tracing.providers import ProviderConfigCodec
+from services.tracing.records import ModerationTraceInfo, TraceMessage, WorkflowTraceInfo
+from services.tracing.recovery import _workflow_event
 from services.tracing.service import ApplicationTracingService
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.helpers.unit.model_factories import make_workflow
-from tests.unit_tests.services.tracing.test_runtime_bridge import AGENT_GRAPH, workflow_info
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_batch_for as batch_for
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_claim as claim
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_identifier as identifier
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_ingest as ingest
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_no_egress as no_egress
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_seed as seed
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_terminal as terminal
-from tests.unit_tests.services.tracing.test_service import (
-    _application_trace_collection_tracing_service as tracing_service,
+from tests.helpers.unit.model_factories import make_app, make_message, make_workflow
+from tests.helpers.unit.services.tracing_ports import (
+    AGENT_TRACE_SETTINGS,
+    InstalledTraceProviders,
+    WorkspaceBoundCipher,
 )
-from tests.unit_tests.services.tracing.test_service import _ApplicationTraceCollectionCollection as Collection
+
+"""Seeded Agent trace collections, shared with the ingestion handler and worker task tests."""
+
+AGENT_GRAPH = {
+    "nodes": [{"id": "agent", "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"}}],
+    "edges": list[object](),
+}
+
+
+def identifier(value: str) -> str:
+    return str(uuid5(NAMESPACE_URL, value))
+
+
+@dataclass
+class Collection:
+    repository: ApplicationTraceRepository
+    sessions: sessionmaker[Session]
+    run: TraceRun
+
+    def invocation(self) -> TraceInvocation:
+        return self.repository.invocation(
+            run_id=self.run.id, agent_id=identifier("agent"), node_execution_id=None, attempt=0, call_key="first"
+        )
+
+
+def seed(sessions: sessionmaker[Session], name: str) -> Collection:
+    """Start collecting an Agent app message whose run freezes a Langfuse destination.
+
+    The frozen secrets decrypt with ``WorkspaceBoundCipher`` in the seeded workspace.
+    """
+    app_id, tenant_id, message_id = identifier(f"app-{name}"), identifier("tenant"), identifier(f"message-{name}")
+    cipher = WorkspaceBoundCipher()
+    with sessions.begin() as session:
+        session.add(
+            make_app(
+                app_id=app_id,
+                tenant_id=tenant_id,
+                mode=AppMode.AGENT,
+                tracing=json.dumps(
+                    {"enabled": True, "tracing_provider": "langfuse", "capture_content": False, "capture_agent": True}
+                ),
+            )
+        )
+        session.add(
+            make_message(
+                message_id=message_id,
+                app_id=app_id,
+                conversation_id=identifier(f"conversation-{name}"),
+                inputs={},
+                query="hello",
+                message={},
+                answer="done",
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
+                currency="USD",
+                from_source=ConversationFromSource.CONSOLE,
+            )
+        )
+        session.add(
+            TraceAppConfig(
+                app_id=app_id,
+                tracing_provider="langfuse",
+                tracing_config={
+                    "public_key": cipher.encrypt(tenant_id, "public"),
+                    "secret_key": cipher.encrypt(tenant_id, "original"),
+                    "host": "https://langfuse.test",
+                    "project_key": "original",
+                },
+            )
+        )
+    repository = ApplicationTraceRepository(sessions)
+    run = repository.start(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        source_kind="message",
+        source_id=message_id,
+        session_id="session-original",
+        workflow_id=None,
+    )
+    assert run is not None
+    return Collection(repository, sessions, run)
+
+
+def batch_for(run: TraceRun, invocation: TraceInvocation) -> AgentTraceBatch:
+    return AgentTraceBatch(
+        run_id=UUID(run.id),
+        invocation_id=UUID(invocation.id),
+        batch_id=uuid4(),
+        final=True,
+        spans=[
+            AgentTraceSpan(
+                trace_id=run.trace_id,
+                span_id="a" * 16,
+                parent_span_id=invocation.span_id,
+                name="Agent execution",
+                start_time_ns=1_000_000_000,
+                end_time_ns=2_000_000_000,
+                status="ok",
+                attributes={"gen_ai.operation.name": "invoke_agent"},
+            )
+        ],
+    )
+
+
+def ingest(collection: Collection, batch: AgentTraceBatch) -> tuple[int, str]:
+    return collection.repository.ingest(batch, max_spans=100, max_bytes=1_000_000)
+
+
+def terminal(collection: Collection) -> None:
+    run = collection.run
+    root = Span(
+        span_id=run.root_span_id,
+        parent_span_id=None,
+        name="Agent turn",
+        kind=SpanKind.CHAIN,
+        start_time=datetime.fromtimestamp(0, UTC),
+        end_time=datetime.fromtimestamp(3, UTC),
+        status=SpanStatus.OK,
+    )
+    trace = Trace(
+        trace_id=run.trace_id,
+        external_trace_id=None,
+        session_id=run.session_id,
+        user_id=None,
+        parent=None,
+        spans=(root,),
+    )
+    collection.repository.terminal(run.id, trace.model_dump(mode="json"), root.span_id)
+
+
+def claim(collection: Collection) -> tuple[TraceRun, str] | None:
+    return collection.repository.claim(collection.run.id, collection_timeout=60, lease_seconds=30)
+
+
+def workflow_info(row: WorkflowRun, parent: WorkflowRun | None) -> WorkflowTraceInfo:
+    assert row.finished_at is not None
+    metadata: dict[str, object] = {"app_id": row.app_id}
+    if parent is not None:
+        metadata["parent_trace_context"] = {
+            "parent_workflow_run_id": parent.id,
+            "parent_node_execution_id": identifier("parent-tool-node"),
+        }
+    return WorkflowTraceInfo(
+        node_executions=[],
+        conversation_id=None,
+        message_started_at=None,
+        workflow_app_log_id=None,
+        workflow_id=row.workflow_id,
+        tenant_id=row.tenant_id,
+        workflow_run_id=row.id,
+        workflow_run_elapsed_time=2,
+        workflow_run_status="succeeded",
+        workflow_run_inputs={},
+        workflow_run_outputs={},
+        workflow_run_version="1",
+        error=None,
+        total_tokens=0,
+        prompt_tokens=None,
+        completion_tokens=None,
+        file_list=[],
+        invoked_by=None,
+        query="",
+        metadata=metadata,
+        start_time=row.created_at,
+        end_time=row.finished_at,
+    )
+
 
 """Configured LogStore readers work without SQL mirrors and retain source ownership."""
 
@@ -49,22 +224,34 @@ class StoredSource:
     kind: Literal["workflow", "node"]
     row: dict[str, object]
     requests: list[str]
+    scheduled: list[str]
 
-    def start(self) -> ApplicationTraceRun:
+    def start(self) -> TraceRun:
         run = self.case.repository.start(
             tenant_id=self.case.run.tenant_id,
             app_id=self.case.run.app_id,
             source_kind=self.kind,
             source_id=str(self.row["id"]),
             session_id="logstore-session",
+            workflow_id=None,
         )
         assert run is not None
         return run
 
     def service(self) -> ApplicationTracingService:
-        return tracing_service(self.case, no_egress())
+        return ApplicationTracingService(
+            traces=self.case.repository,
+            records=TraceRecordRepository(self.case.sessions, files_url="https://files.test", enterprise_details=False),
+            builder=CanonicalTraceBuilder(),
+            # No provider is installed, so a delivery stops before it reaches any destination.
+            providers=InstalledTraceProviders(),
+            codec=ProviderConfigCodec(WorkspaceBoundCipher()),
+            egress=RecordingEgress([], grpc_target=None),
+            schedule_export=self.scheduled.append,
+            settings=AGENT_TRACE_SETTINGS,
+        )
 
-    def status(self, node_execution_id: str | None = None) -> dict[str, object]:
+    def status(self, *, node_execution_id: str | None) -> TraceRunStatus:
         return self.service().status(
             tenant_id=self.case.run.tenant_id,
             app_id=self.case.run.app_id,
@@ -182,16 +369,14 @@ class TestApplicationTraceLogstoreCases:
         event.listen(sqlite_engine, "commit", ended)
         event.listen(sqlite_engine, "rollback", ended)
         try:
-            yield StoredSource(case, kind, row, requests)
+            yield StoredSource(case, kind, row, requests, scheduled=[])
         finally:
             event.remove(sqlite_engine, "begin", begun)
             event.remove(sqlite_engine, "commit", ended)
             event.remove(sqlite_engine, "rollback", ended)
 
     @staticmethod
-    def test_status_and_retry_use_logstore_without_sql_source_rows(
-        stored: StoredSource, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_status_and_retry_use_logstore_without_sql_source_rows(stored: StoredSource) -> None:
         run = stored.start()
         with stored.case.sessions() as session:
             assert session.scalar(select(WorkflowRun)) is None
@@ -199,23 +384,21 @@ class TestApplicationTraceLogstoreCases:
         with stored.case.sessions.begin() as session:
             current = session.get(ApplicationTraceRun, run.id)
             assert current is not None
-            current.state = "failed"
+            current.state = TraceRunState.FAILED
             current.error_code = "provider_export_rejected"
             current.outer_trace = {"persisted": True}
-        assert stored.status()["status"] == "failed"
-        scheduled: list[str] = []
-        service = stored.service()
-        monkeypatch.setattr(service, "schedule", scheduled.append)
+        assert stored.status(node_execution_id=None).status is TraceRunState.FAILED
         stored.requests.clear()
-        result = service.retry(
+        result = stored.service().retry(
             tenant_id=run.tenant_id,
             app_id=run.app_id,
             source_kind=stored.kind,
             source_id=run.source_id,
             acknowledge_possible_duplicates=False,
+            node_execution_id=None,
         )
-        assert result["status"] == "ready"
-        assert scheduled == [run.id]
+        assert result.status is TraceRunState.READY
+        assert stored.scheduled == [run.id]
         assert len(stored.requests) == 1
 
     @staticmethod
@@ -223,11 +406,14 @@ class TestApplicationTraceLogstoreCases:
     def test_backend_result_must_match_complete_source_owner(stored: StoredSource, field: str) -> None:
         run = stored.start()
         stored.row[field] = identifier("foreign")
-        with pytest.raises(TraceCollectionError, match="tracing_source_not_found") as caught:
+        with pytest.raises(TraceCollectionNotFoundError, match="tracing_source_not_found"):
             stored.service().status(
-                tenant_id=run.tenant_id, app_id=run.app_id, source_kind=stored.kind, source_id=run.source_id
+                tenant_id=run.tenant_id,
+                app_id=run.app_id,
+                source_kind=stored.kind,
+                source_id=run.source_id,
+                node_execution_id=None,
             )
-        assert caught.value.status == 404
         assert stored.case.repository.get(run.id) is not None
 
     @staticmethod
@@ -238,8 +424,8 @@ class TestApplicationTraceLogstoreCases:
             app = session.get(App, stored.case.run.app_id)
             assert app is not None
             app.tenant_id = identifier("other-tenant")
-        with pytest.raises(TraceCollectionError, match="tracing_source_not_found"):
-            stored.status()
+        with pytest.raises(TraceCollectionNotFoundError, match="tracing_source_not_found"):
+            stored.status(node_execution_id=None)
         assert stored.requests == []
 
     @staticmethod
@@ -251,7 +437,7 @@ class TestApplicationTraceLogstoreCases:
             source_id=str(stored.row["id"]),
         )
         assert run is not None
-        assert run.state == "failed"
+        assert run.state is TraceRunState.FAILED
         assert run.error_code == "tracing_initialization_failed"
 
     @staticmethod
@@ -265,6 +451,7 @@ class TestApplicationTraceLogstoreCases:
             source_kind=stored.kind,
             source_id=original.source_id,
             session_id="must-not-replace",
+            workflow_id=None,
         )
         assert current is not None
         assert current.id == original.id
@@ -287,20 +474,22 @@ class TestApplicationTraceLogstoreCases:
         case.repository.complete(
             run.id,
             lease[1],
-            state="accepted",
+            state=TraceRunState.ACCEPTED,
+            error_code=None,
             result=SendResult(
                 trace_id="provider-id", trace_url=None, span_urls={invocation.span_id: "https://trace.test/span"}
             ),
+            retry_delay=None,
         )
-        assert stored.status(node_id)["span_url"] == "https://trace.test/span"
-        with pytest.raises(TraceCollectionError, match="tracing_node_not_found"):
-            stored.status(identifier("another-run-node"))
+        assert stored.status(node_execution_id=node_id).span_url == "https://trace.test/span"
+        with pytest.raises(TraceCollectionNotFoundError, match="tracing_node_not_found"):
+            stored.status(node_execution_id=identifier("another-run-node"))
 
     @staticmethod
     def test_preview_settlement_and_workflow_recovery_use_configured_source(stored: StoredSource) -> None:
         run = stored.start()
         if stored.kind == "workflow":
-            event = _workflow_task(stored.case.repository, run, naive_utc_now())
+            event = _workflow_event(stored.case.repository, run, naive_utc_now())
             assert event is not None
             assert event.payload == WorkflowRunCompleted(
                 workflow_run_id=run.source_id, conversation_id=None, total_tokens=None
@@ -309,9 +498,10 @@ class TestApplicationTraceLogstoreCases:
             assert event.user_id == stored.row["created_by"]
             assert event.correlation.session_id == run.session_id
             stored.row["status"] = "running"
-            assert _workflow_task(stored.case.repository, run, naive_utc_now()) is None
+            assert _workflow_event(stored.case.repository, run, naive_utc_now()) is None
         else:
-            stored.service().settle_preview(run)
+            # Delivery settles a finished preview from its node execution before claiming the export.
+            stored.service().deliver(run.id)
             current = stored.case.repository.get(run.id)
             assert current is not None
             assert current.outer_trace is not None
@@ -325,10 +515,10 @@ class TestApplicationTraceLogstoreCases:
     @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
     def test_missing_snapshot_classifies_logstore_agent_workflow_and_persists_failure(stored: StoredSource) -> None:
         info = workflow_info(_dict_to_workflow_run(stored.row), None)
-        assert stored.service().capture_terminal(info) is True
-        result = stored.status()
-        assert result["status"] == "failed"
-        assert result["error_code"] == "tracing_initialization_failed"
+        assert stored.service().capture_terminal(tenant_id=stored.case.run.tenant_id, info=info) is True
+        result = stored.status(node_execution_id=None)
+        assert result.status is TraceRunState.FAILED
+        assert result.error_code == "tracing_initialization_failed"
 
     @staticmethod
     @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
@@ -349,7 +539,7 @@ class TestApplicationTraceLogstoreCases:
             app.workflow_id = definition.id
             session.add(definition)
         stored.row.clear()
-        assert stored.service().capture_terminal(info) is has_agent
+        assert stored.service().capture_terminal(tenant_id=stored.case.run.tenant_id, info=info) is has_agent
 
     @staticmethod
     @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
@@ -367,7 +557,20 @@ class TestApplicationTraceLogstoreCases:
             stored.start()
         info = ModerationTraceInfo(
             message_id=identifier("workflow-log"),
-            message_data=message,
+            message_data=TraceMessage(
+                id=message.id,
+                app_id=message.app_id,
+                conversation_id=message.conversation_id,
+                workflow_run_id=message.workflow_run_id,
+                query=message.query,
+                answer=message.answer,
+                error=message.error,
+                created_at=message.created_at,
+                model_provider=message.model_provider,
+                model_id=message.model_id,
+                total_price=message.total_price,
+                currency=message.currency,
+            ),
             metadata={"message_id": message.id},
             flagged=False,
             action="direct_output",
@@ -376,15 +579,16 @@ class TestApplicationTraceLogstoreCases:
             inputs="private input",
             outputs="private output",
         )
-        assert stored.service().capture_terminal(info) is True
+        tenant_id = stored.case.run.tenant_id
+        assert stored.service().capture_terminal(tenant_id=tenant_id, info=info) is True
         if snapshot:
             # Durable ownership is sufficient to suppress auxiliary payload even when
             # the remote run has not been indexed yet.
             stored.row.clear()
-            assert stored.service().capture_terminal(info) is True
+            assert stored.service().capture_terminal(tenant_id=tenant_id, info=info) is True
         else:
             stored.row["graph"] = json.dumps({"nodes": [{"data": {"type": "llm"}}]})
-            assert stored.service().capture_terminal(info) is False
+            assert stored.service().capture_terminal(tenant_id=tenant_id, info=info) is False
 
     @staticmethod
     @pytest.mark.parametrize("stored", ["workflow"], indirect=True)
@@ -396,7 +600,7 @@ class TestApplicationTraceLogstoreCases:
         info = workflow_info(_dict_to_workflow_run(stored.row), _dict_to_workflow_run(stored.row))
         if mismatch:
             stored.row[mismatch] = identifier("foreign")
-        linked = stored.service().link_managed_parent(info)
+        linked = stored.service().link_managed_parent(tenant_id=stored.case.run.tenant_id, info=info)
         if mismatch:
             assert linked is info
         else:
@@ -420,14 +624,14 @@ class TestApplicationTraceLogstoreCases:
         )
         with case.sessions.begin() as session:
             session.add(row)
-        source = case.repository._source(
-            tenant_id=case.run.tenant_id, app_id=case.run.app_id, kind="workflow", source_id=row.id
+        source = case.repository.workflow_run(
+            tenant_id=case.run.tenant_id, app_id=case.run.app_id, workflow_run_id=row.id
         )
-        assert isinstance(source, WorkflowRun)
-        assert source.id == row.id
+        assert source is not None
+        assert (source.id, source.workflow_id, source.created_by) == (row.id, row.workflow_id, row.created_by)
         assert (
-            case.repository._source(
-                tenant_id=identifier("wrong-tenant"), app_id=case.run.app_id, kind="workflow", source_id=row.id
+            case.repository.workflow_run(
+                tenant_id=identifier("wrong-tenant"), app_id=case.run.app_id, workflow_run_id=row.id
             )
             is None
         )
@@ -463,13 +667,14 @@ def run_count(case: Collection) -> int | None:
         )
 
 
-def start_message(case: Collection, session_id: str) -> ApplicationTraceRun | None:
+def start_message(case: Collection, session_id: str) -> TraceRun | None:
     return case.repository.start(
         tenant_id=case.run.tenant_id,
         app_id=case.run.app_id,
         source_kind="message",
         source_id=case.run.source_id,
         session_id=session_id,
+        workflow_id=None,
     )
 
 
@@ -480,14 +685,14 @@ class TestApplicationTraceRepositoryBoundariesCases:
     ) -> None:
         case = seed(sqlite_session_factory, "concurrent-start")
         drop_run(case)
-        winners: list[ApplicationTraceRun | None] = []
+        winners: list[TraceRun | None] = []
         race_before_insert(monkeypatch, lambda: winners.append(start_message(case, "first-session")))
         current = start_message(case, "second-session")
         assert current is not None
         assert winners[0] is not None
         assert current.id == winners[0].id
         assert current.session_id == "first-session"
-        assert current.state == "collecting"
+        assert current.state is TraceRunState.COLLECTING
         assert run_count(case) == 1
 
     @staticmethod
@@ -496,7 +701,7 @@ class TestApplicationTraceRepositoryBoundariesCases:
     ) -> None:
         case = seed(sqlite_session_factory, "concurrent-failure")
         drop_run(case)
-        winners: list[ApplicationTraceRun | None] = []
+        winners: list[TraceRun | None] = []
         race_before_insert(monkeypatch, lambda: winners.append(start_message(case, "started-session")))
         current = case.repository.record_initialization_failure(
             tenant_id=case.run.tenant_id, app_id=case.run.app_id, source_kind="message", source_id=case.run.source_id
@@ -504,7 +709,7 @@ class TestApplicationTraceRepositoryBoundariesCases:
         assert current is not None
         assert winners[0] is not None
         assert current.id == winners[0].id
-        assert current.state == "collecting"
+        assert current.state is TraceRunState.COLLECTING
         assert current.error_code is None
         assert current.provider_config == case.run.provider_config
         assert run_count(case) == 1
@@ -517,8 +722,9 @@ class TestApplicationTraceRepositoryBoundariesCases:
         other = seed(sqlite_session_factory, "colliding-owner")
         drop_run(case)
         monkeypatch.setattr(repository_module, "uuidv7", lambda: UUID(other.run.id))
-        with pytest.raises(IntegrityError):
+        with pytest.raises(TracingStoreUnavailableError) as caught:
             start_message(case, "colliding-session")
+        assert isinstance(caught.value.__cause__, IntegrityError)
         assert run_count(case) == 0
         assert case.repository.get(other.run.id) is not None
 
@@ -539,9 +745,10 @@ class TestApplicationTraceRepositoryBoundariesCases:
             source_kind="message",
             source_id=case.run.source_id,
             session_id="",
+            workflow_id=None,
         )
         assert run is not None
-        assert run.state == "not_collected"
+        assert run.state is TraceRunState.NOT_COLLECTED
         assert run.provider_config == {}
         assert run.session_id == case.run.source_id
         assert not run.capture_content
@@ -575,7 +782,7 @@ class TestApplicationTraceRepositoryBoundariesCases:
         )
         assert same is not None
         assert same.id == case.run.id
-        assert same.state == "collecting"
+        assert same.state is TraceRunState.COLLECTING
         assert same.provider_config == case.run.provider_config
         assert (
             case.repository.record_initialization_failure(
@@ -595,22 +802,23 @@ class TestApplicationTraceRepositoryBoundariesCases:
         case = seed(sqlite_session_factory, "ingestion-owner")
         invocation = case.invocation()
         batch = batch_for(case.run, invocation)
+        error: type[TraceCollectionError]
         if target == "missing_run":
             batch = batch.model_copy(update={"run_id": UUID(identifier("missing-run"))})
-            error = "tracing_run_not_found"
+            error, code = TraceCollectionNotFoundError, "tracing_run_not_found"
         elif target == "revoked_owner":
             with case.sessions.begin() as session:
                 app = session.get(App, case.run.app_id)
                 assert app is not None
                 app.tenant_id = identifier("another-tenant")
-            error = "tracing_owner_not_found"
+            error, code = TraceCollectionNotFoundError, "tracing_owner_not_found"
         else:
             with case.sessions.begin() as session:
                 stored = session.get(ApplicationTraceInvocation, invocation.id)
                 assert stored is not None
                 stored.finalized = True
-            error = "tracing_collection_closed"
-        with pytest.raises(TraceCollectionError, match=error):
+            error, code = TraceCollectionConflictError, "tracing_collection_closed"
+        with pytest.raises(error, match=code):
             ingest(case, batch)
         with case.sessions() as session:
             assert session.scalar(select(func.count()).select_from(ApplicationTraceBatch)) == 0
@@ -639,7 +847,7 @@ class TestApplicationTraceRepositoryBoundariesCases:
         failed = case.repository.get(case.run.id)
         assert failed is not None
         assert failed.error_code == "tracing_owner_not_found"
-        assert failed.state == "failed"
+        assert failed.state is TraceRunState.FAILED
         case.repository.terminal(case.run.id, {"replacement": True}, "f" * 16)
         frozen = case.repository.get(case.run.id)
         assert frozen is not None
@@ -647,15 +855,18 @@ class TestApplicationTraceRepositoryBoundariesCases:
 
     @staticmethod
     @pytest.mark.parametrize(
-        ("state", "error"),
+        ("state", "error", "code"),
         [
-            ("not_collected", "tracing_run_not_found"),
-            ("accepted", "tracing_already_accepted"),
-            ("collecting", "tracing_retry_not_allowed"),
+            (TraceRunState.NOT_COLLECTED, TraceCollectionNotFoundError, "tracing_run_not_found"),
+            (TraceRunState.ACCEPTED, TraceCollectionConflictError, "tracing_already_accepted"),
+            (TraceRunState.COLLECTING, TraceCollectionConflictError, "tracing_retry_not_allowed"),
         ],
     )
     def test_retry_rejects_ineligible_states(
-        sqlite_session_factory: sessionmaker[Session], state: str, error: str
+        sqlite_session_factory: sessionmaker[Session],
+        state: TraceRunState,
+        error: type[TraceCollectionError],
+        code: str,
     ) -> None:
         case = seed(sqlite_session_factory, "retry-state")
         terminal(case)
@@ -663,20 +874,20 @@ class TestApplicationTraceRepositoryBoundariesCases:
             row = session.get(ApplicationTraceRun, case.run.id)
             assert row is not None
             row.state = state
-        with pytest.raises(TraceCollectionError, match=error):
+        with pytest.raises(error, match=code):
             case.repository.retry(run_id=case.run.id, acknowledge_possible_duplicates=True)
-        row = case.repository.get(case.run.id)
-        assert row is not None
-        assert row.state == state
+        current = case.repository.get(case.run.id)
+        assert current is not None
+        assert current.state is state
 
     @staticmethod
     def test_retry_unknown_run_and_invocation_reject_before_creation(
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         case = seed(sqlite_session_factory, "retry-unknown")
-        with pytest.raises(TraceCollectionError, match="tracing_run_not_found"):
+        with pytest.raises(TraceCollectionNotFoundError, match="tracing_run_not_found"):
             case.repository.retry(run_id=identifier("missing"), acknowledge_possible_duplicates=True)
-        with pytest.raises(TraceCollectionError, match="tracing_run_not_collecting"):
+        with pytest.raises(TraceCollectionConflictError, match="tracing_run_not_collecting"):
             case.repository.invocation(
                 run_id=identifier("missing"),
                 agent_id=identifier("agent"),
@@ -694,7 +905,7 @@ class TestApplicationTraceRepositoryBoundariesCases:
         row = case.repository.get(case.run.id)
         assert row is not None
         assert row.attempts == 0
-        assert row.state == "collecting"
+        assert row.state is TraceRunState.COLLECTING
 
     @staticmethod
     def test_retention_removes_all_payload_rows_and_preserves_newer_runs(
@@ -708,10 +919,10 @@ class TestApplicationTraceRepositoryBoundariesCases:
             row = session.get(ApplicationTraceRun, expired.run.id)
             assert row is not None
             row.created_at = naive_utc_now() - timedelta(days=8)
-        assert expired.repository.purge(retention_days=7) == 1
+        assert expired.repository.purge(retention_days=7, limit=100) == 1
         assert expired.repository.get(expired.run.id) is None
         assert expired.repository.collected(expired.run.id) == ([], [])
         assert fresh.repository.get(fresh.run.id) is not None
         invocations, batches = fresh.repository.collected(fresh.run.id)
         assert len(invocations) == len(batches) == 1
-        assert expired.repository.purge(retention_days=7) == 0
+        assert expired.repository.purge(retention_days=7, limit=100) == 0

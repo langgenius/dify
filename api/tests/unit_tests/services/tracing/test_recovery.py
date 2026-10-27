@@ -1,20 +1,25 @@
-"""Recover lost terminal notifications from real business rows through the trace assembler."""
+"""Recover lost terminal notifications from real business rows through the trace record repository."""
 
 import json
 from collections.abc import Callable, Generator, Iterator
-from dataclasses import dataclass
-from datetime import datetime, timedelta
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Literal, cast, override
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import pytest
 from cachetools import TTLCache
 from dify_agent.protocol import RunEvent
+from dify_agent.protocol.tracing import AgentTraceBatch, AgentTraceSpan
+from dify_trace_langfuse.config import LangfuseConfig
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.errors import EgressError
-from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent
+from dify_trace_sdk.events import MessageCompleted, TraceCorrelation, TraceEvent, TracePayload
+from dify_trace_sdk.exporting import send_export_request
 from dify_trace_sdk.ids import span_id_for
 from dify_trace_sdk.model import Trace
+from dify_trace_sdk.provider import ProviderCapabilities, SendResult, TraceProvider
 from dify_trace_sdk.testing import RecordingEgress, response
 from flask import Flask
 from sqlalchemy import Engine, delete, inspect, update
@@ -46,22 +51,36 @@ from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBa
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
 from events.event_handlers import update_provider_when_message_created as receiver
 from extensions.ext_database import db
-from extensions.tracing import bind_tracing
+from extensions.tracing import application_tracing_hooks, bind_tracing
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from libs.datetime_utils import naive_utc_now
-from models.account import Account, TenantAccountJoin
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.application_trace import ApplicationTraceInvocation, ApplicationTraceRun
-from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
-from models.model import App, AppMode, Conversation, Message
+from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
+from models.model import App, AppMode, Conversation, Message, TraceAppConfig
 from models.workflow import WorkflowRun, WorkflowType
-from repositories.application_trace_repository import TraceCollectionError
-from services.tracing import recovery, runtime_bridge
-from services.tracing.assembly import SourceNotReadyError
-from services.tracing.emitter import TraceScopes
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.application_trace_repository import ApplicationTraceRepository
+from repositories.trace_record_repository import TraceRecordRepository
+from services.tracing.adapters import StoredPolicyTraceScopes
+from services.tracing.canonical import CanonicalTraceBuilder
+from services.tracing.collection import AgentTraceSettings, TraceInvocation, TraceRun, TraceRunState
+from services.tracing.delivery import TraceRecordSource
+from services.tracing.errors import SourceNotReadyError, TraceCollectionNotFoundError
+from services.tracing.providers import ProviderConfigCodec
+from services.tracing.records import BaseTraceInfo, MessageTraceInfo
+from services.tracing.recovery import recover_terminal
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from services.tracing.scopes import TraceScopes
 from services.tracing.service import ApplicationTracingService
-from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message, make_tenant
+from tests.helpers.unit.services.tracing_ports import (
+    AGENT_TRACE_SETTINGS,
+    InstalledTraceProviders,
+    WorkspaceBoundCipher,
+)
 from tests.unit_tests.core.app.apps.agent_app.test_app_runner import (
     _CancelAndWaitFailingClient,
     _ExplodingSessionStore,
@@ -72,34 +91,231 @@ from tests.unit_tests.core.app.apps.agent_app.test_app_runner import (
     _StoppedQueueManager,
     _UsageCancellationClient,
 )
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_accepted as accepted
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_batch_for as batch_for
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_claim as claim
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_identifier as identifier
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_ingest as ingest
-from tests.unit_tests.services.tracing.test_service import (
-    _application_trace_collection_install_delivery as install_delivery,
-)
-from tests.unit_tests.services.tracing.test_service import _application_trace_collection_seed as seed
-from tests.unit_tests.services.tracing.test_service import (
-    _application_trace_collection_tracing_service as tracing_service,
-)
-from tests.unit_tests.services.tracing.test_service import _ApplicationTraceCollectionCollection as Collection
-from tests.unit_tests.services.tracing.test_service import (
-    add_app_owner,
-    attach_conversation,
-    message_record,
-    sent_traces,
-)
 
 
-@dataclass
+def identifier(value: str) -> str:
+    return str(uuid5(NAMESPACE_URL, value))
+
+
+@dataclass(frozen=True)
+class Collection:
+    repository: ApplicationTraceRepository
+    sessions: sessionmaker[Session]
+    run: TraceRun
+
+    def invocation(self, name: str) -> TraceInvocation:
+        return self.repository.invocation(
+            run_id=self.run.id, agent_id=identifier("agent"), node_execution_id=None, attempt=0, call_key=name
+        )
+
+
+class ScriptedProvider(TraceProvider[LangfuseConfig]):
+    """Sends each trace as one JSON request through the egress, whose script decides the outcome."""
+
+    id = "langfuse"
+    config_model = LangfuseConfig
+    capabilities = ProviderCapabilities(native_cost=True, trace_url=True, span_url=True)
+
+    @override
+    def verify(self, config: LangfuseConfig) -> LangfuseConfig:
+        return config
+
+    @override
+    def project_url(self, config: LangfuseConfig) -> str | None:
+        return f"{config.host}/project/{config.project_key}"
+
+    @override
+    def send(self, config: LangfuseConfig, trace: Trace) -> SendResult:
+        reply = send_export_request(
+            self.egress,
+            "POST",
+            f"{config.host}/traces",
+            destination="Scripted",
+            headers={"Authorization": f"{config.public_key}:{config.secret_key}"},
+            content=trace.model_dump_json().encode(),
+            sensitive_url=False,
+        )
+        body = reply.json()
+        assert isinstance(body, dict)
+        return SendResult(
+            trace_id=str(body["trace_id"]), trace_url=body.get("trace_url"), span_urls=body.get("span_urls", {})
+        )
+
+
+def seed(sessions: sessionmaker[Session], name: str, *, capture_content: bool, capture_agent: bool) -> Collection:
+    """An Agent app tracing to Langfuse, one of its messages, and the run frozen when the message started."""
+    app_id, tenant_id, message_id = identifier(f"app-{name}"), identifier("tenant"), identifier(f"message-{name}")
+    cipher = WorkspaceBoundCipher()
+    with sessions.begin() as session:
+        session.add(
+            make_app(
+                app_id=app_id,
+                tenant_id=tenant_id,
+                mode=AppMode.AGENT,
+                tracing=json.dumps(
+                    {
+                        "enabled": True,
+                        "tracing_provider": "langfuse",
+                        "capture_content": capture_content,
+                        "capture_agent": capture_agent,
+                    }
+                ),
+            )
+        )
+        session.add(
+            make_message(
+                message_id=message_id,
+                app_id=app_id,
+                conversation_id=identifier(f"conversation-{name}"),
+                inputs={},
+                query="hello",
+                message={},
+                answer="done",
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
+                currency="USD",
+                from_source=ConversationFromSource.CONSOLE,
+            )
+        )
+        session.add(
+            TraceAppConfig(
+                app_id=app_id,
+                tracing_provider="langfuse",
+                tracing_config={
+                    "public_key": cipher.encrypt(tenant_id, "public"),
+                    "secret_key": cipher.encrypt(tenant_id, "original"),
+                    "host": "https://langfuse.test",
+                    "project_key": "original",
+                },
+            )
+        )
+    repository = ApplicationTraceRepository(sessions)
+    run = repository.start(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        source_kind="message",
+        source_id=message_id,
+        session_id="session-original",
+        workflow_id=None,
+    )
+    assert run is not None
+    return Collection(repository, sessions, run)
+
+
+def attach_conversation(collection: Collection, mode: AppMode) -> None:
+    """Message records are assembled only for a message whose conversation belongs to its app."""
+    with collection.sessions.begin() as session:
+        message = session.get(Message, collection.run.source_id)
+        assert message is not None
+        session.add(
+            make_conversation(
+                conversation_id=message.conversation_id,
+                app_id=collection.run.app_id,
+                mode=mode,
+                inputs={},
+                from_source=ConversationFromSource.CONSOLE,
+            )
+        )
+
+
+def add_app_owner(collection: Collection, name: str) -> str:
+    """An account of the app's workspace that creates the app and, here, its workflow runs."""
+    owner_id = identifier(f"owner-{name}")
+    with collection.sessions.begin() as session:
+        if session.get(Tenant, collection.run.tenant_id) is None:
+            session.add(make_tenant(tenant_id=collection.run.tenant_id))
+        session.add(make_account(account_id=owner_id, email=f"{name}@example.com"))
+        session.add(
+            TenantAccountJoin(tenant_id=collection.run.tenant_id, account_id=owner_id, role=TenantAccountRole.OWNER)
+        )
+        app = session.get(App, collection.run.app_id)
+        assert app is not None
+        app.created_by = owner_id
+    return owner_id
+
+
+def trace_event(run: TraceRun, payload: TracePayload) -> TraceEvent:
+    return TraceEvent(
+        event_id=uuid4().hex,
+        tenant_id=run.tenant_id,
+        app_id=run.app_id,
+        user_id=None,
+        occurred_at=datetime.now(UTC),
+        correlation=TraceCorrelation(
+            external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+        ),
+        payload=payload,
+    )
+
+
+def batch_for(run: TraceRun, invocation: TraceInvocation, *, final: bool, span_id: str) -> AgentTraceBatch:
+    return AgentTraceBatch(
+        run_id=UUID(run.id),
+        invocation_id=UUID(invocation.id),
+        batch_id=uuid4(),
+        final=final,
+        spans=[
+            AgentTraceSpan(
+                trace_id=run.trace_id,
+                span_id=span_id,
+                parent_span_id=invocation.span_id,
+                name="Agent execution",
+                start_time_ns=1_000_000_000,
+                end_time_ns=2_000_000_000,
+                status="ok",
+                attributes={"gen_ai.operation.name": "invoke_agent"},
+            )
+        ],
+    )
+
+
+def ingest(collection: Collection, batch: AgentTraceBatch) -> tuple[int, str]:
+    return collection.repository.ingest(batch, max_spans=100, max_bytes=1_000_000)
+
+
+def sent_traces(egress: RecordingEgress) -> list[Trace]:
+    return [Trace.model_validate_json(request.content or b"") for request in egress.requests]
+
+
+@dataclass(frozen=True)
 class RecoveryCase:
     collection: Collection
+    records: TraceRecordRepository
     service: ApplicationTracingService
+    settings: AgentTraceSettings
     now: datetime
     scheduled: list[str]
     destination: RecordingEgress
+
+    def recover(self, run: TraceRun, *, now: datetime) -> bool:
+        """One reconciler recovery attempt of ``run`` at ``now``."""
+        return recover_terminal(
+            run,
+            traces=self.collection.repository,
+            records=self.records,
+            collector=self.service,
+            collection_timeout=self.settings.collection_timeout_seconds,
+            now=now,
+        )
+
+
+def recovery_case(
+    collection: Collection, destination: RecordingEgress, settings: AgentTraceSettings, now: datetime
+) -> RecoveryCase:
+    """The service the runtime hooks reach; scheduled exports are recorded instead of enqueued."""
+    records = TraceRecordRepository(collection.sessions, files_url="https://files.test", enterprise_details=False)
+    scheduled: list[str] = []
+    service = ApplicationTracingService(
+        traces=collection.repository,
+        records=records,
+        builder=CanonicalTraceBuilder(),
+        providers=InstalledTraceProviders(ScriptedProvider),
+        codec=ProviderConfigCodec(WorkspaceBoundCipher()),
+        egress=destination,
+        schedule_export=scheduled.append,
+        settings=settings,
+    )
+    return RecoveryCase(collection, records, service, settings, now, scheduled, destination)
 
 
 class _Recorder:
@@ -125,23 +341,32 @@ class _QueueManager(AppQueueManager):
         raise AssertionError("Stream dispatch must not publish queue events")
 
 
-def recording_service(
-    collection: Collection, destination: RecordingEgress, scheduled: list[str], monkeypatch: pytest.MonkeyPatch
-) -> ApplicationTracingService:
-    """The ledger the runtime hooks reach; scheduled exports are recorded instead of enqueued."""
-    service = tracing_service(collection, destination)
-    monkeypatch.setattr(service, "schedule", scheduled.append)
-    monkeypatch.setattr(runtime_bridge, "_service", lambda: service)
-    return service
+class _FailingRecords(TraceRecordSource):
+    """Remembers every event recovery asks it to assemble, then fails with ``failure``."""
+
+    def __init__(self, failure: Exception) -> None:
+        self._failure = failure
+        self.events: list[TraceEvent] = []
+
+    @override
+    def assemble(self, event: TraceEvent) -> BaseTraceInfo:
+        self.events.append(event)
+        raise self._failure
 
 
-def tracing_application(collection: Collection) -> Flask:
-    """An application bound like the composition root, with events kept in memory."""
+def tracing_application(case: RecoveryCase) -> Flask:
+    """An application bound like the composition root of a collecting deployment, with events kept in memory."""
     application = Flask(__name__)
     bind_tracing(
         application,
-        scopes=TraceScopes(emitter=_Recorder(), session_factory=collection.sessions, enterprise_enabled=lambda: False),
-        hooks=runtime_bridge.RuntimeApplicationTracingHooks(),
+        scopes=StoredPolicyTraceScopes(
+            TraceScopes(
+                emitter=_Recorder(),
+                policies=SQLAlchemyAppTracingConfigRepository(session_factory=case.collection.sessions),
+                enterprise_enabled=lambda: False,
+            )
+        ),
+        hooks=RuntimeApplicationTracingHooks(case.service),
     )
     return application
 
@@ -150,10 +375,10 @@ def tracing_application(collection: Collection) -> Flask:
 def case(
     sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> RecoveryCase:
-    collection = seed(sqlite_session_factory, "recover", capture_content=True)
+    collection = seed(sqlite_session_factory, "recover", capture_content=True, capture_agent=True)
     attach_conversation(collection, AppMode.AGENT)
-    invocation = collection.invocation()
-    ingest(collection, batch_for(collection.run, invocation))
+    invocation = collection.invocation("first")
+    ingest(collection, batch_for(collection.run, invocation, final=True, span_id="a" * 16))
     now = naive_utc_now()
     with sqlite_session_factory.begin() as session:
         message = session.get(Message, collection.run.source_id)
@@ -169,12 +394,43 @@ def case(
         stored_invocation.finalized_at = now - timedelta(seconds=10)
     monkeypatch.setattr(type(db), "engine", property(lambda _db: sqlite_engine))
     monkeypatch.setattr(db, "session", scoped_session(sqlite_session_factory))
-    monkeypatch.setattr(recovery, "naive_utc_now", lambda: now)
-    install_delivery(monkeypatch)
-    destination = accepted("provider-id")
-    scheduled: list[str] = []
-    service = recording_service(collection, destination, scheduled, monkeypatch)
-    return RecoveryCase(collection, service, now, scheduled, destination)
+    destination = RecordingEgress([response(200, {"trace_id": "provider-id"})], grpc_target=None)
+    return recovery_case(collection, destination, AGENT_TRACE_SETTINGS, now)
+
+
+def collecting_within(case: RecoveryCase, collection_timeout_seconds: int) -> RecoveryCase:
+    """The same case on a deployment that waits ``collection_timeout_seconds`` for a business terminal."""
+    return recovery_case(
+        case.collection,
+        case.destination,
+        replace(case.settings, collection_timeout_seconds=collection_timeout_seconds),
+        case.now,
+    )
+
+
+def stop_requested(collection: Collection) -> bool:
+    """The consumer's persisted stop intent, as both ledger readers of the message report it."""
+    run = collection.run
+    message = collection.repository.message(tenant_id=run.tenant_id, app_id=run.app_id, message_id=run.source_id)
+    progress = collection.repository.message_progress(
+        tenant_id=run.tenant_id, app_id=run.app_id, message_id=run.source_id
+    )
+    assert message is not None
+    assert progress is not None
+    assert message.agent_stop_requested is progress.agent_stop_requested
+    return progress.agent_stop_requested
+
+
+def message_record(case: RecoveryCase) -> MessageTraceInfo:
+    """The record the delivery worker assembles when the message reports its end."""
+    run = case.collection.run
+    message = case.collection.repository.message(tenant_id=run.tenant_id, app_id=run.app_id, message_id=run.source_id)
+    assert message is not None
+    record = case.records.assemble(
+        trace_event(run, MessageCompleted(message_id=run.source_id, conversation_id=message.conversation_id))
+    )
+    assert isinstance(record, MessageTraceInfo)
+    return record
 
 
 def complete_metadata() -> str:
@@ -199,7 +455,6 @@ def save_agent_stop(
     notify: Callable[[Message, ChatAppGenerateEntity], None] | None = None,
 ) -> list[TraceEvent]:
     """Run the real consumer save against the owned SQL rows; returns the trace events it emitted."""
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
 
     def send(message: Message, *, application_generate_entity: ChatAppGenerateEntity) -> None:
         if notify is not None:
@@ -295,8 +550,8 @@ def test_stopped_agent_notifies_the_real_provider_receiver_once_after_commit(
         with case.collection.sessions() as session:
             saved = session.get(Message, message.id)
             assert saved is not None
-            assert recovery.agent_stop_requested(saved) is True
             assert saved.answer == message.answer
+        assert stop_requested(case.collection) is True
         system = SystemConfiguration(
             enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
@@ -324,41 +579,40 @@ def test_stopped_agent_notifies_the_real_provider_receiver_once_after_commit(
         assert save_agent_stop(case, monkeypatch, "partial answer", process_stream=True, notify=notify) == []
     assert calls == [case.collection.run.source_id]
     assert provider_updates == ["basic_last_used_update"]
-    with case.collection.sessions() as session:
-        saved = session.get(Message, case.collection.run.source_id)
-        assert saved is not None
-        assert recovery.agent_stop_requested(saved) is True
+    assert stop_requested(case.collection) is True
 
 
 @pytest.mark.parametrize("answer", ["", "partial answer before stop"])
 @pytest.mark.parametrize("outcome", ["succeeded", "failed", "cancelled"])
-@pytest.mark.parametrize("delivery", ["accepted", "uncertain"])
+@pytest.mark.parametrize("delivery", [TraceRunState.ACCEPTED, TraceRunState.UNCERTAIN])
 def test_stopped_consumer_cannot_freeze_a_terminal_before_the_runtime_worker(
     case: RecoveryCase,
     monkeypatch: pytest.MonkeyPatch,
     answer: str,
     outcome: Literal["succeeded", "failed", "cancelled"],
-    delivery: str,
+    delivery: TraceRunState,
 ) -> None:
     destination = RecordingEgress(
         [
             response(200, {"trace_id": "provider-id"})
-            if delivery == "accepted"
+            if delivery is TraceRunState.ACCEPTED
             else EgressError("acknowledgement lost", request_sent=True)
         ],
         grpc_target=None,
     )
-    service = recording_service(case.collection, destination, case.scheduled, monkeypatch)
+    stopped = recovery_case(case.collection, destination, case.settings, case.now)
+    service = stopped.service
+    tenant_id = case.collection.run.tenant_id
     # Simulate an old queued notification as well as the current consumer save:
     # persisted state, not a detached event payload, must decide who owns the end.
-    notification = message_record(service, case.collection)
+    notification = message_record(stopped)
     queued = save_agent_stop(case, monkeypatch, answer)
-    assert service.capture_terminal(notification) is True
+    assert service.capture_terminal(tenant_id=tenant_id, info=notification) is True
     stored = case.collection.repository.get(case.collection.run.id)
     assert stored is not None
     assert stored.outer_trace is None, "a stopped SSE save is not the runtime terminal"
     assert queued == []
-    assert recovery.recover_terminal(service, stored) is False
+    assert stopped.recover(stored, now=case.now) is False
     assert case.collection.repository.claim(stored.id, collection_timeout=60, lease_seconds=30) is None
     service.deliver(stored.id)
     assert destination.requests == []
@@ -371,21 +625,20 @@ def test_stopped_consumer_cannot_freeze_a_terminal_before_the_runtime_worker(
         outcome=outcome,
         output=output,
     )
-    terminal = case.collection.repository.get(stored.id)
-    assert terminal is not None
-    trace = service.assemble(terminal)
-    assert trace.root.attributes["message_execution_state"] == outcome
-    assert trace.root.status.value == ("ok" if outcome == "succeeded" else "error")
-    assert len(trace.spans) == 3
 
     # A duplicate worker result and late consumer notification cannot rewrite
     # the frozen end or create a second ingestion attempt after acceptance.
     service.deliver(stored.id)
     service.deliver(stored.id)
-    assert sent_traces(destination) == [trace]
+    exported = sent_traces(destination)
+    assert len(exported) == 1
+    trace = exported[0]
+    assert trace.root.attributes["message_execution_state"] == outcome
+    assert trace.root.status.value == ("ok" if outcome == "succeeded" else "error")
+    assert len(trace.spans) == 3
     frozen = case.collection.repository.get(stored.id)
     assert frozen is not None
-    assert frozen.state == delivery
+    assert frozen.state is delivery
     service.capture_agent_app_terminal(
         tenant_id=stored.tenant_id,
         app_id=stored.app_id,
@@ -393,7 +646,7 @@ def test_stopped_consumer_cannot_freeze_a_terminal_before_the_runtime_worker(
         outcome="succeeded" if outcome != "succeeded" else "cancelled",
         output="late result must not replace the accepted envelope",
     )
-    assert service.capture_terminal(notification) is True
+    assert service.capture_terminal(tenant_id=tenant_id, info=notification) is True
     unchanged = case.collection.repository.get(stored.id)
     assert unchanged is not None
     assert unchanged.outer_trace == frozen.outer_trace
@@ -436,10 +689,10 @@ def test_worker_usage_flush_preserves_stop_intent_from_a_newer_consumer_save(
         message_id=cached_message.id,
         usage=LLMUsage.from_metadata({"prompt_tokens": 13, "completion_tokens": 8, "total_price": "0.21"}),
     )
+    assert stop_requested(case.collection) is True
     with case.collection.sessions() as session:
         message = session.get(Message, cached_message.id)
         assert message is not None
-        assert recovery.agent_stop_requested(message) is True
         assert message.answer == "partial answer"
         assert message.message_tokens == 13
         assert message.answer_tokens == 8
@@ -463,10 +716,10 @@ def test_stop_save_preserves_worker_usage_committed_after_its_cached_message_rea
             usage=LLMUsage.from_metadata({"prompt_tokens": 13, "completion_tokens": 8, "total_price": "0.21"}),
         )
         save_agent_stop(case, monkeypatch, "partial answer", consumer_session=consumer)
+    assert stop_requested(case.collection) is True
     with case.collection.sessions() as session:
         message = session.get(Message, case.collection.run.source_id)
         assert message is not None
-        assert recovery.agent_stop_requested(message) is True
         assert message.message_tokens == 13
         assert message.answer_tokens == 8
         assert message.total_price == Decimal("0.21")
@@ -484,7 +737,7 @@ def test_stopped_runner_hands_off_only_an_observed_runtime_terminal(
     snapshot_save_fails: bool,
 ) -> None:
     save_agent_stop(case, monkeypatch, "partial answer")
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_COLLECTION_TIMEOUT=60)
+    case = collecting_within(case, 60)
     pending_invocation = None
     if not final_batch_arrived:
         pending_invocation = case.collection.invocation("awaiting-stop-final-batch")
@@ -527,7 +780,7 @@ def test_stopped_runner_hands_off_only_an_observed_runtime_terminal(
         agent_config_snapshot_id=identifier("stop-snapshot"),
         home_snapshot_id=None,
     )
-    with tracing_application(case.collection).app_context(), pytest.raises(GenerateTaskStoppedError):
+    with tracing_application(case).app_context(), pytest.raises(GenerateTaskStoppedError):
         runner._consume_stream(
             client.run_id,
             dify_context=context,
@@ -543,19 +796,18 @@ def test_stopped_runner_hands_off_only_an_observed_runtime_terminal(
     if runtime_outcome == "cancel_wait_failed":
         assert frozen.outer_trace is None
         assert store.saved == []
-        monkeypatch.setattr(recovery, "naive_utc_now", lambda: case.now + timedelta(seconds=120))
-        assert recovery.recover_terminal(case.service, frozen) is False
+        assert case.recover(frozen, now=case.now + timedelta(seconds=120)) is False
         expired = case.collection.repository.get(run.id)
         assert expired is not None
-        assert expired.state == "failed"
+        assert expired.state is TraceRunState.FAILED
         assert expired.error_code == (
             "business_terminal_not_persisted" if final_batch_arrived else "agent_trace_collection_incomplete"
         )
         return
     assert frozen.outer_trace is not None
-    trace = case.service.assemble(frozen)
-    assert trace.root.attributes["message_execution_state"] == runtime_outcome
-    assert trace.root.status.value == ("ok" if runtime_outcome == "succeeded" else "error")
+    root = Trace.model_validate(frozen.outer_trace).root
+    assert root.attributes["message_execution_state"] == runtime_outcome
+    assert root.status.value == ("ok" if runtime_outcome == "succeeded" else "error")
     assert len(store.saved) == (0 if snapshot_save_fails else 1)
     if pending_invocation is not None:
         assert case.collection.repository.claim(run.id, collection_timeout=60, lease_seconds=30) is None
@@ -566,32 +818,32 @@ def test_stopped_runner_hands_off_only_an_observed_runtime_terminal(
     case.service.deliver(run.id)
     exported = sent_traces(case.destination)
     assert len(exported) == 1
+    assert exported[0].root.attributes["message_execution_state"] == runtime_outcome
     assert len(exported[0].spans) == (3 if final_batch_arrived else 5)
     accepted_run = case.collection.repository.get(run.id)
     assert accepted_run is not None
-    assert accepted_run.state == "accepted"
+    assert accepted_run.state is TraceRunState.ACCEPTED
     assert accepted_run.attempts == 1
+    assert stop_requested(case.collection) is True
     with case.collection.sessions() as session:
         message = session.get(Message, run.source_id)
         assert message is not None
         assert message.answer == "partial answer"
-        assert recovery.agent_stop_requested(message) is True
 
 
 @pytest.mark.parametrize("incomplete", [False, True])
 def test_missing_runtime_stop_terminal_converges_without_inventing_success(
     case: RecoveryCase, monkeypatch: pytest.MonkeyPatch, incomplete: bool
 ) -> None:
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_COLLECTION_TIMEOUT=60)
+    case = collecting_within(case, 60)
     save_agent_stop(case, monkeypatch, "partial answer")
     if incomplete:
         invocation = case.collection.invocation("still-collecting")
         ingest(case.collection, batch_for(case.collection.run, invocation, final=False, span_id="b" * 16))
-    monkeypatch.setattr(recovery, "naive_utc_now", lambda: case.now + timedelta(seconds=120))
-    assert recovery.recover_terminal(case.service, case.collection.run) is False
+    assert case.recover(case.collection.run, now=case.now + timedelta(seconds=120)) is False
     stored = case.collection.repository.get(case.collection.run.id)
     assert stored is not None
-    assert stored.state == "failed"
+    assert stored.state is TraceRunState.FAILED
     assert stored.error_code == (
         "agent_trace_collection_incomplete" if incomplete else "business_terminal_not_persisted"
     )
@@ -644,7 +896,7 @@ def test_stop_during_final_queue_publication_preserves_the_already_observed_succ
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
     )
-    with tracing_application(case.collection).app_context(), pytest.raises(GenerateTaskStoppedError):
+    with tracing_application(case).app_context(), pytest.raises(GenerateTaskStoppedError):
         runner.run(
             dify_context=context,
             agent_id=identifier("stop-agent"),
@@ -677,7 +929,6 @@ def test_stop_during_final_queue_publication_preserves_the_already_observed_succ
 def test_runtime_cleanup_cancellation_does_not_reclassify_a_business_stream_failure(
     case: RecoveryCase, monkeypatch: pytest.MonkeyPatch, stop_during_cleanup: bool
 ) -> None:
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
     client = _UsageCancellationClient()
     queue_manager = _FakeQueueManager()
 
@@ -712,7 +963,7 @@ def test_runtime_cleanup_cancellation_does_not_reclassify_a_business_stream_fail
         agent_config_snapshot_id=identifier("cleanup-snapshot"),
         home_snapshot_id=None,
     )
-    with tracing_application(case.collection).app_context():
+    with tracing_application(case).app_context():
         with pytest.raises(GenerateTaskStoppedError if stop_during_cleanup else RuntimeError):
             runner._consume_stream(
                 client.run_id,
@@ -727,7 +978,9 @@ def test_runtime_cleanup_cancellation_does_not_reclassify_a_business_stream_fail
         if not stop_during_cleanup:
             # This is the generator's existing generic exception handoff. A
             # cleanup child-run cancellation must not win the application root.
-            runtime_bridge.capture_agent_app_terminal(
+            hooks = application_tracing_hooks()
+            assert hooks is not None
+            hooks.capture_agent_app_terminal(
                 tenant_id=run.tenant_id,
                 app_id=run.app_id,
                 message_id=run.source_id,
@@ -751,7 +1004,7 @@ def test_runtime_cleanup_cancellation_does_not_reclassify_a_business_stream_fail
     case.service.deliver(run.id)
     delivered = case.collection.repository.get(run.id)
     assert delivered is not None
-    assert delivered.state == "accepted"
+    assert delivered.state is TraceRunState.ACCEPTED
     assert delivered.attempts == 1
     assert len(case.destination.requests) == 1
 
@@ -760,24 +1013,24 @@ def test_runtime_cleanup_cancellation_does_not_reclassify_a_business_stream_fail
 def test_missing_stop_worker_without_runtime_spans_also_reaches_a_delivery_failure(
     case: RecoveryCase, monkeypatch: pytest.MonkeyPatch, capture_agent: bool
 ) -> None:
-    collection = seed(case.collection.sessions, f"stop-without-spans-{capture_agent}", capture_agent=capture_agent)
-    attach_conversation(collection, AppMode.AGENT)
-    scheduled: list[str] = []
-    destination = RecordingEgress([], grpc_target=None)
-    stopped = RecoveryCase(
-        collection,
-        recording_service(collection, destination, scheduled, monkeypatch),
-        case.now,
-        scheduled,
-        destination,
+    collection = seed(
+        case.collection.sessions,
+        f"stop-without-spans-{capture_agent}",
+        capture_content=False,
+        capture_agent=capture_agent,
     )
-    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_COLLECTION_TIMEOUT=60)
+    attach_conversation(collection, AppMode.AGENT)
+    stopped = recovery_case(
+        collection,
+        RecordingEgress([], grpc_target=None),
+        replace(AGENT_TRACE_SETTINGS, collection_timeout_seconds=60),
+        case.now,
+    )
     save_agent_stop(stopped, monkeypatch, "")
-    monkeypatch.setattr(recovery, "naive_utc_now", lambda: case.now + timedelta(seconds=120))
-    assert recovery.recover_terminal(stopped.service, collection.run) is False
+    assert stopped.recover(collection.run, now=case.now + timedelta(seconds=120)) is False
     stored = collection.repository.get(collection.run.id)
     assert stored is not None
-    assert stored.state == "failed"
+    assert stored.state is TraceRunState.FAILED
     assert stored.error_code == "business_terminal_not_persisted"
     assert stored.outer_trace is None
 
@@ -792,7 +1045,7 @@ def test_worker_terminal_survives_closed_sse_without_inventing_a_message_write(
         message.message_metadata = json.dumps({"usage": {"prompt_tokens": 2, "completion_tokens": 1}})
         message.answer = ""
     # A runtime final/usage flush still does not imply that an API message ended.
-    assert recovery.recover_terminal(case.service, case.collection.run) is False
+    assert case.recover(case.collection.run, now=case.now) is False
     output = "actual worker result" if outcome == "succeeded" else None
     case.service.capture_agent_app_terminal(
         tenant_id=case.collection.run.tenant_id,
@@ -817,7 +1070,7 @@ def test_worker_terminal_survives_closed_sse_without_inventing_a_message_write(
 
 
 def test_worker_terminal_revalidates_message_tenant(case: RecoveryCase) -> None:
-    with pytest.raises(TraceCollectionError, match="tracing_source_not_found"):
+    with pytest.raises(TraceCollectionNotFoundError, match="tracing_source_not_found"):
         case.service.capture_agent_app_terminal(
             tenant_id=identifier("foreign-tenant"),
             app_id=case.collection.run.app_id,
@@ -830,19 +1083,19 @@ def test_worker_terminal_revalidates_message_tenant(case: RecoveryCase) -> None:
     assert stored.outer_trace is None
 
 
-def test_recovers_real_message_terminal_once_through_the_assembler(case: RecoveryCase) -> None:
+def test_recovers_real_message_terminal_once_through_the_record_repository(case: RecoveryCase) -> None:
     with case.collection.sessions.begin() as session:
         message = session.get(Message, case.collection.run.source_id)
         assert message is not None
         message.message_metadata = complete_metadata()
         message.updated_at = case.now - timedelta(seconds=11)
-    assert recovery.recover_terminal(case.service, case.collection.run) is True
+    assert case.recover(case.collection.run, now=case.now) is True
     stored = case.collection.repository.get(case.collection.run.id)
     assert stored is not None
     assert stored.outer_trace is not None
     assert stored.outer_trace["session_id"] == "session-original"
     assert stored.outer_trace["spans"][0]["outputs"] == "persisted final answer"
-    assert recovery.recover_terminal(case.service, stored) is False
+    assert case.recover(stored, now=case.now) is False
     assert case.scheduled == [stored.id]
     with case.collection.sessions() as session:
         message = session.get(Message, case.collection.run.source_id)
@@ -865,7 +1118,7 @@ def test_deliver_recovers_and_exports_once_after_terminal_queue_loss(case: Recov
     assert exported[0].spans[0].outputs == "persisted final answer"
     stored = case.collection.repository.get(case.collection.run.id)
     assert stored is not None
-    assert stored.state == "accepted"
+    assert stored.state is TraceRunState.ACCEPTED
     assert stored.provider_trace_id == "provider-id"
     assert stored.attempts == 1
 
@@ -877,24 +1130,24 @@ def test_early_usage_commit_is_not_treated_as_a_final_answer(case: RecoveryCase)
         message.message_metadata = json.dumps({"usage": {"prompt_tokens": 2, "completion_tokens": 1}})
         message.answer = ""
         message.updated_at = case.now - timedelta(seconds=11)
-    assert recovery.recover_terminal(case.service, case.collection.run) is False
+    assert case.recover(case.collection.run, now=case.now) is False
     stored = case.collection.repository.get(case.collection.run.id)
     assert stored is not None
     assert stored.outer_trace is None
-    assert stored.state == "collecting"
+    assert stored.state is TraceRunState.COLLECTING
     assert not case.scheduled
 
 
 def test_final_without_business_commit_times_out_as_failed_not_success(case: RecoveryCase) -> None:
-    invocations, _ = case.collection.repository.collected(case.collection.run.id)
+    invocations = case.collection.repository.invocations(case.collection.run.id)
     with case.collection.sessions.begin() as session:
         invocation = session.get(ApplicationTraceInvocation, invocations[0].id)
         assert invocation is not None
         invocation.finalized_at = case.now - timedelta(hours=1)
-    assert recovery.recover_terminal(case.service, case.collection.run) is False
+    assert case.recover(case.collection.run, now=case.now) is False
     stored = case.collection.repository.get(case.collection.run.id)
     assert stored is not None
-    assert stored.state == "failed"
+    assert stored.state is TraceRunState.FAILED
     assert stored.error_code == "business_terminal_not_persisted"
     assert stored.outer_trace is None
 
@@ -905,13 +1158,13 @@ def test_final_settle_window_and_all_invocations_must_finish(case: RecoveryCase)
         assert message is not None
         message.message_metadata = complete_metadata()
         message.updated_at = case.now - timedelta(seconds=1)
-    assert recovery.recover_terminal(case.service, case.collection.run) is False
+    assert case.recover(case.collection.run, now=case.now) is False
     second = case.collection.invocation("pending-second")
     with case.collection.sessions.begin() as session:
         message = session.get(Message, case.collection.run.source_id)
         assert message is not None
         message.updated_at = case.now - timedelta(seconds=10)
-    assert recovery.recover_terminal(case.service, case.collection.run) is False
+    assert case.recover(case.collection.run, now=case.now) is False
     with case.collection.sessions() as session:
         invocation = session.get(ApplicationTraceInvocation, second.id)
         assert invocation is not None
@@ -929,7 +1182,7 @@ def test_explicit_message_failure_can_recover_without_fabricating_usage(case: Re
         message.message_tokens = 0
         message.answer_tokens = 0
         message.updated_at = case.now - timedelta(seconds=11)
-    assert recovery.recover_terminal(case.service, case.collection.run) is True
+    assert case.recover(case.collection.run, now=case.now) is True
     stored = case.collection.repository.get(case.collection.run.id)
     assert stored is not None
     assert stored.outer_trace is not None
@@ -941,58 +1194,61 @@ def test_explicit_message_failure_can_recover_without_fabricating_usage(case: Re
     assert [(span["usage"], span["cost"]) for span in stored.outer_trace["spans"]] == [(None, None)]
 
 
-def test_cross_tenant_source_is_rejected_before_the_assembler_runs(
-    case: RecoveryCase, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_cross_tenant_source_is_rejected_before_the_record_repository_runs(case: RecoveryCase) -> None:
     with case.collection.sessions.begin() as session:
         app = session.get(App, case.collection.run.app_id)
         assert app is not None
         app.tenant_id = identifier("other-tenant")
-    called: list[TraceEvent] = []
-
-    def forbidden(event: TraceEvent) -> None:
-        called.append(event)
-
-    monkeypatch.setattr(case.service.assembler, "assemble", forbidden)
-    assert recovery.recover_terminal(case.service, case.collection.run) is False
-    assert called == []
+    records = _FailingRecords(AssertionError("a foreign source must never be assembled"))
+    recovered = recover_terminal(
+        case.collection.run,
+        traces=case.collection.repository,
+        records=records,
+        collector=case.service,
+        collection_timeout=case.settings.collection_timeout_seconds,
+        now=case.now,
+    )
+    assert recovered is False
+    assert records.events == []
     stored = case.collection.repository.get(case.collection.run.id)
     assert stored is not None
     assert stored.error_code == "tracing_source_not_found"
 
 
-def test_source_not_ready_for_assembly_is_retried_later(case: RecoveryCase, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_source_not_ready_for_assembly_is_retried_later(case: RecoveryCase) -> None:
     with case.collection.sessions.begin() as session:
         message = session.get(Message, case.collection.run.source_id)
         assert message is not None
         message.message_metadata = complete_metadata()
         message.updated_at = case.now - timedelta(seconds=11)
-    events: list[TraceEvent] = []
-
-    def not_ready(event: TraceEvent) -> None:
-        events.append(event)
-        raise SourceNotReadyError
-
-    monkeypatch.setattr(case.service.assembler, "assemble", not_ready)
-    assert recovery.recover_terminal(case.service, case.collection.run) is False
-    assert [event.payload for event in events] == [
+    records = _FailingRecords(SourceNotReadyError())
+    recovered = recover_terminal(
+        case.collection.run,
+        traces=case.collection.repository,
+        records=records,
+        collector=case.service,
+        collection_timeout=case.settings.collection_timeout_seconds,
+        now=case.now,
+    )
+    assert recovered is False
+    assert [event.payload for event in records.events] == [
         MessageCompleted(message_id=case.collection.run.source_id, conversation_id=identifier("conversation-recover"))
     ]
-    assert events[0].correlation.session_id == "session-original"
+    assert records.events[0].correlation.session_id == "session-original"
     stored = case.collection.repository.get(case.collection.run.id)
     assert stored is not None
-    assert (stored.state, stored.error_code, stored.outer_trace) == ("collecting", None, None)
+    assert (stored.state, stored.error_code, stored.outer_trace) == (TraceRunState.COLLECTING, None, None)
     assert case.scheduled == []
 
 
 def test_unresolved_recovery_rotates_behind_unchecked_sources(case: RecoveryCase) -> None:
-    other = seed(case.collection.sessions, "other-recovery")
+    other = seed(case.collection.sessions, "other-recovery", capture_content=False, capture_agent=True)
     assert case.collection.repository.pending_ids(limit=1) == [case.collection.run.id]
-    assert recovery.recover_terminal(case.service, case.collection.run) is False
+    assert case.recover(case.collection.run, now=case.now) is False
     assert case.collection.repository.pending_ids(limit=1) == [other.run.id]
     stored = case.collection.repository.get(case.collection.run.id)
     assert stored is not None
-    assert stored.state == "collecting"
+    assert stored.state is TraceRunState.COLLECTING
 
 
 @pytest.mark.parametrize("status", [MessageStatus.PAUSED, MessageStatus.NORMAL])
@@ -1002,7 +1258,7 @@ def test_no_final_marker_or_paused_message_is_not_recovered(case: RecoveryCase, 
         assert message is not None
         message.status = status
         message.updated_at = case.now - timedelta(seconds=10)
-    assert recovery.recover_terminal(case.service, case.collection.run) is False
+    assert case.recover(case.collection.run, now=case.now) is False
     assert not case.scheduled
 
 
@@ -1036,13 +1292,14 @@ def add_workflow_run(case: RecoveryCase, status: WorkflowExecutionStatus, *, fin
     return workflow_run_id
 
 
-def start_workflow(case: RecoveryCase, workflow_run_id: str) -> ApplicationTraceRun:
+def start_workflow(case: RecoveryCase, workflow_run_id: str) -> TraceRun:
     run = case.collection.repository.start(
         tenant_id=case.collection.run.tenant_id,
         app_id=case.collection.run.app_id,
         source_kind="workflow",
         source_id=workflow_run_id,
         session_id="workflow-session",
+        workflow_id=None,
     )
     assert run is not None
     return run
@@ -1072,7 +1329,7 @@ def test_workflow_recovery_requires_committed_terminal_state(
         WorkflowExecutionStatus.FAILED,
         WorkflowExecutionStatus.STOPPED,
     }
-    assert recovery.recover_terminal(case.service, run) is expected
+    assert case.recover(run, now=case.now) is expected
     stored = case.collection.repository.get(run.id)
     assert stored is not None
     if expected:
@@ -1087,7 +1344,7 @@ def test_workflow_recovery_requires_committed_terminal_state(
         assert stored.outer_trace["user_id"] == owner_id
     else:
         assert stored.outer_trace is None
-        assert (stored.state, stored.error_code) == ("collecting", None)
+        assert (stored.state, stored.error_code) == (TraceRunState.COLLECTING, None)
 
 
 @pytest.mark.parametrize("owner_state", ["no_creator", "missing_account", "not_a_member"])
@@ -1106,7 +1363,7 @@ def test_workflow_recovery_does_not_depend_on_the_app_creator(case: RecoveryCase
             session.execute(delete(TenantAccountJoin).where(TenantAccountJoin.account_id == owner_id))
     workflow_run_id = add_workflow_run(case, WorkflowExecutionStatus.SUCCEEDED, finished=True, created_by=owner_id)
     run = start_workflow(case, workflow_run_id)
-    assert recovery.recover_terminal(case.service, run) is True
+    assert case.recover(run, now=case.now) is True
     stored = case.collection.repository.get(run.id)
     assert stored is not None
     assert stored.outer_trace is not None
@@ -1143,7 +1400,8 @@ def test_early_error_root_preserves_known_query_only_when_content_is_enabled(
     assert root.attributes["message_execution_state"] == "failed"
     assert root.inputs == ({"query": query} if capture_content else None)
     assert root.outputs == ("" if capture_content else None)
-    assembled = case.service.assemble(stored)
+    case.service.deliver(stored.id)
+    [assembled] = sent_traces(case.destination)
     assert (query in assembled.model_dump_json()) is capture_content
     assert all(span.inputs is None for span in assembled.spans if span.span_id != assembled.root.span_id)
     with case.collection.sessions() as session:
@@ -1229,7 +1487,7 @@ def test_worker_handoff_leaves_a_not_collected_run_untouched(case: RecoveryCase)
     with case.collection.sessions.begin() as session:
         run = session.get(ApplicationTraceRun, case.collection.run.id)
         assert run is not None
-        run.state = "not_collected"
+        run.state = TraceRunState.NOT_COLLECTED
     case.service.capture_agent_app_terminal(
         tenant_id=case.collection.run.tenant_id,
         app_id=case.collection.run.app_id,
@@ -1241,4 +1499,4 @@ def test_worker_handoff_leaves_a_not_collected_run_untouched(case: RecoveryCase)
     assert stored is not None
     assert stored.outer_trace is None
     assert case.scheduled == []
-    assert claim(case.collection) is None
+    assert case.collection.repository.claim(case.collection.run.id, collection_timeout=60, lease_seconds=30) is None

@@ -39,6 +39,7 @@ from services.message_suggested_questions_service import (
 )
 from services.recommended_app_query_service import RecommendedAppQueryService
 from services.trial_app_access_service import TrialAppAccessService
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 
 @dataclass(frozen=True)
@@ -185,7 +186,7 @@ def harness(
         trial_apps=_TrialAppServices(access=TrialAppAccessService(apps=trial_apps)),
         recommended_app_queries=features,
         message_suggested_questions=MessageSuggestedQuestionsService(
-            queries=queries, generator=SuggestedQuestionsGenerator()
+            queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
         ),
     )
 

@@ -23,6 +23,7 @@ from services.app_tracing_config_service import (
     PresentedTracingConfig,
 )
 from services.tracing.provider_configs import ProviderConfigGateway
+from tests.helpers.unit.services.tracing_ports import deployment_provider_configs
 
 """Public tracing operations keep credentials and policy in one transaction."""
 
@@ -63,7 +64,7 @@ class TestAppTracingAtomicOperationsCases:
                     ),
                 )
             )
-        gateway = ProviderConfigGateway(RecordingEgress([], grpc_target=None))
+        gateway = deployment_provider_configs(RecordingEgress([], grpc_target=None))
 
         def prepare(*, tracing_config: dict[str, object], **_: object) -> dict[str, object]:
             return dict(tracing_config)

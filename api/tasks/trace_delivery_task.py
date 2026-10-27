@@ -13,10 +13,11 @@ from typing import Any
 from celery import shared_task
 from dify_trace_sdk.events import TraceEvent
 
+from extensions.ext_application_services import application_services
 from extensions.ext_storage import storage
-from services.tracing.assembly import SourceNotFoundError, SourceNotReadyError
-from services.tracing.delivery import ExportJob, TraceCollectorUnavailableError, trace_delivery_service
-from services.tracing.emitter import PAYLOAD_PREFIX
+from services.tracing.adapters import PAYLOAD_PREFIX
+from services.tracing.delivery import ExportJob
+from services.tracing.errors import SourceNotFoundError, SourceNotReadyError, TraceCollectorUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,9 @@ def deliver_trace_event(self, envelope: dict[str, Any]) -> None:
             _delete_quietly(payload_key)
         return
     try:
-        trace_delivery_service().deliver(event, enterprise_delivered=envelope.get("enterprise_delivered") is True)
+        application_services().tracing.delivery.deliver(
+            event, enterprise_delivered=envelope.get("enterprise_delivered") is True
+        )
     except SourceNotFoundError:
         logger.info("Trace event source not found; dropped: kind=%s app_id=%s", event.payload.kind, event.app_id)
     except SourceNotReadyError:
@@ -90,7 +93,7 @@ def retry_trace_export(job_key: str) -> None:
         _delete_quietly(job_key)
         return
     try:
-        trace_delivery_service().retry(job)
+        application_services().tracing.delivery.retry(job)
     finally:
         _delete_quietly(job_key)
 

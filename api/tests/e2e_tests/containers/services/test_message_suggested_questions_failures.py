@@ -46,6 +46,7 @@ from tests.e2e_tests.containers.controllers.console.helpers import (
     create_console_account_and_tenant,
     create_console_app,
 )
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 _PROVIDER = "tests/suggested/suggested"
 _MODEL = "questions-model"
@@ -278,7 +279,7 @@ def test_unavailable_configured_and_default_models_return_none(scenario: _Scenar
         .values(provider_name="tests/missing/missing")
     )
     db.session.commit()
-    generator = SuggestedQuestionsGenerator()
+    generator = SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
 
     assert (
         generator._prepare_model(
@@ -300,7 +301,7 @@ def test_missing_default_model_does_not_create_one_or_commit_caller_changes(scen
     caller = db.session()
 
     try:
-        with SuggestedQuestionsGenerator().prepare(
+        with SuggestedQuestionsGenerator(trace_scopes=untraced_scopes()).prepare(
             context=scenario.context, instruction_prompt=None, model_config=None
         ) as generate:
             assert generate is None

@@ -17,7 +17,6 @@ from enterprise.telemetry.entities import (
     EnterpriseTelemetryHistogram,
     EnterpriseTelemetrySpan,
 )
-from models.workflow import WorkflowRun
 from services.tracing.records import (
     DatasetRetrievalTraceInfo,
     DraftNodeExecutionTrace,
@@ -27,10 +26,10 @@ from services.tracing.records import (
     PromptGenerationTraceInfo,
     SuggestedQuestionTraceInfo,
     ToolTraceInfo,
+    TraceMessage,
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
-from tests.helpers.unit.model_factories import make_message
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -61,15 +60,25 @@ _T0 = datetime(2024, 1, 10, 12, 0, 0, tzinfo=UTC)
 _T1 = datetime(2024, 1, 10, 12, 0, 5, tzinfo=UTC)
 
 
-def _workflow_run() -> WorkflowRun:
-    run = WorkflowRun(id="run-001", finished_at=_T1)
-    run.created_at = _T0
-    return run
+def _trace_message() -> TraceMessage:
+    return TraceMessage(
+        id="msg-001",
+        app_id="app-001",
+        conversation_id="conv-001",
+        workflow_run_id=None,
+        query="user input",
+        answer="assistant output",
+        error=None,
+        created_at=_T0,
+        model_provider="openai",
+        model_id="gpt-4",
+        total_price=None,
+        currency="USD",
+    )
 
 
 def make_workflow_info(**overrides) -> WorkflowTraceInfo:
     defaults: dict[str, Any] = {
-        "workflow_data": _workflow_run(),
         "node_executions": [],
         "conversation_id": None,
         "message_started_at": None,
@@ -156,7 +165,7 @@ def make_draft_node_info(**overrides) -> DraftNodeExecutionTrace:
 def make_message_info(**overrides) -> MessageTraceInfo:
     defaults: dict[str, Any] = {
         "message_id": "msg-001",
-        "message_data": make_message(message_id="msg-001", app_id="app-001"),
+        "message_data": _trace_message(),
         "error": None,
         "file_list": [],
         "gen_ai_server_time_to_first_token": None,
@@ -582,24 +591,6 @@ class TestWorkflowTrace:
         hist_call = mock_exporter.record_histogram.call_args
         assert hist_call[0][0] == EnterpriseTelemetryHistogram.WORKFLOW_DURATION
         assert hist_call[0][1] == pytest.approx(5.0)
-
-    def test_duration_falls_back_to_elapsed_time_when_timestamps_missing(
-        self, trace_handler: EnterpriseOtelTrace, mock_exporter
-    ):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            info = make_workflow_info(start_time=None, end_time=None, workflow_run_elapsed_time=7.3)
-            trace_handler._workflow_trace(info)
-
-        hist_call = mock_exporter.record_histogram.call_args
-        assert hist_call[0][1] == pytest.approx(7.3)
-
-    def test_duration_defaults_to_zero_when_no_timing(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
-        with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
-            info = make_workflow_info(start_time=None, end_time=None, workflow_run_elapsed_time=0)
-            trace_handler._workflow_trace(info)
-
-        hist_call = mock_exporter.record_histogram.call_args
-        assert hist_call[0][1] == pytest.approx(0.0)
 
     def test_error_path_increments_error_counter(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):

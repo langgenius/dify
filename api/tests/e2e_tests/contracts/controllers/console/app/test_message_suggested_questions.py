@@ -57,10 +57,10 @@ from services.message_suggested_questions_service import (
     MessageSuggestedQuestionsService,
 )
 from services.recommended_app_package_service import RecommendedAppPackageService
-from services.tracing.provider_configs import ProviderConfigGateway
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
 from tests.helpers.unit.rbac_fakes import RBACDomain
+from tests.helpers.unit.services.tracing_ports import deployment_provider_configs, untraced_scopes
 
 
 @dataclass
@@ -188,7 +188,7 @@ def harness(
         rbac_members=rbac_domain.rbac.members,
         tracing_configs=AppTracingConfigService(
             configs=SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory),
-            provider=ProviderConfigGateway(RecordingEgress([], grpc_target=None)),
+            provider=deployment_provider_configs(RecordingEgress([], grpc_target=None)),
         ),
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis),
         recommended_packages=RecommendedAppPackageService(
@@ -205,7 +205,9 @@ def harness(
     services = _Services(
         app_services,
         _Agents(AgentAppAccessService(references=AgentAppRepository(session_factory=sqlite_session_factory))),
-        MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()),
+        MessageSuggestedQuestionsService(
+            queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
+        ),
         rbac_domain.rbac,
     )
     flask_app.extensions["application_services"] = services

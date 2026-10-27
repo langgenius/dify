@@ -17,12 +17,12 @@ from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.base import use_plugin_daemon_request_timeout
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
-from extensions.tracing import create_trace_scope_for_app
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterType
 from libs.datetime_utils import measure_time
 from services.message_suggested_questions_parser import SuggestedQuestionsAfterAnswerOutputParser
+from services.tracing.scopes import UNCORRELATED, TraceScopes
 
 if TYPE_CHECKING:
     from core.memory.token_buffer_memory import PreparedHistory
@@ -79,6 +79,9 @@ def _default_suggested_questions_model_parameters(model_instance: ModelInstance)
 class SuggestedQuestionsGenerator:
     """Own model resolution, detached-history rendering, generation and tracing."""
 
+    def __init__(self, *, trace_scopes: TraceScopes) -> None:
+        self._trace_scopes = trace_scopes
+
     @contextmanager
     def prepare(
         self,
@@ -131,8 +134,8 @@ class SuggestedQuestionsGenerator:
         # Invocation catches provider failures, including failed database
         # transactions. Tracing always starts with a fresh scoped session.
         db.session.remove()
-        trace_scope = create_trace_scope_for_app(
-            tenant_id=context.tenant_id, app_id=context.app_id, user_id=None, extras={}
+        trace_scope = self._trace_scopes.for_app(
+            tenant_id=context.tenant_id, app_id=context.app_id, user_id=None, correlation=UNCORRELATED
         )
         if trace_scope is not None:
             trace_scope.emit(

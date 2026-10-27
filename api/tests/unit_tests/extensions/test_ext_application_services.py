@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
-from typing import Never, cast
+from typing import cast
 from unittest.mock import MagicMock, call, create_autospec, patch
 from uuid import uuid4
 
@@ -154,10 +154,8 @@ from services.retention.workflow_run.archive_download_task_cache import Workflow
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
-from services.tracing import runtime_bridge
-from services.tracing.egress import SSRFEgress
-from services.tracing.emitter import CeleryTraceEmitter
-from services.tracing.provider_configs import ProviderConfigGateway
+from services.tracing.adapters import CeleryTraceEmitter
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_authentication_adapters import (
     AccountWebAuthenticationSecurityGateway,
@@ -280,9 +278,11 @@ def test_init_app_registers_services_for_the_current_app(
         assert creators._oauth is services.oauth_server
 
 
-def test_init_app_registers_distinct_tracing_ports_without_constructing_trace_services(
+@pytest.mark.parametrize("enabled", [True, False])
+def test_init_app_binds_each_apps_agent_hooks_only_when_agent_tracing_is_enabled(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
+    enabled: bool,
 ) -> None:
     first_app, second_app = Flask("first"), Flask("second")
     monkeypatch.setattr(ext_application_services, "get_session_maker", lambda: sqlite_session_factory)
@@ -290,28 +290,26 @@ def test_init_app_registers_distinct_tracing_ports_without_constructing_trace_se
         monkeypatch,
         DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
         INIT_PASSWORD="",
-        OPS_AGENT_TRACE_ENABLED=True,
+        OPS_AGENT_TRACE_ENABLED=enabled,
     )
-    construction_calls: list[bool] = []
-
-    def construct_trace_service() -> Never:
-        construction_calls.append(True)
-        raise AssertionError("Composition must not construct a trace service")
-
-    monkeypatch.setattr(runtime_bridge, "_service", construct_trace_service)
 
     ext_application_services.init_app(first_app)
     ext_application_services.init_app(second_app)
 
     with first_app.app_context():
         first_hooks = application_tracing_hooks()
-        assert isinstance(first_hooks, runtime_bridge.RuntimeApplicationTracingHooks)
+        first_services = ext_application_services.application_services()
         with second_app.app_context():
             second_hooks = application_tracing_hooks()
-            assert isinstance(second_hooks, runtime_bridge.RuntimeApplicationTracingHooks)
-            assert second_hooks is not first_hooks
         assert application_tracing_hooks() is first_hooks
-    assert construction_calls == []
+    if not enabled:
+        assert first_hooks is None
+        assert second_hooks is None
+        return
+    assert isinstance(first_hooks, RuntimeApplicationTracingHooks)
+    assert isinstance(second_hooks, RuntimeApplicationTracingHooks)
+    assert second_hooks is not first_hooks
+    assert first_hooks is first_services.tracing.hooks
 
 
 def test_init_app_binds_trace_scopes_to_the_apps_tracing_policy(
@@ -676,9 +674,7 @@ def test_build_application_services_wires_app_tracing_config_boundary(
     assert isinstance(services.app_tracing_configs, AppTracingConfigService)
     assert isinstance(services.app_tracing_configs._configs, SQLAlchemyAppTracingConfigRepository)
     assert services.app_tracing_configs._configs._session_factory is sqlite_session_factory
-    provider = services.app_tracing_configs._provider
-    assert isinstance(provider, ProviderConfigGateway)
-    assert isinstance(provider._egress, SSRFEgress)
+    assert services.app_tracing_configs._provider is services.tracing.provider_configs
 
 
 def test_build_application_services_wires_workflow_app_log_boundary(

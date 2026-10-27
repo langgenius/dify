@@ -42,6 +42,7 @@ from services.message_suggested_questions_service import (
     MessageSuggestedQuestionsService,
 )
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 
 @dataclass
@@ -157,7 +158,11 @@ def harness(
     queries = SuggestedQuestionsQuery(
         session_factory=read_factory, repository=MessageRepository(session_factory=read_factory)
     )
-    services = _Services(MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()))
+    services = _Services(
+        MessageSuggestedQuestionsService(
+            queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
+        )
+    )
     app.extensions["application_services"] = services
     api = ExternalApi(app)
     api.add_resource(message_controller.MessageSuggestedQuestionApi, "/messages/<uuid:message_id>/suggested-questions")
