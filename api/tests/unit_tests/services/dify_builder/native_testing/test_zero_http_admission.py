@@ -18,11 +18,12 @@ from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.models import Actor
+from enums import WorkflowKind
 from graphon.runtime.runtime_state.state import RuntimeState
 from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
 from models.enums import AppStatus
 from models.model import App, AppMode
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
@@ -83,8 +84,8 @@ def zero_http_case(monkeypatch: pytest.MonkeyPatch) -> ZeroHttpCase:
         id="workflow",
         app_id="app",
         graph=json.dumps(graph),
-        type="workflow",
-        kind="standard",
+        type=WorkflowType("workflow"),
+        kind=WorkflowKind("standard"),
         _features="{}",
         _environment_variables="[]",
         _conversation_variables="[]",
