@@ -1,6 +1,9 @@
 'use client'
 
-import type { AuthorizeApproveBody, AuthorizeClientView } from '@/service/oauth-authorize'
+import type {
+  OAuthAuthorizeClientResponse,
+  OAuthAuthorizeRequest,
+} from '@dify/contracts/api/openapi/types.gen'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -19,14 +22,14 @@ import { getAvatarInitial } from '@/utils/avatar'
 import { buildReturnUrl } from '../use-silent-authorize'
 
 type OpenApiConsentProps = {
-  client: AuthorizeClientView
+  client: OAuthAuthorizeClientResponse
   searchParams: URLSearchParams
 }
 
 function buildApproveBody(
-  client: AuthorizeClientView,
+  client: OAuthAuthorizeClientResponse,
   searchParams: URLSearchParams,
-): AuthorizeApproveBody {
+): OAuthAuthorizeRequest {
   return {
     client_id: client.client_id,
     redirect_uri: searchParams.get('redirect_uri') ?? '',

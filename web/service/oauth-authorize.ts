@@ -2,6 +2,11 @@
 // /openapi/v1/oauth/authorize/*. The lookup is public; approve and deny need
 // the console session cookie + CSRF token, like the device flow.
 
+import type {
+  OAuthAuthorizeClientResponse,
+  OAuthAuthorizeRedirectResponse,
+  OAuthAuthorizeRequest,
+} from '@dify/contracts/api/openapi/types.gen'
 import { queryOptions } from '@tanstack/react-query'
 import { consoleCsrfHeader } from './device-flow'
 
@@ -18,26 +23,6 @@ export class OAuthAuthorizeError extends Error {
     this.status = status
   }
 }
-
-export type AuthorizeClientView = {
-  client_id: string
-  display_name: string
-  logo_uri: string | null
-  redirect_host: string
-  localhost_only: boolean
-}
-
-export type AuthorizeApproveBody = {
-  client_id: string
-  redirect_uri: string
-  code_challenge: string
-  code_challenge_method: string
-  resource: string | null
-  scope: string | null
-  state: string | null
-}
-
-export type AuthorizeRedirect = { redirect_to: string }
 
 async function failFromResponse(res: Response): Promise<never> {
   let code = `http_${res.status}`
@@ -58,7 +43,7 @@ function sendAuthorize(path: string, init: RequestInit): Promise<Response> {
 export async function fetchAuthorizeClient(
   clientId: string,
   redirectUri: string,
-): Promise<AuthorizeClientView> {
+): Promise<OAuthAuthorizeClientResponse> {
   const query = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri })
   const res = await sendAuthorize(`/client?${query.toString()}`, { method: 'GET' })
   if (!res.ok) await failFromResponse(res)
@@ -67,8 +52,8 @@ export async function fetchAuthorizeClient(
 
 async function postDecision(
   decision: 'approve' | 'deny',
-  body: AuthorizeApproveBody,
-): Promise<AuthorizeRedirect> {
+  body: OAuthAuthorizeRequest,
+): Promise<OAuthAuthorizeRedirectResponse> {
   const res = await sendAuthorize(`/${decision}`, {
     method: 'POST',
     credentials: 'include',
@@ -82,11 +67,15 @@ async function postDecision(
   return res.json()
 }
 
-export function approveAuthorize(body: AuthorizeApproveBody): Promise<AuthorizeRedirect> {
+export function approveAuthorize(
+  body: OAuthAuthorizeRequest,
+): Promise<OAuthAuthorizeRedirectResponse> {
   return postDecision('approve', body)
 }
 
-export function denyAuthorize(body: AuthorizeApproveBody): Promise<AuthorizeRedirect> {
+export function denyAuthorize(
+  body: OAuthAuthorizeRequest,
+): Promise<OAuthAuthorizeRedirectResponse> {
   return postDecision('deny', body)
 }
 
