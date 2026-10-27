@@ -1,5 +1,7 @@
 """Behavior tests for presenting and rendering Human Input v2 form values."""
 
+from urllib.parse import parse_qsl, urlencode, urlsplit
+
 import pytest
 
 from core.human_input_v2.resolved_form import (
@@ -11,9 +13,14 @@ from core.human_input_v2.resolved_form import (
     ResolvedForm,
     SelectInput,
 )
+from core.tools.signature import sign_tool_file
 from core.workflow.nodes.human_input.entities import ParagraphInputConfig
 from core.workflow.nodes.human_input.enums import ValueSourceType
-from factories.human_input_v2_form_presentation import build_form_presentation, render_filled_content
+from factories.human_input_v2_form_presentation import (
+    build_form_presentation,
+    refresh_form_file_urls,
+    render_filled_content,
+)
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment, NoneSegment, Segment, StringSegment
 
@@ -35,6 +42,44 @@ def attachment() -> File:
         mime_type="application/pdf",
         size=100,
     )
+
+
+@pytest.mark.parametrize(
+    "markup", ["[Report]({url})", "![Report]({url})", "<{url}>", "{url}", '[Report]: {url} "Title"']
+)
+def test_file_refresh_keeps_markdown_and_both_snapshot_representations_consistent(
+    form: ResolvedForm, markup: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
+    url = sign_tool_file("b4c3d2e1-0000-4000-8000-123456789abc", ".pdf")
+    external = "https://example.com/report.pdf?download=true"
+    before = f"Review {markup.format(url=url)} / {markup.format(url=url)} / [External]({external}) "
+    after = "\nFrozen text."
+    note = ParagraphInput(output_variable_name="note", default_value=url)
+    snapshot = form.model_copy(
+        update={
+            "parts": (MarkdownFragment(text=before), note, MarkdownFragment(text=after)),
+            "legacy_form_content": before + "{{#$output.note#}}" + after,
+        }
+    )
+    monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000400)
+    monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x01" * 16)
+    new_url = sign_tool_file("b4c3d2e1-0000-4000-8000-123456789abc", ".pdf")
+    parsed = urlsplit(new_url)
+    new_url = parsed._replace(query=urlencode(parse_qsl(parsed.query))).geturl()
+
+    refreshed = refresh_form_file_urls(snapshot)
+
+    first, refreshed_note, last = refreshed.parts
+    assert isinstance(first, MarkdownFragment)
+    assert isinstance(last, MarkdownFragment)
+    assert refreshed_note == note
+    assert last.text == after
+    assert refreshed.title == snapshot.title
+    assert refreshed.actions == snapshot.actions
+    assert refreshed.legacy_form_content == first.text + "{{#$output.note#}}" + after
+    assert first.text == before.replace(url, new_url)
+    assert snapshot.legacy_form_content == before + "{{#$output.note#}}" + after
 
 
 @pytest.mark.parametrize(
