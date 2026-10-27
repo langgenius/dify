@@ -211,7 +211,7 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
 
   const onCanvasEvent = useCallback<SessionRunEvents['onCanvasEvent']>(
     (event) => {
-      if (event.event === 'reset_build_canvas' || event.event === 'revert_checkpoint') reset()
+      if (event.event === 'graph_changed' && event.cause === 'restore') reset()
       // Native workflow events own execution status; other canvas events
       // preserve the status of paused and partially successful runs.
     },

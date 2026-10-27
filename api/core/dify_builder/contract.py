@@ -82,22 +82,14 @@ class CardKind(StrEnum):
 
 
 class CanvasEvent(StrEnum):
-    """Granular canvas-mutation signals (spec §6).
+    """Committed draft changes and local presentation notifications.
 
-    Signals emitted by Builder handlers and committed mutations. Presentation
-    of committed backend state: replaying these from a snapshot must
-    reconstruct the same canvas.
+    Graph changes invalidate the draft once per committed batch. Edit targets
+    describe the complete local highlight set, independently of node selection.
     """
 
-    RESET_BUILD_CANVAS = "reset_build_canvas"
-    ADD_START_NODE = "add_start_node"
-    ADD_KNOWLEDGE_NODE = "add_knowledge_node"
-    ADD_LLM_NODE = "add_llm_node"
-    ADD_OUTPUT_NODE = "add_output_node"
-    HIGHLIGHT_EDIT_TARGET = "highlight_edit_target"
-    APPLY_EDIT_PLAN = "apply_edit_plan"
-    APPLY_ERROR_FIX = "apply_error_fix"
-    REVERT_CHECKPOINT = "revert_checkpoint"
+    GRAPH_CHANGED = "graph_changed"
+    EDIT_TARGETS_CHANGED = "edit_targets_changed"
     PUBLISH_WORKFLOW = "publish_workflow"
 
 
@@ -795,12 +787,6 @@ class WorkflowEventData(_SseEventData):
 
 
 @dataclass
-class CanvasEdge:
-    source: str
-    target: str
-
-
-@dataclass
 class CanvasEventData(_SseEventData):
     sse_event: ClassVar[str] = "canvas"
 
@@ -811,8 +797,8 @@ class CanvasEventData(_SseEventData):
     revision: int
     event: CanvasEvent
     kind: Literal["canvas"] = "canvas"
-    node_id: str | None = None
-    edge: CanvasEdge | None = None
+    cause: Literal["apply", "restore"] | None = None
+    node_ids: list[str] = field(default_factory=list)
 
 
 @dataclass

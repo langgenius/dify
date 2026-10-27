@@ -1,8 +1,8 @@
+import type { SessionRunEvents } from '../session/types'
 import type { CanvasEventData } from '../types'
 import { useSetAtom } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { difyBuilderCanvasPendingRefreshAtom } from '../store'
 
 export const useDifyBuilderCanvasEvents = (
@@ -11,34 +11,32 @@ export const useDifyBuilderCanvasEvents = (
 ) => {
   const setPendingRefresh = useSetAtom(difyBuilderCanvasPendingRefreshAtom)
   const workflowStore = useWorkflowStore()
-  const shouldFocus = useCallback(
-    () => !workflowStore.getState().builderViewportManuallyChanged,
-    [workflowStore],
+  const clearEditTargets = useCallback(() => {
+    const { builderEditTargetNodeIds, setBuilderEditTargetNodeIds } = workflowStore.getState()
+    if (builderEditTargetNodeIds.length) setBuilderEditTargetNodeIds([])
+  }, [workflowStore])
+
+  const onSessionStateChanged = useCallback<NonNullable<SessionRunEvents['onSessionStateChanged']>>(
+    ({ phase, run_status }) => {
+      if (run_status === 'complete' || phase === 'test') clearEditTargets()
+    },
+    [clearEditTargets],
   )
 
   const onCanvasEvent = useCallback(
     (data: CanvasEventData) => {
       const event = data.event
       switch (event) {
-        case 'highlight_edit_target':
-          if (data.node_id) selectWorkflowNode(data.node_id, shouldFocus(), shouldFocus)
+        case 'edit_targets_changed':
+          if (data.node_ids.length)
+            workflowStore.getState().setBuilderEditTargetNodeIds(data.node_ids)
+          else clearEditTargets()
           return
-        case 'reset_build_canvas':
-        case 'revert_checkpoint':
-          return setPendingRefresh({ sessionId: data.session_id })
-        case 'add_start_node':
-        case 'add_knowledge_node':
-        case 'add_llm_node':
-        case 'add_output_node':
-        case 'apply_edit_plan':
-        case 'apply_error_fix':
-          // Keep the requested node until its graph is applied, including across later markers.
-          return setPendingRefresh((pending) => ({
+        case 'graph_changed':
+          if (data.cause === 'restore') clearEditTargets()
+          return setPendingRefresh({
             sessionId: data.session_id,
-            focusNodeId:
-              data.node_id ??
-              (pending?.sessionId === data.session_id ? pending.focusNodeId : undefined),
-          }))
+          })
         case 'publish_workflow':
           onPublishWorkflow?.()
           return
@@ -46,11 +44,14 @@ export const useDifyBuilderCanvasEvents = (
           event satisfies never
       }
     },
-    [onPublishWorkflow, setPendingRefresh, shouldFocus],
+    [clearEditTargets, onPublishWorkflow, setPendingRefresh, workflowStore],
   )
   const reset = useCallback(() => {
     onResetPublication?.()
-    setPendingRefresh(null)
-  }, [onResetPublication, setPendingRefresh])
-  return useMemo(() => ({ onCanvasEvent, reset }), [onCanvasEvent, reset])
+    clearEditTargets()
+  }, [clearEditTargets, onResetPublication])
+  return useMemo(
+    () => ({ onCanvasEvent, onSessionStateChanged, reset }),
+    [onCanvasEvent, onSessionStateChanged, reset],
+  )
 }

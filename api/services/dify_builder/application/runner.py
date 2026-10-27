@@ -89,11 +89,8 @@ class Env:
     # Forward native workflow events unchanged. Node summaries remain local to
     # the progress reporter; the frontend consumes the full execution stream.
     emit_workflow: Callable[[Mapping[str, object]], None] | None = None
-    # Emit forwards granular canvas mutations (add_*_node, apply_error_fix,
-    # ...) as each MutationIntent is applied. None is treated as a no-op --
-    # the caller (a handler) decides whether to wire it (opt-in, spec Sec 6):
-    # Build wants one event per intent, Edit suppresses these and fires one
-    # coarse apply_edit_plan itself instead.
+    # Emit one graph notification after a mutation batch commits, or a complete
+    # passive edit-target set. Native test progress uses emit_workflow instead.
     emit_canvas: Callable[[dict], None] | None = None
     # Called for each assistant text delta and its final marker. The sequence
     # is allocated before streaming; the final marker is emitted after the
