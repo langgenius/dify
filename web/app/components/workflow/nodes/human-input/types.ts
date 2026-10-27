@@ -1,12 +1,8 @@
 import type {
-  FileFormInput as SharedFileFormInput,
-  FileListFormInput as SharedFileListFormInput,
   FormInputItem as SharedFormInputItem,
   FormInputItemDefault as SharedFormInputItemDefault,
-  HumanInputSharedConfig as SharedHumanInputConfig,
   HumanInputSharedNodeType as SharedHumanInputNodeType,
   ParagraphFormInput as SharedParagraphFormInput,
-  SelectFormInput as SharedSelectFormInput,
   UserAction as SharedUserAction,
   UserActionButtonType as SharedUserActionButtonType,
 } from './shared/types'
@@ -20,16 +16,11 @@ import {
   UserActionButtonType as SharedUserActionButtonTypes,
 } from './shared/types'
 
-export type HumanInputSharedConfig = SharedHumanInputConfig
-export type HumanInputSharedNodeType = SharedHumanInputNodeType
+type HumanInputSharedNodeType = SharedHumanInputNodeType
 export type UserActionButtonType = SharedUserActionButtonType
 export type UserAction = SharedUserAction
-export type FormInputItemDefault = SharedFormInputItemDefault
 export type StringDefault = SharedFormInputItemDefault
 export type ParagraphFormInput = SharedParagraphFormInput
-export type SelectFormInput = SharedSelectFormInput
-export type FileFormInput = SharedFileFormInput
-export type FileListFormInput = SharedFileListFormInput
 export type FormInputItem = SharedFormInputItem
 
 export const UserActionButtonType = SharedUserActionButtonTypes

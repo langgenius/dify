@@ -11,7 +11,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
-export type HumanInputMigrationDialogProps = {
+type HumanInputMigrationDialogProps = {
   open: boolean
   pending: boolean
   nodeCount: number

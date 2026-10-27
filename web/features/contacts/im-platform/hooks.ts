@@ -2,7 +2,6 @@
 
 import type { ContactImPlatformRepository } from './repository'
 import type {
-  AuthorizeContactImProviderCommand,
   ContactImProviderCommand,
   ContactImSyncResult,
   ContactImSyncRunView,
@@ -34,7 +33,6 @@ import {
 } from './types'
 
 type SaveCredentialsInput = Omit<SaveContactImCredentialsCommand, 'organizationId'>
-type AuthorizeProviderInput = Omit<AuthorizeContactImProviderCommand, 'organizationId'>
 type ProviderInput = Omit<ContactImProviderCommand, 'organizationId'>
 type TestConnectionInput = Omit<TestContactImConnectionCommand, 'organizationId'>
 
@@ -320,21 +318,6 @@ export const useSaveContactImCredentials = () => {
     ...mutation,
     saveCredentials,
   }
-}
-
-export const useAuthorizeContactImProvider = () => {
-  const organization = useContactsImPlatformOrganization()
-  const repository = useContactsImPlatformRepository()
-  const invalidateOrganizationQueries = useInvalidateOrganizationQueries()
-
-  return useMutation({
-    mutationFn: (input: AuthorizeProviderInput) =>
-      repository.authorizeProvider({
-        ...input,
-        organizationId: organization.organizationId,
-      }),
-    onSuccess: invalidateOrganizationQueries,
-  })
 }
 
 export const useTestContactImConnection = () => {

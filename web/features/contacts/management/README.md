@@ -6,7 +6,7 @@ selection, the External-to-Workspace Contact confirmation composed into member
 invitations, and the narrow Contacts impact composed into active-member removal.
 
 All data and mutations currently flow through `ContactsManagementRepository` and
-the deterministic in-memory adapter in `mock/`. Components must not call member,
+the deterministic in-memory adapter in `__tests__/fixtures/`. Components must not call member,
 Contact, or Platform-contact APIs until a later backend-contract change replaces
 the adapter. Add from Platform is modeled only with available Platform-contact
 types and names. The sibling `contacts/im-platform` feature intentionally keeps an

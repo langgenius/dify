@@ -2,12 +2,12 @@ import type { AccountWithRoleResponse } from '@dify/contracts/api/console/worksp
 import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { ContactsManagementProvider } from '@/features/contacts/management/composition'
-import { createContactsMockRepository } from '@/features/contacts/management/mock/repository'
+import { createContactsMockRepository } from '@/features/contacts/management/__tests__/fixtures/repository'
 import {
   ContactsMockScenario,
   createContactsMockScenario,
-} from '@/features/contacts/management/mock/scenarios'
+} from '@/features/contacts/management/__tests__/fixtures/scenarios'
+import { ContactsManagementProvider } from '@/features/contacts/management/composition'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'

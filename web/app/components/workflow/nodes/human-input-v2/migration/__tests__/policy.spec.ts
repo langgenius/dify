@@ -6,7 +6,6 @@ import {
   getHumanInputCreationPolicy,
   HumanInputVersionKind,
   isLegacyHumanInputNodeData,
-  isMigrationEligibleHumanInputNodeData,
 } from '../policy'
 
 const data = (version?: unknown, type: BlockEnum = BlockEnum.HumanInput) =>
@@ -20,15 +19,14 @@ const node = (version?: unknown): Pick<Node, 'data'> => ({ data: data(version) }
 
 describe('Human Input migration policy', () => {
   it.each([
-    [undefined, HumanInputVersionKind.LegacyEligible, true],
-    ['1', HumanInputVersionKind.LegacyEligible, true],
-    ['2', HumanInputVersionKind.V2, false],
-    [2, HumanInputVersionKind.LegacyBlocked, false],
-    ['3', HumanInputVersionKind.LegacyBlocked, false],
-    [null, HumanInputVersionKind.LegacyBlocked, false],
-  ])('classifies persisted version %p', (version, expectedKind, eligible) => {
+    [undefined, HumanInputVersionKind.LegacyEligible],
+    ['1', HumanInputVersionKind.LegacyEligible],
+    ['2', HumanInputVersionKind.V2],
+    [2, HumanInputVersionKind.LegacyBlocked],
+    ['3', HumanInputVersionKind.LegacyBlocked],
+    [null, HumanInputVersionKind.LegacyBlocked],
+  ])('classifies persisted version %p', (version, expectedKind) => {
     expect(classifyHumanInputVersion(data(version))).toBe(expectedKind)
-    expect(isMigrationEligibleHumanInputNodeData(data(version))).toBe(eligible)
     expect(isLegacyHumanInputNodeData(data(version))).toBe(
       expectedKind !== HumanInputVersionKind.V2,
     )

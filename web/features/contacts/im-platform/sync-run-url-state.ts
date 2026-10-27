@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 
-export const CONTACT_IM_SYNC_RUN_QUERY_PARAM = 'sync_run_id'
+const CONTACT_IM_SYNC_RUN_QUERY_PARAM = 'sync_run_id'
 
 export const useContactImSyncRunUrlState = () => {
   const pathname = usePathname()

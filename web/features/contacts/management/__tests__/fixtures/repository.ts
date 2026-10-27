@@ -1,5 +1,5 @@
-import type { ContactsManagementRepository } from '../repository'
-import type { ContactPage } from '../types'
+import type { ContactsManagementRepository } from '../../repository'
+import type { ContactPage } from '../../types'
 import type { ContactsMockScenarioDefinition } from './scenarios'
 
 type CreateContactsMockRepositoryOptions = {

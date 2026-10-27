@@ -2,7 +2,6 @@ import type { HumanInputV2NodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery } from '@tanstack/react-query'
-import * as React from 'react'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import HumanInputSharedPanelSections from '@/app/components/workflow/nodes/human-input/shared/panel-sections'
 import { VarType } from '@/app/components/workflow/types'
@@ -66,5 +65,3 @@ export const HumanInputV2Panel = ({ id, data }: NodePanelProps<HumanInputV2NodeT
     </div>
   )
 }
-
-export default React.memo(HumanInputV2Panel)

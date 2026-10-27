@@ -1,5 +1,5 @@
-import type { FormData } from '../form'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { LegacyHumanInputFormData } from '@/features/human-input-form/types'
 import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -48,7 +48,7 @@ describe('Human input share form', () => {
   afterEach(() => {
     document.title = originalTitle
   })
-  const formData: FormData = {
+  const formData: LegacyHumanInputFormData = {
     site: {
       site: {
         title: 'Review App',
@@ -105,9 +105,9 @@ describe('Human input share form', () => {
   })
 
   it('moves from loading to the requested form and updates its document title', async () => {
-    let resolve!: (data: FormData) => void
+    let resolve!: (data: LegacyHumanInputFormData) => void
     mockGetForm.mockReturnValue(
-      new Promise<FormData>((done) => {
+      new Promise<LegacyHumanInputFormData>((done) => {
         resolve = done
       }),
     )

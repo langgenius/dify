@@ -4,22 +4,6 @@ const EMAIL_PATTERN = /^[^\s@.]+(?:\.[^\s@.]+)*@[^\s@.]+(?:\.[^\s@.]+)+$/
 
 export type RecipientValidationError = 'contact-required' | 'selector-required' | 'email-invalid'
 
-export type HumanInputV2RecipientType = HumanInputV2Recipient['type']
-
-export function createRecipientDraft(type: HumanInputV2RecipientType): HumanInputV2Recipient {
-  switch (type) {
-    case 'contact':
-      return { type, contact_id: '' }
-    case 'dynamic_email':
-      return { type, selector: [] }
-    case 'onetime_email':
-      return { type, email: '' }
-    case 'initiator':
-    case 'all_workspace_contacts':
-      return { type }
-  }
-}
-
 export function getRecipientValidationError(
   recipient: HumanInputV2Recipient,
 ): RecipientValidationError | undefined {

@@ -2,7 +2,7 @@ import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/
 import type { CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { HumanInputResolvedValue } from '@/types/workflow'
 
-export type HumanInputFormBranding = {
+type HumanInputFormBranding = {
   site: SiteInfo
   customConfig?: Record<string, CustomConfigValueType> | null
 }

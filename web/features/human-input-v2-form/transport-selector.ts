@@ -2,7 +2,7 @@ import type { HumanInputV2FormTransport } from './types'
 import { createMockHumanInputV2FormTransport } from './mock-transport'
 import { realHumanInputV2FormTransport } from './real-transport'
 
-export type HumanInputV2AdapterKind = 'real' | 'mock'
+type HumanInputV2AdapterKind = 'real' | 'mock'
 
 type SelectTransportOptions = {
   adapter: HumanInputV2AdapterKind

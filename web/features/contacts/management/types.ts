@@ -25,7 +25,7 @@ export type ContactsFeatureContextValue = {
   workspaceId: string
 }
 
-export type ContactType = HumanInputContactType
+type ContactType = HumanInputContactType
 export type ContactTypeFilter = 'all' | ContactType
 
 export type ContactIMBinding = ImBinding
@@ -132,7 +132,7 @@ export type AddPlatformContactsCommand = {
   upgradeExternalContacts: boolean
 }
 
-export type PlatformContactUpgradeConflict = {
+type PlatformContactUpgradeConflict = {
   contactId: string
   email: string
   platformContactId: string

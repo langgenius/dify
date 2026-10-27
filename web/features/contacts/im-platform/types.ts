@@ -152,7 +152,7 @@ export class ContactImRepositoryError extends Error {
   }
 }
 
-export type ContactImProviderCapabilities = {
+type ContactImProviderCapabilities = {
   directorySync: boolean
 }
 
@@ -210,13 +210,13 @@ export type ContactImIntegrationView = {
   statusReason: ContactImStatusReason | null
 }
 
-export type ContactImPlatformIdentityView = {
+type ContactImPlatformIdentityView = {
   displayName: string | null
   email: string | null
   platformUserId: string | null
 }
 
-export type ContactImMatchedContactView = {
+type ContactImMatchedContactView = {
   avatarUrl?: string | null
   email: string | null
   id: string

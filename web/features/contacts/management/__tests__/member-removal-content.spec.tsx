@@ -8,8 +8,8 @@ import { useState } from 'react'
 import { ContactsManagementProvider } from '../composition'
 import { useRemoveContactMember } from '../hooks'
 import { MemberRemovalContactImpactContent } from '../member-removal-content'
-import { createContactsMockRepository } from '../mock/repository'
-import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
+import { createContactsMockRepository } from './fixtures/repository'
+import { ContactsMockScenario, createContactsMockScenario } from './fixtures/scenarios'
 
 const member: Member = {
   avatar: '',

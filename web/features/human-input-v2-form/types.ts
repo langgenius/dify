@@ -1,6 +1,6 @@
 import type { HumanInputFormDefinition } from '@/features/human-input-form/types'
 
-export type HumanInputV2AccessResponse = {
+type HumanInputV2AccessResponse = {
   challengeToken: string
   resendAfterSeconds: number
   expiresInSeconds: number
@@ -12,14 +12,14 @@ export type HumanInputV2Challenge = HumanInputV2AccessResponse & {
   expiresAt: number
 }
 
-export type HumanInputV2SubmitPayload = {
+type HumanInputV2SubmitPayload = {
   inputs: Record<string, unknown>
   action: string
   otp_code: string
   challenge_token: string
 }
 
-export type HumanInputV2UploadToken = {
+type HumanInputV2UploadToken = {
   uploadToken: string
   expiresAt: number
 }
@@ -32,7 +32,7 @@ export type HumanInputV2UploadedFile = {
   url: string
 }
 
-export type HumanInputV2RequestOptions = {
+type HumanInputV2RequestOptions = {
   signal?: AbortSignal
 }
 

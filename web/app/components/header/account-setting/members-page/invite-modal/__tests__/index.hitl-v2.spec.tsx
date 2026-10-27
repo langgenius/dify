@@ -4,11 +4,11 @@ import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { ContactsManagementMockProvider } from '@/features/contacts/management/composition'
+import { ContactsManagementMockProvider } from '@/features/contacts/management/__tests__/fixtures/composition'
 import {
   ContactsMockScenario,
   createContactsMockScenario,
-} from '@/features/contacts/management/mock/scenarios'
+} from '@/features/contacts/management/__tests__/fixtures/scenarios'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'

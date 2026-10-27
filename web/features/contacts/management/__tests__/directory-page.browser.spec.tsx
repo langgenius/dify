@@ -2,9 +2,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { ContactsManagementMockProvider } from '../composition'
 import { ContactsDirectoryPage } from '../directory-page'
-import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
+import { ContactsManagementMockProvider } from './fixtures/composition'
+import { ContactsMockScenario, createContactsMockScenario } from './fixtures/scenarios'
 
 it.each([ContactsMockScenario.CeMixed, ContactsMockScenario.ReadOnly])(
   'opens contact details from the whole row in %s without consuming selection or keyboard access',

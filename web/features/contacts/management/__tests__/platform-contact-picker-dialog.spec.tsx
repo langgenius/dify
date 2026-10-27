@@ -4,10 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
-import { ContactsManagementMockProvider, ContactsManagementProvider } from '../composition'
-import { createContactsMockRepository } from '../mock/repository'
-import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
+import { ContactsManagementProvider } from '../composition'
 import { PlatformContactPickerDialog } from '../platform-contact-picker-dialog'
+import { ContactsManagementMockProvider } from './fixtures/composition'
+import { createContactsMockRepository } from './fixtures/repository'
+import { ContactsMockScenario, createContactsMockScenario } from './fixtures/scenarios'
 
 describe('PlatformContactPickerDialog', () => {
   it('asks before upgrading an External Contact and keeps the selection after cancellation', async () => {

@@ -4,7 +4,7 @@ import {
   createMockHumanInputV2FormTransport,
   HUMAN_INPUT_V2_MOCK_OTP,
 } from '../mock-transport'
-import { getHumanInputV2Paths, realHumanInputV2FormTransport } from '../real-transport'
+import { realHumanInputV2FormTransport } from '../real-transport'
 import {
   defaultHumanInputV2FormTransport,
   selectHumanInputV2FormTransport,
@@ -12,14 +12,6 @@ import {
 
 describe('Human Input v2 transports', () => {
   afterEach(() => vi.unstubAllGlobals())
-  it('uses explicit v2 public endpoint paths without exposing the raw token', () => {
-    expect(getHumanInputV2Paths('token/with space')).toEqual({
-      form: '/form/human-input/v2/public/token%2Fwith%20space',
-      accessRequest: '/form/human-input/v2/public/token%2Fwith%20space/access-request',
-      uploadToken: '/form/human-input/v2/public/token%2Fwith%20space/upload-token',
-    })
-  })
-
   it('uses the real adapter in local development and reports backend 501 without mock fallback', async () => {
     vi.stubGlobal(
       'fetch',

@@ -3,9 +3,9 @@ import type { ContactsManagementRepository } from '../repository'
 import type { ContactsFeatureContextValue } from '../types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { consoleClient } from '@/service/console'
-import { createContactsMockRepository } from '../mock/repository'
-import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
 import { createContactsApiRepository } from '../repository'
+import { createContactsMockRepository } from './fixtures/repository'
+import { ContactsMockScenario, createContactsMockScenario } from './fixtures/scenarios'
 
 vi.mock('@/service/console', () => ({
   consoleClient: {

@@ -3,10 +3,8 @@ import type {
   ListContactOptionsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import { QueryClient } from '@tanstack/react-query'
-import {
-  createContactRecipientOptionProvider,
-  mockContactRecipientOptionProvider,
-} from '../contact-provider'
+import { createContactRecipientOptionProvider } from '../contact-provider'
+import { mockContactRecipientOptionProvider } from './fixtures/contact-provider'
 
 const api = vi.hoisted(() => ({
   search:

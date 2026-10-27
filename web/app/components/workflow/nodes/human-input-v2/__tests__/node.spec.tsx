@@ -5,11 +5,12 @@ import { UserActionButtonType } from '../../human-input/shared/types'
 import { HumanInputV2Node } from '../node'
 
 vi.mock('../contact-provider', async (importOriginal) => {
+  const { mockContactRecipientOptionProvider } = await import('./fixtures/contact-provider')
   const actual = await importOriginal<typeof import('../contact-provider')>()
   return {
     ...actual,
     useContactRecipientOptionProvider: () => ({
-      provider: actual.mockContactRecipientOptionProvider,
+      provider: mockContactRecipientOptionProvider,
       workspaceId: 'workspace-1',
     }),
   }

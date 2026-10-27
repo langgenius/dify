@@ -2,26 +2,26 @@ import type { HumanInputSharedNodeType } from '../human-input/shared/types'
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-export type ContactRecipient = {
+type ContactRecipient = {
   type: 'contact'
   contact_id: string
 }
 
-export type DynamicEmailRecipient = {
+type DynamicEmailRecipient = {
   type: 'dynamic_email'
   selector: ValueSelector
 }
 
-export type OnetimeEmailRecipient = {
+type OnetimeEmailRecipient = {
   type: 'onetime_email'
   email: string
 }
 
-export type InitiatorRecipient = {
+type InitiatorRecipient = {
   type: 'initiator'
 }
 
-export type AllWorkspaceContactsRecipient = {
+type AllWorkspaceContactsRecipient = {
   type: 'all_workspace_contacts'
 }
 

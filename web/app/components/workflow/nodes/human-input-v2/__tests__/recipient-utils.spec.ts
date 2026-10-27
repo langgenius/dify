@@ -1,7 +1,6 @@
 import type { HumanInputV2Recipient } from '../types'
 import {
   addRecipient,
-  createRecipientDraft,
   deriveRecipientSummary,
   findConflictingContact,
   getRecipientCanonicalKey,
@@ -19,19 +18,6 @@ describe('Human Input v2 recipient utilities', () => {
     { type: 'dynamic_email', selector: ['start', 'email'] },
     { type: 'onetime_email', email: 'Owner@Example.com' },
   ]
-
-  it('constructs exact empty drafts for every recipient discriminator', () => {
-    expect(
-      (['contact', 'dynamic_email', 'onetime_email', 'initiator'] as const).map(
-        createRecipientDraft,
-      ),
-    ).toEqual([
-      { type: 'contact', contact_id: '' },
-      { type: 'dynamic_email', selector: [] },
-      { type: 'onetime_email', email: '' },
-      { type: 'initiator' },
-    ])
-  })
 
   it('validates every recipient union and derives canonical duplicate keys', () => {
     expect(getRecipientValidationError({ type: 'contact', contact_id: '' })).toBe(
@@ -143,7 +129,6 @@ describe('Human Input v2 recipient utilities', () => {
     const allContacts: HumanInputV2Recipient = { type: 'all_workspace_contacts' }
     const selected: HumanInputV2Recipient[] = [allContacts, { type: 'initiator' }]
     expect(getRecipientValidationError(allContacts)).toBeUndefined()
-    expect(createRecipientDraft('all_workspace_contacts')).toEqual(allContacts)
     expect(addRecipient(selected, allContacts)).toBe(selected)
     expect(hasDuplicateRecipients(selected)).toBe(false)
     expect(hasDuplicateRecipients([allContacts, allContacts])).toBe(true)

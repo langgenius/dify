@@ -1,6 +1,5 @@
 import type { GetContactResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { ContactsMockScenarioDefinition } from '../mock/scenarios'
 import type { ContactsManagementRepository } from '../repository'
 import type {
   ContactIMChannel,
@@ -8,17 +7,19 @@ import type {
   ContactsFeatureContextValue,
   ContactView,
 } from '../types'
+import type { ContactsMockScenarioDefinition } from './fixtures/scenarios'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { ContactsManagementMockProvider, ContactsManagementProvider } from '../composition'
+import { ContactsManagementProvider } from '../composition'
 import { ContactAvatar, ContactDetailsPanel } from '../contact-details-panel'
 import { ContactsDirectoryPage } from '../directory-page'
-import { createContactsMockRepository } from '../mock/repository'
-import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
 import { ContactIMRequestError } from '../repository'
+import { ContactsManagementMockProvider } from './fixtures/composition'
+import { createContactsMockRepository } from './fixtures/repository'
+import { ContactsMockScenario, createContactsMockScenario } from './fixtures/scenarios'
 
 function renderDirectory(
   scenario: ContactsMockScenarioDefinition,

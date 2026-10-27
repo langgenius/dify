@@ -1,4 +1,4 @@
-import type { ContactsImPlatformOrganizationContext } from '../context'
+import type { ContactsImPlatformOrganizationContext } from '../../context'
 import type {
   ContactImIntegrationView,
   ContactImProviderDefinition,
@@ -7,7 +7,7 @@ import type {
   ContactImSyncItemView,
   ContactImSyncRunView,
   ContactImSyncStatus,
-} from '../types'
+} from '../../types'
 import {
   ContactChannelKind,
   ContactImAuthMode,
@@ -20,7 +20,7 @@ import {
   ContactImUnavailableReason,
   ContactImSafeReason as SafeReason,
   ContactImSyncStatus as SyncStatus,
-} from '../types'
+} from '../../types'
 
 type ValueOf<T> = T[keyof T]
 
@@ -54,7 +54,7 @@ export const ContactImMockScenario = {
 
 export type ContactImMockScenario = ValueOf<typeof ContactImMockScenario>
 
-export type ContactImMockFailurePlan = {
+type ContactImMockFailurePlan = {
   authorization: boolean
   connectionTest: boolean
   detailRunId: string | null

@@ -1,7 +1,6 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { ContactsMockScenarioDefinition } from './mock/scenarios'
 import type { ContactsManagementRepository } from './repository'
 import type { ContactsFeatureContextValue } from './types'
 import { useQuery } from '@tanstack/react-query'
@@ -12,7 +11,6 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { selectIMBindingCentrallyManaged } from '../im-binding-capability'
 import { ContactsFeatureContext, ContactsManagementRepositoryContext } from './composition-context'
-import { createContactsMockRepository } from './mock/repository'
 import { createContactsApiRepository } from './repository'
 
 export function ContactsManagementProvider({
@@ -30,36 +28,6 @@ export function ContactsManagementProvider({
         {children}
       </ContactsManagementRepositoryContext>
     </ContactsFeatureContext>
-  )
-}
-
-export function ContactsManagementMockProvider({
-  children,
-  scenario,
-  wait,
-}: {
-  children: ReactNode
-  scenario: ContactsMockScenarioDefinition
-  wait?: () => Promise<void>
-}) {
-  const context = useMemo<ContactsFeatureContextValue>(
-    () => ({
-      deployment: scenario.deployment,
-      imBindingCentrallyManaged: scenario.imBindingCentrallyManaged,
-      permissions: scenario.permissions,
-      workspaceId: scenario.workspaceId,
-    }),
-    [scenario],
-  )
-  const repository = useMemo(
-    () => createContactsMockRepository({ scenario, wait }),
-    [scenario, wait],
-  )
-
-  return (
-    <ContactsManagementProvider context={context} repository={repository}>
-      {children}
-    </ContactsManagementProvider>
   )
 }
 

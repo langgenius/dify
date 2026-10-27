@@ -11,12 +11,12 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { onTestFinished } from 'vite-plus/test'
-import { ContactsManagementProvider } from '@/features/contacts/management/composition'
-import { createContactsMockRepository } from '@/features/contacts/management/mock/repository'
+import { createContactsMockRepository } from '@/features/contacts/management/__tests__/fixtures/repository'
 import {
   ContactsMockScenario,
   createContactsMockScenario,
-} from '@/features/contacts/management/mock/scenarios'
+} from '@/features/contacts/management/__tests__/fixtures/scenarios'
+import { ContactsManagementProvider } from '@/features/contacts/management/composition'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'

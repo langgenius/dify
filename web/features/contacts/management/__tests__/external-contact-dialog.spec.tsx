@@ -3,10 +3,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleClient } from '@/service/console'
-import { ContactsManagementMockProvider, ContactsManagementProvider } from '../composition'
+import { ContactsManagementProvider } from '../composition'
 import { ExternalContactDialog } from '../external-contact-dialog'
-import { ContactsMockScenario, createContactsMockScenario } from '../mock/scenarios'
 import { createContactsApiRepository } from '../repository'
+import { ContactsManagementMockProvider } from './fixtures/composition'
+import { ContactsMockScenario, createContactsMockScenario } from './fixtures/scenarios'
 
 const { uploadAvatar } = vi.hoisted(() => ({ uploadAvatar: vi.fn() }))
 

@@ -1,5 +1,5 @@
-import type { ContactsImPlatformOrganizationContext } from '../context'
-import type { ContactImPlatformRepository } from '../repository'
+import type { ContactsImPlatformOrganizationContext } from '../../context'
+import type { ContactImPlatformRepository } from '../../repository'
 import type {
   AuthorizeContactImProviderCommand,
   ContactImIntegrationView,
@@ -12,7 +12,7 @@ import type {
   ListContactImSyncItemsInput,
   SaveContactImCredentialsCommand,
   TestContactImConnectionCommand,
-} from '../types'
+} from '../../types'
 import type { ContactImMockScenario, ContactImMockScenarioSeed } from './scenarios'
 import {
   ContactImAuthMode,
@@ -23,7 +23,7 @@ import {
   ContactImRepositoryError,
   ContactImRepositoryErrorCode,
   ContactImSyncStatus,
-} from '../types'
+} from '../../types'
 import {
   countContactImSyncItems,
   createDefaultTransitionFinal,
@@ -49,7 +49,7 @@ const createLoadBarrier = (): LoadBarrier => {
   return { promise, release }
 }
 
-export class InMemoryContactImPlatformRepository implements ContactImPlatformRepository {
+class InMemoryContactImPlatformRepository implements ContactImPlatformRepository {
   readonly queryKey: string
   private loadBarrier: LoadBarrier | null
   private seed: ContactImMockScenarioSeed

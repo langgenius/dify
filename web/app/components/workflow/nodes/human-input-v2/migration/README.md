@@ -8,4 +8,4 @@ The executor sends the whole eligible batch and verifies that every requested no
 
 All migrated nodes are applied together, followed by one draft save and one history event. If draft saving fails, rollback restores untouched migration results while preserving edits made after migration was applied. Published workflows are unaffected until separately published.
 
-`mock-api.ts` and `planner.ts` remain only as isolated legacy test fixtures. Runtime migration does not resolve contacts locally or use their conversion semantics.
+Runtime migration does not resolve contacts locally; conversion semantics belong to the server.

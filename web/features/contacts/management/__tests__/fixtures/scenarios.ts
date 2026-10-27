@@ -3,7 +3,7 @@ import type {
   ContactsDeployment,
   ContactsPermissions,
   ContactView,
-} from '../types'
+} from '../../types'
 
 export const ContactsMockScenario = {
   AddPlatformFailure: 'add-platform-failure',
@@ -24,7 +24,7 @@ export const ContactsMockScenario = {
 
 export type ContactsMockScenario = (typeof ContactsMockScenario)[keyof typeof ContactsMockScenario]
 
-export type ContactsMockFailurePlan = {
+type ContactsMockFailurePlan = {
   addPlatform?: boolean
   contactRemoval?: boolean
   createExternal?: boolean
@@ -206,24 +206,5 @@ export function createContactsMockScenario(
       }
     case ContactsMockScenario.EeMixed:
       return base
-  }
-}
-
-export function createDefaultContactsScenario(deployment: ContactsDeployment, canManage: boolean) {
-  const scenario = createContactsMockScenario(
-    deployment === 'ee'
-      ? ContactsMockScenario.EeMixed
-      : deployment === 'saas'
-        ? ContactsMockScenario.SaasMixed
-        : ContactsMockScenario.CeMixed,
-  )
-
-  return {
-    ...scenario,
-    permissions: {
-      canManageContacts: canManage,
-      canManageMembers: canManage,
-      canViewContacts: canManage,
-    },
   }
 }

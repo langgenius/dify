@@ -3,17 +3,6 @@ import { zHumanInputV2FormSubmitRequest } from '@dify/contracts/api/web/zod.gen'
 import { normalizeHumanInputFormInput } from '@/app/components/workflow/nodes/human-input/shared/types'
 import { humanInputV2FormClient } from '@/service/human-input-v2'
 
-export const getHumanInputV2Paths = (token: string) => {
-  const encodedToken = encodeURIComponent(token)
-  const formPath = `/form/human-input/v2/public/${encodedToken}`
-
-  return {
-    form: formPath,
-    accessRequest: `${formPath}/access-request`,
-    uploadToken: `${formPath}/upload-token`,
-  }
-}
-
 export const realHumanInputV2FormTransport: HumanInputV2FormTransport = {
   async getForm(token, options) {
     const response = await humanInputV2FormClient.getForm(

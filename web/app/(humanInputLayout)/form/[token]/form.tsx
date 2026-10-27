@@ -1,5 +1,4 @@
 'use client'
-import type { LegacyHumanInputFormData } from '@/features/human-input-form/types'
 import { ORPCError } from '@orpc/client'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,8 +10,6 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm } from '@/service/use-share'
 import { useFormSubmit } from './use-form-submit'
-
-export type FormData = LegacyHumanInputFormData
 
 const FormContent = () => {
   const { t } = useTranslation(['common', 'share'])

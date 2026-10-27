@@ -2,7 +2,6 @@ import type { ContactRecipientOption, ContactRecipientOptionProvider } from './c
 import type { HumanInputV2NodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import HumanInputNodeBranches from '@/app/components/workflow/nodes/human-input/shared/node-branches'
@@ -131,5 +130,3 @@ export const HumanInputV2Node = (props: NodeProps<HumanInputV2NodeType>) => {
   const { provider, workspaceId } = useContactRecipientOptionProvider()
   return <HumanInputV2NodeContent key={workspaceId} {...props} provider={provider} />
 }
-
-export default React.memo(HumanInputV2Node)

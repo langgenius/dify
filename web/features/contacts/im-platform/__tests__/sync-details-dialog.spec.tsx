@@ -5,9 +5,9 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { downloadBlob } from '@/utils/download'
 import { ContactsImPlatformProvider } from '../composition'
-import { createContactImMockRepository } from '../mock/repository'
 import { createContactImSyncApi } from '../repository'
 import { ContactImSyncDetailsDialog } from '../sync-details-dialog'
+import { createContactImMockRepository } from './fixtures/repository'
 
 vi.mock('@/utils/download', () => ({ downloadBlob: vi.fn() }))
 

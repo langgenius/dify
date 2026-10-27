@@ -5,11 +5,6 @@ import type {
 } from '@dify/contracts/api/console/workspace/types.gen'
 import type { TestContactImConnectionCommand } from '../types'
 import { httpErrorFromResponse } from '@/service/http-error'
-import {
-  createContactImMockRepository,
-  createContactImMockRepositoryFromSeed,
-} from '../mock/repository'
-import { ContactImMockScenario, getContactImMockScenarioSeed } from '../mock/scenarios'
 import { createContactImApiRepository } from '../repository'
 import {
   ContactImConnectionStatus,
@@ -18,6 +13,11 @@ import {
   ContactImSyncResult,
   ContactImSyncStatus,
 } from '../types'
+import {
+  createContactImMockRepository,
+  createContactImMockRepositoryFromSeed,
+} from './fixtures/repository'
+import { ContactImMockScenario, getContactImMockScenarioSeed } from './fixtures/scenarios'
 
 const organization = {
   canManage: true,

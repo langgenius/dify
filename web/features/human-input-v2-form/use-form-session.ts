@@ -20,7 +20,7 @@ type UseHumanInputV2FormSessionOptions = {
 
 const OTP_PATTERN = /^\d{6}$/
 
-export const isValidHumanInputV2Otp = (otpCode: string) => OTP_PATTERN.test(otpCode)
+const isValidHumanInputV2Otp = (otpCode: string) => OTP_PATTERN.test(otpCode)
 
 export const useHumanInputV2FormSession = ({
   token,

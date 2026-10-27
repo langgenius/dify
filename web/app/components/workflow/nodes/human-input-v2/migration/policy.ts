@@ -33,9 +33,6 @@ export const isLegacyHumanInputNodeData = (data: CommonNodeType): boolean => {
   )
 }
 
-export const isMigrationEligibleHumanInputNodeData = (data: CommonNodeType): boolean =>
-  classifyHumanInputVersion(data) === HumanInputVersionKind.LegacyEligible
-
 export const getHumanInputCreationPolicy = (
   nodes: Pick<Node, 'data'>[],
   canEdit: boolean,

@@ -6,8 +6,6 @@ import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { ContactsImPlatformProvider } from '../composition'
 import { ContactsImPlatformManagementSurface } from '../management-surface'
-import { createContactImMockRepository } from '../mock/repository'
-import { ContactImMockScenario } from '../mock/scenarios'
 import {
   ContactImConnectionStatus,
   ContactImProvider,
@@ -15,6 +13,8 @@ import {
   ContactImRepositoryError,
   ContactImRepositoryErrorCode,
 } from '../types'
+import { createContactImMockRepository } from './fixtures/repository'
+import { ContactImMockScenario } from './fixtures/scenarios'
 
 const mockNavigation = vi.hoisted(() => ({
   replace: vi.fn(),

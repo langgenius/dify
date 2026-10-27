@@ -15,8 +15,6 @@ import {
   useSaveContactImCredentials,
   useStartContactImSync,
 } from '../hooks'
-import { createContactImMockRepository } from '../mock/repository'
-import { ContactImMockScenario } from '../mock/scenarios'
 import { contactImPlatformQueryKeys } from '../query-keys'
 import { createContactImSyncApi } from '../repository'
 import {
@@ -25,6 +23,8 @@ import {
   ContactImRepositoryErrorCode,
   ContactImSyncStatus,
 } from '../types'
+import { createContactImMockRepository } from './fixtures/repository'
+import { ContactImMockScenario } from './fixtures/scenarios'
 
 const organization = {
   canManage: true,
