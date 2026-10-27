@@ -1174,14 +1174,6 @@ export const zPluginInstallationPermissionModel = z.object({
 })
 
 /**
- * ProviderContractSnapshot
- */
-export const zProviderContractSnapshot = z.object({
-  plugin_unique_identifier: z.string(),
-  provider: z.string(),
-})
-
-/**
  * ProviderNotInitializeError
  *
  * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
@@ -1510,20 +1502,6 @@ export const zTooManyFilesError = zErrorResponse.and(
 )
 
 /**
- * ToolConnectionRequirement
- *
- * Published authorization requirements, independent of personal connection readiness.
- */
-export const zToolConnectionRequirement = z.object({
-  allowed_credential_types: z.array(zConnectionCredentialType),
-  node_id: z.string(),
-  node_ids: z.array(z.string()),
-  provider: z.string(),
-  purpose: z.string(),
-  title: z.string(),
-})
-
-/**
  * TriggerWorkflowServiceModeUnavailableError
  *
  * This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
@@ -1735,6 +1713,19 @@ export const zSystemFeatureModel = z.object({
 })
 
 /**
+ * WebAppConnectionRequirement
+ */
+export const zWebAppConnectionRequirement = z.object({
+  allowed_credential_types: z.array(zConnectionCredentialType),
+  node_id: z.string(),
+  node_ids: z.array(z.string()),
+  plugin_unique_identifier: z.string(),
+  provider: z.string(),
+  purpose: z.string(),
+  title: z.string(),
+})
+
+/**
  * WebAppCustomConfigResponse
  */
 export const zWebAppCustomConfigResponse = z.object({
@@ -1752,8 +1743,7 @@ export const zWebAppParametersResponse = z.object({
   annotation_reply: z.object({
     enabled: z.boolean().optional(),
   }),
-  connection_providers: z.array(zProviderContractSnapshot),
-  connection_requirements: z.array(zToolConnectionRequirement),
+  connection_requirements: z.array(zWebAppConnectionRequirement),
   connection_revision: z.string().nullable(),
   file_upload: z.object({
     allowed_file_extensions: z.array(z.string()).optional(),

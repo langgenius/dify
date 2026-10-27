@@ -734,11 +734,6 @@ export type PluginInstallationScope =
   | 'official_and_specific_partners'
   | 'official_only'
 
-export type ProviderContractSnapshot = {
-  plugin_unique_identifier: string
-  provider: string
-}
-
 export type ProviderNotInitializeError = ErrorResponse & {
   code: 'provider_not_initialize'
   status: 400
@@ -972,15 +967,6 @@ export type TooManyFilesError = ErrorResponse & {
   status: 400
 }
 
-export type ToolConnectionRequirement = {
-  allowed_credential_types: Array<ConnectionCredentialType>
-  node_id: string
-  node_ids: Array<string>
-  provider: string
-  purpose: string
-  title: string
-}
-
 export type TriggerWorkflowServiceModeUnavailableError = ErrorResponse & {
   code: 'trigger_workflow_service_mode_unavailable'
   status: 403
@@ -1028,6 +1014,16 @@ export type WebAppAuthSsoModel = {
   protocol: SsoProtocol | null
 }
 
+export type WebAppConnectionRequirement = {
+  allowed_credential_types: Array<ConnectionCredentialType>
+  node_id: string
+  node_ids: Array<string>
+  plugin_unique_identifier: string
+  provider: string
+  purpose: string
+  title: string
+}
+
 export type WebAppCustomConfigResponse = {
   remove_webapp_brand: boolean
   replace_webapp_logo?: string | null
@@ -1040,8 +1036,7 @@ export type WebAppParametersResponse = {
   annotation_reply: {
     enabled?: boolean
   }
-  connection_providers: Array<ProviderContractSnapshot>
-  connection_requirements: Array<ToolConnectionRequirement>
+  connection_requirements: Array<WebAppConnectionRequirement>
   connection_revision: string | null
   file_upload: {
     allowed_file_extensions?: Array<string>

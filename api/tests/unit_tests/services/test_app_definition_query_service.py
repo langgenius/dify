@@ -13,6 +13,7 @@ from services.app_definition_query_service import (
     AppParameterConfig,
     AppToolIconSource,
 )
+from services.end_user_connections.revision import ProviderContractSnapshot
 
 _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/current/tool-provider/builtin/"
 
@@ -202,20 +203,20 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
     )
     definitions.get_published_parameter_config.return_value = parameters
     providers = (
-        module.ProviderContractSnapshot(
+        ProviderContractSnapshot(
             provider="vendor/calendar/calendar", plugin_unique_identifier="vendor/calendar:1.0.0@" + "a" * 64
         ),
     )
     with patch.object(service._connection_revisions, "resolve", return_value=("connection-revision", providers)):
         result = service.get_web_parameters("app-1", "tenant-1")
     assert result["connection_revision"] == "connection-revision"
-    assert result["connection_providers"] == providers
     assert "workflow_id" not in result
     assert result["requires_end_user_connections"] is True
     requirement = result["connection_requirements"][0]
     assert requirement.node_id == "tool-1"
     assert requirement.node_ids == ("tool-1", "tool-2")
     assert requirement.provider == "vendor/calendar/calendar"
+    assert requirement.plugin_unique_identifier == providers[0].plugin_unique_identifier
     assert requirement.title == "tool-1"
     assert requirement.purpose == "Read events"
     assert result["opening_statement"] == "Hello"
@@ -224,7 +225,6 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
     assert "workflow_id" not in public
     assert "requires_end_user_connections" not in public
     assert "connection_requirements" not in public
-    assert "connection_providers" not in public
 
 
 @pytest.mark.parametrize(
@@ -255,7 +255,6 @@ def test_web_parameters_without_personal_tools_have_empty_requirements(graph: di
 
     result = service.get_web_parameters("app-1", "tenant-1")
     assert result["connection_requirements"] == ()
-    assert result["connection_providers"] == ()
 
 
 def test_incomplete_published_connection_requirement_is_not_reported_as_connection_free() -> None:

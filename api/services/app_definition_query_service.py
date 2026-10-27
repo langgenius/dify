@@ -4,10 +4,12 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Any, NamedTuple, Protocol
 
+from pydantic import Field
+
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from services.end_user_connections.errors import ConnectionError
-from services.end_user_connections.revision import ConnectionRevisions, ProviderContractSnapshot
+from services.end_user_connections.revision import ConnectionRevisions
 from services.workflow.tool_credentials import ToolConnectionRequirement, get_tool_connection_requirements
 
 
@@ -24,11 +26,14 @@ class WebAppParameterConfig(NamedTuple):
     graph: Mapping[str, Any] | None
 
 
+class WebAppConnectionRequirement(ToolConnectionRequirement):
+    plugin_unique_identifier: str = Field(description="Exact plugin artifact recorded in connection_revision.")
+
+
 class WebAppParametersDict(AppParametersDict):
     connection_revision: str | None
-    connection_providers: tuple[ProviderContractSnapshot, ...]
     requires_end_user_connections: bool
-    connection_requirements: tuple[ToolConnectionRequirement, ...]
+    connection_requirements: tuple[WebAppConnectionRequirement, ...]
 
 
 class AppToolIconSource(NamedTuple):
@@ -144,14 +149,20 @@ class AppDefinitionQueryService:
                 if config.workflow_id is not None and config.graph is not None
                 else (None, ())
             )
+            plugin_identifiers = {provider.provider: provider.plugin_unique_identifier for provider in providers}
+            web_requirements = tuple(
+                WebAppConnectionRequirement(
+                    **requirement.model_dump(), plugin_unique_identifier=plugin_identifiers[requirement.provider]
+                )
+                for requirement in requirements
+            )
         except (KeyError, TypeError, ValueError, ConnectionError):
             raise AppDefinitionUnavailableError() from None
         return {
             **self._map_parameters(config.parameters),
             "connection_revision": revision,
-            "connection_providers": providers,
             "requires_end_user_connections": config.requires_end_user_connections,
-            "connection_requirements": requirements,
+            "connection_requirements": web_requirements,
         }
 
     @staticmethod

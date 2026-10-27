@@ -2207,13 +2207,6 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
 
-#### ProviderContractSnapshot
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| plugin_unique_identifier | string |  | Yes |
-| provider | string |  | Yes |
-
 #### ProviderNotInitializeError
 
 No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
@@ -2516,19 +2509,6 @@ Only one file is allowed.
 | ---- | ---- | ----------- | -------- |
 | TooManyFilesError |  | Only one file is allowed. |  |
 
-#### ToolConnectionRequirement
-
-Published authorization requirements, independent of personal connection readiness.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_credential_types | [ [ConnectionCredentialType](#connectioncredentialtype) ] |  | Yes |
-| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
-| node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
-| provider | string |  | Yes |
-| purpose | string |  | Yes |
-| title | string |  | Yes |
-
 #### TriggerWorkflowServiceModeUnavailableError
 
 This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
@@ -2605,6 +2585,18 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 
+#### WebAppConnectionRequirement
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_credential_types | [ [ConnectionCredentialType](#connectioncredentialtype) ] |  | Yes |
+| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
+| node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
+| plugin_unique_identifier | string | Exact plugin artifact recorded in connection_revision. | Yes |
+| provider | string |  | Yes |
+| purpose | string |  | Yes |
+| title | string |  | Yes |
+
 #### WebAppCustomConfigResponse
 
 | Name | Type | Description | Required |
@@ -2620,8 +2612,7 @@ in form definition, or a variable while the workflow is running.
 | account_login_url | string | Account-origin sign-in page for the existing Web App login flow | Yes |
 | allow_anonymous_end_user_auth | boolean | Whether Guest identities may manage and use personal Connections; does not control App entry. | Yes |
 | annotation_reply | { **"enabled"**: boolean } |  | Yes |
-| connection_providers | [ [ProviderContractSnapshot](#providercontractsnapshot) ] | Distinct EndUser tool Providers and their exact plugin artifacts in connection_revision. | Yes |
-| connection_requirements | [ [ToolConnectionRequirement](#toolconnectionrequirement) ] | Static authorization requirements for this published version, without personal connection state. | Yes |
+| connection_requirements | [ [WebAppConnectionRequirement](#webappconnectionrequirement) ] | Authorization requirements and exact plugin artifacts in connection_revision, without personal state. | Yes |
 | connection_revision | string | Opaque revision of the connection requirements and installed plugin artifacts; null for other app modes. Return it unchanged in connection requests and runs. | Yes |
 | file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
 | more_like_this | { **"enabled"**: boolean } |  | Yes |

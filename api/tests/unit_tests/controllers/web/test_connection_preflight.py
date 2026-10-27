@@ -70,12 +70,6 @@ def test_explicit_version_and_selection_response(client: FlaskClient, harness: O
     version = parameters.get_json()["connection_revision"]
     assert version == harness.base.connection_revision
     assert parameters.get_json()["requires_end_user_connections"] is True
-    assert parameters.get_json()["connection_providers"] == [
-        {
-            "provider": "vendor/calendar/calendar",
-            "plugin_unique_identifier": harness.providers.controller.plugin_unique_identifier,
-        }
-    ]
     assert parameters.get_json()["connection_requirements"] == [
         {
             "node_id": "tool-1",
@@ -83,6 +77,7 @@ def test_explicit_version_and_selection_response(client: FlaskClient, harness: O
             "title": "tool-1",
             "purpose": "Read calendar",
             "provider": "vendor/calendar/calendar",
+            "plugin_unique_identifier": harness.providers.controller.plugin_unique_identifier,
             "allowed_credential_types": ["api-key", "oauth2"],
         }
     ]
@@ -240,13 +235,18 @@ def test_parameters_replace_workflow_id_and_plugin_upgrade_invalidates_the_revis
     harness.providers.controller.plugin_unique_identifier = "vendor/calendar:1.0.0@" + "b" * 64
     after = client.get("/api/parameters").get_json()
     assert before["connection_revision"] != after["connection_revision"]
-    assert before["connection_requirements"] == after["connection_requirements"]
-    assert before["connection_providers"] != after["connection_providers"]
+    old_requirement = before["connection_requirements"][0]
+    new_requirement = after["connection_requirements"][0]
+    assert old_requirement["plugin_unique_identifier"] != new_requirement["plugin_unique_identifier"]
+    assert {key: value for key, value in old_requirement.items() if key != "plugin_unique_identifier"} == {
+        key: value for key, value in new_requirement.items() if key != "plugin_unique_identifier"
+    }
     snapshot = harness.base.repository.get_revision(
         harness.base.context.tenant_id, harness.base.context.app_id, after["connection_revision"]
     )
     assert snapshot is not None
-    assert after["connection_providers"] == [provider.model_dump() for provider in snapshot.providers]
+    assert new_requirement["provider"] == snapshot.providers[0].provider
+    assert new_requirement["plugin_unique_identifier"] == snapshot.providers[0].plugin_unique_identifier
     response = client.post(
         "/api/connections/preflight", json={"connection_revision": before["connection_revision"], "connections": {}}
     )
