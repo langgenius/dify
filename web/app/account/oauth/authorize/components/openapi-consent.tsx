@@ -41,6 +41,15 @@ function buildApproveBody(
   }
 }
 
+function getMetadataHost(clientId: string) {
+  try {
+    const url = new URL(clientId)
+    return url.protocol === 'https:' && url.host ? url.host : null
+  } catch {
+    return null
+  }
+}
+
 export function OpenApiConsent({ client, searchParams }: OpenApiConsentProps) {
   const { t } = useTranslation(['oauth', 'common'])
   const router = useRouter()
@@ -53,6 +62,7 @@ export function OpenApiConsent({ client, searchParams }: OpenApiConsentProps) {
     throwOnError: (err) => !isUnauthorizedError(err),
   })
   const isLoggedIn = !!userProfileResp && !profileError
+  const metadataHost = getMetadataHost(client.client_id)
   const userProfile = userProfileResp?.profile
 
   const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
@@ -114,6 +124,12 @@ export function OpenApiConsent({ client, searchParams }: OpenApiConsentProps) {
 
       <div className="flex flex-col gap-2 rounded-xl bg-background-section-burn-inverted p-3 body-sm-regular text-text-secondary">
         <div>{t(($) => $['openapi.redirectsTo'], { ns: 'oauth', host: client.redirect_host })}</div>
+        <div className="text-text-warning">
+          {t(($) => $['openapi.unverified'], { ns: 'oauth' })}
+        </div>
+        {metadataHost && (
+          <div>{t(($) => $['openapi.detailsFrom'], { ns: 'oauth', host: metadataHost })}</div>
+        )}
         {client.localhost_only && (
           <div role="alert" className="text-text-warning">
             {t(($) => $['openapi.localhostWarning'], { ns: 'oauth' })}

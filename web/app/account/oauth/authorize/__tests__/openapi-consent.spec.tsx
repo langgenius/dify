@@ -80,6 +80,41 @@ describe('OpenApiConsent', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('always says the app is not verified', async () => {
+    renderConsent({})
+
+    expect(await screen.findByText('oauth.openapi.unverified')).toBeInTheDocument()
+  })
+
+  it('shows who published the details for an https client_id', async () => {
+    renderConsent({}, { ...client, client_id: 'https://app.example.com/oauth/client.json' })
+
+    expect(
+      await screen.findByText(/oauth\.openapi\.detailsFrom.*app\.example\.com/),
+    ).toBeInTheDocument()
+  })
+
+  it('shows no details line for a dcr_ client_id', async () => {
+    renderConsent({}, { ...client, client_id: 'dcr_abc123' })
+
+    await screen.findByText('Local CLI')
+    expect(screen.queryByText(/oauth\.openapi\.detailsFrom/)).not.toBeInTheDocument()
+  })
+
+  it('shows no details line and does not crash for a malformed URL-like client_id', async () => {
+    renderConsent({}, { ...client, client_id: 'https://' })
+
+    expect(await screen.findByText('oauth.openapi.unverified')).toBeInTheDocument()
+    expect(screen.queryByText(/oauth\.openapi\.detailsFrom/)).not.toBeInTheDocument()
+  })
+
+  it('shows no details line for a non-https URL client_id', async () => {
+    renderConsent({}, { ...client, client_id: 'http://app.example.com/client.json' })
+
+    await screen.findByText('Local CLI')
+    expect(screen.queryByText(/oauth\.openapi\.detailsFrom/)).not.toBeInTheDocument()
+  })
+
   it('approves with the PKCE request and navigates to redirect_to', async () => {
     const user = userEvent.setup()
     renderConsent({
