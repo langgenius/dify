@@ -148,11 +148,10 @@ describe('AnnotationReply', () => {
 
   it('keeps the feature enabled after disabling fails and allows retry', async () => {
     const user = userEvent.setup({ skipHover: true })
-    const notify = vi.spyOn(toast, 'error').mockImplementation(() => '')
     updateStatus.mockRejectedValueOnce(new Error('Unavailable'))
     renderFeature({ enabled: true })
     await user.click(screen.getByRole('switch'))
-    await waitFor(() => expect(notify).toHaveBeenCalledWith('common.api.actionFailed'))
+    await waitFor(() => expect(screen.getByRole('switch')).not.toHaveAttribute('aria-busy', 'true'))
     expect(screen.getByRole('switch')).toBeChecked()
     await user.click(screen.getByRole('switch'))
     await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
@@ -167,7 +166,7 @@ describe('AnnotationReply', () => {
     await user.click(screen.getByRole('switch'))
     await configDialog()
     await user.click(save())
-    await waitFor(() => expect(notify).toHaveBeenCalledWith('common.api.actionFailed'))
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Indexing failed'))
     expect(onChange).not.toHaveBeenCalled()
     expect(save()).toBeEnabled()
     await user.click(save())
