@@ -11,27 +11,18 @@ import time
 from datetime import UTC, datetime, timedelta
 
 import click
-from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 import app
 from configs import dify_config
 from extensions.ext_database import db
 from models.oauth import OpenAPIOAuthClient
-
-DELETE_BATCH_SIZE = 500
+from schedule._batch_delete import delete_in_batches
 
 
 def clean_unused_oauth_clients(session: Session, *, cutoff: datetime) -> int:
     candidates = OpenAPIOAuthClient.last_token_at.is_(None) & (OpenAPIOAuthClient.created_at < cutoff)
-    total = 0
-    while True:
-        ids = session.scalars(select(OpenAPIOAuthClient.id).where(candidates).limit(DELETE_BATCH_SIZE)).all()
-        if not ids:
-            return total
-        session.execute(delete(OpenAPIOAuthClient).where(OpenAPIOAuthClient.id.in_(ids)))
-        session.commit()
-        total += len(ids)
+    return delete_in_batches(session, OpenAPIOAuthClient, candidates)
 
 
 @app.celery.task(queue="retention")

@@ -16,36 +16,22 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import click
-from sqlalchemy import ColumnElement, delete, or_, select
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 import app
 from configs import dify_config
 from extensions.ext_database import db
 from models.oauth import OpenAPIOAuthAccessToken, OpenAPIOAuthRefreshToken
+from schedule._batch_delete import delete_in_batches
 
 logger = logging.getLogger(__name__)
-
-DELETE_BATCH_SIZE = 500
 
 
 @dataclass(frozen=True)
 class CleanedOAuthTokens:
     access_tokens: int
     refresh_tokens: int
-
-
-def _delete_in_batches(
-    session: Session, model: type[OpenAPIOAuthAccessToken | OpenAPIOAuthRefreshToken], candidates: ColumnElement[bool]
-) -> int:
-    total = 0
-    while True:
-        ids = session.scalars(select(model.id).where(candidates).limit(DELETE_BATCH_SIZE)).all()
-        if not ids:
-            return total
-        session.execute(delete(model).where(model.id.in_(ids)))
-        session.commit()
-        total += len(ids)
 
 
 def clean_oauth_tokens(session: Session, *, now: datetime, retention: timedelta) -> CleanedOAuthTokens:
@@ -56,10 +42,8 @@ def clean_oauth_tokens(session: Session, *, now: datetime, retention: timedelta)
         (OpenAPIOAuthAccessToken.revoked_at.is_(None)) & (OpenAPIOAuthAccessToken.expires_at < cutoff),
     )
     return CleanedOAuthTokens(
-        access_tokens=_delete_in_batches(session, OpenAPIOAuthAccessToken, access_candidates),
-        refresh_tokens=_delete_in_batches(
-            session, OpenAPIOAuthRefreshToken, OpenAPIOAuthRefreshToken.expires_at <= now
-        ),
+        access_tokens=delete_in_batches(session, OpenAPIOAuthAccessToken, access_candidates),
+        refresh_tokens=delete_in_batches(session, OpenAPIOAuthRefreshToken, OpenAPIOAuthRefreshToken.expires_at <= now),
     )
 
 

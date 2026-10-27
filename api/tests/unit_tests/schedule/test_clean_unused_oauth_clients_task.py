@@ -6,8 +6,8 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import event, select, update
+from sqlalchemy.orm import ORMExecuteState, Session
 
 from enums.oauth_client import OAuthClientKind
 from models.oauth import OpenAPIOAuthClient
@@ -79,10 +79,7 @@ def test_deletes_old_never_used_clients_and_keeps_the_rest(sqlite_session: Sessi
     assert _remaining(sqlite_session) == {"dcr_old_used", "dcr_new_unused"}
 
 
-def test_deletes_more_than_one_batch(
-    sqlite_session: Session, cleanup_module: ModuleType, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(cleanup_module, "DELETE_BATCH_SIZE", 2)
+def test_returns_the_number_of_deleted_clients(sqlite_session: Session, cleanup_module: ModuleType) -> None:
     old = CUTOFF - timedelta(days=1)
     for index in range(5):
         _add(sqlite_session, f"dcr_{index}", created_at=old)
@@ -92,3 +89,28 @@ def test_deletes_more_than_one_batch(
 
     assert deleted == 5
     assert _remaining(sqlite_session) == {"dcr_used"}
+
+
+def test_a_client_marked_between_the_select_and_the_delete_is_kept(
+    sqlite_session: Session, cleanup_module: ModuleType
+) -> None:
+    old = CUTOFF - timedelta(days=1)
+    _add(sqlite_session, "dcr_first_login", created_at=old)
+    _add(sqlite_session, "dcr_idle", created_at=old)
+
+    landed: list[bool] = []
+
+    @event.listens_for(sqlite_session, "do_orm_execute")
+    def _first_login_lands(state: ORMExecuteState) -> None:
+        if state.is_delete and not landed:
+            landed.append(True)
+            sqlite_session.execute(
+                update(OpenAPIOAuthClient)
+                .where(OpenAPIOAuthClient.client_id == "dcr_first_login")
+                .values(last_token_at=NOW)
+            )
+
+    deleted = cleanup_module.clean_unused_oauth_clients(sqlite_session, cutoff=CUTOFF)
+
+    assert deleted == 1
+    assert _remaining(sqlite_session) == {"dcr_first_login"}

@@ -53,8 +53,10 @@ def upgrade():
         sa.PrimaryKeyConstraint("id", name="openapi_oauth_clients_pkey"),
     )
     op.create_index("uq_openapi_oauth_clients_client_id", "openapi_oauth_clients", ["client_id"], unique=True)
+    op.create_index("idx_openapi_oauth_clients_unused", "openapi_oauth_clients", ["last_token_at", "created_at"])
 
 
 def downgrade():
+    op.drop_index("idx_openapi_oauth_clients_unused", table_name="openapi_oauth_clients")
     op.drop_index("uq_openapi_oauth_clients_client_id", table_name="openapi_oauth_clients")
     op.drop_table("openapi_oauth_clients")

@@ -48,8 +48,9 @@ def test_mark_token_issued_for_an_unknown_client_is_a_no_op(sqlite_session_facto
     repository.mark_token_issued("https://agent.example/client.json")
 
     with sqlite_session_factory() as session:
-        assert _last_token_at(session, "dcr_a") is None
-        assert session.scalars(select(OpenAPIOAuthClient)).all() != []
+        [row] = session.scalars(select(OpenAPIOAuthClient)).all()
+        assert row.client_id == "dcr_a"
+        assert row.last_token_at is None
 
 
 def test_last_token_at_is_timezone_aware_when_set(sqlite_session_factory: sessionmaker[Session]) -> None:

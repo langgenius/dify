@@ -134,6 +134,7 @@ class OpenAPIOAuthClient(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="openapi_oauth_clients_pkey"),
         sa.Index("uq_openapi_oauth_clients_client_id", "client_id", unique=True),
+        sa.Index("idx_openapi_oauth_clients_unused", "last_token_at", "created_at"),
     )
 
     id: Mapped[str] = mapped_column(

@@ -219,8 +219,11 @@ class _FixedTTLPolicy:
 @dataclass
 class _RecordingClientUsage:
     marked: list[str] = field(default_factory=list)
+    failure: Exception | None = None
 
     def mark_token_issued(self, client_id: str) -> None:
+        if self.failure is not None:
+            raise self.failure
         self.marked.append(client_id)
 
 
@@ -357,6 +360,16 @@ class TestAuthorizationCodeGrantCases:
         world.handler(_code_request(_approve(world)))
 
         assert world.usage.marked == [CONFIDENTIAL_ID]
+
+    @staticmethod
+    def test_a_failed_mark_raises_and_mints_no_token() -> None:
+        world = _auth_code_world()
+        world.usage.failure = RuntimeError("db down")
+
+        with pytest.raises(RuntimeError, match="db down"):
+            world.handler(_code_request(_approve(world)))
+
+        assert world.tokens.calls == []
 
     @staticmethod
     def test_failed_redemption_does_not_mark_the_client() -> None:

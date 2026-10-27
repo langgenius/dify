@@ -174,15 +174,15 @@ class AuthorizationCodeGrantHandler:
             if GrantType.REFRESH_TOKEN in client.grant_types
             else None
         )
-        result = self._minter.mint(
+        # Before the mint, so a failed mark leaves no token row behind.
+        self._usage.mark_token_issued(client.storage_client_id)
+        return self._minter.mint(
             account,
             workspace_id=record.workspace_id,
             client_id=client.storage_client_id,
             device_label=default_device_label(client.display_name),
             refresh=refresh,
         )
-        self._usage.mark_token_issued(client.storage_client_id)
-        return result
 
     def _redeem(self, client: ResolvedClient, request: TokenRequest) -> AuthorizationCodeRecord:
         if not request.code:
