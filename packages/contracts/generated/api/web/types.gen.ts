@@ -1519,7 +1519,7 @@ export type DeleteConversationsByCIdData = {
 export type DeleteConversationsByCIdErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1577,7 +1577,7 @@ export type PatchConversationsByCIdPinData = {
 export type PatchConversationsByCIdPinErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1604,7 +1604,7 @@ export type PatchConversationsByCIdUnpinData = {
 export type PatchConversationsByCIdUnpinErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }

@@ -19,6 +19,7 @@ from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, Message
 from models.web import PinnedConversation
 from repositories.conversation_repository import ConversationRepository
+from services.conversation_command_service import ConversationCommandService
 from services.conversation_name_service import ConversationNameService
 from services.installed_app_conversation_service import InstalledAppConversationService
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
@@ -122,7 +123,10 @@ def conversations(
                 names=ConversationNameService(
                     conversations=ConversationRepository(session_factory=factory), generate_name=state.generate_name
                 ),
-                enqueue_delete_cleanup=state.enqueue_cleanup,
+                commands=ConversationCommandService(
+                    conversations=ConversationRepository(session_factory=factory),
+                    enqueue_delete_cleanup=state.enqueue_cleanup,
+                ),
             )
         )
     )

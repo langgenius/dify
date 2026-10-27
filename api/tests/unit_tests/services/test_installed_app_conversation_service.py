@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, InstalledApp, Message
 from repositories.conversation_repository import ConversationRepository
+from services.conversation_command_service import ConversationCleanup, ConversationCommandService
 from services.conversation_name_service import (
     ConversationNameGenerator,
     ConversationNameRequiredError,
@@ -21,7 +22,6 @@ from services.entities.conversation_entities import InstalledAppConversationRef
 from services.errors.conversation import ConversationNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
 from services.installed_app_conversation_service import (
-    ConversationCleanup,
     ConversationNotChatAppError,
     InstalledAppConversationService,
 )
@@ -97,7 +97,7 @@ def _service(
     return InstalledAppConversationService(
         conversations=repository,
         names=ConversationNameService(conversations=repository, generate_name=generate_name),
-        enqueue_delete_cleanup=cleanup,
+        commands=ConversationCommandService(conversations=repository, enqueue_delete_cleanup=cleanup),
     )
 
 

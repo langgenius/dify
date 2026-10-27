@@ -104,12 +104,9 @@ class ConversationRepository:
             renamed = replace(record, name=conversation.name, updated_at=conversation.updated_at)
         return renamed
 
-    def delete(self, *, installed_app: InstalledAppRef, account_id: str, conversation_id: str) -> ConversationDeletion:
+    def delete(self, *, ref: ConversationRef) -> ConversationDeletion:
         with self._session_factory.begin() as session:
-            app = self._get_app(session=session, installed_app=installed_app)
-            conversation = self._get_conversation(
-                session=session, app_id=app.id, account_id=account_id, conversation_id=conversation_id
-            )
+            app, conversation = self._resolve(session=session, ref=ref)
             retired_workspace_ids = retire_conversation(app_model=app, conversation=conversation, session=session)
             return ConversationDeletion(
                 tenant_id=app.tenant_id,
@@ -117,36 +114,53 @@ class ConversationRepository:
                 retired_workspace_ids=retired_workspace_ids,
             )
 
-    def set_pinned(
-        self, *, installed_app: InstalledAppRef, account_id: str, conversation_id: str, is_pinned: bool
-    ) -> None:
+    def set_pinned(self, *, ref: ConversationRef, is_pinned: bool) -> None:
         with self._session_factory.begin() as session:
-            app = self._get_app(session=session, installed_app=installed_app)
+            if isinstance(ref, InstalledAppConversationRef):
+                app = self._get_app(session=session, installed_app=ref.installed_app)
+                role = CreatorUserRole.ACCOUNT
+                actor_id = ref.account_id
+            else:
+                app = session.scalar(
+                    select(App)
+                    .join(EndUser, EndUser.app_id == App.id)
+                    .where(
+                        App.id == ref.app_id,
+                        App.tenant_id == ref.tenant_id,
+                        EndUser.id == ref.end_user_id,
+                        EndUser.tenant_id == App.tenant_id,
+                    )
+                )
+                if app is None:
+                    raise ConversationNotExistsError(
+                        f"Conversation {ref.conversation_id} is unavailable for this end user and app."
+                    )
+                role = CreatorUserRole.END_USER
+                actor_id = ref.end_user_id
             pin = session.scalar(
                 select(PinnedConversation)
                 .where(
                     PinnedConversation.app_id == app.id,
-                    PinnedConversation.conversation_id == conversation_id,
-                    PinnedConversation.created_by_role == CreatorUserRole.ACCOUNT,
-                    PinnedConversation.created_by == account_id,
+                    PinnedConversation.conversation_id == ref.conversation_id,
+                    PinnedConversation.created_by_role == role,
+                    PinnedConversation.created_by == actor_id,
                 )
                 .limit(1)
             )
             if is_pinned:
                 if pin is not None:
                     return
-                conversation = self._get_conversation(
-                    session=session, app_id=app.id, account_id=account_id, conversation_id=conversation_id
-                )
+                _, conversation = self._resolve(session=session, ref=ref)
                 session.add(
                     PinnedConversation(
                         app_id=app.id,
                         conversation_id=conversation.id,
-                        created_by_role=CreatorUserRole.ACCOUNT,
-                        created_by=account_id,
+                        created_by_role=role,
+                        created_by=actor_id,
                     )
                 )
             elif pin is not None:
+                # Unpin remains idempotent even after its conversation is deleted.
                 session.delete(pin)
 
     @classmethod

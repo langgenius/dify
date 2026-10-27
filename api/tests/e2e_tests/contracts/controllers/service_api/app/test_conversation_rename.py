@@ -62,6 +62,8 @@ class _Harness:
     end_user: EndUser
     conversation: Conversation
     factory: sessionmaker[Session]
+    repository_factory: sessionmaker[Session]
+    api: ExternalApi
     provision_factory: sessionmaker[Session]
     admissions: list[Session]
     provisions: list[Session]
@@ -185,6 +187,8 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         end_user,
         conversation,
         sqlite_session_factory,
+        query_factory,
+        api,
         provision_factory,
         admissions,
         provisions,

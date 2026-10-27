@@ -5008,8 +5008,15 @@ export type DeleteConversationsByConversationIdData = {
 export type DeleteConversationsByConversationIdErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+  403:
+    | AppAbnormalStatusError
+    | AppApiDisabledError
+    | AppNotFoundError
+    | ForbiddenError
+    | WorkspaceArchivedError
+    | WorkspaceNotFoundError
+    | ErrorResponse
+  404: ConversationNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

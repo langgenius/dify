@@ -464,11 +464,20 @@ export const post6Errors = {
   not_chat_app: { status: 400, data: zNotChatAppError },
 }
 
-export const patchErrors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const patchErrors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const patch2Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const patch2Errors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
-export const delete_Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const delete_Errors = {
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+}
 
 export const getErrors = { not_chat_app: { status: 400, data: zNotChatAppError } }
 
