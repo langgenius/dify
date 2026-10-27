@@ -1,11 +1,10 @@
 import type { RequiredConnectionService } from '../required-services'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
 import RequiredServices from '../required-services'
-import { credentialSchemas, renderConnectionUi as render } from './credential-schema-fixture'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
@@ -14,7 +13,6 @@ const service: RequiredConnectionService = {
   name: 'Gmail',
   description: 'Read messages to draft replies.',
   methods: ['oauth', 'api-key'],
-  credentialSchemas,
   availableConnections: [
     { id: 'personal', name: 'alex@example.com', method: 'oauth' },
     { id: 'expired', name: 'expired@example.com', method: 'oauth', status: 'expired' },
@@ -28,6 +26,55 @@ const moreActions = (account: string) =>
   `share.connections.accounts.moreActions:${JSON.stringify({ account })}`
 
 describe('Service connection management', () => {
+  it('offers Reconnect for an invalid OAuth account without API Key error copy or a Replace action', async () => {
+    const user = userEvent.setup()
+    const onReconnect = vi.fn()
+    const onReplace = vi.fn()
+    const onConnectionChange = vi.fn()
+    render(
+      <RequiredServices
+        services={[
+          {
+            ...service,
+            selectedConnectionId: 'personal',
+            availableConnections: service.availableConnections.map((connection) =>
+              connection.id === 'personal'
+                ? { ...connection, status: 'invalid' as const }
+                : connection,
+            ),
+          },
+        ]}
+        onConnect={vi.fn()}
+        onConnectionChange={onConnectionChange}
+        onReconnect={onReconnect}
+        onReplace={onReplace}
+      />,
+    )
+    const trigger = screen.getByRole('button', { name: 'Gmail' })
+    expect(trigger).toHaveAccessibleDescription(/share.connections.accounts.reconnectRequired/)
+    expect(screen.queryByText('share.connections.apiKeys.warning')).not.toBeInTheDocument()
+    await user.click(trigger)
+    const popover = await screen.findByRole('dialog', { name: popoverName })
+    const invalidAccount = within(popover).getByRole('listitem', { name: 'alex@example.com' })
+    expect(
+      within(invalidAccount).getByText('share.connections.accounts.reconnectRequired'),
+    ).toBeVisible()
+    expect(
+      within(invalidAccount).queryByRole('button', { name: 'share.connections.apiKeys.replace' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(invalidAccount).queryByText('share.connections.apiKeys.invalid'),
+    ).not.toBeInTheDocument()
+    const reconnect = within(invalidAccount).getByRole('button', {
+      name: 'share.connections.accounts.reconnect',
+    })
+    expect(reconnect).toBeEnabled()
+    await user.click(reconnect)
+    expect(onReconnect).toHaveBeenCalledExactlyOnceWith('gmail', 'personal')
+    expect(onReplace).not.toHaveBeenCalled()
+    expect(onConnectionChange).not.toHaveBeenCalled()
+  })
+
   it('does not toast or change selection when a removal is cancelled by its request scope', async () => {
     const user = userEvent.setup()
     const onRemove = vi.fn().mockRejectedValue(new DOMException('App changed', 'AbortError'))
@@ -113,15 +160,15 @@ describe('Service connection management', () => {
     expect(toast.error).toHaveBeenCalledOnce()
   })
 
-  it('disables API Key editors without a schema while keeping existing connections selectable', async () => {
+  it('opens fixed Replace and Add API Key forms while keeping existing connections selectable', async () => {
     const user = userEvent.setup()
     const onConnectionChange = vi.fn()
+    const onReplace = vi.fn()
     render(
       <RequiredServices
         services={[
           {
             ...service,
-            credentialSchemas: undefined,
             selectedConnectionId: 'key',
             availableConnections: service.availableConnections.map((connection) =>
               connection.id === 'key' ? { ...connection, status: 'invalid' as const } : connection,
@@ -130,19 +177,42 @@ describe('Service connection management', () => {
         ]}
         onConnect={vi.fn()}
         onConnectionChange={onConnectionChange}
-        onReplace={vi.fn()}
+        onReplace={onReplace}
       />,
     )
-    await user.click(screen.getByRole('button', { name: 'Gmail' }))
-    const popover = await screen.findByRole('dialog', {
-      name: 'share.connections.apiKeys.title:{"provider":"Gmail"}',
-    })
-    expect(
+    const trigger = screen.getByRole('button', { name: 'Gmail' })
+    const openPicker = async () => {
+      await user.click(trigger)
+      return screen.findByRole('dialog', {
+        name: 'share.connections.apiKeys.title:{"provider":"Gmail"}',
+      })
+    }
+    let popover = await openPicker()
+    await user.click(
       within(popover).getByRole('button', { name: 'share.connections.apiKeys.replace' }),
-    ).toBeDisabled()
-    expect(
+    )
+    const replacement = await screen.findByRole('dialog', {
+      name: 'share.connections.apiKeys.replaceTitle',
+    })
+    await user.type(
+      within(replacement).getByLabelText(/share\.connections\.setup\.apiKey/),
+      'replacement-secret',
+    )
+    await user.click(within(replacement).getByRole('button', { name: 'common.operation.save' }))
+    expect(onReplace).toHaveBeenCalledExactlyOnceWith('gmail', 'key', {
+      name: 'Personal key',
+      credentials: { api_key: 'replacement-secret' },
+    })
+    await waitFor(() => expect(replacement).not.toBeInTheDocument())
+    popover = await openPicker()
+    await user.click(
       within(popover).getByRole('button', { name: 'share.connections.setup.addApiKey' }),
-    ).toBeDisabled()
+    )
+    const add = await screen.findByRole('dialog', { name: 'share.connections.setup.addApiKey' })
+    expect(within(add).getByLabelText(/share\.connections\.setup\.apiKey/)).toHaveValue('')
+    await user.click(within(add).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(add).not.toBeInTheDocument())
+    popover = await openPicker()
     await user.click(within(popover).getByRole('button', { name: 'alex@example.com' }))
     expect(onConnectionChange).toHaveBeenCalledExactlyOnceWith('gmail', 'personal')
   })

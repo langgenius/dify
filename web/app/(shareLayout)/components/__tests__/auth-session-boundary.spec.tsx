@@ -5,6 +5,11 @@ import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
 import { getWebAppAccessToken, setWebAppAccessToken } from '@/service/webapp-auth'
 import AuthSessionBoundary from '../auth-session-boundary'
 
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/chat/app-code',
+  useSearchParams: () => new URLSearchParams(),
+}))
+
 const profileKey = ['webapp', 'active-account'] as const
 const connectionsKey = ['webapp', 'connections', 'configuration', 'app-code'] as const
 const publicPermissionKey = [

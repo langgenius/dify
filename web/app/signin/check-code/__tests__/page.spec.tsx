@@ -508,7 +508,7 @@ describe('CheckCode', () => {
   })
 
   describe('Post-login profile bootstrap', () => {
-    it('returns to the App after End User verification without requiring a workspace profile', async () => {
+    it('returns to Account sign-in with PKCE context after End User verification without requiring a workspace profile', async () => {
       const user = userEvent.setup()
       const replace = vi.fn()
       vi.stubGlobal('location', {
@@ -521,7 +521,11 @@ describe('CheckCode', () => {
       })
       const target = {
         is_end_user: '1',
-        redirect_url: `${window.location.origin}/chat/my-webapp`,
+        app_code: 'my-webapp',
+        code_challenge: 'a'.repeat(43),
+        code_challenge_method: 'S256',
+        redirect_url:
+          'https://agent-app.dify.dev/web-prefix/chat/my-webapp?conversation=current#history',
       }
       navigationMocks.searchParams = new URLSearchParams({
         ...target,
@@ -541,10 +545,20 @@ describe('CheckCode', () => {
 
       await waitFor(() => expect(replace).toHaveBeenCalledOnce())
       expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenCalledWith({
-        body: expect.objectContaining({ mode: 'end_user', email: 'account@example.com' }),
+        body: {
+          mode: 'end_user',
+          email: 'account@example.com',
+          code: 'MTIzNDU2',
+          token: 'email-login-token',
+          language: expect.any(String),
+          timezone: 'Asia/Singapore',
+        },
       })
       expect(serviceBaseMocks.request).not.toHaveBeenCalled()
-      expect(replace).toHaveBeenCalledWith(target.redirect_url)
+      const resume = new URL(replace.mock.calls[0]![0])
+      expect(resume.origin).toBe(window.location.origin)
+      expect(resume.pathname).toBe('/signin')
+      expect(Object.fromEntries(resume.searchParams)).toEqual(target)
       expect(navigationMocks.replace).not.toHaveBeenCalled()
     })
 

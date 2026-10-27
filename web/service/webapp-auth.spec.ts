@@ -1,5 +1,7 @@
+import { waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
+import { createDeferred } from '@/test/deferred'
 import {
   beginWebAppAuthorizationRecovery,
   completeWebAppAuthorizationRecovery,
@@ -155,6 +157,52 @@ describe('Webapp credentials', () => {
 
     expect(getWebAppAccessToken()).toBe('')
     expect(getWebAppPassport(ordinary)).toBe('')
+  })
+
+  it.each(['success', 'failure'] as const)(
+    'keeps another tab’s newer account when the old logout finishes with $0',
+    async (outcome) => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      setWebAppAccessToken('account-a', 'end_user')
+      const response = createDeferred<Response>()
+      const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(response.promise)
+      const logout = webAppLogout(ordinary).catch((error: unknown) => error)
+      await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
+
+      localStorage.setItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME, 'account-b')
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: ACCESS_TOKEN_LOCAL_STORAGE_NAME,
+          newValue: 'account-b',
+          storageArea: localStorage,
+        }),
+      )
+      setWebAppPassport(ordinary, 'account-b-passport')
+      setWebAppPassport(environment, 'account-b-environment-passport')
+      const revision = getWebAppAuthSessionSnapshot()
+      if (outcome === 'success') response.resolve(Response.json({ result: 'success' }))
+      else response.reject(new TypeError('Failed to fetch'))
+      await logout
+
+      expect(getWebAppAccessToken()).toBe('account-b')
+      expect(getWebAppLoginMode()).toBe('end_user')
+      expect(getWebAppPassport(ordinary)).toBe('account-b-passport')
+      expect(getWebAppPassport(environment)).toBe('account-b-environment-passport')
+      expect(getWebAppAuthSessionSnapshot()).toBe(revision)
+    },
+  )
+
+  it('does not send an old logout under an account that signs in while its client loads', async () => {
+    setWebAppAccessToken('account-a', 'end_user')
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json({ result: 'success' }))
+    const logout = webAppLogout(ordinary).catch((error: unknown) => error)
+    setWebAppAccessToken('account-b', 'end_user')
+
+    expect(await logout).toMatchObject({ name: 'AbortError' })
+    expect(fetch).not.toHaveBeenCalled()
+    expect(getWebAppAccessToken()).toBe('account-b')
   })
 })
 

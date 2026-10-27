@@ -3,13 +3,14 @@
 import type { ApiKeyValues } from './api-key-dialog'
 import type { RequiredConnection } from './required-connections'
 import type { ConnectionActions } from './service-connection-selector'
-import type { FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import useTheme from '@/hooks/use-theme'
 import { reportClientError } from '@/service/client-error'
+import { Theme } from '@/types/app'
 import ApiKeyDialog from './api-key-dialog'
 import RemoveConnectionDialog from './remove-connection-dialog'
 import ServiceConnectionSelector from './service-connection-selector'
@@ -18,8 +19,8 @@ export type ConnectionMethod = 'oauth' | 'api-key'
 
 export type RequiredConnectionService = RequiredConnection & {
   description: string
+  iconDark?: RequiredConnection['icon']
   readmeUrl?: string
-  credentialSchemas?: FormSchema[]
   availableConnections: readonly {
     id: string
     name: string
@@ -67,6 +68,7 @@ function ServiceItem({
   | 'onRemove'
 >) {
   const { t } = useTranslation(['share'])
+  const { theme } = useTheme()
   const nameId = useId()
   const descriptionId = useId()
   const warningId = useId()
@@ -94,7 +96,7 @@ function ServiceItem({
     >
       <AppIcon
         size="small"
-        icon={service.icon}
+        icon={theme === Theme.dark && service.iconDark ? service.iconDark : service.icon}
         fallback={{
           content: (
             <span
@@ -118,7 +120,9 @@ function ServiceItem({
         {(isExpired || isInvalid) && (
           <span id={warningId} className="system-xs-regular wrap-anywhere text-text-warning">
             {isInvalid
-              ? t(($) => $['connections.apiKeys.warning'], { ns: 'share' })
+              ? selectedConnection?.method === 'api-key'
+                ? t(($) => $['connections.apiKeys.warning'], { ns: 'share' })
+                : t(($) => $['connections.accounts.reconnectRequired'], { ns: 'share' })
               : t(($) => $['connections.accounts.expired'], { ns: 'share' })}
           </span>
         )}
@@ -174,11 +178,11 @@ function ServiceItem({
               <Button
                 ref={addApiKeyTriggerRef}
                 focusableWhenDisabled
-                disabled={disabled || !service.credentialSchemas?.length}
+                disabled={disabled}
                 variant="secondary-accent"
                 aria-describedby={`${nameId} ${descriptionId}`}
                 onClick={() => {
-                  if (disabled || !service.credentialSchemas?.length) return
+                  if (disabled) return
                   if (onRequestAddApiKey) onRequestAddApiKey(service.id)
                   else setAddApiKeyOpen(true)
                 }}
@@ -192,7 +196,6 @@ function ServiceItem({
       <ApiKeyDialog
         mode="add"
         readmeUrl={service.readmeUrl}
-        credentialSchemas={service.credentialSchemas}
         open={addApiKeyOpen}
         onOpenChange={setAddApiKeyOpen}
         onSave={(values) => onConnect(service.id, 'api-key', values)}

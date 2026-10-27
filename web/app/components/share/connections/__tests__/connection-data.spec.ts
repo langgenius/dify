@@ -40,6 +40,17 @@ function connection(overrides: Partial<EndUserConnectionResponse> = {}): EndUser
 }
 
 describe('Webapp connection data', () => {
+  it('adapts provider light and dark asset URLs for the existing AppIcon presentation', () => {
+    const data = getConnectionData({
+      requirements: [requirement({ icon: '/provider-light.svg', icon_dark: '/provider-dark.svg' })],
+      connections: [],
+      allConnectionsLoaded: true,
+    })
+
+    expect(data.services[0]?.icon).toEqual({ icon_type: 'link', icon: '/provider-light.svg' })
+    expect(data.services[0]?.iconDark).toEqual({ icon_type: 'link', icon: '/provider-dark.svg' })
+  })
+
   it('keeps independent selections for the same provider and maps reuse nodes to their source', () => {
     const first = connection()
     const second = connection({ id: 'connection-two', account_label: 'work@example.com' })

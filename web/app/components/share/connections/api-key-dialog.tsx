@@ -2,7 +2,6 @@
 
 import type { EndUserConnectionCreatePayload } from '@dify/contracts/api/web/types.gen'
 import type { DialogContentProps } from '@langgenius/dify-ui/dialog'
-import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -13,12 +12,12 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { ORPCError } from '@orpc/client'
-import { useForm, useSelector } from '@tanstack/react-form'
-import { useId, useMemo, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import { FormTypeEnum } from '@/app/components/base/form/types'
 import { toast } from '@/app/notifications'
 import { isAbortError } from '@/service/client-error'
 
@@ -30,7 +29,6 @@ export type ApiKeyValues = {
 type ApiKeyFormProps = {
   mode: 'add' | 'replace'
   connectionName?: string
-  credentialSchemas?: FormSchema[]
   readmeUrl?: string
   onSave: (values: ApiKeyValues) => void | Promise<void>
   onClose: () => void
@@ -45,12 +43,9 @@ type Props = Omit<ApiKeyFormProps, 'onClose' | 'onSavingChange'> & {
   finalFocus?: DialogContentProps['finalFocus']
 }
 
-const NAME_FIELD = '__connection_name__'
-
 export function ApiKeyForm({
   mode,
   connectionName = '',
-  credentialSchemas,
   readmeUrl,
   onSave,
   onClose,
@@ -60,65 +55,24 @@ export function ApiKeyForm({
   const { t } = useTranslation(['share', 'plugin', 'common'])
   const [saving, setSaving] = useState(false)
   const [credentialsInvalid, setCredentialsInvalid] = useState(false)
+  const [name, setName] = useState(connectionName)
+  const [apiKey, setApiKey] = useState('')
   const savingRef = useRef(false)
-  const formRef = useRef<FormRefObject>(null)
   const formId = useId()
-  const formSchemas = useMemo<FormSchema[]>(() => {
-    const requiredName = ({ value }: { value: unknown }) =>
-      typeof value === 'string' && value.trim()
-        ? undefined
-        : t(($) => $['errorMsg.fieldRequired'], {
-            ns: 'common',
-            field: t(($) => $['auth.authorizationName'], { ns: 'plugin' }),
-          })
-    return [
-      {
-        name: NAME_FIELD,
-        type: FormTypeEnum.textInput,
-        label: t(($) => $['auth.authorizationName'], { ns: 'plugin' }),
-        required: true,
-        default: connectionName,
-        validators: { onMount: requiredName, onChange: requiredName, onBlur: requiredName },
-      },
-      ...(credentialSchemas ?? []),
-    ]
-  }, [connectionName, credentialSchemas, t])
-  const defaultValues = useMemo<Record<string, unknown>>(
-    () => Object.fromEntries(formSchemas.map((schema) => [schema.name, schema.default])),
-    [formSchemas],
-  )
-  const form = useForm({ defaultValues })
-  const invalid = useSelector(form.store, (state) =>
-    formSchemas.some((schema) => {
-      const visible =
-        schema.show_on?.every(
-          (condition) => state.values[condition.variable] === condition.value,
-        ) ?? true
-      return visible && !!state.fieldMeta[schema.name]?.errors.length
-    }),
-  )
-  const hasName = useSelector(form.store, (state) => {
-    const name = state.values[NAME_FIELD]
-    return typeof name === 'string' && !!name.trim()
-  })
+  const nameLabel = t(($) => $['auth.authorizationName'], { ns: 'plugin' })
+  const apiKeyLabel = t(($) => $['connections.setup.apiKey'], { ns: 'share' })
+  const requiredMessage = (field: string) =>
+    t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field })
 
-  const save = async () => {
-    if (disabled || savingRef.current || !credentialSchemas?.length) return
-    const result = formRef.current?.getFormValues({ needCheckValidatedValues: true })
-    if (!result?.isCheckValidated) return
-    const values: Record<string, unknown> = result.values
-    const name = values[NAME_FIELD]
-    if (typeof name !== 'string' || !name.trim()) return
-    const credentials = Object.fromEntries(
-      credentialSchemas.map((schema) => [schema.name, values[schema.name]]),
-    )
+  const save = async (values: { name: string; api_key: string }) => {
+    if (disabled || savingRef.current || !values.name.trim() || !values.api_key.trim()) return
     savingRef.current = true
     setSaving(true)
     onSavingChange?.(true)
     setCredentialsInvalid(false)
     let saved = false
     try {
-      await onSave({ name: name.trim(), credentials })
+      await onSave({ name: values.name.trim(), credentials: { api_key: values.api_key } })
       saved = true
     } catch (error) {
       if (isAbortError(error)) return
@@ -158,21 +112,68 @@ export function ApiKeyForm({
             {t(($) => $['readmeInfo.needHelpCheckReadme'], { ns: 'plugin' })}
           </a>
         )}
-        <AuthForm
+        <Form<{ name: string; api_key: string }>
           id={formId}
-          ref={formRef}
-          formFromProps={form}
-          formSchemas={formSchemas}
-          disabled={disabled || saving}
-          preventDefaultSubmit
-          onSubmit={() => void save()}
-          onChange={() => setCredentialsInvalid(false)}
-        />
-        {credentialsInvalid && (
-          <p role="alert" className="system-sm-regular text-text-destructive">
-            {t(($) => $['connections.apiKeys.validationError'], { ns: 'share' })}
-          </p>
-        )}
+          className="flex flex-col gap-5"
+          validationMode="onBlur"
+          errors={
+            credentialsInvalid
+              ? { api_key: t(($) => $['connections.apiKeys.validationError'], { ns: 'share' }) }
+              : undefined
+          }
+          onFormSubmit={(values) => void save(values)}
+        >
+          <Field
+            name="name"
+            disabled={disabled || saving}
+            validate={(value) =>
+              typeof value === 'string' && value.trim() ? undefined : requiredMessage(nameLabel)
+            }
+          >
+            <FieldLabel>
+              {nameLabel}
+              <span aria-hidden="true" className="ms-1 text-text-destructive">
+                *
+              </span>
+            </FieldLabel>
+            <Input
+              required
+              value={name}
+              autoComplete="off"
+              onValueChange={(value) => {
+                setName(value)
+                setCredentialsInvalid(false)
+              }}
+            />
+            <FieldError role="alert" />
+          </Field>
+          <Field
+            name="api_key"
+            disabled={disabled || saving}
+            validate={(value) =>
+              typeof value === 'string' && value.trim() ? undefined : requiredMessage(apiKeyLabel)
+            }
+          >
+            <FieldLabel>
+              {apiKeyLabel}
+              <span aria-hidden="true" className="ms-1 text-text-destructive">
+                *
+              </span>
+            </FieldLabel>
+            <Input
+              required
+              type="password"
+              autoComplete="new-password"
+              placeholder={t(($) => $['connections.apiKeys.newKeyPlaceholder'], { ns: 'share' })}
+              value={apiKey}
+              onValueChange={(value) => {
+                setApiKey(value)
+                setCredentialsInvalid(false)
+              }}
+            />
+            <FieldError role="alert" />
+          </Field>
+        </Form>
       </DialogBody>
       <DialogFooter>
         <Button disabled={saving} onClick={onClose}>
@@ -182,7 +183,7 @@ export function ApiKeyForm({
           type="submit"
           form={formId}
           variant="primary"
-          disabled={disabled || !credentialSchemas?.length || !hasName || invalid}
+          disabled={disabled || !name.trim() || !apiKey.trim()}
           loading={saving}
         >
           {t(($) => $['operation.save'], { ns: 'common' })}
@@ -195,7 +196,6 @@ export function ApiKeyForm({
 export default function ApiKeyDialog({
   mode,
   connectionName,
-  credentialSchemas,
   readmeUrl,
   open,
   onOpenChange,
@@ -227,7 +227,6 @@ export default function ApiKeyDialog({
         <ApiKeyForm
           mode={mode}
           connectionName={connectionName}
-          credentialSchemas={credentialSchemas}
           readmeUrl={readmeUrl}
           onSave={onSave}
           onClose={() => onOpenChange(false)}

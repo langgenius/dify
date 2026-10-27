@@ -17,7 +17,7 @@ import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptPassword } from '@/utils/encryption'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
-import { getEndUserLoginContext, isEndUserSignIn } from '../utils/end-user-login'
+import { isEndUserSignIn } from '../utils/end-user-login'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type MailAndPasswordAuthProps = {
@@ -48,7 +48,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         email,
         password: encryptPassword(password),
         remember_me: true,
-        ...getEndUserLoginContext(searchParams),
+        ...(isEndUserSignIn(searchParams) ? { mode: 'end_user' as const } : {}),
       }
       if (isInvite)
         loginData.invite_token = decodeURIComponent(searchParams.get('invite_token') as string)

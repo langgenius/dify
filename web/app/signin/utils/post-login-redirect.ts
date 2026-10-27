@@ -1,5 +1,7 @@
 import type { ReadonlyURLSearchParams } from '@/next/navigation'
 import { getClientLoginFallback, resolveLoginRedirectTarget } from '@/utils/login-redirect'
+import { basePath } from '@/utils/var'
+import { getEndUserSignInUrl } from './end-user-login'
 
 const REDIRECT_URL_KEY = 'redirect_url'
 const DEVICE_REDIRECT_KEY = 'dify_post_login_redirect'
@@ -87,6 +89,12 @@ function getDeviceRedirect(): string | null {
 export function resolvePostLoginRedirect(searchParams?: ReadonlyURLSearchParams) {
   const currentOrigin = typeof window === 'undefined' ? undefined : window.location.origin
   const fallback = getClientLoginFallback()
+  const endUserSignIn = searchParams && getEndUserSignInUrl(searchParams)
+  if (endUserSignIn && currentOrigin)
+    return {
+      kind: 'absolute' as const,
+      href: new URL(`${basePath}${endUserSignIn}`, currentOrigin).href,
+    }
 
   if (searchParams?.has(REDIRECT_URL_KEY)) {
     return (

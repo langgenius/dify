@@ -1,11 +1,18 @@
 import type { RequiredConnectionService } from '../required-services'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { createDeferred } from '@/test/deferred'
+import { getConnectionData } from '../connection-data'
 import RequiredServices from '../required-services'
-import { credentialSchemas, renderConnectionUi as render } from './credential-schema-fixture'
+
+const theme = vi.hoisted(() => ({ value: 'light' }))
+vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: theme.value }) }))
+
+beforeEach(() => {
+  theme.value = 'light'
+})
 
 const services: readonly RequiredConnectionService[] = [
   {
@@ -19,7 +26,6 @@ const services: readonly RequiredConnectionService[] = [
     ],
     selectedConnectionId: 'gmail-personal',
     methods: ['oauth'],
-    credentialSchemas,
   },
   {
     id: 'github',
@@ -28,7 +34,6 @@ const services: readonly RequiredConnectionService[] = [
     description: 'Read repositories to answer questions.',
     availableConnections: [],
     methods: ['oauth'],
-    credentialSchemas,
   },
   {
     id: 'notion',
@@ -36,7 +41,6 @@ const services: readonly RequiredConnectionService[] = [
     description: 'Search workspace documentation.',
     availableConnections: [],
     methods: ['api-key'],
-    credentialSchemas,
   },
   {
     id: 'youtube',
@@ -44,11 +48,59 @@ const services: readonly RequiredConnectionService[] = [
     description: 'Find videos related to your questions.',
     availableConnections: [],
     methods: ['oauth', 'api-key'],
-    credentialSchemas,
   },
 ]
 
 describe('RequiredServices', () => {
+  it('uses provider metadata for the current theme and falls back to the light icon when no dark asset exists', ({
+    onTestFinished,
+  }) => {
+    function createLoadedImage() {
+      const image = document.createElement('img')
+      Object.defineProperties(image, {
+        complete: { value: true },
+        naturalWidth: { value: 32 },
+      })
+      return image
+    }
+    const imageLoader = vi.spyOn(window, 'Image').mockImplementation(createLoadedImage)
+    onTestFinished(() => {
+      imageLoader.mockRestore()
+    })
+    const requirement = {
+      node_id: 'source-one',
+      node_ids: ['source-one'],
+      title: 'Research documents',
+      purpose: 'Read source documents.',
+      provider: 'langgenius/research/research',
+      plugin_unique_identifier: 'langgenius/research:1.0.0@digest',
+      icon: '/provider-light.svg',
+      icon_dark: '/provider-dark.svg',
+      allowed_credential_types: ['oauth2' as const],
+    }
+    const services = getConnectionData({
+      requirements: [requirement],
+      connections: [],
+      allConnectionsLoaded: true,
+    }).services
+    const props = { services, onConnect: vi.fn(), onConnectionChange: vi.fn() }
+    const { rerender } = render(<RequiredServices {...props} />)
+    const row = screen.getByRole('listitem', { name: 'Research documents' })
+    expect(row.querySelector('img')).toHaveAttribute('src', '/provider-light.svg')
+
+    theme.value = 'dark'
+    rerender(<RequiredServices {...props} />)
+    expect(row.querySelector('img')).toHaveAttribute('src', '/provider-dark.svg')
+
+    const withoutDark = getConnectionData({
+      requirements: [{ ...requirement, icon_dark: null }],
+      connections: [],
+      allConnectionsLoaded: true,
+    }).services
+    rerender(<RequiredServices {...props} services={withoutDark} />)
+    expect(row.querySelector('img')).toHaveAttribute('src', '/provider-light.svg')
+  })
+
   it('closes removal normally and focuses the new Connect action after deleting the final connection', async () => {
     const user = userEvent.setup()
     const deletion = createDeferred()
@@ -124,7 +176,7 @@ describe('RequiredServices', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('keeps OAuth available while disabling API Key creation without its credential schema', async () => {
+  it('opens the fixed API Key form and keeps OAuth available without provider credential configuration', async () => {
     const user = userEvent.setup()
     const onConnect = vi.fn()
     render(
@@ -145,12 +197,26 @@ describe('RequiredServices', () => {
     const oauth = screen.getByRole('button', { name: 'share.connections.setup.connect' })
     const apiKey = screen.getByRole('button', { name: 'share.connections.setup.addApiKey' })
     expect(oauth).toBeEnabled()
-    expect(apiKey).toHaveAttribute('aria-disabled', 'true')
+    expect(apiKey).toBeEnabled()
     await user.click(apiKey)
-    expect(onConnect).not.toHaveBeenCalled()
+    const dialog = await screen.findByRole('dialog', { name: 'share.connections.setup.addApiKey' })
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'plugin.auth.authorizationName' }),
+      'Provider key',
+    )
+    await user.type(
+      within(dialog).getByLabelText(/share\.connections\.setup\.apiKey/),
+      'provider-secret',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    expect(onConnect).toHaveBeenCalledExactlyOnceWith('provider', 'api-key', {
+      name: 'Provider key',
+      credentials: { api_key: 'provider-secret' },
+    })
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
     await user.click(oauth)
-    expect(onConnect).toHaveBeenCalledExactlyOnceWith('provider', 'oauth')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(onConnect).toHaveBeenLastCalledWith('provider', 'oauth')
+    expect(onConnect).toHaveBeenCalledTimes(2)
   })
 
   it.each(['cancel', 'escape'] as const)(

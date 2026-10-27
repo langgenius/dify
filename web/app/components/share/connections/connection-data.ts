@@ -67,6 +67,10 @@ export function getConnectionData({
       id: requirement.node_id,
       name: requirement.title,
       description: requirement.purpose,
+      icon: { icon_type: 'link', icon: requirement.icon },
+      iconDark: requirement.icon_dark
+        ? { icon_type: 'link', icon: requirement.icon_dark }
+        : undefined,
       methods: requirement.allowed_credential_types.map((type) => methods[type]),
       selectedConnectionId: selectedConnectionId ?? undefined,
       availableConnections: [...candidates.values()].map((connection) => ({

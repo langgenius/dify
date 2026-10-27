@@ -5,7 +5,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useWebAppStore } from '@/context/web-app-context'
+import { usePathname, useSearchParams } from '@/next/navigation'
 import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
+import { isWebAppAccountCallback } from '@/service/webapp/login'
 
 const getServerSession = () => 0
 
@@ -43,10 +45,16 @@ function SessionContent({ children }: PropsWithChildren) {
 }
 
 export default function AuthSessionBoundary({ children }: PropsWithChildren) {
+  const pathname = usePathname()
+  const params = useSearchParams()
   const session = useSyncExternalStore(
     subscribeWebAppAuthSession,
     getWebAppAuthSessionSnapshot,
     getServerSession,
   )
-  return <SessionContent key={session}>{children}</SessionContent>
+  return isWebAppAccountCallback(pathname, params) ? (
+    children
+  ) : (
+    <SessionContent key={session}>{children}</SessionContent>
+  )
 }

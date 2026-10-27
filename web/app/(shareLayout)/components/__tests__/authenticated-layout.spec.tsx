@@ -2,9 +2,11 @@ import type {
   LoginStatusResponse,
   WebAppParametersResponse,
 } from '@dify/contracts/api/web/types.gen'
+import type { ReactNode } from 'react'
 import type { AppData, AppMeta } from '@/models/share'
 import type { WebAppAddress } from '@/service/webapp-address'
-import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render as renderView, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SignIn from '@/app/components/share/sign-in'
 import { useWebAppEntry } from '@/app/components/share/webapp-entry'
@@ -46,6 +48,13 @@ const makeParameters = (): EntryParameters => ({
 
 const replace = vi.fn()
 const webAppAddress: WebAppAddress = { kind: 'default', code: 'share-code' }
+let queryClient: QueryClient
+const render = (ui: ReactNode) =>
+  renderView(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
 
 const appInfoQueryState: QueryState<AppData> = {
   data: {
@@ -186,9 +195,11 @@ const renderLayout = () => render(layout)
 
 describe('AuthenticatedLayout', () => {
   beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
     resetQueryStates()
     useWebAppStore.setState({ shareCode: 'share-code' })
   })
+  afterEach(() => queryClient.clear())
 
   describe('Loading State', () => {
     it('should preserve the draft while App, access, and account data refetch in the background', async () => {
@@ -255,7 +266,7 @@ describe('AuthenticatedLayout', () => {
     expect(screen.getByRole('status', { name: 'Account status' })).toHaveTextContent('anonymous')
     expect(screen.getByRole('status', { name: 'App entry status' })).toHaveTextContent('ready')
     expect(screen.getByRole('button', { name: 'Run App' })).toBeEnabled()
-    expect(screen.getByRole('link', { name: 'share.auth.signIn' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'share.auth.signIn' })).toBeInTheDocument()
   })
 
   it('should keep a Workspace-only App runnable while optional account status is loading', () => {
@@ -268,7 +279,7 @@ describe('AuthenticatedLayout', () => {
     expect(screen.getByRole('textbox', { name: 'Workflow draft' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Run App' })).toBeEnabled()
     expect(screen.getByRole('status', { name: 'Account status' })).toHaveTextContent('loading')
-    expect(screen.queryByRole('link', { name: 'share.auth.signIn' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'share.auth.signIn' })).not.toBeInTheDocument()
   })
 
   it('should preserve the draft and allow use when optional account lookup fails', async () => {
@@ -286,7 +297,7 @@ describe('AuthenticatedLayout', () => {
     expect(screen.getByRole('textbox', { name: 'Workflow draft' })).toHaveValue('Unsaved draft')
     expect(screen.getByRole('button', { name: 'Run App' })).toBeEnabled()
     expect(screen.getByRole('status', { name: 'Account status' })).toHaveTextContent('unavailable')
-    expect(screen.queryByRole('link', { name: 'share.auth.signIn' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'share.auth.signIn' })).not.toBeInTheDocument()
   })
 
   it.each([

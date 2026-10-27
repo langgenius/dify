@@ -118,14 +118,17 @@ export default function useConnectionActions({
     if (!source) throw new Error('The authorization source is no longer available.')
     return source
   }
-  const requireApiKeySchema = (nodeId: string) => {
+  const requireApiKeySource = (nodeId: string) => {
     const source = findSource(nodeId)
-    if (
-      !source.allowed_credential_types.includes('api-key') ||
-      !services.find((item) => item.id === source.node_id)?.credentialSchemas?.length
-    )
+    if (!source.allowed_credential_types.includes('api-key'))
       throw new Error('API key configuration is unavailable for this source.')
     return source
+  }
+  const getApiKeyValues = (values: ApiKeyValues | undefined) => {
+    const apiKey = values?.credentials.api_key
+    if (!values?.name.trim() || typeof apiKey !== 'string' || !apiKey.trim())
+      throw new Error('Connection configuration is incomplete.')
+    return { name: values.name.trim(), credentials: { api_key: apiKey } }
   }
   const requireConnection = (nodeId: string, connectionId: string, method?: ConnectionMethod) => {
     const source = findSource(nodeId)
@@ -169,15 +172,14 @@ export default function useConnectionActions({
   const onConnect = async (nodeId: string, method: ConnectionMethod, values?: ApiKeyValues) => {
     if (method === 'api-key') {
       await execute(async (_signal, assertCurrent) => {
-        const source = requireApiKeySchema(nodeId)
-        if (!connectionRevision || !values)
-          throw new Error('Connection configuration is incomplete.')
+        const source = requireApiKeySource(nodeId)
+        if (!connectionRevision) throw new Error('Connection configuration is incomplete.')
+        const apiKeyValues = getApiKeyValues(values)
         const connection = await create.mutateAsync({
           body: {
             connection_revision: connectionRevision,
             node_id: source.node_id,
-            name: values.name,
-            credentials: values.credentials,
+            ...apiKeyValues,
           },
         })
         await saveResult(source, connection, assertCurrent)
@@ -210,8 +212,9 @@ export default function useConnectionActions({
 
   const onReplace = async (nodeId: string, connectionId: string, values: ApiKeyValues) =>
     execute(async (_signal, assertCurrent) => {
-      const source = requireApiKeySchema(nodeId)
+      const source = requireApiKeySource(nodeId)
       requireConnection(nodeId, connectionId, 'api-key')
+      const apiKeyValues = getApiKeyValues(values)
       const revision = await webAppClient.connections.byConnectionId.revision.get(
         { params: { connection_id: connectionId } },
         { context },
@@ -221,8 +224,7 @@ export default function useConnectionActions({
         params: { connection_id: connectionId },
         body: {
           connection_revision: revision.connection_revision,
-          name: values.name,
-          credentials: values.credentials,
+          ...apiKeyValues,
         },
       })
       if (connection.id !== connectionId)

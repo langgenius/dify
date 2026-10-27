@@ -6,14 +6,12 @@ import type {
   WebAppParametersResponse,
 } from '@dify/contracts/api/web/types.gen'
 import type { WebAppEntryState } from '../../webapp-entry'
-import type { FormSchema } from '@/app/components/base/form/types'
 import type { WebAppAddress } from '@/service/webapp-address'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { FormTypeEnum } from '@/app/components/base/form/types'
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope } from '@/features/app-access-error/state'
 import { useGetWebAppParams } from '@/service/use-share'
@@ -36,15 +34,10 @@ const conversationId = '44444444-4444-4444-8444-444444444444'
 const connectionRevision = '55555555-5555-4555-8555-555555555555'
 const providerRevision = '77777777-7777-4777-8777-777777777777'
 const nextConnectionRevision = '66666666-6666-4666-8666-666666666666'
-const draft = { name: 'New research key', credentials: { access_token: 'a-valid-provider-secret' } }
+const draft = { name: 'New research key', credentials: { api_key: 'a-valid-provider-secret' } }
 const replacement = {
   name: 'Updated research key',
-  credentials: { access_token: 'replacement-secret' },
-}
-const schemas: Record<string, FormSchema[]> = {
-  [provider]: [
-    { type: FormTypeEnum.secretInput, name: 'access_token', label: 'Access token', required: true },
-  ],
+  credentials: { api_key: 'replacement-secret' },
 }
 const requirements: WebAppConnectionRequirement[] = [
   {
@@ -276,22 +269,17 @@ function available() {
 type Scope = {
   address: WebAppAddress
   conversationId?: string
-  credentialSchemas?: Readonly<Record<string, FormSchema[]>>
   probeParameters?: boolean
   entry?: ReadyEntry
 }
 
 describe('Webapp connection actions', () => {
   let queryClient: QueryClient
-  const tree = (scope: Scope = { address, conversationId, credentialSchemas: schemas }) => (
+  const tree = (scope: Scope = { address, conversationId }) => (
     <QueryClientProvider client={queryClient}>
       <WebAppEntryContext value={scope.entry ?? entry()}>
         {scope.probeParameters && <ParameterProbe currentAddress={scope.address} />}
-        <WebAppConnectionsProvider
-          address={scope.address}
-          conversationId={scope.conversationId}
-          credentialSchemas={scope.credentialSchemas}
-        >
+        <WebAppConnectionsProvider address={scope.address} conversationId={scope.conversationId}>
           <Consumer />
         </WebAppConnectionsProvider>
       </WebAppEntryContext>
@@ -450,10 +438,23 @@ describe('Webapp connection actions', () => {
     expect(available().some((item) => item.id === backupId)).toBe(true)
   })
 
-  it('does not send guessed API key credentials when the provider schema is unavailable', async () => {
+  it('keeps API Key writes unavailable for an OAuth-only authorization source', async () => {
     const user = userEvent.setup()
-    const { requests } = installBackend()
-    render(tree({ address, conversationId }))
+    const oauth = connection({ credential_type: 'oauth2', account_label: 'reader@example.com' })
+    const { requests } = installBackend({
+      records: [oauth, backup],
+      configuration: { connections: { 'source-a': oauth, 'source-b': backup } },
+    })
+    const source = entry()
+    source.parameters = {
+      ...source.parameters,
+      connection_requirements: requirements.map((requirement): WebAppConnectionRequirement =>
+        requirement.node_id === 'source-a'
+          ? { ...requirement, allowed_credential_types: ['oauth2'] }
+          : requirement,
+      ),
+    }
+    render(tree({ address, conversationId, entry: source }))
     await ready()
 
     await user.click(screen.getByRole('button', { name: 'Add connection' }))
@@ -462,7 +463,7 @@ describe('Webapp connection actions', () => {
     await waitFor(() => expect(screen.getByLabelText('Action result')).toHaveTextContent('failed'))
 
     expect(requests.every((request) => request.method === 'GET')).toBe(true)
-    expect(selections()).toEqual({ 'source-a': existingId, 'source-b': existingId })
+    expect(selections()).toEqual({ 'source-a': existingId, 'source-b': backupId })
   })
 
   it('allows retrying a failed request without automatically reloading published parameters', async () => {
@@ -484,7 +485,7 @@ describe('Webapp connection actions', () => {
       backend.records.push(created)
       return Response.json(created, { status: 201 })
     }
-    render(tree({ address, conversationId, credentialSchemas: schemas, probeParameters: true }))
+    render(tree({ address, conversationId, probeParameters: true }))
     await ready()
     await waitFor(() =>
       expect(screen.getByLabelText('Connection revision')).toHaveTextContent(connectionRevision),
@@ -878,7 +879,7 @@ describe('Webapp connection actions', () => {
       const pendingWrite = deferred<Response>()
       const { backend, requests } = installBackend()
       backend.write = () => pendingWrite.promise
-      const originalScope: Scope = { address, conversationId, credentialSchemas: schemas }
+      const originalScope: Scope = { address, conversationId }
       const { rerender } = render(tree(originalScope))
       await ready()
       await user.click(screen.getByRole('button', { name: 'Add connection' }))

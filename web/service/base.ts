@@ -144,7 +144,8 @@ export type IOnError = (msg: string, code?: string, identity?: IOnDataMoreInfo) 
 const reportStreamResponseError = async (
   response: Response,
   onError: IOnError | undefined,
-  onNotifyError?: IOnError,
+  onNotifyError: IOnError | undefined,
+  isRequestCurrent: () => boolean,
 ) => {
   let errorMessage = 'Server Error'
   let errorCode: string | undefined
@@ -160,6 +161,7 @@ const reportStreamResponseError = async (
     }
   } catch {}
 
+  if (!isRequestCurrent()) return
   if (errorCode) {
     onError?.(errorMessage, errorCode)
     onNotifyError?.(errorMessage, errorCode)
@@ -174,12 +176,14 @@ const handleGuardedStreamResponseError = async (
   guard: RequestGuard | undefined,
   onError: IOnError | undefined,
   onCompleted: IOnCompleted | undefined,
+  isRequestCurrent: () => boolean,
 ) => {
   if (!guard) return false
   const data = await response
     .clone()
     .json()
     .catch(() => undefined)
+  if (!isRequestCurrent()) return true
   if (!guard.handleError(response.status, data, response) && canRecoverWebAppAuthorization(guard))
     return false
   const message =
@@ -196,12 +200,14 @@ const handlePublicStreamResponseError = async (
   silent: boolean | undefined,
   requestGuard: RequestGuard | undefined,
   onCompleted: IOnCompleted | undefined,
+  isRequestCurrent: () => boolean,
 ) => {
   let data: { code?: string; message?: string; reason?: unknown } | undefined
   try {
     data = (await response.clone().json()) as typeof data
   } catch {}
 
+  if (!isRequestCurrent()) return
   if (data && requestGuard?.handleError(response.status, data, response)) {
     const message = data.message || 'Server Error'
     if (onError) onError(message, data.code)
@@ -225,10 +231,16 @@ const handlePublicStreamResponseError = async (
     }
   }
 
-  if (onNotifyError && !silent) await reportStreamResponseError(response, onError, onNotifyError)
+  if (onNotifyError && !silent)
+    await reportStreamResponseError(response, onError, onNotifyError, isRequestCurrent)
   else if (!silent)
-    await reportStreamResponseError(response, onError, (message) => toast.error(message))
-  else await reportStreamResponseError(response, onError)
+    await reportStreamResponseError(
+      response,
+      onError,
+      (message) => toast.error(message),
+      isRequestCurrent,
+    )
+  else await reportStreamResponseError(response, onError, undefined, isRequestCurrent)
 }
 
 type UnhandledEventError = {
@@ -785,6 +797,8 @@ export const ssePost = async (
     return
   }
   const abortController = new AbortController()
+  const isRequestCurrent = () =>
+    isAuthSessionCurrent() && (!isPublicAPI || !abortController.signal.aborted)
 
   // No need to get token from localStorage, cookies will be sent automatically
 
@@ -830,7 +844,17 @@ export const ssePost = async (
     .then(async (res) => {
       if (!isAuthSessionCurrent()) return
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
+        if (
+          await handleGuardedStreamResponseError(
+            res,
+            requestGuard,
+            onError,
+            onCompleted,
+            isRequestCurrent,
+          )
+        )
+          return
+        if (!isRequestCurrent()) return
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
             void handlePublicStreamResponseError(
@@ -840,6 +864,7 @@ export const ssePost = async (
               silent,
               requestGuard,
               onCompleted,
+              isRequestCurrent,
             )
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
@@ -853,10 +878,16 @@ export const ssePost = async (
               })
           }
         } else {
-          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
+          if (onNotifyError && !silent)
+            void reportStreamResponseError(res, onError, onNotifyError, isRequestCurrent)
           else if (!silent)
-            void reportStreamResponseError(res, onError, (message) => toast.error(message))
-          else void reportStreamResponseError(res, onError)
+            void reportStreamResponseError(
+              res,
+              onError,
+              (message) => toast.error(message),
+              isRequestCurrent,
+            )
+          else void reportStreamResponseError(res, onError, undefined, isRequestCurrent)
         }
         return
       }
@@ -973,6 +1004,8 @@ export const sseGet = async (
     return
   }
   const abortController = new AbortController()
+  const isRequestCurrent = () =>
+    isAuthSessionCurrent() && (!isPublicAPI || !abortController.signal.aborted)
 
   const baseOptions = getBaseOptions()
   const shareCode = resolveWebAppAddress()?.code
@@ -1012,7 +1045,17 @@ export const sseGet = async (
     .then(async (res) => {
       if (!isAuthSessionCurrent()) return
       if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
+        if (
+          await handleGuardedStreamResponseError(
+            res,
+            requestGuard,
+            onError,
+            onCompleted,
+            isRequestCurrent,
+          )
+        )
+          return
+        if (!isRequestCurrent()) return
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
             void handlePublicStreamResponseError(
@@ -1022,6 +1065,7 @@ export const sseGet = async (
               silent,
               requestGuard,
               onCompleted,
+              isRequestCurrent,
             )
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
@@ -1035,10 +1079,16 @@ export const sseGet = async (
               })
           }
         } else {
-          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
+          if (onNotifyError && !silent)
+            void reportStreamResponseError(res, onError, onNotifyError, isRequestCurrent)
           else if (!silent)
-            void reportStreamResponseError(res, onError, (message) => toast.error(message))
-          else void reportStreamResponseError(res, onError)
+            void reportStreamResponseError(
+              res,
+              onError,
+              (message) => toast.error(message),
+              isRequestCurrent,
+            )
+          else void reportStreamResponseError(res, onError, undefined, isRequestCurrent)
         }
         return
       }
@@ -1221,7 +1271,10 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       isPublicAPI,
       otherOptions?.request?.method || (options as RequestInit).method,
     )
+    const isAuthSessionCurrent = isPublicAPI ? captureWebAppAuthSession() : () => true
     const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
+    if (!isAuthSessionCurrent())
+      return Promise.reject(new DOMException('The Web App account changed.', 'AbortError'))
     if (err === null) {
       const address = resolveWebAppAddress()
       if (

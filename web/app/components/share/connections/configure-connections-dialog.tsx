@@ -27,9 +27,6 @@ type Props = Omit<
 type ApiKeyEditor = {
   serviceId: string
   readmeUrl?: string
-  credentialSchemas: NonNullable<
-    ComponentProps<typeof RequiredServices>['services'][number]['credentialSchemas']
-  >
 } & ({ mode: 'add' } | { mode: 'replace'; connectionId: string; name: string })
 
 export default function ConfigureConnectionsDialog({
@@ -52,28 +49,26 @@ export default function ConfigureConnectionsDialog({
   const requestReplacement = (serviceId: string, connectionId: string) => {
     if (actionsDisabled || !onReplace) return
     const service = services.find((item) => item.id === serviceId)
-    if (!service?.credentialSchemas?.length) return
-    const connection = service?.availableConnections.find((item) => item.id === connectionId)
-    if (!connection) return
+    if (!service?.methods.includes('api-key')) return
+    const connection = service.availableConnections.find((item) => item.id === connectionId)
+    if (!connection || connection.method !== 'api-key') return
     setApiKeyEditor({
       mode: 'replace',
       serviceId,
       connectionId,
       name: connection.name,
-      readmeUrl: service?.readmeUrl,
-      credentialSchemas: service.credentialSchemas,
+      readmeUrl: service.readmeUrl,
     })
     setApiKeyEditorOpen(true)
   }
   const requestAddApiKey = (serviceId: string) => {
     if (actionsDisabled) return
     const service = services.find((item) => item.id === serviceId)
-    if (!service?.methods.includes('api-key') || !service.credentialSchemas?.length) return
+    if (!service?.methods.includes('api-key')) return
     setApiKeyEditor({
       mode: 'add',
       serviceId,
       readmeUrl: service.readmeUrl,
-      credentialSchemas: service.credentialSchemas,
     })
     setApiKeyEditorOpen(true)
   }
@@ -125,7 +120,6 @@ export default function ConfigureConnectionsDialog({
           mode={apiKeyEditor.mode}
           connectionName={apiKeyEditor.mode === 'replace' ? apiKeyEditor.name : ''}
           readmeUrl={apiKeyEditor.readmeUrl}
-          credentialSchemas={apiKeyEditor.credentialSchemas}
           open={apiKeyEditorOpen}
           onOpenChange={setApiKeyEditorOpen}
           onCloseComplete={() => setApiKeyEditor(null)}

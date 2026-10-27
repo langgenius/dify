@@ -8,7 +8,7 @@ import RequiredConnectionSetup from '@/app/components/share/connections/required
 import RequiredConnections from '@/app/components/share/connections/required-connections'
 import SignIn from '@/app/components/share/sign-in'
 import ConfigureConnectionsDemo from './configure-connections-demo'
-import { useDemoCredentialSchemas } from './use-demo-credential-schemas'
+import { validateDemoApiKey } from './validate-demo-api-key'
 import WorkspaceOAuthDemo from './workspace-oauth-demo'
 
 const demoConnections: readonly RequiredConnection[] = [
@@ -71,7 +71,6 @@ const demoAccountNames: Record<string, string> = {
 }
 
 export default function ConnectionsDemo() {
-  const credentialSchemas = useDemoCredentialSchemas()
   const [services, setServices] = useState(initialServices)
 
   const handleConnect = (
@@ -79,6 +78,7 @@ export default function ConnectionsDemo() {
     method: RequiredConnectionService['methods'][number],
     values?: ApiKeyValues,
   ) => {
+    if (method === 'api-key') validateDemoApiKey(values)
     const connection: RequiredConnectionService['availableConnections'][number] = {
       id:
         method === 'api-key'
@@ -166,11 +166,14 @@ export default function ConnectionsDemo() {
         <RequiredConnections connections={demoConnections} />
         <hr className="w-full border-0 border-t-2 border-divider-deep" />
         <RequiredConnectionSetup
-          services={services.map((service) => ({ ...service, credentialSchemas }))}
+          services={services}
           onConnect={handleConnect}
           onConnectionChange={handleConnectionChange}
           onReconnect={handleReconnect}
-          onReplace={handleReconnect}
+          onReplace={(serviceId, connectionId, values) => {
+            validateDemoApiKey(values)
+            handleReconnect(serviceId, connectionId, values)
+          }}
           onRemove={handleRemove}
         />
         <hr className="w-full border-0 border-t-2 border-divider-deep" />

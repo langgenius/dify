@@ -1,17 +1,15 @@
 import type { RequiredConnectionService } from '../required-services'
-import { screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import RequiredServices from '../required-services'
 import ConfigureConnections from './configure-connections-fixture'
-import { credentialSchemas, renderConnectionUi as render } from './credential-schema-fixture'
 
 const service: RequiredConnectionService = {
   id: 'google-search',
   name: 'Google Search',
   description: 'Search the web for relevant information.',
   methods: ['oauth', 'api-key'],
-  credentialSchemas,
   availableConnections: [
     { id: 'invalid-key', name: 'Personal key', method: 'api-key', status: 'invalid' },
     { id: 'backup-key', name: 'Backup key', method: 'api-key', status: 'active' },

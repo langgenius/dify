@@ -40,7 +40,8 @@ vi.mock('../webapp-address', async (importOriginal) => ({
   resolveWebAppAddress: mocks.resolveWebAppAddress,
 }))
 
-vi.mock('../webapp-auth', () => ({
+vi.mock('../webapp-auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../webapp-auth')>()),
   beginWebAppAuthorizationRecovery: mocks.beginWebAppAuthorizationRecovery,
   clearWebAppPassport: mocks.clearWebAppPassport,
   completeWebAppAuthorizationRecovery: mocks.completeWebAppAuthorizationRecovery,

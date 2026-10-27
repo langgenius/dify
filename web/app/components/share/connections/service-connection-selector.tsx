@@ -238,6 +238,7 @@ export default function ServiceConnectionSelector({
             {service.availableConnections.map((connection) => {
               const expired = connection.status === 'expired'
               const invalid = connection.status === 'invalid'
+              const invalidApiKey = invalid && connection.method === 'api-key'
               const unavailable = expired || invalid
               const selected = connection.id === service.selectedConnectionId
               const accountLabelId = `${methodId}-${encodeURIComponent(connection.id)}`
@@ -262,7 +263,7 @@ export default function ServiceConnectionSelector({
                             {connection.name}
                           </span>
                           <span className="system-xs-regular text-text-warning">
-                            {invalid
+                            {invalidApiKey
                               ? t(($) => $['connections.apiKeys.invalid'], { ns: 'share' })
                               : t(($) => $['connections.accounts.reconnectRequired'], {
                                   ns: 'share',
@@ -270,13 +271,13 @@ export default function ServiceConnectionSelector({
                           </span>
                         </div>
                       </div>
-                      {invalid ? (
+                      {invalidApiKey ? (
                         <PopoverClose
                           render={<Button size="small" variant="secondary-accent" />}
-                          disabled={disabled || !onReplace || !service.credentialSchemas?.length}
+                          disabled={disabled || !onReplace}
                           aria-describedby={accountLabelId}
                           onClick={() => {
-                            if (disabled || !onReplace || !service.credentialSchemas?.length) return
+                            if (disabled || !onReplace) return
                             skipReturnFocusRef.current = true
                             if (onRequestReplace) {
                               onRequestReplace(service.id, connection.id)
@@ -368,14 +369,10 @@ export default function ServiceConnectionSelector({
             {service.methods.includes('api-key') && (
               <PopoverClose
                 render={
-                  <Button
-                    variant="ghost"
-                    disabled={disabled || !service.credentialSchemas?.length}
-                    className="justify-start px-2"
-                  />
+                  <Button variant="ghost" disabled={disabled} className="justify-start px-2" />
                 }
                 onClick={() => {
-                  if (disabled || !service.credentialSchemas?.length) return
+                  if (disabled) return
                   skipReturnFocusRef.current = true
                   if (onRequestAddApiKey) {
                     onRequestAddApiKey(service.id)
@@ -398,7 +395,6 @@ export default function ServiceConnectionSelector({
           mode={editor.mode}
           connectionName={editor.mode === 'replace' ? editor.connection.name : undefined}
           readmeUrl={service.readmeUrl}
-          credentialSchemas={service.credentialSchemas}
           open={editorOpen}
           onOpenChange={setEditorOpen}
           onCloseComplete={() => setEditor(null)}

@@ -2,12 +2,37 @@ import type {
   LoginStatusResponse,
   WebAppConnectionRequirement,
 } from '@dify/contracts/api/web/types.gen'
-import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { webcrypto } from 'node:crypto'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render as renderView, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import SignIn from '../sign-in'
 import { getWebAppEntryState, WebAppEntryContext } from '../webapp-entry'
 
 type EntryInput = Parameters<typeof getWebAppEntryState>[0]
 type EntryParameters = NonNullable<EntryInput['parameters']>
+
+let queryClient: QueryClient
+const render = (ui: ReactNode) =>
+  renderView(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
+
+beforeEach(() => {
+  queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+  vi.stubGlobal('crypto', webcrypto)
+  window.history.replaceState({}, '', '/chat/app-code')
+})
+afterEach(() => {
+  queryClient.clear()
+  sessionStorage.clear()
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+  window.history.replaceState({}, '', '/')
+})
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -207,7 +232,9 @@ describe('Web App entry policy', () => {
 })
 
 describe('SignIn entry integration', () => {
-  it('uses the API Account sign-in origin and deployment prefix while preserving its other parameters', () => {
+  it('uses the API Account sign-in origin and deployment prefix while preserving its other parameters', async () => {
+    const user = userEvent.setup()
+    const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {})
     const input = makeEntryInput({
       parameters: makeParameters({
         account_login_url:
@@ -219,8 +246,9 @@ describe('SignIn entry integration', () => {
         <SignIn />
       </WebAppEntryContext>,
     )
-    const getDestination = () =>
-      new URL(screen.getByRole('link', { name: 'share.auth.signIn' }).getAttribute('href')!)
+    await user.click(screen.getByRole('button', { name: 'share.auth.signIn' }))
+    await waitFor(() => expect(assign).toHaveBeenCalledOnce())
+    const getDestination = () => new URL(assign.mock.lastCall![0].toString())
     expect(getDestination().origin).toBe('https://accounts.example')
     expect(getDestination().pathname).toBe('/console/signin')
     expect(getDestination().searchParams.get('source')).toBe('webapp')
@@ -240,14 +268,16 @@ describe('SignIn entry integration', () => {
         <SignIn />
       </WebAppEntryContext>,
     )
+    await user.click(screen.getByRole('button', { name: 'share.auth.signIn' }))
+    await waitFor(() => expect(assign).toHaveBeenCalledTimes(2))
     expect(getDestination().origin).toBe('https://other-accounts.example')
     expect(getDestination().pathname).toBe('/base/signin')
   })
 
-  it('shows the existing demo sign-in link outside an entry provider', () => {
+  it('shows the existing demo sign-in action outside an entry provider', () => {
     render(<SignIn />)
 
-    expect(screen.getByRole('link', { name: 'share.auth.signIn' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'share.auth.signIn' })).toBeInTheDocument()
   })
 
   it.each([
@@ -274,7 +304,7 @@ describe('SignIn entry integration', () => {
         </WebAppEntryContext>,
       )
 
-      expect(screen.queryByRole('link', { name: 'share.auth.signIn' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'share.auth.signIn' })).not.toBeInTheDocument()
     },
   )
 
@@ -291,10 +321,7 @@ describe('SignIn entry integration', () => {
       </WebAppEntryContext>,
     )
 
-    expect(screen.getByRole('link', { name: 'share.auth.signIn' })).toHaveAttribute(
-      'href',
-      `${window.location.origin}/signin?${new URLSearchParams({ redirect_url: new URL('/chat/app-code', window.location.origin).href, is_end_user: '1' })}`,
-    )
+    expect(screen.getByRole('button', { name: 'share.auth.signIn' })).toBeInTheDocument()
 
     rerender(
       <WebAppEntryContext
@@ -307,6 +334,6 @@ describe('SignIn entry integration', () => {
       </WebAppEntryContext>,
     )
 
-    expect(screen.queryByRole('link', { name: 'share.auth.signIn' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'share.auth.signIn' })).not.toBeInTheDocument()
   })
 })

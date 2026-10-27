@@ -89,7 +89,6 @@ describe('Splash', () => {
   it('keeps the enterprise sign-in route on its original flow even with an App user proof', async () => {
     navigationMocks.pathname = '/webapp-signin'
     navigationMocks.searchParams = new URLSearchParams({
-      mode: 'end_user',
       redirect_url: '/workflow/share-app',
     })
     webAppAuthMocks.getWebAppAccessToken.mockReturnValue('account-proof')

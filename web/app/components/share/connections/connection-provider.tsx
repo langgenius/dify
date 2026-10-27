@@ -9,7 +9,6 @@ import type { InfiniteData } from '@tanstack/react-query'
 import type { PropsWithChildren } from 'react'
 import type { WebAppEntryState } from '../webapp-entry'
 import type { ConnectionsState } from './use-connections'
-import type { FormSchema } from '@/app/components/base/form/types'
 import type { WebAppAddress } from '@/service/webapp-address'
 import { ORPCError } from '@orpc/client'
 import {
@@ -30,7 +29,6 @@ import { ConnectionsContext } from './use-connections'
 type Props = PropsWithChildren<{
   address: WebAppAddress
   conversationId?: string
-  credentialSchemas?: Readonly<Record<string, FormSchema[]>>
   oauthCallbackOrigin?: string
 }>
 
@@ -39,7 +37,6 @@ function ConnectionSession({
   conversationId,
   authSession,
   entry,
-  credentialSchemas,
   oauthCallbackOrigin,
   children,
 }: Props & { authSession: number; entry: WebAppEntryState | null }) {
@@ -170,13 +167,7 @@ function ConnectionSession({
               ? 'loading'
               : 'ready'
 
-  const services = data.services.map((service) => {
-    const requirement = requirements.find((item) => item.node_id === service.id)
-    return {
-      ...service,
-      credentialSchemas: requirement ? credentialSchemas?.[requirement.provider] : undefined,
-    }
-  })
+  const services = data.services
   const refreshConnections = async () => {
     await Promise.all([list.refetch(), configuration.refetch()])
   }
@@ -293,7 +284,6 @@ function ConnectionSession({
 export function WebAppConnectionsProvider({
   address,
   conversationId,
-  credentialSchemas,
   oauthCallbackOrigin,
   children,
 }: Props) {
@@ -320,7 +310,6 @@ export function WebAppConnectionsProvider({
       conversationId={conversationId}
       authSession={authSession}
       entry={entry}
-      credentialSchemas={credentialSchemas}
       oauthCallbackOrigin={oauthCallbackOrigin}
     >
       {children}

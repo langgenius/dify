@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { createHttpError } from '@/service/http-error'
@@ -12,6 +13,14 @@ import NormalForm from '../normal-form'
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
+}))
+
+const deployment = vi.hoisted(() => ({ basePath: '' }))
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  get basePath() {
+    return deployment.basePath
+  },
 }))
 
 const mockReplace = vi.fn()
@@ -81,6 +90,8 @@ const render = (ui: ReactElement, options: Parameters<typeof renderWithConsoleQu
 describe('NormalForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    deployment.basePath = ''
+    mockQueryResults(nonInviteQueryResult, nonInviteQueryResult)
     mockUseRouter.mockReturnValue({ replace: mockReplace })
     mockUseSearchParams.mockReturnValue(new URLSearchParams())
   })
@@ -93,70 +104,115 @@ describe('NormalForm', () => {
   describe('End User Account login', () => {
     const target = {
       is_end_user: '1',
-      redirect_url: 'https://app.example/chat/my-webapp?conversation=existing',
+      app_code: 'my-webapp',
+      code_challenge: 'a'.repeat(43),
+      code_challenge_method: 'S256',
+      redirect_url: 'https://agent-app.dify.dev/web-prefix/chat/my-webapp?conversation=existing',
     }
 
     beforeEach(() => {
       mockUseSearchParams.mockReturnValue(new URLSearchParams(target))
       mockQueryResults(nonInviteQueryResult, nonInviteQueryResult)
-    })
-
-    it('shows the End User login form without probing workspace admission', () => {
-      mockUseSearchParams.mockReturnValue(
-        new URLSearchParams({
-          is_end_user: '1',
-          redirect_url: 'https://agent-app.dify.dev/chat/my-webapp?conversation=existing',
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+          const request = new Request(input, init)
+          if (request.method !== 'GET' || !new URL(request.url).pathname.endsWith('/login'))
+            throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+          return Response.json({ logged_in: false, redirect_url: null })
         }),
       )
-      const fetch = vi.spyOn(globalThis, 'fetch')
+    })
+
+    it('probes Account login when its deployment prefix differs from the Web App without requiring workspace admission', async () => {
+      const requests: Request[] = []
+      deployment.basePath = '/account-prefix'
+      vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+        requests.push(new Request(input, init))
+        return Response.json({ logged_in: false, redirect_url: null })
+      })
       render(<NormalForm />)
 
-      expect(screen.getByRole('button', { name: 'login.signBtn' })).toBeInTheDocument()
-      expect(fetch).not.toHaveBeenCalled()
+      expect(await screen.findByRole('button', { name: 'login.signBtn' })).toBeInTheDocument()
+      expect(requests).toHaveLength(1)
+      expect(requests[0]!.method).toBe('GET')
+      const request = new URL(requests[0]!.url)
+      expect(request.pathname).toMatch(/\/login$/)
+      expect(Object.fromEntries(request.searchParams)).toEqual({
+        mode: 'end_user',
+        app_code: target.app_code,
+        code_challenge: target.code_challenge,
+        redirect_url: target.redirect_url,
+      })
+      expect(mockReplace).not.toHaveBeenCalled()
     })
 
-    it('sends the cross-origin App code and exact return URL in the actual password request', async () => {
+    it('shows the page error without a duplicate Toast when the Account handoff service is unavailable', async () => {
+      const errorToast = vi.spyOn(toast, 'error').mockReturnValue('unexpected-toast')
+      const requests: Request[] = []
+      vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+        requests.push(new Request(input, init))
+        return Response.json(
+          {
+            code: 'web_login_unavailable',
+            status: 503,
+            message: 'Account sign-in is temporarily unavailable.',
+          },
+          { status: 503 },
+        )
+      })
+      render(<NormalForm />)
+
+      expect(await screen.findByText('share.common.appUnknownError')).toBeVisible()
+      expect(screen.queryByRole('button', { name: 'login.signBtn' })).not.toBeInTheDocument()
+      expect(requests).toHaveLength(1)
+      expect(requests[0]!.method).toBe('GET')
+      expect(new URL(requests[0]!.url).pathname).toMatch(/\/login$/)
+      expect(mockReplace).not.toHaveBeenCalled()
+      expect(errorToast).not.toHaveBeenCalled()
+    })
+
+    it('sends only End User mode and the credentials in the actual password request', async () => {
       const user = userEvent.setup()
-      const redirectUrl =
-        'https://agent-app.dify.dev/workflow/my-webapp?input=hello%20world#existing'
-      mockUseSearchParams.mockReturnValue(
-        new URLSearchParams({
-          is_end_user: '1',
-          mode: 'console',
-          redirect_url: redirectUrl,
-        }),
-      )
+      const requests: Request[] = []
       let submitted: unknown
-      const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      mockUseSearchParams.mockReturnValue(new URLSearchParams({ ...target, mode: 'console' }))
+      vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
         const request = new Request(input, init)
+        requests.push(request)
+        if (request.method === 'GET') return Response.json({ logged_in: false, redirect_url: null })
         submitted = await request.json()
         return Response.json({ result: 'fail', data: 'Login not completed' })
       })
       render(<NormalForm />)
 
+      await screen.findByRole('button', { name: 'login.signBtn' })
       await user.type(screen.getByLabelText('login.email'), 'account@example.com')
       await user.type(screen.getByLabelText('login.password'), 'Password123!')
       await user.click(screen.getByRole('button', { name: 'login.signBtn' }))
 
       await waitFor(() =>
-        expect(submitted).toMatchObject({
+        expect(submitted).toEqual({
           mode: 'end_user',
-          app_code: 'my-webapp',
-          redirect_url: redirectUrl,
           email: 'account@example.com',
+          password: expect.any(String),
+          remember_me: true,
         }),
       )
-      expect(fetch).toHaveBeenCalledOnce()
+      expect(requests.map((request) => request.method)).toEqual(['GET', 'POST'])
       expect(mockReplace).not.toHaveBeenCalled()
     })
 
-    it('returns to the safe App target after End User password login', async () => {
+    it('returns through Account sign-in after password login and then obtains the Web callback', async () => {
       const user = userEvent.setup()
       const replace = vi.fn()
-      const redirectUrl = `${window.location.origin}/chat/my-webapp?conversation=existing`
-      mockUseSearchParams.mockReturnValue(
-        new URLSearchParams({ is_end_user: '1', redirect_url: redirectUrl }),
-      )
+      const requests: Request[] = []
+      const callback = `https://agent-app.dify.dev/web-prefix/webapp-signin?${new URLSearchParams({
+        mode: 'end_user',
+        redirect_url: target.redirect_url,
+        login_code: 'one-use-code',
+      })}`
+      let authenticated = false
       vi.stubGlobal('location', {
         href: window.location.href,
         origin: window.location.origin,
@@ -165,22 +221,68 @@ describe('NormalForm', () => {
         hash: window.location.hash,
         replace,
       })
-      const fetch = vi
-        .spyOn(globalThis, 'fetch')
-        .mockResolvedValue(Response.json({ result: 'success' }))
-      render(<NormalForm />)
+      vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+        const request = new Request(input, init)
+        requests.push(request)
+        if (request.method === 'POST') {
+          authenticated = true
+          return Response.json({ result: 'success' })
+        }
+        return Response.json({
+          logged_in: authenticated,
+          redirect_url: authenticated ? callback : null,
+        })
+      })
+      const firstVisit = render(<NormalForm />)
 
+      await screen.findByRole('button', { name: 'login.signBtn' })
       await user.type(screen.getByLabelText('login.email'), 'account@example.com')
       await user.type(screen.getByLabelText('login.password'), 'Password123!')
       await user.click(screen.getByRole('button', { name: 'login.signBtn' }))
 
-      await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith(redirectUrl))
-      expect(fetch).toHaveBeenCalledOnce()
+      await waitFor(() => expect(replace).toHaveBeenCalledOnce())
+      const resume = new URL(replace.mock.calls[0]![0])
+      expect(resume.origin).toBe(window.location.origin)
+      expect(resume.pathname).toBe('/signin')
+      expect(Object.fromEntries(resume.searchParams)).toEqual(target)
+      firstVisit.unmount()
+      mockUseSearchParams.mockReturnValue(resume.searchParams)
+      render(<NormalForm />)
+
+      await waitFor(() => expect(replace).toHaveBeenLastCalledWith(callback))
+      expect(requests.map((request) => request.method)).toEqual(['GET', 'POST', 'GET'])
+      expect(new URL(requests[2]!.url).searchParams.get('code_challenge')).toBe(
+        target.code_challenge,
+      )
       expect(mockReplace).not.toHaveBeenCalled()
     })
 
-    it('only offers supported End User login methods without probing the workspace', () => {
-      const fetch = vi.spyOn(globalThis, 'fetch')
+    it('reuses an existing Account session through the server callback without showing credentials', async () => {
+      const replace = vi.fn()
+      const callback = `https://agent-app.dify.dev/web-prefix/webapp-signin?${new URLSearchParams({
+        mode: 'end_user',
+        redirect_url: target.redirect_url,
+        login_code: 'existing-account-code',
+      })}`
+      vi.stubGlobal('location', {
+        href: window.location.href,
+        origin: window.location.origin,
+        pathname: window.location.pathname,
+        search: window.location.search,
+        hash: window.location.hash,
+        replace,
+      })
+      vi.mocked(globalThis.fetch).mockImplementation(async () =>
+        Response.json({ logged_in: true, redirect_url: callback }),
+      )
+      render(<NormalForm />)
+
+      await waitFor(() => expect(replace).toHaveBeenCalledExactlyOnceWith(callback))
+      expect(screen.queryByRole('button', { name: 'login.signBtn' })).not.toBeInTheDocument()
+      expect(globalThis.fetch).toHaveBeenCalledOnce()
+    })
+
+    it('only offers supported End User login methods without probing the workspace', async () => {
       render(<NormalForm />, {
         systemFeatures: {
           sso_enforced_for_signin: true,
@@ -189,14 +291,14 @@ describe('NormalForm', () => {
         },
       })
 
-      expect(screen.getByRole('button', { name: 'login.signBtn' })).toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: 'login.signBtn' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'login.withSSO' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'login.signup.signUp' })).not.toBeInTheDocument()
-      expect(fetch).not.toHaveBeenCalled()
+      expect(globalThis.fetch).toHaveBeenCalledOnce()
       expect(mockReplace).not.toHaveBeenCalled()
     })
 
-    it('shows the unavailable-method state when only unsupported enterprise SSO is configured', () => {
+    it('shows the unavailable-method state when only unsupported enterprise SSO is configured', async () => {
       render(<NormalForm />, {
         systemFeatures: {
           sso_enforced_for_signin: true,
@@ -207,20 +309,24 @@ describe('NormalForm', () => {
         },
       })
 
-      expect(screen.getByText('login.noLoginMethod')).toBeInTheDocument()
+      expect(await screen.findByText('login.noLoginMethod')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'login.withSSO' })).not.toBeInTheDocument()
       expect(mockReplace).not.toHaveBeenCalled()
     })
 
-    it('does not fall back to Console sign-in when the App return target is missing', () => {
-      mockUseSearchParams.mockReturnValue(new URLSearchParams({ is_end_user: '1' }))
-      const fetch = vi.spyOn(globalThis, 'fetch')
-      render(<NormalForm />)
+    it.each(['redirect_url', 'code_challenge'])(
+      'does not fall back to Console sign-in when the End User %s is missing',
+      (missing) => {
+        const params = new URLSearchParams(target)
+        params.delete(missing)
+        mockUseSearchParams.mockReturnValue(params)
+        render(<NormalForm />)
 
-      expect(screen.queryByRole('button', { name: 'login.signBtn' })).not.toBeInTheDocument()
-      expect(fetch).not.toHaveBeenCalled()
-      expect(mockReplace).not.toHaveBeenCalled()
-    })
+        expect(screen.queryByRole('button', { name: 'login.signBtn' })).not.toBeInTheDocument()
+        expect(globalThis.fetch).not.toHaveBeenCalled()
+        expect(mockReplace).not.toHaveBeenCalled()
+      },
+    )
   })
 
   it('exposes the page title as the main heading', () => {

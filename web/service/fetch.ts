@@ -50,10 +50,12 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
 const afterResponseErrorCode = (
   otherOptions: IOtherOptions,
   requestGuard: RequestGuard | undefined,
+  assertAuthSessionCurrent: () => void,
 ): AfterResponseHook => {
   return async ({ request, response }) => {
     if (isHttpErrorStatus(response.status)) {
       const error = await httpErrorFromResponse(response)
+      assertAuthSessionCurrent()
       const errorData = error.data
       const handled = requestGuard?.handleError(response.status, errorData, error)
       if (handled || requestGuard?.isActive() === false) throw error
@@ -186,7 +188,7 @@ async function base<T>(
       afterResponse: [
         assertAuthSessionCurrent,
         ...(baseHooks.afterResponse || []),
-        afterResponseErrorCode(otherOptions, requestGuard),
+        afterResponseErrorCode(otherOptions, requestGuard, assertAuthSessionCurrent),
       ],
     },
   })

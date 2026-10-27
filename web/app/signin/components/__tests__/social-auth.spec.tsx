@@ -31,10 +31,14 @@ describe('SocialAuth', () => {
   })
 
   describe('OAuth params', () => {
-    it('preserves the direct End User return parameters while keeping OAuth in End User mode', () => {
+    it('preserves the complete PKCE return context through social authentication', () => {
       const target = {
         is_end_user: '1',
-        redirect_url: 'https://agent-app.dify.dev/workflow/my-webapp?input=hello',
+        app_code: 'my-webapp',
+        code_challenge: 'a'.repeat(43),
+        code_challenge_method: 'S256',
+        redirect_url:
+          'https://agent-app.dify.dev/web-prefix/workflow/my-webapp?input=hello%20world#history',
       }
       mockUseSearchParams.mockReturnValue(
         new URLSearchParams(target) as ReturnType<typeof useSearchParams>,

@@ -1,7 +1,7 @@
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { queryOptions, skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
@@ -11,7 +11,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
@@ -20,7 +20,11 @@ import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import Split from './split'
-import { getEndUserLoginContext, isEndUserSignIn } from './utils/end-user-login'
+import {
+  getAccountLoginCallbackUrl,
+  getEndUserLoginContext,
+  isEndUserSignIn,
+} from './utils/end-user-login'
 import { isInvitationForAccount } from './utils/invitation-account'
 import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 
@@ -31,6 +35,18 @@ function NormalForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isEndUser = isEndUserSignIn(searchParams)
+  const accountInput = getEndUserLoginContext(searchParams)
+  const accountSession = useQuery(
+    consoleQuery.login.get.queryOptions({
+      input: accountInput ? { query: accountInput } : skipToken,
+      context: { silent: true },
+      staleTime: 0,
+      gcTime: 0,
+      retry: false,
+      refetchOnWindowFocus: false,
+    }),
+  )
+  const accountCallback = getAccountLoginCallbackUrl(accountSession.data?.redirect_url)
   const queryString = searchParams.toString()
   const signupHref = queryString ? `/signup?${queryString}` : '/signup'
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
@@ -60,13 +76,15 @@ function NormalForm() {
     data: invitationCheckResp,
     isPending: isInviteCheckLoading,
     isError: isInviteCheckError,
-  } = useQuery({
-    queryKey: ['signin', 'invite-check', inviteToken],
-    queryFn: () => consoleClient.activate.check.get({ query: { token: inviteToken } }),
-    enabled: isInviteLink,
-    retry: false,
-    refetchOnWindowFocus: false,
-  })
+  } = useQuery(
+    queryOptions({
+      queryKey: ['signin', 'invite-check', inviteToken],
+      queryFn: () => consoleClient.activate.check.get({ query: { token: inviteToken } }),
+      enabled: isInviteLink,
+      retry: false,
+      refetchOnWindowFocus: false,
+    }),
+  )
 
   const workspaceName = invitationCheckResp?.data?.workspace_name || ''
   const isInvitationForCurrentAccount = isInvitationForAccount(
@@ -90,15 +108,21 @@ function NormalForm() {
   const noLoginMethodsConfigured =
     !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
-  const shouldRedirectLoggedInUser =
-    !isEndUser && isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
+  const shouldRedirectLoggedInUser = isEndUser
+    ? Boolean(accountSession.data?.logged_in && accountCallback)
+    : isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
   const isLoading =
-    (!isEndUser && isCheckLoading) ||
+    (isEndUser ? Boolean(accountInput) && accountSession.isPending : isCheckLoading) ||
     shouldRedirectLoggedInUser ||
     (isInviteLink && isInviteCheckLoading)
 
   useEffect(() => {
-    if (isEndUser || !isLoggedIn) return
+    if (isEndUser) {
+      if (accountSession.data?.logged_in && accountCallback)
+        globalThis.location.replace(accountCallback)
+      return
+    }
+    if (!isLoggedIn) return
 
     if (isInviteLink) {
       if (!isInvitationForCurrentAccount) return
@@ -107,13 +131,28 @@ function NormalForm() {
     }
 
     replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
-  }, [isEndUser, isInvitationForCurrentAccount, isInviteLink, isLoggedIn, router, searchParams])
+  }, [
+    accountSession.data,
+    accountCallback,
+    isEndUser,
+    isInvitationForCurrentAccount,
+    isInviteLink,
+    isLoggedIn,
+    router,
+    searchParams,
+  ])
 
   useEffect(() => {
     if (message) toast.error(message)
   }, [message])
 
-  if (isEndUser && !getEndUserLoginContext(searchParams)) return <AppUnavailable isUnknownReason />
+  if (
+    isEndUser &&
+    (!accountInput ||
+      accountSession.isError ||
+      (accountSession.data?.logged_in && !accountCallback))
+  )
+    return <AppUnavailable isUnknownReason />
 
   if (isLoading) {
     return (
