@@ -42,7 +42,7 @@ def _build_plugin_tool(*, has_runtime_parameters: bool) -> PluginTool:
     )
 
 
-def test_plugin_tool_invoke_and_fork_runtime(unbound_session: Session):
+def test_plugin_tool_invoke_and_fork_runtime(unbound_session: Session) -> None:
     tool = _build_plugin_tool(has_runtime_parameters=False)
     requests: list[httpx.Request] = []
 
@@ -63,7 +63,7 @@ def test_plugin_tool_invoke_and_fork_runtime(unbound_session: Session):
         ):
             messages = list(tool.invoke(session=unbound_session, user_id="user-1", tool_parameters={"raw": 1}))
 
-    assert [m.message.text for m in messages] == ["ok"]
+    assert [m.message.text for m in messages] == ["ok"]  # pyrefly: ignore[missing-attribute]
     assert len(requests) == 1
     request_data = json.loads(requests[0].content)
     assert request_data["data"]["tool_parameters"] == {"converted": 1}
@@ -74,7 +74,7 @@ def test_plugin_tool_invoke_and_fork_runtime(unbound_session: Session):
     assert forked.plugin_unique_identifier == tool.plugin_unique_identifier
 
 
-def test_plugin_tool_get_runtime_parameters_branches():
+def test_plugin_tool_get_runtime_parameters_branches() -> None:
     tool = _build_plugin_tool(has_runtime_parameters=False)
     assert tool.get_runtime_parameters() == tool.entity.parameters
 
