@@ -884,8 +884,7 @@ def test_default_token_provider_rejects_malformed_sdk_responses(response: object
 
 def test_adapter_rejects_non_resolved_credentials_before_client_construction(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(dingtalk_module, "_new_oauth_client", lambda: pytest.fail("unexpected client construction"))
-    adapter_type_name = "DingTalkIMProviderAdapter"
-    adapter_type = getattr(dingtalk_module, adapter_type_name)
+    adapter_type: Callable[..., object] = dingtalk_module.DingTalkIMProviderAdapter
 
     with pytest.raises(TypeError, match="resolved DingTalk credentials"):
         adapter_type(object())
@@ -1218,9 +1217,21 @@ def test_messaging_accepts_complete_sdk_response_and_locator_round_trips_through
     "response",
     [
         SimpleNamespace(body=None),
-        SimpleNamespace(body=SimpleNamespace(process_query_key=" ")),
-        SimpleNamespace(body=SimpleNamespace(process_query_key="fake-key", invalid_staff_id_list="fake-user-001")),
-        SimpleNamespace(body=SimpleNamespace(process_query_key="fake-key", filtered_staff_id_list=object())),
+        SimpleNamespace(status_code=200, body=None),
+        SimpleNamespace(status_code=200, body=SimpleNamespace(process_query_key=" ")),
+        SimpleNamespace(status_code=200, body=SimpleNamespace(process_query_key=42)),
+        SimpleNamespace(status_code=True, body=SimpleNamespace(process_query_key="fake-key")),
+        SimpleNamespace(status_code="200", body=SimpleNamespace(process_query_key="fake-key")),
+        SimpleNamespace(status_code=199, body=SimpleNamespace(process_query_key="fake-key")),
+        SimpleNamespace(status_code=300, body=SimpleNamespace(process_query_key="fake-key")),
+        SimpleNamespace(
+            status_code=200,
+            body=SimpleNamespace(process_query_key="fake-key", invalid_staff_id_list="fake-user-001"),
+        ),
+        SimpleNamespace(
+            status_code=200,
+            body=SimpleNamespace(process_query_key="fake-key", filtered_staff_id_list=object()),
+        ),
     ],
 )
 def test_messaging_rejects_malformed_or_partial_sdk_responses_once(response: object) -> None:

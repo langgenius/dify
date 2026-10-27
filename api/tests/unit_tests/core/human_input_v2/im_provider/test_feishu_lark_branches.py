@@ -6,7 +6,7 @@ import inspect
 import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import cast, get_type_hints
+from typing import cast, get_type_hints, is_protocol
 
 import pytest
 
@@ -52,11 +52,11 @@ def test_stream_factory_returns_private_concrete_type_without_stream_contract_st
     stream_protocols = {
         name
         for name, candidate in vars(adapter_module).items()
-        if name.startswith("_") and "Stream" in name and getattr(candidate, "_is_protocol", False)
+        if name.startswith("_") and "Stream" in name and is_protocol(candidate)
     }
 
     assert return_type is adapter_module._FeishuLarkEventStream
-    assert not getattr(return_type, "_is_protocol", False)
+    assert not is_protocol(return_type)
     assert return_type.__name__.startswith("_")
     assert not hasattr(adapters_package, return_type.__name__)
     public_methods = {

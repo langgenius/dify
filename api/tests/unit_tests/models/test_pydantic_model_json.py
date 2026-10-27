@@ -12,7 +12,6 @@ from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.sql.sqltypes import TEXT
 
-import models.types as model_types
 from models.types import FrozenPydanticModelColumn
 
 
@@ -104,10 +103,6 @@ def sqlite_pydantic_json_engine() -> Iterator[Engine]:
     finally:
         _Base.metadata.drop_all(engine)
         engine.dispose()
-
-
-def test_frozen_pydantic_model_column_is_publicly_available() -> None:
-    assert getattr(model_types, "FrozenPydanticModelColumn", None) is not None
 
 
 def test_frozen_pydantic_model_column_accepts_a_frozen_strict_model() -> None:

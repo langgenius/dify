@@ -251,9 +251,9 @@ def test_every_secret_uses_secret_str_and_is_absent_from_repr_and_logs(
     credentials = TypeAdapter(ConsoleIMProviderCredentials).validate_python(payload)
     secret_values = {value for name, value in payload.items() if name in _SECRET_FIELD_NAMES}
 
-    for name in credentials.__class__.model_fields:
+    for name, secret in credentials.model_dump().items():
         if name in _SECRET_FIELD_NAMES:
-            assert isinstance(getattr(credentials, name), (SecretStr, type(None)))
+            assert isinstance(secret, (SecretStr, type(None)))
 
     with caplog.at_level(logging.INFO):
         logging.getLogger(__name__).info("credentials=%r", credentials)

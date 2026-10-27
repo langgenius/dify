@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from types import SimpleNamespace
 from typing import NoReturn
 
@@ -134,8 +135,7 @@ def test_constructor_rejects_unresolved_credentials_before_client_or_cache_io(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(dingtalk_redis, "_new_oauth_client", lambda: pytest.fail("unexpected client construction"))
-    provider_type_name = "RedisCacheAccessTokenProvider"
-    provider_type = getattr(dingtalk_redis, provider_type_name)
+    provider_type: Callable[..., object] = dingtalk_redis.RedisCacheAccessTokenProvider
 
     with pytest.raises(TypeError, match="resolved DingTalk credentials"):
         provider_type(object(), _NoIOCache())

@@ -126,6 +126,23 @@ class _AccessTokenResponse(BaseModel):
     body: _AccessTokenResponseBody
 
 
+class _MessageSendResponseBody(BaseModel):
+    model_config = ConfigDict(strict=True, from_attributes=True)
+
+    process_query_key: str = Field(pattern=r"\S")
+    # The SDK may omit rejection lists when no recipients were rejected.
+    filtered_staff_id_list: Sequence[object] | None = Field(default=None, max_length=0)
+    flow_controlled_staff_id_list: Sequence[object] | None = Field(default=None, max_length=0)
+    invalid_staff_id_list: Sequence[object] | None = Field(default=None, max_length=0)
+
+
+class _MessageSendResponse(BaseModel):
+    model_config = ConfigDict(strict=True, from_attributes=True)
+
+    status_code: int = Field(ge=_HTTP_SUCCESS_STATUS_MIN, lt=_HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE)
+    body: _MessageSendResponseBody
+
+
 class _DirectoryHTTPError(Exception):
     pass
 
@@ -347,25 +364,13 @@ class _DingTalkMessaging(IMMessaging):
                     read_timeout=_SDK_TIMEOUT_MILLISECONDS,
                 ),
             )
-            status_code = getattr(response, "status_code", None)
-            if (
-                not isinstance(status_code, int)
-                or isinstance(status_code, bool)
-                or not _HTTP_SUCCESS_STATUS_MIN <= status_code < _HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE
-            ):
-                return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
-            response_body = getattr(response, "body", None)
-            if response_body is None or _has_rejected_recipients(response_body):
-                return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
-            process_query_key = getattr(response_body, "process_query_key", None)
-            if not isinstance(process_query_key, str) or not process_query_key.strip():
-                return MessageSendingError(_MESSAGE_ACCEPTANCE_UNCONFIRMED)
+            accepted_response = _MessageSendResponse.model_validate(response)
             return MessageAccepted(
                 MessageLocator(
                     _DingTalkLocatorPayload(
                         v=1,
                         p=IMProvider.DING_TALK,
-                        process_query_key=process_query_key,
+                        process_query_key=accepted_response.body.process_query_key,
                     ).encode()
                 )
             )
@@ -585,20 +590,6 @@ def _optional_non_blank(value: str | None) -> str | None:
     if value is None or not value.strip():
         return None
     return value
-
-
-def _has_rejected_recipients(response_body: object) -> bool:
-    for field_name in (
-        "filtered_staff_id_list",
-        "flow_controlled_staff_id_list",
-        "invalid_staff_id_list",
-    ):
-        value = getattr(response_body, field_name, None)
-        if value is None:
-            continue
-        if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)) or value:
-            return True
-    return False
 
 
 __all__ = ["DingTalkIMProviderAdapter"]

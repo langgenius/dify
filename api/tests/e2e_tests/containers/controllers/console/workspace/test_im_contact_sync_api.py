@@ -214,23 +214,15 @@ def test_manual_binding_http_commands_use_real_guarded_postgresql_writes(
     assert stored_binding.im_identity_id == str(_SECONDARY_IDENTITY_ID)
     assert db_session_with_containers.get(HumanInputIMBinding, organization_binding["id"]) is None
 
-    missing_binding = test_client_with_containers.delete(
-        binding_path,
-        query_string={"binding_id": "00000000-0000-0000-0000-000000000499"},
-        headers=headers,
-    )
-    assert missing_binding.status_code == 404
-    assert missing_binding.get_json()["code"] == "im_binding_not_found"
-
-    deleted = test_client_with_containers.delete(
-        binding_path,
-        query_string={"binding_id": replacement_binding["id"]},
-        headers=headers,
-    )
+    deleted = test_client_with_containers.delete(binding_path, headers=headers)
     assert deleted.status_code == 200
     assert deleted.get_json() == {}
     db_session_with_containers.expire_all()
     assert db_session_with_containers.scalar(select(HumanInputIMBinding)) is None
+
+    missing_binding = test_client_with_containers.delete(binding_path, headers=headers)
+    assert missing_binding.status_code == 404
+    assert missing_binding.get_json()["code"] == "im_binding_not_found"
 
 
 def test_sync_command_and_identity_queries_use_real_postgresql(

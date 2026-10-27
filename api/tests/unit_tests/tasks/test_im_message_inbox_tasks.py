@@ -62,13 +62,19 @@ def _event() -> AuthenticatedIMEvent:
     )
 
 
-def _task_queue(task: object) -> str | None:
-    queue = getattr(task, "queue", None)
-    return queue if isinstance(queue, str) else None
+def test_processing_task_uses_human_input_delivery_queue(monkeypatch: pytest.MonkeyPatch) -> None:
+    dispatches: list[dict[str, object]] = []
 
+    def capture_dispatch(*_args: object, **options: object) -> None:
+        dispatches.append(options)
 
-def test_processing_task_uses_human_input_delivery_queue() -> None:
-    assert _task_queue(process_im_message_inbox_record) == "human_input_delivery"
+    monkeypatch.setitem(process_im_message_inbox_record.app.conf, "task_always_eager", False)
+    monkeypatch.setattr(process_im_message_inbox_record.app, "send_task", capture_dispatch)
+
+    process_im_message_inbox_record.apply_async(args=("record-1",))
+
+    assert len(dispatches) == 1
+    assert dispatches[0]["queue"] == "human_input_delivery"
 
 
 def test_processing_task_fails_closed_when_runtime_is_not_configured() -> None:

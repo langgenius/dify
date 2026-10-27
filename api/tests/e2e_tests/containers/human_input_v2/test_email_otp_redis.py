@@ -11,7 +11,7 @@ from threading import Barrier
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, delete, func, select
+from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.resolved_form import ResolvedForm
@@ -29,6 +29,8 @@ from models.human_input_v2 import (
     HumanInputExternalContactProfile,
     HumanInputForm,
     HumanInputRecipient,
+    OtpSendEvent,
+    OtpVerificationEvent,
 )
 from models.model import App, AppMode
 from repositories.human_input_v2.contact import ExternalContact
@@ -332,12 +334,24 @@ def test_verified_challenges_accept_one_form_on_postgres(otp_case: OtpCase) -> N
     assert sum(isinstance(result, Form) for result in results) == 1
     assert results.count(FormSubmissionFailure.ALREADY_SUBMITTED) == 1
     with sessions() as session:
-        assert (
-            session.scalar(
-                select(func.count()).select_from(HumanInputAuditEvent).where(HumanInputAuditEvent.form_id == form.id)
+        audits = session.scalars(select(HumanInputAuditEvent).where(HumanInputAuditEvent.form_id == form.id)).all()
+        sends = [audit.payload for audit in audits if isinstance(audit.payload, OtpSendEvent)]
+        submissions = [audit.payload for audit in audits if isinstance(audit.payload, OtpVerificationEvent)]
+
+        assert len(audits) == 3
+        assert sends == [
+            OtpSendEvent(recipient_id=recipient_id, recipient_email="ci@example.com", sender_ip_address=None),
+            OtpSendEvent(recipient_id=recipient_id, recipient_email="ci@example.com", sender_ip_address=None),
+        ]
+        assert submissions == [
+            OtpVerificationEvent(
+                recipient_id=recipient_id,
+                recipient_email="ci@example.com",
+                succeeded=True,
+                submitter_ip_address=None,
+                reason="submitted",
             )
-            == 1
-        )
+        ]
 
 
 def test_lost_response_and_failed_resend_preserve_earlier_proof_and_budget(otp_case: OtpCase) -> None:

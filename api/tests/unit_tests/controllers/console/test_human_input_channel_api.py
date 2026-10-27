@@ -460,8 +460,8 @@ def test_create_returns_the_resulting_canonical_summary(
     assert response == {
         "summary": {
             "id": "00000000-0000-0000-0000-000000000001",
-            "created_at": 1787184000,
-            "updated_at": 1787187600,
+            "created_at": 1787212800,
+            "updated_at": 1787216400,
             "kind": "email",
             "provider": "resend",
             "status": "configured",

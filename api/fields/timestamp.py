@@ -3,6 +3,8 @@ from typing import Annotated
 
 from pydantic import BeforeValidator, Field, PlainSerializer
 
+from libs.datetime_utils import to_utc_timestamp
+
 
 def _require_datetime(value: object) -> datetime:
     if not isinstance(value, datetime):
@@ -11,7 +13,7 @@ def _require_datetime(value: object) -> datetime:
 
 
 def _datetime_to_unix_seconds(value: datetime) -> int:
-    return int(value.timestamp())
+    return to_utc_timestamp(value)
 
 
 Timestamp = Annotated[

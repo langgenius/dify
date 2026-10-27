@@ -375,11 +375,8 @@ def test_recipient_union_preserves_existing_and_migration_variants(recipient_val
 
 
 def test_v1_and_v2_submit_payloads_are_independent() -> None:
-    v2_submit_model = getattr(contracts, "HumanInputV2FormSubmitRequest", None)
-    assert v2_submit_model is not None
-
     v1_schema = HumanInputFormSubmitPayload.model_json_schema()
-    v2_schema = v2_submit_model.model_json_schema()
+    v2_schema = contracts.HumanInputV2FormSubmitRequest.model_json_schema()
 
     assert "challenge_token" not in v1_schema["properties"]
     assert "otp_code" not in v1_schema["properties"]

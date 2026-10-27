@@ -1127,11 +1127,6 @@ def test_decoder_discovery_and_decode_do_not_cross_runtime_dependency_boundaries
     }
     for seam_name in dependency_seam_names:
         monkeypatch.setattr(feishu_lark, seam_name, reject_dependency_call)
-    for seam_name in dependency_seam_names:
-        guarded_seam = getattr(feishu_lark, seam_name)
-        assert guarded_seam is reject_dependency_call
-        with pytest.raises(AssertionError, match="credential or Provider client boundary"):
-            guarded_seam()
     imported_modules: list[str] = []
     delegated_imports: list[str] = []
     executed_modules: list[str] = []

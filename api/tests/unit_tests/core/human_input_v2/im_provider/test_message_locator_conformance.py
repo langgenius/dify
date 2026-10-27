@@ -6,7 +6,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, Literal, Self, get_args, get_origin, get_type_hints
+from typing import Annotated, Literal, Self, TypeAliasType, get_args, get_origin, get_type_hints
 
 import pytest
 from hypothesis import given, settings
@@ -149,9 +149,8 @@ def _teams_service_url(draw) -> str:
 
 
 def _is_scalar_like(annotation: object) -> bool:
-    alias_value = getattr(annotation, "__value__", None)
-    if alias_value is not None:
-        return _is_scalar_like(alias_value)
+    if isinstance(annotation, TypeAliasType):
+        return _is_scalar_like(annotation.__value__)
     origin = get_origin(annotation)
     if origin is None:
         return annotation in (str, int, IMProvider) or isinstance(annotation, (str, int, IMProvider))

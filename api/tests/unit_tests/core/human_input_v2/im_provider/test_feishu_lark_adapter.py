@@ -71,10 +71,6 @@ class FakeSDKGateway:
             raise response
         return response
 
-    @staticmethod
-    def _department_value(department: object) -> object:
-        return getattr(department, "value", department)
-
     def query_tenant(self, *, request_option: object = None) -> Mapping[str, object]:
         del request_option
         self.calls.append(("query_tenant", None))
@@ -86,14 +82,20 @@ class FakeSDKGateway:
         return self._next(self.scope_responses)
 
     def list_departments(
-        self, department_id: object, page_token: str | None, *, request_option: object = None
+        self,
+        department_id: adapter_module._DepartmentIdentity,
+        page_token: str | None,
+        *,
+        request_option: object = None,
     ) -> Mapping[str, object]:
         del request_option
-        self.calls.append(("list_departments", (self._department_value(department_id), page_token)))
+        self.calls.append(("list_departments", (department_id.value, page_token)))
         return self._next(self.department_responses)
 
-    def list_users(self, department_id: object, page_token: str | None) -> Mapping[str, object]:
-        self.calls.append(("list_users", (self._department_value(department_id), page_token)))
+    def list_users(
+        self, department_id: adapter_module._DepartmentIdentity, page_token: str | None
+    ) -> Mapping[str, object]:
+        self.calls.append(("list_users", (department_id.value, page_token)))
         return self._next(self.user_responses)
 
     def create_message(self, receive_id: str, msg_type: str, content: str) -> Mapping[str, object]:
@@ -108,19 +110,21 @@ class FakeSDKGateway:
 class IdentityAwareFakeSDKGateway(FakeSDKGateway):
     """Capture the private department identity sent across the SDK boundary."""
 
-    @staticmethod
-    def _identity_parts(department: object) -> tuple[object, object]:
-        return (getattr(department, "value", department), getattr(department, "id_type", None))
-
     def list_departments(
-        self, department_id: object, page_token: str | None, *, request_option: object = None
+        self,
+        department_id: adapter_module._DepartmentIdentity,
+        page_token: str | None,
+        *,
+        request_option: object = None,
     ) -> Mapping[str, object]:
         del request_option
-        self.calls.append(("list_departments", (*self._identity_parts(department_id), page_token)))
+        self.calls.append(("list_departments", (department_id.value, department_id.id_type, page_token)))
         return self._next(self.department_responses)
 
-    def list_users(self, department_id: object, page_token: str | None) -> Mapping[str, object]:
-        self.calls.append(("list_users", (*self._identity_parts(department_id), page_token)))
+    def list_users(
+        self, department_id: adapter_module._DepartmentIdentity, page_token: str | None
+    ) -> Mapping[str, object]:
+        self.calls.append(("list_users", (department_id.value, department_id.id_type, page_token)))
         return self._next(self.user_responses)
 
 
