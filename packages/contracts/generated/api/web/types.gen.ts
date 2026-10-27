@@ -148,6 +148,11 @@ export type CompletionRequestError = ErrorResponse & {
   status: 400
 }
 
+export type ConversationFirstMessageNotFoundError = ErrorResponse & {
+  code: 'conversation_first_message_not_found'
+  status: 404
+}
+
 export type ConversationInfiniteScrollPagination = {
   data: Array<SimpleConversation>
   has_more: boolean
@@ -159,6 +164,11 @@ export type ConversationListQuery = {
   limit?: number
   pinned?: boolean | null
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+}
+
+export type ConversationNotFoundError = ErrorResponse & {
+  code: 'conversation_not_found'
+  status: 404
 }
 
 export type ConversationRenamePayload = (
@@ -1539,7 +1549,8 @@ export type PostConversationsByCIdNameData = {
 export type PostConversationsByCIdNameErrors = {
   400: NotChatAppError | ErrorResponse
   401: ErrorResponse
-  404: ErrorResponse
+  404: ConversationFirstMessageNotFoundError | ConversationNotFoundError | ErrorResponse
+  422: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }

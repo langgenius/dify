@@ -2342,11 +2342,12 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation renamed successfully. | **application/json**: [SimpleConversation](#simpleconversation)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 200 | Conversation renamed successfully; model failure preserves the existing name. | **application/json**: [SimpleConversation](#simpleconversation)<br> |
+| 400 | Invalid app selection or app mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid API credentials. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | API credential, app or workspace access is unavailable. | **application/json**: [AppAbnormalStatusError](#appabnormalstatuserror)<br>[AppApiDisabledError](#appapidisablederror)<br>[AppNotFoundError](#appnotfounderror)<br>[ForbiddenError](#forbiddenerror)<br>[WorkspaceArchivedError](#workspacearchivederror)<br>[WorkspaceNotFoundError](#workspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | `conversation_not_found`: Conversation does not exist. `conversation_first_message_not_found`: No first message is available for automatic naming. | **application/json**: [ConversationFirstMessageNotFoundError](#conversationfirstmessagenotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 422 | Invalid conversation rename payload. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /conversations/{conversation_id}/variables
@@ -4522,6 +4523,14 @@ Condition detail
 | name | string | Metadata field name to compare against. | Yes |
 | value | string<br>[ string ]<br>number | Value to compare against. Type depends on `comparison_operator`: string for most string operators, array of strings for `in` and `not in`, number for numeric operators, and omit or use `null` for `empty` and `not empty`. | No |
 
+#### ConversationFirstMessageNotFoundError
+
+The conversation has no message from which to generate a name.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationFirstMessageNotFoundError |  | The conversation has no message from which to generate a name. |  |
+
 #### ConversationInfiniteScrollPagination
 
 | Name | Type | Description | Required |
@@ -4537,6 +4546,14 @@ Condition detail
 | last_id | string | The ID of the last record on the current page. Used to fetch the next page. | No |
 | limit | integer, <br>**Default:** 20 | Number of records to return. | No |
 | sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sorting field. Use the `-` prefix for descending order.<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
+
+#### ConversationNotFoundError
+
+The conversation was not found for this user and app.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationNotFoundError |  | The conversation was not found for this user and app. |  |
 
 #### ConversationRenamePayload
 

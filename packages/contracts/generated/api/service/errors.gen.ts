@@ -90,6 +90,22 @@ const zCompletionRequestError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zConversationFirstMessageNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_first_message_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
+const zConversationNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('conversation_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
 const zDatasetNameDuplicateError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -530,7 +546,20 @@ export const post7Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post8Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
+export const post8Errors = {
+  app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+  app_api_disabled: { status: 403, data: zAppApiDisabledError },
+  app_not_found: { status: 403, data: zAppNotFoundError },
+  conversation_first_message_not_found: {
+    status: 404,
+    data: zConversationFirstMessageNotFoundError,
+  },
+  conversation_not_found: { status: 404, data: zConversationNotFoundError },
+  forbidden: { status: 403, data: zForbiddenError },
+  not_chat_app: { status: 400, data: zNotChatAppError },
+  workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+  workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+}
 
 export const put2Errors = { not_chat_app: { status: 400, data: zNotChatAppError } }
 

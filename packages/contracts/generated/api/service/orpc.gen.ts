@@ -13,6 +13,8 @@ import {
   zArchivedDocumentImmutableError,
   zAudioTooLargeError,
   zCompletionRequestError,
+  zConversationFirstMessageNotFoundError,
+  zConversationNotFoundError,
   zDatasetNameDuplicateError,
   zEndUserNotFoundError,
   zFileAccessDeniedError,
@@ -914,7 +916,20 @@ export const post8 = oc
     }),
   )
   .output(zPostConversationsByConversationIdNameResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    app_abnormal_status: { status: 403, data: zAppAbnormalStatusError },
+    app_api_disabled: { status: 403, data: zAppApiDisabledError },
+    app_not_found: { status: 403, data: zAppNotFoundError },
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    workspace_archived: { status: 403, data: zWorkspaceArchivedError },
+    workspace_not_found: { status: 403, data: zWorkspaceNotFoundError },
+  })
 
 export const name = {
   post: post8,

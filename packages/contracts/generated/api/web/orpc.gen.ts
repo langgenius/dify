@@ -12,6 +12,8 @@ import {
   zAudioTooLargeError,
   zAuthenticationFailedError,
   zCompletionRequestError,
+  zConversationFirstMessageNotFoundError,
+  zConversationNotFoundError,
   zEmailCodeError,
   zEmailPasswordResetLimitError,
   zEmailSendIpLimitError,
@@ -303,7 +305,14 @@ export const post6 = oc
     }),
   )
   .output(zPostConversationsByCIdNameResponse)
-  .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
+  .errors({
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+  })
 
 export const name = {
   post: post6,

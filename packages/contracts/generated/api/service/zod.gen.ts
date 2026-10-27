@@ -1053,6 +1053,30 @@ export const zCompletionRequestError = zErrorResponse.and(
 )
 
 /**
+ * ConversationFirstMessageNotFoundError
+ *
+ * The conversation has no message from which to generate a name.
+ */
+export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_first_message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this user and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * DatasetNameDuplicateError
  *
  * The dataset name already exists. Please modify your dataset name.
@@ -6196,7 +6220,7 @@ export const zPostConversationsByConversationIdNamePath = z.object({
 })
 
 /**
- * Conversation renamed successfully.
+ * Conversation renamed successfully; model failure preserves the existing name.
  */
 export const zPostConversationsByConversationIdNameResponse = zSimpleConversation
 
