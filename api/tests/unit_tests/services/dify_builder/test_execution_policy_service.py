@@ -19,12 +19,20 @@ from sqlalchemy.pool import StaticPool
 from typing_extensions import TypedDict
 
 from core.dify_builder.models import Actor, DifyBuilderContext, Graph
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base, TypeBase
 from models.dify_builder import DifyBuilderSession, DifyBuilderSessionCommit, DifyBuilderTestInput
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
+from models.workflow import (
+    Workflow,
+    WorkflowKind,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowType,
+)
 from runtime_contracts.builder.execution import TrustedExecutionCompletion
 from services.dify_builder.application import execution_policy as domain
 from services.dify_builder.serde import context_to_dict
@@ -832,13 +840,13 @@ def native_rows(
                 tenant_id=actor.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
-                type="workflow",
-                triggered_from="debugging",
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
                 version="draft",
                 graph=workflow.graph,
                 inputs=json.dumps({"n": 41, "sys.workflow_run_id": run_id}),
-                status=status,
-                created_by_role="account",
+                status=WorkflowExecutionStatus(status),
+                created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=actor.account_id,
                 total_steps=2,
                 finished_at=datetime.now(),
@@ -861,10 +869,10 @@ def native_rows(
                     index=index,
                     # Native Graphon start events leave this optional field unset.
                     predecessor_node_id=None,
-                    triggered_from="workflow-run",
-                    created_by_role="account",
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                    created_by_role=CreatorUserRole.ACCOUNT,
                     created_by=actor.account_id,
-                    status="succeeded",
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     finished_at=datetime.now(),
                 )
             )

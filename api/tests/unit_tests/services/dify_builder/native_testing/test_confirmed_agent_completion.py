@@ -28,8 +28,8 @@ from models.dify_builder import (
     DifyBuilderTestInput,
 )
 from models.dify_builder_native_tests import NativeEffectOperation, NativeInvocationState, NativeTestScope
-from models.enums import CreatorUserRole
-from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowRun, WorkflowType
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
 from runtime_contracts.builder.native.agent_contracts import (
@@ -347,13 +347,13 @@ def completed(
                 tenant_id=case.actor.tenant_id,
                 app_id=case.workflow.app_id,
                 workflow_id=case.workflow.id,
-                type="workflow",
-                triggered_from="debugging",
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
                 version="draft",
                 graph=case.workflow.graph,
                 inputs="{}",
                 outputs=json.dumps({"summary": "actual output"}),
-                status="succeeded",
+                status=WorkflowExecutionStatus.SUCCEEDED,
                 elapsed_time=1,
                 total_tokens=2,
                 total_steps=3,
@@ -369,12 +369,12 @@ def completed(
                     app_id=case.workflow.app_id,
                     workflow_id=case.workflow.id,
                     workflow_run_id=native_id,
-                    triggered_from="workflow-run",
+                    triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
                     index=index,
                     node_id=node_id,
                     node_type=node_id,
                     title=node_id,
-                    status="succeeded",
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs="{}",
                     outputs="{}",
                     process_data="{}",

@@ -94,6 +94,7 @@ class StreamCase:
             monkeypatch.setattr(case.host, "require_evidence_context", lambda: case.state.context)
             factory.effects.decision = PolicyStop(reason_code="effect_denied")
         context = case.state.context
+        assert context.native_run_id is not None
         self.row: WorkflowRun | None = WorkflowRun(
             id=context.native_run_id,
             tenant_id=context.tenant_id,
@@ -101,15 +102,17 @@ class StreamCase:
             workflow_id=context.workflow_id,
             created_by=context.actor_id,
             created_by_role=CreatorUserRole.ACCOUNT,
-            status="paused"
-            if waiting
-            else "stopped"
-            if stopped
-            else "partial-succeeded"
-            if partial
-            else "failed"
-            if failed
-            else "succeeded",
+            status=WorkflowExecutionStatus(
+                "paused"
+                if waiting
+                else "stopped"
+                if stopped
+                else "partial-succeeded"
+                if partial
+                else "failed"
+                if failed
+                else "succeeded"
+            ),
         )
 
         def read(statement: Select[tuple[WorkflowRun]]) -> WorkflowRun | None:

@@ -262,7 +262,7 @@ def test_initial_preflight_refuses_unqualified_routes_before_worker(
     generator, arguments = generate_fixture(case, monkeypatch)
     bind_component_observation(case, monkeypatch)
     entity = arguments["application_generate_entity"]
-    arguments["workflow"] = Workflow(features="{}")
+    arguments["workflow"] = Workflow(_features="{}")
     if feature == "tts":
         arguments["workflow"].features = json.dumps({"text_to_speech": {"enabled": True}})
     elif feature == "files":
@@ -290,7 +290,7 @@ def test_actual_generate_passes_same_guard_to_queue_and_pipeline_before_worker(m
     case = LaunchCase()
     generator, arguments = generate_fixture(case, monkeypatch)
     guard = bind_component_observation(case, monkeypatch)
-    arguments["workflow"] = Workflow(features="{}")
+    arguments["workflow"] = Workflow(_features="{}")
     seen: list[str] = []
     done = Event()
 
@@ -641,7 +641,7 @@ def test_actual_initial_entry_rejects_persisted_profile_before_input_effect(
     with pytest.raises(NativeObservationError, match="^native_observation_failed$"):
         WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
             app_model=App(id=context.app_id, tenant_id=context.tenant_id),
-            workflow=Workflow(id=context.workflow_id, graph=json.dumps(context.graph), features="{}"),
+            workflow=Workflow(id=context.workflow_id, graph=json.dumps(context.graph), _features="{}"),
             user=account,
             args={"inputs": context.inputs},
             streaming=True,

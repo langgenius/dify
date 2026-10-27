@@ -25,7 +25,7 @@ from models.dify_builder_native_tests import (
 )
 from models.enums import AppStatus
 from models.model import App
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowType
 from runtime_contracts.builder.execution import canonical_digest
 from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from runtime_contracts.builder.native.runtime_contracts import ResolvedNativeTestContext
@@ -126,7 +126,7 @@ def case(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> Obs
         app_id="app",
         tenant_id="tenant",
         version="draft",
-        type="workflow",
+        type=WorkflowType.WORKFLOW,
         graph=json.dumps(graph),
         _features="{}",
         _environment_variables="{}",

@@ -11,7 +11,8 @@ from sqlalchemy.orm import sessionmaker
 from core.dify_builder.models import DifyBuilderContext, EntryMode, Graph, MutationIntent, Run, Session, TestInput
 from core.dify_builder.state import PcState
 from graphon.enums import WorkflowExecutionStatus
-from models.workflow import Workflow, WorkflowRun
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.workflow import Workflow, WorkflowRun, WorkflowType
 from services.dify_builder import dify_port
 from services.dify_builder.business_acceptance import confirm_testdata_contract, record_run_acceptance
 from services.dify_builder.errors import PreflightError
@@ -116,12 +117,12 @@ def case(sqlite_session_factory: sessionmaker[SqlSession], monkeypatch: pytest.M
                 tenant_id=owner.actor.tenant_id,
                 app_id=owner.workflow.app_id,
                 workflow_id=owner.workflow.id,
-                type="workflow",
-                triggered_from="debugging",
+                type=WorkflowType.WORKFLOW,
+                triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
                 version="draft",
                 created_by=owner.actor.account_id,
-                created_by_role="account",
-                status="succeeded",
+                created_by_role=CreatorUserRole.ACCOUNT,
+                status=WorkflowExecutionStatus.SUCCEEDED,
                 graph=json.dumps(graph),
                 elapsed_time=0,
                 total_tokens=0,

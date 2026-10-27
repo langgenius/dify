@@ -21,11 +21,19 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.dify_builder.input_schema import SYSTEM_QUERY
 from core.dify_builder.models import Actor, DifyBuilderContext, EntryMode, Graph, NodeOutput, Run, Session, Turn
 from core.dify_builder.state import PcState
+from graphon.enums import WorkflowExecutionStatus
 from models.account import Account
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderRun, DifyBuilderSession, DifyBuilderTestInput
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider
-from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowRun
+from models.workflow import (
+    Workflow,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowRun,
+    WorkflowType,
+)
 from runtime_contracts.builder.execution import canonical_digest
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
 from runtime_contracts.builder.native.contracts import CheckpointRef, NativeTestContextRef, WaitingReceipt
@@ -129,9 +137,9 @@ def harness(monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path) -> Generato
     draft = Workflow(
         tenant_id="tenant-1",
         graph=json.dumps(GRAPH),
-        features="{}",
-        environment_variables=[],
-        conversation_variables=[],
+        _features="{}",
+        _environment_variables="{}",
+        _conversation_variables="{}",
     )
     apply_config_overrides(monkeypatch, DIFY_BUILDER_CONFIRMED_RUN_ENABLED=True)
     monkeypatch.setattr(WorkflowServiceDifyPort, "_restricted_admissible", lambda *_args: False)
@@ -245,13 +253,13 @@ def test_parent_recovery_requires_an_actual_fully_owned_native_row(harness: Full
                 tenant_id=harness.ids["tenant"],
                 app_id=harness.ids["app"],
                 workflow_id=workflow_id,
-                type="workflow",
-                triggered_from="debugging",
+                type=WorkflowType("workflow"),
+                triggered_from=WorkflowRunTriggeredFrom("debugging"),
                 version="draft",
                 graph=json.dumps(kwargs["graph"]),
                 inputs="{}",
-                status="running",
-                created_by_role="account",
+                status=WorkflowExecutionStatus("running"),
+                created_by_role=CreatorUserRole("account"),
                 created_by=str(uuid4()),
             )
         )
@@ -302,7 +310,7 @@ def test_confirmed_pause_frame_is_public_only_after_durable_parent_barrier(
         "_finish_run",
         lambda *_args, **_kwargs: (
             Run(status="failed", dify_run_id="native-1"),
-            WorkflowRun(status="paused", graph=json.dumps(graph)),
+            WorkflowRun(status=WorkflowExecutionStatus("paused"), graph=json.dumps(graph)),
         ),
     )
     order: list[str] = []
@@ -655,13 +663,13 @@ def test_recovery_reads_the_existing_native_database_outcome(
                     tenant_id=harness.ids["tenant"],
                     app_id=harness.ids["app"],
                     workflow_id=str(uuid4()),
-                    type="workflow",
-                    triggered_from="debugging",
+                    type=WorkflowType("workflow"),
+                    triggered_from=WorkflowRunTriggeredFrom("debugging"),
                     version="draft",
                     graph=json.dumps(GRAPH),
                     inputs=json.dumps({"topic": "x"}),
-                    status=status,
-                    created_by_role="account",
+                    status=WorkflowExecutionStatus(status),
+                    created_by_role=CreatorUserRole("account"),
                     created_by=harness.ids["account"],
                     outputs=json.dumps({"answer": "done"}),
                 )
