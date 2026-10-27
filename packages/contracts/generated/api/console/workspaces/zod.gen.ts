@@ -2828,11 +2828,11 @@ export const zImSyncRunStatus = z.enum(['failed', 'queued', 'running', 'succeede
  * transport contract intentionally does not expose a ``started_by`` actor.
  */
 export const zImSyncRun = z.object({
+  channel_config_version: z.int().gte(1),
   channel_id: z.string(),
   error_message: z.string().nullish(),
   finished_at: z.int().nullish(),
   id: z.string(),
-  integration_config_version: z.int().gte(1),
   provider: zImProvider,
   result_counts: zImSyncRunResultCounts,
   started_at: z.int().nullish(),

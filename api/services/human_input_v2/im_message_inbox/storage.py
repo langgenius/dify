@@ -12,7 +12,7 @@ from core.human_input_v2.im_message_inbox.contracts import (
     InboxAcceptance,
     InboxPersistenceError,
 )
-from core.human_input_v2.shared import IntegrationId
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
 
 
@@ -24,21 +24,21 @@ class IMInboxStorage:
 
     def insert_or_resolve(
         self,
-        integration_id: IntegrationId,
+        channel_id: IMChannelId,
         event: AuthenticatedIMEvent,
         *,
         now: datetime,
         request_ip_address: str | None = None,
     ) -> InboxAcceptance:
         try:
-            return self._insert(integration_id, event, now=now, request_ip_address=request_ip_address)
+            return self._insert(channel_id, event, now=now, request_ip_address=request_ip_address)
         except IntegrityError as error:
             if event.event_id is None:
                 raise InboxPersistenceError("failed to persist unidentified IM callback") from error
             # A competing intake may insert after the initial lookup. Its commit
             # is visible only after rolling back our failed transaction.
             try:
-                return self._insert(integration_id, event, now=now, request_ip_address=request_ip_address)
+                return self._insert(channel_id, event, now=now, request_ip_address=request_ip_address)
             except SQLAlchemyError as retry_error:
                 raise InboxPersistenceError("failed to resolve duplicate IM callback") from retry_error
         except SQLAlchemyError as error:
@@ -46,7 +46,7 @@ class IMInboxStorage:
 
     def _insert(
         self,
-        integration_id: IntegrationId,
+        channel_id: IMChannelId,
         event: AuthenticatedIMEvent,
         *,
         now: datetime,
@@ -54,7 +54,7 @@ class IMInboxStorage:
     ) -> InboxAcceptance:
         with self._session_factory() as session, session.begin():
             return SQLAlchemyIMMessageInboxRepository(session).insert_or_resolve(
-                integration_id, event, now=now, request_ip_address=request_ip_address
+                channel_id, event, now=now, request_ip_address=request_ip_address
             )
 
     def get(self, record_id: IMInboxRecordId) -> IMInboxRecord | None:

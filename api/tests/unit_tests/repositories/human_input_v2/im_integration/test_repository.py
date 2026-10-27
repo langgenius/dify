@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.human_input_v2.entities import IMProvider, IMSyncResultType
 from core.human_input_v2.im_integration import IMChannelRevision, IMSyncRun, SyncResultFact
-from core.human_input_v2.shared import IMSyncResultId, IMSyncRunId, IntegrationId
+from core.human_input_v2.shared import IMSyncResultId, IMSyncRunId
 from models.human_input_v2 import HumanInputIMSyncResult
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_channel_repository import (
@@ -52,7 +52,7 @@ def _run() -> IMSyncRun:
 def _result(result_id: str) -> SyncResultFact:
     return SyncResultFact(
         id=IMSyncResultId(result_id),
-        integration_id=IntegrationId(str(_CHANNEL_ID)),
+        channel_id=IMChannelId(str(_CHANNEL_ID)),
         sync_run_id=_run().id,
         operation_key=f"diagnostic:{result_id}",
         result_type=IMSyncResultType.FAILED,

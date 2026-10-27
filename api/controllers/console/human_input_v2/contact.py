@@ -255,7 +255,7 @@ def _sync_run_payload(run: IMSyncRun) -> dict[str, object]:
         },
         "provider": run.provider,
         "channel_id": run.channel_revision.channel_id,
-        "integration_config_version": run.channel_revision.config_version,
+        "channel_config_version": run.channel_revision.config_version,
     }
 
 

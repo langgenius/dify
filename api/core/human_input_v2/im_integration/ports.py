@@ -1,6 +1,6 @@
 """Transaction-oriented persistence ports for IM Control Plane invariants.
 
-Implementations own CAS predicates, Integration row locks, eager loading,
+Implementations own CAS predicates, Channel row locks, eager loading,
 revision-guarded apply, rollback, and append-only result persistence. Generic
 table CRUD is intentionally absent.
 """
@@ -18,8 +18,8 @@ from core.human_input_v2.shared import (
     DirectoryScope,
     IMIdentityId,
     IMSyncRunId,
-    IntegrationId,
 )
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 
 from .sync_reconciliation import ReconciliationReasonCode
 from .sync_records import (
@@ -33,7 +33,7 @@ from .sync_records import (
 
 
 class ActiveRunDecisionKind(StrEnum):
-    """Outcome of Integration-locked sync run creation."""
+    """Outcome of Channel-locked sync run creation."""
 
     # No active run existed and a new revision-bound synchronization run was committed.
     CREATED = "created"
@@ -41,7 +41,7 @@ class ActiveRunDecisionKind(StrEnum):
     # An active run already exists, so the repository returns it instead of creating a duplicate.
     EXISTING_ACTIVE = "existing_active"
 
-    # The captured Integration revision is no longer current and no new run may be created from it.
+    # The captured Channel revision is no longer current and no new run may be created from it.
     STALE_REVISION = "stale_revision"
 
 
@@ -63,7 +63,7 @@ class ApplyReconciliationStatus(StrEnum):
     # This completed run was applied earlier; persisted facts are returned for idempotent replay.
     ALREADY_APPLIED = "already_applied"
 
-    # Integration configuration changed after capture, so the plan cannot mutate current state.
+    # Channel configuration changed after capture, so the plan cannot mutate current state.
     STALE_REVISION = "stale_revision"
 
     LOCK_UNAVAILABLE = "lock_unavailable"
@@ -106,15 +106,15 @@ class IMSyncRepository(Protocol):
         started_by_account_id: AccountId | None,
         now: NaiveDatetime,
     ) -> ActiveRunDecision:
-        """Lock Integration and return at most one active run."""
+        """Lock Channel and return at most one active run."""
         ...
 
     def load_sync_run(self, sync_run_id: IMSyncRunId) -> IMSyncRun | None:
         """Load one persisted run without acquiring the Organization write lock."""
         ...
 
-    def load_latest_sync_run(self, integration_id: IntegrationId) -> IMSyncRun | None:
-        """Load the latest run for one current Integration."""
+    def load_latest_sync_run(self, channel_id: IMChannelId) -> IMSyncRun | None:
+        """Load the latest run for one current Channel."""
         ...
 
     def page_sync_results(
@@ -130,7 +130,7 @@ class IMSyncRepository(Protocol):
 
     def search_identities(
         self,
-        integration_id: IntegrationId,
+        channel_id: IMChannelId,
         provider: IMProvider,
         *,
         keyword: str | None,

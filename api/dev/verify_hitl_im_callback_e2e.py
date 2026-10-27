@@ -350,7 +350,7 @@ def _cleanup(sessions: sessionmaker[Session], fixture: Fixture, token: str) -> N
         session.execute(sa.delete(HumanInputForm).where(HumanInputForm.id.in_(form_ids)))
         session.execute(
             sa.delete(IMMessageEvent).where(
-                IMMessageEvent.integration_id == fixture.channel_id,
+                IMMessageEvent.channel_id == fixture.channel_id,
                 IMMessageEvent.payload.contains(token, autoescape=True),
             )
         )

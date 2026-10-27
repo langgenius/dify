@@ -20,9 +20,9 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncResultId,
     IMSyncRunId,
-    IntegrationId,
     NormalizedEmail,
 )
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 
 from .records import OpaqueProviderPayload
 
@@ -74,7 +74,7 @@ class SyncResultFact:
     """Append-only product outcome for one binding decision or diagnostic."""
 
     id: IMSyncResultId
-    integration_id: IntegrationId
+    channel_id: IMChannelId
     sync_run_id: IMSyncRunId
     operation_key: str | None
     result_type: IMSyncResultType

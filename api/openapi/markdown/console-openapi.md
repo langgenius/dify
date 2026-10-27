@@ -26956,11 +26956,11 @@ transport contract intentionally does not expose a ``started_by`` actor.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| channel_config_version | integer | Channel configuration revision captured when the sync run was created. | Yes |
 | channel_id | string | Channel identifier captured when the sync run was created. | Yes |
 | error_message | string | Terminal error message. Present only when the sync run status is `failed`. | No |
 | finished_at | integer | Unix timestamp in seconds when the sync run finished. This is the sync time displayed by the latest-only UI and is None while the run is unfinished. | No |
 | id | string | Unique sync run identifier. | Yes |
-| integration_config_version | integer | Integration configuration revision captured when the sync run was created. | Yes |
 | provider | [IMProvider](#improvider) | IM provider associated with the sync run. | Yes |
 | result_counts | [IMSyncRunResultCounts](#imsyncrunresultcounts) | Aggregate reconciliation counts for the current run snapshot. | Yes |
 | started_at | integer | Unix timestamp in seconds when the sync run started. | No |

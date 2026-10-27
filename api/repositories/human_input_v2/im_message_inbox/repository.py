@@ -15,9 +15,9 @@ from core.human_input_v2.im_message_inbox.contracts import (
     canonicalize_inbox_event,
     validate_inbox_event,
 )
-from core.human_input_v2.shared import IntegrationId
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import IMMessageEvent
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 
 from .mappers import event_record, inbox_record_from_model
 
@@ -36,7 +36,7 @@ class SQLAlchemyIMMessageInboxRepository:
 
     def insert_or_resolve(
         self,
-        integration_id: IntegrationId,
+        channel_id: IMChannelId,
         event: AuthenticatedIMEvent,
         *,
         now: datetime,
@@ -57,7 +57,7 @@ class SQLAlchemyIMMessageInboxRepository:
         self._session.add(
             event_record(
                 record_id=record_id,
-                integration_id=integration_id,
+                channel_id=channel_id,
                 event=event,
                 now=now,
                 request_ip_address=request_ip_address,

@@ -21,7 +21,6 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncResultId,
     IMSyncRunId,
-    IntegrationId,
     TenantId,
     WorkspaceScope,
 )
@@ -196,7 +195,7 @@ def test_latest_result_and_identity_queries_use_current_channel(service_context:
             sync_result_to_record(
                 SyncResultFact(
                     id=IMSyncResultId("00000000-0000-0000-0000-000000000701"),
-                    integration_id=IntegrationId(str(_CHANNEL_ID)),
+                    channel_id=IMChannelId(str(_CHANNEL_ID)),
                     sync_run_id=run.id,
                     operation_key="result:not-matched:provider-user-1",
                     result_type=IMSyncResultType.NOT_MATCHED,

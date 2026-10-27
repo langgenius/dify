@@ -45,12 +45,12 @@ def test_sync_run_exposes_captured_revision() -> None:
             "result_counts": {"added": 0, "not_matched": 0, "failed": 0, "removed": 0, "skipped": 0},
             "provider": "feishu",
             "channel_id": "channel-id",
-            "integration_config_version": 4,
+            "channel_config_version": 4,
         }
     )
 
     assert sync_run.channel_id == "channel-id"
-    assert sync_run.integration_config_version == 4
+    assert sync_run.model_dump(mode="json")["channel_config_version"] == 4
 
 
 def test_external_contact_avatar_is_optional() -> None:

@@ -317,7 +317,7 @@ const createApiRun = (status: ImSyncRun['status'] = 'queued'): ImSyncRun => ({
   status,
   provider: 'slack',
   channel_id: 'server-channel',
-  integration_config_version: 1,
+  channel_config_version: 1,
   started_at: status === 'queued' ? null : 1_700_000_000,
   finished_at: status === 'succeeded' ? 1_700_000_030 : null,
   result_counts: { added: 2, failed: 0, not_matched: 0, removed: 1, skipped: 0 },

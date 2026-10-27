@@ -440,7 +440,7 @@ def upgrade() -> None:
             "integration_id",
             StringUUID(),
             nullable=False,
-            comment="Logical human_input_im_integrations.id owner.",
+            comment="Logical human_input_im_channels.id owner.",
         ),
         sa.Column(
             "integration_config_version",
@@ -496,7 +496,7 @@ def upgrade() -> None:
             "integration_id",
             StringUUID(),
             nullable=False,
-            comment="Denormalized logical human_input_im_integrations.id.",
+            comment="Denormalized logical human_input_im_channels.id.",
         ),
         sa.Column(
             "sync_run_id",
@@ -637,7 +637,7 @@ def upgrade() -> None:
             "integration_id",
             StringUUID(),
             nullable=False,
-            comment="Logical foreign key to human_input_im_integrations.id.",
+            comment="Logical foreign key to human_input_im_channels.id.",
         ),
         sa.Column(
             "sync_run_id",

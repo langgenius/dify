@@ -62,7 +62,7 @@ def _channel() -> IMChannel:
 def _cleanup(session_maker: sessionmaker[Session], channel_id: IMChannelId) -> None:
     with session_maker.begin() as session:
         run_ids = session.scalars(
-            sa.select(HumanInputIMSyncRun.id).where(HumanInputIMSyncRun.integration_id == str(channel_id))
+            sa.select(HumanInputIMSyncRun.id).where(HumanInputIMSyncRun.channel_id == str(channel_id))
         ).all()
         if run_ids:
             session.execute(
@@ -78,7 +78,7 @@ def _cleanup(session_maker: sessionmaker[Session], channel_id: IMChannelId) -> N
         )
         session.execute(sa.delete(HumanInputIMBinding).where(HumanInputIMBinding.channel_id == str(channel_id)))
         session.execute(sa.delete(HumanInputIMIdentity).where(HumanInputIMIdentity.channel_id == str(channel_id)))
-        session.execute(sa.delete(HumanInputIMSyncRun).where(HumanInputIMSyncRun.integration_id == str(channel_id)))
+        session.execute(sa.delete(HumanInputIMSyncRun).where(HumanInputIMSyncRun.channel_id == str(channel_id)))
         session.execute(sa.delete(HumanInputIMChannel).where(HumanInputIMChannel.id == str(channel_id)))
 
 
@@ -113,7 +113,7 @@ def test_concurrent_sync_triggers_create_at_most_one_active_run(flask_req_ctx: o
         with session_maker() as session:
             count = session.scalar(
                 sa.select(sa.func.count(HumanInputIMSyncRun.id)).where(
-                    HumanInputIMSyncRun.integration_id == str(channel.id)
+                    HumanInputIMSyncRun.channel_id == str(channel.id)
                 )
             )
         assert count == 1

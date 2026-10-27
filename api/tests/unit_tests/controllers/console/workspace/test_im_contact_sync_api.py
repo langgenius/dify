@@ -58,13 +58,13 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncResultId,
     IMSyncRunId,
-    IntegrationId,
     TenantId,
     WorkspaceScope,
 )
 from enums import DeploymentEdition
 from libs.external_api import ExternalApi
 from repositories.human_input_v2.contact import Contact, ContactQuery, ContactType, IMBinding, Page
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 from repositories.human_input_v2.im_identity_repository import IMIdentity
 from services.human_input_v2.contact_service import ContactDetails, ContactWithIMBindings, IMBindingDetail
 from services.human_input_v2.im_contact_sync.errors import IMWriteUnavailableError
@@ -87,7 +87,7 @@ _RUN = IMSyncRun.create(
 )
 _RESULT = SyncResultFact(
     id=IMSyncResultId("result-1"),
-    integration_id=IntegrationId("channel-1"),
+    channel_id=IMChannelId("channel-1"),
     sync_run_id=IMSyncRunId("run-1"),
     operation_key="result:not-matched:provider-user-1",
     result_type=IMSyncResultType.NOT_MATCHED,
@@ -254,7 +254,7 @@ def test_sync_command_and_queries_map_transport_neutral_results(
                 "result_counts": {"added": 0, "not_matched": 0, "failed": 0, "removed": 0, "skipped": 0},
                 "provider": "feishu",
                 "channel_id": "channel-1",
-                "integration_config_version": 3,
+                "channel_config_version": 3,
             }
         }
     )

@@ -26,7 +26,6 @@ from core.human_input_v2.shared import (
     IMReconciliationChangeId,
     IMSyncResultId,
     IMSyncRunId,
-    IntegrationId,
     NormalizedEmail,
 )
 from libs.datetime_utils import ensure_naive_utc
@@ -40,6 +39,7 @@ from models.human_input_v2 import (
     IMSyncDirectoryEntryPayload,
     IMSyncIdentitySnapshot,
 )
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 
 
 def _timestamp(value: datetime) -> NaiveDatetime:
@@ -53,7 +53,7 @@ def sync_run_from_record(record: HumanInputIMSyncRun) -> IMSyncRun:
 
     return IMSyncRun(
         id=IMSyncRunId(record.id),
-        channel_revision=IMChannelRevision(record.integration_id, record.integration_config_version),
+        channel_revision=IMChannelRevision(record.channel_id, record.channel_config_version),
         provider=record.provider,
         status=record.status,
         added_count=record.added_count,
@@ -77,8 +77,8 @@ def sync_run_to_record(run: IMSyncRun) -> HumanInputIMSyncRun:
     """Map one sync aggregate into a detached record."""
 
     record = HumanInputIMSyncRun(
-        integration_id=run.channel_revision.channel_id,
-        integration_config_version=run.channel_revision.config_version,
+        channel_id=run.channel_revision.channel_id,
+        channel_config_version=run.channel_revision.config_version,
         provider=run.provider,
         status=run.status,
         added_count=run.added_count,
@@ -105,7 +105,7 @@ def sync_result_from_record(record: HumanInputIMSyncResult) -> SyncResultFact:
     identity_snapshot = record.identity_snapshot
     return SyncResultFact(
         id=IMSyncResultId(record.id),
-        integration_id=IntegrationId(record.integration_id),
+        channel_id=IMChannelId(record.channel_id),
         sync_run_id=IMSyncRunId(record.sync_run_id),
         operation_key=record.operation_key,
         result_type=record.result_type,
@@ -159,7 +159,7 @@ def sync_result_to_record(result: SyncResultFact) -> HumanInputIMSyncResult:
     contact_snapshot = result.contact_snapshot
     identity_snapshot = result.identity_snapshot
     record = HumanInputIMSyncResult(
-        integration_id=str(result.integration_id),
+        channel_id=str(result.channel_id),
         sync_run_id=str(result.sync_run_id),
         operation_key=result.operation_key,
         result_type=result.result_type,
@@ -212,7 +212,7 @@ def reconciliation_change_from_record(record: HumanInputIMReconciliationChange) 
 
     return IMReconciliationChange(
         id=IMReconciliationChangeId(record.id),
-        integration_id=IntegrationId(record.integration_id),
+        channel_id=IMChannelId(record.channel_id),
         sync_run_id=IMSyncRunId(record.sync_run_id),
         operation_key=record.operation_key,
         subject_kind=record.subject_kind,
@@ -231,7 +231,7 @@ def reconciliation_change_to_record(change: IMReconciliationChange) -> HumanInpu
     """Map one immutable change value into a detached append-only ORM record."""
 
     record = HumanInputIMReconciliationChange(
-        integration_id=str(change.integration_id),
+        channel_id=str(change.channel_id),
         sync_run_id=str(change.sync_run_id),
         operation_key=change.operation_key,
         subject_kind=change.subject_kind,

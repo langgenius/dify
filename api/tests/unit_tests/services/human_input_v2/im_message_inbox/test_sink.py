@@ -15,8 +15,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, EventAcceptance, IMEventIngressKind
 from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxEventValidationError
-from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageEvent
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 from services.human_input_v2.im_message_inbox.sink import IMMessageInboxSink
 from services.human_input_v2.im_message_inbox.storage import IMInboxStorage
 from services.human_input_v2.im_message_inbox.telemetry import IMInboxMetricKind
@@ -96,7 +96,7 @@ def _sink(sqlite_engine: Engine) -> tuple[IMMessageInboxSink, sessionmaker[Sessi
     metrics = _RecordingMetrics()
     return (
         IMMessageInboxSink(
-            integration_id=IntegrationId("integration-1"),
+            channel_id=IMChannelId("channel-1"),
             expected_provider=IMProvider.FEISHU,
             expected_provider_tenant_id="tenant-1",
             repository=IMInboxStorage(session_maker),
@@ -215,7 +215,7 @@ def test_sink_preserves_provider_metadata_and_payload(sqlite_engine: Engine) -> 
     maximum_event_type = "y" * 128
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     sink = IMMessageInboxSink(
-        integration_id=IntegrationId("integration-1"),
+        channel_id=IMChannelId("channel-1"),
         expected_provider=IMProvider.FEISHU,
         expected_provider_tenant_id=maximum_tenant_id,
         repository=IMInboxStorage(session_maker),
@@ -254,7 +254,7 @@ def test_sink_rejects_oversized_bound_provider_identity(sqlite_engine: Engine) -
 
     with pytest.raises(InboxEventValidationError, match="provider tenant id"):
         IMMessageInboxSink(
-            integration_id=IntegrationId("integration-1"),
+            channel_id=IMChannelId("channel-1"),
             expected_provider=IMProvider.FEISHU,
             expected_provider_tenant_id="t" * 129,
             repository=IMInboxStorage(session_maker),

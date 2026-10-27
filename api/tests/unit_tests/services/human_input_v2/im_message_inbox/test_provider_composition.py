@@ -26,15 +26,15 @@ from core.human_input_v2.im_integration.adapters import (
 from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.im_message_inbox import IMInboxRecordId
-from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageEvent
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 from services.human_input_v2.im_message_inbox.sink import IMMessageInboxSink
 from services.human_input_v2.im_message_inbox.storage import IMInboxStorage
 from services.human_input_v2.im_message_inbox.telemetry import NoopIMInboxMetrics
 
 _SIGNING_SECRET = "sanitized-signing-material"
 _PROVIDER_TENANT_ID = "sanitized-team"
-_INTEGRATION_ID = IntegrationId("00000000-0000-0000-0000-000000000001")
+_CHANNEL_ID = IMChannelId("00000000-0000-0000-0000-000000000001")
 _RECEIVED_AT = datetime(2026, 8, 6, 8)
 _NOW = _RECEIVED_AT.replace(tzinfo=UTC)
 
@@ -129,7 +129,7 @@ def _signed_request(body: bytes, *, valid_signature: bool = True) -> WebhookRequ
 def _build_sink(sqlite_engine: Engine) -> tuple[IMMessageInboxSink, sessionmaker[Session]]:
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     sink = IMMessageInboxSink(
-        integration_id=_INTEGRATION_ID,
+        channel_id=_CHANNEL_ID,
         expected_provider=IMProvider.SLACK,
         expected_provider_tenant_id=_PROVIDER_TENANT_ID,
         repository=IMInboxStorage(session_maker),
@@ -174,7 +174,7 @@ def test_slack_webhook_commits_only_authenticated_business_events_before_success
     assert len(task_publisher.record_ids) == 1
     with session_maker() as session:
         stored = session.get_one(IMMessageEvent, str(task_publisher.record_ids[0]))
-        assert stored.integration_id == str(_INTEGRATION_ID)
+        assert stored.channel_id == str(_CHANNEL_ID)
         assert stored.provider is IMProvider.SLACK
         assert stored.tenant_id == _PROVIDER_TENANT_ID
         assert stored.event_id == "sanitized-webhook-event"
@@ -313,7 +313,7 @@ def test_slack_webhook_and_stream_share_identified_callback_deduplication(
     with session_maker() as session:
         records = list(session.scalars(sa.select(IMMessageEvent)))
         assert len(records) == 1
-        assert records[0].integration_id == str(_INTEGRATION_ID)
+        assert records[0].channel_id == str(_CHANNEL_ID)
         assert records[0].processed_at is None
         assert consumer.events[0].ingress_kind.value == "webhook"
         assert consumer.events[1].ingress_kind.value == "stream"

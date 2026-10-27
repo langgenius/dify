@@ -57,7 +57,7 @@ class SQLAlchemyIMControlPlaneRepository:
         active_record = self._session.scalar(
             sa.select(HumanInputIMSyncRun)
             .where(
-                HumanInputIMSyncRun.integration_id == str(self._channel.id),
+                HumanInputIMSyncRun.channel_id == str(self._channel.id),
                 HumanInputIMSyncRun.status.in_((IMSyncRunStatus.QUEUED, IMSyncRunStatus.RUNNING)),
             )
             .order_by(HumanInputIMSyncRun.created_at, HumanInputIMSyncRun.id)
@@ -101,7 +101,7 @@ class SQLAlchemyIMControlPlaneRepository:
     def load_latest_sync_run(self) -> IMSyncRun | None:
         record = self._session.scalar(
             sa.select(HumanInputIMSyncRun)
-            .where(HumanInputIMSyncRun.integration_id == str(self._channel.id))
+            .where(HumanInputIMSyncRun.channel_id == str(self._channel.id))
             .order_by(HumanInputIMSyncRun.created_at.desc(), HumanInputIMSyncRun.id.desc())
             .limit(1)
         )

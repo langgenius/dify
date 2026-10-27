@@ -3,7 +3,7 @@
 The models use explicit logical owner references where database foreign keys are intentionally absent.
 Repository queries must therefore preserve complete owner predicates and explicit loading strategies.
 Current IM Identity and Binding rows use their Channel as the persistence boundary.
-Historical synchronization rows retain their existing Integration boundary.
+Historical synchronization rows retain their captured Channel references.
 """
 
 from __future__ import annotations
@@ -370,12 +370,11 @@ class IMMessageEvent(TypeBase):
         server_default=sa.func.current_timestamp(),
     )
 
-    # TODO(QuantumGhost): rename this field.
-    integration_id: Mapped[str] = mapped_column(
+    channel_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
         kw_only=True,
-        comment="Logical local Integration routing identifier without physical ownership.",
+        comment="Logical local Channel routing identifier without physical ownership.",
     )
     provider: Mapped[_IMProvider] = mapped_column(
         EnumText(_IMProvider),
@@ -759,39 +758,38 @@ class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
     """One manually triggered organization IM directory synchronization.
 
     Preventing parallel queued or running rows is a service transaction invariant:
-    lock the owning integration row before creating a run. A portable partial
+    lock the owning channel row before creating a run. A portable partial
     unique index is deliberately not used. A worker may apply current identities
-    and bindings only while ``integration_config_version`` still matches the
-    owning integration.
+    and bindings only while ``channel_config_version`` still matches the
+    owning channel.
     """
 
     __tablename__ = "human_input_im_sync_runs"
     __table_args__ = (
-        sa.CheckConstraint("integration_config_version > 0", name="captured_version_positive"),
+        sa.CheckConstraint("channel_config_version > 0", name="captured_version_positive"),
         sa.CheckConstraint(
             "added_count >= 0 AND not_matched_count >= 0 AND failed_count >= 0 AND removed_count >= 0 "
             "AND skipped_count >= 0",
             name="result_counts_nonnegative",
         ),
-        sa.Index("hiimsr_integration_created_idx", "integration_id", "created_at", "id"),
+        sa.Index("hiimsr_channel_created_idx", "channel_id", "created_at", "id"),
         sa.Index(
-            "hiimsr_integration_status_created_idx",
-            "integration_id",
+            "hiimsr_channel_status_created_idx",
+            "channel_id",
             "status",
             "created_at",
         ),
         {"comment": "Manual IM directory synchronization lifecycle and aggregate counts."},
     )
-    # TODO(QuantumGhost): Rename this field
-    integration_id: Mapped[str] = mapped_column(
+    channel_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
-        comment="Logical foreign key to human_input_im_integrations.id.",
+        comment="Logical foreign key to human_input_im_channels.id.",
     )
-    integration_config_version: Mapped[int] = mapped_column(
+    channel_config_version: Mapped[int] = mapped_column(
         sa.Integer,
         nullable=False,
-        comment="Integration configuration revision captured when this synchronization was created.",
+        comment="Channel configuration revision captured when this synchronization was created.",
     )
     provider: Mapped[_IMProvider] = mapped_column(
         EnumText(_IMProvider),
@@ -896,26 +894,26 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
             "id",
         ),
         sa.Index(
-            "hiimsres_integration_contact_created_idx",
-            "integration_id",
+            "hiimsres_channel_contact_created_idx",
+            "channel_id",
             "contact_id",
             "created_at",
         ),
         sa.Index(
-            "hiimsres_integration_identity_created_idx",
-            "integration_id",
+            "hiimsres_channel_identity_created_idx",
+            "channel_id",
             "im_identity_id",
             "created_at",
         ),
         {"comment": "Append-only per-entry, removed-binding, and diagnostic IM synchronization outcomes."},
     )
 
-    integration_id: Mapped[str] = mapped_column(
+    channel_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
         comment=(
-            "Denormalized logical foreign key to human_input_im_integrations.id; "
-            "must match the integration referenced by sync_run_id."
+            "Denormalized logical foreign key to human_input_im_channels.id; "
+            "must match the channel referenced by sync_run_id."
         ),
     )
     sync_run_id: Mapped[str] = mapped_column(
@@ -1073,14 +1071,14 @@ class HumanInputIMReconciliationChange(DefaultFieldsDCMixin, TypeBase):
             "committed_at",
             "id",
         ),
-        sa.Index("hiimrc_integration_committed_idx", "integration_id", "committed_at", "id"),
+        sa.Index("hiimrc_channel_committed_idx", "channel_id", "committed_at", "id"),
         {"comment": "Append-only IM identity and IM binding reconciliation mutation history."},
     )
 
-    integration_id: Mapped[str] = mapped_column(
+    channel_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
-        comment="Logical foreign key to human_input_im_integrations.id.",
+        comment="Logical foreign key to human_input_im_channels.id.",
     )
     sync_run_id: Mapped[str] = mapped_column(
         StringUUID,

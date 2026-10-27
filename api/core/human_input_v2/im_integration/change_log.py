@@ -15,9 +15,9 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMReconciliationChangeId,
     IMSyncRunId,
-    IntegrationId,
     NormalizedEmail,
 )
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 
 
 class IMReconciliationSubjectKind(StrEnum):
@@ -59,7 +59,7 @@ class IMReconciliationChange:
     """One append-only identity or IM binding mutation committed by a sync run."""
 
     id: IMReconciliationChangeId
-    integration_id: IntegrationId
+    channel_id: IMChannelId
     sync_run_id: IMSyncRunId
     operation_key: str
     subject_kind: IMReconciliationSubjectKind

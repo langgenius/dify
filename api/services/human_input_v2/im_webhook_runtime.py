@@ -19,7 +19,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
 from core.human_input_v2.im_integration.adapters.factory import build_im_provider_adapter
 from core.human_input_v2.im_integration.adapters.protocols import IMCardEventDecoder
 from core.human_input_v2.im_message_inbox.contracts import IMInboxRecord
-from core.human_input_v2.shared import IntegrationId, WorkspaceScope
+from core.human_input_v2.shared import WorkspaceScope
 from dify_app import DifyApp
 from extensions.ext_key_provider import key_provider_manager
 from libs.key_providers.base import BaseKeyProvider
@@ -64,9 +64,7 @@ class IMWebhookIngressService:
             adapter = build_im_provider_adapter(credentials)
             try:
                 sink = IMMessageInboxSink(
-                    # Keep the existing inbox column until its schema migration;
-                    # its routing value is the current Channel's identity.
-                    integration_id=IntegrationId(str(route.channel.id)),
+                    channel_id=IMChannelId(str(route.channel.id)),
                     expected_provider=route.channel.provider,
                     expected_provider_tenant_id=route.channel.provider_tenant_id,
                     repository=IMInboxStorage(self._sessions),
@@ -142,7 +140,7 @@ class IMCardSubmissionConsumer:
         if isinstance(card, UnrecognizedIMEvent):
             return
         actor = IMFormActor(
-            channel_id=IMChannelId(str(record.integration_id)),
+            channel_id=IMChannelId(str(record.channel_id)),
             provider=record.event.provider,
             provider_tenant_id=record.event.provider_tenant_id,
             provider_user_id=card.provider_user_id,

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from core.human_input_v2.entities import IMIdentityBindingStatus, IMProvider, IMSyncResultType
 from core.human_input_v2.im_integration import IMChannelRevision, IMSyncRun, SyncResultFact
-from core.human_input_v2.shared import ContactId, IMIdentityId, IMSyncResultId, IMSyncRunId, IntegrationId
+from core.human_input_v2.shared import ContactId, IMIdentityId, IMSyncResultId, IMSyncRunId
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_binding_repository import IMBindingAssignment
 from repositories.human_input_v2.im_channel_repository import (
@@ -73,7 +73,7 @@ def _result(
 ) -> SyncResultFact:
     return SyncResultFact(
         id=IMSyncResultId(result_id),
-        integration_id=IntegrationId(str(_CHANNEL_ID)),
+        channel_id=IMChannelId(str(_CHANNEL_ID)),
         sync_run_id=_LATEST_RUN_ID,
         operation_key=f"result:{result_id}",
         result_type=result_type,

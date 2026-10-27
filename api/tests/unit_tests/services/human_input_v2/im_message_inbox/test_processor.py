@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, IMEventIngressKind
 from core.human_input_v2.im_message_inbox import IMInboxRecord, IMInboxRecordId
-from core.human_input_v2.shared import IntegrationId
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 from services.human_input_v2.im_message_inbox.processor import IMInboxProcessor
 from services.human_input_v2.im_message_inbox.storage import IMInboxStorage
 
@@ -53,7 +53,7 @@ def _context(
 
 def test_processor_loads_callback_and_marks_it_processed(sqlite_engine: Engine) -> None:
     processor, repository, consumer = _context(sqlite_engine)
-    accepted = repository.insert_or_resolve(IntegrationId("integration-1"), _event(), now=_NOW)
+    accepted = repository.insert_or_resolve(IMChannelId("channel-1"), _event(), now=_NOW)
 
     processor.process(accepted.record_id)
 
@@ -66,7 +66,7 @@ def test_processor_loads_callback_and_marks_it_processed(sqlite_engine: Engine) 
 
 def test_processor_skips_already_processed_callback(sqlite_engine: Engine) -> None:
     processor, repository, consumer = _context(sqlite_engine)
-    accepted = repository.insert_or_resolve(IntegrationId("integration-1"), _event(), now=_NOW)
+    accepted = repository.insert_or_resolve(IMChannelId("channel-1"), _event(), now=_NOW)
     repository.mark_processed(accepted.record_id, processed_at=_NOW)
 
     processor.process(accepted.record_id)
@@ -76,7 +76,7 @@ def test_processor_skips_already_processed_callback(sqlite_engine: Engine) -> No
 
 def test_processor_leaves_callback_unprocessed_when_consumer_raises(sqlite_engine: Engine) -> None:
     processor, repository, consumer = _context(sqlite_engine, failure=RuntimeError("must-not-log"))
-    accepted = repository.insert_or_resolve(IntegrationId("integration-1"), _event(), now=_NOW)
+    accepted = repository.insert_or_resolve(IMChannelId("channel-1"), _event(), now=_NOW)
 
     with pytest.raises(RuntimeError, match="must-not-log"):
         processor.process(accepted.record_id)

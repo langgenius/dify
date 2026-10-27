@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.entities import AuthenticatedIMEvent
 from core.human_input_v2.im_message_inbox import IMInboxRecord, IMInboxRecordId
-from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageEvent
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 
 
 def _naive_utc(timestamp: datetime) -> datetime:
@@ -18,7 +18,7 @@ def _naive_utc(timestamp: datetime) -> datetime:
 def event_record(
     *,
     record_id: IMInboxRecordId,
-    integration_id: IntegrationId,
+    channel_id: IMChannelId,
     event: AuthenticatedIMEvent,
     now: datetime,
     request_ip_address: str | None = None,
@@ -26,7 +26,7 @@ def event_record(
     """Create one detached record containing immutable callback facts."""
 
     record = IMMessageEvent(
-        integration_id=str(integration_id),
+        channel_id=str(channel_id),
         provider=event.provider,
         tenant_id=event.provider_tenant_id,
         event_id=event.event_id,
@@ -62,7 +62,7 @@ def inbox_record_from_model(record: IMMessageEvent) -> IMInboxRecord:
 
     return IMInboxRecord(
         record_id=IMInboxRecordId(record.id),
-        integration_id=IntegrationId(record.integration_id),
+        channel_id=IMChannelId(record.channel_id),
         event=event_from_record(record),
         processed_at=record.processed_at,
         request_ip_address=record.request_ip_address,

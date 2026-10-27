@@ -29,7 +29,6 @@ from core.human_input_v2.shared import (
     IMIdentityId,
     IMSyncResultId,
     IMSyncRunId,
-    IntegrationId,
     NormalizedEmail,
     TenantId,
 )
@@ -362,7 +361,7 @@ def _result_facts(
         suffix = str(result_id).zfill(12)
         return SyncResultFact(
             id=IMSyncResultId(f"00000000-0000-0000-0000-{suffix}"),
-            integration_id=IntegrationId(run.channel_revision.channel_id),
+            channel_id=IMChannelId(run.channel_revision.channel_id),
             sync_run_id=run.id,
             operation_key=f"result:{result_type.value}:{result_id}",
             result_type=result_type,

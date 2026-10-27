@@ -15,13 +15,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, IMEventIngressKind
 from core.human_input_v2.im_message_inbox import AcceptanceKind, InboxEventValidationError
-from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageEvent
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 from services.human_input_v2.im_message_inbox.storage import IMInboxStorage
 
 _NOW = datetime(2026, 8, 2, 8, tzinfo=UTC)
 _RECEIVED_AT = datetime(2026, 8, 2, 8)
-_INTEGRATION_ID = IntegrationId("00000000-0000-0000-0000-000000000001")
+_CHANNEL_ID = IMChannelId("00000000-0000-0000-0000-000000000001")
 
 
 def _event(
@@ -60,8 +60,8 @@ def test_postgres_unidentified_callbacks_remain_independent(
 ) -> None:
     _, repository, session_maker = postgres_context
 
-    first = repository.insert_or_resolve(_INTEGRATION_ID, _event(absent_event_id), now=_NOW)
-    second = repository.insert_or_resolve(_INTEGRATION_ID, _event(absent_event_id), now=_NOW)
+    first = repository.insert_or_resolve(_CHANNEL_ID, _event(absent_event_id), now=_NOW)
+    second = repository.insert_or_resolve(_CHANNEL_ID, _event(absent_event_id), now=_NOW)
 
     assert first.kind is AcceptanceKind.NEW
     assert second.kind is AcceptanceKind.NEW
@@ -79,7 +79,7 @@ def test_postgres_preserves_max_length_provider_metadata(
     event_type = "y" * 128
 
     accepted = repository.insert_or_resolve(
-        _INTEGRATION_ID,
+        _CHANNEL_ID,
         _event(event_id, tenant_id=tenant_id, event_type=event_type),
         now=_NOW,
     )
@@ -98,7 +98,7 @@ def test_postgres_repository_rejects_oversized_provider_metadata_before_insert(
 
     with pytest.raises(InboxEventValidationError):
         repository.insert_or_resolve(
-            _INTEGRATION_ID,
+            _CHANNEL_ID,
             _event("event-1", tenant_id="t" * 129),
             now=_NOW,
         )
@@ -116,7 +116,7 @@ def test_postgres_schema_rejects_oversized_provider_metadata(
         with session_maker.begin() as session:
             session.add(
                 IMMessageEvent(
-                    integration_id=str(_INTEGRATION_ID),
+                    channel_id=str(_CHANNEL_ID),
                     provider=IMProvider.FEISHU,
                     tenant_id="t" * 129,
                     event_id="event-1",
@@ -141,7 +141,7 @@ def test_postgres_concurrent_identified_insert_resolves_one_record(
 
     def insert_callback(tenant_id: str) -> tuple[AcceptanceKind, str]:
         barrier.wait(timeout=5)
-        accepted = repository.insert_or_resolve(_INTEGRATION_ID, _event("event-1", tenant_id=tenant_id), now=_NOW)
+        accepted = repository.insert_or_resolve(_CHANNEL_ID, _event("event-1", tenant_id=tenant_id), now=_NOW)
         return accepted.kind, str(accepted.record_id)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -158,7 +158,7 @@ def test_postgres_mark_processed_is_idempotent(
     postgres_context: tuple[Engine, IMInboxStorage, sessionmaker[Session]],
 ) -> None:
     _, repository, _ = postgres_context
-    accepted = repository.insert_or_resolve(_INTEGRATION_ID, _event("event-1"), now=_NOW)
+    accepted = repository.insert_or_resolve(_CHANNEL_ID, _event("event-1"), now=_NOW)
 
     repository.mark_processed(accepted.record_id, processed_at=_NOW)
     repository.mark_processed(accepted.record_id, processed_at=_NOW.replace(minute=1))

@@ -301,9 +301,9 @@ class IMSyncRun(ResponseModel):
     )
     provider: IMProvider = Field(description="IM provider associated with the sync run.")
     channel_id: str = Field(description="Channel identifier captured when the sync run was created.")
-    integration_config_version: int = Field(
+    channel_config_version: int = Field(
         ge=1,
-        description="Integration configuration revision captured when the sync run was created.",
+        description="Channel configuration revision captured when the sync run was created.",
     )
 
 

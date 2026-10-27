@@ -25,7 +25,7 @@ const createRun = (overrides: Partial<ImSyncRun> = {}): ImSyncRun => ({
   status: 'succeeded',
   provider: 'slack',
   channel_id: 'channel-slack',
-  integration_config_version: 1,
+  channel_config_version: 1,
   started_at: 1_700_000_000,
   finished_at: 1_700_000_030,
   error_message: null,

@@ -31,9 +31,9 @@ from core.human_input_v2.shared import (
     IMReconciliationChangeId,
     IMSyncResultId,
     IMSyncRunId,
-    IntegrationId,
     NormalizedEmail,
 )
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 from repositories.human_input_v2.im_integration.mappers import (
     reconciliation_change_from_record,
     reconciliation_change_to_record,
@@ -44,13 +44,13 @@ from repositories.human_input_v2.im_integration.mappers import (
 )
 
 _NOW = datetime(2026, 7, 25, 8)
-_INTEGRATION_ID = IntegrationId("integration-1")
+_CHANNEL_ID = IMChannelId("channel-1")
 
 
 def _run() -> IMSyncRun:
     return IMSyncRun.create(
         sync_run_id=IMSyncRunId("run-1"),
-        channel_revision=IMChannelRevision(str(_INTEGRATION_ID), 1),
+        channel_revision=IMChannelRevision(str(_CHANNEL_ID), 1),
         provider=IMProvider.FEISHU,
         started_by_account_id=AccountId("account-1"),
         now=_NOW,
@@ -60,7 +60,7 @@ def _run() -> IMSyncRun:
 def _result() -> SyncResultFact:
     return SyncResultFact(
         id=IMSyncResultId("result-1"),
-        integration_id=_INTEGRATION_ID,
+        channel_id=_CHANNEL_ID,
         sync_run_id=IMSyncRunId("run-1"),
         operation_key="result:removed:1",
         result_type=IMSyncResultType.REMOVED,
@@ -115,7 +115,7 @@ def test_sync_result_mapping_round_trips_all_structured_snapshots() -> None:
     [
         IMReconciliationChange(
             id=IMReconciliationChangeId("change-identity"),
-            integration_id=_INTEGRATION_ID,
+            channel_id=_CHANNEL_ID,
             sync_run_id=IMSyncRunId("run-1"),
             operation_key="identity:update:1",
             subject_kind=IMReconciliationSubjectKind.IDENTITY,
@@ -146,7 +146,7 @@ def test_sync_result_mapping_round_trips_all_structured_snapshots() -> None:
         ),
         IMReconciliationChange(
             id=IMReconciliationChangeId("change-binding"),
-            integration_id=_INTEGRATION_ID,
+            channel_id=_CHANNEL_ID,
             sync_run_id=IMSyncRunId("run-1"),
             operation_key="binding:replace:1",
             subject_kind=IMReconciliationSubjectKind.BINDING,

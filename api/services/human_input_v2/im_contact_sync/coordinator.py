@@ -47,7 +47,6 @@ from core.human_input_v2.shared import (
     IMReconciliationChangeId,
     IMSyncResultId,
     IMSyncRunId,
-    IntegrationId,
     NormalizedEmail,
     TenantId,
 )
@@ -60,7 +59,7 @@ from models.enums import CreatorUserRole
 from models.human_input_v2 import HumanInputIMBinding, HumanInputIMChannel, HumanInputIMSyncRun
 from models.model import UploadFile
 from repositories.human_input_v2.contact import Contact, ContactType
-from repositories.human_input_v2.im_channel_repository import IMChannel
+from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelId
 from repositories.human_input_v2.im_identity_repository import IMIdentity, IMIdentityObservation, OpaqueProviderPayload
 from repositories.human_input_v2.im_integration.mappers import (
     reconciliation_change_to_record,
@@ -311,7 +310,7 @@ class IMChannelReconciliationService:
             changes.append(
                 IMReconciliationChange(
                     id=IMReconciliationChangeId(str(uuidv7())),
-                    integration_id=IntegrationId(str(self._channel.id)),
+                    channel_id=IMChannelId(str(self._channel.id)),
                     sync_run_id=plan.run.sync_run_id,
                     operation_key=upsert.operation_key,
                     subject_kind=IMReconciliationSubjectKind.IDENTITY,
@@ -412,7 +411,7 @@ class IMChannelReconciliationService:
             changes.append(
                 IMReconciliationChange(
                     id=IMReconciliationChangeId(str(uuidv7())),
-                    integration_id=IntegrationId(str(self._channel.id)),
+                    channel_id=IMChannelId(str(self._channel.id)),
                     sync_run_id=plan.run.sync_run_id,
                     operation_key=deletion.operation_key,
                     subject_kind=IMReconciliationSubjectKind.IDENTITY,
@@ -539,7 +538,7 @@ class IMChannelReconciliationService:
             results.append(
                 SyncResultFact(
                     id=IMSyncResultId(str(uuidv7())),
-                    integration_id=IntegrationId(str(self._channel.id)),
+                    channel_id=IMChannelId(str(self._channel.id)),
                     sync_run_id=plan.run.sync_run_id,
                     operation_key=planned.operation_key,
                     result_type=planned.result_type,
@@ -643,7 +642,7 @@ class IMChannelReconciliationService:
     ) -> IMReconciliationChange:
         return IMReconciliationChange(
             id=IMReconciliationChangeId(str(uuidv7())),
-            integration_id=IntegrationId(plan.run.channel_revision.channel_id),
+            channel_id=IMChannelId(plan.run.channel_revision.channel_id),
             sync_run_id=plan.run.sync_run_id,
             operation_key=operation_key,
             subject_kind=IMReconciliationSubjectKind.BINDING,
@@ -676,7 +675,7 @@ class IMChannelReconciliationService:
     ) -> None:
         diagnostic = SyncResultFact(
             id=IMSyncResultId(str(uuidv7())),
-            integration_id=IntegrationId(record.integration_id),
+            channel_id=IMChannelId(record.channel_id),
             sync_run_id=IMSyncRunId(record.id),
             operation_key=f"diagnostic:{code}",
             result_type=IMSyncResultType.FAILED,
@@ -736,8 +735,8 @@ class IMChannelReconciliationService:
     def _lock_active_run(self, session: Session, sync_run_id: IMSyncRunId) -> HumanInputIMSyncRun:
         predicates = (
             HumanInputIMSyncRun.id == str(sync_run_id),
-            HumanInputIMSyncRun.integration_id == str(self._channel.id),
-            HumanInputIMSyncRun.integration_config_version == self._channel.config_version,
+            HumanInputIMSyncRun.channel_id == str(self._channel.id),
+            HumanInputIMSyncRun.channel_config_version == self._channel.config_version,
             HumanInputIMSyncRun.provider == self._channel.provider,
         )
         result = session.execute(

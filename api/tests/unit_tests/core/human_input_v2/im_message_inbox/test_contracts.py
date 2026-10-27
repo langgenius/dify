@@ -5,7 +5,7 @@ from datetime import datetime
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, IMEventIngressKind
 from core.human_input_v2.im_message_inbox import IMInboxRecord, IMInboxRecordId, canonicalize_inbox_event
-from core.human_input_v2.shared import IntegrationId
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 
 
 def _event(*, event_id: str | None = "event-1") -> AuthenticatedIMEvent:
@@ -25,7 +25,7 @@ def test_inbox_record_preserves_callback_facts_verbatim() -> None:
     event = _event()
     record = IMInboxRecord(
         record_id=IMInboxRecordId("record-1"),
-        integration_id=IntegrationId("integration-1"),
+        channel_id=IMChannelId("channel-1"),
         event=event,
         processed_at=None,
     )

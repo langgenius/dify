@@ -22,7 +22,7 @@ from core.human_input_v2.im_message_inbox import (
     validate_inbox_event,
     validate_inbox_provider_tenant_id,
 )
-from core.human_input_v2.shared import IntegrationId
+from repositories.human_input_v2.im_channel_repository import IMChannelId
 from tasks.im_message_inbox_tasks import process_im_message_inbox_record
 
 from .telemetry import IMInboxMetricKind, IMInboxMetrics
@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 
 
 class IMMessageInboxSink:
-    """Concrete durable sink bound to one logical local Integration."""
+    """Concrete durable sink bound to one logical local Channel."""
 
-    _integration_id: IntegrationId
+    _channel_id: IMChannelId
     _expected_provider: IMProvider
     _expected_provider_tenant_id: str
     _repository: IMMessageInboxRepository
@@ -43,7 +43,7 @@ class IMMessageInboxSink:
     def __init__(
         self,
         *,
-        integration_id: IntegrationId,
+        channel_id: IMChannelId,
         expected_provider: IMProvider,
         expected_provider_tenant_id: str,
         repository: IMMessageInboxRepository,
@@ -53,7 +53,7 @@ class IMMessageInboxSink:
         if not expected_provider_tenant_id.strip():
             raise ValueError("expected provider tenant id must not be blank")
         validate_inbox_provider_tenant_id(expected_provider_tenant_id)
-        self._integration_id = integration_id
+        self._channel_id = channel_id
         self._expected_provider = expected_provider
         self._expected_provider_tenant_id = expected_provider_tenant_id
         self._repository = repository
@@ -75,14 +75,14 @@ class IMMessageInboxSink:
                 outcome="identity_conflict",
             )
             logger.warning(
-                "Rejected IM event with conflicting bound identity integration_id=%s expected_provider=%s",
-                self._integration_id,
+                "Rejected IM event with conflicting bound identity channel_id=%s expected_provider=%s",
+                self._channel_id,
                 self._expected_provider.value,
             )
             return EventAcceptance.NOT_ACCEPTED
         try:
             accepted = self._repository.insert_or_resolve(
-                self._integration_id,
+                self._channel_id,
                 event,
                 now=self._clock(),
                 request_ip_address=request_ip_address,
@@ -94,8 +94,8 @@ class IMMessageInboxSink:
                 outcome="persistence_failure",
             )
             logger.warning(
-                "Failed durable IM event acceptance integration_id=%s provider=%s error_code=persistence_failure",
-                self._integration_id,
+                "Failed durable IM event acceptance channel_id=%s provider=%s error_code=persistence_failure",
+                self._channel_id,
                 event.provider.value,
             )
             return EventAcceptance.NOT_ACCEPTED
@@ -117,10 +117,10 @@ class IMMessageInboxSink:
                 outcome="broker_unavailable",
             )
             logger.warning(
-                "Failed post-commit IM callback task publication record_id=%s integration_id=%s provider=%s "
+                "Failed post-commit IM callback task publication record_id=%s channel_id=%s provider=%s "
                 "error_code=broker_unavailable",
                 accepted.record_id,
-                self._integration_id,
+                self._channel_id,
                 event.provider.value,
             )
             return EventAcceptance.NOT_ACCEPTED
