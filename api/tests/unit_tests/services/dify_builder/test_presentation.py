@@ -40,8 +40,11 @@ def test_web_owns_all_scene_copy_and_parameter_names() -> None:
     path = Path(__file__).resolve().parents[5] / "web/i18n/locales/en-US/dify-builder.json"
     catalog = json.loads(path.read_text())
     for scene in BuilderCopyId:
-        text = catalog["copy." + scene]
-        assert set(re.findall(r"\{\{(\w+)\}\}", text)) == _PARAMETERS.get(scene, frozenset())
+        key = "copy." + scene
+        variants = [text for candidate, text in catalog.items() if candidate == key or candidate.startswith(key + "_")]
+        assert variants, f"Missing Web copy for {scene}"
+        for text in variants:
+            assert set(re.findall(r"\{\{(\w+)\}\}", text)) == _PARAMETERS.get(scene, frozenset())
 
 
 def test_complete_assistant_event_is_valid_but_native_stream_cannot_duplicate_it() -> None:
