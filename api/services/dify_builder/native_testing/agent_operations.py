@@ -585,7 +585,8 @@ class AgentOperationService:
                     execution_context={
                         "initial_working_directory": "request_owned_agent_workspace",
                         "may_contain_cloned_files": True,
-                        "filesystem_confinement_guaranteed": False,
+                        "initial_working_directory_is_confinement": False,
+                        "runtime_filesystem_isolation": "not_attested_to_assessor",
                         "configured_asset_cli": {
                             "skills_default_relative_directory": ".dify_conf/skills",
                             "files_default_relative_directory": ".dify_conf/files",

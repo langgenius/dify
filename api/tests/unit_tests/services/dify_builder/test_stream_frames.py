@@ -430,3 +430,40 @@ def test_observation_uses_original_command_only_for_task_stop(task_paused: bool,
     assert event["data"]["command_id"] == ("command-1" if task_paused else "command-2")
     assert "_task_paused" not in event["data"]
     assert subscription.closed
+
+
+@pytest.mark.parametrize("native_notification", [False, True])
+def test_stream_defers_initializing_observation_until_real_view(native_notification: bool) -> None:
+    notification = json.dumps({"kind": "native_state_changed", "session_id": "s1"}).encode()
+    subscription = _FakeSubscription([notification if native_notification else None, notification])
+    views = iter([None, _view(run_status="waiting_input", version=2)])
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(), subscription, True, read_session_view=lambda: next(views), command_id="original-command"
+        )
+    )
+    assert frames[1] == ": keep-alive\n\n"
+    events = [_event(frame) for frame in frames if not frame.startswith(":")]
+    assert [event["event"] for event in events] == ["command_started", "command_finished"]
+    assert events[-1]["data"]["version"] == 2
+    assert subscription.closed
+
+
+@pytest.mark.parametrize("reason", ["native_state_unavailable", "native_owner_mismatch"])
+def test_stream_surfaces_projection_policy_refusal_as_terminal_error(reason: str) -> None:
+    from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+
+    subscription = _FakeSubscription([json.dumps({"kind": "native_state_changed", "session_id": "s1"}).encode()])
+
+    def read_view() -> dict[str, object]:
+        raise BuilderExecutionPolicyError(reason)
+
+    frames = list(
+        wiring.stream_advance_frames(
+            _view(), subscription, True, read_session_view=read_view, command_id="original-command"
+        )
+    )
+    events = [_event(frame) for frame in frames]
+    assert [event["event"] for event in events] == ["command_started", "error"]
+    assert events[-1]["data"]["code"] == reason
+    assert subscription.closed

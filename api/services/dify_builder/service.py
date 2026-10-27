@@ -1397,8 +1397,13 @@ class DifyBuilderService:
             read_session_view=lambda: self._read_stream_session_view(session_id, actor),
         )
 
-    def _read_stream_session_view(self, session_id: str, actor: Actor) -> dict[str, object]:
+    def _read_stream_session_view(self, session_id: str, actor: Actor) -> dict[str, object] | None:
         with self._stream_read_scope_fn():
+            _, context = self._get_authorized_session(session_id, actor)
+            if self._test_actions is not None and self._test_actions.observation_initializing(
+                actor=actor, session_id=session_id, test_input_id=context.test_input_ref
+            ):
+                return None
             view = asdict(self.get_session_view(session_id, actor))
             _, context = self._repo.get_session(session_id)
             return {**view, "_task_paused": context.paused}

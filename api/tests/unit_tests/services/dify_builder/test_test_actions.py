@@ -127,6 +127,12 @@ class ActionCommands:
         assert session_id
         return self.receipt if test_input_id == "input-1" else None
 
+    def observation_initializing(self, *, actor: Actor, session_id: str, test_input_id: str) -> bool:
+        assert actor.account_id
+        assert session_id
+        assert test_input_id
+        return False
+
     def current_diagnostics(
         self, *, actor: Actor, session_id: str, test_input_id: str, receipt: NativeTestPublicReceipt
     ) -> list[dict[str, object]]:

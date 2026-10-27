@@ -79,6 +79,7 @@ def _receipt(status: str = "running", version: int = 1) -> NativeTestPublicRecei
 class _FrameData(TypedDict):
     receipt: dict[str, str]
     conversation_last_seq: int
+    test_execution: dict[str, object]
 
 
 class _DecodedFrame(TypedDict):
@@ -779,3 +780,173 @@ def test_native_model_diagnostic_owner_drift(completed: CompletedOwner, drift: s
         assert observed[0]["native_category"] == "timeout"
     else:
         assert observed == []
+
+
+@pytest.mark.parametrize(
+    "boundary",
+    ["startup", "ack_context", "launched", "cancelled", "expired", "owner", "generation", "inactive", "other_policy"],
+)
+def test_startup_stream_defers_only_until_sql_root_initialization(
+    completed: CompletedOwner, monkeypatch: pytest.MonkeyPatch, boundary: str
+) -> None:
+
+    from sqlalchemy import Table
+    from sqlalchemy.orm import make_transient
+
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from services.dify_builder.service import DifyBuilderService
+    from services.dify_builder.test_actions import BuilderTestActions
+    from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
+
+    owner = completed
+    _restore_public_reads(owner, monkeypatch)
+    with owner.factory.begin() as sql:
+        for model in (NativePayloadObject, NativeTestInvocation):
+            table = model.__table__
+            assert isinstance(table, Table)
+            table.create(sql.connection(), checkfirst=True)
+        root = sql.scalar(select(NativeInvocationState))
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        scope = sql.get(NativeTestScope, owner.request_id)
+        assert root is not None
+        assert request is not None
+        assert scope is not None
+        sql.expunge(root)
+        make_transient(root)
+        state_table = NativeInvocationState.__table__
+        assert isinstance(state_table, Table)
+        sql.execute(state_table.delete())
+        request.state, request.native_run_id = "running", None
+        request.observations = [
+            {
+                "native_command_key": "start-key",
+                "body_digest": "a" * 64,
+                "receipt": _receipt("prepared")
+                .model_copy(update={"request_id": owner.request_id})
+                .model_dump(mode="json"),
+            }
+        ]
+        scope.generation = 0
+        sql.add(
+            NativeTestInvocation(
+                tenant_id=owner.case.actor.tenant_id,
+                request_id=owner.request_id,
+                invocation_id="root",
+                active=True,
+                bindings={},
+            )
+        )
+    with owner.factory.begin() as sql:
+        request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+        scope = sql.get(NativeTestScope, owner.request_id)
+        invocation = sql.scalar(select(NativeTestInvocation))
+        assert request is not None
+        assert scope is not None
+        assert invocation is not None
+        if boundary == "ack_context":
+            sql.add(
+                NativePayloadObject(
+                    id="context",
+                    tenant_id=owner.case.actor.tenant_id,
+                    request_id=owner.request_id,
+                    invocation_id="root",
+                    kind="context",
+                    logical_key="context",
+                    storage_key="context-storage",
+                    payload_digest="a" * 64,
+                    value_digest="b" * 64,
+                )
+            )
+        elif boundary == "launched":
+            request.observations = [{**request.observations[0], "admission_launched": True}]
+        elif boundary == "cancelled":
+            scope.cancelled = True
+        elif boundary == "expired":
+            scope.expires_at = datetime(2000, 1, 1, tzinfo=UTC)
+        elif boundary == "owner":
+            request.actor_id = "foreign"
+        elif boundary == "generation":
+            scope.generation = 1
+        elif boundary == "inactive":
+            invocation.active = False
+        elif boundary == "other_policy":
+            request.context_digest = "f" * 64
+    from services.dify_builder.native_testing.confirmed_agent_commands import ProfiledNativeTestCommands
+
+    commands = ProfiledNativeTestCommands(
+        sessions=owner.factory,
+        actor=owner.case.actor,
+        confirmed_factory=lambda: owner.commands,
+        legacy_factory=lambda: pytest.fail("unexpected legacy profile"),
+    )
+    reader = BuilderTestActions(owner.factory, lambda **_: commands)
+    service = DifyBuilderService(
+        owner.repo,
+        FakeSessionLock(),
+        lambda *_: pytest.fail("observer dispatched"),
+        get_app_revision_fn=lambda *_: "fixture-revision",
+        test_actions=reader,
+    )
+    if boundary != "startup":
+        assert not reader.observation_initializing(
+            actor=owner.case.actor, session_id=owner.session.id, test_input_id=owner.saved_id
+        )
+        from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+
+        with pytest.raises(BuilderExecutionPolicyError):
+            owner.commands.api.get(actor=owner.case.actor, session_id=owner.session.id, request_id=owner.request_id)
+        if boundary != "owner":
+            subscription = _subscription(
+                monkeypatch, [json.dumps({"kind": "native_state_changed", "session_id": owner.session.id}).encode()]
+            )
+            frames = list(
+                wiring.stream_advance_frames(
+                    {**_view(), "session_id": owner.session.id},
+                    subscription,
+                    True,
+                    read_session_view=lambda: service._read_stream_session_view(owner.session.id, owner.case.actor),
+                )
+            )
+            assert [_decode(frame)["event"] for frame in frames] == ["command_started", "error"]
+            _assert_closed(subscription)
+        return
+    # Ordinary authenticated reads stay strict even during this startup window.
+    from runtime_contracts.builder.execution import BuilderExecutionPolicyError
+
+    with pytest.raises(BuilderExecutionPolicyError, match="native_state_unavailable"):
+        service.get_session_view(owner.session.id, owner.case.actor)
+    reads = 0
+
+    def read_view() -> dict[str, object] | None:
+        nonlocal reads
+        reads += 1
+        result = service._read_stream_session_view(owner.session.id, owner.case.actor)
+        if reads == 1:
+            assert result is None
+            with owner.factory.begin() as sql:
+                sql.add(root)
+                request = sql.get(DifyBuilderExecutionRequest, owner.request_id)
+                scope = sql.get(NativeTestScope, owner.request_id)
+                assert request is not None
+                assert scope is not None
+                request.state, request.native_run_id = "sealed", owner.native_id
+                scope.generation = 1
+        return result
+
+    notification = json.dumps({"kind": "native_state_changed", "session_id": owner.session.id}).encode()
+    subscription = _subscription(monkeypatch, [notification, notification])
+    frames = list(
+        wiring.stream_advance_frames(
+            {**_view(), "session_id": owner.session.id},
+            subscription,
+            True,
+            read_session_view=read_view,
+            command_id="original-command",
+        )
+    )
+    assert frames[1] == ": keep-alive\n\n"
+    events = [_decode(frame) for frame in frames if not frame.startswith(":")]
+    assert [event["event"] for event in events] == ["command_started", "command_finished"]
+    assert events[-1]["data"]["test_execution"]["request_id"] == owner.request_id
+    assert reads == 2
+    _assert_closed(subscription)
