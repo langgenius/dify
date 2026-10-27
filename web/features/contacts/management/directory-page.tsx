@@ -5,12 +5,7 @@ import type { ContactTypeFilter, ContactView } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -425,29 +420,29 @@ export function ContactsDirectoryPage() {
           {context.permissions.canManageContacts && (
             <div className="flex shrink-0 lg:ms-auto">
               {context.imBindingCentrallyManaged && repository.supportsPlatformImport !== false ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger render={<Button variant="primary" />}>
+                <Menu>
+                  <MenuTrigger render={<Button variant="primary" />}>
                     <span aria-hidden className="me-1 i-ri-add-line size-4" />
                     {t(($) => $['directory.addContact'])}
                     <span aria-hidden className="ms-1 i-ri-arrow-down-s-line size-4" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="min-w-48">
-                    <DropdownMenuItem className="gap-2" onClick={() => setPlatformDialogOpen(true)}>
+                  </MenuTrigger>
+                  <MenuContent className="min-w-48">
+                    <MenuItem className="gap-2" onClick={() => setPlatformDialogOpen(true)}>
                       <span
                         aria-hidden
                         className="i-ri-building-2-line size-4 text-text-tertiary"
                       />
                       {t(($) => $['directory.addFromPlatform'])}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="gap-2" onClick={() => setExternalDialogOpen(true)}>
+                    </MenuItem>
+                    <MenuItem className="gap-2" onClick={() => setExternalDialogOpen(true)}>
                       <span
                         aria-hidden
                         className="i-ri-contacts-book-line size-4 text-text-tertiary"
                       />
                       {t(($) => $['directory.addExternal'])}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    </MenuItem>
+                  </MenuContent>
+                </Menu>
               ) : (
                 <Button variant="primary" onClick={() => setExternalDialogOpen(true)}>
                   <span aria-hidden className="me-1 i-ri-add-line size-4" />

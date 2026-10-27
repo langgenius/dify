@@ -43,7 +43,7 @@ import ResourceAccessTokenPage from './resource-access-token-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
 
 const iconClassName = `
-  size-4 shrink-0 sm:mr-2
+  size-4 shrink-0 sm:me-2
 `
 
 type IAccountSettingProps = {

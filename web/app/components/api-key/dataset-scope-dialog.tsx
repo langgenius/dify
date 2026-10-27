@@ -384,7 +384,7 @@ function DatasetScopeContent({
                     />
                   }
                 >
-                  <span aria-hidden className="mr-1 i-ri-add-line size-4" />
+                  <span aria-hidden className="me-1 i-ri-add-line size-4" />
                   {addLabel}
                 </ComboboxTrigger>
                 <ComboboxPortal>

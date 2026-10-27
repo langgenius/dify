@@ -4,15 +4,15 @@ import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { PluginDetail } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuGroupLabel,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuGroupLabel,
+  MenuItem,
+  MenuTrigger,
+} from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useMemo } from 'react'
@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
-import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import { selectToolCollections } from '@/app/components/tools/utils/query-select'
@@ -237,7 +237,7 @@ const DetailHeader = ({
             )}
 
             {/* Version Picker */}
-            <DropdownMenu
+            <Menu
               open={
                 !!version &&
                 versionPicker.isShow &&
@@ -249,7 +249,7 @@ const DetailHeader = ({
               onOpenChange={versionPicker.setIsShow}
             >
               {!!version && (
-                <DropdownMenuTrigger
+                <MenuTrigger
                   render={
                     <Button
                       variant="ghost"
@@ -272,18 +272,18 @@ const DetailHeader = ({
                   }
                 />
               )}
-              <DropdownMenuContent
+              <MenuContent
                 className="max-h-[min(16rem,var(--available-height))]"
                 align="start"
                 aria-labelledby={versionMenuLabelId}
               >
-                <DropdownMenuGroup>
-                  <DropdownMenuGroupLabel id={versionMenuLabelId}>
+                <MenuGroup>
+                  <MenuGroupLabel id={versionMenuLabelId}>
                     {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}
-                  </DropdownMenuGroupLabel>
+                  </MenuGroupLabel>
                   {versionsQuery.data && autoUpgradeSettings.data ? (
                     versionsQuery.data.data.versions.map((item) => (
-                      <DropdownMenuItem
+                      <MenuItem
                         key={item.unique_identifier}
                         disabled={version === item.version}
                         onClick={() => handleVersionSelect(item)}
@@ -295,10 +295,10 @@ const DetailHeader = ({
                         <span className="ms-auto text-text-tertiary">
                           {formatDate(item.created_at, dateFormat)}
                         </span>
-                      </DropdownMenuItem>
+                      </MenuItem>
                     ))
                   ) : (
-                    <DropdownMenuItem
+                    <MenuItem
                       closeOnClick={false}
                       onClick={() => {
                         if (versionsQuery.isError) void versionsQuery.refetch()
@@ -306,11 +306,11 @@ const DetailHeader = ({
                       }}
                     >
                       {t(($) => $['operation.retry'], { ns: 'common' })}
-                    </DropdownMenuItem>
+                    </MenuItem>
                   )}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </MenuGroup>
+              </MenuContent>
+            </Menu>
 
             {/* Auto Update Badge */}
             {isAutoUpgradeEnabled && !isReadmeView && (
@@ -380,7 +380,7 @@ const DetailHeader = ({
         {/* Action Buttons */}
         {!isReadmeView && (
           <div className="flex gap-1">
-            <OperationDropdown
+            <OperationMenu
               source={source}
               onInfo={modalStates.showPluginInfo}
               onCheckVersion={handleUpdate}

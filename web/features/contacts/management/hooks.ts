@@ -243,17 +243,17 @@ export function useRemoveContacts() {
 }
 
 export function useRemoveContactMember() {
-  const context = useContactsFeatureContext()
-  const repository = useContactsManagementRepository()
+  const { context, repository } = useOptionalContactsManagement()
   const queryClient = useQueryClient()
   return useMutation(
     mutationOptions({
-      mutationFn: (command: RemoveMemberCommand) => repository.removeMember(command),
+      mutationFn: (command: RemoveMemberCommand) => {
+        if (!context || !repository) throw new Error('ContactsManagementProvider is required')
+        return repository.removeMember(command)
+      },
       onSuccess: (result) => {
-        if (result.kind !== 'removed') return
-        void queryClient.invalidateQueries({
-          queryKey: contactsManagementQueryKeys.all(context.workspaceId),
-        })
+        if (result.kind !== 'removed' || !context) return
+        void invalidateHumanInputContactQueries(queryClient, context.workspaceId)
       },
     }),
   )

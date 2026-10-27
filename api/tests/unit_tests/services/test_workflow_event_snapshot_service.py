@@ -44,6 +44,7 @@ from models.workflow import (
     WorkflowPauseReason,
     WorkflowRun,
 )
+from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
@@ -97,12 +98,12 @@ class _FakePauseEntity(WorkflowPauseEntity):
 
 
 def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id="run-1",
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         triggered_from="app-run",
         version="v1",
         graph=None,
@@ -115,8 +116,9 @@ def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
         total_steps=0,
         created_by_role=CreatorUserRole.END_USER,
         created_by="user-1",
-        created_at=datetime(2024, 1, 1, tzinfo=UTC),
     )
+    workflow_run.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    return workflow_run
 
 
 def _build_snapshot(status: WorkflowNodeExecutionStatus) -> WorkflowNodeExecutionSnapshot:
@@ -234,12 +236,12 @@ def test_resolve_task_id_priority(context_task_id, buffered_task_id, expected) -
 
 
 def _build_workflow_run_additional(status: WorkflowExecutionStatus = WorkflowExecutionStatus.RUNNING) -> WorkflowRun:
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id="run-1",
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_id="workflow-1",
-        type="workflow",
+        type=ModelWorkflowType("workflow"),
         triggered_from="app-run",
         version="v1",
         graph=None,
@@ -252,8 +254,9 @@ def _build_workflow_run_additional(status: WorkflowExecutionStatus = WorkflowExe
         total_steps=2,
         created_by_role=CreatorUserRole.END_USER,
         created_by="user-1",
-        created_at=datetime(2024, 1, 1, tzinfo=UTC),
     )
+    workflow_run.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    return workflow_run
 
 
 def _build_resumption_context_additional(task_id: str) -> WorkflowResumptionContext:
@@ -781,7 +784,6 @@ def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
         index=snapshot.index,
         status=WorkflowNodeExecutionStatus.SUCCEEDED,
         elapsed_time=snapshot.elapsed_time,
-        created_at=snapshot.created_at,
         finished_at=snapshot.finished_at,
         created_by_role=CreatorUserRole.END_USER,
         created_by=run.created_by,
@@ -790,8 +792,9 @@ def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
         process_data=json.dumps({"action": "approve"}),
         outputs=json.dumps({"approved_text": "approved"}),
         execution_metadata=json.dumps({"total_tokens": 7}),
-        offload_data=[],
     )
+    execution.offload_data = []
+    execution.created_at = snapshot.created_at
     sqlite_session.add_all([run, execution])
     sqlite_session.commit()
     node_repo = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sqlite_session_factory)

@@ -104,6 +104,7 @@ catalog:
   '@orpc/client': 1.15.7
   '@orpc/contract': 1.15.7
   '@orpc/openapi-client': 1.15.7
+  '@orpc/standard-server': 1.15.7
   '@orpc/tanstack-query': 1.15.7
   '@pierre/highlights': 0.2.0
   '@playwright/test': 1.64.1
@@ -149,7 +150,7 @@ catalog:
   '@types/sortablejs': 1.15.9
   '@typescript-eslint/parser': 8.71.2
   '@typescript-eslint/utils': 8.71.2
-  '@typescript/native': npm:typescript@7.0.2
+  '@typescript/native': npm:typescript@7.1.0-beta
   '@vitejs/plugin-react': 6.1.2
   '@vitejs/plugin-rsc': 0.5.38
   '@vitest/browser-playwright': 5.0.5
@@ -179,6 +180,7 @@ catalog:
   embla-carousel-autoplay: 8.6.0
   embla-carousel-fade: 8.6.0
   embla-carousel-react: 8.6.0
+  es-module-lexer: 2.3.2
   es-toolkit: 1.52.0
   eslint: 10.13.0
   eslint-config-flat-gitignore: 2.4.0
@@ -208,6 +210,7 @@ catalog:
   i18next-resources-to-backend: 1.2.3
   iconify-import-svg: 0.2.0
   immer: 11.1.21
+  import-meta-resolve: 4.2.0
   jotai: 3.0.1
   jotai-scope: 0.12.2
   jotai-tanstack-query: 0.11.0
@@ -262,6 +265,8 @@ catalog:
   tailwindcss: 4.3.3
   tldts: 7.4.18
   tsrs: 0.18.0-ts7.1.0-dev.20260929
+  # JavaScript Compiler API for codegen/lint/i18n tools; type checks still use tsrs.
+  # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- Compiler API tools require TS 6; the mapper uses TS 7.1.
   typescript: npm:@typescript/typescript6@6.0.2
   uglify-js: 3.19.3
   undici: 7.30.0
@@ -269,15 +274,23 @@ catalog:
   use-context-selector: 2.0.0
   uuid: 14.0.3
   vinext: 1.2.1
+  # The workspace uses Vite Plus; the SDK's public peer targets official Vite.
+  # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item
   vite: npm:@voidzero-dev/vite-plus-core@1.4.0
   vite-plugin-inspect: 12.1.0
   vite-plus: 1.4.0
   vitest: 5.0.5
   vitest-browser-react: 2.3.0
   vitest-canvas-mock: 1.2.0
+  yaml: 2.9.1
   zod: 4.6.7
   zundo: 2.3.0
   zustand: 5.0.15
+catalogs:
+  public-vite:
+    vite: ^8.3.5
+  ts71:
+    typescript: 7.1.0-beta
 peerDependencyRules:
   allowAny:
     - vite

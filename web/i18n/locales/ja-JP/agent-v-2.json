@@ -125,7 +125,6 @@
   "agentDetail.configure.knowledgeFs.loading": "Agent ナレッジベースを読み込み中…",
   "agentDetail.configure.knowledgeFs.rebind": "インポートされた連携です。この Agent ナレッジベースを明示的に選び直すか、利用可能な Agent ナレッジベースに置き換えてください。",
   "agentDetail.configure.knowledgeFs.retry": "再試行",
-  "agentDetail.configure.knowledgeFs.runtimeUnavailable": "この環境では Agent ナレッジベース検索を利用できません。管理者に有効化を依頼してください。",
   "agentDetail.configure.knowledgeFs.select": "Agent ナレッジベースを最大 10 個選択",
   "agentDetail.configure.knowledgeFs.title": "Agent ナレッジベース",
   "agentDetail.configure.knowledgeFs.unavailable": "この Agent ナレッジベースは利用できないか、このエージェントで使用する権限がありません。",

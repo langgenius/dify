@@ -10,14 +10,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
@@ -105,8 +99,8 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
+      <Menu>
+        <MenuTrigger
           render={
             <IconButton
               size="md"
@@ -117,46 +111,43 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
             </IconButton>
           }
         />
-        <DropdownMenuContent className="min-w-40">
+        <MenuContent align="end" className="min-w-40">
           {hasViewAction && (
-            <DropdownMenuItem
-              className="system-sm-semibold text-text-secondary"
-              onClick={handleView}
-            >
+            <MenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
               {t(($) => $['operation.view'], { ns: 'common' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
           {hasEditAction && (
-            <DropdownMenuItem
+            <MenuItem
               disabled={!canManageRoles}
               className="system-sm-semibold text-text-secondary"
               onClick={handleEdit}
             >
               {t(($) => $['operation.edit'], { ns: 'common' })}
-            </DropdownMenuItem>
+            </MenuItem>
           )}
-          <DropdownMenuItem
+          <MenuItem
             disabled={!canManageRoles}
             className="system-sm-semibold text-text-secondary"
             onClick={openCopyMembersConfirm}
           >
             {t(($) => $['common.duplicateAction'], { ns: 'permission' })}
-          </DropdownMenuItem>
+          </MenuItem>
           {hasDeleteAction && (
             <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
+              <MenuSeparator />
+              <MenuItem
                 disabled={!canManageRoles}
                 variant="destructive"
                 className="system-sm-semibold"
                 onClick={openDeleteConfirm}
               >
                 {t(($) => $['operation.delete'], { ns: 'common' })}
-              </DropdownMenuItem>
+              </MenuItem>
             </>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </MenuContent>
+      </Menu>
       <AlertDialog
         open={showDeleteConfirm}
         onOpenChange={(open) => !open && setShowDeleteConfirm(false)}

@@ -1,25 +1,21 @@
 'use client'
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import AppInputsForm from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form'
 import { useAppInputsFormSchema } from '@/app/components/plugins/plugin-detail-panel/app-selector/hooks/use-app-inputs-form-schema'
 
-type Props = Readonly<{
-  value?: {
-    app_id: string
-    inputs: Record<string, unknown>
-  }
+type AppInputsPanelProps = {
+  inputs: Record<string, unknown>
   appDetail: Pick<AppPartial, 'id' | 'mode'>
   onFormChange: (value: Record<string, unknown>) => void
-}>
+}
 
-const AppInputsPanel = ({ value, appDetail, onFormChange }: Props) => {
+const AppInputsPanel = ({ inputs, appDetail, onFormChange }: AppInputsPanelProps) => {
   const { t } = useTranslation(['app', 'common'])
-  const inputsRef = useRef<Record<string, unknown>>(value?.inputs || {})
+  const inputsRef = useRef(inputs)
 
   const { inputFormSchema, isError, isLoading, retry } = useAppInputsFormSchema({ appDetail })
 
@@ -31,7 +27,7 @@ const AppInputsPanel = ({ value, appDetail, onFormChange }: Props) => {
   const hasInputs = inputFormSchema.length > 0
 
   return (
-    <div className={cn('flex max-h-60 flex-col rounded-b-2xl border-t border-divider-subtle pb-4')}>
+    <div className="flex max-h-60 flex-col rounded-b-2xl border-t border-divider-subtle pb-4">
       {isLoading && (
         <div className="pt-3">
           <LoadingPlaceholder className="h-full" />
@@ -63,7 +59,7 @@ const AppInputsPanel = ({ value, appDetail, onFormChange }: Props) => {
       {!isLoading && !isError && hasInputs && (
         <div className="grow overflow-y-auto">
           <AppInputsForm
-            inputs={value?.inputs || {}}
+            inputs={inputs}
             inputsRef={inputsRef}
             inputsForms={inputFormSchema}
             onFormChange={handleFormChange}

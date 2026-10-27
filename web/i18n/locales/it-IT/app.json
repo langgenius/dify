@@ -29,6 +29,7 @@
   "appSelector.noParams": "Non sono necessari parametri",
   "appSelector.params": "PARAMETRI DELL'APP",
   "appSelector.placeholder": "Seleziona un'app...",
+  "appSelector.searchPlaceholder": "Cerca app per nome…",
   "chooseAppFile": "Scegli un pacchetto app o un file DSL",
   "deleteAppConfirmContent": "Eliminare l'app è irreversibile. Gli utenti non potranno più accedere alla tua app e tutte le configurazioni e i log dei prompt verranno eliminati permanentemente.",
   "deleteAppConfirmInputLabel": "Per confermare, digita <appName>{{appName}}</appName> nel campo sottostante:",

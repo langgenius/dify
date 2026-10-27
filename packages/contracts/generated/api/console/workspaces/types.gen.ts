@@ -632,8 +632,6 @@ export type WorkspacePermissionResponse = {
   workspace_id: string
 }
 
-export type BinaryFileResponse = Blob | File
-
 export type PluginError = ErrorResponse & {
   code: 'plugin_error'
   status: 400
@@ -2650,7 +2648,7 @@ export type HumanInputNodeData = {
   recipients_spec: Array<Contact | DynamicEmail | OnetimeEmail | Initiator | AllWorkspaceContacts>
   retry_config?: RetryConfig
   timeout?: number
-  timeout_unit?: TimeoutUnit515107556368StrictStrictFalse
+  timeout_unit?: TimeoutUnit501031274512StrictStrictFalse
   title?: string
   type?: 'human-input'
   user_actions?: Array<UserActionConfig>
@@ -3265,7 +3263,7 @@ export type AllWorkspaceContacts = {
   type?: 'all_workspace_contacts'
 }
 
-export type TimeoutUnit515107556368StrictStrictFalse = 'day' | 'hour'
+export type TimeoutUnit501031274512StrictStrictFalse = 'day' | 'hour'
 
 export type UserActionConfig = {
   button_style?: ButtonStyle
@@ -5786,7 +5784,7 @@ export type GetWorkspacesCurrentPluginAssetError =
   GetWorkspacesCurrentPluginAssetErrors[keyof GetWorkspacesCurrentPluginAssetErrors]
 
 export type GetWorkspacesCurrentPluginAssetResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentPluginAssetResponse =
@@ -5922,7 +5920,7 @@ export type GetWorkspacesCurrentPluginIconError =
   GetWorkspacesCurrentPluginIconErrors[keyof GetWorkspacesCurrentPluginIconErrors]
 
 export type GetWorkspacesCurrentPluginIconResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentPluginIconResponse =
@@ -7761,7 +7759,12 @@ export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleB
 export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/workspace/agents/access-policy'
 }
 
@@ -7851,7 +7854,12 @@ export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBin
 export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/workspace/apps/access-policy'
 }
 
@@ -7944,7 +7952,12 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRol
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/workspace/datasets/access-policy'
 }
 
@@ -8035,7 +8048,9 @@ export type PostWorkspacesCurrentSkillsFilesUploadResponse =
   PostWorkspacesCurrentSkillsFilesUploadResponses[keyof PostWorkspacesCurrentSkillsFilesUploadResponses]
 
 export type PostWorkspacesCurrentSkillsImportData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/current/skills/import'
@@ -8316,7 +8331,7 @@ export type GetWorkspacesCurrentSkillsBySkillIdFilesContentError =
   GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors[keyof GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors]
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentResponses = {
-  200: BinaryFileResponse
+  200: Blob | File
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentResponse =

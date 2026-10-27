@@ -46,8 +46,7 @@ const canBindSpace = (space: KnowledgeFsSpaceListItemResponse) =>
   space.state === 'active' &&
   space.technical_status === 'available' &&
   space.permission_keys.includes('knowledge_space_read') &&
-  space.permission_keys.includes('knowledge_space_query') &&
-  space.permission_keys.includes('knowledge_space_access_config')
+  space.permission_keys.includes('knowledge_space_query')
 
 function KnowledgeSpaceOption({
   space,

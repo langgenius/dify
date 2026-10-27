@@ -14,26 +14,39 @@ import {
 import { ChatContextProvider } from '../../context-provider'
 import Operation from '../operation'
 
-const { mockAddAnnotation, mockEditAnnotation, mockGetAudioPlayer, mockPlayAudio } = vi.hoisted(
-  () => {
-    return {
-      mockAddAnnotation:
-        vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.annotations.post>(),
-      mockEditAnnotation:
-        vi.fn<
-          typeof import('@/service/console').consoleClient.apps.byAppId.annotations.byAnnotationId.post
-        >(),
-      mockGetAudioPlayer: vi.fn(),
-      mockPlayAudio: vi.fn(),
-    }
-  },
-)
+const {
+  mockAddAnnotation,
+  mockEditAnnotation,
+  mockRemoveAnnotation,
+  mockGetAudioPlayer,
+  mockPlayAudio,
+} = vi.hoisted(() => {
+  return {
+    mockAddAnnotation:
+      vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.annotations.post>(),
+    mockEditAnnotation:
+      vi.fn<
+        typeof import('@/service/console').consoleClient.apps.byAppId.annotations.byAnnotationId.post
+      >(),
+    mockRemoveAnnotation:
+      vi.fn<
+        typeof import('@/service/console').consoleClient.apps.byAppId.annotations.byAnnotationId.delete
+      >(),
+    mockGetAudioPlayer: vi.fn(),
+    mockPlayAudio: vi.fn(),
+  }
+})
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.annotations.byAnnotationId.post': (input) => mockEditAnnotation(input),
+      'apps.byAppId.annotations.byAnnotationId.delete': (input) => mockRemoveAnnotation(input),
+    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.annotations.post': mockAddAnnotation,
       'apps.byAppId.annotations.byAnnotationId.post': mockEditAnnotation,
@@ -126,6 +139,7 @@ describe('Operation', () => {
     mockContextValue.onOpenLog = undefined
 
     mockAddAnnotation.mockReset().mockResolvedValue({ id: 'ann-new' })
+    mockRemoveAnnotation.mockReset().mockResolvedValue(undefined)
     mockEditAnnotation.mockReset().mockResolvedValue({ id: 'ann-1' })
     mockGetAudioPlayer
       .mockReset()
@@ -383,19 +397,22 @@ describe('Operation', () => {
 
   const annotatedItem = { ...baseItem, annotation: { id: 'ann-1', authorName: 'Author' } }
 
-  it('edits an annotation through the real drawer and forwards the saved answer', async () => {
+  it('edits an annotation through the real dialog and forwards the saved answer', async () => {
     const user = userEvent.setup()
     mockContextValue.config = makeChatConfig(annotationConfig)
     renderOperation({ ...baseProps, item: annotatedItem })
     await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
     const drawer = await screen.findByRole('dialog', { name: 'appAnnotation.editModal.title' })
     await user.click(within(drawer).getAllByRole('button', { name: 'common.operation.edit' })[1]!)
+    await user.clear(
+      within(drawer).getByRole('textbox', { name: 'appAnnotation.editModal.yourAnswer' }),
+    )
     await user.type(
       within(drawer).getByRole('textbox', { name: 'appAnnotation.editModal.yourAnswer' }),
       'Corrected answer',
     )
     await user.click(within(drawer).getByRole('button', { name: 'common.operation.save' }))
-    expect(await screen.findByText('common.api.actionSuccess')).toBeInTheDocument()
+    await waitFor(() => expect(within(drawer).queryByRole('textbox')).not.toBeInTheDocument())
     expect(mockEditAnnotation).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: 'test-app', annotation_id: 'ann-1' },
       body: { question: 'What is this?', answer: 'Corrected answer' },
@@ -426,7 +443,12 @@ describe('Operation', () => {
     expect(mockContextValue.onAnnotationRemoved).not.toHaveBeenCalled()
     await user.click(remove)
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-    expect(mockContextValue.onAnnotationRemoved).toHaveBeenCalledExactlyOnceWith(0)
+    await waitFor(() =>
+      expect(mockContextValue.onAnnotationRemoved).toHaveBeenCalledExactlyOnceWith(0),
+    )
+    expect(mockRemoveAnnotation).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'test-app', annotation_id: 'ann-1' },
+    })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 

@@ -15,13 +15,8 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Menu, MenuContent, MenuItem, MenuSeparator } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
@@ -425,32 +420,29 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
                   </td>
                   <td>
                     {canEdit && (
-                      <DropdownMenu modal={false}>
+                      <Menu modal={false}>
                         <QualityRowMenuTrigger
                           label={t(($) => $['qualityPage.questionActions'], {
                             ns: 'knowledgeQuality',
                             question: item.question,
                           })}
                         />
-                        <DropdownMenuContent className="w-50">
-                          <DropdownMenuItem
-                            className="gap-2 px-3"
-                            onClick={() => void openEdit(item)}
-                          >
+                        <MenuContent align="end" className="w-50">
+                          <MenuItem className="gap-2 px-3" onClick={() => void openEdit(item)}>
                             <span aria-hidden className="i-ri-edit-line size-4" />
                             {t(($) => $['qualityPage.edit'], { ns: 'knowledgeQuality' })}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
+                          </MenuItem>
+                          <MenuSeparator />
+                          <MenuItem
                             variant="destructive"
                             className="gap-2 px-3"
                             onClick={() => setDeleteIds(new Set([item.id]))}
                           >
                             <span aria-hidden className="i-ri-delete-bin-line size-4" />
                             {t(($) => $['qualityPage.delete'], { ns: 'knowledgeQuality' })}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          </MenuItem>
+                        </MenuContent>
+                      </Menu>
                     )}
                   </td>
                 </tr>

@@ -25,14 +25,9 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
@@ -714,8 +709,8 @@ export function ContactDetailsPanel({
     >
       <div className="absolute inset-e-2 top-2 z-10 flex items-center gap-1">
         {canManage && contact.type !== 'workspace' && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
+          <Menu>
+            <MenuTrigger
               render={
                 <IconButton
                   aria-label={t(($) => $['details.more'])}
@@ -727,19 +722,19 @@ export function ContactDetailsPanel({
                 </IconButton>
               }
             />
-            <DropdownMenuContent className="min-w-32">
+            <MenuContent className="min-w-32">
               {contact.type === 'external' && (
-                <DropdownMenuItem className="gap-2" onClick={onEdit}>
+                <MenuItem className="gap-2" onClick={onEdit}>
                   <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
                   {t(($) => $['details.edit'])}
-                </DropdownMenuItem>
+                </MenuItem>
               )}
-              <DropdownMenuItem variant="destructive" className="gap-2" onClick={onRemove}>
+              <MenuItem variant="destructive" className="gap-2" onClick={onRemove}>
                 <span aria-hidden className="i-ri-delete-bin-line size-4" />
                 {t(($) => $['details.remove'])}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </MenuItem>
+            </MenuContent>
+          </Menu>
         )}
         <IconButton aria-label={t(($) => $['action.close'])} size="lg" onClick={onClose}>
           <span aria-hidden className="i-ri-close-line size-4" />

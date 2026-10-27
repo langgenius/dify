@@ -7,13 +7,8 @@ import {
   BreadcrumbSeparator,
 } from '@langgenius/dify-ui/breadcrumb'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -150,8 +145,8 @@ export function AgentWorkingDirectoryBreadcrumb({
                 {index === 1 && hiddenItems.length > 0 && (
                   <>
                     <BreadcrumbItem className="shrink-0">
-                      <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger
+                      <Menu modal={false}>
+                        <MenuTrigger
                           render={
                             <IconButton
                               aria-label={t(($) => $['operation.more'], { ns: 'common' })}
@@ -161,9 +156,9 @@ export function AgentWorkingDirectoryBreadcrumb({
                             </IconButton>
                           }
                         />
-                        <DropdownMenuContent align="start" className="w-34 p-1">
+                        <MenuContent align="start" className="w-34">
                           {hiddenItems.map((hiddenItem) => (
-                            <DropdownMenuItem
+                            <MenuItem
                               key={hiddenItem.path}
                               className="gap-1 px-2 py-1.5"
                               onClick={() => onPathChange(hiddenItem.path)}
@@ -178,10 +173,10 @@ export function AgentWorkingDirectoryBreadcrumb({
                               <span className="min-w-0 truncate px-1 system-md-regular">
                                 {hiddenItem.label}
                               </span>
-                            </DropdownMenuItem>
+                            </MenuItem>
                           ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        </MenuContent>
+                      </Menu>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="system-xs-regular text-divider-deep" />
                   </>

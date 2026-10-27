@@ -1,8 +1,9 @@
 import type { TextNode } from 'lexical'
 import type { WorkflowVariableBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { $applyNodeReplacement } from 'lexical'
-import { memo, useCallback, useEffect, useEffectEvent } from 'react'
+import { mergeRegister } from '@lexical/utils'
+import { $addUpdateTag, $applyNodeReplacement, SKIP_DOM_SELECTION_TAG } from 'lexical'
+import { memo, useCallback, useEffect } from 'react'
 import { VAR_REGEX as REGEX, resetReg } from '@/config'
 import { decoratorTransform } from '../../utils'
 import { CustomTextNode } from '../custom-text/node'
@@ -54,17 +55,23 @@ const WorkflowVariableBlockReplacementBlock = ({
     }
   }, [])
 
-  const transformText = useEffectEvent((textNode: CustomTextNode) => {
-    resetReg()
-    return decoratorTransform(textNode, getMatch, createWorkflowVariableBlockNode)
-  })
+  const transformListener = useCallback(
+    (textNode: CustomTextNode) => {
+      resetReg()
+      return decoratorTransform(textNode, getMatch, createWorkflowVariableBlockNode)
+    },
+    [createWorkflowVariableBlockNode, getMatch],
+  )
 
   useEffect(() => {
     resetReg()
-    // Re-registering dirties existing text and restores the old selection. Keep
-    // the registration stable while using the latest variable metadata.
-    return editor.registerNodeTransform(CustomTextNode, (textNode) => transformText(textNode))
-  }, [editor])
+    const unregister = mergeRegister(
+      editor.registerNodeTransform(CustomTextNode, transformListener),
+    )
+    // Registering a transform dirties existing text; refreshing variable metadata must preserve focus.
+    editor.update(() => $addUpdateTag(SKIP_DOM_SELECTION_TAG))
+    return unregister
+  }, [editor, transformListener])
 
   return null
 }

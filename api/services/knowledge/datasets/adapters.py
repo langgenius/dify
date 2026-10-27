@@ -119,7 +119,7 @@ class SQLAlchemyDatasetOperations:
         return {f"{model.model}:{model.provider.provider}" for model in models}
 
     def list_datasets(
-        self, context: RequestContext, query: DatasetListFilter, accessible_ids: list[str] | None, include_own: bool
+        self, context: RequestContext, query: DatasetListFilter, accessible_ids: list[str] | None
     ) -> DatasetPage:
         page, limit = clamp_pagination(query.page, query.limit, 100)
         with self._sessions() as session:
@@ -130,7 +130,6 @@ class SQLAlchemyDatasetOperations:
                     context.active_workspace_id,
                     user=account,
                     accessible_dataset_ids=accessible_ids,
-                    include_own_datasets=include_own,
                     session=session,
                 )
             else:
@@ -146,7 +145,6 @@ class SQLAlchemyDatasetOperations:
                     creator_ids=list(query.creator_ids),
                     tags=self._tags,
                     accessible_dataset_ids=accessible_ids,
-                    include_own_datasets=include_own,
                 )
             data = load_dataset_details(datasets, session=session)
             partial_ids = [item["id"] for item in data if item["permission"] == "partial_members"]

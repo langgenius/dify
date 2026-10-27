@@ -249,14 +249,14 @@ class AudioServiceTestDataFactory:
             Persisted Workflow model with specified attributes
         """
         workflow = Workflow(
-            id=kwargs.pop("id", str(uuid4())),
-            tenant_id=kwargs.pop("tenant_id", TENANT_ID),
-            app_id=kwargs.pop("app_id", APP_ID),
-            type=kwargs.pop("type", WorkflowType.CHAT),
-            version=kwargs.pop("version", Workflow.VERSION_DRAFT),
-            graph=kwargs.pop("graph", "{}"),
+            id=str(uuid4()),
+            tenant_id=TENANT_ID,
+            app_id=APP_ID,
+            type=WorkflowType.CHAT,
+            version=Workflow.VERSION_DRAFT,
+            graph="{}",
             _features=json.dumps(features_dict or {}),
-            created_by=kwargs.pop("created_by", ACCOUNT_ID),
+            created_by=ACCOUNT_ID,
         )
         for key, value in kwargs.items():
             setattr(workflow, key, value)
