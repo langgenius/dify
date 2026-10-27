@@ -13,6 +13,7 @@ from services.oauth_client_metadata import (
     validated_logo_uri,
     validated_redirect_uris,
 )
+from services.oauth_client_registration import RegistrationErrorCode
 
 GOOD = "https://agent.example/cb"
 
@@ -68,3 +69,8 @@ def test_logo_uri_rules() -> None:
     for bad in ("http://agent.example/l.png", "https://agent.example/" + "a" * MAX_LOGO_URI_LENGTH):
         with pytest.raises(InvalidClientMetadataError):
             validated_logo_uri({"logo_uri": bad})
+
+
+@pytest.mark.parametrize("kind", list(MetadataErrorKind))
+def test_every_metadata_error_kind_is_a_registration_error_code(kind: MetadataErrorKind) -> None:
+    assert RegistrationErrorCode(kind.value)

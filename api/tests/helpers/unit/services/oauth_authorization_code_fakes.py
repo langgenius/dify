@@ -146,6 +146,9 @@ class DictRedis:
         self.ttls[name] = time
         return True
 
+    def delete(self, *names: str) -> int:
+        return sum(self.data.pop(name, None) is not None for name in names)
+
     def getdel(self, name: str) -> str | bytes | None:
         return self.data.pop(name, None)
 

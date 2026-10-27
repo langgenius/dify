@@ -66,6 +66,9 @@ class _Cache:
         self.ttls[name] = ex
         return True
 
+    def delete(self, *names: str) -> int:
+        return sum(self.data.pop(name, None) is not None for name in names)
+
     def expire_throttle(self) -> None:
         self.fetch_slots.clear()
 
@@ -255,6 +258,9 @@ def test_a_fetch_error_resolves_to_none() -> None:
         "https://agent.example/c.json\n",
         "https://agent.example/" + "a" * 2100,
         "https://\u2603.ws/x",
+        "https://" + "a" * 64 + ".com/x",
+        "https://a..com/x",
+        "https://.a.com/x",
         "https://agent.example/caf\u00e9",
         "https://\uff10\uff11\uff12.example/x",
     ],
@@ -424,13 +430,38 @@ def test_a_stale_client_whose_refetch_fails_resolves_to_none_and_is_not_overwrit
     assert first is not None
 
 
-def test_a_stale_client_whose_refetch_is_invalid_resolves_to_none() -> None:
+def test_a_stale_client_whose_refetch_is_invalid_is_dropped_from_the_cache() -> None:
     world = _world(_response(_document(), max_age=300), _response(_document(redirect_uris=[])))
     world.source.resolve(URL)
     world.cache.expire_throttle()
     world.clock.advance(301)
 
     assert world.source.resolve(URL) is None
+    assert world.cache.data == {}
+
+
+def test_a_stale_client_whose_document_is_gone_is_dropped_from_the_cache() -> None:
+    gone = cimd_module.CimdRejectedError()
+    world = _world(_response(_document(), max_age=300), gone)
+    world.source.resolve(URL)
+    world.cache.expire_throttle()
+    world.clock.advance(301)
+
+    assert world.source.resolve(URL) is None
+    assert world.cache.data == {}
+
+
+def test_a_stale_client_whose_host_became_private_is_dropped_from_the_cache() -> None:
+    resolver = _Resolver()
+    world = _world(_response(_document(), max_age=300), resolver=resolver)
+    world.source.resolve(URL)
+    resolver.addresses["agent.example"] = ["10.0.0.5"]
+    world.cache.expire_throttle()
+    world.clock.advance(301)
+
+    assert world.source.resolve(URL) is None
+    assert world.cache.data == {}
+    assert world.fetcher.urls == [URL]
 
 
 def test_the_redis_entry_outlives_its_soft_expiry_by_the_stale_window() -> None:
@@ -589,9 +620,17 @@ def test_fetch_reads_max_age(monkeypatch: pytest.MonkeyPatch, header: str | None
     assert fetch_client_metadata(URL).max_age == expected
 
 
-@pytest.mark.parametrize("status", [201, 204, 301, 302, 307, 308, 400, 404, 500])
-def test_fetch_fails_on_any_status_but_200(monkeypatch: pytest.MonkeyPatch, status: int) -> None:
+@pytest.mark.parametrize("status", [201, 204, 301, 302, 307, 308, 400, 403, 404, 410])
+def test_fetch_rejects_any_non_200_below_500(monkeypatch: pytest.MonkeyPatch, status: int) -> None:
     _transport(monkeypatch, _http_response(status, headers={"Location": "http://10.0.0.1/"}))
+
+    with pytest.raises(cimd_module.CimdRejectedError):
+        fetch_client_metadata(URL)
+
+
+@pytest.mark.parametrize("status", [500, 502, 503, 504])
+def test_fetch_treats_5xx_as_a_transport_failure(monkeypatch: pytest.MonkeyPatch, status: int) -> None:
+    _transport(monkeypatch, _http_response(status))
 
     with pytest.raises(CimdFetchError):
         fetch_client_metadata(URL)
@@ -702,4 +741,25 @@ def test_numeric_spellings_of_loopback_are_rejected_through_the_real_resolver(cl
     source = CimdClientSource(cache=_Cache(), fetch=fetcher, resolve_host=resolve_host_addresses)
 
     assert source.resolve(client_id) is None
+    assert fetcher.urls == []
+
+
+@pytest.mark.parametrize("host", ["a" * 64 + ".com", "a..com", ".a.com"])
+def test_malformed_labels_are_rejected_without_a_fetch_even_through_the_real_resolver(host: str) -> None:
+    client_id = f"https://{host}/x"
+    fetcher = _Fetcher([_response(_document(client_id=client_id))])
+    source = CimdClientSource(cache=_Cache(), fetch=fetcher, resolve_host=resolve_host_addresses)
+
+    assert source.resolve(client_id) is None
+    assert fetcher.urls == []
+
+
+def test_a_resolver_unicode_error_is_a_rejection() -> None:
+    def raising(host: str) -> Sequence[str]:
+        raise UnicodeError(host)
+
+    fetcher = _Fetcher([_response(_document())])
+    source = CimdClientSource(cache=_Cache(), fetch=fetcher, resolve_host=raising)
+
+    assert source.resolve(URL) is None
     assert fetcher.urls == []

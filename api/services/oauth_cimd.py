@@ -6,7 +6,6 @@ client's name and redirect URIs. CIMD clients are never stored; only a validated
 
 import ipaddress
 import json
-import operator
 import re
 import socket
 import time
@@ -45,6 +44,7 @@ CIMD_CACHE_MIN_SECONDS = 60
 CIMD_CACHE_MAX_SECONDS = 86400
 CIMD_FETCH_INTERVAL_SECONDS = 10
 MAX_CLIENT_ID_URL_LENGTH = 2048
+MAX_DNS_LABEL_LENGTH = 63
 STORAGE_ID_PREFIX = "cimd:"
 STORAGE_ID_HASH_LENGTH = 32
 CACHE_KEY = "openapi_oauth:cimd:{digest}"
@@ -54,20 +54,16 @@ DOT_SEGMENTS = frozenset({".", ".."})
 FORBIDDEN_DOCUMENT_FIELDS = ("client_secret", "client_secret_expires_at")
 LOCALHOST = "localhost"
 FETCH_HEADERS = {"Accept-Encoding": "identity", "Accept": "application/json"}
-NON_PUBLIC_PROPERTIES = tuple(
-    operator.attrgetter(name)
-    for name in ("is_private", "is_loopback", "is_link_local", "is_reserved", "is_multicast", "is_unspecified")
-)
 NUMERIC_LABEL_PATTERN = re.compile(r"0x[0-9a-f]*|[0-9]+", re.IGNORECASE)
 MAX_AGE_PATTERN = re.compile(r"(?:^|[\s,])max-age\s*=\s*\"?(\d+)\"?", re.IGNORECASE)
 
 
 class CimdFetchError(Exception):
-    pass
+    """The document could not be reached or answered 5xx; a cached copy may still be served."""
 
 
 class CimdRejectedError(Exception):
-    pass
+    """The document was reached and refused, or the host is not allowed; a cached copy must go."""
 
 
 @dataclass(frozen=True)
@@ -80,6 +76,8 @@ class CimdCache(Protocol):
     def get(self, name: str) -> str | bytes | None: ...
 
     def setex(self, name: str, time: timedelta | int, value: str) -> object: ...
+
+    def delete(self, *names: str) -> object: ...
 
     def set(self, name: str, value: str, *, nx: bool, ex: int) -> object: ...
 
@@ -116,8 +114,10 @@ def fetch_client_metadata(url: str) -> CimdResponse:
         )
     except (httpx.HTTPError, httpx.InvalidURL, ResponseLimitError, ToolSSRFError) as error:
         raise CimdFetchError(str(error)) from error
-    if response.status_code != httpx.codes.OK:
+    if response.status_code >= httpx.codes.INTERNAL_SERVER_ERROR:
         raise CimdFetchError(f"metadata document answered {response.status_code}")
+    if response.status_code != httpx.codes.OK:
+        raise CimdRejectedError
     return CimdResponse(body=response.content, max_age=_max_age(response.headers))
 
 
@@ -143,6 +143,12 @@ def _client_id_host(client_id: str) -> str:
         raise CimdRejectedError from None
     if not host:
         raise CimdRejectedError
+    if ":" not in host:
+        for label in host.removesuffix(".").split("."):
+            if not label:
+                raise CimdRejectedError
+            if len(label) > MAX_DNS_LABEL_LENGTH:
+                raise CimdRejectedError
     if "@" in parts.netloc:
         raise CimdRejectedError
     if not parts.path:
@@ -159,7 +165,17 @@ def _is_public_address(raw: str) -> bool:
         return False
     if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
         address = address.ipv4_mapped
-    if any(is_non_public(address) for is_non_public in NON_PUBLIC_PROPERTIES):
+    if address.is_private:
+        return False
+    if address.is_loopback:
+        return False
+    if address.is_link_local:
+        return False
+    if address.is_reserved:
+        return False
+    if address.is_multicast:
+        return False
+    if address.is_unspecified:
         return False
     if isinstance(address, ipaddress.IPv6Address) and address.is_site_local:
         return False
@@ -185,7 +201,7 @@ def _check_host_is_public(host: str, resolve_host: Callable[[str], Sequence[str]
         raise CimdRejectedError
     try:
         addresses = resolve_host(name)
-    except OSError:
+    except (OSError, UnicodeError):
         raise CimdRejectedError from None
     if not addresses:
         raise CimdRejectedError
@@ -330,7 +346,10 @@ class CimdClientSource:
             _check_host_is_public(host, self._resolve_host)
             response = self._fetch(url)
             client = _parse_document(url, host, response.body)
-        except (CimdRejectedError, CimdFetchError):
+        except CimdRejectedError:
+            self._cache.delete(CACHE_KEY.format(digest=digest))
+            return None
+        except CimdFetchError:
             return None
         lifetime = CIMD_CACHE_MIN_SECONDS if response.max_age is None else response.max_age
         lifetime = max(CIMD_CACHE_MIN_SECONDS, min(CIMD_CACHE_MAX_SECONDS, lifetime))

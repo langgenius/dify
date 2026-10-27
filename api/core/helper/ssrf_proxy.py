@@ -66,7 +66,7 @@ class ResponseTooLargeError(ResponseLimitError):
 
 
 class ResponseDeadlineError(ResponseLimitError):
-    pass
+    """The response body was not fully read within its total deadline."""
 
 
 class UnsupportedResponseEncodingError(ResponseLimitError):
