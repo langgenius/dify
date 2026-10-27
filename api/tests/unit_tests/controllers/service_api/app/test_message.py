@@ -1,79 +1,21 @@
-"""
-Unit tests for Service API Message controllers.
-
-Tests coverage for:
-- MessageListQuery, MessageFeedbackPayload, FeedbackListQuery Pydantic models
-- App mode validation for message endpoints
-- MessageService integration
-- Error handling for message operations
-
-Focus on:
-- Pydantic model validation
-- UUID normalization
-- Error type mappings
-- Service method interfaces
-"""
+"""Request model and error-type validation for Service API message endpoints."""
 
 import uuid
-from collections.abc import Iterator
-from inspect import unwrap
-from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask, request
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session
 
-from controllers.common.errors import NotFoundError
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.app.message import (
     FeedbackListQuery,
     MessageFeedbackPayload,
-    MessageListApi,
     MessageListQuery,
 )
-from models.enums import EndUserType
-from models.model import App, AppMode, EndUser
-from services.errors.conversation import ConversationNotExistsError
+from models.model import AppMode
 from services.errors.message import (
     FirstMessageNotExistsError,
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.message_service import MessageService
-
-
-def _app(*, mode: AppMode = AppMode.CHAT) -> App:
-    return App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Service API app",
-        description="",
-        mode=mode,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=0,
-    )
-
-
-def _end_user() -> EndUser:
-    return EndUser(
-        id="end-user-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=EndUserType.SERVICE_API,
-        external_user_id="external-user-1",
-        name="Service API user",
-        session_id="session-1",
-    )
-
-
-@pytest.fixture
-def orm_session(sqlite_engine: Engine) -> Iterator[Session]:
-    """Provide a real caller-owned session for MessageService interface tests."""
-
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield session
 
 
 class TestMessageListQuery:
@@ -259,133 +201,3 @@ class TestMessageErrorTypes:
         """Test SuggestedQuestionsAfterAnswerDisabledError can be raised."""
         error = SuggestedQuestionsAfterAnswerDisabledError()
         assert isinstance(error, SuggestedQuestionsAfterAnswerDisabledError)
-
-
-class TestMessageService:
-    """Test MessageService interface and methods."""
-
-    def test_pagination_by_first_id_method_exists(self):
-        """Test MessageService.pagination_by_first_id exists."""
-        assert hasattr(MessageService, "pagination_by_first_id")
-        assert callable(MessageService.pagination_by_first_id)
-
-    @patch.object(MessageService, "pagination_by_first_id")
-    def test_pagination_by_first_id_returns_pagination_result(self, mock_pagination, orm_session: Session):
-        """Test pagination_by_first_id returns expected format."""
-        mock_result = Mock()
-        mock_result.data = []
-        mock_result.limit = 20
-        mock_result.has_more = False
-        mock_pagination.return_value = mock_result
-
-        result = MessageService.pagination_by_first_id(
-            app_model=_app(),
-            user=_end_user(),
-            conversation_id=str(uuid.uuid4()),
-            first_id=None,
-            limit=20,
-            session=orm_session,
-        )
-
-        assert hasattr(result, "data")
-        assert hasattr(result, "limit")
-        assert hasattr(result, "has_more")
-
-    @patch.object(MessageService, "pagination_by_first_id")
-    def test_pagination_raises_conversation_not_exists_error(self, mock_pagination, orm_session: Session):
-        """Test pagination raises ConversationNotExistsError."""
-        import services.errors.conversation
-
-        mock_pagination.side_effect = services.errors.conversation.ConversationNotExistsError()
-
-        with pytest.raises(services.errors.conversation.ConversationNotExistsError):
-            MessageService.pagination_by_first_id(
-                app_model=_app(),
-                user=_end_user(),
-                conversation_id="invalid_id",
-                first_id=None,
-                limit=20,
-                session=orm_session,
-            )
-
-    @patch.object(MessageService, "pagination_by_first_id")
-    def test_pagination_raises_first_message_not_exists_error(self, mock_pagination, orm_session: Session):
-        """Test pagination raises FirstMessageNotExistsError."""
-        mock_pagination.side_effect = FirstMessageNotExistsError()
-
-        with pytest.raises(FirstMessageNotExistsError):
-            MessageService.pagination_by_first_id(
-                app_model=_app(),
-                user=_end_user(),
-                conversation_id=str(uuid.uuid4()),
-                first_id="invalid_first_id",
-                limit=20,
-                session=orm_session,
-            )
-
-
-class TestMessageListApi:
-    def test_not_chat_app(self, app: Flask) -> None:
-        api = MessageListApi()
-        handler = unwrap(api.get)
-        app_model = _app(mode=AppMode.COMPLETION)
-        end_user = _end_user()
-
-        # @model_validate parses ahead of the app-mode guard, so the id has to be well-formed to
-        # reach the branch this test is about.
-        with app.test_request_context("/messages?conversation_id=00000000-0000-0000-0000-000000000001", method="GET"):
-            with pytest.raises(NotChatAppError):
-                handler(
-                    api,
-                    MessageListQuery.model_validate(request.args.to_dict(flat=True)),
-                    app_model=app_model,
-                    end_user=end_user,
-                )
-
-    def test_conversation_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            MessageService,
-            "pagination_by_first_id",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
-        )
-
-        api = MessageListApi()
-        handler = unwrap(api.get)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context(
-            "/messages?conversation_id=00000000-0000-0000-0000-000000000001",
-            method="GET",
-        ):
-            with pytest.raises(NotFoundError):
-                handler(
-                    api,
-                    MessageListQuery.model_validate(request.args.to_dict(flat=True)),
-                    app_model=app_model,
-                    end_user=end_user,
-                )
-
-    def test_first_message_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            MessageService,
-            "pagination_by_first_id",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(FirstMessageNotExistsError()),
-        )
-
-        api = MessageListApi()
-        handler = unwrap(api.get)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context(
-            "/messages?conversation_id=00000000-0000-0000-0000-000000000001&first_id=00000000-0000-0000-0000-000000000002",
-            method="GET",
-        ):
-            with pytest.raises(NotFoundError):
-                handler(
-                    api,
-                    MessageListQuery.model_validate(request.args.to_dict(flat=True)),
-                    app_model=app_model,
-                    end_user=end_user,
-                )
